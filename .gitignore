@@ -1,0 +1,78 @@
+# Local agent and brainstorming state
+.superpowers/
+
+# Operating system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.iml
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.sw?
+*~
+
+# Logs and diagnostics
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local environment and secret material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Node.js dependencies and package-manager caches
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+
+# Build output and tool caches
+dist/
+build/
+out/
+release/
+dist-electron/
+.cache/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# Rust build output
+target/
+
+# SQLite runtime databases and sidecar files
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
+
+# Temporary files and directories
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Keep reproducibility inputs and generated protocol sources tracked:
+# Cargo.lock, pnpm-lock.yaml, generated/
