@@ -1,5 +1,6 @@
-# Local agent and brainstorming state
-.superpowers/
+# Local tool state (project knowledge is tracked in .agents/)
+.claude/
+.codex/
 
 # Operating system metadata
 .DS_Store

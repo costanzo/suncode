@@ -1,4 +1,4 @@
-# Foundational Harness Design
+# Suncode Architecture
 
 **Status:** Approved
 
@@ -18,7 +18,7 @@ The milestone succeeds when a new contributor can clone the repository, run one 
 
 1. **Rust is the trusted local core.** It owns machine-affecting operations, persistence, permissions, session durability, and secret encryption.
 2. **TypeScript owns AI behavior.** It owns model integrations, context construction, agent loops, orchestration, and conversational approval handling.
-3. **Clients are presentation shells.** Electron, TUI, and local web clients consume a shared client API and do not access the core or model providers directly.
+3. **Clients are presentation shells.** Qt desktop, web, and mobile clients consume a shared client API and do not access the core or model providers directly. The desktop application must use Qt; Electron is prohibited.
 4. **Contracts are language-neutral.** JSON Schema and OpenRPC define the boundary between Rust and TypeScript. Neither language's types are canonical.
 5. **Configuration is interface-managed.** Users do not edit configuration files. Rust persists settings in SQLite and exposes them through APIs.
 6. **The lowest trusted layer enforces security.** TypeScript may request operations and user approvals, but Rust makes the authoritative permission decision.
@@ -31,13 +31,13 @@ The milestone succeeds when a new contributor can clone the repository, run one 
 
 The supported interfaces are:
 
-- Electron desktop application
-- Terminal user interface
-- Local web interface
+- Qt desktop application
+- Web application
+- Mobile application
 
 Clients contain presentation logic and user interaction. They communicate with the on-demand local runtime through an authenticated loopback HTTP and WebSocket API. They never access SQLite, the Rust process, or model providers directly.
 
-The web interface is local. It is served by, and connects to, the local runtime. Remotely hosted execution is outside the initial architecture.
+The web interface is local. It is served by, and connects to, the local runtime. Mobile initially uses a runtime on the same device. Remotely hosted and cross-device execution are outside the initial architecture.
 
 ### 3.2 TypeScript runtime
 
@@ -95,7 +95,7 @@ The application uses one on-demand local runtime per operating-system user:
 7. TypeScript restores active session state through Rust APIs.
 8. The runtime exits after a configurable idle period only when no client, agent turn, core operation, or background job is active.
 
-Electron, TUI, and web clients share this runtime rather than launching independent agent and core processes.
+Qt desktop, web, and mobile clients on the same device share this runtime rather than launching independent agent and core processes.
 
 ### 4.2 Concurrency model
 
@@ -105,7 +105,7 @@ Parallel subagents within a session are a future capability. Event sequencing, c
 
 ### 4.3 Local-client authentication
 
-Binding to a loopback interface is not sufficient authentication. The runtime generates a high-entropy token for each runtime lifetime and requires it on local HTTP and WebSocket connections. Token discovery and handoff must use an operating-system-appropriate channel with access restricted to the current user. The concrete handoff mechanism is deferred to the client-runtime API design because it differs across Electron, TUI, and browser launch flows.
+Binding to a loopback interface is not sufficient authentication. The runtime generates a high-entropy token for each runtime lifetime and requires it on local HTTP and WebSocket connections. Token discovery and handoff must use an operating-system-appropriate channel with access restricted to the current user. The concrete handoff mechanism is deferred to the client-runtime API design because it differs across Qt, browser, and mobile launch flows.
 
 ## 5. Rust–TypeScript Protocol
 
@@ -180,7 +180,7 @@ Clients reconnect using the last observed event sequence. The runtime resumes af
 
 Rust exclusively owns the SQLite connection, schema, migrations, transactions, and integrity checks. The database resides in the operating system's per-user application-data directory. Rust resolves the exact path and exposes a redacted diagnostic representation through RPC.
 
-Users configure the application through Electron, TUI, or web interfaces. There is no user-edited configuration file. TypeScript and clients use RPC-backed APIs for all settings access.
+Users configure the application through Qt desktop, web, or mobile interfaces. There is no user-edited configuration file. TypeScript and clients use RPC-backed APIs for all settings access.
 
 ### 6.2 Stored data
 
@@ -301,9 +301,9 @@ suncode/
 │       ├── rust-client/
 │       └── client-sdk/
 ├── apps/
-│   ├── desktop/
-│   ├── tui/
-│   └── web/
+│   ├── desktop-qt/
+│   ├── web/
+│   └── mobile/
 ├── generated/
 │   ├── rust/
 │   └── typescript/
@@ -421,7 +421,7 @@ Milestone-one tests may use in-memory or fixture adapters. They do not implement
 - SQLite repositories and migrations
 - Secret encryption or credential-store integration
 - Functional session persistence
-- Electron, TUI, or web product interfaces
+- Qt desktop, web, or mobile product interfaces
 - Installers, packaging, auto-update, or code signing
 - Remote execution or a hosted control plane
 - Parallel subagents within one session
@@ -451,9 +451,10 @@ The following areas require separate design and implementation cycles after the 
 5. Permission policy, capability model, sandboxing, and operation conflict control
 6. Filesystem, search, glob, shell, write, and artifact operations
 7. TypeScript agent loop, model-provider abstraction, context management, and approvals
-8. Electron application
-9. TUI application
-10. Local web application
+8. Qt desktop application
+9. Local web application
+10. Mobile application
 11. Distribution, packaging, updates, and platform signing
 
 Each deferred subsystem must preserve the boundaries and invariants defined in this specification unless a superseding architecture decision record explicitly changes them.
+
