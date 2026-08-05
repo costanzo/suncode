@@ -2,13 +2,13 @@
 
 **Status:** Approved
 
-**Date:** 2026-08-04
+**Date:** 2026-08-05
 
 **Scope:** Repository harness, architectural boundaries, protocol foundation, and documentation
 
 ## 1. Purpose
 
-Suncode is a local coding-agent platform comparable in purpose to OpenCode, Claude Code, and Codex. Its architecture separates high-performance and security-sensitive machine operations from AI orchestration and presentation.
+Suncode is a coding-agent platform comparable in purpose to OpenCode, Claude Code, and Codex. It supports both local execution and isolated cloud-hosted execution while separating high-performance and security-sensitive machine operations from AI orchestration and presentation.
 
 This specification defines the foundation for that system without implementing product behavior. The first milestone establishes an implementation-ready polyglot repository, a language-neutral protocol contract, build and verification conventions, continuous integration, and architectural documentation.
 
@@ -16,7 +16,7 @@ The milestone succeeds when a new contributor can clone the repository, run one 
 
 ## 2. Architectural Principles
 
-1. **Rust is the trusted local core.** It owns machine-affecting operations, persistence, permissions, session durability, and secret encryption.
+1. **Rust is the trusted OS core.** It owns machine-affecting operations, persistence, permissions, session durability, and secret encryption within the local or cloud workspace where it runs.
 2. **TypeScript owns AI behavior.** It owns model integrations, context construction, agent loops, orchestration, and conversational approval handling.
 3. **Clients are presentation shells.** Qt desktop, web, and mobile clients consume a shared client API and do not access the core or model providers directly. The desktop application must use Qt; Electron is prohibited.
 4. **Contracts are language-neutral.** JSON Schema and OpenRPC define the boundary between Rust and TypeScript. Neither language's types are canonical.
@@ -35,9 +35,9 @@ The supported interfaces are:
 - Web application
 - Mobile application
 
-Clients contain presentation logic and user interaction. They communicate with the on-demand local runtime through an authenticated loopback HTTP and WebSocket API. They never access SQLite, the Rust process, or model providers directly.
+Clients contain presentation logic and user interaction. They communicate with the agent runtime through the same authenticated HTTP and WebSocket API in both deployment modes. Local clients use a loopback endpoint; remote clients use TLS-protected HTTPS and WebSocket Secure (WSS). Clients never access SQLite, the Rust process, or model providers directly.
 
-The web interface is local. It is served by, and connects to, the local runtime. Mobile initially uses a runtime on the same device. Remotely hosted and cross-device execution are outside the initial architecture.
+A client may connect to a runtime on the same device or to an authorized cloud-hosted runtime. Mobile clients may use WSS to connect to the cloud service. In a cloud deployment, the TypeScript runtime and Rust OS core are colocated inside an isolated execution environment, and the Rust core operates on that environment's authorized cloud workspace rather than the client device.
 
 ### 3.2 TypeScript runtime
 
@@ -49,7 +49,7 @@ The TypeScript layer owns:
 - Tool orchestration
 - Conversational permission prompts
 - Translation between client events and core RPC calls
-- Local HTTP and WebSocket client APIs
+- Authenticated local and remote HTTP and WebSocket client APIs
 - Lifecycle supervision of the Rust child process
 
 TypeScript does not connect to SQLite and does not directly perform privileged filesystem, search, shell, or write operations.
@@ -68,7 +68,7 @@ The Rust layer owns:
 - Operation metadata and artifact references
 - Recovery of durable state
 
-Rust runs as one long-lived child process. Internal Rust crates are compilation and testing boundaries, not separate services.
+Rust runs as one long-lived child process colocated with its supervising TypeScript runtime in both local and cloud deployments. Internal Rust crates are compilation and testing boundaries, not client-reachable services.
 
 ### 3.4 Dependency rules
 
@@ -82,30 +82,45 @@ Rust runs as one long-lived child process. Internal Rust crates are compilation 
 
 ## 4. Process Topology and Lifecycle
 
-### 4.1 Single on-demand runtime
+### 4.1 Local deployment
 
-The application uses one on-demand local runtime per operating-system user:
+A local deployment uses one on-demand runtime per operating-system user:
 
-1. A launcher attempts to acquire a per-user single-instance lock.
-2. If a healthy runtime exists, the launcher attaches the client to it.
-3. Otherwise, the launcher starts the TypeScript runtime.
-4. The TypeScript runtime creates a random local authentication token and a loopback endpoint.
-5. TypeScript starts one long-lived Rust child process.
-6. TypeScript and Rust complete protocol initialization before client operations are accepted.
-7. TypeScript restores active session state through Rust APIs.
-8. The runtime exits after a configurable idle period only when no client, agent turn, core operation, or background job is active.
+1. A launcher acquires a per-user single-instance lock or attaches to the healthy runtime that already owns it.
+2. The TypeScript runtime creates a random runtime-lifetime credential and an authenticated loopback endpoint.
+3. TypeScript starts one long-lived Rust child process.
+4. TypeScript and Rust complete protocol initialization and durable recovery before client operations are accepted.
+5. The runtime exits after a configurable idle period only when no client, agent turn, core operation, or background job is active.
 
-Qt desktop, web, and mobile clients on the same device share this runtime rather than launching independent agent and core processes.
+Qt desktop, web, and compatible same-device mobile clients share this runtime rather than launching independent agent and core processes.
 
-### 4.2 Concurrency model
+### 4.2 Cloud deployment
+
+A cloud deployment hosts the agent runtime and Rust OS core together in an isolated execution environment:
+
+1. A Qt, web, or mobile client discovers the service HTTPS and WSS endpoints.
+2. The service authenticates the user and authorizes access to a tenant and workspace before accepting RPC.
+3. Cloud infrastructure assigns or resumes an isolated runtime environment scoped to that authorized workspace.
+4. The TypeScript runtime starts or attaches to its colocated Rust child and completes protocol initialization and durable recovery.
+5. Only the Rust core receives access to the workspace filesystem, persistence volume, secrets, and machine capabilities assigned to that environment.
+6. The client initializes its WebSocket session and resumes ordered session events after its last acknowledged sequence.
+7. Cloud lifecycle policy may suspend or terminate an idle environment only after durable state is safe to resume.
+
+Ingress, authentication, scheduling, and isolation infrastructure support the three application layers; they do not create a client-accessible path to the Rust core. The runtime-to-core JSON-RPC transport remains private to the isolated environment.
+
+### 4.3 Concurrency model
 
 The first product architecture supports concurrent independent sessions. Each session initially runs one sequential agent loop. Rust coordinates shared resources and rejects or serializes conflicting mutations.
 
 Parallel subagents within a session are a future capability. Event sequencing, cancellation, and identifiers must not prevent adding them later.
 
-### 4.3 Local-client authentication
+### 4.4 Client authentication and isolation
 
-Binding to a loopback interface is not sufficient authentication. The runtime generates a high-entropy token for each runtime lifetime and requires it on local HTTP and WebSocket connections. Token discovery and handoff must use an operating-system-appropriate channel with access restricted to the current user. The concrete handoff mechanism is deferred to the client-runtime API design because it differs across Qt, browser, and mobile launch flows.
+Binding to a loopback interface is not sufficient authentication. A local runtime generates a high-entropy runtime-lifetime credential and requires it on local HTTP and WebSocket connections. Discovery and handoff use an operating-system-appropriate channel restricted to the current user.
+
+Remote connections require TLS and authenticated WSS. Authentication establishes a user identity; authorization independently binds every connection and request to allowed tenant, workspace, and session scopes. Credentials must not appear in WebSocket URLs or ordinary RPC payloads. Browser origins are validated, tokens are short-lived and revocable, and reconnects are reauthenticated.
+
+The cloud service isolates workspaces, processes, storage, network access, secrets, and resource limits between tenants. The Rust core validates workspace and capability scope on every machine-affecting operation even when an ingress service or TypeScript runtime has already authorized the caller. Concrete local handoff, remote identity provider, token format, TLS termination, and isolation technology remain deferred security decisions.
 
 ## 5. Rust–TypeScript Protocol
 
@@ -178,7 +193,7 @@ Clients reconnect using the last observed event sequence. The runtime resumes af
 
 ### 6.1 Database ownership and location
 
-Rust exclusively owns the SQLite connection, schema, migrations, transactions, and integrity checks. The database resides in the operating system's per-user application-data directory. Rust resolves the exact path and exposes a redacted diagnostic representation through RPC.
+Rust exclusively owns the SQLite connection, schema, migrations, transactions, and integrity checks. In a local deployment, the database resides in the operating system's per-user application-data directory. In a cloud deployment, it resides on durable storage scoped to the isolated tenant and workspace environment; the same database must not have multiple concurrent Rust writers. Rust resolves the location and exposes only a redacted diagnostic representation through RPC.
 
 Users configure the application through Qt desktop, web, or mobile interfaces. There is no user-edited configuration file. TypeScript and clients use RPC-backed APIs for all settings access.
 
@@ -201,7 +216,7 @@ Not every database field is encrypted. API keys, access tokens, refresh tokens, 
 
 ### 6.3 Secret encryption
 
-On first launch, Rust generates a random master key and stores it in the operating system's credential store. The master key is never stored in SQLite.
+On first launch, Rust generates a random master key. Local deployments store it in the operating system's credential store; cloud deployments store or wrap it with an authorized cloud KMS or secret manager scoped to the tenant and workspace. The master key is never stored in SQLite.
 
 Sensitive database values use authenticated encryption:
 
@@ -423,7 +438,7 @@ Milestone-one tests may use in-memory or fixture adapters. They do not implement
 - Functional session persistence
 - Qt desktop, web, or mobile product interfaces
 - Installers, packaging, auto-update, or code signing
-- Remote execution or a hosted control plane
+- Functional cloud ingress, identity, workspace provisioning, isolation, scheduling, and hosted runtime infrastructure
 - Parallel subagents within one session
 - Portable database and master-key backup
 
@@ -454,7 +469,8 @@ The following areas require separate design and implementation cycles after the 
 8. Qt desktop application
 9. Local web application
 10. Mobile application
-11. Distribution, packaging, updates, and platform signing
+11. Cloud ingress, identity, tenant isolation, workspace provisioning, scheduling, and KMS integration
+12. Distribution, packaging, updates, and platform signing
 
 Each deferred subsystem must preserve the boundaries and invariants defined in this specification unless a superseding architecture decision record explicitly changes them.
 

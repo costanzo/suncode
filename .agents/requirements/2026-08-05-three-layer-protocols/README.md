@@ -22,6 +22,26 @@ Qt desktop | web | mobile
 
 The existing foundation already places AI orchestration in TypeScript and trusted machine operations in Rust, but it defers the UI/runtime protocol and names a different set of clients.
 
+## Deployment topologies
+
+### Local
+
+    Qt desktop or web UI
+            | authenticated loopback WebSocket
+    TypeScript agent runtime
+            | private newline-delimited JSON-RPC
+    Rust OS core -> local workspace
+
+### Cloud hosted
+
+    Qt desktop | web | mobile
+            | authenticated WSS over TLS
+    Cloud TypeScript agent runtime
+            | private newline-delimited JSON-RPC
+    Cloud Rust OS core -> isolated cloud workspace
+
+The runtime and OS core stay colocated in both modes. Remote clients never connect directly to the Rust core, and the cloud Rust core operates on its authorized cloud workspace rather than the mobile or desktop device.
+
 ## Proposed responsibilities
 
 ### UI layer
@@ -51,7 +71,7 @@ Both boundaries use JSON-RPC 2.0, OpenRPC method descriptions, and JSON Schema p
 
 ### UI to agent runtime
 
-- Transport: authenticated WebSocket using one JSON-RPC message per text frame.
+- Transport: authenticated WebSocket using one JSON-RPC message per text frame; local connections use loopback, while remote connections require WSS over TLS.
 - Initialization: negotiate versions, capabilities, limits, client kind, and resume cursors.
 - Main domains: runtime, workspace, session, turn, approval, settings, model, artifact, and events.
 - Streaming state: ordered `session.event` notifications with per-session sequence numbers.
@@ -86,8 +106,10 @@ Common schemas should contain only transport-neutral values. Privileged core req
 
 ## Constraints and assumptions
 
-- The initial topology remains local and same-device.
-- Mobile does not imply LAN, hosted, or cross-device runtime access.
+- Local and cloud-hosted deployments are both supported target topologies.
+- Cloud access requires authenticated WSS, short-lived revocable credentials, and authorization scoped to user, tenant, workspace, and session.
+- Each cloud runtime/core environment must isolate processes, workspaces, storage, secrets, network access, and resource limits from other tenants.
+- The cloud Rust core acts only on its provisioned cloud workspace; remote access does not grant it control of the client device.
 - Large or binary values use bounded pages or permission-checked artifact references rather than unbounded JSON.
 - Authentication token discovery and browser-safe handoff need a separate security design.
 - Qt binding, mobile framework, complete method catalogs, and event-retention policy remain open.
@@ -95,7 +117,7 @@ Common schemas should contain only transport-neutral values. Privileged core req
 ## Before implementation
 
 1. Review and approve or revise this architecture proposal.
-2. Resolve endpoint discovery, credential handoff, origin validation, and mobile lifecycle.
+2. Resolve local discovery and credential handoff plus remote identity, WSS/TLS termination, origin validation, tenant authorization, workspace provisioning, and isolation.
 3. Define canonical OpenRPC documents and JSON Schemas.
 4. Add examples, invalid fixtures, compatibility tests, and deterministic type generation.
 5. Create an implementation requirement only when the contract scope is accepted.

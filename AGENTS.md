@@ -1,6 +1,6 @@
 # Repository Guidance
 
-This repository is Suncode, a local coding-agent platform. Unless the user requests otherwise, communicate and document work in English.
+This repository is Suncode, a coding-agent platform supporting local and cloud-hosted execution. Unless the user requests otherwise, communicate and document work in English.
 
 ## Current state
 
