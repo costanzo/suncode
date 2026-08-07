@@ -1,20 +1,50 @@
 # Suncode Product Overview
 
-Suncode is a coding-agent platform comparable in purpose to OpenCode, Claude Code, and Codex. It provides Qt desktop, web, and mobile interfaces backed by either a local runtime or an isolated cloud-hosted runtime.
+Suncode is a local-first coding agent. It runs on the developer's machine, works on projects already checked out there, and keeps conversation history, settings, and credentials in local storage owned by the user.
 
-## Product goals
+It is comparable in purpose to Claude Code, Codex, and OpenCode.
 
-- Give users a consistent coding-agent experience across local and remote workspaces.
-- Support local execution and cloud-hosted execution without changing the three logical layers.
-- Keep machine-affecting operations and permission enforcement in a trusted Rust core colocated with its workspace.
-- Keep model integration, context construction, and agent orchestration in TypeScript.
-- Preserve durable, recoverable session history within the selected local or cloud deployment.
-- Make contracts language-neutral and generated for Rust and TypeScript.
+## Product thesis
+
+Three commitments differentiate Suncode. Every architectural tradeoff should be resolved in favor of these, and a design that weakens one needs an explicit decision record.
+
+1. **Local-first, no service dependency.** Project files, session history, and settings live on the user's machine. Suncode contacts the network only to reach the model provider the user configured. There is no Suncode account, no telemetry service, and no hosted control plane. The product remains fully functional for a user who never signs in to anything except their model provider.
+2. **Reviewable authority.** Every machine-affecting action the agent takes passes through one narrow, audited path with a stated scope. Users can see what the agent is permitted to do, what it did, and undo its filesystem changes. Approval is a real decision with real granularity, not a modal that trains users to click through.
+3. **One runtime, several surfaces.** A single local runtime holds session state, so the terminal and the desktop window are live views of the same work rather than separate applications with separate histories. Starting a session in one surface and continuing it in another is a normal operation.
+
+## Users and primary jobs
+
+The user is a software developer working in local repositories. The jobs Suncode must make efficient:
+
+1. Point the agent at a project and start a session.
+2. Give instructions with relevant files as context.
+3. Follow messages, tool activity, and errors as they stream.
+4. Approve or refuse a sensitive operation, understanding its scope.
+5. Review the resulting diff, and undo it if it is wrong.
+6. Interrupt a running turn and redirect it.
+7. Resume earlier sessions, and continue them from a different surface.
+8. Run the agent non-interactively in a script or CI job under a pre-authorized policy.
+
+## Scope
+
+The committed first surface is the CLI/TUI, because it is the cheapest path to daily self-use and it is the surface that makes job 8 possible. The Qt desktop application is the committed second surface.
+
+A web surface, mobile surface, and IDE plugins are possible future directions. They are not commitments, and no current design work should be justified by them.
+
+## Non-goals
+
+- Cloud-hosted execution, multi-tenancy, and remote project provisioning. The runtime protocol should not permanently foreclose hosting, but no current design work targets it.
+- Being a general-purpose editor, debugger, terminal emulator, or Git client.
+- A plugin marketplace or a hosted extension registry.
+- Team collaboration, session sharing, and multi-user access control.
+
+## Constraints
+
+- Node.js is the only supported agent-runtime engine; Bun is not supported.
+- The desktop application must use Qt; Electron is prohibited.
+- The trusted OS layer is Rust.
+- Protocol contracts are written as documentation and hand-implemented in each language. Contract-driven code generation is not used.
 
 ## Current status
 
-The foundational architecture is approved. Product behavior and the repository harness described in `ARCHITECTURE.md` are not yet implemented unless corresponding source files and completed requirement records exist.
-
-## Initial exclusions
-
-The foundational milestone excludes functional agent loops, model providers, machine operations, persistence implementations, product UIs, distribution, cloud-hosting infrastructure, and parallel subagents within a session.
+The architecture in `ARCHITECTURE.md` is approved as a design. No product behavior is implemented. Do not describe any component in this knowledge base as working unless source files and a completed requirement record exist.

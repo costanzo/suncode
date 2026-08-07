@@ -18,5 +18,15 @@ Create `.agents/requirements/YYYY-MM-DD-short-topic/` from `_template/`. Keep `p
 - Do not recreate legacy tool-specific documentation or brainstorming directories.
 - Do not store process IDs, logs, caches, credentials, or personal machine paths here.
 - Do not treat proposed architecture as implemented behavior.
-- Keep generated protocol source and user-facing product documentation in the repository locations defined by `.agents/ARCHITECTURE.md`, not inside this knowledge base.
+- Keep protocol contracts and user-facing product documentation in the repository locations defined by `.agents/ARCHITECTURE.md`, not inside this knowledge base.
 - Prefer focused updates; do not copy the same fact into multiple files unless one location is an index.
+
+## Amendments
+
+When a requirement changes after review, edit `requirement.md` and `architecture.md` directly. Only create a separate amendment file when the change is long and self-contained, and in that case state in its header whether it is normative and have the parent document point to it.
+
+An amendment that has been folded into its parent must be marked consolidated and non-normative, so readers are never left guessing which document describes current intent.
+
+## Superseded records
+
+Keep historical requirement packages. When one is replaced, set its status to superseded, say where the current version lives, and list the specific conclusions later decisions changed. Do not retrofit a superseded record to current templates or terminology.
