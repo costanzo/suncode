@@ -13,4 +13,4 @@ Each delivery has one dated directory named `YYYY-MM-DD-short-topic`.
 - `todo.md` — checkable task list
 - `test-plan.md` — verification scope and results
 
-Copy `_template/` for new work. Keep historical requirement records even after stable facts move into `features/`, `specs/`, or `DECISIONS.md`.
+Copy `_template/` for new work. Keep only requirement records that still help explain current work or a decision trail. Once a delivery is stable, move durable facts into `features/`, `specs/`, or `DECISIONS.md` and trim the requirement record down to the essentials.

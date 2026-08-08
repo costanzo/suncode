@@ -4,7 +4,7 @@ This repository is Suncode, a local-first coding agent. Unless the user requests
 
 ## Current state
 
-The project is in its foundational stage. The approved target architecture is documented, but no product behavior and no source workspaces exist yet. Do not describe planned components as implemented.
+The project has started implementation. A TypeScript/Rust Phase 1 vertical slice and the Qt desktop client exist and were focused-tested. Migration to a reusable Rust SDK facade is in progress; do not describe it as complete until provider, agent loop, policy, SQLite, credentials, API, operations, approvals, recovery, and undo are all Rust-owned and the obsolete TypeScript production path is removed. CLI/TUI/Web and executable extensions remain deferred.
 
 ## Start here
 
@@ -17,12 +17,12 @@ Before non-trivial work:
 
 ## Architecture boundaries
 
-- Rust is the audited execution point for filesystem, process, project-boundary, and OS-capability operations. It owns primitives, not semantics; keep its surface narrow.
-- TypeScript owns model integrations, context construction, agent loops, orchestration, durable state, and the client API.
-- Clients consume the client API; they do not access Rust, SQLite, or model providers directly. Committed surfaces are CLI/TUI first, then Qt desktop.
+- The runtime workspace owns the complete Rust implementation. Keep machine operations behind a narrow internal audited dispatcher, separate from provider and agent semantics.
+- TypeScript is migration-only and must not remain a Phase 1 production dependency.
+- Clients consume the client API or Rust SDK facade; they do not access SQLite or model providers directly. Phase 1 implements the Qt desktop client only; CLI/TUI/Web are deferred.
 - The desktop application must use Qt. Electron is prohibited.
 - Protocol contracts are written documents, hand-implemented per language and verified by shared test vectors. Nothing is generated.
-- The agent runtime uses Node.js. Bun is prohibited.
+- The agent runtime is Rust. Node.js and Bun are prohibited as Phase 1 production runtime dependencies.
 - The Rust boundary is not an OS-enforced sandbox around the runtime. Its value is containing third-party code and providing one auditable path. Do not write designs that assume it isolates a compromised runtime.
 - Suncode is local-first. Do not add tenancy, remote identity, or hosted-infrastructure assumptions.
 - Vocabulary: **project** (a directory tree the user opened), **session** (one conversation), **turn** (one user submission and its execution). "Workspace" and "task" are retired as domain nouns.
@@ -40,7 +40,7 @@ Before non-trivial work:
 
 The intended product layout is defined in `.agents/ARCHITECTURE.md`. Create its directories only when a milestone needs real buildable files. Durable contributor and agent context belongs in `.agents/`; transient local tool state belongs in ignored `.codex/` or `.claude/` directories.
 
-Note: an empty untracked `docs/` tree may exist from earlier tooling. It is not the `docs/` described in the architecture and can be deleted.
+Note: an empty untracked `docs/` tree may exist from earlier tooling. It is not the `docs/` described in the architecture and can be deleted. Empty legacy `tooling/` directories can also be removed.
 
 ## Completion checks
 

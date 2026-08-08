@@ -11,7 +11,7 @@ This directory contains durable project knowledge, not tool runtime state.
 
 ## New requirements
 
-Create `.agents/requirements/YYYY-MM-DD-short-topic/` from `_template/`. Keep `progress.md` and `todo.md` current while implementing. When work is complete, promote stable behavior into `features/`, current technical facts into `specs/`, and important tradeoffs into `DECISIONS.md`.
+Create `.agents/requirements/YYYY-MM-DD-short-topic/` from `_template/`. Keep `progress.md` and `todo.md` current while implementing. When work is complete, promote only stable behavior into `features/`, current technical facts into `specs/`, and important tradeoffs into `DECISIONS.md`.
 
 ## Boundaries
 
@@ -29,4 +29,4 @@ An amendment that has been folded into its parent must be marked consolidated an
 
 ## Superseded records
 
-Keep historical requirement packages. When one is replaced, set its status to superseded, say where the current version lives, and list the specific conclusions later decisions changed. Do not retrofit a superseded record to current templates or terminology.
+Keep historical requirement packages only when they still explain a decision trail. When one is replaced, set its status to superseded, say where the current version lives, and list the specific conclusions later decisions changed. Do not retrofit a superseded record to current templates or terminology.

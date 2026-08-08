@@ -1,0 +1,35 @@
+[
+  {
+    "id": "deepseek-text-completion",
+    "kind": "normalized_provider_result",
+    "input": {
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "events": [
+        {"type": "text_delta", "text": "hello"},
+        {"type": "text_delta", "text": " world"},
+        {"type": "completed", "finish_reason": "stop", "usage": {"input_tokens": 4, "output_tokens": 2, "total_tokens": 6}}
+      ]
+    },
+    "expected": {"text": "hello world", "finish_reason": "stop", "usage": {"input_tokens": 4, "output_tokens": 2, "total_tokens": 6}}
+  },
+  {
+    "id": "deepseek-tool-call",
+    "kind": "normalized_provider_result",
+    "input": {
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "events": [
+        {"type": "tool_call", "call_id": "call-1", "name": "project.inspect", "arguments_json": "{\"depth\":1}"},
+        {"type": "completed", "finish_reason": "tool_call", "usage": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}}
+      ]
+    },
+    "expected": {"text": "", "tool_calls": [{"call_id": "call-1", "name": "project.inspect", "arguments": {"depth": 1}}], "finish_reason": "tool_call", "usage": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}}
+  },
+  {
+    "id": "deepseek-malformed-tool-arguments",
+    "kind": "invalid_provider_result",
+    "input": {"type": "tool_call", "call_id": "call-2", "name": "project.inspect", "arguments_json": "{bad"},
+    "expected_error": "malformed_tool_call"
+  }
+]

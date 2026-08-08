@@ -1,0 +1,49 @@
+[
+  {
+    "id": "hello",
+    "request": {"jsonrpc":"2.0","id":"1","method":"core/hello","params":{"protocol_version":1,"runtime_version":"0.1.0"}},
+    "expected": {"jsonrpc":"2.0","id":"1","result":{"protocol_version":1,"core_version":"0.1.0","capabilities":["core/health","project/open"]}}
+  },
+  {
+    "id": "open-project",
+    "request": {"jsonrpc":"2.0","id":"open-1","method":"project/open","params":{"path":"/project"}},
+    "expected_result_shape": {"canonical_path":"/project","display_name":"project"},
+    "possible_errors": ["project_unavailable","invalid_arguments"]
+  },
+  {
+    "id": "read-in-project",
+    "request": {"jsonrpc":"2.0","id":"2","method":"fs/read","params":{"project_id":"project-1","path":"src/index.ts","max_bytes":4096}},
+    "expected_result_shape": {"path":"src/index.ts","truncated":false,"bytes":"base64"}
+  },
+  {
+    "id": "search-glob",
+    "request": {"jsonrpc":"2.0","id":"glob-1","method":"search/glob","params":{"pattern":"**/*.ts","max_results":100}},
+    "expected_result_shape": {"pattern":"**/*.ts","paths":["src/index.ts"],"truncated":false}
+  },
+  {
+    "id": "search-find",
+    "request": {"jsonrpc":"2.0","id":"find-1","method":"search/find","params":{"query":"needle","pattern":"**/*.ts","max_results":100}},
+    "expected_result_shape": {"query":"needle","matches":[{"path":"src/index.ts","line":1,"column":1,"preview":"needle"}],"truncated":false}
+  },
+  {
+    "id": "unknown-method",
+    "request": {"jsonrpc":"2.0","id":"3","method":"shell/execute","params":{}},
+    "expected_error": "method_unavailable"
+  },
+  {
+    "id": "write-precondition-conflict",
+    "request": {"jsonrpc":"2.0","id":"4","method":"fs/write","params":{"path":"README.md","content_base64":"dXBkYXRlZA==","expected_base64":"c3RhbGU="}},
+    "expected_error": "conflict"
+  },
+  {
+    "id": "write-checkpoint",
+    "request": {"jsonrpc":"2.0","id":"5","method":"fs/write","params":{"path":"README.md","content_base64":"dXBkYXRlZA==","expected_base64":"YmVmb3Jl"}},
+    "expected_result_shape": {"path":"README.md","bytes":7,"created":false,"checkpoint_id":"opaque"}
+  },
+  {
+    "id": "restore-checkpoint",
+    "request": {"jsonrpc":"2.0","id":"6","method":"checkpoint/restore","params":{"checkpoint_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},
+    "expected_result_shape": {"path":"README.md","restored":true,"removed":false},
+    "possible_errors": ["checkpoint_unavailable", "restore_conflict", "scope_denied"]
+  }
+]

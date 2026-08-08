@@ -10,7 +10,7 @@ Three commitments differentiate Suncode. Every architectural tradeoff should be 
 
 1. **Local-first, no service dependency.** Project files, session history, and settings live on the user's machine. Suncode contacts the network only to reach the model provider the user configured. There is no Suncode account, no telemetry service, and no hosted control plane. The product remains fully functional for a user who never signs in to anything except their model provider.
 2. **Reviewable authority.** Every machine-affecting action the agent takes passes through one narrow, audited path with a stated scope. Users can see what the agent is permitted to do, what it did, and undo its filesystem changes. Approval is a real decision with real granularity, not a modal that trains users to click through.
-3. **One runtime, several surfaces.** A single local runtime holds session state, so the terminal and the desktop window are live views of the same work rather than separate applications with separate histories. Starting a session in one surface and continuing it in another is a normal operation.
+3. **One runtime core, several adapters.** A single local Rust runtime core holds session state, so clients are live views of the same work rather than separate applications with separate histories. Phase 1 ships the Qt desktop client through the SDK facade; other surfaces are deferred.
 
 ## Users and primary jobs
 
@@ -27,9 +27,9 @@ The user is a software developer working in local repositories. The jobs Suncode
 
 ## Scope
 
-The committed first surface is the CLI/TUI, because it is the cheapest path to daily self-use and it is the surface that makes job 8 possible. The Qt desktop application is the committed second surface.
+The committed Phase 1 surface is the Qt desktop application. It is the only client implemented in the current milestone and is the reference consumer of the Rust SDK facade.
 
-A web surface, mobile surface, and IDE plugins are possible future directions. They are not commitments, and no current design work should be justified by them.
+CLI, TUI, web, mobile, and IDE-plugin surfaces are future directions. They are deferred and must not shape current Phase 1 client implementation.
 
 ## Non-goals
 
@@ -40,11 +40,11 @@ A web surface, mobile surface, and IDE plugins are possible future directions. T
 
 ## Constraints
 
-- Node.js is the only supported agent-runtime engine; Bun is not supported.
+- Rust is the only supported Phase 1 runtime implementation; Node.js and Bun are not production runtime dependencies.
 - The desktop application must use Qt; Electron is prohibited.
 - The trusted OS layer is Rust.
 - Protocol contracts are written as documentation and hand-implemented in each language. Contract-driven code generation is not used.
 
 ## Current status
 
-The architecture in `ARCHITECTURE.md` is approved as a design. No product behavior is implemented. Do not describe any component in this knowledge base as working unless source files and a completed requirement record exist.
+The architecture in `ARCHITECTURE.md` is approved. The runtime core, Qt client, SQLite schema, and key SDK facade paths exist and have focused verification. Describe a component as working only when source and focused verification exist.

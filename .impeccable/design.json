@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-09T00:00:00.000Z",
+  "title": "Design System: Suncode Desktop",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Muted Control Teal", "canonical": "#69c5b0", "tonalRamp": ["#315e54", "#69c5b0", "#7dd2be"] },
+      "canvas": { "role": "neutral", "displayName": "Graphite Canvas", "canonical": "#0d0f12", "tonalRamp": ["#0d0f12", "#121519", "#181c21", "#242a31"] },
+      "warning": { "role": "warning", "displayName": "Approval Amber", "canonical": "#ddb16c", "tonalRamp": ["#2a2115", "#5d492d", "#ddb16c"] }
+    },
+    "typographyMeta": {
+      "body": { "displayName": "Platform Sans", "purpose": "All product UI copy and controls." }
+    },
+    "motion": [
+      { "name": "state-transition", "value": "120ms color transition", "purpose": "Hover and active control feedback only." }
+    ],
+    "breakpoints": [
+      { "name": "compact-desktop", "value": "1120px" },
+      { "name": "minimum", "value": "900px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single action that advances the current task.",
+      "html": "<button class=\"ds-btn-primary\">Send</button>",
+      "css": ".ds-btn-primary { background: #69c5b0; color: #07120f; padding: 0 14px; height: 36px; border: 0; border-radius: 6px; font: 600 12px sans-serif; } .ds-btn-primary:hover { background: #7dd2be; } .ds-btn-primary:focus-visible { outline: 2px solid #69c5b0; outline-offset: 2px; }"
+    },
+    {
+      "name": "Neutral Button",
+      "kind": "button",
+      "refersTo": "button-neutral",
+      "description": "A familiar supporting action.",
+      "html": "<button class=\"ds-btn-neutral\">Hide review</button>",
+      "css": ".ds-btn-neutral { background: #181c21; color: #edf0f3; padding: 0 14px; height: 36px; border: 1px solid #292f36; border-radius: 6px; font: 500 12px sans-serif; } .ds-btn-neutral:hover { background: #1e2329; } .ds-btn-neutral:focus-visible { outline: 2px solid #69c5b0; outline-offset: 2px; }"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Compact native field for session titles and credentials.",
+      "html": "<input class=\"ds-field\" placeholder=\"Session title\" />",
+      "css": ".ds-field { background: #15191e; color: #edf0f3; height: 36px; padding: 0 11px; border: 1px solid #292f36; border-radius: 6px; font: 400 14px sans-serif; } .ds-field:focus { background: #191f24; border: 2px solid #69c5b0; outline: 0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Quiet Control Desk",
+    "overview": "A conversation-first Qt desktop workbench with matte graphite surfaces, semantic state color, and independently collapsible tool bays.",
+    "keyCharacteristics": ["Conversation-first", "Restrained graphite", "Teal for action", "Tonal depth", "Native focus"],
+    "rules": [{ "name": "Status Lamp Rule", "body": "Color communicates state or action only.", "section": "colors" }],
+    "dos": ["Do keep the conversation dominant.", "Do make approval scope explicit."],
+    "donts": ["Don't add decorative glow or dashboard theater.", "Don't let side panels crowd the work surface."]
+  }
+}

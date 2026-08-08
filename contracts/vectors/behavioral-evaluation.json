@@ -1,0 +1,6 @@
+[
+  {"id":"respond-without-tool","input":"Say hello","expected":{"outcome":"completed","tool_calls":0}},
+  {"id":"read-file-then-respond","input":"Read README.md","expected":{"outcome":"completed","tool_calls":1}},
+  {"id":"reject-unknown-tool","input":"Use an unavailable tool","expected":{"outcome":"authorization_denied","tool_calls":0}},
+  {"id":"write-requires-approval","input":"Update README.md","expected":{"outcome":"approval_required","tool_calls":0}}
+]

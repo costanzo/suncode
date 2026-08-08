@@ -77,3 +77,5 @@ temp/
 
 # Keep reproducibility inputs and generated protocol sources tracked:
 # Cargo.lock, pnpm-lock.yaml, generated/
+
+.agents/skills
