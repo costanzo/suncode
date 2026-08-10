@@ -175,9 +175,9 @@ QString RuntimeClient::statusText() const
     return m_statusText;
 }
 
-bool RuntimeClient::deepSeekConfigured() const
+QVariantList RuntimeClient::credentials() const
 {
-    return m_deepSeekConfigured;
+    return m_credentials;
 }
 
 QVariantList RuntimeClient::events() const
@@ -273,27 +273,22 @@ void RuntimeClient::loadCredentialStatus()
 {
     requestJson(QStringLiteral("GET"), endpoint(QStringLiteral("/credentials")), {},
                 [this](int, const QJsonObject &object) {
-                    const QJsonArray credentials = object.value(QStringLiteral("credentials")).toArray();
-                    const bool configured = !credentials.isEmpty() && credentials.first().toObject().value(QStringLiteral("configured")).toBool();
-                    if (configured != m_deepSeekConfigured) {
-                        m_deepSeekConfigured = configured;
-                        emit deepSeekConfiguredChanged();
-                    }
+                    m_credentials = object.value(QStringLiteral("credentials")).toArray().toVariantList();
+                    emit credentialsChanged();
                 });
 }
 
-void RuntimeClient::saveDeepSeekApiKey(const QString &apiKey)
+void RuntimeClient::saveCredential(const QString &provider, const QString &apiKey)
 {
     const QString value = apiKey.trimmed();
-    if (value.isEmpty()) return;
-    requestJson(QStringLiteral("POST"), endpoint(QStringLiteral("/credentials/deepseek")), {{QStringLiteral("api_key"), value}},
+    const QString normalizedProvider = provider.trimmed();
+    if (value.isEmpty() || normalizedProvider.isEmpty()) return;
+    requestJson(QStringLiteral("POST"), endpoint(QStringLiteral("/credentials/%1").arg(normalizedProvider)), {{QStringLiteral("api_key"), value}},
                 [this](int, const QJsonObject &) {
-                    if (!m_deepSeekConfigured) {
-                        m_deepSeekConfigured = true;
-                        emit deepSeekConfiguredChanged();
-                    }
+                    loadCredentialStatus();
+                    loadModels();
                     emit credentialStored();
-                    setConnectionState(QStringLiteral("connected"), QStringLiteral("DeepSeek credential stored"));
+                    setConnectionState(QStringLiteral("connected"), QStringLiteral("Credential stored"));
                 });
 }
 
@@ -310,20 +305,22 @@ void RuntimeClient::saveUserSetting(const QString &key, const QVariant &value)
                 [this, normalized, value](int, const QJsonObject &) {
                     if (normalized == QStringLiteral("theme_mode")) {
                         setThemeMode(value.toString());
+                    } else if (normalized == QStringLiteral("default_model")) {
+                        setSelectedModel(value.toString());
                     }
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Saved %1").arg(normalized));
                 });
 }
 
-void RuntimeClient::removeDeepSeekApiKey()
+void RuntimeClient::removeCredential(const QString &provider)
 {
-    requestJson(QStringLiteral("DELETE"), endpoint(QStringLiteral("/credentials/deepseek")), {},
+    const QString normalizedProvider = provider.trimmed();
+    if (normalizedProvider.isEmpty()) return;
+    requestJson(QStringLiteral("DELETE"), endpoint(QStringLiteral("/credentials/%1").arg(normalizedProvider)), {},
                 [this](int, const QJsonObject &) {
-                    if (m_deepSeekConfigured) {
-                        m_deepSeekConfigured = false;
-                        emit deepSeekConfiguredChanged();
-                    }
-                    setConnectionState(QStringLiteral("connected"), QStringLiteral("DeepSeek credential removed"));
+                    loadCredentialStatus();
+                    loadModels();
+                    setConnectionState(QStringLiteral("connected"), QStringLiteral("Credential removed"));
                 });
 }
 
@@ -408,11 +405,17 @@ void RuntimeClient::createSession(const QString &title)
 
 void RuntimeClient::renameSession(const QString &title)
 {
+    renameSessionById(m_sessionId, title);
+}
+
+void RuntimeClient::renameSessionById(const QString &sessionId, const QString &title)
+{
+    const QString targetSessionId = sessionId.trimmed();
     const QString value = title.trimmed();
-    if (m_sessionId.isEmpty() || value.isEmpty()) {
+    if (targetSessionId.isEmpty() || value.isEmpty()) {
         return;
     }
-    requestJson(QStringLiteral("PATCH"), endpoint(QStringLiteral("/sessions/%1").arg(QString::fromUtf8(QUrl::toPercentEncoding(m_sessionId)))),
+    requestJson(QStringLiteral("PATCH"), endpoint(QStringLiteral("/sessions/%1").arg(QString::fromUtf8(QUrl::toPercentEncoding(targetSessionId)))),
                 {{QStringLiteral("title"), value}}, [this](int, const QJsonObject &) {
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Session renamed"));
                     loadSessions();
@@ -421,13 +424,21 @@ void RuntimeClient::renameSession(const QString &title)
 
 void RuntimeClient::archiveSession()
 {
-    if (m_sessionId.isEmpty()) {
+    archiveSessionById(m_sessionId);
+}
+
+void RuntimeClient::archiveSessionById(const QString &sessionId)
+{
+    const QString targetSessionId = sessionId.trimmed();
+    if (targetSessionId.isEmpty()) {
         return;
     }
-    requestJson(QStringLiteral("DELETE"), endpoint(QStringLiteral("/sessions/%1").arg(QString::fromUtf8(QUrl::toPercentEncoding(m_sessionId)))),
-                {}, [this](int, const QJsonObject &) {
-                    closeEventSubscription();
-                    clearSessionView();
+    requestJson(QStringLiteral("DELETE"), endpoint(QStringLiteral("/sessions/%1").arg(QString::fromUtf8(QUrl::toPercentEncoding(targetSessionId)))),
+                {}, [this, targetSessionId](int, const QJsonObject &) {
+                    if (targetSessionId == m_sessionId) {
+                        closeEventSubscription();
+                        clearSessionView();
+                    }
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Session archived"));
                     loadSessions();
                 });
@@ -788,6 +799,9 @@ void RuntimeClient::submitTurn(const QString &input)
     if (text.isEmpty()) {
         return;
     }
+    if (!isModelConfigured(m_selectedModel)) {
+        return;
+    }
     const QString idempotencyKey = QUuid::createUuid().toString(QUuid::WithoutBraces);
     requestJson(QStringLiteral("POST"), endpoint(QStringLiteral("/sessions/%1/turns").arg(QString::fromUtf8(QUrl::toPercentEncoding(m_sessionId)))),
                 {{QStringLiteral("input"), text}, {QStringLiteral("idempotency_key"), idempotencyKey}, {QStringLiteral("model"), m_selectedModel}},
@@ -799,6 +813,18 @@ void RuntimeClient::submitTurn(const QString &input)
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Turn submitted"));
                     Q_UNUSED(object);
                 });
+}
+
+bool RuntimeClient::isModelConfigured(const QString &modelId) const
+{
+    for (const QVariant &value : m_models) {
+        const QVariantMap model = value.toMap();
+        if (model.value(QStringLiteral("id")).toString() != modelId) {
+            continue;
+        }
+        return model.value(QStringLiteral("availability")).toString() == QStringLiteral("configured");
+    }
+    return false;
 }
 
 void RuntimeClient::cancelTurn()

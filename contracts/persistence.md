@@ -2,7 +2,7 @@
 
 Status: Draft for Phase 1 implementation.
 
-The Rust runtime owns SQLite, migrations, encryption metadata, projections, and operation bookkeeping. Qt, providers, and future extensions never open the database directly.
+The Rust runtime owns SQLite, migrations, secret records, projections, and operation bookkeeping. Qt, providers, and future extensions never open the database directly.
 
 The normative Phase 1 physical table definitions, constraints, and indexes are in `sqlite-schema.md`. Clients consume API DTOs and never depend on those table shapes.
 
@@ -24,7 +24,7 @@ Approval requests, suspended-turn snapshots, and turn-submission idempotency rec
 
 ## Secrets
 
-Provider API keys are classified user secrets. The runtime stores ciphertext, nonce, algorithm ID, and key version; the master key is held by the OS credential store. The plaintext key never enters a protocol message, audit record, session content event, log, or client response. Rotation invalidates the old secret reference before the new one is activated.
+Provider API keys are classified user secrets. The runtime stores the plaintext value, provider ID, format marker, key version, creation time, and optional invalidation time in SQLite `secret_records`. The SQLite data directory and its backups must be treated as sensitive. The key never enters a protocol message, audit record, session content event, log, or client response. Rotation invalidates the old secret reference before the new one is activated.
 
 ## Retention and compaction
 

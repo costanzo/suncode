@@ -21,7 +21,7 @@ Rust SDK facade
     |
 Rust Suncode runtime core
     |- client API and authentication
-    |- DeepSeek provider and agent loop
+    |- built-in model providers and agent loop
     |- context, policy, approvals, and scheduling
     |- SQLite, settings, events, and credentials
     |- filesystem, search, process, and artifacts
@@ -38,7 +38,7 @@ There is no runtime-to-core process boundary. Operations are Rust modules called
 
 ### 3.1 Qt desktop
 
-Qt owns presentation, navigation, and transient interaction state. It consumes runtime DTOs and ordered events through the SDK facade. It never opens SQLite, contacts DeepSeek, reads project files directly, or invokes operation modules.
+Qt owns presentation, navigation, and transient interaction state. It consumes runtime DTOs and ordered events through the SDK facade. It never opens SQLite, contacts model providers, reads project files directly, or invokes operation modules.
 
 Phase 1 has no CLI, TUI, Web, mobile, or IDE client.
 
@@ -46,12 +46,12 @@ Phase 1 has no CLI, TUI, Web, mobile, or IDE client.
 
 The runtime core owns:
 
-- DeepSeek V4 model integration and canonical provider messages
+- built-in model provider integrations and canonical provider messages
 - context construction, turn scheduling, budgets, cancellation, and the agent loop
 - tool registration, policy evaluation, durable approvals, and audit records
 - authenticated HTTP requests, snapshots, SSE replay, live event delivery, and SDK dispatch
 - SQLite migrations, transactions, projections, settings, and local event streams
-- provider credentials through the OS credential store
+- provider credentials through SQLite-owned local secret records
 - project boundary checks and machine-affecting operations
 - checkpoints, undo, managed artifacts, and operation reconciliation
 
@@ -77,9 +77,9 @@ Mutating requests carry idempotency keys. Session events have a strictly increas
 
 ## 6. Provider Boundary
 
-The first built-in provider is DeepSeek and the stable Suncode model identity is `deepseek-v4-flash`. Vendor request and streaming response shapes remain inside the provider adapter. Clients receive canonical messages, tool activity, usage, and redacted errors only.
+The built-in providers are DeepSeek, Zhipu GLM, and OpenAI. Their stable Suncode model identities are `deepseek-v4-flash`, `glm-5.2`, and `gpt-5.6-sol`. Vendor request and streaming response shapes remain inside the provider adapter. Clients receive canonical messages, tool activity, usage, and redacted errors only.
 
-The API key is read from the OS credential store. Plaintext credentials never enter SQLite, protocol responses, events, audit rows, or logs. An environment override is allowed only in an explicitly configured non-interactive execution mode.
+The API key is read from the plaintext `secret_records` table in SQLite. Plaintext credentials never enter protocol responses, events, audit rows, or logs. An environment override is allowed only in an explicitly configured non-interactive execution mode. On macOS, the runtime may migrate credentials left by older releases from Keychain into SQLite.
 
 ## 7. Persistence
 
@@ -93,9 +93,9 @@ SQLite keeps separate durable concerns:
 - ephemeral live streaming deltas that are broadcast to connected clients but not retained
 - disposable reconnect cursors
 - durable turn admission and approval continuation
-- scoped settings and encrypted-secret metadata
+- scoped settings and plaintext-secret records
 
-The Phase 1 schema preserves version 10 compatibility during the TypeScript-to-Rust migration. New migrations are append-only and transactional. JSON stores evolving payloads; identifiers, state, ordering, timestamps, scope, and foreign keys remain queryable columns.
+The Phase 1 schema preserves version 10 compatibility during the TypeScript-to-Rust migration and uses version 11 for plaintext provider secret records. New migrations are append-only and transactional. JSON stores evolving payloads; identifiers, state, ordering, timestamps, scope, and foreign keys remain queryable columns.
 
 ## 8. Authority Model
 

@@ -14,8 +14,8 @@ Implemented endpoints:
 | `GET` | `/settings` | Read effective non-secret settings with scope provenance |
 | `PUT` | `/settings` | Set one user/project/session setting |
 | `GET` | `/credentials` | Read redacted provider credential status |
-| `POST` | `/credentials/deepseek` | Store or replace the DeepSeek API key in the OS credential store |
-| `DELETE` | `/credentials/deepseek` | Remove the DeepSeek API key from the OS credential store |
+| `POST` | `/credentials/{provider}` | Store or replace a provider API key in the runtime-owned SQLite store |
+| `DELETE` | `/credentials/{provider}` | Remove a provider API key from the runtime-owned SQLite store |
 | `GET` | `/projects` | List opened projects |
 | `POST` | `/projects` | Canonicalize and open a project through the Rust core |
 | `POST` | `/projects/{project_id}/open` | Reopen a known project and bind the core to it |
@@ -41,7 +41,7 @@ Every connection presents the runtime credential. The runtime binds the connecti
 
 Opening a project sends its path only to the trusted runtime and Rust core. Rust canonicalizes and validates the directory before the runtime creates or refreshes the project projection. A session belongs to exactly one project. Turns are accepted only for active sessions in the project currently selected by the core. Session deletion in Phase 1 is recoverable archive; it does not erase conversation history or immutable audit records.
 
-Settings are resolved from built-in defaults, untrusted project declarations, user settings, and explicit runtime overrides. The Phase 1 client API exposes only runtime-owned user/project/session settings; it never returns API key values. Credential writes return only `{provider, configured}` and use the platform credential store. Environment credentials are accepted only in explicit non-interactive mode.
+Settings are resolved from built-in defaults, untrusted project declarations, user settings, and explicit runtime overrides. The Phase 1 client API exposes only runtime-owned user/project/session settings; it never returns API key values. Credential writes return only `{provider, configured}` and use plaintext SQLite secret records. Environment credentials are accepted only in explicit non-interactive mode.
 
 The snapshot response contains the session projection, bounded message projection, retained ordered events, `latest_sequence`, and `replay_available`. The current implementation retains all session events and therefore returns `replay_available: true`; future compaction may return a snapshot with replay unavailable for an older cursor.
 

@@ -92,11 +92,12 @@ The palette supports both a dark graphite mode and a lighter paper-and-slate mod
 
 ## Typography
 
-**Display Font:** Qt platform sans-serif
-**Body Font:** Qt platform sans-serif
-**Label/Mono Font:** Platform sans-serif; monospace is reserved for code and runtime data supplied by the client.
+**Display Font:** Noto Sans, with an installed sans fallback only when the target family is unavailable.
+**Body Font:** Noto Sans, with the same installed-font fallback.
+**Chinese UI Font:** Noto Sans CJK SC, used through the UI fallback stack for Simplified Chinese glyphs when available.
+**Code/Data Font:** JetBrains Mono, reserved for code, paths, commands, API values, model identifiers, and runtime data supplied by the client, with an installed monospace fallback only when unavailable.
 
-**Character:** A single familiar system face keeps the tool native and quiet. Hierarchy comes from weight, measure, and spacing rather than multiple typefaces.
+**Character:** Noto Sans keeps the product calm, contemporary, and readable across dense operating surfaces. Chinese UI text uses Noto Sans CJK SC to avoid mismatched CJK fallback. JetBrains Mono is deliberately isolated to machine-readable strings, where character shapes, punctuation, and path segments need to be distinguishable.
 
 ### Hierarchy
 
@@ -108,7 +109,7 @@ The palette supports both a dark graphite mode and a lighter paper-and-slate mod
 
 ### Named Rules
 
-**The One-Face Rule.** Product UI uses one system sans. Do not introduce a display face to make a developer tool feel more branded.
+**The UI Sans + Code Mono Rule.** Product UI uses one sans stack: Noto Sans with Noto Sans CJK SC for Simplified Chinese fallback. JetBrains Mono appears only where the user needs code, path, command, identifier, or runtime data precision.
 
 ## Layout
 

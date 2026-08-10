@@ -23,7 +23,7 @@ class RuntimeClient : public QObject {
     Q_PROPERTY(bool autoSelectProject READ autoSelectProject WRITE setAutoSelectProject)
     Q_PROPERTY(QString connectionState READ connectionState NOTIFY connectionStateChanged)
     Q_PROPERTY(QString statusText READ statusText NOTIFY statusTextChanged)
-    Q_PROPERTY(bool deepSeekConfigured READ deepSeekConfigured NOTIFY deepSeekConfiguredChanged)
+    Q_PROPERTY(QVariantList credentials READ credentials NOTIFY credentialsChanged)
     Q_PROPERTY(QVariantList events READ events NOTIFY eventsChanged)
     Q_PROPERTY(QVariantList messages READ messages NOTIFY messagesChanged)
     Q_PROPERTY(QVariantList activities READ activities NOTIFY activitiesChanged)
@@ -55,7 +55,7 @@ public:
     void setAutoSelectProject(bool value) { m_autoSelectProject = value; }
     QString connectionState() const;
     QString statusText() const;
-    bool deepSeekConfigured() const;
+    QVariantList credentials() const;
     QVariantList events() const;
     QVariantList messages() const;
     QVariantList activities() const;
@@ -69,14 +69,16 @@ public:
 
     Q_INVOKABLE void connectToRuntime();
     Q_INVOKABLE void loadCredentialStatus();
-    Q_INVOKABLE void saveDeepSeekApiKey(const QString &apiKey);
-    Q_INVOKABLE void removeDeepSeekApiKey();
+    Q_INVOKABLE void saveCredential(const QString &provider, const QString &apiKey);
+    Q_INVOKABLE void removeCredential(const QString &provider);
     Q_INVOKABLE void loadProjects();
     Q_INVOKABLE void openProject(const QString &path);
     Q_INVOKABLE void selectProject(const QString &value);
     Q_INVOKABLE void createSession(const QString &title);
     Q_INVOKABLE void renameSession(const QString &title);
+    Q_INVOKABLE void renameSessionById(const QString &sessionId, const QString &title);
     Q_INVOKABLE void archiveSession();
+    Q_INVOKABLE void archiveSessionById(const QString &sessionId);
     Q_INVOKABLE void restoreCheckpoint(const QString &manifestId);
     Q_INVOKABLE void loadSession();
     Q_INVOKABLE void selectSession(const QString &value);
@@ -98,7 +100,7 @@ signals:
     void themeModeChanged();
     void connectionStateChanged();
     void statusTextChanged();
-    void deepSeekConfiguredChanged();
+    void credentialsChanged();
     void eventsChanged();
     void messagesChanged();
     void activitiesChanged();
@@ -117,6 +119,7 @@ private:
     void setConnectionState(const QString &state, const QString &status);
     void requestJson(const QString &method, const QUrl &url, const QJsonObject &body,
                      std::function<void(int, const QJsonObject &)> onSuccess);
+    bool isModelConfigured(const QString &modelId) const;
     void loadHealth();
     void loadModels();
     void loadSettings();
@@ -151,7 +154,7 @@ private:
     QVariantList m_sessions;
     QVariantList m_checkpoints;
     QVariantMap m_pendingApproval;
-    bool m_deepSeekConfigured = false;
+    QVariantList m_credentials;
     bool m_autoSelectProject = true;
     bool m_deferSessionReplaySignals = false;
     qint64 m_lastSequence = 0;

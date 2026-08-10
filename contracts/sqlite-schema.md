@@ -1,6 +1,6 @@
 # Runtime SQLite Schema
 
-Status: Phase 1 contract, schema version 10.
+Status: Phase 1 contract, schema version 11.
 
 The Rust runtime is the only component that opens this database. Clients, providers, and extensions never read or write these tables directly. Client-visible shapes are defined by the client-runtime API and may differ from this physical schema.
 
@@ -23,7 +23,7 @@ The Rust runtime is the only component that opens this database. Clients, provid
 | `version` | INTEGER | Primary key |
 | `applied_at` | TEXT | Not null |
 
-Version 6 introduces the project, session, turn, tool-call, and checkpoint item projections. Version 7 adds the message projection and durable turn admission fields. Version 8 adds turn-level checkpoint manifests, expiry, aggregate restore state, and ordered checkpoint items. Version 9 adds scoped user/project/session settings. Version 10 makes streaming deltas ephemeral, adds a per-session content sequence high-water table, and extends `session_messages` to include tool messages for context rebuilds. Earlier migrations remain in code for existing databases.
+Version 6 introduces the project, session, turn, tool-call, and checkpoint item projections. Version 7 adds the message projection and durable turn admission fields. Version 8 adds turn-level checkpoint manifests, expiry, aggregate restore state, and ordered checkpoint items. Version 9 adds scoped user/project/session settings. Version 10 makes streaming deltas ephemeral, adds a per-session content sequence high-water table, and extends `session_messages` to include tool messages for context rebuilds. Version 11 stores provider secrets as plaintext SQLite values and removes the old ciphertext/nonce columns. Earlier migrations remain in code for existing databases.
 
 ## Query projections
 
@@ -196,7 +196,7 @@ Settings keyed by `key`, with `value_json` and `updated_at`. Settings exposed to
 
 ### `secret_records`
 
-Encrypted provider secret records keyed by `secret_id`, with `provider_id`, ciphertext, nonce, algorithm, key version, creation time, and optional invalidation time. Plaintext never enters SQLite.
+Plaintext provider secret records keyed by `secret_id`, with `provider_id`, plaintext value, algorithm marker, key version, creation time, and optional invalidation time. The runtime keeps one active record per provider and invalidates the previous row on rotation. The SQLite database and its backups are sensitive.
 
 ## Projection updates and recovery
 

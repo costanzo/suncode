@@ -8,4 +8,4 @@ Inside a project window, it can list sessions, render conversation history, subm
 
 The desktop presentation uses the Quiet Control Desk visual system. The conversation canvas is the primary work surface; session navigation and process/review diagnostics are independent side bays that can be collapsed from the top bar. Presentation changes do not alter the Rust SDK boundary or runtime behavior.
 
-Global settings are available from the hub and project windows. The current implementation exposes DeepSeek credential controls, a default model setting, and a light/dark appearance toggle; project composers also include a model selector for turn submission.
+Global settings are available from the hub and project windows. The current implementation exposes a left-side settings tree with Defaults, Appearance, and Model providers pages for DeepSeek, Zhipu GLM, and OpenAI. Project composers include a model selector for turn submission and disable sending when the selected model's provider is not configured.

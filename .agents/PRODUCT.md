@@ -47,4 +47,4 @@ CLI, TUI, web, mobile, and IDE-plugin surfaces are future directions. They are d
 
 ## Current status
 
-The architecture in `ARCHITECTURE.md` is approved. The runtime core, Qt client, SQLite schema, and key SDK facade paths exist and have focused verification. Describe a component as working only when source and focused verification exist.
+The architecture in `ARCHITECTURE.md` is approved. The runtime core, Qt client, SQLite schema, and key SDK facade paths exist and have focused verification. Built-in provider support covers DeepSeek, Zhipu GLM, and OpenAI after focused verification. Describe a component as working only when source and focused verification exist.

@@ -2,6 +2,24 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260812-plaintext-provider-secrets
+
+- Date: 2026-08-12
+- Status: Accepted
+- Context: Provider API keys need one cross-platform persistence path. The prior design used the OS credential store, and an intermediate implementation used a local encryption key beside SQLite. The product currently prioritizes a simple local-first implementation over at-rest encryption.
+- Decision: Store provider API keys as plaintext values in the Rust-owned SQLite `secret_records` table. Keep keys out of protocol responses, events, audit records, and logs. Accept explicit environment-variable overrides only in non-interactive mode. Migrate legacy macOS Keychain entries into SQLite when possible; encrypted experimental rows that cannot be decoded are discarded by the schema migration.
+- Consequences: API keys are exposed to any process or user that can read the SQLite database and its backups. The runtime must keep database access inside Rust, restrict the data directory where the platform permits it, and never include secret values in diagnostics or serialized DTOs. Reintroducing encryption or an OS credential store requires a new decision record and migration plan.
+- Details: `ARCHITECTURE.md`, `contracts/persistence.md`, `contracts/sqlite-schema.md`
+
+## ADR-20260811-built-in-provider-expansion
+
+- Date: 2026-08-11
+- Status: Accepted
+- Context: The Qt desktop client needs model provider choice while preserving the local-first runtime boundary and runtime-owned credential persistence.
+- Decision: Add Zhipu GLM and OpenAI as trusted built-in runtime providers alongside DeepSeek. Zhipu GLM and OpenAI use a shared OpenAI-compatible chat-completions adapter. Stable Suncode model identities are `deepseek-v4-flash`, `glm-5.2`, and `gpt-5.6-sol`.
+- Consequences: Provider credentials are provider-keyed and stored by the Rust runtime in SQLite. Qt consumes provider/model availability from the runtime and stores/removes credentials through provider-keyed runtime routes. Third-party provider adapters and OpenAI Responses-native behavior remain deferred.
+- Details: `.agents/requirements/2026-08-11-model-provider-expansion/`
+
 ## ADR-20260809-runtime-sdk-layout
 
 - Date: 2026-08-09
@@ -54,16 +72,16 @@ Newest first. Historical context is retained only when it still explains a curre
 - Status: Accepted
 - Context: The first provider and vertical slice require concrete choices for authentication, message normalization, authorization, and bounded execution.
 - Decision: Phase 1 uses DeepSeek V4 with API-key authentication. The canonical provider schema is Suncode-owned, role-based messages containing text content parts; the schema remains extensible, but multimodal content is deferred. The default interactive policy permits read-only project inspection and requires approval for writes, process execution, network access, secret use, destructive operations, and access outside the project. Non-interactive runs deny operations without an explicit profile grant. Default per-turn limits are 32 iterations, 32 tool calls, 10 minutes wall-clock, 64,000 model tokens, a configurable cost cap, and 8 MiB total output.
-- Consequences: Provider credentials are user secrets resolved through the OS credential store; environment variables are supported only as an explicit CI/script override. Provider adapters translate the canonical schema and never expose vendor payloads to clients. The runtime must enforce every limit and fail closed when authorization or credential resolution is unavailable.
+- Consequences: Provider credentials are user secrets resolved through plaintext SQLite secret records; environment variables are supported only as an explicit CI/script override. Provider adapters translate the canonical schema and never expose vendor payloads to clients. The runtime must enforce every limit and fail closed when authorization or credential resolution is unavailable.
 - Details: `contracts/runtime-core/`, `contracts/client-runtime/`, `contracts/persistence.md`
 
 ## ADR-20260807-first-provider-deepseek-v4
 
 - Date: 2026-08-07
-- Status: Accepted
+- Status: Accepted; provider scope superseded in part by `ADR-20260811-built-in-provider-expansion`
 - Context: The agent-runtime Phase 1 needs one concrete provider to define the first provider catalog, adapter, streaming normalization, usage handling, and behavioral evaluation slice. Supporting multiple providers before the canonical runtime contracts are proven would widen the implementation surface prematurely.
 - Decision: DeepSeek V4 is the first built-in provider/model integration. Its stable Suncode identities are provider `deepseek` and model `deepseek-v4-flash`. The adapter remains trusted runtime code in Phase 1 and is the only provider adapter implemented in the initial vertical slice. The vendor endpoint, wire model identifier, capabilities, limits, pricing, and authentication method remain provider-contract inputs; no vendor-specific details are exposed to clients.
-- Consequences: The provider gateway and fixtures are prepared against one concrete adapter boundary. Additional providers and third-party adapters remain out of Phase 1.
+- Consequences: The provider gateway and fixtures are prepared against one concrete adapter boundary. This decision established DeepSeek as the first provider; later built-in provider expansion is governed by `ADR-20260811-built-in-provider-expansion`. Third-party adapters remain out of Phase 1.
 - Details: `ARCHITECTURE.md`
 
 ## ADR-20260807-trusted-runtime-extension-isolation
@@ -110,7 +128,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Amends: ADR-20260804-foundational-architecture
 - Context: The foundation treated local and cloud-hosted execution as equally weighted deployment modes. Carrying hosting through every document forced tenancy, ingress, remote identity, and KMS concerns into designs for subsystems that had no implementation, and left the product without a clear thesis.
 - Decision: Suncode is local-first. The runtime and OS core run on the user's machine, and hosted execution is out of scope. Retain two properties that keep hosting possible later without designing for it now: the client-facing API stays a network protocol rather than in-process calls, and authority checks never assume the caller is trusted because it is local.
-- Consequences: Tenancy, ingress, remote identity, cloud KMS, workspace provisioning, and sandbox-host infrastructure leave all current designs. Client authentication is a local-credential problem. The credential store is the OS keychain. Cost and complexity drop across every package. Reintroducing hosting requires a new decision record.
+- Consequences: Tenancy, ingress, remote identity, cloud KMS, workspace provisioning, and sandbox-host infrastructure leave all current designs. Client authentication is a local-credential problem. The credential store is SQLite-backed local secret records. Cost and complexity drop across every package. Reintroducing hosting requires a new decision record.
 - Details: `PRODUCT.md`, `ARCHITECTURE.md` section 4
 
 ## ADR-20260807-domain-vocabulary

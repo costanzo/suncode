@@ -8,6 +8,10 @@ pub struct Config {
     pub database_path: PathBuf,
     pub deepseek_endpoint: String,
     pub deepseek_model: String,
+    pub zhipu_endpoint: String,
+    pub zhipu_model: String,
+    pub openai_endpoint: String,
+    pub openai_model: String,
     pub non_interactive: bool,
 }
 
@@ -20,8 +24,20 @@ impl Config {
             .map(PathBuf::from)
             .unwrap_or_else(|| data_dir.join("data/sqlite/runtime.sqlite3"));
         let non_interactive = env_bool("SUNCODE_NON_INTERACTIVE", false)?;
-        if std::env::var_os("DEEPSEEK_API_KEY").is_some() && !non_interactive {
-            return Err("DEEPSEEK_API_KEY requires SUNCODE_NON_INTERACTIVE=true".to_string());
+        if !non_interactive
+            && [
+                "DEEPSEEK_API_KEY",
+                "ZHIPU_API_KEY",
+                "ZAI_API_KEY",
+                "OPENAI_API_KEY",
+            ]
+            .iter()
+            .any(|name| std::env::var_os(name).is_some())
+        {
+            return Err(
+                "provider API key environment overrides require SUNCODE_NON_INTERACTIVE=true"
+                    .to_string(),
+            );
         }
         Ok(Self {
             host: std::env::var("SUNCODE_RUNTIME_HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
@@ -39,6 +55,18 @@ impl Config {
                 .to_string(),
             deepseek_model: std::env::var("SUNCODE_DEEPSEEK_MODEL")
                 .unwrap_or_else(|_| "deepseek-v4-flash".to_string()),
+            zhipu_endpoint: std::env::var("SUNCODE_ZHIPU_ENDPOINT")
+                .unwrap_or_else(|_| "https://open.bigmodel.cn/api/paas/v4".to_string())
+                .trim_end_matches('/')
+                .to_string(),
+            zhipu_model: std::env::var("SUNCODE_ZHIPU_MODEL")
+                .unwrap_or_else(|_| "glm-5.2".to_string()),
+            openai_endpoint: std::env::var("SUNCODE_OPENAI_ENDPOINT")
+                .unwrap_or_else(|_| "https://api.openai.com/v1".to_string())
+                .trim_end_matches('/')
+                .to_string(),
+            openai_model: std::env::var("SUNCODE_OPENAI_MODEL")
+                .unwrap_or_else(|_| "gpt-5.6-sol".to_string()),
             non_interactive,
         })
     }

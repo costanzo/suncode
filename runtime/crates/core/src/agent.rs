@@ -91,7 +91,7 @@ struct Continuation {
 #[derive(Clone)]
 pub struct Agent {
     store: Store,
-    provider: Arc<dyn LlmProvider>,
+    providers: Arc<crate::model_provider::ModelProviderRegistry>,
     operations: Arc<suncode_operations::Operations>,
     events: broadcast::Sender<SessionEvent>,
     cancellations: Arc<Mutex<HashMap<String, CancellationToken>>>,
@@ -102,17 +102,17 @@ pub struct Agent {
 impl Agent {
     pub fn new<P>(
         store: Store,
-        provider: P,
+        providers: P,
         operations: Arc<suncode_operations::Operations>,
         events: broadcast::Sender<SessionEvent>,
         non_interactive: bool,
     ) -> Self
     where
-        P: LlmProvider + 'static,
+        P: Into<Arc<crate::model_provider::ModelProviderRegistry>>,
     {
         Self {
             store,
-            provider: Arc::new(provider),
+            providers: providers.into(),
             operations,
             events,
             cancellations: Arc::new(Mutex::new(HashMap::new())),
@@ -131,12 +131,12 @@ impl Agent {
         let session_lock = self.session_lock(session_id).await;
         let _guard = session_lock.lock().await;
         let model = model.unwrap_or("deepseek-v4-flash");
-        if model != "deepseek-v4-flash" {
+        let Some(provider) = self.providers.provider(model) else {
             return Err(AgentError::new(
                 "model_unavailable",
                 "model is not advertised",
             ));
-        }
+        };
         let admission = self.store.begin_turn(session_id, key, input, model)?;
         if !admission.created {
             if admission.status == "completed" {
@@ -186,7 +186,9 @@ impl Agent {
             last_tool_signature: None,
             repeated_tool_stalls: 0,
         };
-        let result = self.run(continuation.clone(), Some(input), token).await;
+        let result = self
+            .run(continuation.clone(), Some(input), token, provider)
+            .await;
         self.cancellations
             .lock()
             .ok()
@@ -307,7 +309,13 @@ impl Agent {
         }
         let siblings = std::mem::take(&mut continuation.remaining_calls);
         self.resolve_calls(continuation, siblings).await?;
-        let response = self.run(continuation.clone(), None, token).await?;
+        let provider = self
+            .providers
+            .provider(&continuation.model)
+            .ok_or_else(|| AgentError::new("model_unavailable", "model is not advertised"))?;
+        let response = self
+            .run(continuation.clone(), None, token, provider)
+            .await?;
         self.store.complete_turn(
             &continuation.session_id,
             &continuation.submission_key,
@@ -323,6 +331,7 @@ impl Agent {
         mut context: Continuation,
         user_input: Option<&str>,
         token: CancellationToken,
+        provider: Arc<dyn LlmProvider>,
     ) -> Result<TurnResponse, AgentError> {
         let started = Instant::now();
         if let Some(input) = user_input {
@@ -369,9 +378,7 @@ impl Agent {
             }
             let result = {
                 let (delta_sender, mut delta_receiver) = mpsc::unbounded_channel();
-                let provider = self
-                    .provider
-                    .complete(&context.messages, &token, delta_sender);
+                let provider = provider.complete(&context.messages, &token, delta_sender);
                 tokio::pin!(provider);
                 let result = loop {
                     tokio::select! {
@@ -918,7 +925,6 @@ fn normalize_result(name: &str, mut value: Value) -> Value {
 mod tests {
     use super::*;
     use crate::credentials::CredentialStore;
-    use crate::model_provider::DeepSeekProvider;
     use axum::{http::header, response::IntoResponse, routing::post, Json, Router};
 
     async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
@@ -986,13 +992,17 @@ mod tests {
         let operations =
             Arc::new(suncode_operations::Operations::new(directory.join(".operations")).unwrap());
         let (events, _) = broadcast::channel(64);
-        let provider = DeepSeekProvider::new(
+        let registry = crate::model_provider::ModelProviderRegistry::new(
             format!("http://{address}"),
             "deepseek-v4-flash".into(),
-            CredentialStore::memory(Some("test-key")),
+            "http://localhost".into(),
+            "glm-5.2".into(),
+            "http://localhost".into(),
+            "gpt-5.6-sol".into(),
+            CredentialStore::memory(Some("test-key"), None, None),
         );
         (
-            Agent::new(store.clone(), provider, operations, events, false),
+            Agent::new(store.clone(), Arc::new(registry), operations, events, false),
             store,
             root,
             server,

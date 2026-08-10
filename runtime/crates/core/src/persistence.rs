@@ -7,6 +7,9 @@ use std::sync::{Arc, Mutex};
 use thiserror::Error;
 use uuid::Uuid;
 
+const SECRET_ALGORITHM: &str = "plaintext-v1";
+const SECRET_KEY_VERSION: i64 = 0;
+
 #[derive(Debug, Error)]
 pub enum PersistenceError {
     #[error("database error: {0}")]
@@ -501,6 +504,73 @@ impl Store {
         Ok(records)
     }
 
+    pub fn secret_value(&self, provider_id: &str) -> Result<Option<String>, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let row: Option<(String, String, i64)> = connection
+            .query_row(
+                "SELECT plaintext,algorithm,key_version FROM secret_records WHERE provider_id=? AND invalidated_at IS NULL ORDER BY created_at DESC LIMIT 1",
+                [provider_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .optional()?;
+        let Some((plaintext, algorithm, key_version)) = row else {
+            return Ok(None);
+        };
+        if algorithm != SECRET_ALGORITHM || key_version != SECRET_KEY_VERSION {
+            return Err(PersistenceError::Invalid(
+                "secret record uses an unsupported format".into(),
+            ));
+        }
+        Ok(Some(plaintext))
+    }
+
+    pub fn set_secret(&self, provider_id: &str, value: &str) -> Result<(), PersistenceError> {
+        let value = value.trim();
+        if value.is_empty() {
+            return Err(PersistenceError::Invalid(
+                "credential must not be empty".into(),
+            ));
+        }
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let transaction = connection.unchecked_transaction()?;
+        let timestamp = now();
+        transaction.execute(
+            "UPDATE secret_records SET invalidated_at=? WHERE provider_id=? AND invalidated_at IS NULL",
+            params![timestamp, provider_id],
+        )?;
+        transaction.execute(
+            "INSERT INTO secret_records(secret_id,provider_id,plaintext,algorithm,key_version,created_at,invalidated_at) VALUES (?,?,?,?,?,?,NULL)",
+            params![
+                Uuid::new_v4().to_string(),
+                provider_id,
+                value,
+                SECRET_ALGORITHM,
+                SECRET_KEY_VERSION,
+                timestamp,
+            ],
+        )?;
+        transaction.commit()?;
+        Ok(())
+    }
+
+    pub fn delete_secret(&self, provider_id: &str) -> Result<(), PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        connection.execute(
+            "UPDATE secret_records SET invalidated_at=? WHERE provider_id=? AND invalidated_at IS NULL",
+            params![now(), provider_id],
+        )?;
+        Ok(())
+    }
+
     pub fn set_setting(
         &self,
         scope: &str,
@@ -943,9 +1013,9 @@ fn mark_schema_version(connection: &Connection) -> Result<(), PersistenceError> 
         [],
         |row| row.get(0),
     )?;
-    if version > 10 {
+    if version > 11 {
         return Err(PersistenceError::Invalid(format!(
-            "database schema version {version} is newer than supported version 10"
+            "database schema version {version} is newer than supported version 11"
         )));
     }
     if version < 10 {
@@ -984,13 +1054,60 @@ fn mark_schema_version(connection: &Connection) -> Result<(), PersistenceError> 
         )?;
         backfill_message_projection(connection)?;
     }
-    for next in (version + 1)..=10 {
+    if version < 11 {
+        migrate_secret_records_to_v11(connection)?;
+    }
+    for next in (version + 1)..=11 {
         connection.execute(
             "INSERT INTO schema_migrations(version,applied_at) VALUES (?,?)",
             params![next, now()],
         )?;
     }
     Ok(())
+}
+
+fn migrate_secret_records_to_v11(connection: &Connection) -> Result<(), PersistenceError> {
+    let has_plaintext = table_has_column(connection, "secret_records", "plaintext")?;
+    connection.execute_batch(
+        "CREATE TABLE IF NOT EXISTS secret_records_v11 (
+            secret_id TEXT PRIMARY KEY,
+            provider_id TEXT NOT NULL,
+            plaintext TEXT NOT NULL,
+            algorithm TEXT NOT NULL,
+            key_version INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            invalidated_at TEXT
+         );",
+    )?;
+    if has_plaintext {
+        connection.execute(
+            "INSERT OR IGNORE INTO secret_records_v11 (secret_id,provider_id,plaintext,algorithm,key_version,created_at,invalidated_at)
+             SELECT secret_id,provider_id,plaintext,algorithm,key_version,created_at,invalidated_at
+             FROM secret_records
+             WHERE algorithm = ?",
+            [SECRET_ALGORITHM],
+        )?;
+    }
+    connection.execute_batch(
+        "DROP TABLE secret_records;
+         ALTER TABLE secret_records_v11 RENAME TO secret_records;",
+    )?;
+    Ok(())
+}
+
+fn table_has_column(
+    connection: &Connection,
+    table: &str,
+    column: &str,
+) -> Result<bool, PersistenceError> {
+    let mut statement = connection.prepare(&format!("PRAGMA table_info({table})"))?;
+    let rows = statement.query_map([], |row| row.get::<_, String>(1))?;
+    for row in rows {
+        if row? == column {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn backfill_message_projection(connection: &Connection) -> Result<(), PersistenceError> {
@@ -1083,6 +1200,69 @@ mod tests {
         assert_eq!(messages[1].tool_calls[0].call_id, "call-1");
         assert_eq!(messages[2].role, "tool");
         assert_eq!(messages[2].tool_call_id.as_deref(), Some("call-1"));
+    }
+
+    #[test]
+    fn provider_secrets_are_stored_as_plaintext_sqlite_records() {
+        let store = Store::open_memory().unwrap();
+        store.set_secret("deepseek", "  test-key  ").unwrap();
+
+        assert_eq!(
+            store.secret_value("deepseek").unwrap().as_deref(),
+            Some("test-key")
+        );
+
+        {
+            let connection = store.connection.lock().unwrap();
+            let (plaintext, algorithm, key_version): (String, String, i64) = connection
+                .query_row(
+                    "SELECT plaintext,algorithm,key_version FROM secret_records WHERE provider_id='deepseek' AND invalidated_at IS NULL",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                )
+                .unwrap();
+            assert_eq!(plaintext, "test-key");
+            assert_eq!(algorithm, SECRET_ALGORITHM);
+            assert_eq!(key_version, SECRET_KEY_VERSION);
+        }
+
+        store.delete_secret("deepseek").unwrap();
+        assert!(store.secret_value("deepseek").unwrap().is_none());
+    }
+
+    #[test]
+    fn opening_v10_database_migrates_secret_records_to_plaintext_schema() {
+        let directory = tempfile::tempdir().unwrap();
+        let database = directory.path().join("state.db");
+        {
+            let connection = Connection::open(&database).unwrap();
+            connection
+                .execute_batch(
+                    "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);
+                     INSERT INTO schema_migrations(version,applied_at) VALUES (10,'2026-08-12T00:00:00Z');
+                     CREATE TABLE secret_records (
+                        secret_id TEXT PRIMARY KEY,
+                        provider_id TEXT NOT NULL,
+                        ciphertext BLOB NOT NULL,
+                        nonce BLOB NOT NULL,
+                        algorithm TEXT NOT NULL,
+                        key_version INTEGER NOT NULL,
+                        created_at TEXT NOT NULL,
+                        invalidated_at TEXT
+                     );
+                     INSERT INTO secret_records(secret_id,provider_id,ciphertext,nonce,algorithm,key_version,created_at,invalidated_at)
+                     VALUES ('secret-1','deepseek',x'01',x'02','sqlite-chacha20poly1305-v1',1,'2026-08-12T00:00:00Z',NULL);",
+                )
+                .unwrap();
+        }
+
+        let store = Store::open(&database).unwrap();
+
+        assert_eq!(store.health().unwrap()["schema_version"], 11);
+        assert!(store.secret_value("deepseek").unwrap().is_none());
+        let connection = store.connection.lock().unwrap();
+        assert!(table_has_column(&connection, "secret_records", "plaintext").unwrap());
+        assert!(!table_has_column(&connection, "secret_records", "ciphertext").unwrap());
     }
 
     #[test]

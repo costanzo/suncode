@@ -52,6 +52,7 @@ struct AppState {
     events: broadcast::Sender<SessionEvent>,
     credentials: CredentialStore,
     agent: Agent,
+    providers: Arc<model_provider::ModelProviderRegistry>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -140,18 +141,19 @@ async fn build_state(
         config.data_dir.join("operations"),
     )?);
     let (events, _) = broadcast::channel(256);
-    let credentials = CredentialStore::load(config.non_interactive);
-    let providers = model_provider::ModelProviderRegistry::new(
+    let credentials = CredentialStore::load(store.clone(), config.non_interactive);
+    let providers = Arc::new(model_provider::ModelProviderRegistry::new(
         config.deepseek_endpoint.clone(),
         config.deepseek_model.clone(),
+        config.zhipu_endpoint.clone(),
+        config.zhipu_model.clone(),
+        config.openai_endpoint.clone(),
+        config.openai_model.clone(),
         credentials.clone(),
-    );
-    let provider = providers
-        .provider("deepseek-v4-flash")
-        .ok_or_else(|| std::io::Error::other("configured model is not advertised"))?;
+    ));
     let agent = Agent::new(
         store.clone(),
-        provider,
+        providers.clone(),
         operations.clone(),
         events.clone(),
         config.non_interactive,
@@ -164,6 +166,7 @@ async fn build_state(
         events,
         credentials,
         agent,
+        providers,
     };
     state
         .agent
@@ -200,6 +203,10 @@ fn app(state: AppState) -> Router {
         .route(
             "/credentials/deepseek",
             post(set_deepseek).delete(delete_deepseek),
+        )
+        .route(
+            "/credentials/{provider}",
+            post(set_credential).delete(delete_credential),
         )
         .route("/projects", get(projects).post(open_project))
         .route("/projects/{project_id}/open", post(reopen_project))
@@ -285,7 +292,7 @@ async fn diagnostics(
     authorized(&headers, &state)?;
     let database = state.store.health().map_err(ApiError::from)?;
     Ok(Json(
-        json!({"health": {"ok": true, "runtime": "ready", "database": database}, "recovery": {"status": "ready", "pending_operations": 0}, "credential": {"provider": "deepseek", "configured": state.credentials.configured()}, "active_project_id": state.active_project.lock().ok().and_then(|value| value.clone())}),
+        json!({"health": {"ok": true, "runtime": "ready", "database": database}, "recovery": {"status": "ready", "pending_operations": 0}, "credentials": state.credentials.state(), "active_project_id": state.active_project.lock().ok().and_then(|value| value.clone())}),
     ))
 }
 
@@ -294,15 +301,21 @@ async fn models(
     headers: HeaderMap,
 ) -> Result<Json<Value>, ApiError> {
     authorized(&headers, &state)?;
-    let registry = model_provider::ModelProviderRegistry::new(
-        String::new(),
-        String::from("deepseek-v4-flash"),
-        state.credentials.clone(),
-    );
-    let advertised = registry.is_advertised("deepseek-v4-flash");
-    let mut models = registry.models();
+    let mut models = state.providers.models();
     for model in &mut models {
-        model.availability = if advertised && state.credentials.configured() {
+        let configured = match model.provider {
+            "deepseek" => state
+                .credentials
+                .configured(credentials::ProviderKind::DeepSeek),
+            "zhipu" => state
+                .credentials
+                .configured(credentials::ProviderKind::Zhipu),
+            "openai" => state
+                .credentials
+                .configured(credentials::ProviderKind::OpenAI),
+            _ => false,
+        };
+        model.availability = if configured {
             "configured"
         } else {
             "unconfigured"
@@ -316,9 +329,7 @@ async fn credentials(
     headers: HeaderMap,
 ) -> Result<Json<Value>, ApiError> {
     authorized(&headers, &state)?;
-    Ok(Json(
-        json!({"credentials": [{"provider": "deepseek", "configured": state.credentials.configured()}]}),
-    ))
+    Ok(Json(json!({"credentials": state.credentials.state()})))
 }
 
 async fn settings(
@@ -369,13 +380,16 @@ async fn set_deepseek(
     Json(input): Json<CredentialInput>,
 ) -> Result<Json<Value>, ApiError> {
     authorized(&headers, &state)?;
-    state.credentials.set(&input.api_key).map_err(|error| {
-        ApiError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "credential_unavailable",
-            &error,
-        )
-    })?;
+    state
+        .credentials
+        .set(credentials::ProviderKind::DeepSeek, &input.api_key)
+        .map_err(|error| {
+            ApiError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "credential_unavailable",
+                &error,
+            )
+        })?;
     Ok(Json(json!({"provider":"deepseek","configured":true})))
 }
 async fn delete_deepseek(
@@ -383,14 +397,71 @@ async fn delete_deepseek(
     headers: HeaderMap,
 ) -> Result<Json<Value>, ApiError> {
     authorized(&headers, &state)?;
-    state.credentials.delete().map_err(|error| {
+    state
+        .credentials
+        .delete(credentials::ProviderKind::DeepSeek)
+        .map_err(|error| {
+            ApiError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "credential_unavailable",
+                &error,
+            )
+        })?;
+    Ok(Json(json!({"provider":"deepseek","configured":false})))
+}
+
+async fn set_credential(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(provider): Path<String>,
+    Json(input): Json<CredentialInput>,
+) -> Result<Json<Value>, ApiError> {
+    authorized(&headers, &state)?;
+    let provider = parse_provider(&provider)?;
+    state
+        .credentials
+        .set(provider, &input.api_key)
+        .map_err(|error| {
+            ApiError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "credential_unavailable",
+                &error,
+            )
+        })?;
+    Ok(Json(
+        json!({"provider": provider.as_str(), "configured": true}),
+    ))
+}
+
+async fn delete_credential(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(provider): Path<String>,
+) -> Result<Json<Value>, ApiError> {
+    authorized(&headers, &state)?;
+    let provider = parse_provider(&provider)?;
+    state.credentials.delete(provider).map_err(|error| {
         ApiError::new(
             StatusCode::INTERNAL_SERVER_ERROR,
             "credential_unavailable",
             &error,
         )
     })?;
-    Ok(Json(json!({"provider":"deepseek","configured":false})))
+    Ok(Json(
+        json!({"provider": provider.as_str(), "configured": false}),
+    ))
+}
+
+fn parse_provider(provider: &str) -> Result<credentials::ProviderKind, ApiError> {
+    match provider {
+        "deepseek" => Ok(credentials::ProviderKind::DeepSeek),
+        "zhipu" => Ok(credentials::ProviderKind::Zhipu),
+        "openai" => Ok(credentials::ProviderKind::OpenAI),
+        _ => Err(ApiError::bad_request(
+            "invalid_arguments",
+            "provider is not supported",
+        )),
+    }
 }
 
 async fn projects(
@@ -480,7 +551,7 @@ async fn create_session(
 ) -> Result<(StatusCode, Json<SessionRecord>), ApiError> {
     authorized(&headers, &state)?;
     if let Some(model) = &input.model {
-        if model != "deepseek-v4-flash" {
+        if state.providers.provider(model).is_none() {
             return Err(ApiError::bad_request(
                 "model_unavailable",
                 "model is not advertised",
@@ -1381,16 +1452,20 @@ mod tests {
         let store = Store::open_memory().unwrap();
         let operations =
             Arc::new(suncode_operations::Operations::new(directory.join("operations")).unwrap());
-        let credentials = CredentialStore::memory(Some("test-key"));
+        let credentials = CredentialStore::memory(Some("test-key"), None, None);
         let (events, _) = broadcast::channel(16);
-        let provider = model_provider::DeepSeekProvider::new(
+        let providers = Arc::new(model_provider::ModelProviderRegistry::new(
             "http://127.0.0.1:1".into(),
             "deepseek-v4-flash".into(),
+            "http://127.0.0.1:2".into(),
+            "glm-5.2".into(),
+            "http://127.0.0.1:3".into(),
+            "gpt-5.6-sol".into(),
             credentials.clone(),
-        );
+        ));
         let agent = Agent::new(
             store.clone(),
-            provider,
+            providers.clone(),
             operations.clone(),
             events.clone(),
             false,
@@ -1403,6 +1478,7 @@ mod tests {
             events,
             credentials,
             agent,
+            providers,
         }
     }
 
@@ -1420,6 +1496,62 @@ mod tests {
     async fn router_authenticates_and_serves_project_session_dtos() {
         let directory = tempfile::tempdir().unwrap();
         let router = app(test_state(directory.path()));
+        let credentials_response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/credentials")
+                    .header(header::AUTHORIZATION, "Bearer test-token")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(credentials_response.status(), StatusCode::OK);
+        let credentials: Value = serde_json::from_slice(
+            &credentials_response
+                .into_body()
+                .collect()
+                .await
+                .unwrap()
+                .to_bytes(),
+        )
+        .unwrap();
+        assert_eq!(credentials["credentials"].as_array().unwrap().len(), 3);
+
+        let models_response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/models")
+                    .header(header::AUTHORIZATION, "Bearer test-token")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(models_response.status(), StatusCode::OK);
+        let models: Value = serde_json::from_slice(
+            &models_response
+                .into_body()
+                .collect()
+                .await
+                .unwrap()
+                .to_bytes(),
+        )
+        .unwrap();
+        let models = models["models"].as_array().unwrap();
+        assert_eq!(models.len(), 3);
+        assert!(models.iter().any(|model| model["id"] == "deepseek-v4-flash"
+            && model["provider"] == "deepseek"
+            && model["availability"] == "configured"));
+        assert!(models.iter().any(|model| model["id"] == "glm-5.2"
+            && model["provider"] == "zhipu"
+            && model["availability"] == "unconfigured"));
+        assert!(models.iter().any(|model| model["id"] == "gpt-5.6-sol"
+            && model["provider"] == "openai"
+            && model["availability"] == "unconfigured"));
+
         let unauthorized = router
             .clone()
             .oneshot(
