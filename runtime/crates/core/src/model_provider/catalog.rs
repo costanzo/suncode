@@ -26,7 +26,7 @@ pub struct ModelDescriptor {
     pub availability: &'static str,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct ModelLimits {
     pub max_input_tokens: Option<u64>,
     pub max_output_tokens: Option<u64>,
