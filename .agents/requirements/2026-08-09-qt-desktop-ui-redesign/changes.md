@@ -38,6 +38,19 @@
 - Added a window-level project navigation toggle action bound to `Ctrl+1`, which maps to `Command+1` on macOS through Qt's `QKeySequence` platform conventions.
 - Added an Open Recent Project submenu to ProjectWindow; selecting a recent project opens that project in its own window, or focuses the existing window if it is already open.
 - Tightened project-window lifecycle handling so the hub stays hidden while any project window remains open and reappears only after the last one closes.
+- Restored Windows minimize, maximize/restore, and close controls in the frameless ProjectWindow title bar, reduced its Windows chrome height, and kept Windows maximize behavior distinct from macOS fullscreen.
+- Made project windows explicitly non-transient so hiding the project hub no longer removes the Suncode taskbar entry on Windows.
+- Restored a compact 4px outer inset around Windows project windows so their frameless chrome has comparable visual breathing room to macOS without increasing the 36px title bar.
+- Added the Suncode logo to the upper-left corner of Windows project windows while preserving the macOS traffic-light control cluster.
+- Aligned the Windows title-bar logo to the left gutter centerline and refined the minimize, maximize/restore, and close controls to Windows caption-button proportions and hover states, including the native-style red close hover.
+- Replaced the Windows minimize, maximize, and close glyphs with clean per-icon assets extracted from the supplied combined SVG while retaining the existing restore-state glyph.
+- Rendered the revised Windows caption assets at their native 12px canvas size without shrinking their 46x36px hit regions.
+- Centered the Windows settings action within the 36px title bar and reduced its gear glyph to the standard 16px toolbar size.
+- Matched the Windows close-button hover surface to the requested native red `#E81123`.
+- Made shared themed SVG icons rasterize at the active window's device-pixel ratio so 150% Windows scaling no longer magnifies a low-resolution intermediate texture.
+- Rendered enabled Windows caption glyphs as pure black in light mode and white in dark mode, with the close glyph switching to white over its red hover/pressed surface.
+- Hid Windows verbatim-path prefixes in ProjectHub project rows while preserving canonical runtime values, including correct `\\?\UNC\` to `\\server\share` display conversion.
+- Added a restrained outer shadow around restored Windows project windows using a separate lightweight shadow source, without offscreen-rendering the complete application content.
 
 ## Contracts and generated artifacts
 

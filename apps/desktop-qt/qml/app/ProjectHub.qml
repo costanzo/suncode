@@ -34,6 +34,21 @@ ApplicationWindow {
 
     function openNewProject() { projectDialog.open() }
 
+    function displayProjectPath(path) {
+        var value = path || ""
+        if (Qt.platform.os !== "windows") return value
+
+        var uncPrefix = "\\\\?\\UNC\\"
+        if (value.indexOf(uncPrefix) === 0) {
+            return "\\\\" + value.substring(uncPrefix.length)
+        }
+
+        var localPrefix = "\\\\?\\"
+        return value.indexOf(localPrefix) === 0
+                ? value.substring(localPrefix.length)
+                : value
+    }
+
     function openProjectWindow(projectId) {
         if (!projectId || projectId.length === 0) {
             console.log("openProjectWindow called without projectId")
@@ -151,7 +166,7 @@ ApplicationWindow {
                         hoverEnabled: true
                         focusPolicy: Qt.TabFocus
                         padding: 0
-                        Accessible.name: "Open project " + (modelData.displayName || modelData.canonicalRoot)
+                        Accessible.name: "Open project " + (modelData.displayName || hub.displayProjectPath(modelData.canonicalRoot))
                         onClicked: hub.openProjectWindow(modelData.projectId)
 
                         HoverHandler {
@@ -185,7 +200,7 @@ ApplicationWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 spacing: 3
                                 Label { width: parent.width; text: projectRow.modelData.displayName; color: theme.text; font.pixelSize: theme.typeBody; font.weight: Font.DemiBold; elide: Text.ElideRight; horizontalAlignment: Text.AlignLeft }
-                                Label { width: parent.width; text: projectRow.modelData.canonicalRoot; color: theme.textMuted; font.family: theme.fontMono; font.pixelSize: theme.typeCaption; elide: Text.ElideMiddle; horizontalAlignment: Text.AlignLeft }
+                                Label { width: parent.width; text: hub.displayProjectPath(projectRow.modelData.canonicalRoot); color: theme.textMuted; font.family: theme.fontMono; font.pixelSize: theme.typeCaption; elide: Text.ElideMiddle; horizontalAlignment: Text.AlignLeft }
                             }
                         }
                     }

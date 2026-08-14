@@ -54,6 +54,19 @@ No runtime contracts change. Existing Rust and Qt focused tests remain applicabl
 - Verify ProjectWindow's Open Recent Project submenu opens a separate project window, focuses an already-open window for the same project, and never merges projects into tabs.
 - Verify the hub remains hidden while any project window exists and reappears only after the last project window closes.
 - Verify the macOS green title-bar control enters fullscreen, hides the custom title bar, and exits back to the prior normal window state.
+- Verify Windows project windows show minimize, maximize/restore, and close controls in the compact custom title bar, and that both the maximize control and title-bar double-click use native maximized state rather than fullscreen.
+- Verify hiding the project hub after opening a project leaves a visible Suncode taskbar entry for the independent ProjectWindow on Windows.
+- Verify Windows keeps a consistent 4px outer inset around the project chrome while the title bar itself remains 36px high.
+- Verify Windows shows a crisp Suncode logo at the upper-left of ProjectWindow without overlapping the centered title or title-bar drag region, while macOS continues to show only its traffic-light controls there.
+- Verify the Windows logo centerline matches the left gutter toggle centerline, caption controls form three contiguous rectangular hit regions, minimize/maximize use neutral hover feedback, and close uses a red hover/pressed surface with a white icon.
+- Verify the extracted Windows minimize, maximize, and close SVGs preserve the supplied geometry, recolor correctly in both themes, and do not replace the distinct restore-state icon.
+- Verify the revised Windows caption glyphs render at their native 12px logical size at both 100% and 150% display scaling while their 46x36px hit regions remain unchanged.
+- Verify the 16px settings glyph and all Windows caption glyphs share the same optical vertical center at 100% and 150% display scaling.
+- Verify the Windows close button uses `#E81123` on hover, retains its pressed-state color, and switches the glyph to white in both states.
+- Verify themed SVG icons request source textures at the active window device-pixel ratio and stay sharp when moving a window between 100% and 150% displays.
+- Verify enabled Windows caption glyphs are black in light mode and white in dark mode, disabled controls retain the disabled token, and the close glyph switches to white over its red hover and pressed states.
+- Verify ProjectHub displays `\\?\D:\project` as `D:\project` and `\\?\UNC\server\share` as `\\server\share` without changing the underlying `canonicalRoot` used by the runtime.
+- Verify a restored Windows ProjectWindow has a subtle offset outer shadow, retains edge/corner resizing from the true window boundary, and removes the shadow inset completely when maximized or fullscreen.
 - Verify the macOS system menu bar shows Project actions at the top of the screen and the app display name reads Suncode instead of suncode-desktop.
 - Verify loading the asynchronous recent-project list while a ProjectWindow exists does not crash, and that the Open Recent Project submenu is disabled only when the list is empty.
 - Verify connection, project/session, credential, composer, approval, undo, and diagnostic controls retain bindings.
@@ -125,3 +138,11 @@ No runtime contracts change. Existing Rust and Qt focused tests remain applicabl
 - Offscreen startup reached the Qt event loop without QML runtime output before manual interruption.
 - `git diff --check` passed.
 - Native top/left dragging, embedded-control hit testing, and the default/minimum-size visual pass still require interaction with a visible macOS project window.
+- `cmake --build apps/desktop-qt/build --config Debug --parallel 2` passed on Windows after restoring the caption controls and making ProjectWindow non-transient.
+- A live Windows taskbar pass remains required to confirm the project-window taskbar entry persists after the hub hides.
+- `node .agents/skills/impeccable/scripts/detect.mjs --json --scope layout apps/desktop-qt/qml/app/ProjectWindow.qml` returned `[]` after the Windows logo alignment and caption-button polish.
+- `cmake --build apps/desktop-qt/build --config Debug --parallel 2` passed after the Windows title-bar polish; the existing mixed-CRT `LNK4098` Debug warning remains.
+- XML parsing passed for the three extracted Windows caption SVG assets.
+- `node .agents/skills/impeccable/scripts/detect.mjs --json --scope layout apps/desktop-qt/qml/app/ProjectWindow.qml` returned `[]` after integrating the supplied caption glyphs.
+- `cmake --build apps/desktop-qt/build --config Debug --parallel 2` passed after CMake registered and compiled the extracted caption assets.
+- `cmake --build apps/desktop-qt/build --config Debug --parallel 1` passed after adding the restored-window shadow; the existing mixed-CRT `LNK4098` Debug warning remains.

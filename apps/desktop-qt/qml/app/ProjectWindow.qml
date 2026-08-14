@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
+import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Window
 import Suncode.Runtime
@@ -27,21 +28,29 @@ ApplicationWindow {
     readonly property var designTheme: theme
     readonly property bool isMacOS: Qt.platform.os === "osx"
     readonly property bool isFullScreen: projectWindow.visibility === Window.FullScreen
-    readonly property int titleBarHeight: isMacOS ? 36 : 52
+    readonly property bool isMaximized: projectWindow.visibility === Window.Maximized
+    readonly property bool windowShadowVisible: !isMacOS && !isFullScreen && !isMaximized
+    readonly property int windowShadowInset: windowShadowVisible ? 10 : 0
+    readonly property int titleBarHeight: 36
     readonly property int footerHeight: 18
     readonly property bool roundedWindowChrome: isMacOS && !projectWindow.isFullScreen && projectWindow.visibility !== Window.Maximized
     readonly property int windowCornerRadius: roundedWindowChrome ? 12 : 0
     readonly property int resizeHandleSize: isMacOS ? 5 : 6
     readonly property int chromeHorizontalInset: isFullScreen ? 0 : 4
-    readonly property int chromeVerticalInset: isFullScreen ? 0 : 6
+    readonly property int chromeVerticalInset: isFullScreen ? 0 : (isMacOS ? 6 : 4)
     readonly property int chromeGap: 4
     readonly property int conversationContentMaximumWidth: 780
+    readonly property int windowsCaptionGlyphSize: 12
+    readonly property color windowsCaptionForeground: theme.isLight ? "#000000" : "#ffffff"
+    readonly property color windowsCloseHover: "#E81123"
+    readonly property color windowsClosePressed: "#a82318"
 
     visible: false
     width: 1440; height: 900; minimumWidth: 900; minimumHeight: 620
     flags: Qt.Window | Qt.FramelessWindowHint
+    transientParent: null
     title: currentProjectName()
-    color: roundedWindowChrome ? "transparent" : theme.canvas
+    color: "transparent"
 
     Theme { id: theme }
     RuntimeClient { id: client; autoSelectProject: false }
@@ -164,7 +173,11 @@ ApplicationWindow {
     }
 
     function toggleMaximized() {
-        windowState.toggleMaximized()
+        if (projectWindow.isMacOS) {
+            windowState.toggleFullScreen()
+        } else {
+            windowState.toggleMaximized()
+        }
     }
 
     function toggleNavigation() {
@@ -214,17 +227,25 @@ ApplicationWindow {
         property string kind: "menu"
         property bool danger: false
         property bool macStyle: false
+        property bool windowsCaption: false
 
         hoverEnabled: true
         focusPolicy: Qt.TabFocus
-        implicitWidth: control.macStyle ? 18 : (projectWindow.isMacOS ? 24 : 30)
-        implicitHeight: control.macStyle ? 18 : (projectWindow.isMacOS ? 24 : 28)
+        implicitWidth: control.macStyle ? 18 : (control.windowsCaption ? 46 : (projectWindow.isMacOS ? 24 : 32))
+        implicitHeight: control.macStyle ? 18 : (control.windowsCaption || !projectWindow.isMacOS ? projectWindow.titleBarHeight : 24)
         padding: 0
 
         background: Rectangle {
             visible: !control.macStyle
-            radius: projectWindow.isMacOS ? width / 2 : theme.radiusSmall
-            color: control.down ? theme.surfaceActive : (control.hovered ? theme.surfaceHover : "transparent")
+            radius: control.windowsCaption ? 0 : (projectWindow.isMacOS ? width / 2 : theme.radiusSmall)
+            color: {
+                if (control.windowsCaption && control.kind === "close") {
+                    if (control.down) return projectWindow.windowsClosePressed
+                    if (control.hovered) return projectWindow.windowsCloseHover
+                    return "transparent"
+                }
+                return control.down ? theme.surfaceActive : (control.hovered ? theme.surfaceHover : "transparent")
+            }
             border.width: control.visualFocus ? 2 : 0
             border.color: control.visualFocus ? theme.accent : "transparent"
         }
@@ -236,10 +257,13 @@ ApplicationWindow {
             ThemeIcon {
                 visible: !control.macStyle
                 anchors.centerIn: parent
-                width: control.kind === "gear" ? 18 : 16
+                width: control.kind === "gear" ? 16 : (control.windowsCaption ? projectWindow.windowsCaptionGlyphSize : 16)
                 height: width
                 source: {
                     if (control.kind === "gear") return "qrc:/assets/icons/settings.svg"
+                    if (control.windowsCaption && control.kind === "minus") return "qrc:/assets/icons/windows-minimize.svg"
+                    if (control.windowsCaption && control.kind === "maximize") return "qrc:/assets/icons/windows-maximize.svg"
+                    if (control.windowsCaption && control.kind === "close") return "qrc:/assets/icons/windows-close.svg"
                     if (control.kind === "minus") return "qrc:/assets/icons/minus.svg"
                     if (control.kind === "restore") return "qrc:/assets/icons/restore.svg"
                     if (control.kind === "maximize") return "qrc:/assets/icons/maximize.svg"
@@ -248,9 +272,13 @@ ApplicationWindow {
                 }
                 color: !control.enabled
                        ? theme.textDisabled
-                       : control.danger && control.hovered
-                         ? theme.danger
-                         : control.hovered ? theme.text : theme.textSecondary
+                       : control.windowsCaption && control.kind === "close" && (control.hovered || control.down)
+                         ? "#ffffff"
+                         : control.windowsCaption
+                           ? projectWindow.windowsCaptionForeground
+                         : control.danger && control.hovered
+                           ? theme.danger
+                           : control.hovered ? theme.text : theme.textSecondary
             }
 
             Image {
@@ -337,8 +365,31 @@ ApplicationWindow {
     }
 
     Rectangle {
+        id: windowShadowSource
+        visible: false
+        anchors.fill: windowBackground
+        color: theme.canvas
+        radius: projectWindow.windowCornerRadius
+    }
+
+    MultiEffect {
+        visible: projectWindow.windowShadowVisible
+        anchors.fill: windowShadowSource
+        source: windowShadowSource
+        autoPaddingEnabled: true
+        shadowEnabled: true
+        shadowColor: "#000000"
+        shadowOpacity: theme.isLight ? 0.24 : 0.48
+        shadowBlur: 0.58
+        shadowHorizontalOffset: 0
+        shadowVerticalOffset: 2
+        z: -1
+    }
+
+    Rectangle {
         id: windowBackground
         anchors.fill: parent
+        anchors.margins: projectWindow.windowShadowInset
         color: theme.canvas
         radius: projectWindow.windowCornerRadius
         clip: projectWindow.roundedWindowChrome
@@ -378,9 +429,8 @@ ApplicationWindow {
                 Item {
                     id: leftTitleControls
                     anchors.left: parent.left
-                    anchors.leftMargin: projectWindow.isMacOS ? 10 : 12
+                    anchors.leftMargin: projectWindow.isMacOS ? 10 : 2
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: projectWindow.isMacOS
                     width: leftControls.implicitWidth
                     height: leftControls.implicitHeight
                     z: 2
@@ -389,7 +439,18 @@ ApplicationWindow {
                         id: leftControls
                         spacing: 6
 
+                        Image {
+                            visible: !projectWindow.isMacOS
+                            width: 22
+                            height: 22
+                            source: "qrc:/assets/logo/suncode-logo-small-64.png"
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                            mipmap: true
+                        }
+
                         TitleBarButton {
+                            visible: projectWindow.isMacOS
                             theme: projectWindow.designTheme
                             kind: "close"
                             macStyle: true
@@ -398,6 +459,7 @@ ApplicationWindow {
                         }
 
                         TitleBarButton {
+                            visible: projectWindow.isMacOS
                             theme: projectWindow.designTheme
                             kind: "minus"
                             macStyle: true
@@ -406,6 +468,7 @@ ApplicationWindow {
                         }
 
                         TitleBarButton {
+                            visible: projectWindow.isMacOS
                             theme: projectWindow.designTheme
                             kind: "maximize"
                             macStyle: true
@@ -430,7 +493,7 @@ ApplicationWindow {
                 Item {
                     id: rightTitleControls
                     anchors.right: parent.right
-                    anchors.rightMargin: 8
+                    anchors.rightMargin: projectWindow.isMacOS ? 8 : 0
                     anchors.verticalCenter: parent.verticalCenter
                     width: rightControls.implicitWidth
                     height: rightControls.implicitHeight
@@ -438,13 +501,47 @@ ApplicationWindow {
 
                     Row {
                         id: rightControls
-                        spacing: 6
+                        spacing: projectWindow.isMacOS ? 6 : 0
 
                         TitleBarButton {
                             theme: projectWindow.designTheme
                             kind: "gear"
                             Accessible.name: "Open settings"
                             onClicked: projectWindow.openSettings()
+                        }
+
+                        Item {
+                            visible: !projectWindow.isMacOS
+                            width: visible ? 8 : 0
+                            height: 1
+                        }
+
+                        TitleBarButton {
+                            visible: !projectWindow.isMacOS
+                            theme: projectWindow.designTheme
+                            kind: "minus"
+                            windowsCaption: true
+                            Accessible.name: "Minimize window"
+                            onClicked: projectWindow.showMinimized()
+                        }
+
+                        TitleBarButton {
+                            visible: !projectWindow.isMacOS
+                            theme: projectWindow.designTheme
+                            kind: projectWindow.isMaximized ? "restore" : "maximize"
+                            windowsCaption: true
+                            Accessible.name: projectWindow.isMaximized ? "Restore window" : "Maximize window"
+                            onClicked: projectWindow.toggleMaximized()
+                        }
+
+                        TitleBarButton {
+                            visible: !projectWindow.isMacOS
+                            theme: projectWindow.designTheme
+                            kind: "close"
+                            danger: true
+                            windowsCaption: true
+                            Accessible.name: "Close window"
+                            onClicked: projectWindow.close()
                         }
                     }
                 }

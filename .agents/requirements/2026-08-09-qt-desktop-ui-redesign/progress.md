@@ -86,3 +86,20 @@
 - Rounded the Session row three-dot action menu and its Rename/Archive interaction states instead of relying on the square default Qt menu background.
 - Removed the redundant Session dialog description and centered the create/rename title for a more compact hierarchy.
 - Rebuilt every desktop logo raster size and macOS iconset layer with a preserved alpha channel so the Dock icon is centered without baked-in white margins.
+
+### 2026-08-14
+
+- Restored the missing Windows caption controls in the frameless project window and reduced the Windows title bar from 52px plus outer inset to a compact 36px header.
+- Separated Windows maximize/restore from the macOS fullscreen behavior while preserving the existing title-bar double-click interaction on both platforms.
+- Cleared the ProjectWindow transient parent explicitly so each project remains an independent top-level Windows taskbar window after the hub is hidden.
+- Restored a 4px Windows outer inset to balance the frameless window edge while retaining the compact 36px title bar.
+- Added a compact Suncode logo to the Windows ProjectWindow title bar and kept the drag region clear of the new brand mark.
+- Optically aligned the Windows logo with the 26px left gutter and replaced the rounded, spaced caption controls with contiguous Windows-style hit regions and red close-button hover/press feedback.
+- Parsed the supplied combined Windows caption SVG into three normalized Qt icon resources and wired them into the corresponding title-bar states.
+- Adopted the revised 12px Windows caption assets at their native logical size while keeping the caption-button hit regions unchanged.
+- Corrected the remaining Windows title-bar misalignment by giving the settings action the same 36px row height as the caption controls and a 16px gear glyph.
+- Updated the Windows close-button hover state to `#E81123` while retaining its distinct pressed state and white hover glyph.
+- Made `ThemeIcon` request DPI-aware SVG source textures from the active Qt window, preserving logical icon sizes while sharpening output on 150% Windows displays.
+- Confirmed the remaining caption softness was contrast-related after DPI-aware rasterization and made the Windows caption foreground explicitly black in light mode and white in dark mode and close hover/press states.
+- Added presentation-only Windows path normalization in ProjectHub so existing local and UNC project records display without extended-length path prefixes.
+- Added a 10px transparent shadow inset around restored Windows ProjectWindow content, automatically removed for maximized and fullscreen states while preserving internal chrome spacing and outer resize handles.

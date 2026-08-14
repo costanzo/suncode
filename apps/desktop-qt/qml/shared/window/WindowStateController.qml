@@ -31,6 +31,19 @@ Item {
         if (!window) {
             return
         }
+        if (window.visibility === Window.Maximized) {
+            window.showNormal()
+            Qt.callLater(root.restoreNormalGeometry)
+        } else {
+            rememberNormalGeometry()
+            window.showMaximized()
+        }
+    }
+
+    function toggleFullScreen() {
+        if (!window) {
+            return
+        }
         if (window.visibility === Window.FullScreen) {
             window.showNormal()
             Qt.callLater(root.restoreNormalGeometry)

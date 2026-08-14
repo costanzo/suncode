@@ -87,6 +87,9 @@ qt_add_resources(suncode-desktop suncode-assets
         assets/icons/sidebar-review.svg
         assets/icons/settings.svg
         assets/icons/unlock.svg
+        assets/icons/windows-close.svg
+        assets/icons/windows-maximize.svg
+        assets/icons/windows-minimize.svg
         assets/traffic-lights/1-close-1-normal.svg
         assets/traffic-lights/2-close-2-hover.svg
         assets/traffic-lights/2-close-3-press.svg
