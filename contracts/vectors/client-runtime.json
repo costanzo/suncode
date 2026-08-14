@@ -18,6 +18,14 @@
     "submission_status": "pending"
   },
   {
+    "id": "queue-running-turn-message",
+    "request": {"type":"turn.start","request_id":"request-3b","project_id":"project-1","session_id":"session-1","idempotency_key":"queued-1","input":{"role":"user","content":[{"type":"text","text":"Use this extra constraint"}]},"model":"deepseek-v4-flash"},
+    "precondition": "session has an active running turn",
+    "expected_status": 202,
+    "expected_response_shape": {"status":"queued","queued_id":"uuid","active_turn_id":"turn-1","position":1},
+    "expected_events": ["turn.queued","message.user"]
+  },
+  {
     "id": "deny-suspended-turn",
     "request": {"type":"approval.decide","request_id":"request-4","project_id":"project-1","session_id":"session-1","approval_id":"approval-1","decision":"deny","idempotency_key":"approval-decision-1"},
     "expected_events": ["approval.resolved","tool.state","turn.state"],

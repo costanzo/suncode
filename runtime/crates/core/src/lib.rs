@@ -653,6 +653,10 @@ async fn start_turn(
             StatusCode::ACCEPTED,
             Json(serde_json::to_value(response).unwrap_or(Value::Null)),
         )),
+        Ok(response @ TurnResponse::Queued { .. }) => Ok((
+            StatusCode::ACCEPTED,
+            Json(serde_json::to_value(response).unwrap_or(Value::Null)),
+        )),
         Err(error) if error.code == "approval_required" => Ok((
             StatusCode::ACCEPTED,
             Json(

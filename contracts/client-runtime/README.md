@@ -63,6 +63,8 @@ The snapshot response contains the session projection, bounded message projectio
 
 The runtime validates that the model is advertised and configured before admitting the turn. The request never contains an API key.
 
+A submission received while the same session already has a running turn may return HTTP `202` with `status: "queued"`, `queued_id`, `active_turn_id`, and `position`. The queued input is an in-memory continuation for the active turn and is emitted later as a `message.user` event at the next safe drain point. It is not a separate durable turn admission and is not crash-resumable.
+
 A turn that reaches an approval gate returns HTTP `202` with `status: "awaiting_approval"`, `turn_id`, `tool_call_id`, and `approval_id`. Its idempotent submission remains pending rather than failed. The durable turn state remains `resolving_calls`; approval is a wait point, not a terminal interruption.
 
 Cancellation is cooperative. The runtime aborts the provider request and records `turn.state=cancelled` with partial messages and completed tool results retained. A cancel request for a turn that is not currently running returns `409`; it never rewrites a completed turn.

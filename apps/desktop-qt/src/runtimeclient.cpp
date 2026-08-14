@@ -807,7 +807,12 @@ void RuntimeClient::submitTurn(const QString &input)
                 {{QStringLiteral("input"), text}, {QStringLiteral("idempotency_key"), idempotencyKey}, {QStringLiteral("model"), m_selectedModel}},
                 [this](int status, const QJsonObject &object) {
                     if (status == 202) {
-                        setConnectionState(QStringLiteral("connected"), QStringLiteral("Turn is awaiting approval"));
+                        const QString responseStatus = object.value(QStringLiteral("status")).toString();
+                        if (responseStatus == QStringLiteral("queued")) {
+                            setConnectionState(QStringLiteral("connected"), QStringLiteral("Message queued for this turn"));
+                        } else {
+                            setConnectionState(QStringLiteral("connected"), QStringLiteral("Turn is awaiting approval"));
+                        }
                         return;
                     }
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Turn submitted"));

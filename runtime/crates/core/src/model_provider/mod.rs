@@ -12,7 +12,7 @@ use crate::{
 };
 use std::sync::Arc;
 
-pub use catalog::ModelDescriptor;
+pub use catalog::{ModelDescriptor, ModelLimits};
 pub use deepseek::DeepSeekProvider;
 pub use openai_compatible::OpenAiCompatibleProvider;
 
@@ -58,6 +58,13 @@ impl ModelProviderRegistry {
 
     pub fn models(&self) -> Vec<ModelDescriptor> {
         catalog::all_models()
+    }
+
+    pub fn limits(&self, model_id: &str) -> Option<ModelLimits> {
+        self.models()
+            .into_iter()
+            .find(|model| model.id == model_id)
+            .map(|model| model.limits)
     }
 
     pub fn provider(&self, model_id: &str) -> Option<Arc<dyn LlmProvider>> {

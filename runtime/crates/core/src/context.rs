@@ -2,8 +2,9 @@ use crate::domain::Message;
 use serde::Serialize;
 use serde_json::json;
 
-pub const DEFAULT_MAX_CHARACTERS: usize = 240_000;
-pub const DEFAULT_RECENT_TAIL: usize = 8;
+pub const DEFAULT_CONTEXT_WINDOW_TOKENS: usize = 64_000;
+pub const DEFAULT_RESERVE_TOKENS: usize = 16_384;
+pub const DEFAULT_KEEP_RECENT_TOKENS: usize = 20_000;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ContextSummary {
@@ -21,15 +22,28 @@ pub struct ContextBuildResult {
     pub compacted: bool,
     pub original_characters: usize,
     pub retained_characters: usize,
+    pub original_tokens: usize,
+    pub retained_tokens: usize,
     pub dropped_messages: usize,
     pub summary: Option<ContextSummary>,
 }
 
-pub fn build(messages: &[Message]) -> ContextBuildResult {
-    build_with_limits(messages, DEFAULT_MAX_CHARACTERS, DEFAULT_RECENT_TAIL)
+pub fn build_for_model(messages: &[Message], max_input_tokens: Option<u64>) -> ContextBuildResult {
+    let context_window = max_input_tokens
+        .and_then(|value| usize::try_from(value).ok())
+        .unwrap_or(DEFAULT_CONTEXT_WINDOW_TOKENS)
+        .min(DEFAULT_CONTEXT_WINDOW_TOKENS)
+        .max(DEFAULT_RESERVE_TOKENS + 1);
+    build_with_token_limits(
+        messages,
+        context_window,
+        DEFAULT_RESERVE_TOKENS,
+        DEFAULT_KEEP_RECENT_TOKENS,
+    )
 }
 
-pub fn build_with_limits(
+#[cfg(test)]
+fn build_with_limits(
     messages: &[Message],
     max_characters: usize,
     recent_tail: usize,
@@ -43,6 +57,8 @@ pub fn build_with_limits(
             compacted: false,
             original_characters,
             retained_characters: original_characters,
+            original_tokens: estimate_tokens(messages),
+            retained_tokens: estimate_tokens(messages),
             dropped_messages: 0,
             summary: None,
         };
@@ -74,12 +90,77 @@ pub fn build_with_limits(
         retained.remove(1);
     }
     let retained_characters = serialized_characters(&retained);
+    let retained_tokens = estimate_tokens(&retained);
     let dropped_messages = messages.len().saturating_sub(retained.len() - 1);
     ContextBuildResult {
         messages: retained,
         compacted: true,
         original_characters,
         retained_characters,
+        original_tokens: estimate_tokens(messages),
+        retained_tokens,
+        dropped_messages,
+        summary: Some(summary),
+    }
+}
+
+pub fn build_with_token_limits(
+    messages: &[Message],
+    context_window_tokens: usize,
+    reserve_tokens: usize,
+    keep_recent_tokens: usize,
+) -> ContextBuildResult {
+    let context_window_tokens = context_window_tokens.clamp(16_000, 1_000_000);
+    let reserve_tokens = reserve_tokens.min(context_window_tokens.saturating_sub(1));
+    let max_context_tokens = context_window_tokens.saturating_sub(reserve_tokens).max(1);
+    let keep_recent_tokens = keep_recent_tokens.clamp(1_000, max_context_tokens);
+    let original_characters = serialized_characters(messages);
+    let original_tokens = estimate_tokens(messages);
+    if original_tokens <= max_context_tokens {
+        return ContextBuildResult {
+            messages: messages.to_vec(),
+            compacted: false,
+            original_characters,
+            retained_characters: original_characters,
+            original_tokens,
+            retained_tokens: original_tokens,
+            dropped_messages: 0,
+            summary: None,
+        };
+    }
+
+    let start = recent_token_tail_start(messages, keep_recent_tokens);
+    let tail = &messages[start..];
+    let dropped = &messages[..start];
+    let summary = summarize(dropped, tail);
+    let summary_message = Message::text(
+        "system",
+        serde_json::to_string(&json!({
+            "type": "suncode_context_summary",
+            "objective": summary.objective,
+            "important_constraints": summary.important_constraints,
+            "completed_work": summary.completed_work,
+            "active_work": summary.active_work,
+            "blockers": summary.blockers,
+            "next_action": summary.next_action,
+        }))
+        .expect("context summary is serializable"),
+    );
+    let mut retained = vec![summary_message];
+    retained.extend_from_slice(tail);
+    while estimate_tokens(&retained) > max_context_tokens && retained.len() > 2 {
+        retained.remove(1);
+    }
+    let retained_characters = serialized_characters(&retained);
+    let retained_tokens = estimate_tokens(&retained);
+    let dropped_messages = messages.len().saturating_sub(retained.len() - 1);
+    ContextBuildResult {
+        messages: retained,
+        compacted: true,
+        original_characters,
+        retained_characters,
+        original_tokens,
+        retained_tokens,
         dropped_messages,
         summary: Some(summary),
     }
@@ -96,6 +177,38 @@ fn serialized_characters(messages: &[Message]) -> usize {
                 + 32
         })
         .sum()
+}
+
+fn estimate_tokens(messages: &[Message]) -> usize {
+    messages
+        .iter()
+        .map(|message| {
+            let characters = message.text_content().chars().count()
+                + serde_json::to_string(&message.tool_calls)
+                    .map(|value| value.chars().count())
+                    .unwrap_or_default()
+                + 32;
+            characters.div_ceil(4)
+        })
+        .sum()
+}
+
+fn recent_token_tail_start(messages: &[Message], keep_recent_tokens: usize) -> usize {
+    let mut tokens = 0usize;
+    let mut start = messages.len();
+    while start > 0 {
+        let next = &messages[start - 1..start];
+        let next_tokens = estimate_tokens(next);
+        if tokens > 0 && tokens + next_tokens > keep_recent_tokens {
+            break;
+        }
+        tokens += next_tokens;
+        start -= 1;
+    }
+    while start > 0 && messages[start].role == "tool" {
+        start -= 1;
+    }
+    start
 }
 
 fn summarize(dropped: &[Message], tail: &[Message]) -> ContextSummary {
@@ -179,5 +292,21 @@ mod tests {
         let result = build_with_limits(&messages, 16_000, 8);
         assert!(!result.compacted);
         assert_eq!(result.dropped_messages, 0);
+    }
+
+    #[test]
+    fn compacts_when_estimated_tokens_exceed_model_window_reserve() {
+        let messages = (0..20)
+            .map(|index| Message::text("user", format!("message {index} {}", "wide ".repeat(500))))
+            .collect::<Vec<_>>();
+
+        let result = build_with_token_limits(&messages, 16_000, 8_000, 2_000);
+
+        assert!(result.compacted);
+        assert!(result.original_tokens > result.retained_tokens);
+        assert!(result.retained_tokens <= 8_000);
+        assert!(result.messages[0]
+            .text_content()
+            .contains("suncode_context_summary"));
     }
 }

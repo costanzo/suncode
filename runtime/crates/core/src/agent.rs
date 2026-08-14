@@ -3,13 +3,14 @@ use crate::{
     domain::{Message, SessionEvent, ToolCall, Usage},
     llm::{LlmProvider, ProviderError},
     persistence::{PersistenceError, Store},
-    policy::{evaluate, tool_risk, Decision},
+    policy::{evaluate, tool_risk, Decision, Risk},
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
+use futures_util::future::join_all;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -64,6 +65,11 @@ pub enum TurnResponse {
         tool_call_id: String,
         approval_id: String,
     },
+    Queued {
+        queued_id: String,
+        active_turn_id: String,
+        position: usize,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,6 +94,13 @@ struct Continuation {
     repeated_tool_stalls: u32,
 }
 
+#[derive(Debug, Clone)]
+struct QueuedMessage {
+    queued_id: String,
+    idempotency_key: String,
+    input: String,
+}
+
 #[derive(Clone)]
 pub struct Agent {
     store: Store,
@@ -95,6 +108,8 @@ pub struct Agent {
     operations: Arc<suncode_operations::Operations>,
     events: broadcast::Sender<SessionEvent>,
     cancellations: Arc<Mutex<HashMap<String, CancellationToken>>>,
+    active_turns: Arc<Mutex<HashMap<String, String>>>,
+    queued_messages: Arc<Mutex<HashMap<String, VecDeque<QueuedMessage>>>>,
     non_interactive: bool,
     session_locks: Arc<AsyncMutex<HashMap<String, Arc<AsyncMutex<()>>>>>,
 }
@@ -116,6 +131,8 @@ impl Agent {
             operations,
             events,
             cancellations: Arc::new(Mutex::new(HashMap::new())),
+            active_turns: Arc::new(Mutex::new(HashMap::new())),
+            queued_messages: Arc::new(Mutex::new(HashMap::new())),
             non_interactive,
             session_locks: Arc::new(AsyncMutex::new(HashMap::new())),
         }
@@ -129,13 +146,26 @@ impl Agent {
         model: Option<&str>,
     ) -> Result<TurnResponse, AgentError> {
         let session_lock = self.session_lock(session_id).await;
-        let _guard = session_lock.lock().await;
         let model = model.unwrap_or("deepseek-v4-flash");
         let Some(provider) = self.providers.provider(model) else {
             return Err(AgentError::new(
                 "model_unavailable",
                 "model is not advertised",
             ));
+        };
+        let _guard = match session_lock.try_lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                let has_active_turn = self
+                    .active_turns
+                    .lock()
+                    .map_err(|_| AgentError::new("runtime_unavailable", "turn state unavailable"))?
+                    .contains_key(session_id);
+                if has_active_turn {
+                    return self.queue_message(session_id, key, input);
+                }
+                session_lock.lock().await
+            }
         };
         let admission = self.store.begin_turn(session_id, key, input, model)?;
         if !admission.created {
@@ -169,6 +199,10 @@ impl Agent {
             .lock()
             .map_err(|_| AgentError::new("runtime_unavailable", "cancellation state unavailable"))?
             .insert(admission.turn_id.clone(), token.clone());
+        self.active_turns
+            .lock()
+            .map_err(|_| AgentError::new("runtime_unavailable", "turn state unavailable"))?
+            .insert(session_id.to_string(), admission.turn_id.clone());
         let continuation = Continuation {
             session_id: session_id.into(),
             project_id,
@@ -193,8 +227,13 @@ impl Agent {
             .lock()
             .ok()
             .map(|mut values| values.remove(&admission.turn_id));
+        self.active_turns
+            .lock()
+            .ok()
+            .map(|mut values| values.remove(session_id));
         if let Err(error) = &result {
             if error.code != "approval_required" {
+                self.clear_queued_messages(session_id);
                 let _ = self.turn_state(
                     &continuation,
                     if error.code == "cancelled" {
@@ -212,6 +251,62 @@ impl Agent {
             }
         }
         result
+    }
+
+    fn clear_queued_messages(&self, session_id: &str) {
+        self.queued_messages
+            .lock()
+            .ok()
+            .map(|mut values| values.remove(session_id));
+    }
+
+    fn queue_message(
+        &self,
+        session_id: &str,
+        key: &str,
+        input: &str,
+    ) -> Result<TurnResponse, AgentError> {
+        let active_turn_id = self
+            .active_turns
+            .lock()
+            .map_err(|_| AgentError::new("runtime_unavailable", "turn state unavailable"))?
+            .get(session_id)
+            .cloned()
+            .ok_or_else(|| AgentError::new("conflict", "session is busy"))?;
+        let mut queues = self
+            .queued_messages
+            .lock()
+            .map_err(|_| AgentError::new("runtime_unavailable", "turn queue unavailable"))?;
+        let queue = queues.entry(session_id.to_string()).or_default();
+        if let Some((index, existing)) = queue
+            .iter()
+            .enumerate()
+            .find(|(_, value)| value.idempotency_key == key)
+        {
+            return Ok(TurnResponse::Queued {
+                queued_id: existing.queued_id.clone(),
+                active_turn_id,
+                position: index + 1,
+            });
+        }
+        let queued_id = Uuid::new_v4().to_string();
+        queue.push_back(QueuedMessage {
+            queued_id: queued_id.clone(),
+            idempotency_key: key.to_string(),
+            input: input.to_string(),
+        });
+        let position = queue.len();
+        drop(queues);
+        self.emit(
+            session_id,
+            "turn.queued",
+            json!({"queued_id": queued_id, "active_turn_id": active_turn_id, "position": position}),
+        )?;
+        Ok(TurnResponse::Queued {
+            queued_id,
+            active_turn_id,
+            position,
+        })
     }
 
     pub fn cancel(&self, turn_id: &str) -> bool {
@@ -245,6 +340,7 @@ impl Agent {
             json!({"approval_id":approval_id,"turn_id":continuation.turn_id,"decision":decision}),
         )?;
         if decision == "deny" {
+            self.clear_queued_messages(&continuation.session_id);
             if let Some(call) = continuation.pending_call.take() {
                 self.tool_state(&continuation, &call, "denied", Some("user_denied"))?;
             }
@@ -262,6 +358,13 @@ impl Agent {
             .lock()
             .map_err(|_| AgentError::new("runtime_unavailable", "cancellation state unavailable"))?
             .insert(continuation.turn_id.clone(), token.clone());
+        self.active_turns
+            .lock()
+            .map_err(|_| AgentError::new("runtime_unavailable", "turn state unavailable"))?
+            .insert(
+                continuation.session_id.clone(),
+                continuation.turn_id.clone(),
+            );
         let agent = self.clone();
         let approval_id = approval_id.to_string();
         tokio::spawn(async move {
@@ -275,6 +378,7 @@ impl Agent {
             };
             let _ = agent.store.finish_suspended(&approval_id, status);
             if let Err(error) = &result {
+                agent.clear_queued_messages(&continuation.session_id);
                 let _ = agent.turn_state(
                     &continuation,
                     if error.code == "cancelled" {
@@ -295,6 +399,11 @@ impl Agent {
                 .lock()
                 .ok()
                 .map(|mut values| values.remove(&continuation.turn_id));
+            agent
+                .active_turns
+                .lock()
+                .ok()
+                .map(|mut values| values.remove(&continuation.session_id));
         });
         Ok(true)
     }
@@ -356,9 +465,15 @@ impl Agent {
                     "Turn exceeded its wall-clock budget",
                 );
             }
+            self.drain_queued_messages(&mut context)?;
             context.iterations += 1;
             self.turn_state(&context, "calling_model", None)?;
-            let prompt = context::build(&context.messages);
+            let prompt = context::build_for_model(
+                &context.messages,
+                self.providers
+                    .limits(&context.model)
+                    .and_then(|limits| limits.max_input_tokens),
+            );
             if prompt.compacted && !context.context_compacted {
                 context.context_compacted = true;
                 self.emit(
@@ -368,6 +483,8 @@ impl Agent {
                         "turn_id": context.turn_id,
                         "original_characters": prompt.original_characters,
                         "retained_characters": prompt.retained_characters,
+                        "original_tokens": prompt.original_tokens,
+                        "retained_tokens": prompt.retained_tokens,
                         "dropped_messages": prompt.dropped_messages,
                         "summary": prompt.summary,
                     }),
@@ -432,6 +549,10 @@ impl Agent {
             context.messages.push(assistant.clone());
             self.emit(&context.session_id, "message.assistant", json!({"message_id":Uuid::new_v4(),"turn_id":context.turn_id,"message":assistant,"usage":context.usage,"finish_reason":result.finish_reason}))?;
             if result.tool_calls.is_empty() {
+                if self.drain_queued_messages(&mut context)? {
+                    self.turn_state(&context, "preparing", None)?;
+                    continue;
+                }
                 self.turn_state(&context, "completed", None)?;
                 self.emit(&context.session_id, "turn.completed", json!({"turn_id":context.turn_id,"usage":context.usage,"iterations":context.iterations,"tool_calls":context.tool_calls}))?;
                 let response = TurnResponse::Completed {
@@ -452,6 +573,7 @@ impl Agent {
             }
             self.turn_state(&context, "resolving_calls", None)?;
             self.resolve_calls(&mut context, result.tool_calls).await?;
+            self.drain_queued_messages(&mut context)?;
             self.turn_state(&context, "preparing", None)?;
         }
         self.fail_context(
@@ -461,11 +583,41 @@ impl Agent {
         )
     }
 
+    fn drain_queued_messages(&self, context: &mut Continuation) -> Result<bool, AgentError> {
+        let queued = {
+            let mut queues = self
+                .queued_messages
+                .lock()
+                .map_err(|_| AgentError::new("runtime_unavailable", "turn queue unavailable"))?;
+            queues.remove(&context.session_id).unwrap_or_default()
+        };
+        if queued.is_empty() {
+            return Ok(false);
+        }
+        for item in queued {
+            let message = Message::text("user", item.input);
+            context.messages.push(message.clone());
+            self.emit(
+                &context.session_id,
+                "message.user",
+                json!({
+                    "message_id": Uuid::new_v4(),
+                    "turn_id": context.turn_id,
+                    "queued_id": item.queued_id,
+                    "queued_idempotency_key": item.idempotency_key,
+                    "message": message
+                }),
+            )?;
+        }
+        Ok(true)
+    }
+
     async fn resolve_calls(
         &self,
         context: &mut Continuation,
         calls: Vec<ToolCall>,
     ) -> Result<(), AgentError> {
+        let mut allowed_calls = Vec::new();
         for (index, call) in calls.iter().enumerate() {
             context.tool_calls += 1;
             if context.tool_calls > 32 {
@@ -505,6 +657,8 @@ impl Agent {
             self.store.append_audit(Some(&context.project_id), Some(&context.session_id), Some(&context.turn_id), "capability.decision", &json!({"tool_call_id":call.call_id,"operation":call.name,"decision":format!("{decision:?}")}))?;
             match decision {
                 Decision::Deny => {
+                    self.execute_allowed_calls(context, std::mem::take(&mut allowed_calls))
+                        .await?;
                     self.tool_state(context, call, "denied", Some("authorization_denied"))?;
                     return Err(AgentError::new(
                         "authorization_denied",
@@ -512,6 +666,8 @@ impl Agent {
                     ));
                 }
                 Decision::ApprovalRequired => {
+                    self.execute_allowed_calls(context, std::mem::take(&mut allowed_calls))
+                        .await?;
                     self.tool_state(
                         context,
                         call,
@@ -540,8 +696,60 @@ impl Agent {
                     self.emit(&context.session_id,"approval.requested",json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id,"operation":call.name,"arguments":call.arguments}))?;
                     return Err(AgentError::new("approval_required",format!("Tool call requires approval: {}",call.name)).details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id})));
                 }
-                Decision::Allow => self.execute_call(context, call).await?,
+                Decision::Allow => allowed_calls.push(call.clone()),
             }
+        }
+        self.execute_allowed_calls(context, allowed_calls).await?;
+        Ok(())
+    }
+
+    async fn execute_allowed_calls(
+        &self,
+        context: &mut Continuation,
+        calls: Vec<ToolCall>,
+    ) -> Result<(), AgentError> {
+        if calls.is_empty() {
+            return Ok(());
+        }
+        let parallel_read_only = calls.len() > 1
+            && calls
+                .iter()
+                .all(|call| tool_risk(&call.name) == Some(Risk::ReadOnly));
+        if !parallel_read_only {
+            for call in calls {
+                self.execute_call(context, &call).await?;
+            }
+            return Ok(());
+        }
+
+        let mut futures = Vec::with_capacity(calls.len());
+        for call in calls {
+            self.tool_state(context, &call, "authorized", None)?;
+            self.tool_state(context, &call, "executing", None)?;
+            let mut params = translate_arguments(&call.name, &call.arguments)?;
+            params["idempotency_key"] = json!(format!("{}:{}", context.turn_id, call.call_id));
+            let method = method_name(&call.name)
+                .ok_or_else(|| AgentError::new("authorization_denied", "Unknown tool"))?
+                .to_string();
+            let project_root = context.project_root.clone();
+            let agent = self.clone();
+            futures.push(async move {
+                let result = agent
+                    .operation_in_project(&project_root, &method, params)
+                    .await;
+                (call, result)
+            });
+        }
+
+        for (call, result) in join_all(futures).await {
+            let result = match result {
+                Ok(result) => result,
+                Err(error) => {
+                    self.tool_state(context, &call, "failed", Some("execution_failed"))?;
+                    return Err(error);
+                }
+            };
+            self.record_call_success(context, &call, result)?;
         }
         Ok(())
     }
@@ -563,6 +771,15 @@ impl Agent {
             .inspect_err(|_error| {
                 let _ = self.tool_state(context, call, "failed", Some("execution_failed"));
             })?;
+        self.record_call_success(context, call, result)
+    }
+
+    fn record_call_success(
+        &self,
+        context: &mut Continuation,
+        call: &ToolCall,
+        result: Value,
+    ) -> Result<(), AgentError> {
         self.tool_state(context, call, "succeeded", None)?;
         self.store.append_audit(
             Some(&context.project_id),
@@ -714,6 +931,13 @@ impl Agent {
                     AgentError::new("runtime_unavailable", "cancellation state unavailable")
                 })?
                 .insert(continuation.turn_id.clone(), token.clone());
+            self.active_turns
+                .lock()
+                .map_err(|_| AgentError::new("runtime_unavailable", "turn state unavailable"))?
+                .insert(
+                    continuation.session_id.clone(),
+                    continuation.turn_id.clone(),
+                );
             let agent = self.clone();
             let approval_id = suspended.approval_id;
             tokio::spawn(async move {
@@ -728,6 +952,11 @@ impl Agent {
                         "failed"
                     },
                 );
+                agent
+                    .active_turns
+                    .lock()
+                    .ok()
+                    .map(|mut values| values.remove(&continuation.session_id));
             });
         }
         Ok(())
@@ -939,14 +1168,27 @@ mod tests {
             .and_then(Value::as_str);
         let user_text = messages
             .iter()
+            .rev()
             .find(|message| message.get("role").and_then(Value::as_str) == Some("user"))
             .and_then(|message| message.get("content"))
             .and_then(Value::as_str)
             .unwrap_or_default();
+        if user_text.contains("slow") {
+            tokio::time::sleep(Duration::from_millis(150)).await;
+        }
         let data = if last_role == Some("tool") {
             vec![
                 json!({"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}],"usage":{"prompt_tokens":8,"completion_tokens":1,"total_tokens":9}}),
             ]
+        } else if user_text.contains("slow") || user_text.contains("follow up") {
+            vec![
+                json!({"choices":[{"delta":{"content":"queued done"},"finish_reason":"stop"}],"usage":{"prompt_tokens":4,"completion_tokens":2,"total_tokens":6}}),
+            ]
+        } else if user_text.contains("read two") {
+            vec![json!({"choices":[{"delta":{"tool_calls":[
+                    {"index":0,"id":"read-call-1","function":{"name":"read","arguments":"{\"path\":\"README.md\"}"}},
+                    {"index":1,"id":"read-call-2","function":{"name":"read","arguments":"{\"path\":\"README.md\"}"}}
+                ]},"finish_reason":"tool_calls"}]})]
         } else if user_text.contains("write") {
             vec![
                 json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"write-call","function":{"name":"write","arguments":"{\"path\":\"README.md\",\"content\":\"updated\",\"expected_base64\":\"aGVsbG8=\"}"}}]},"finish_reason":"tool_calls"}]}),
@@ -1035,6 +1277,70 @@ mod tests {
             event.event_type == "turn.state" && event.payload["state"] == "completed"
         }));
         assert_eq!(events.last().unwrap().event_type, "turn.completed");
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn queued_submit_is_injected_before_completion() {
+        let (agent, store, _root, server, session_id) = fixture().await;
+        let running = {
+            let agent = agent.clone();
+            let session_id = session_id.clone();
+            tokio::spawn(async move {
+                agent
+                    .submit(&session_id, "slow-1", "slow initial request", None)
+                    .await
+            })
+        };
+        tokio::time::sleep(Duration::from_millis(30)).await;
+
+        let queued = agent
+            .submit(&session_id, "queued-1", "follow up while running", None)
+            .await
+            .unwrap();
+        assert!(matches!(queued, TurnResponse::Queued { position: 1, .. }));
+        let response = running.await.unwrap().unwrap();
+        assert!(matches!(
+            response,
+            TurnResponse::Completed { iterations: 2, .. }
+        ));
+        let events = store.events(&session_id, 0).unwrap();
+        assert!(events.iter().any(|event| event.event_type == "turn.queued"));
+        assert!(events.iter().any(|event| {
+            event.event_type == "message.user" && event.payload.get("queued_id").is_some()
+        }));
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn read_only_tool_batch_is_preflighted_before_execution() {
+        let (agent, store, _root, server, session_id) = fixture().await;
+        let response = agent
+            .submit(&session_id, "read-two-1", "read two files", None)
+            .await
+            .unwrap();
+        assert!(matches!(
+            response,
+            TurnResponse::Completed { tool_calls: 2, .. }
+        ));
+        let events = store.events(&session_id, 0).unwrap();
+        let second_requested = events
+            .iter()
+            .position(|event| {
+                event.event_type == "tool.state"
+                    && event.payload["tool_call_id"] == "read-call-2"
+                    && event.payload["state"] == "requested"
+            })
+            .unwrap();
+        let first_executing = events
+            .iter()
+            .position(|event| {
+                event.event_type == "tool.state"
+                    && event.payload["tool_call_id"] == "read-call-1"
+                    && event.payload["state"] == "executing"
+            })
+            .unwrap();
+        assert!(second_requested < first_executing);
         server.abort();
     }
 
