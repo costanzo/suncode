@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             x:Class="SunCode.Desktop.Views.AgentSidebar"
+             x:DataType="vm:DesktopViewModel">
+  <Border Classes="inspector-card">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="16" Spacing="12">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Classes="eyebrow" Text="AGENT PROCESSES" />
+          <Ellipse Grid.Column="1" Width="7" Height="7" Classes="process-dot" Classes.active="{Binding IsTurnActive}" />
+        </Grid>
+        <TextBlock Text="1 active process" FontSize="16" FontWeight="SemiBold" IsVisible="{Binding IsTurnActive}" />
+        <TextBlock Text="No active process" FontSize="16" FontWeight="SemiBold" IsVisible="{Binding !IsTurnActive}" />
+        <Border Classes="process-card" Classes.active="{Binding IsTurnActive}" Padding="13">
+          <StackPanel Spacing="8">
+            <Grid ColumnDefinitions="Auto,8,*,Auto">
+              <Ellipse Width="7" Height="7" Classes="process-dot" Classes.active="{Binding IsTurnActive}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="2" Text="Agent loop" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="3" Text="Running" FontSize="11" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsTurnActive}" />
+              <TextBlock Grid.Column="3" Text="Idle" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding !IsTurnActive}" />
+            </Grid>
+            <TextBlock Text="{Binding ActiveTurnId, StringFormat=Turn {0}}" Classes="mono" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsTurnActive}" />
+            <TextBlock Text="Waiting for a new turn" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding !IsTurnActive}" />
+            <TextBlock Text="{Binding SelectedModelName, StringFormat=Model  {0}}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding LatestActivityText, StringFormat=Latest  {0}}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="3" IsVisible="{Binding HasActivities}" />
+            <TextBlock Text="No tool activity yet" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding !HasActivities}" />
+          </StackPanel>
+        </Border>
+        <TextBlock Text="The current runtime exposes one agent loop. Tool activity and approval state appear here as the turn progresses." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" LineHeight="17" />
+        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
+        <TextBlock Classes="section-label" Text="REVIEW QUEUE" />
+        <Border Padding="13" CornerRadius="10" Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="{Binding HasPendingApproval}">
+          <StackPanel Spacing="8">
+            <TextBlock Text="Approval required" Foreground="{DynamicResource WarningBrush}" FontSize="12" FontWeight="SemiBold" />
+            <TextBlock Classes="mono" Text="{Binding PendingApproval.Operation}" FontSize="11" TextWrapping="Wrap" />
+            <TextBlock Classes="mono" Text="{Binding PendingApproval.Arguments}" FontSize="11" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="*,8,*">
+              <Button Grid.Column="0" Classes="compact primary" Content="Approve once" Click="ApproveOnce" />
+              <Button Grid.Column="2" Classes="compact danger" Content="Deny" Click="DenyApproval" />
+            </Grid>
+          </StackPanel>
+        </Border>
+        <TextBlock Text="No pending approvals" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding !HasPendingApproval}" />
+        <ItemsControl ItemsSource="{Binding Checkpoints}" IsVisible="{Binding HasCheckpoints}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="models:CheckpointItem">
+              <Border Classes="raised" Padding="9" Margin="0,0,0,6">
+                <StackPanel Spacing="5">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding FileCount}" FontSize="12" />
+                    <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="11" Foreground="{DynamicResource WarningBrush}" />
+                  </Grid>
+                  <TextBlock Classes="mono" Text="{Binding PathsText}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" MaxLines="2" />
+                  <Button Classes="compact" Content="Undo" HorizontalAlignment="Left" Click="RestoreCheckpoint" IsEnabled="{Binding CanReview}" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </Border>
+</UserControl>

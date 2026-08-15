@@ -104,7 +104,6 @@ Rectangle {
 
             Rectangle { Layout.fillWidth: true; height: 1; color: theme.border; Layout.topMargin: 5; Layout.bottomMargin: 4 }
             SectionLabel { theme: root.theme; text: "RUNTIME" }
-            Text { Layout.fillWidth: true; text: client.baseUrl; color: theme.textSecondary; elide: Text.ElideMiddle; font.family: theme.fontMono; font.pixelSize: theme.typeCaption }
             Text { Layout.fillWidth: true; text: client.statusText; color: theme.textMuted; wrapMode: Text.Wrap; font.pixelSize: theme.typeLabel }
             Rectangle {
                 Layout.fillWidth: true

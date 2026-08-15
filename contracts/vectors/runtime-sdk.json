@@ -1,0 +1,108 @@
+[
+  {
+    "id": "start-turn",
+    "call": {"method":"submit_turn","session_id":"session-1","idempotency_key":"turn-1","input":"Inspect package.json","model":"deepseek-v4-flash"},
+    "expected_events":["turn.state","assistant.delta","turn.completed"]
+  },
+  {
+    "id": "turn-awaiting-approval",
+    "call": {"method":"submit_turn","session_id":"session-1","idempotency_key":"turn-3","input":"Update README.md","model":"deepseek-v4-flash"},
+    "expected_response": {"status":"awaiting_approval","turn_id":"turn-1","tool_call_id":"call-1","approval_id":"approval-1"},
+    "submission_status": "pending"
+  },
+  {
+    "id": "queue-running-turn-message",
+    "call": {"method":"submit_turn","session_id":"session-1","idempotency_key":"queued-1","input":"Use this extra constraint","model":"deepseek-v4-flash"},
+    "precondition": "session has an active running turn",
+    "expected_response_shape": {"status":"queued","queued_id":"uuid","active_turn_id":"turn-1","position":1},
+    "expected_events": ["turn.queued","message.user"]
+  },
+  {
+    "id": "deny-suspended-turn",
+    "call": {"method":"resolve_approval","approval_id":"approval-1","decision":"deny"},
+    "expected_events": ["approval.resolved","tool.state","turn.state"],
+    "expected_turn_state": "failed",
+    "expected_error": "authorization_denied"
+  },
+  {
+    "id": "list-projects",
+    "call": {"method":"list_projects"},
+    "expected_response_shape": {"projects":[{"projectId":"project-1","canonicalRoot":"/project","displayName":"Project","createdAt":"rfc3339","updatedAt":"rfc3339","lastOpenedAt":"rfc3339"}]}
+  },
+  {
+    "id": "list-project-sessions",
+    "call": {"method":"list_sessions","project_id":"project-1"},
+    "expected_response_shape": {"project_id":"project-1","sessions":[{"sessionId":"session-1","projectId":"project-1","status":"active","createdAt":"rfc3339","updatedAt":"rfc3339","lastActivityAt":"rfc3339"}]}
+  },
+  {
+    "id": "git-status",
+    "call": {"method":"git_status","project_id":"project-1"},
+    "expected_response_shape": {"repository":true,"branch":"main","detached":false,"changed_files":2,"additions":4,"deletions":1,"conflicts":0,"files":[{"path":"README.md","old_path":null,"status":"modified","index_status":null,"worktree_status":"modified","staged":false,"unstaged":true,"conflicted":false,"binary":false,"additions":2,"deletions":1}],"truncated":false,"unsupported_paths":0},
+    "possible_errors": ["project_not_found","not_git_repository","git_read_failed"]
+  },
+  {
+    "id": "git-diff-file",
+    "call": {"method":"git_diff_file","project_id":"project-1","scope":"all","path":"README.md"},
+    "expected_response_shape": {"scope":"all","path":"README.md","old_path":null,"status":"modified","binary":false,"additions":2,"deletions":1,"hunks":[{"header":"@@ -1 +1,2 @@","old_start":1,"old_lines":1,"new_start":1,"new_lines":2,"lines":[{"kind":"addition","old_line":null,"new_line":1,"text":"Updated"}]}],"patch":"bounded plain text","truncated":false},
+    "possible_errors": ["project_not_found","not_git_repository","git_diff_not_found","scope_denied"]
+  },
+  {
+    "id": "open-project",
+    "call": {"method":"open_project","path":"/project"},
+    "expected_response_shape": {"projectId":"project-1","canonicalRoot":"/project","displayName":"project"}
+  },
+  {
+    "id": "create-session",
+    "call": {"method":"create_session","project_id":"project-1","title":"New session","model":"deepseek-v4-flash"},
+    "expected_response_shape": {"sessionId":"session-1","projectId":"project-1","title":"New session","status":"active"}
+  },
+  {
+    "id": "archive-session",
+    "call": {"method":"archive_session","session_id":"session-1"},
+    "expected_response_shape": {"sessionId":"session-1","status":"archived","archivedAt":"rfc3339"}
+  },
+  {
+    "id": "session-snapshot",
+    "call": {"method":"session_snapshot","session_id":"session-1","after":0},
+    "expected_response_shape": {"session":{"sessionId":"session-1"},"messages":[],"events":[],"latest_sequence":0,"replay_available":true}
+  },
+  {
+    "id": "session-usage",
+    "call": {"method":"session_usage","session_id":"session-1"},
+    "expected_response_shape": {"session_id":"session-1","input_tokens":12000,"output_tokens":1800,"total_tokens":13800},
+    "aggregation": "latest cumulative usage per turn, summed across the session"
+  },
+  {
+    "id": "list-checkpoints",
+    "call": {"method":"list_checkpoints","session_id":"session-1"},
+    "expected_response_shape": {"session_id":"session-1","checkpoints":[{"manifestId":"manifest-1","turnId":"turn-1","status":"available","itemCount":2,"paths":["README.md","src/index.ts"],"expiresAt":"rfc3339"}]}
+  },
+  {
+    "id": "restore-turn-checkpoint",
+    "call": {"method":"restore_checkpoint","manifest_id":"manifest-1","session_id":"session-1"},
+    "expected_response_shape": {"manifestId":"manifest-1","status":"restored","paths":["README.md","src/index.ts"]},
+    "possible_errors": ["restore_conflict","checkpoint_unavailable","scope_denied"]
+  },
+  {
+    "id": "effective-settings",
+    "call": {"method":"list_settings","project_id":"project-1","session_id":"session-1"},
+    "expected_response_shape": {"settings":[{"key":"model.default","value":"deepseek-v4-flash","scope":"project","scope_id":"project-1"}]}
+  },
+  {
+    "id": "credential-status",
+    "call": {"method":"list_credentials"},
+    "expected_response_shape": {"credentials":[{"provider":"deepseek","configured":false}]}
+  },
+  {
+    "id": "set-deepseek-credential",
+    "call": {"method":"set_credential","provider":"deepseek","api_key":"redacted-secret"},
+    "expected_response_shape": {"provider":"deepseek","configured":true},
+    "must_not_contain": ["redacted-secret"]
+  },
+  {
+    "id": "cancel-turn",
+    "call": {"method":"cancel_turn","session_id":"session-1","turn_id":"turn-1"},
+    "expected_response_shape": {"turn_id":"turn-1","status":"cancellation_requested"},
+    "possible_errors": ["conflict","not_found"]
+  }
+]

@@ -1,7 +1,7 @@
 # Requirement
 
 ## Background
-PI Agent has useful harness behavior around queued user messages, batched tool execution, and context-window-aware compaction. Suncode should selectively adopt those ideas without changing its Phase 1 Rust runtime ownership, approval model, SQLite event stream, checkpoint behavior, or Qt-only client scope.
+PI Agent has useful harness behavior around queued user messages, batched tool execution, and context-window-aware compaction. SunCode should selectively adopt those ideas without changing its Phase 1 Rust runtime ownership, approval model, SQLite event stream, checkpoint behavior, or Qt-only client scope.
 
 ## Goals
 - Accept a user submission while a session turn is running by queueing it for the active turn, similar to PI's steering/follow-up drain points.
@@ -11,7 +11,7 @@ PI Agent has useful harness behavior around queued user messages, batched tool e
 ## Non-goals
 - Introduce PI's lane/tree session model.
 - Add durable queue records or change SQLite schema in this slice.
-- Change Suncode's approval, audit, operation dispatcher, checkpoint, undo, provider credential, or Qt boundary model.
+- Change SunCode's approval, audit, operation dispatcher, checkpoint, undo, provider credential, or Qt boundary model.
 - Enable parallel filesystem writes, process execution, or approval-gated operations.
 
 ## Requirements
@@ -19,7 +19,7 @@ PI Agent has useful harness behavior around queued user messages, batched tool e
 - Queued messages are injected as `message.user` records at safe drain points before the next provider call or before turn completion.
 - Tool calls in one assistant message are validated and policy-checked before an eligible allowed batch executes.
 - Only all-read-only batches may execute concurrently; all other batches execute through the existing sequential path.
-- Compaction thresholds use the active model's input window when known, capped by Suncode's existing 64k turn token budget.
+- Compaction thresholds use the active model's input window when known, capped by SunCode's conservative 64k default context window.
 
 ## Edge cases
 - Duplicate queued idempotency keys return the existing queued item.
@@ -32,5 +32,5 @@ PI Agent has useful harness behavior around queued user messages, batched tool e
 - `git diff --check` passes.
 
 ## Open questions
-- Whether queued messages should become durable SQLite records if Suncode later supports crash-resumable running turns.
+- Whether queued messages should become durable SQLite records if SunCode later supports crash-resumable running turns.
 - Whether Qt should expose an active-turn "send follow-up" affordance instead of only backend/API support.

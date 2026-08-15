@@ -16,16 +16,14 @@ use crate::model_provider::stream::SseParser;
 pub struct DeepSeekProvider {
     client: reqwest::Client,
     endpoint: String,
-    wire_model: String,
     credentials: CredentialStore,
 }
 
 impl DeepSeekProvider {
-    pub fn new(endpoint: String, wire_model: String, credentials: CredentialStore) -> Self {
+    pub fn new(endpoint: String, credentials: CredentialStore) -> Self {
         Self {
             client: reqwest::Client::new(),
             endpoint,
-            wire_model,
             credentials,
         }
     }
@@ -33,6 +31,7 @@ impl DeepSeekProvider {
     async fn complete_inner(
         &self,
         messages: &[Message],
+        wire_model: &str,
         cancellation: &CancellationToken,
         deltas: mpsc::UnboundedSender<String>,
     ) -> Result<Completion, ProviderError> {
@@ -44,7 +43,7 @@ impl DeepSeekProvider {
                 message: "DeepSeek API key is not configured".into(),
                 retryable: false,
             })?;
-        let body = json!({"model": self.wire_model, "messages": messages.iter().map(wire_message).collect::<Vec<_>>(), "tools": tools::definitions(), "stream": true, "stream_options": {"include_usage": true}});
+        let body = json!({"model": wire_model, "messages": messages.iter().map(wire_message).collect::<Vec<_>>(), "tools": tools::definitions(), "stream": true, "stream_options": {"include_usage": true}});
         let response = tokio::select! {
             _ = cancellation.cancelled() => return Err(cancelled()),
             value = self.client.post(format!("{}/chat/completions", self.endpoint)).bearer_auth(key).json(&body).send() => value.map_err(|error| ProviderError { code: "transient", message: format!("DeepSeek request failed: {error}"), retryable: true })?,
@@ -102,9 +101,10 @@ impl LlmProvider for DeepSeekProvider {
     fn complete<'a>(
         &'a self,
         messages: &'a [Message],
+        wire_model: &'a str,
         cancellation: &'a CancellationToken,
         deltas: mpsc::UnboundedSender<String>,
     ) -> CompletionFuture<'a> {
-        Box::pin(self.complete_inner(messages, cancellation, deltas))
+        Box::pin(self.complete_inner(messages, wire_model, cancellation, deltas))
     }
 }

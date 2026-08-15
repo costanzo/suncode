@@ -18,7 +18,6 @@ pub struct OpenAiCompatibleProvider {
     provider_kind: ProviderKind,
     provider_label: &'static str,
     endpoint: String,
-    wire_model: String,
     credentials: CredentialStore,
 }
 
@@ -27,7 +26,6 @@ impl OpenAiCompatibleProvider {
         provider_kind: ProviderKind,
         provider_label: &'static str,
         endpoint: String,
-        wire_model: String,
         credentials: CredentialStore,
     ) -> Self {
         Self {
@@ -35,7 +33,6 @@ impl OpenAiCompatibleProvider {
             provider_kind,
             provider_label,
             endpoint,
-            wire_model,
             credentials,
         }
     }
@@ -43,6 +40,7 @@ impl OpenAiCompatibleProvider {
     async fn complete_inner(
         &self,
         messages: &[Message],
+        wire_model: &str,
         cancellation: &CancellationToken,
         deltas: mpsc::UnboundedSender<String>,
     ) -> Result<Completion, ProviderError> {
@@ -55,7 +53,7 @@ impl OpenAiCompatibleProvider {
                 retryable: false,
             })?;
         let body = json!({
-            "model": self.wire_model,
+            "model": wire_model,
             "messages": messages.iter().map(wire_message).collect::<Vec<_>>(),
             "tools": tools::definitions(),
             "stream": true,
@@ -123,10 +121,11 @@ impl LlmProvider for OpenAiCompatibleProvider {
     fn complete<'a>(
         &'a self,
         messages: &'a [Message],
+        wire_model: &'a str,
         cancellation: &'a CancellationToken,
         deltas: mpsc::UnboundedSender<String>,
     ) -> CompletionFuture<'a> {
-        Box::pin(self.complete_inner(messages, cancellation, deltas))
+        Box::pin(self.complete_inner(messages, wire_model, cancellation, deltas))
     }
 }
 
@@ -157,7 +156,7 @@ mod tests {
             Some("Bearer zhipu-test-key")
         );
         let body: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(body["model"], "glm-5.2");
+        assert_eq!(body["model"], "glm-5.3");
         assert_eq!(body["stream"], true);
         assert_eq!(body["stream_options"]["include_usage"], true);
         let response = concat!(
@@ -184,13 +183,13 @@ mod tests {
             ProviderKind::Zhipu,
             "Zhipu GLM",
             format!("http://{address}"),
-            "glm-5.2".into(),
-            CredentialStore::memory(None, Some("zhipu-test-key"), None),
+            CredentialStore::memory(None, Some("zhipu-test-key"), None, None, None, None),
         );
         let (tx, mut rx) = mpsc::unbounded_channel();
         let completion = provider
             .complete(
                 &[Message::text("user", "hi")],
+                "glm-5.3",
                 &CancellationToken::new(),
                 tx,
             )

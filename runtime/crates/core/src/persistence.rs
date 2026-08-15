@@ -209,6 +209,27 @@ impl Store {
         Ok(repair_incomplete_tool_exchanges(messages))
     }
 
+    pub fn session_usage(&self, session_id: &str) -> Result<Usage, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let (input_tokens, output_tokens, total_tokens): (i64, i64, i64) = connection.query_row(
+            "SELECT COALESCE(SUM(input_tokens),0),
+                        COALESCE(SUM(output_tokens),0),
+                        COALESCE(SUM(total_tokens),0)
+                 FROM turns
+                 WHERE session_id=?",
+            [session_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )?;
+        Ok(Usage {
+            input_tokens: usage_from_sql(input_tokens)?,
+            output_tokens: usage_from_sql(output_tokens)?,
+            total_tokens: usage_from_sql(total_tokens)?,
+        })
+    }
+
     pub fn begin_turn(
         &self,
         session_id: &str,
@@ -859,6 +880,36 @@ fn apply_projection(
             transaction.execute("INSERT INTO turns(turn_id,session_id,submission_idempotency_key,state,model_id,created_at,updated_at,completed_at,error_code) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(turn_id) DO UPDATE SET state=excluded.state,updated_at=excluded.updated_at,completed_at=excluded.completed_at,error_code=excluded.error_code", params![turn_id, session_id, payload.get("submission_idempotency_key").and_then(Value::as_str), state, payload.get("model_id").and_then(Value::as_str), occurred_at, occurred_at, if terminal {Some(occurred_at)} else {None}, payload.get("reason").and_then(Value::as_str)])?;
         }
     }
+    if event_type == "usage.updated" {
+        let turn_id = payload
+            .get("turn_id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| PersistenceError::Invalid("usage event is missing turn_id".into()))?;
+        let usage = payload
+            .get("usage")
+            .ok_or_else(|| PersistenceError::Invalid("usage event is missing usage".into()))?;
+        let input_tokens = usage_to_sql(usage, "input_tokens")?;
+        let output_tokens = usage_to_sql(usage, "output_tokens")?;
+        let total_tokens = usage_to_sql(usage, "total_tokens")?;
+        let changed = transaction.execute(
+            "UPDATE turns
+             SET input_tokens=?,output_tokens=?,total_tokens=?,updated_at=?
+             WHERE turn_id=? AND session_id=?",
+            params![
+                input_tokens,
+                output_tokens,
+                total_tokens,
+                occurred_at,
+                turn_id,
+                session_id
+            ],
+        )?;
+        if changed == 0 {
+            return Err(PersistenceError::Invalid(
+                "usage event references an unknown turn".into(),
+            ));
+        }
+    }
     if event_type == "tool.state" {
         if let (Some(turn_id), Some(call_id), Some(name), Some(state)) = (
             payload.get("turn_id").and_then(Value::as_str),
@@ -968,6 +1019,20 @@ fn now() -> String {
     Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
+fn usage_to_sql(usage: &Value, field: &str) -> Result<i64, PersistenceError> {
+    let value = usage
+        .get(field)
+        .and_then(Value::as_u64)
+        .ok_or_else(|| PersistenceError::Invalid(format!("usage event has invalid {field}")))?;
+    i64::try_from(value)
+        .map_err(|_| PersistenceError::Invalid(format!("usage event {field} exceeds SQLite")))
+}
+
+fn usage_from_sql(value: i64) -> Result<u64, PersistenceError> {
+    u64::try_from(value)
+        .map_err(|_| PersistenceError::Invalid("stored token usage is negative".into()))
+}
+
 fn repair_incomplete_tool_exchanges(messages: Vec<Message>) -> Vec<Message> {
     let mut repaired = Vec::with_capacity(messages.len());
     let mut index = 0;
@@ -1013,9 +1078,9 @@ fn mark_schema_version(connection: &Connection) -> Result<(), PersistenceError> 
         [],
         |row| row.get(0),
     )?;
-    if version > 11 {
+    if version > 12 {
         return Err(PersistenceError::Invalid(format!(
-            "database schema version {version} is newer than supported version 11"
+            "database schema version {version} is newer than supported version 12"
         )));
     }
     if version < 10 {
@@ -1057,12 +1122,52 @@ fn mark_schema_version(connection: &Connection) -> Result<(), PersistenceError> 
     if version < 11 {
         migrate_secret_records_to_v11(connection)?;
     }
-    for next in (version + 1)..=11 {
+    if version < 12 {
+        migrate_turn_usage_to_v12(connection)?;
+    }
+    for next in (version + 1)..=12 {
         connection.execute(
             "INSERT INTO schema_migrations(version,applied_at) VALUES (?,?)",
             params![next, now()],
         )?;
     }
+    Ok(())
+}
+
+fn migrate_turn_usage_to_v12(connection: &Connection) -> Result<(), PersistenceError> {
+    connection.execute_batch(
+        "UPDATE turns
+         SET input_tokens=COALESCE((
+                SELECT CAST(json_extract(content.payload_json,'$.usage.input_tokens') AS INTEGER)
+                FROM session_content AS content
+                WHERE content.session_id=turns.session_id
+                  AND content.event_type IN ('usage.updated','message.assistant','turn.completed')
+                  AND json_extract(content.payload_json,'$.turn_id')=turns.turn_id
+                  AND json_type(content.payload_json,'$.usage')='object'
+                ORDER BY content.content_sequence DESC
+                LIMIT 1
+             ),input_tokens),
+             output_tokens=COALESCE((
+                SELECT CAST(json_extract(content.payload_json,'$.usage.output_tokens') AS INTEGER)
+                FROM session_content AS content
+                WHERE content.session_id=turns.session_id
+                  AND content.event_type IN ('usage.updated','message.assistant','turn.completed')
+                  AND json_extract(content.payload_json,'$.turn_id')=turns.turn_id
+                  AND json_type(content.payload_json,'$.usage')='object'
+                ORDER BY content.content_sequence DESC
+                LIMIT 1
+             ),output_tokens),
+             total_tokens=COALESCE((
+                SELECT CAST(json_extract(content.payload_json,'$.usage.total_tokens') AS INTEGER)
+                FROM session_content AS content
+                WHERE content.session_id=turns.session_id
+                  AND content.event_type IN ('usage.updated','message.assistant','turn.completed')
+                  AND json_extract(content.payload_json,'$.turn_id')=turns.turn_id
+                  AND json_type(content.payload_json,'$.usage')='object'
+                ORDER BY content.content_sequence DESC
+                LIMIT 1
+             ),total_tokens);",
+    )?;
     Ok(())
 }
 
@@ -1231,6 +1336,98 @@ mod tests {
     }
 
     #[test]
+    fn session_usage_replaces_turn_totals_and_sums_across_turns() {
+        let store = Store::open_memory().unwrap();
+        let session_id = session(&store);
+        for turn_id in ["turn-1", "turn-2"] {
+            store
+                .append_content(
+                    &session_id,
+                    "turn.state",
+                    &json!({"turn_id":turn_id,"state":"admitted","model_id":"deepseek-v4-flash"}),
+                )
+                .unwrap();
+        }
+        store
+            .append_content(
+                &session_id,
+                "usage.updated",
+                &json!({"turn_id":"turn-1","usage":{"input_tokens":100,"output_tokens":20,"total_tokens":120}}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "usage.updated",
+                &json!({"turn_id":"turn-1","usage":{"input_tokens":180,"output_tokens":30,"total_tokens":210}}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "usage.updated",
+                &json!({"turn_id":"turn-2","usage":{"input_tokens":40,"output_tokens":10,"total_tokens":50}}),
+            )
+            .unwrap();
+
+        assert_eq!(
+            store.session_usage(&session_id).unwrap(),
+            Usage {
+                input_tokens: 220,
+                output_tokens: 40,
+                total_tokens: 260,
+            }
+        );
+    }
+
+    #[test]
+    fn opening_v11_database_backfills_turn_usage_projection() {
+        let directory = tempfile::tempdir().unwrap();
+        let database = directory.path().join("state.db");
+        let session_id;
+        {
+            let store = Store::open(&database).unwrap();
+            session_id = session(&store);
+            store
+                .append_content(
+                    &session_id,
+                    "turn.state",
+                    &json!({"turn_id":"turn-1","state":"admitted","model_id":"deepseek-v4-flash"}),
+                )
+                .unwrap();
+            store
+                .append_content(
+                    &session_id,
+                    "usage.updated",
+                    &json!({"turn_id":"turn-1","usage":{"input_tokens":300,"output_tokens":25,"total_tokens":325}}),
+                )
+                .unwrap();
+            let connection = store.connection.lock().unwrap();
+            connection
+                .execute(
+                    "UPDATE turns SET input_tokens=0,output_tokens=0,total_tokens=0",
+                    [],
+                )
+                .unwrap();
+            connection
+                .execute("DELETE FROM schema_migrations WHERE version=12", [])
+                .unwrap();
+        }
+
+        let store = Store::open(&database).unwrap();
+
+        assert_eq!(store.health().unwrap()["schema_version"], 12);
+        assert_eq!(
+            store.session_usage(&session_id).unwrap(),
+            Usage {
+                input_tokens: 300,
+                output_tokens: 25,
+                total_tokens: 325,
+            }
+        );
+    }
+
+    #[test]
     fn opening_v10_database_migrates_secret_records_to_plaintext_schema() {
         let directory = tempfile::tempdir().unwrap();
         let database = directory.path().join("state.db");
@@ -1258,7 +1455,7 @@ mod tests {
 
         let store = Store::open(&database).unwrap();
 
-        assert_eq!(store.health().unwrap()["schema_version"], 11);
+        assert_eq!(store.health().unwrap()["schema_version"], 12);
         assert!(store.secret_value("deepseek").unwrap().is_none());
         let connection = store.connection.lock().unwrap();
         assert!(table_has_column(&connection, "secret_records", "plaintext").unwrap());

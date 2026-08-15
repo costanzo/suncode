@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
-import Suncode.Runtime
+import SunCode.Runtime
 import "../shared/components"
 import "../shared/theme"
 
@@ -13,7 +13,7 @@ ApplicationWindow {
     height: 680
     minimumWidth: 760
     minimumHeight: 520
-    title: "Welcome to Suncode"
+    title: "Welcome to SunCode"
     color: theme.canvas
 
     property var projectWindows: []
@@ -63,7 +63,7 @@ ApplicationWindow {
                 return
             }
         }
-        var component = Qt.createComponent("qrc:/qt/qml/Suncode/Desktop/qml/app/ProjectWindow.qml")
+        var component = Qt.createComponent("qrc:/qt/qml/SunCode/Desktop/qml/app/ProjectWindow.qml")
         if (component.status !== Component.Ready) {
             console.log("ProjectWindow component not ready", component.errorString())
             return
@@ -95,7 +95,7 @@ ApplicationWindow {
             settingsWindow.requestActivate()
             return
         }
-        var component = Qt.createComponent("qrc:/qt/qml/Suncode/Desktop/qml/features/settings/GlobalSettings.qml")
+        var component = Qt.createComponent("qrc:/qt/qml/SunCode/Desktop/qml/features/settings/GlobalSettings.qml")
         if (component.status !== Component.Ready) {
             console.log("GlobalSettings component not ready", component.errorString())
             return
@@ -127,7 +127,7 @@ ApplicationWindow {
                 smooth: true
                 mipmap: true
             }
-            Label { text: "Suncode"; color: theme.text; font.pixelSize: 19; font.weight: Font.DemiBold }
+            Label { text: "SunCode"; color: theme.text; font.pixelSize: 19; font.weight: Font.DemiBold }
             Item { Layout.fillWidth: true }
             AppButton { theme: hub.designTheme; compact: true; text: "Settings"; onClicked: hub.openSettings(hub) }
             AppButton { theme: hub.designTheme; compact: true; text: "Open project"; tone: "primary"; onClicked: hub.openNewProject() }
@@ -154,7 +154,6 @@ ApplicationWindow {
                     Layout.rightMargin: hub.projectRowInset
                     SectionLabel { theme: hub.designTheme; text: "RECENT PROJECTS" }
                     Item { Layout.fillWidth: true }
-                    Label { text: hubClient.projects.length + " projects"; color: theme.textMuted; font.pixelSize: theme.typeLabel }
                 }
                 ListView {
                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true; model: hubClient.projects; spacing: 8

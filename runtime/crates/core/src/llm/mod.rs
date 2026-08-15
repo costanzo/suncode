@@ -32,6 +32,7 @@ pub trait LlmProvider: Send + Sync {
     fn complete<'a>(
         &'a self,
         messages: &'a [Message],
+        wire_model: &'a str,
         cancellation: &'a CancellationToken,
         deltas: mpsc::UnboundedSender<String>,
     ) -> CompletionFuture<'a>;
@@ -44,9 +45,10 @@ where
     fn complete<'a>(
         &'a self,
         messages: &'a [Message],
+        wire_model: &'a str,
         cancellation: &'a CancellationToken,
         deltas: mpsc::UnboundedSender<String>,
     ) -> CompletionFuture<'a> {
-        (**self).complete(messages, cancellation, deltas)
+        (**self).complete(messages, wire_model, cancellation, deltas)
     }
 }

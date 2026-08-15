@@ -4,13 +4,12 @@
 
 #include <QFutureWatcher>
 #include <QGuiApplication>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QDebug>
 #include <QClipboard>
 #include <QMutex>
 #include <QMutexLocker>
-#include <QRegularExpression>
-#include <QUrlQuery>
 #include <QUuid>
 #include <QtConcurrent/QtConcurrent>
 
@@ -18,7 +17,7 @@
 
 namespace {
 QMutex sharedRuntimeMutex;
-SuncodeRuntimeHandle *sharedHandle = nullptr;
+std::shared_ptr<SunCodeRuntimeHandle> sharedHandle;
 QString sharedHandleError;
 QString sharedThemeMode = QStringLiteral("dark");
 QSet<RuntimeClient *> sharedThemeClients;
@@ -27,6 +26,9 @@ QSet<RuntimeClient *> sharedThemeClients;
 RuntimeClient::RuntimeClient(QObject *parent)
     : QObject(parent)
 {
+    m_gitRefreshTimer.setSingleShot(true);
+    m_gitRefreshTimer.setInterval(180);
+    connect(&m_gitRefreshTimer, &QTimer::timeout, this, &RuntimeClient::refreshGitStatus);
     QTimer::singleShot(0, this, &RuntimeClient::connectToRuntime);
 }
 
@@ -39,33 +41,26 @@ RuntimeClient::~RuntimeClient()
     closeEventSubscription();
 }
 
-SuncodeRuntimeHandle *RuntimeClient::sharedRuntimeHandle(QString *error)
+std::shared_ptr<SunCodeRuntimeHandle> RuntimeClient::sharedRuntimeHandle(QString *error)
 {
     QMutexLocker locker(&sharedRuntimeMutex);
     if (!sharedHandle && sharedHandleError.isEmpty()) {
+        if (suncode_runtime_sdk_abi_version() != SUNCODE_RUNTIME_SDK_ABI_VERSION) {
+            sharedHandleError = QStringLiteral("Unsupported runtime SDK ABI version");
+        }
+    }
+    if (!sharedHandle && sharedHandleError.isEmpty()) {
         char *sdkError = nullptr;
-        sharedHandle = suncode_runtime_sdk_open_default(&sdkError);
-        if (!sharedHandle) {
+        SunCodeRuntimeHandle *handle = suncode_runtime_sdk_open_default(&sdkError);
+        if (!handle) {
             sharedHandleError = takeSdkString(sdkError);
+        } else {
+            sharedHandle = std::shared_ptr<SunCodeRuntimeHandle>(
+                handle, [](SunCodeRuntimeHandle *value) { suncode_runtime_sdk_close(value); });
         }
     }
     if (error) *error = sharedHandleError;
     return sharedHandle;
-}
-
-QString RuntimeClient::baseUrl() const
-{
-    return m_baseUrl;
-}
-
-void RuntimeClient::setBaseUrl(const QString &value)
-{
-    const QString normalized = value.trimmed().remove(QRegularExpression(QStringLiteral("/$")));
-    if (normalized == m_baseUrl) {
-        return;
-    }
-    m_baseUrl = normalized;
-    emit baseUrlChanged();
 }
 
 QString RuntimeClient::projectId() const
@@ -80,6 +75,7 @@ void RuntimeClient::setProjectId(const QString &value)
         return;
     }
     m_projectId = normalized;
+    clearGitView();
     emit projectIdChanged();
 }
 
@@ -111,6 +107,11 @@ void RuntimeClient::setSelectedModel(const QString &value)
     }
     m_selectedModel = normalized;
     emit selectedModelChanged();
+}
+
+qint64 RuntimeClient::sessionTotalTokens() const
+{
+    return m_sessionTotalTokens;
 }
 
 QString RuntimeClient::themeMode() const
@@ -230,6 +231,36 @@ QVariantMap RuntimeClient::pendingApproval() const
     return m_pendingApproval;
 }
 
+QVariantMap RuntimeClient::gitStatus() const
+{
+    return m_gitStatus;
+}
+
+QVariantMap RuntimeClient::gitDiff() const
+{
+    return m_gitDiff;
+}
+
+QVariantList RuntimeClient::gitDiffRows() const
+{
+    return m_gitDiffRows;
+}
+
+QString RuntimeClient::gitState() const
+{
+    return m_gitState;
+}
+
+QString RuntimeClient::gitDiffState() const
+{
+    return m_gitDiffState;
+}
+
+QString RuntimeClient::gitError() const
+{
+    return m_gitError;
+}
+
 void RuntimeClient::connectToRuntime()
 {
     if (!m_runtimeHandle) {
@@ -238,10 +269,9 @@ void RuntimeClient::connectToRuntime()
         m_runtimeHandle = sharedRuntimeHandle(&error);
         if (!m_runtimeHandle) {
             setConnectionState(QStringLiteral("error"),
-                               error.isEmpty() ? QStringLiteral("Suncode runtime could not be started") : error);
+                               error.isEmpty() ? QStringLiteral("SunCode runtime could not be started") : error);
             return;
         }
-        setBaseUrl(QStringLiteral("rust-sdk://local"));
     }
     setConnectionState(QStringLiteral("connecting"), QStringLiteral("Connecting to local runtime..."));
     {
@@ -262,17 +292,109 @@ void RuntimeClient::connectToRuntime()
 
 void RuntimeClient::refreshDiagnostics()
 {
-    requestJson(QStringLiteral("GET"), endpoint(QStringLiteral("/diagnostics")), {},
-                [this](int, const QJsonObject &object) {
+    requestSdk([handle = m_runtimeHandle] { return suncode_runtime_sdk_diagnostics(handle.get()); },
+                [this](const QJsonObject &object) {
                     m_diagnostics = object.toVariantMap();
                     emit diagnosticsChanged();
                 });
 }
 
+void RuntimeClient::refreshGitStatus()
+{
+    if (!m_runtimeHandle || m_projectId.isEmpty()) {
+        clearGitView();
+        return;
+    }
+    if (m_gitState != QStringLiteral("loading")) {
+        m_gitState = QStringLiteral("loading");
+        emit gitStateChanged();
+    }
+    if (!m_gitError.isEmpty()) {
+        m_gitError.clear();
+        emit gitErrorChanged();
+    }
+    const QString requestedProjectId = m_projectId;
+    const QByteArray projectBytes = requestedProjectId.toUtf8();
+    requestSdk([handle = m_runtimeHandle, projectBytes] {
+                    return suncode_runtime_sdk_git_status(handle.get(), projectBytes.constData());
+                }, [this, requestedProjectId](const QJsonObject &object) {
+                    if (m_projectId != requestedProjectId) return;
+                    m_gitStatus = object.toVariantMap();
+                    m_gitState = QStringLiteral("ready");
+                    emit gitStatusChanged();
+                    emit gitStateChanged();
+                }, [this, requestedProjectId](const QString &code, const QString &message) {
+                    if (m_projectId != requestedProjectId) return;
+                    m_gitStatus.clear();
+                    m_gitState = code == QStringLiteral("not_git_repository")
+                        ? QStringLiteral("not_repository")
+                        : QStringLiteral("error");
+                    m_gitError = message;
+                    emit gitStatusChanged();
+                    emit gitStateChanged();
+                    emit gitErrorChanged();
+                });
+}
+
+void RuntimeClient::loadGitDiff(const QString &scope, const QString &path)
+{
+    const QString normalizedScope = scope.trimmed().toLower();
+    const QString normalizedPath = path.trimmed();
+    if (m_projectId.isEmpty() || normalizedPath.isEmpty()
+        || (normalizedScope != QStringLiteral("all")
+            && normalizedScope != QStringLiteral("staged")
+            && normalizedScope != QStringLiteral("unstaged"))) {
+        return;
+    }
+    const QString requestKey = m_projectId + QLatin1Char('\n') + normalizedScope
+        + QLatin1Char('\n') + normalizedPath;
+    m_gitDiffRequestKey = requestKey;
+    m_gitDiffState = QStringLiteral("loading");
+    m_gitDiff.clear();
+    m_gitDiffRows.clear();
+    emit gitDiffChanged();
+    emit gitDiffStateChanged();
+    const QByteArray projectBytes = m_projectId.toUtf8();
+    const QByteArray scopeBytes = normalizedScope.toUtf8();
+    const QByteArray pathBytes = normalizedPath.toUtf8();
+    requestSdk([handle = m_runtimeHandle, projectBytes, scopeBytes, pathBytes] {
+                    return suncode_runtime_sdk_git_diff_file(
+                        handle.get(), projectBytes.constData(), scopeBytes.constData(), pathBytes.constData());
+                }, [this, requestKey](const QJsonObject &object) {
+                    if (m_gitDiffRequestKey != requestKey) return;
+                    m_gitDiff = object.toVariantMap();
+                    m_gitDiffRows.clear();
+                    const QJsonArray hunks = object.value(QStringLiteral("hunks")).toArray();
+                    for (const QJsonValue &hunkValue : hunks) {
+                        const QJsonObject hunk = hunkValue.toObject();
+                        QVariantMap header;
+                        header.insert(QStringLiteral("kind"), QStringLiteral("hunk"));
+                        header.insert(QStringLiteral("text"), hunk.value(QStringLiteral("header")).toString());
+                        m_gitDiffRows.append(header);
+                        const QJsonArray lines = hunk.value(QStringLiteral("lines")).toArray();
+                        for (const QJsonValue &line : lines) {
+                            m_gitDiffRows.append(line.toObject().toVariantMap());
+                        }
+                    }
+                    m_gitDiffState = QStringLiteral("ready");
+                    emit gitDiffChanged();
+                    emit gitDiffStateChanged();
+                }, [this, requestKey](const QString &, const QString &message) {
+                    if (m_gitDiffRequestKey != requestKey) return;
+                    m_gitDiff.clear();
+                    m_gitDiffRows.clear();
+                    m_gitDiffState = QStringLiteral("error");
+                    m_gitError = message;
+                    emit gitDiffChanged();
+                    emit gitDiffStateChanged();
+                    emit gitErrorChanged();
+                });
+}
+
 void RuntimeClient::loadCredentialStatus()
 {
-    requestJson(QStringLiteral("GET"), endpoint(QStringLiteral("/credentials")), {},
-                [this](int, const QJsonObject &object) {
+    requestSdk([handle = m_runtimeHandle] { return suncode_runtime_sdk_list_credentials(handle.get()); },
+                [this](const QJsonObject &object) {
                     m_credentials = object.value(QStringLiteral("credentials")).toArray().toVariantList();
                     emit credentialsChanged();
                 });
@@ -283,8 +405,11 @@ void RuntimeClient::saveCredential(const QString &provider, const QString &apiKe
     const QString value = apiKey.trimmed();
     const QString normalizedProvider = provider.trimmed();
     if (value.isEmpty() || normalizedProvider.isEmpty()) return;
-    requestJson(QStringLiteral("POST"), endpoint(QStringLiteral("/credentials/%1").arg(normalizedProvider)), {{QStringLiteral("api_key"), value}},
-                [this](int, const QJsonObject &) {
+    const QByteArray providerBytes = normalizedProvider.toUtf8();
+    const QByteArray keyBytes = value.toUtf8();
+    requestSdk([handle = m_runtimeHandle, providerBytes, keyBytes] {
+                    return suncode_runtime_sdk_set_credential(handle.get(), providerBytes.constData(), keyBytes.constData());
+                }, [this](const QJsonObject &) {
                     loadCredentialStatus();
                     loadModels();
                     emit credentialStored();
@@ -298,11 +423,14 @@ void RuntimeClient::saveUserSetting(const QString &key, const QVariant &value)
     if (normalized.isEmpty()) {
         return;
     }
-    requestJson(QStringLiteral("PUT"), endpoint(QStringLiteral("/settings")),
-                {{QStringLiteral("scope"), QStringLiteral("user")},
-                 {QStringLiteral("key"), normalized},
-                 {QStringLiteral("value"), QJsonValue::fromVariant(value)}},
-                [this, normalized, value](int, const QJsonObject &) {
+    const QByteArray keyBytes = normalized.toUtf8();
+    const QByteArray serializedValue = QJsonDocument(
+        QJsonObject{{QStringLiteral("value"), QJsonValue::fromVariant(value)}}
+    ).toJson(QJsonDocument::Compact);
+    requestSdk([handle = m_runtimeHandle, keyBytes, serializedValue] {
+                    return suncode_runtime_sdk_set_setting(handle.get(), "user", nullptr, nullptr,
+                                                           keyBytes.constData(), serializedValue.constData());
+                }, [this, normalized, value](const QJsonObject &) {
                     if (normalized == QStringLiteral("theme_mode")) {
                         setThemeMode(value.toString());
                     } else if (normalized == QStringLiteral("default_model")) {
@@ -316,8 +444,10 @@ void RuntimeClient::removeCredential(const QString &provider)
 {
     const QString normalizedProvider = provider.trimmed();
     if (normalizedProvider.isEmpty()) return;
-    requestJson(QStringLiteral("DELETE"), endpoint(QStringLiteral("/credentials/%1").arg(normalizedProvider)), {},
-                [this](int, const QJsonObject &) {
+    const QByteArray providerBytes = normalizedProvider.toUtf8();
+    requestSdk([handle = m_runtimeHandle, providerBytes] {
+                    return suncode_runtime_sdk_remove_credential(handle.get(), providerBytes.constData());
+                }, [this](const QJsonObject &) {
                     loadCredentialStatus();
                     loadModels();
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Credential removed"));
@@ -326,16 +456,16 @@ void RuntimeClient::removeCredential(const QString &provider)
 
 void RuntimeClient::loadHealth()
 {
-    requestJson(QStringLiteral("GET"), endpoint(QStringLiteral("/health")), {},
-                [this](int, const QJsonObject &) {
+    requestSdk([handle = m_runtimeHandle] { return suncode_runtime_sdk_health(handle.get()); },
+                [this](const QJsonObject &) {
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Connected to local runtime"));
                 });
 }
 
 void RuntimeClient::loadProjects()
 {
-    requestJson(QStringLiteral("GET"), endpoint(QStringLiteral("/projects")), {},
-                [this](int, const QJsonObject &object) {
+    requestSdk([handle = m_runtimeHandle] { return suncode_runtime_sdk_list_projects(handle.get()); },
+                [this](const QJsonObject &object) {
             m_projects = object.value(QStringLiteral("projects")).toArray().toVariantList();
             emit projectsChanged();
             if (m_autoSelectProject && m_projectId.isEmpty() && !m_projects.isEmpty()) {
@@ -356,12 +486,14 @@ void RuntimeClient::openProject(const QString &path)
     if (value.isEmpty()) {
         return;
     }
-    requestJson(QStringLiteral("POST"), endpoint(QStringLiteral("/projects")),
-                {{QStringLiteral("path"), value}},
-                [this](int, const QJsonObject &object) {
+    const QByteArray pathBytes = value.toUtf8();
+    requestSdk([handle = m_runtimeHandle, pathBytes] {
+                    return suncode_runtime_sdk_open_project(handle.get(), pathBytes.constData(), nullptr);
+                }, [this](const QJsonObject &object) {
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Project opened"));
                     const QString projectId = object.value(QStringLiteral("projectId")).toString();
                     setProjectId(projectId);
+                    refreshGitStatus();
                     emit projectOpened(projectId);
                     loadProjects();
                 });
@@ -375,9 +507,12 @@ void RuntimeClient::selectProject(const QString &value)
         clearSessionView();
         m_sessions.clear();
         emit sessionsChanged();
-        requestJson(QStringLiteral("POST"), endpoint(QStringLiteral("/projects/%1/open").arg(QString::fromUtf8(QUrl::toPercentEncoding(m_projectId)))),
-                    {}, [this](int, const QJsonObject &) {
+        const QByteArray projectBytes = m_projectId.toUtf8();
+        requestSdk([handle = m_runtimeHandle, projectBytes] {
+                        return suncode_runtime_sdk_select_project(handle.get(), projectBytes.constData());
+                    }, [this](const QJsonObject &) {
                         setConnectionState(QStringLiteral("connected"), QStringLiteral("Project selected"));
+                        refreshGitStatus();
                         loadSessions();
                     });
     }
@@ -388,14 +523,15 @@ void RuntimeClient::createSession(const QString &title)
     if (m_projectId.isEmpty()) {
         return;
     }
-    QJsonObject body;
     const QString value = title.trimmed();
-    if (!value.isEmpty()) {
-        body.insert(QStringLiteral("title"), value);
-    }
-    body.insert(QStringLiteral("model"), m_selectedModel);
-    requestJson(QStringLiteral("POST"), endpoint(QStringLiteral("/projects/%1/sessions").arg(QString::fromUtf8(QUrl::toPercentEncoding(m_projectId)))),
-                body, [this](int, const QJsonObject &object) {
+    const QByteArray projectBytes = m_projectId.toUtf8();
+    const QByteArray titleBytes = value.toUtf8();
+    const QByteArray modelBytes = m_selectedModel.toUtf8();
+    requestSdk([handle = m_runtimeHandle, projectBytes, titleBytes, modelBytes] {
+                    return suncode_runtime_sdk_create_session(
+                        handle.get(), projectBytes.constData(), titleBytes.isEmpty() ? nullptr : titleBytes.constData(),
+                        modelBytes.isEmpty() ? nullptr : modelBytes.constData());
+                }, [this](const QJsonObject &object) {
                     const QString createdSessionId = object.value(QStringLiteral("sessionId")).toString();
                     setSessionId(createdSessionId);
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Session created"));
@@ -415,8 +551,11 @@ void RuntimeClient::renameSessionById(const QString &sessionId, const QString &t
     if (targetSessionId.isEmpty() || value.isEmpty()) {
         return;
     }
-    requestJson(QStringLiteral("PATCH"), endpoint(QStringLiteral("/sessions/%1").arg(QString::fromUtf8(QUrl::toPercentEncoding(targetSessionId)))),
-                {{QStringLiteral("title"), value}}, [this](int, const QJsonObject &) {
+    const QByteArray sessionBytes = targetSessionId.toUtf8();
+    const QByteArray titleBytes = value.toUtf8();
+    requestSdk([handle = m_runtimeHandle, sessionBytes, titleBytes] {
+                    return suncode_runtime_sdk_rename_session(handle.get(), sessionBytes.constData(), titleBytes.constData());
+                }, [this](const QJsonObject &) {
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Session renamed"));
                     loadSessions();
                 });
@@ -433,8 +572,10 @@ void RuntimeClient::archiveSessionById(const QString &sessionId)
     if (targetSessionId.isEmpty()) {
         return;
     }
-    requestJson(QStringLiteral("DELETE"), endpoint(QStringLiteral("/sessions/%1").arg(QString::fromUtf8(QUrl::toPercentEncoding(targetSessionId)))),
-                {}, [this, targetSessionId](int, const QJsonObject &) {
+    const QByteArray sessionBytes = targetSessionId.toUtf8();
+    requestSdk([handle = m_runtimeHandle, sessionBytes] {
+                    return suncode_runtime_sdk_archive_session(handle.get(), sessionBytes.constData());
+                }, [this, targetSessionId](const QJsonObject &) {
                     if (targetSessionId == m_sessionId) {
                         closeEventSubscription();
                         clearSessionView();
@@ -451,8 +592,10 @@ void RuntimeClient::loadSessions()
         emit sessionsChanged();
         return;
     }
-    requestJson(QStringLiteral("GET"), endpoint(QStringLiteral("/projects/%1/sessions").arg(QString::fromUtf8(QUrl::toPercentEncoding(m_projectId)))),
-                {}, [this](int, const QJsonObject &object) {
+    const QByteArray projectBytes = m_projectId.toUtf8();
+    requestSdk([handle = m_runtimeHandle, projectBytes] {
+                    return suncode_runtime_sdk_list_sessions(handle.get(), projectBytes.constData());
+                }, [this](const QJsonObject &object) {
             m_sessions.clear();
             const QVariantList sessions = object.value(QStringLiteral("sessions")).toArray().toVariantList();
             qDebug() << "loaded sessions" << sessions.size() << "for project" << m_projectId;
@@ -506,8 +649,10 @@ void RuntimeClient::loadCheckpoints()
         emit checkpointsChanged();
         return;
     }
-    requestJson(QStringLiteral("GET"), endpoint(QStringLiteral("/sessions/%1/checkpoints").arg(QString::fromUtf8(QUrl::toPercentEncoding(m_sessionId)))),
-                {}, [this](int, const QJsonObject &object) {
+    const QByteArray sessionBytes = m_sessionId.toUtf8();
+    requestSdk([handle = m_runtimeHandle, sessionBytes] {
+                    return suncode_runtime_sdk_list_checkpoints(handle.get(), sessionBytes.constData());
+                }, [this](const QJsonObject &object) {
                     m_checkpoints = object.value(QStringLiteral("checkpoints")).toArray().toVariantList();
                     emit checkpointsChanged();
                 });
@@ -515,8 +660,8 @@ void RuntimeClient::loadCheckpoints()
 
 void RuntimeClient::loadModels()
 {
-    requestJson(QStringLiteral("GET"), endpoint(QStringLiteral("/models")), {},
-                [this](int, const QJsonObject &object) {
+    requestSdk([handle = m_runtimeHandle] { return suncode_runtime_sdk_list_models(handle.get()); },
+                [this](const QJsonObject &object) {
             const QJsonArray models = object.value(QStringLiteral("models")).toArray();
                     m_models = models.toVariantList();
                     emit modelsChanged();
@@ -528,8 +673,8 @@ void RuntimeClient::loadModels()
 
 void RuntimeClient::loadSettings()
 {
-    requestJson(QStringLiteral("GET"), endpoint(QStringLiteral("/settings")), {},
-                [this](int, const QJsonObject &object) {
+    requestSdk([handle = m_runtimeHandle] { return suncode_runtime_sdk_list_settings(handle.get(), nullptr, nullptr); },
+                [this](const QJsonObject &object) {
                     const QJsonArray settings = object.value(QStringLiteral("settings")).toArray();
                     for (const QJsonValue &value : settings) {
                         const QJsonObject setting = value.toObject();
@@ -547,11 +692,11 @@ void RuntimeClient::loadSettings()
 void RuntimeClient::loadSession()
 {
     clearSessionView();
-    QUrlQuery query;
-    query.addQueryItem(QStringLiteral("after"), QStringLiteral("0"));
-    QUrl url = endpoint(QStringLiteral("/sessions/%1/snapshot").arg(QString::fromUtf8(QUrl::toPercentEncoding(m_sessionId))));
-    url.setQuery(query);
-    requestJson(QStringLiteral("GET"), url, {}, [this](int, const QJsonObject &object) {
+    loadSessionUsage();
+    const QByteArray sessionBytes = m_sessionId.toUtf8();
+    requestSdk([handle = m_runtimeHandle, sessionBytes] {
+        return suncode_runtime_sdk_session_snapshot(handle.get(), sessionBytes.constData(), 0);
+    }, [this](const QJsonObject &object) {
         m_deferSessionReplaySignals = true;
         const QJsonArray messages = object.value(QStringLiteral("messages")).toArray();
         qDebug() << "snapshot messages" << messages.size() << "for session" << m_sessionId;
@@ -588,14 +733,39 @@ void RuntimeClient::loadSession()
     });
 }
 
+void RuntimeClient::loadSessionUsage()
+{
+    if (m_sessionId.isEmpty()) {
+        return;
+    }
+    const QString requestedSessionId = m_sessionId;
+    const QByteArray sessionBytes = requestedSessionId.toUtf8();
+    requestSdk([handle = m_runtimeHandle, sessionBytes] {
+                    return suncode_runtime_sdk_session_usage(handle.get(), sessionBytes.constData());
+                }, [this, requestedSessionId](const QJsonObject &object) {
+                    if (m_sessionId != requestedSessionId) {
+                        return;
+                    }
+                    const qint64 totalTokens = object.value(QStringLiteral("total_tokens")).toInteger();
+                    if (totalTokens != m_sessionTotalTokens) {
+                        m_sessionTotalTokens = totalTokens;
+                        emit sessionUsageChanged();
+                    }
+                });
+}
+
 void RuntimeClient::restoreCheckpoint(const QString &manifestId)
 {
     const QString value = manifestId.trimmed();
     if (value.isEmpty() || m_sessionId.isEmpty()) {
         return;
     }
-    requestJson(QStringLiteral("POST"), endpoint(QStringLiteral("/checkpoints/%1/restore").arg(QString::fromUtf8(QUrl::toPercentEncoding(value)))),
-                {{QStringLiteral("session_id"), m_sessionId}}, [this](int, const QJsonObject &) {
+    const QByteArray manifestBytes = value.toUtf8();
+    const QByteArray sessionBytes = m_sessionId.toUtf8();
+    requestSdk([handle = m_runtimeHandle, manifestBytes, sessionBytes] {
+                    return suncode_runtime_sdk_restore_checkpoint(
+                        handle.get(), manifestBytes.constData(), sessionBytes.constData());
+                }, [this](const QJsonObject &) {
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Turn changes restored"));
                     loadCheckpoints();
                 });
@@ -627,7 +797,7 @@ void RuntimeClient::startEventStream()
     }
     char *error = nullptr;
     m_eventSubscription = suncode_runtime_sdk_subscribe_session(
-        m_runtimeHandle,
+        m_runtimeHandle.get(),
         m_sessionId.toUtf8().constData(),
         m_lastSequence,
         &RuntimeClient::sdkEventCallback,
@@ -757,7 +927,10 @@ void RuntimeClient::consumeEvent(const QJsonObject &event)
             pathsChanged = true;
         }
     }
-    if (pathsChanged && !m_deferSessionReplaySignals) emit changedPathsChanged();
+    if (pathsChanged && !m_deferSessionReplaySignals) {
+        emit changedPathsChanged();
+        scheduleGitRefresh();
+    }
     if (messagesDirty && !m_deferSessionReplaySignals) emit messagesChanged();
 
     if (eventType == QStringLiteral("approval.requested")) {
@@ -780,6 +953,10 @@ void RuntimeClient::consumeEvent(const QJsonObject &event)
     }
     if (!m_deferSessionReplaySignals && eventType.startsWith(QStringLiteral("checkpoint."))) {
         loadCheckpoints();
+        scheduleGitRefresh();
+    }
+    if (!m_deferSessionReplaySignals && eventType == QStringLiteral("usage.updated")) {
+        loadSessionUsage();
     }
 }
 
@@ -803,16 +980,22 @@ void RuntimeClient::submitTurn(const QString &input)
         return;
     }
     const QString idempotencyKey = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    requestJson(QStringLiteral("POST"), endpoint(QStringLiteral("/sessions/%1/turns").arg(QString::fromUtf8(QUrl::toPercentEncoding(m_sessionId)))),
-                {{QStringLiteral("input"), text}, {QStringLiteral("idempotency_key"), idempotencyKey}, {QStringLiteral("model"), m_selectedModel}},
-                [this](int status, const QJsonObject &object) {
-                    if (status == 202) {
-                        const QString responseStatus = object.value(QStringLiteral("status")).toString();
-                        if (responseStatus == QStringLiteral("queued")) {
-                            setConnectionState(QStringLiteral("connected"), QStringLiteral("Message queued for this turn"));
-                        } else {
-                            setConnectionState(QStringLiteral("connected"), QStringLiteral("Turn is awaiting approval"));
-                        }
+    const QByteArray sessionBytes = m_sessionId.toUtf8();
+    const QByteArray inputBytes = text.toUtf8();
+    const QByteArray keyBytes = idempotencyKey.toUtf8();
+    const QByteArray modelBytes = m_selectedModel.toUtf8();
+    requestSdk([handle = m_runtimeHandle, sessionBytes, inputBytes, keyBytes, modelBytes] {
+                    return suncode_runtime_sdk_submit_turn(
+                        handle.get(), sessionBytes.constData(), inputBytes.constData(), keyBytes.constData(),
+                        modelBytes.isEmpty() ? nullptr : modelBytes.constData());
+                }, [this](const QJsonObject &object) {
+                    const QString responseStatus = object.value(QStringLiteral("status")).toString();
+                    if (responseStatus == QStringLiteral("queued")) {
+                        setConnectionState(QStringLiteral("connected"), QStringLiteral("Message queued for this turn"));
+                        return;
+                    }
+                    if (responseStatus == QStringLiteral("awaiting_approval")) {
+                        setConnectionState(QStringLiteral("connected"), QStringLiteral("Turn is awaiting approval"));
                         return;
                     }
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Turn submitted"));
@@ -835,8 +1018,11 @@ bool RuntimeClient::isModelConfigured(const QString &modelId) const
 void RuntimeClient::cancelTurn()
 {
     if (m_activeTurnId.isEmpty() || m_sessionId.isEmpty()) return;
-    requestJson(QStringLiteral("POST"), endpoint(QStringLiteral("/sessions/%1/turns/%2/cancel").arg(QString::fromUtf8(QUrl::toPercentEncoding(m_sessionId)), QString::fromUtf8(QUrl::toPercentEncoding(m_activeTurnId)))),
-                {}, [this](int, const QJsonObject &) {
+    const QByteArray sessionBytes = m_sessionId.toUtf8();
+    const QByteArray turnBytes = m_activeTurnId.toUtf8();
+    requestSdk([handle = m_runtimeHandle, sessionBytes, turnBytes] {
+                    return suncode_runtime_sdk_cancel_turn(handle.get(), sessionBytes.constData(), turnBytes.constData());
+                }, [this](const QJsonObject &) {
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Cancellation requested"));
                 });
 }
@@ -847,9 +1033,12 @@ void RuntimeClient::resolveApproval(const QString &decision)
     if (approvalId.isEmpty()) {
         return;
     }
-    requestJson(QStringLiteral("POST"), endpoint(QStringLiteral("/approvals/%1").arg(QString::fromUtf8(QUrl::toPercentEncoding(approvalId)))),
-                {{QStringLiteral("decision"), decision}},
-                [this](int, const QJsonObject &) {
+    const QByteArray approvalBytes = approvalId.toUtf8();
+    const QByteArray decisionBytes = decision.toUtf8();
+    requestSdk([handle = m_runtimeHandle, approvalBytes, decisionBytes] {
+                    return suncode_runtime_sdk_resolve_approval(
+                        handle.get(), approvalBytes.constData(), decisionBytes.constData());
+                }, [this](const QJsonObject &) {
                     setConnectionState(QStringLiteral("connected"), QStringLiteral("Approval submitted"));
                 });
 }
@@ -870,6 +1059,10 @@ void RuntimeClient::clearSessionView()
     m_activities.clear();
     m_changedPaths.clear();
     m_lastSequence = 0;
+    if (m_sessionTotalTokens != 0) {
+        m_sessionTotalTokens = 0;
+        emit sessionUsageChanged();
+    }
     if (!m_activeTurnId.isEmpty()) {
         m_activeTurnId.clear();
         emit activeTurnChanged();
@@ -881,60 +1074,74 @@ void RuntimeClient::clearSessionView()
     emit changedPathsChanged();
 }
 
-QUrl RuntimeClient::endpoint(const QString &path) const
+void RuntimeClient::scheduleGitRefresh()
 {
-    return QUrl(path);
+    if (!m_projectId.isEmpty()) {
+        m_gitRefreshTimer.start();
+    }
 }
 
-void RuntimeClient::requestJson(const QString &method, const QUrl &url, const QJsonObject &body,
-                                std::function<void(int, const QJsonObject &)> onSuccess)
+void RuntimeClient::clearGitView()
+{
+    m_gitRefreshTimer.stop();
+    m_gitStatus.clear();
+    m_gitDiff.clear();
+    m_gitDiffRows.clear();
+    m_gitDiffRequestKey.clear();
+    m_gitState = QStringLiteral("idle");
+    m_gitDiffState = QStringLiteral("idle");
+    m_gitError.clear();
+    emit gitStatusChanged();
+    emit gitDiffChanged();
+    emit gitStateChanged();
+    emit gitDiffStateChanged();
+    emit gitErrorChanged();
+}
+
+void RuntimeClient::requestSdk(std::function<char *()> call,
+                               std::function<void(const QJsonObject &)> onSuccess,
+                               std::function<void(const QString &, const QString &)> onError)
 {
     if (!m_runtimeHandle) {
-        setConnectionState(QStringLiteral("error"), QStringLiteral("Runtime SDK is not connected"));
+        if (onError) {
+            onError(QStringLiteral("runtime_unavailable"), QStringLiteral("Runtime SDK is not connected"));
+        } else {
+            setConnectionState(QStringLiteral("error"), QStringLiteral("Runtime SDK is not connected"));
+        }
         return;
     }
-    const QByteArray methodBytes = method.toUtf8();
-    const QByteArray pathBytes = sdkPath(url).toUtf8();
-    const QByteArray bodyBytes = QJsonDocument(body).toJson(QJsonDocument::Compact);
     auto *watcher = new QFutureWatcher<RuntimeCallResult>(this);
-    connect(watcher, &QFutureWatcher<RuntimeCallResult>::finished, this, [this, watcher, onSuccess] {
+    connect(watcher, &QFutureWatcher<RuntimeCallResult>::finished, this, [this, watcher, onSuccess, onError] {
         const RuntimeCallResult result = watcher->result();
         watcher->deleteLater();
         if (!result.error.isEmpty()) {
-            setConnectionState(QStringLiteral("error"), result.error);
+            if (onError) {
+                onError(result.errorCode, result.error);
+            } else {
+                setConnectionState(QStringLiteral("error"), result.error);
+            }
             return;
         }
-        if (result.status >= 200 && result.status < 300) {
-            onSuccess(result.status, result.body);
-            return;
-        }
-        QString message = result.body.value(QStringLiteral("message")).toString();
-        if (message.isEmpty()) {
-            message = result.body.value(QStringLiteral("error")).toObject().value(QStringLiteral("message")).toString();
-        }
-        if (message.isEmpty()) {
-            message = QStringLiteral("Runtime request failed");
-        }
-        setConnectionState(QStringLiteral("error"), message);
+        onSuccess(result.body);
     });
-    watcher->setFuture(QtConcurrent::run([handle = m_runtimeHandle, methodBytes, pathBytes, bodyBytes] {
+    watcher->setFuture(QtConcurrent::run([call = std::move(call)] {
         RuntimeCallResult result;
-        char *response = suncode_runtime_sdk_request_json(
-            handle,
-            methodBytes.constData(),
-            pathBytes.constData(),
-            bodyBytes.constData());
+        char *response = call();
         const QJsonDocument document = QJsonDocument::fromJson(takeSdkString(response).toUtf8());
         if (!document.isObject()) {
             result.error = QStringLiteral("Runtime returned an invalid response");
             return result;
         }
         const QJsonObject envelope = document.object();
-        result.status = envelope.value(QStringLiteral("status")).toInt();
         if (envelope.value(QStringLiteral("ok")).toBool()) {
             result.body = envelope.value(QStringLiteral("body")).toObject();
         } else {
-            result.body = envelope.value(QStringLiteral("error")).toObject();
+            const QJsonObject error = envelope.value(QStringLiteral("error")).toObject();
+            result.errorCode = error.value(QStringLiteral("code")).toString();
+            result.error = error.value(QStringLiteral("message")).toString();
+            if (result.error.isEmpty()) {
+                result.error = QStringLiteral("Runtime SDK call failed");
+            }
         }
         return result;
     }));

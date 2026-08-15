@@ -4,8 +4,9 @@ import QtQuick.Dialogs
 import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Window
-import Suncode.Runtime
+import SunCode.Runtime
 import "../features/conversation"
+import "../features/git"
 import "../features/project"
 import "../features/review"
 import "../features/settings"
@@ -21,6 +22,8 @@ ApplicationWindow {
     property bool projectBound: false
     property bool navigationVisible: true
     property bool processVisible: true
+    property bool gitDrawerVisible: false
+    property real gitDrawerHeight: 340
     property bool navigationPinned: true
     property string pendingRestoreId: ""
     property var pendingRestorePaths: []
@@ -32,7 +35,7 @@ ApplicationWindow {
     readonly property bool windowShadowVisible: !isMacOS && !isFullScreen && !isMaximized
     readonly property int windowShadowInset: windowShadowVisible ? 10 : 0
     readonly property int titleBarHeight: 36
-    readonly property int footerHeight: 18
+    readonly property int footerHeight: 24
     readonly property bool roundedWindowChrome: isMacOS && !projectWindow.isFullScreen && projectWindow.visibility !== Window.Maximized
     readonly property int windowCornerRadius: roundedWindowChrome ? 12 : 0
     readonly property int resizeHandleSize: isMacOS ? 5 : 6
@@ -44,6 +47,17 @@ ApplicationWindow {
     readonly property color windowsCaptionForeground: theme.isLight ? "#000000" : "#ffffff"
     readonly property color windowsCloseHover: "#E81123"
     readonly property color windowsClosePressed: "#a82318"
+
+    function compactTokenCount(value) {
+        if (value < 1000) {
+            return Number(value).toLocaleString(Qt.locale(), "f", 0)
+        }
+        var divisor = value < 1000000 ? 1000 : 1000000
+        var suffix = value < 1000000 ? "k" : "m"
+        var scaled = value / divisor
+        var precision = scaled < 100 ? 1 : 0
+        return Number(scaled).toLocaleString(Qt.locale(), "f", precision) + suffix
+    }
 
     visible: false
     width: 1440; height: 900; minimumWidth: 900; minimumHeight: 620
@@ -101,7 +115,7 @@ ApplicationWindow {
             settingsWindow.requestActivate()
             return
         }
-        var component = Qt.createComponent("qrc:/qt/qml/Suncode/Desktop/qml/features/settings/GlobalSettings.qml")
+        var component = Qt.createComponent("qrc:/qt/qml/SunCode/Desktop/qml/features/settings/GlobalSettings.qml")
         if (component.status !== Component.Ready) {
             console.log("GlobalSettings component not ready", component.errorString())
             return
@@ -122,7 +136,7 @@ ApplicationWindow {
             projectHub.openProjectWindow(projectId)
             return
         }
-        var component = Qt.createComponent("qrc:/qt/qml/Suncode/Desktop/qml/app/ProjectWindow.qml")
+        var component = Qt.createComponent("qrc:/qt/qml/SunCode/Desktop/qml/app/ProjectWindow.qml")
         if (component.status !== Component.Ready) {
             console.log("ProjectWindow component not ready", component.errorString())
             return
@@ -182,6 +196,13 @@ ApplicationWindow {
 
     function toggleNavigation() {
         projectWindow.navigationVisible = !projectWindow.navigationVisible
+    }
+
+    function toggleGitDrawer() {
+        projectWindow.gitDrawerVisible = !projectWindow.gitDrawerVisible
+        if (projectWindow.gitDrawerVisible) {
+            client.refreshGitStatus()
+        }
     }
 
     function recentProjectIsOpen(projectId) {
@@ -352,7 +373,7 @@ ApplicationWindow {
         id: undoDialog; title: "Undo this turn's file changes?"; modal: true; anchors.centerIn: parent; width: Math.min(520, projectWindow.width - 48); standardButtons: Dialog.NoButton; closePolicy: Popup.CloseOnEscape
         background: Rectangle { color: theme.surfaceRaised; border.color: theme.borderStrong; radius: theme.radiusLarge }
         contentItem: ColumnLayout { spacing: 16
-            Text { Layout.fillWidth: true; text: "Suncode will restore the files changed during this turn."; color: theme.text; font.pixelSize: theme.typeBody; wrapMode: Text.Wrap }
+            Text { Layout.fillWidth: true; text: "SunCode will restore the files changed during this turn."; color: theme.text; font.pixelSize: theme.typeBody; wrapMode: Text.Wrap }
             Rectangle { Layout.fillWidth: true; implicitHeight: Math.min(150, restorePaths.implicitHeight + 24); color: theme.field; radius: theme.radiusMedium; border.color: theme.border; Text { id: restorePaths; anchors.fill: parent; anchors.margins: 12; text: projectWindow.pendingRestorePaths.join("\n"); color: theme.textSecondary; font.family: theme.fontMono; font.pixelSize: theme.typeLabel; wrapMode: Text.WrapAnywhere } }
             Text { Layout.fillWidth: true; text: "External side effects cannot be reversed."; color: theme.warning; font.pixelSize: theme.typeLabel; wrapMode: Text.Wrap }
             RowLayout {
@@ -408,14 +429,13 @@ ApplicationWindow {
             anchors.leftMargin: projectWindow.chromeHorizontalInset
             anchors.rightMargin: projectWindow.chromeHorizontalInset
             anchors.topMargin: projectWindow.chromeVerticalInset
-            anchors.bottomMargin: projectWindow.chromeVerticalInset
+            anchors.bottomMargin: projectWindow.chromeVerticalInset + projectWindow.footerHeight + projectWindow.chromeGap
             spacing: projectWindow.chromeGap
 
             Item {
                 id: toolbar
-                visible: !projectWindow.isFullScreen
                 Layout.fillWidth: true
-                Layout.preferredHeight: visible ? projectWindow.titleBarHeight : 0
+                Layout.preferredHeight: projectWindow.titleBarHeight
 
                 WindowDragRegion {
                     id: toolbarDragRegion
@@ -463,6 +483,7 @@ ApplicationWindow {
                             theme: projectWindow.designTheme
                             kind: "minus"
                             macStyle: true
+                            enabled: !projectWindow.isFullScreen
                             Accessible.name: "Minimize window"
                             onClicked: projectWindow.showMinimized()
                         }
@@ -577,76 +598,143 @@ ApplicationWindow {
                         Accessible.name: projectWindow.navigationVisible ? "Hide project navigation" : "Show project navigation"
                         onClicked: projectWindow.toggleNavigation()
                     }
-                }
 
-                Rectangle {
-                    id: connectionPanel
-                    Layout.preferredWidth: projectWindow.navigationVisible ? Math.min(272, projectWindow.width * 0.22) : 0
-                    Layout.minimumWidth: 0
-                    Layout.maximumWidth: Math.min(288, projectWindow.width * 0.22)
-                    Layout.fillHeight: true
-                    visible: projectWindow.navigationVisible
-                    color: theme.sidebar
-                    radius: theme.radiusLarge
-                    border.color: theme.border
-                    clip: true
+                    Button {
+                        id: gitToggle
+                        anchors.top: navigationToggle.bottom
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.topMargin: 8
+                        width: 24
+                        height: 28
+                        padding: 0
+                        checkable: true
+                        checked: projectWindow.gitDrawerVisible
+                        hoverEnabled: true
+                        focusPolicy: Qt.TabFocus
+                        Accessible.name: checked ? "Close source control" : "Open source control"
+                        onClicked: projectWindow.toggleGitDrawer()
 
-                    ConnectionPanel {
-                        anchors.fill: parent
-                        cardMode: true
-                        client: client
-                        theme: projectWindow.designTheme
-                        collapsed: false
-                        pinned: projectWindow.navigationPinned
-                        onCollapseRequested: projectWindow.navigationVisible = false
-                        onRestoreRequested: projectWindow.navigationVisible = true
-                        onPinToggled: projectWindow.navigationPinned = !projectWindow.navigationPinned
+                        background: Rectangle {
+                            radius: theme.radiusSmall
+                            color: gitToggle.checked ? theme.surfaceActive
+                                                     : gitToggle.hovered ? theme.surfaceHover : "transparent"
+                            border.width: gitToggle.visualFocus ? 2 : 1
+                            border.color: gitToggle.visualFocus ? theme.accent
+                                                                : gitToggle.checked ? theme.accentBorder : theme.border
+                        }
+                        contentItem: ThemeIcon {
+                            anchors.centerIn: parent
+                            width: 17
+                            height: 17
+                            source: "qrc:/assets/icons/git-branch.svg"
+                            color: gitToggle.checked ? theme.accent : theme.textSecondary
+                        }
+                        ToolTip.visible: gitToggle.hovered
+                        ToolTip.text: gitToggle.Accessible.name
+                        ToolTip.delay: 500
                     }
                 }
 
-                Rectangle {
-                    id: conversationCard
+                ColumnLayout {
+                    id: workColumn
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: theme.workspace
-                    radius: theme.radiusLarge
-                    border.color: theme.border
-                    clip: true
+                    spacing: projectWindow.chromeGap
 
-                    ConversationPanel {
-                        anchors.fill: parent
-                        cardMode: true
-                        client: client
-                        theme: projectWindow.designTheme
-                        contentMaximumWidth: projectWindow.conversationContentMaximumWidth
-                        onSubmitRequested: function(text) { client.submitTurn(text) }
+                    RowLayout {
+                        id: primaryWorkArea
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: projectWindow.gitDrawerVisible ? 220 : 0
+                        spacing: projectWindow.chromeGap
+
+                        Rectangle {
+                            id: connectionPanel
+                            Layout.preferredWidth: projectWindow.navigationVisible ? Math.min(272, projectWindow.width * 0.22) : 0
+                            Layout.minimumWidth: 0
+                            Layout.maximumWidth: Math.min(288, projectWindow.width * 0.22)
+                            Layout.fillHeight: true
+                            visible: projectWindow.navigationVisible
+                            color: theme.sidebar
+                            radius: theme.radiusLarge
+                            border.color: theme.border
+                            clip: true
+
+                            ConnectionPanel {
+                                anchors.fill: parent
+                                cardMode: true
+                                client: client
+                                theme: projectWindow.designTheme
+                                collapsed: false
+                                pinned: projectWindow.navigationPinned
+                                onCollapseRequested: projectWindow.navigationVisible = false
+                                onRestoreRequested: projectWindow.navigationVisible = true
+                                onPinToggled: projectWindow.navigationPinned = !projectWindow.navigationPinned
+                            }
+                        }
+
+                        Rectangle {
+                            id: conversationCard
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            color: theme.workspace
+                            radius: theme.radiusLarge
+                            border.color: theme.border
+                            clip: true
+
+                            ConversationPanel {
+                                anchors.fill: parent
+                                cardMode: true
+                                client: client
+                                theme: projectWindow.designTheme
+                                contentMaximumWidth: projectWindow.conversationContentMaximumWidth
+                                onSubmitRequested: function(text) { client.submitTurn(text) }
+                            }
+                        }
+
+                        Rectangle {
+                            id: processPanel
+                            visible: projectWindow.processVisible
+                            Layout.preferredWidth: visible ? Math.min(312, projectWindow.width * 0.25) : 0
+                            Layout.minimumWidth: 0
+                            Layout.maximumWidth: Math.min(328, projectWindow.width * 0.25)
+                            Layout.fillHeight: true
+                            color: theme.inspector
+                            radius: theme.radiusLarge
+                            border.color: theme.border
+                            clip: true
+
+                            AgentProcessPanel {
+                                anchors.fill: parent
+                                cardMode: true
+                                client: client
+                                theme: projectWindow.designTheme
+                                collapsed: false
+                                onCollapseRequested: projectWindow.processVisible = false
+                                onRestorePanelRequested: projectWindow.processVisible = true
+                                onRestoreRequested: function(manifestId, paths) {
+                                    projectWindow.pendingRestoreId = manifestId
+                                    projectWindow.pendingRestorePaths = paths
+                                    undoDialog.open()
+                                }
+                            }
+                        }
                     }
-                }
 
-                Rectangle {
-                    id: processPanel
-                    visible: projectWindow.processVisible
-                    Layout.preferredWidth: visible ? Math.min(312, projectWindow.width * 0.25) : 0
-                    Layout.minimumWidth: 0
-                    Layout.maximumWidth: Math.min(328, projectWindow.width * 0.25)
-                    Layout.fillHeight: true
-                    color: theme.inspector
-                    radius: theme.radiusLarge
-                    border.color: theme.border
-                    clip: true
-
-                    AgentProcessPanel {
-                        anchors.fill: parent
-                        cardMode: true
+                    GitDrawer {
+                        id: gitDrawer
+                        visible: projectWindow.gitDrawerVisible
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: visible
+                                                ? Math.min(projectWindow.gitDrawerHeight, Math.max(240, workColumn.height - 220))
+                                                : 0
+                        Layout.minimumHeight: visible ? 240 : 0
+                        Layout.maximumHeight: visible ? Math.max(240, workColumn.height - 220) : 0
                         client: client
                         theme: projectWindow.designTheme
-                        collapsed: false
-                        onCollapseRequested: projectWindow.processVisible = false
-                        onRestorePanelRequested: projectWindow.processVisible = true
-                        onRestoreRequested: function(manifestId, paths) {
-                            projectWindow.pendingRestoreId = manifestId
-                            projectWindow.pendingRestorePaths = paths
-                            undoDialog.open()
+                        onCloseRequested: projectWindow.gitDrawerVisible = false
+                        onResizeRequested: function(requestedHeight) {
+                            projectWindow.gitDrawerHeight = Math.max(240, Math.min(requestedHeight, workColumn.height - 220))
                         }
                     }
                 }
@@ -679,26 +767,143 @@ ApplicationWindow {
                 }
             }
 
-            Item {
-                id: footer
-                visible: !projectWindow.isFullScreen
-                Layout.fillWidth: true
-                Layout.preferredHeight: visible ? projectWindow.footerHeight : 0
+        }
 
-                Label {
+        Item {
+            id: footer
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: projectWindow.chromeHorizontalInset
+            anchors.rightMargin: projectWindow.chromeHorizontalInset
+            anchors.bottomMargin: projectWindow.chromeVerticalInset
+            height: projectWindow.footerHeight
+            z: 2
+
+            Rectangle {
+                anchors.fill: parent
+                color: theme.canvas
+            }
+
+                Button {
+                    id: gitFooterSummary
+                    anchors.left: parent.left
+                    anchors.leftMargin: 34
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.min(implicitWidth, footer.width * 0.52)
+                    height: 22
+                    visible: client.projectId.length > 0
+                    padding: 0
+                    hoverEnabled: true
+                    focusPolicy: Qt.TabFocus
+                    Accessible.name: projectWindow.gitDrawerVisible ? "Close source control" : "Open source control"
+                    onClicked: projectWindow.toggleGitDrawer()
+
+                    background: Rectangle {
+                        radius: theme.radiusSmall
+                        color: gitFooterSummary.down ? theme.surfaceActive
+                                                     : gitFooterSummary.hovered ? theme.surfaceHover : "transparent"
+                        border.width: gitFooterSummary.visualFocus ? 2 : 0
+                        border.color: theme.accent
+                    }
+
+                    contentItem: Row {
+                        id: gitFooterRow
+                        leftPadding: 5
+                        rightPadding: 5
+                        spacing: 8
+
+                        ThemeIcon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 13
+                            height: 13
+                            source: "qrc:/assets/icons/git-branch.svg"
+                            color: client.gitState === "error" ? theme.danger
+                                   : client.gitState === "not_repository" ? theme.textMuted : theme.accent
+                        }
+                        Label {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.min(160, implicitWidth)
+                            text: {
+                                if (client.gitState === "loading") return "Reading Git..."
+                                if (client.gitState === "not_repository") return "Not a Git repository"
+                                if (client.gitState === "error") return "Git unavailable"
+                                return client.gitStatus.branch || "Detached HEAD"
+                            }
+                            color: client.gitState === "error" ? theme.danger : theme.textSecondary
+                            font.family: theme.fontMono
+                            font.pixelSize: theme.typeCaption
+                            elide: Text.ElideMiddle
+                        }
+                        Label {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: client.gitState === "ready"
+                            text: (client.gitStatus.changed_files || 0) === 0
+                                  ? "Clean"
+                                  : (client.gitStatus.changed_files || 0) + " changed"
+                            color: (client.gitStatus.changed_files || 0) === 0 ? theme.success : theme.warning
+                            font.family: theme.fontMono
+                            font.pixelSize: theme.typeCaption
+                        }
+                        Label {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: client.gitState === "ready" && footer.width > 760
+                            text: "+" + (client.gitStatus.additions || 0)
+                            color: theme.success
+                            font.family: theme.fontMono
+                            font.pixelSize: theme.typeCaption
+                        }
+                        Label {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: client.gitState === "ready" && footer.width > 760
+                            text: "-" + (client.gitStatus.deletions || 0)
+                            color: theme.danger
+                            font.family: theme.fontMono
+                            font.pixelSize: theme.typeCaption
+                        }
+                        Label {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: client.gitState === "ready" && (client.gitStatus.conflicts || 0) > 0
+                            text: (client.gitStatus.conflicts || 0) + " conflicts"
+                            color: theme.danger
+                            font.family: theme.fontMono
+                            font.pixelSize: theme.typeCaption
+                            font.weight: Font.DemiBold
+                        }
+                    }
+                }
+
+                RowLayout {
                     anchors.right: parent.right
                     anchors.rightMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
-                    width: Math.min(implicitWidth, parent.width * 0.32)
-                    text: client.selectedModel
-                    color: theme.textMuted
-                    font.family: theme.fontMono
-                    font.pixelSize: theme.typeCaption
-                    elide: Text.ElideMiddle
-                    horizontalAlignment: Text.AlignRight
+                    spacing: 8
+                    visible: client.sessionId.length > 0
+
+                    Label {
+                        Layout.maximumWidth: footer.width * 0.32
+                        text: client.selectedModel
+                        color: theme.textMuted
+                        font.family: theme.fontMono
+                        font.pixelSize: theme.typeCaption
+                        elide: Text.ElideMiddle
+                        horizontalAlignment: Text.AlignRight
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: 1
+                        Layout.preferredHeight: 10
+                        color: theme.border
+                    }
+
+                    Label {
+                        text: "Session " + projectWindow.compactTokenCount(client.sessionTotalTokens) + " tokens"
+                        color: theme.textSecondary
+                        font.family: theme.fontMono
+                        font.pixelSize: theme.typeCaption
+                    }
                 }
             }
-        }
     }
 
     WindowResizeHandles {

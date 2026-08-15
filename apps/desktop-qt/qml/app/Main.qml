@@ -13,7 +13,7 @@ ApplicationWindow {
     id: window
 
     /*
-      THESIS: Suncode is a quiet control desk; the conversation is the work surface, not one equal panel in a dashboard.
+      THESIS: SunCode is a quiet control desk; the conversation is the work surface, not one equal panel in a dashboard.
       OWN-WORLD: Matte graphite fields, hairline separators, restrained teal interaction, and amber authority states.
       STORY: Choose a local project, direct the agent, review sensitive actions, and undo filesystem changes without losing focus.
       FIRST VIEWPORT: A wide conversation canvas between independently collapsible navigation and review tool bays; panel controls live in the top bar.
@@ -26,7 +26,7 @@ ApplicationWindow {
     height: 900
     minimumWidth: 900
     minimumHeight: 620
-    title: "Suncode"
+    title: "SunCode"
     color: theme.canvas
 
     property bool navigationVisible: true
@@ -78,7 +78,7 @@ ApplicationWindow {
 
             Text {
                 Layout.fillWidth: true
-                text: "Suncode will restore the files changed during this turn."
+                text: "SunCode will restore the files changed during this turn."
                 color: theme.text
                 font.pixelSize: theme.typeBody
                 wrapMode: Text.Wrap
@@ -156,7 +156,7 @@ ApplicationWindow {
             }
 
             Label {
-                text: "Suncode"
+                text: "SunCode"
                 color: theme.text
                 font.pixelSize: theme.typeTitle
                 font.weight: Font.DemiBold

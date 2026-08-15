@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-08-09T00:00:00.000Z",
-  "title": "Design System: Suncode Desktop",
+  "title": "Design System: SunCode Desktop",
   "extensions": {
     "colorMeta": {
       "accent": { "role": "primary", "displayName": "Muted Control Teal", "canonical": "#69c5b0", "tonalRamp": ["#315e54", "#69c5b0", "#7dd2be"] },
@@ -47,7 +47,7 @@
   ],
   "narrative": {
     "northStar": "Quiet Control Desk",
-    "overview": "A conversation-first Qt desktop workbench with matte graphite surfaces, semantic state color, and independently collapsible tool bays.",
+    "overview": "A conversation-first Avalonia desktop workbench with matte graphite surfaces, semantic state color, and independently collapsible tool bays.",
     "keyCharacteristics": ["Conversation-first", "Restrained graphite", "Teal for action", "Tonal depth", "Native focus"],
     "rules": [{ "name": "Status Lamp Rule", "body": "Color communicates state or action only.", "section": "colors" }],
     "dos": ["Do keep the conversation dominant.", "Do make approval scope explicit."],

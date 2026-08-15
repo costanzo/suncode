@@ -1,8 +1,8 @@
-# Suncode Qt Desktop
+# SunCode Qt Desktop
 
 Phase 1 contains the Qt client only. CLI, TUI, and Web clients are deferred.
 
-The client is a Qt 6 Quick/QML application with a hand-written C++ adapter for the Rust SDK facade. It does not access SQLite, provider endpoints, or project files directly.
+The client is a Qt 6 Quick/QML application with a hand-written C++ adapter for the embedded Rust SDK's method-oriented C ABI. It does not construct REST paths, connect to a runtime server, access SQLite, contact provider endpoints, or read project files directly.
 
 ## QML layout
 
@@ -23,7 +23,7 @@ qml/
     └── window/              # Frameless window state and resize behavior
 ```
 
-Feature modules may depend on `shared/`. The `app/` layer composes features and owns window lifecycle. Shared modules must remain independent of feature modules. Keep this as one `Suncode.Desktop` QML module; directory imports make ownership explicit without introducing runtime or protocol boundaries.
+Feature modules may depend on `shared/`. The `app/` layer composes features and owns window lifecycle. Shared modules must remain independent of feature modules. Keep this as one `SunCode.Desktop` QML module; directory imports make ownership explicit without introducing runtime or protocol boundaries.
 
 UI icons live as monochrome SVG resources under `assets/icons/` and are rendered through `shared/components/ThemeIcon.qml` so QML owns semantic theme and interaction colors. Do not add hand-drawn `Canvas` icons to feature files.
 
@@ -41,6 +41,6 @@ cmake -S apps/desktop-qt -B apps/desktop-qt/build
 cmake --build apps/desktop-qt/build
 ```
 
-The Phase 1 client covers runtime connection, health/models, project opening, session create/rename/archive, conversation and activity replay, turn submission/cancellation, allow-once/deny approval decisions, file-touch inspection, diagnostics, and turn-level checkpoint undo with expiry/conflict status. It deliberately does not access SQLite, provider endpoints, or local project files directly.
+The Phase 1 client covers runtime connection, health/models, project opening, session create/rename/archive, cumulative session token usage, conversation and activity replay, turn submission/cancellation, allow-once/deny approval decisions, file-touch inspection, diagnostics, and turn-level checkpoint undo with expiry/conflict status. It deliberately does not access SQLite, provider endpoints, or local project files directly.
 
 By default the runtime stores its local data under `~/.suncode`, with SQLite at `~/.suncode/data/sqlite/runtime.sqlite3`.

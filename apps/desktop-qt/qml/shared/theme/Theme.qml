@@ -50,9 +50,9 @@ QtObject {
     readonly property int panelPadding: 16
     readonly property int sectionGap: 24
 
-    readonly property string fontUi: typeof SuncodeUiFontFamily === "undefined" ? "Noto Sans" : SuncodeUiFontFamily
-    readonly property string fontCjk: typeof SuncodeCjkFontFamily === "undefined" ? "Noto Sans CJK SC" : SuncodeCjkFontFamily
-    readonly property string fontMono: typeof SuncodeMonoFontFamily === "undefined" ? "JetBrains Mono" : SuncodeMonoFontFamily
+    readonly property string fontUi: typeof SunCodeUiFontFamily === "undefined" ? "Noto Sans" : SunCodeUiFontFamily
+    readonly property string fontCjk: typeof SunCodeCjkFontFamily === "undefined" ? "Noto Sans CJK SC" : SunCodeCjkFontFamily
+    readonly property string fontMono: typeof SunCodeMonoFontFamily === "undefined" ? "JetBrains Mono" : SunCodeMonoFontFamily
 
     readonly property int typeCaption: 11
     readonly property int typeLabel: 12

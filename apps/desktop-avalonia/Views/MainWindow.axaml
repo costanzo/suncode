@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SunCode.Desktop.ViewModels"
+        xmlns:views="using:SunCode.Desktop.Views"
+        x:Class="SunCode.Desktop.Views.MainWindow"
+        x:DataType="vm:DesktopViewModel"
+        Title="Welcome to SunCode"
+        Width="980" Height="712"
+        MinWidth="760" MinHeight="552"
+        Background="Transparent"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent">
+  <Grid>
+    <views:ProjectHub x:Name="ProjectHubView" IsVisible="{Binding !IsProjectOpen}" />
+    <views:ProjectWorkspace x:Name="ProjectWorkspaceView" IsVisible="{Binding IsProjectOpen}" />
+
+    <!-- Frameless windows need explicit native resize hit regions, matching WindowResizeHandles.qml. -->
+    <Border x:Name="ResizeNorth" IsVisible="{Binding IsProjectOpen}" Height="5" VerticalAlignment="Top" Background="#01000000" Cursor="SizeNorthSouth" Tag="North" ZIndex="90" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
+    <Border x:Name="ResizeSouth" IsVisible="{Binding IsProjectOpen}" Height="5" VerticalAlignment="Bottom" Background="#01000000" Cursor="SizeNorthSouth" Tag="South" ZIndex="100" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
+    <Border x:Name="ResizeWest" IsVisible="{Binding IsProjectOpen}" Width="5" HorizontalAlignment="Left" Background="#01000000" Cursor="SizeWestEast" Tag="West" ZIndex="100" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
+    <Border x:Name="ResizeEast" IsVisible="{Binding IsProjectOpen}" Width="5" HorizontalAlignment="Right" Background="#01000000" Cursor="SizeWestEast" Tag="East" ZIndex="100" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
+    <Border x:Name="ResizeNorthWest" IsVisible="{Binding IsProjectOpen}" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#01000000" Cursor="TopLeftCorner" Tag="NorthWest" ZIndex="91" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
+    <Border x:Name="ResizeNorthEast" IsVisible="{Binding IsProjectOpen}" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#01000000" Cursor="TopRightCorner" Tag="NorthEast" ZIndex="91" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
+    <Border x:Name="ResizeSouthWest" IsVisible="{Binding IsProjectOpen}" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#01000000" Cursor="BottomLeftCorner" Tag="SouthWest" ZIndex="101" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
+    <Border x:Name="ResizeSouthEast" IsVisible="{Binding IsProjectOpen}" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="#01000000" Cursor="BottomRightCorner" Tag="SouthEast" ZIndex="101" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
+  </Grid>
+</Window>

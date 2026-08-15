@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyTitle>SunCode</AssemblyTitle>
+    <AssemblyName>SunCode</AssemblyName>
+    <Product>SunCode</Product>
+    <AvaloniaVersion>12.1.1</AvaloniaVersion>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.15" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="ClassIsland.Markdown.Avalonia.Tight" Version="12.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets/**" />
+    <Content Include="Assets/logo/suncode-logo-1024.png" CopyToOutputDirectory="PreserveNewest" Link="suncode-logo-1024.png" />
+  </ItemGroup>
+
+
+  <PropertyGroup>
+    <SunCodeRepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../..'))</SunCodeRepositoryRoot>
+    <SunCodeRuntimeDirectory>$(SunCodeRepositoryRoot)/runtime</SunCodeRuntimeDirectory>
+    <SunCodeRuntimeProfile Condition="'$(Configuration)' == 'Release'">release</SunCodeRuntimeProfile>
+    <SunCodeRuntimeProfile Condition="'$(SunCodeRuntimeProfile)' == ''">debug</SunCodeRuntimeProfile>
+    <SunCodeCargoProfileArgument Condition="'$(Configuration)' == 'Release'">--release</SunCodeCargoProfileArgument>
+    <SunCodeRuntimeOutput>$(SunCodeRuntimeDirectory)/target/$(SunCodeRuntimeProfile)</SunCodeRuntimeOutput>
+  </PropertyGroup>
+
+  <Target Name="BuildSunCodeRuntime" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="cargo build --manifest-path &quot;$(SunCodeRuntimeDirectory)/Cargo.toml&quot; -p suncode-runtime --lib $(SunCodeCargoProfileArgument)" />
+    <ItemGroup>
+      <SunCodeNativeLibrary Include="$(SunCodeRuntimeOutput)/libsuncode_runtime.dylib" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+      <SunCodeNativeLibrary Include="$(SunCodeRuntimeOutput)/libsuncode_runtime.so" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+      <SunCodeNativeLibrary Include="$(SunCodeRuntimeOutput)/suncode_runtime.dll" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SunCodeNativeLibrary)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CreateMacOSAppBundle" AfterTargets="Publish" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <PropertyGroup>
+      <SunCodeAppBundle>$(PublishDir)SunCode.app</SunCodeAppBundle>
+    </PropertyGroup>
+    <MakeDir Directories="$(SunCodeAppBundle)/Contents/MacOS;$(SunCodeAppBundle)/Contents/Resources" />
+    <ItemGroup>
+      <SunCodePublishedFiles Include="$(PublishDir)*" Exclude="$(SunCodeAppBundle)/**" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SunCodePublishedFiles)" DestinationFolder="$(SunCodeAppBundle)/Contents/MacOS/%(RecursiveDir)" />
+    <Copy SourceFiles="Info.plist" DestinationFolder="$(SunCodeAppBundle)/Contents" />
+    <Copy SourceFiles="Assets/suncode-desktop.icns" DestinationFolder="$(SunCodeAppBundle)/Contents/Resources" />
+  </Target>
+</Project>

@@ -10,11 +10,15 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOMOC_PATH_PREFIX ON)
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Quick QuickControls2 Concurrent)
+find_package(ZLIB REQUIRED)
+if(APPLE)
+    find_package(Iconv REQUIRED)
+endif()
 
 find_program(CARGO_EXECUTABLE cargo REQUIRED)
 
 if(APPLE)
-    set(SUNCODE_APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/Suncode.icns")
+    set(SUNCODE_APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/suncode-desktop.icns")
     set_source_files_properties("${SUNCODE_APP_ICON}" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 endif()
 
@@ -58,7 +62,7 @@ qt_add_executable(suncode-desktop
 
 if(APPLE)
     set_target_properties(suncode-desktop PROPERTIES
-        MACOSX_BUNDLE_ICON_FILE "Suncode.icns"
+        MACOSX_BUNDLE_ICON_FILE "suncode-desktop.icns"
     )
 endif()
 
@@ -75,6 +79,7 @@ qt_add_resources(suncode-desktop suncode-assets
         assets/icons/chevron-right.svg
         assets/icons/close.svg
         assets/icons/copy.svg
+        assets/icons/git-branch.svg
         assets/icons/lock.svg
         assets/icons/maximize.svg
         assets/icons/minus.svg
@@ -83,6 +88,7 @@ qt_add_resources(suncode-desktop suncode-assets
         assets/icons/panel-right.svg
         assets/icons/plus.svg
         assets/icons/restore.svg
+        assets/icons/refresh.svg
         assets/icons/sidebar-project.svg
         assets/icons/sidebar-review.svg
         assets/icons/settings.svg
@@ -102,7 +108,7 @@ qt_add_resources(suncode-desktop suncode-assets
 )
 
 qt_add_qml_module(suncode-desktop
-    URI Suncode.Desktop
+    URI SunCode.Desktop
     VERSION 1.0
     QML_FILES
         # Application shells and entry points.
@@ -111,6 +117,7 @@ qt_add_qml_module(suncode-desktop
         qml/app/ProjectWindow.qml
         # Product feature modules.
         qml/features/project/ConnectionPanel.qml
+        qml/features/git/GitDrawer.qml
         qml/features/conversation/ConversationPanel.qml
         qml/features/review/ReviewPanel.qml
         qml/features/review/AgentProcessPanel.qml
@@ -131,7 +138,17 @@ qt_add_qml_module(suncode-desktop
 
 target_include_directories(suncode-desktop PRIVATE src)
 add_dependencies(suncode-desktop suncode-runtime-sdk)
-target_link_libraries(suncode-desktop PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Concurrent "${SUNCODE_RUNTIME_SDK_LIB}")
+target_link_libraries(suncode-desktop PRIVATE
+    Qt6::Quick
+    Qt6::QuickControls2
+    Qt6::Concurrent
+    "${SUNCODE_RUNTIME_SDK_LIB}"
+    ZLIB::ZLIB
+)
+
+if(APPLE)
+    target_link_libraries(suncode-desktop PRIVATE Iconv::Iconv)
+endif()
 
 if(APPLE)
     add_custom_command(TARGET suncode-desktop POST_BUILD

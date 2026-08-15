@@ -12,48 +12,71 @@ use crate::{
 };
 use std::sync::Arc;
 
-pub use catalog::{ModelDescriptor, ModelLimits};
+pub use catalog::{ModelCapabilities, ModelDescriptor, ModelLimits};
 pub use deepseek::DeepSeekProvider;
 pub use openai_compatible::OpenAiCompatibleProvider;
+
+#[derive(Clone)]
+pub struct ModelRoute {
+    pub provider: Arc<dyn LlmProvider>,
+    pub wire_model: &'static str,
+}
 
 #[derive(Clone)]
 pub struct ModelProviderRegistry {
     deepseek: Arc<DeepSeekProvider>,
     zhipu: Arc<OpenAiCompatibleProvider>,
     openai: Arc<OpenAiCompatibleProvider>,
+    kimi: Arc<OpenAiCompatibleProvider>,
+    claude: Arc<OpenAiCompatibleProvider>,
+    gemini: Arc<OpenAiCompatibleProvider>,
 }
 
 impl ModelProviderRegistry {
-    pub fn new(
-        deepseek_endpoint: String,
-        deepseek_model: String,
-        zhipu_endpoint: String,
-        zhipu_model: String,
-        openai_endpoint: String,
-        openai_model: String,
-        credentials: CredentialStore,
-    ) -> Self {
+    pub fn new(credentials: CredentialStore) -> Self {
         Self {
             deepseek: Arc::new(DeepSeekProvider::new(
-                deepseek_endpoint,
-                deepseek_model,
+                "https://api.deepseek.com".into(),
                 credentials.clone(),
             )),
             zhipu: Arc::new(OpenAiCompatibleProvider::new(
                 ProviderKind::Zhipu,
                 "Zhipu GLM",
-                zhipu_endpoint,
-                zhipu_model,
+                "https://open.bigmodel.cn/api/paas/v4".into(),
                 credentials.clone(),
             )),
             openai: Arc::new(OpenAiCompatibleProvider::new(
                 ProviderKind::OpenAI,
                 "OpenAI",
-                openai_endpoint,
-                openai_model,
+                "https://api.openai.com/v1".into(),
+                credentials.clone(),
+            )),
+            kimi: Arc::new(OpenAiCompatibleProvider::new(
+                ProviderKind::Kimi,
+                "Kimi",
+                "https://api.moonshot.ai/v1".into(),
+                credentials.clone(),
+            )),
+            claude: Arc::new(OpenAiCompatibleProvider::new(
+                ProviderKind::Claude,
+                "Claude",
+                "https://api.anthropic.com/v1".into(),
+                credentials.clone(),
+            )),
+            gemini: Arc::new(OpenAiCompatibleProvider::new(
+                ProviderKind::Gemini,
+                "Gemini",
+                "https://generativelanguage.googleapis.com/v1beta/openai".into(),
                 credentials,
             )),
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_deepseek_endpoint(endpoint: String, credentials: CredentialStore) -> Self {
+        let mut registry = Self::new(credentials.clone());
+        registry.deepseek = Arc::new(DeepSeekProvider::new(endpoint, credentials));
+        registry
     }
 
     pub fn models(&self) -> Vec<ModelDescriptor> {
@@ -67,13 +90,24 @@ impl ModelProviderRegistry {
             .map(|model| model.limits)
     }
 
-    pub fn provider(&self, model_id: &str) -> Option<Arc<dyn LlmProvider>> {
-        match model_id {
-            catalog::DEEPSEEK_MODEL_ID => Some(self.deepseek.clone() as Arc<dyn LlmProvider>),
-            catalog::ZHIPU_MODEL_ID => Some(self.zhipu.clone() as Arc<dyn LlmProvider>),
-            catalog::OPENAI_MODEL_ID => Some(self.openai.clone() as Arc<dyn LlmProvider>),
-            _ => None,
-        }
+    pub fn route(&self, model_id: &str) -> Option<ModelRoute> {
+        let model = self
+            .models()
+            .into_iter()
+            .find(|model| model.id == model_id)?;
+        let provider = match model.provider {
+            "deepseek" => self.deepseek.clone() as Arc<dyn LlmProvider>,
+            "zhipu" => self.zhipu.clone() as Arc<dyn LlmProvider>,
+            "openai" => self.openai.clone() as Arc<dyn LlmProvider>,
+            "kimi" => self.kimi.clone() as Arc<dyn LlmProvider>,
+            "claude" => self.claude.clone() as Arc<dyn LlmProvider>,
+            "gemini" => self.gemini.clone() as Arc<dyn LlmProvider>,
+            _ => return None,
+        };
+        Some(ModelRoute {
+            provider,
+            wire_model: model.wire_model,
+        })
     }
 }
 
@@ -84,18 +118,33 @@ mod tests {
 
     #[test]
     fn advertises_only_registered_models() {
-        let registry = ModelProviderRegistry::new(
-            "http://localhost".into(),
-            "deepseek-v4-flash".into(),
-            "http://localhost".into(),
-            "glm-5.2".into(),
-            "http://localhost".into(),
-            "gpt-5.6-sol".into(),
-            CredentialStore::memory(None, None, None),
+        let registry =
+            ModelProviderRegistry::new(CredentialStore::memory(None, None, None, None, None, None));
+        for model in registry.models() {
+            assert!(
+                registry.route(model.id).is_some(),
+                "missing route for {}",
+                model.id
+            );
+        }
+        assert_eq!(registry.route("gpt-5.5").unwrap().wire_model, "gpt-5.5");
+        assert_eq!(
+            registry.route("gpt-5.6-sol").unwrap().wire_model,
+            "gpt-5.6-sol"
         );
-        assert!(registry.provider("deepseek-v4-flash").is_some());
-        assert!(registry.provider("glm-5.2").is_some());
-        assert!(registry.provider("gpt-5.6-sol").is_some());
-        assert!(registry.provider("unknown-model").is_none());
+        assert_eq!(registry.models().len(), 12);
+        assert!(registry.route("unknown-model").is_none());
+
+        for provider in ["deepseek", "zhipu", "openai", "kimi", "claude", "gemini"] {
+            assert_eq!(
+                registry
+                    .models()
+                    .iter()
+                    .filter(|model| model.provider == provider)
+                    .count(),
+                2,
+                "provider {provider} should expose two models"
+            );
+        }
     }
 }

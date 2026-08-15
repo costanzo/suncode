@@ -32,7 +32,7 @@ The defaults were checked against vendor documentation on 2026-08-11:
 2. `/credentials` returns one redacted configured/unconfigured state per provider.
 3. `/models` returns all registered models and marks availability according to each model provider's credential state.
 4. New sessions and turns validate the selected model through the provider registry.
-5. The selected provider adapter sends a streamed `/chat/completions` request and normalizes text, tool calls, finish reason, and usage into Suncode runtime events.
+5. The selected provider adapter sends a streamed `/chat/completions` request and normalizes text, tool calls, finish reason, and usage into SunCode runtime events.
 
 ## Security and failure handling
 

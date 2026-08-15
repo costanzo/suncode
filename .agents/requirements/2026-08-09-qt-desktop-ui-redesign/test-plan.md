@@ -32,7 +32,7 @@ No runtime contracts change. Existing Rust and Qt focused tests remain applicabl
 - Verify dragging the clear title strip from a maximized project window restores the remembered normal geometry before handing off to native window movement.
 - Verify the frameless project window can be resized from transparent title-bar top handles plus body left/right/bottom edges and corners without visible resize chrome.
 - Verify the ProjectWindow frameless chrome has rounded outer corners on macOS when not maximized, uses the same canvas color through the title bar and body without a divider line, and keeps title-bar icons visually centered.
-- Verify the ProjectWindow footer stays at the bottom with only the selected model on the right, does not overlap the work area, hides in fullscreen, and preserves bottom-edge/corner resizing.
+- Verify the ProjectWindow footer stays at the bottom at a fixed 18px height, keeps its model and session-token labels visible in normal, maximized, and macOS fullscreen states, does not overlap the work area, and preserves bottom-edge/corner resizing outside fullscreen.
 - Verify the ProjectWindow header and footer render directly on the outer canvas without separate card fills, borders, or rounded containers.
 - Verify ProjectWindow uses one continuous outer background with inset toolbar, navigation, conversation, process, and footer cards separated by consistent gutters at default and minimum sizes.
 - Verify the exposed top background strip, clear toolbar area, and left navigation gutter can move the window without intercepting traffic lights, settings, or the navigation toggle.
@@ -53,11 +53,11 @@ No runtime contracts change. Existing Rust and Qt focused tests remain applicabl
 - Verify `Command+1` on macOS toggles the ProjectWindow left project navigation sidebar and stays scoped to the active project window.
 - Verify ProjectWindow's Open Recent Project submenu opens a separate project window, focuses an already-open window for the same project, and never merges projects into tabs.
 - Verify the hub remains hidden while any project window exists and reappears only after the last project window closes.
-- Verify the macOS green title-bar control enters fullscreen, hides the custom title bar, and exits back to the prior normal window state.
+- Verify the macOS green title-bar control enters fullscreen without hiding the custom title bar, disables the minimize traffic light in fullscreen, and exits back to the prior normal window state.
 - Verify Windows project windows show minimize, maximize/restore, and close controls in the compact custom title bar, and that both the maximize control and title-bar double-click use native maximized state rather than fullscreen.
-- Verify hiding the project hub after opening a project leaves a visible Suncode taskbar entry for the independent ProjectWindow on Windows.
+- Verify hiding the project hub after opening a project leaves a visible SunCode taskbar entry for the independent ProjectWindow on Windows.
 - Verify Windows keeps a consistent 4px outer inset around the project chrome while the title bar itself remains 36px high.
-- Verify Windows shows a crisp Suncode logo at the upper-left of ProjectWindow without overlapping the centered title or title-bar drag region, while macOS continues to show only its traffic-light controls there.
+- Verify Windows shows a crisp SunCode logo at the upper-left of ProjectWindow without overlapping the centered title or title-bar drag region, while macOS continues to show only its traffic-light controls there.
 - Verify the Windows logo centerline matches the left gutter toggle centerline, caption controls form three contiguous rectangular hit regions, minimize/maximize use neutral hover feedback, and close uses a red hover/pressed surface with a white icon.
 - Verify the extracted Windows minimize, maximize, and close SVGs preserve the supplied geometry, recolor correctly in both themes, and do not replace the distinct restore-state icon.
 - Verify the revised Windows caption glyphs render at their native 12px logical size at both 100% and 150% display scaling while their 46x36px hit regions remain unchanged.
@@ -67,7 +67,7 @@ No runtime contracts change. Existing Rust and Qt focused tests remain applicabl
 - Verify enabled Windows caption glyphs are black in light mode and white in dark mode, disabled controls retain the disabled token, and the close glyph switches to white over its red hover and pressed states.
 - Verify ProjectHub displays `\\?\D:\project` as `D:\project` and `\\?\UNC\server\share` as `\\server\share` without changing the underlying `canonicalRoot` used by the runtime.
 - Verify a restored Windows ProjectWindow has a subtle offset outer shadow, retains edge/corner resizing from the true window boundary, and removes the shadow inset completely when maximized or fullscreen.
-- Verify the macOS system menu bar shows Project actions at the top of the screen and the app display name reads Suncode instead of suncode-desktop.
+- Verify the macOS system menu bar shows Project actions at the top of the screen and the app display name reads SunCode instead of suncode-desktop.
 - Verify loading the asynchronous recent-project list while a ProjectWindow exists does not crash, and that the Open Recent Project submenu is disabled only when the list is empty.
 - Verify connection, project/session, credential, composer, approval, undo, and diagnostic controls retain bindings.
 
@@ -88,7 +88,7 @@ No runtime contracts change. Existing Rust and Qt focused tests remain applicabl
 - `node .agents/skills/impeccable/scripts/detect.mjs --json --scope layout apps/desktop-qt/qml/ProjectWindow.qml` returned `[]`.
 - `qmllint apps/desktop-qt/qml/*.qml` completed with exit code 0; it reported existing broad QML style warnings for unqualified access and layout-managed width/height.
 - `git diff --check` passed.
-- `qmllint apps/desktop-qt/qml/ProjectHub.qml apps/desktop-qt/qml/ProjectWindow.qml` completed with exit code 0 after adding the Preferences shortcut; it still reports existing unresolved `Suncode.Runtime` and unqualified-access warnings.
+- `qmllint apps/desktop-qt/qml/ProjectHub.qml apps/desktop-qt/qml/ProjectWindow.qml` completed with exit code 0 after adding the Preferences shortcut; it still reports existing unresolved `SunCode.Runtime` and unqualified-access warnings.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json --scope layout apps/desktop-qt/qml/ProjectHub.qml apps/desktop-qt/qml/ProjectWindow.qml` returned `[]`.
 - `cmake --build apps/desktop-qt/build -j2` passed after adding the shortcut.
 - Offscreen startup of `apps/desktop-qt/build/suncode-desktop` reached the Qt event loop with no QML runtime output before manual interruption.
@@ -96,17 +96,17 @@ No runtime contracts change. Existing Rust and Qt focused tests remain applicabl
 - `cmake --build apps/desktop-qt/build -j2` passed after replacing QML `Shortcut` with `Action.shortcut`.
 - Real GUI startup after the `Action.shortcut` change produced no QML shortcut warnings before manual interruption; macOS still emitted the unrelated IMK run-loop message on interruption.
 - `cmake --build apps/desktop-qt/build -j2` passed after adding the title-bar state controller and transparent resize handles.
-- `/Users/shuyi/Softwares/qt/6.11.1/macos/bin/qmllint apps/desktop-qt/qml/ProjectWindow.qml apps/desktop-qt/qml/WindowStateController.qml apps/desktop-qt/qml/WindowResizeHandles.qml` completed with exit code 0 after the title-bar refinement; it still reports the existing unresolved `Suncode.Runtime` import and unqualified-access warnings.
+- `/Users/shuyi/Softwares/qt/6.11.1/macos/bin/qmllint apps/desktop-qt/qml/ProjectWindow.qml apps/desktop-qt/qml/WindowStateController.qml apps/desktop-qt/qml/WindowResizeHandles.qml` completed with exit code 0 after the title-bar refinement; it still reports the existing unresolved `SunCode.Runtime` import and unqualified-access warnings.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json --scope layout apps/desktop-qt/qml/ProjectWindow.qml apps/desktop-qt/qml/WindowStateController.qml apps/desktop-qt/qml/WindowResizeHandles.qml` returned `[]`.
 - `git diff --check` passed after the title-bar refinement.
 - Offscreen startup of `apps/desktop-qt/build/suncode-desktop` reached the Qt event loop with no QML runtime output before manual interruption after the title-bar refinement.
 - `cmake --build apps/desktop-qt/build -j2` passed after making settings single-instance modal.
-- `/Users/shuyi/Softwares/qt/6.11.1/macos/bin/qmllint apps/desktop-qt/qml/ProjectHub.qml apps/desktop-qt/qml/ProjectWindow.qml apps/desktop-qt/qml/GlobalSettings.qml` completed with exit code 0 after the settings-modal refinement; it still reports the existing unresolved `Suncode.Runtime` import and broad unqualified-access warnings.
+- `/Users/shuyi/Softwares/qt/6.11.1/macos/bin/qmllint apps/desktop-qt/qml/ProjectHub.qml apps/desktop-qt/qml/ProjectWindow.qml apps/desktop-qt/qml/GlobalSettings.qml` completed with exit code 0 after the settings-modal refinement; it still reports the existing unresolved `SunCode.Runtime` import and broad unqualified-access warnings.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json --scope layout apps/desktop-qt/qml/ProjectHub.qml apps/desktop-qt/qml/ProjectWindow.qml apps/desktop-qt/qml/GlobalSettings.qml` returned `[]`.
 - `git diff --check` passed after the settings-modal refinement.
 - Offscreen startup of `apps/desktop-qt/build/suncode-desktop` reached the Qt event loop with no QML runtime output before manual interruption after the settings-modal refinement.
 - `cmake --build apps/desktop-qt/build -j2` passed after adding the ProjectWindow `Command+1` navigation shortcut.
-- `/Users/shuyi/Softwares/qt/6.11.1/macos/bin/qmllint apps/desktop-qt/qml/ProjectWindow.qml` completed with exit code 0 after adding the navigation shortcut; it still reports the existing unresolved `Suncode.Runtime` import and unqualified-access warnings.
+- `/Users/shuyi/Softwares/qt/6.11.1/macos/bin/qmllint apps/desktop-qt/qml/ProjectWindow.qml` completed with exit code 0 after adding the navigation shortcut; it still reports the existing unresolved `SunCode.Runtime` import and unqualified-access warnings.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json --scope layout apps/desktop-qt/qml/ProjectWindow.qml` returned `[]`.
 - `git diff --check` passed after adding the navigation shortcut.
 - Offscreen startup of `apps/desktop-qt/build/suncode-desktop` reached the Qt event loop with no QML runtime output before manual interruption after adding the navigation shortcut.

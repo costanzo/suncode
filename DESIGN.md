@@ -1,5 +1,5 @@
 ---
-name: Suncode Desktop
+name: SunCode Desktop
 description: A quiet, reviewable control desk for local-first coding work.
 colors:
   canvas: "#0d0f12"
@@ -9,7 +9,7 @@ colors:
   surface-active: "#242a31"
   text: "#edf0f3"
   text-secondary: "#a7afb9"
-  text-muted: "#727c87"
+  text-muted: "#838d98"
   border: "#292f36"
   accent: "#69c5b0"
   accent-hover: "#7dd2be"
@@ -42,13 +42,13 @@ components:
     height: "36px"
 ---
 
-# Design System: Suncode Desktop
+# Design System: SunCode Desktop
 
 ## Overview
 
 **Creative North Star: “Quiet Control Desk”**
 
-Suncode is designed as a calm professional console for high-consequence local work. The conversation canvas is the primary surface; navigation, credentials, approvals, checkpoints, and diagnostics are supporting tool bays that can retreat when they are not needed. The system uses matte graphite layers and fine separators to create structure without visual noise.
+SunCode is designed as a calm professional console for high-consequence local work. The conversation canvas is the primary surface; navigation, credentials, approvals, checkpoints, and diagnostics are supporting tool bays that can retreat when they are not needed. The system uses matte graphite layers and fine separators to create structure without visual noise.
 
 The interface is intentionally restrained. Teal is reserved for actions and active work, green confirms healthy local state, amber calls attention to authority decisions, and red is reserved for destructive or denied outcomes. There is no decorative glow, glass, gradient text, or dashboard theater.
 
@@ -58,7 +58,7 @@ The interface is intentionally restrained. Teal is reserved for actions and acti
 - Independently collapsible side bays
 - Semantic state color, used sparingly
 - Tonal layering over drop shadows
-- Native Qt controls with visible focus
+- Native Avalonia controls with visible focus
 
 ## Colors
 
@@ -83,7 +83,7 @@ The palette supports both a dark graphite mode and a lighter paper-and-slate mod
 - **Graphite Hover** (#1e2329): Hover state for neutral controls.
 - **Primary Text** (#edf0f3): Main copy and message content.
 - **Secondary Text** (#a7afb9): Supporting labels and status summaries.
-- **Muted Text** (#727c87): Empty-state guidance and metadata.
+- **Muted Text** (#838d98): Empty-state guidance and metadata with accessible contrast on graphite surfaces.
 - **Hairline Border** (#292f36): Panel boundaries and list separators.
 
 ### Named Rules
@@ -121,7 +121,7 @@ Panel content uses 16px horizontal padding, 10–12px control gaps, and 24px sep
 
 ## Elevation & Depth
 
-Suncode uses tonal layering rather than shadows. The canvas, surface, raised surface, and active surface are close graphite steps separated by one-pixel borders. Dialogs use a stronger border and a raised tonal surface; shadows are not part of the visual language.
+SunCode uses tonal layering rather than shadows. The canvas, surface, raised surface, and active surface are close graphite steps separated by one-pixel borders. Dialogs use a stronger border and a raised tonal surface; shadows are not part of the visual language.
 
 ## Shapes
 
@@ -166,7 +166,7 @@ The right bay contains approval, turn changes, touched files, and runtime health
 - **Do** keep the conversation and composer visually dominant.
 - **Do** use teal only for actions, focus, and active work.
 - **Do** make approval scope and undo limitations explicit.
-- **Do** preserve native keyboard focus and familiar Qt control behavior.
+- **Do** preserve native keyboard focus and familiar Avalonia control behavior.
 - **Do** collapse supporting panels when the user needs room to think.
 
 ### Don't:

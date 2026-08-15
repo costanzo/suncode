@@ -4,7 +4,7 @@
 The Rust `Agent` runs one locked turn per session. A second submit waits on the same session lock and becomes an independent turn after the first finishes. Tool calls are executed one by one as they are encountered. Context compaction uses a fixed character threshold and a fixed recent message count.
 
 ## Proposed design
-Adopt three PI Agent ideas in Suncode-native form:
+Adopt three PI Agent ideas in SunCode-native form:
 
 - Running-turn submit queue: if a session lock is busy and an active turn is known, the submit is accepted into an in-memory queue and returns `status: queued`.
 - Batch preflight and read-only parallelism: the agent validates and authorizes calls from one assistant message before executing eligible calls. Batches made only of read-only operations execute concurrently; writes, process execution, and approval continuations keep the existing sequential execution.
@@ -17,7 +17,7 @@ The queue is owned by `runtime/crates/core/src/agent.rs` and is intentionally in
 1. `submit` validates the model, tries to acquire the session lock, and queues the message if the lock is busy.
 2. The active turn drains queued messages before provider calls and again before completing a no-tool assistant response.
 3. `resolve_calls` validates and policy-checks a batch, then executes accumulated allowed calls.
-4. `context::build_for_model` compacts using the active model input limit and Suncode's retained 64k budget cap.
+4. `context::build_for_model` compacts using the active model input limit and SunCode's conservative 64k default context window.
 
 ## Security and failure handling
 Approval still precedes risky execution. Parallel execution is limited to read-only operations, so checkpoint ordering and write rollback are unaffected. Queued messages are cleared on active-turn failure, cancellation, or approval denial because the queue is not durable.

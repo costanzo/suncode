@@ -1,0 +1,125 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="using:SunCode.Desktop.Models"
+        xmlns:vm="using:SunCode.Desktop.ViewModels"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+        x:Class="SunCode.Desktop.Views.SettingsWindow"
+        x:DataType="vm:DesktopViewModel"
+        Title="Settings"
+        Width="900" Height="672"
+        MinWidth="720" MinHeight="552"
+        Background="Transparent"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        WindowStartupLocation="CenterOwner">
+  <Border x:Name="SettingsChrome"
+          Margin="8"
+          Background="{DynamicResource CanvasBrush}"
+          CornerRadius="12"
+          BoxShadow="0 8 24 0 #40000000">
+  <Border Background="{DynamicResource CanvasBrush}"
+          CornerRadius="12"
+          ClipToBounds="True">
+  <Grid RowDefinitions="32,*">
+    <Grid Grid.Row="0" Background="{DynamicResource CanvasBrush}" ColumnDefinitions="Auto,*" PointerPressed="SettingsTitleBarPressed" DoubleTapped="SettingsTitleBarDoubleTapped">
+      <StackPanel Orientation="Horizontal" Spacing="6" Margin="5,0,0,0" VerticalAlignment="Center">
+        <Button x:Name="SettingsCloseLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="CloseSettings" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Close window"><svg:Svg Path="/Assets/traffic-lights/1-close-1-normal.svg" /></Button>
+        <Button x:Name="SettingsMinimizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="MinimizeSettings" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Minimize window"><svg:Svg Path="/Assets/traffic-lights/2-minimize-1-normal.svg" /></Button>
+        <Button x:Name="SettingsMaximizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="ToggleSettingsMaximized" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Maximize window"><svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" /></Button>
+      </StackPanel>
+      <TextBlock Grid.Column="1" Text="Settings" FontSize="13" FontWeight="SemiBold" Margin="4,0,0,0" VerticalAlignment="Center" />
+    </Grid>
+  <Grid Grid.Row="1" RowDefinitions="58,*">
+    <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid Margin="22,0" ColumnDefinitions="*,Auto">
+        <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="compact primary" Content="Done" Click="CloseSettings" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="238,*">
+      <Border Grid.Column="0" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="16,20" Spacing="4">
+            <TextBlock Classes="section-label" Text="GENERAL" Margin="10,0,0,0" />
+            <Button x:Name="DefaultsNavigation" Classes="navigation selected" Content="Defaults" Click="ShowDefaults" />
+            <Button x:Name="AppearanceNavigation" Classes="navigation" Content="Appearance" Click="ShowAppearance" />
+            <Border Height="12" />
+            <TextBlock Classes="section-label" Text="MODELS" Margin="10,0,0,0" />
+            <Button x:Name="ProvidersNavigation" Classes="navigation" Click="ToggleProviders">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <svg:Svg x:Name="ProvidersChevron" Width="10" Height="10" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Text="Model providers" FontWeight="SemiBold" />
+              </StackPanel>
+            </Button>
+            <StackPanel x:Name="ProviderNavigation" Spacing="4">
+              <Button Classes="navigation" Content="DeepSeek" Tag="deepseek" Margin="18,0,0,0" Click="ShowProvider" />
+              <Button Classes="navigation" Content="Zhipu GLM" Tag="zhipu" Margin="18,0,0,0" Click="ShowProvider" />
+              <Button Classes="navigation" Content="OpenAI" Tag="openai" Margin="18,0,0,0" Click="ShowProvider" />
+              <Button Classes="navigation" Content="Kimi" Tag="kimi" Margin="18,0,0,0" Click="ShowProvider" />
+              <Button Classes="navigation" Content="Claude" Tag="claude" Margin="18,0,0,0" Click="ShowProvider" />
+              <Button Classes="navigation" Content="Gemini" Tag="gemini" Margin="18,0,0,0" Click="ShowProvider" />
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <Grid Grid.Column="1">
+        <ScrollViewer x:Name="DefaultsPage" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="32,28" Spacing="18">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Defaults" FontSize="22" FontWeight="SemiBold" />
+              <TextBlock Text="Choose the model SunCode uses when a project starts a new turn." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Classes="section-label" Text="DEFAULT MODEL" />
+            <ComboBox x:Name="DefaultModelSelector" HorizontalAlignment="Stretch" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}" SelectionChanged="DefaultModelChanged">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="models:ModelItem"><TextBlock Classes="mono" Text="{Binding Id}" /></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Text="Only models registered by the local runtime appear here." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="AppearancePage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="32,28" Spacing="18">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Appearance" FontSize="22" FontWeight="SemiBold" />
+              <TextBlock Text="Adjust how SunCode looks across every open window." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Classes="section-label" Text="THEME" />
+            <Grid ColumnDefinitions="*,160">
+              <TextBlock Text="Color theme" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <ComboBox x:Name="ThemeSelector" Grid.Column="1" SelectionChanged="ThemeChanged">
+                <ComboBoxItem Content="Dark" Tag="dark" />
+                <ComboBoxItem Content="Light" Tag="light" />
+              </ComboBox>
+            </Grid>
+            <TextBlock Text="Changes apply immediately." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" />
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="ProviderPage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="32,28" Spacing="18">
+            <StackPanel Spacing="4">
+              <TextBlock x:Name="ProviderTitle" FontSize="22" FontWeight="SemiBold" />
+              <TextBlock x:Name="ProviderDescription" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Classes="section-label" Text="CREDENTIAL" />
+            <TextBlock x:Name="CredentialStatus" TextWrapping="Wrap" />
+            <TextBox x:Name="ProviderApiKey" PlaceholderText="Paste API key" PasswordChar="●" Classes="mono" TextChanged="ProviderApiKeyChanged" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button x:Name="SaveCredentialButton" Classes="primary" Content="Save key" Click="SaveCredential" IsEnabled="False" />
+              <Button x:Name="RemoveCredentialButton" Classes="danger" Content="Remove key" Click="RemoveCredential" />
+            </StackPanel>
+            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
+            <TextBlock Classes="section-label" Text="AVAILABLE MODELS" />
+            <TextBlock x:Name="ProviderModelsText" Classes="mono" TextWrapping="Wrap" />
+            <TextBlock Text="The runtime owns provider availability and model registration." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
+    </Grid>
+  </Grid>
+  </Grid>
+  </Border>
+  </Border>
+</Window>

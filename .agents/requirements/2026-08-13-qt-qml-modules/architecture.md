@@ -6,7 +6,7 @@ The Qt client used one flat `apps/desktop-qt/qml/` directory containing applicat
 
 ## Proposed design
 
-Keep one `Suncode.Desktop` QML module, but organize its source tree into three ownership layers:
+Keep one `SunCode.Desktop` QML module, but organize its source tree into three ownership layers:
 
 ```text
 app -> features -> shared

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Suncode.Runtime
+import SunCode.Runtime
 import "../../shared/components"
 import "../../shared/theme"
 
@@ -166,7 +166,7 @@ ApplicationWindow {
                 Text {
                     Layout.fillWidth: true
                     text: settingsWindow.providerConfigured(providerPage.providerId)
-                          ? "API key configured in the OS credential store."
+                          ? "API key configured in the local runtime credential store."
                           : "No API key configured."
                     color: settingsWindow.providerConfigured(providerPage.providerId) ? theme.success : theme.warning
                     font.pixelSize: theme.typeBody
@@ -278,6 +278,24 @@ ApplicationWindow {
                     page: "openai"
                     depth: 1
                 }
+                NavigationItem {
+                    visible: settingsWindow.providersExpanded
+                    text: "Kimi"
+                    page: "kimi"
+                    depth: 1
+                }
+                NavigationItem {
+                    visible: settingsWindow.providersExpanded
+                    text: "Claude"
+                    page: "claude"
+                    depth: 1
+                }
+                NavigationItem {
+                    visible: settingsWindow.providersExpanded
+                    text: "Gemini"
+                    page: "gemini"
+                    depth: 1
+                }
 
                 Item { Layout.fillHeight: true }
             }
@@ -289,7 +307,10 @@ ApplicationWindow {
             currentIndex: settingsWindow.selectedPage === "appearance" ? 1
                         : settingsWindow.selectedPage === "deepseek" ? 2
                         : settingsWindow.selectedPage === "zhipu" ? 3
-                        : settingsWindow.selectedPage === "openai" ? 4 : 0
+                        : settingsWindow.selectedPage === "openai" ? 4
+                        : settingsWindow.selectedPage === "kimi" ? 5
+                        : settingsWindow.selectedPage === "claude" ? 6
+                        : settingsWindow.selectedPage === "gemini" ? 7 : 0
 
             ScrollView {
                 clip: true
@@ -312,7 +333,7 @@ ApplicationWindow {
                         Label { text: "Defaults"; color: theme.text; font.pixelSize: 22; font.weight: Font.DemiBold }
                         Label {
                             Layout.fillWidth: true
-                            text: "Choose the model Suncode uses when a project starts a new turn."
+                            text: "Choose the model SunCode uses when a project starts a new turn."
                             color: theme.textSecondary
                             font.pixelSize: theme.typeBody
                             wrapMode: Text.Wrap
@@ -336,7 +357,7 @@ ApplicationWindow {
                     }
                     Text {
                         Layout.fillWidth: true
-                        text: "Only models registered by the local runtime appear here, grouped by provider."
+                        text: "Only models registered by the local runtime appear here."
                         color: theme.textMuted
                         font.pixelSize: theme.typeLabel
                         wrapMode: Text.Wrap
@@ -367,7 +388,7 @@ ApplicationWindow {
                             Label { text: "Appearance"; color: theme.text; font.pixelSize: 22; font.weight: Font.DemiBold }
                             Label {
                                 Layout.fillWidth: true
-                                text: "Adjust how Suncode looks across every open window."
+                                text: "Adjust how SunCode looks across every open window."
                                 color: theme.textSecondary
                                 font.pixelSize: theme.typeBody
                                 wrapMode: Text.Wrap
@@ -426,6 +447,30 @@ ApplicationWindow {
                 providerTitle: "OpenAI"
                 description: "Configure the credential used by the local OpenAI provider."
                 placeholder: "Paste OpenAI API key"
+            }
+
+            ProviderPage {
+                visible: settingsWindow.selectedPage === "kimi"
+                providerId: "kimi"
+                providerTitle: "Kimi"
+                description: "Configure the credential used by the local Kimi provider."
+                placeholder: "Paste Kimi API key"
+            }
+
+            ProviderPage {
+                visible: settingsWindow.selectedPage === "claude"
+                providerId: "claude"
+                providerTitle: "Claude"
+                description: "Configure the credential used by the local Claude provider."
+                placeholder: "Paste Anthropic API key"
+            }
+
+            ProviderPage {
+                visible: settingsWindow.selectedPage === "gemini"
+                providerId: "gemini"
+                providerTitle: "Gemini"
+                description: "Configure the credential used by the local Gemini provider."
+                placeholder: "Paste Gemini API key"
             }
         }
     }

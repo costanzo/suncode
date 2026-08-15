@@ -1,7 +1,7 @@
 # Progress
 
 - Status: Complete
-- Last updated: 2026-08-12
+- Last updated: 2026-08-15
 
 ## Completed
 
@@ -63,9 +63,9 @@
 - Added an Open Recent Project submenu to ProjectWindow and made opening an already-open project focus the existing window instead of creating a duplicate.
 - Kept the hub hidden while project windows exist and restored it only after the final project window closes.
 
-- Fixed the macOS green title-bar control to enter and exit fullscreen with the title bar hidden and the window shell removed in fullscreen.
+- Fixed the macOS green title-bar control to enter and exit fullscreen; a later 2026-08-15 follow-up kept the custom title bar visible and disabled minimize in fullscreen.
 
-- Moved ProjectWindow project actions into the macOS system menu bar and set the app display name to Suncode.
+- Moved ProjectWindow project actions into the macOS system menu bar and set the app display name to SunCode.
 
 ### 2026-08-12
 
@@ -93,7 +93,7 @@
 - Separated Windows maximize/restore from the macOS fullscreen behavior while preserving the existing title-bar double-click interaction on both platforms.
 - Cleared the ProjectWindow transient parent explicitly so each project remains an independent top-level Windows taskbar window after the hub is hidden.
 - Restored a 4px Windows outer inset to balance the frameless window edge while retaining the compact 36px title bar.
-- Added a compact Suncode logo to the Windows ProjectWindow title bar and kept the drag region clear of the new brand mark.
+- Added a compact SunCode logo to the Windows ProjectWindow title bar and kept the drag region clear of the new brand mark.
 - Optically aligned the Windows logo with the 26px left gutter and replaced the rounded, spaced caption controls with contiguous Windows-style hit regions and red close-button hover/press feedback.
 - Parsed the supplied combined Windows caption SVG into three normalized Qt icon resources and wired them into the corresponding title-bar states.
 - Adopted the revised 12px Windows caption assets at their native logical size while keeping the caption-button hit regions unchanged.
@@ -103,3 +103,10 @@
 - Confirmed the remaining caption softness was contrast-related after DPI-aware rasterization and made the Windows caption foreground explicitly black in light mode and white in dark mode and close hover/press states.
 - Added presentation-only Windows path normalization in ProjectHub so existing local and UNC project records display without extended-length path prefixes.
 - Added a 10px transparent shadow inset around restored Windows ProjectWindow content, automatically removed for maximized and fullscreen states while preserving internal chrome spacing and outer resize handles.
+
+### 2026-08-15
+
+- Kept the macOS ProjectWindow custom title bar visible in fullscreen, disabled the minimize traffic light in that state, and left close/fullscreen controls available.
+- Regenerated the macOS bundle icon with `iconutil` from padded iconset PNGs so the Dock icon uses about 76% artwork coverage instead of filling the full square.
+- Removed the dark full-canvas background from the logo SVGs and regenerated the icon rasters so the Dock icon can sit on transparent padding instead of a black rim.
+- Restored the compact ProjectWindow footer in fullscreen and constrained its layout height so the conversation remains dominant.

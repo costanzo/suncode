@@ -65,7 +65,7 @@ Item {
             return "Choose a model first..."
         }
         if (model.availability === "configured") {
-            return "Tell Suncode what to do..."
+            return "Tell SunCode what to do..."
         }
         if (model.provider_label) {
             return "Store a " + model.provider_label + " API key first..."
@@ -170,12 +170,12 @@ Item {
         rightMargin: 24
         footer: Item {
             width: messageList.width
-            height: composerDock.height + 24
+            height: composerDock.height + 6
         }
         boundsBehavior: Flickable.StopAtBounds
 
         function isNearBottom() {
-            return contentY + height >= contentHeight - 24
+            return contentY + height >= contentHeight - 6
         }
 
         onMovementEnded: {

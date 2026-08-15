@@ -1,8 +1,8 @@
 # Runtime SQLite Schema
 
-Status: Phase 1 contract, schema version 11.
+Status: Phase 1 contract, schema version 12.
 
-The Rust runtime is the only component that opens this database. Clients, providers, and extensions never read or write these tables directly. Client-visible shapes are defined by the client-runtime API and may differ from this physical schema.
+The embedded Rust runtime is the only component that opens this database. Host bindings, providers, and future extensions never read or write these tables directly. Host-visible shapes are defined by the runtime SDK contract and may differ from this physical schema.
 
 ## Conventions
 
@@ -76,8 +76,13 @@ Current turn state derived from `turn.state` content events. Prompts and respons
 | `updated_at` | TEXT | Not null |
 | `completed_at` | TEXT | Nullable; set for terminal states |
 | `error_code` | TEXT | Nullable |
+| `input_tokens` | INTEGER | Latest cumulative provider-reported input usage for the turn; defaults to zero |
+| `output_tokens` | INTEGER | Latest cumulative provider-reported output usage for the turn; defaults to zero |
+| `total_tokens` | INTEGER | Latest cumulative provider-reported total usage for the turn; defaults to zero |
 
 Turn states are `admitted`, `queued`, `preparing`, `calling_model`, `resolving_calls`, `compacting`, `completed`, `failed`, `cancelled`, and `interrupted`.
+
+Schema version 12 backfills these counters from the latest retained usage-bearing event for each turn. A session aggregate sums the turn projection; repeated cumulative events for one turn replace its counters and are never added together.
 
 ### `tool_calls`
 
@@ -136,7 +141,7 @@ The checkpoint payload remains owned by the runtime operations module. Items res
 
 ### `session_messages`
 
-Message-level read projection for Qt history, context construction, and cursor pagination. It is projected from durable message events and does not store streaming deltas.
+Message-level read projection for desktop history, context construction, and cursor pagination. It is projected from durable message events and does not store streaming deltas.
 
 | Column | Type | Constraints |
 | --- | --- | --- |

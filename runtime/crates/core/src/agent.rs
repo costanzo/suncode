@@ -1,7 +1,7 @@
 use crate::{
     context,
     domain::{Message, SessionEvent, ToolCall, Usage},
-    llm::{LlmProvider, ProviderError},
+    llm::ProviderError,
     persistence::{PersistenceError, Store},
     policy::{evaluate, tool_risk, Decision, Risk},
 };
@@ -147,7 +147,7 @@ impl Agent {
     ) -> Result<TurnResponse, AgentError> {
         let session_lock = self.session_lock(session_id).await;
         let model = model.unwrap_or("deepseek-v4-flash");
-        let Some(provider) = self.providers.provider(model) else {
+        let Some(provider) = self.providers.route(model) else {
             return Err(AgentError::new(
                 "model_unavailable",
                 "model is not advertised",
@@ -420,7 +420,7 @@ impl Agent {
         self.resolve_calls(continuation, siblings).await?;
         let provider = self
             .providers
-            .provider(&continuation.model)
+            .route(&continuation.model)
             .ok_or_else(|| AgentError::new("model_unavailable", "model is not advertised"))?;
         let response = self
             .run(continuation.clone(), None, token, provider)
@@ -440,7 +440,7 @@ impl Agent {
         mut context: Continuation,
         user_input: Option<&str>,
         token: CancellationToken,
-        provider: Arc<dyn LlmProvider>,
+        provider: crate::model_provider::ModelRoute,
     ) -> Result<TurnResponse, AgentError> {
         let started = Instant::now();
         if let Some(input) = user_input {
@@ -495,7 +495,12 @@ impl Agent {
             }
             let result = {
                 let (delta_sender, mut delta_receiver) = mpsc::unbounded_channel();
-                let provider = provider.complete(&context.messages, &token, delta_sender);
+                let provider = provider.provider.complete(
+                    &context.messages,
+                    provider.wire_model,
+                    &token,
+                    delta_sender,
+                );
                 tokio::pin!(provider);
                 let result = loop {
                     tokio::select! {
@@ -528,13 +533,6 @@ impl Agent {
                     "usage.updated",
                     json!({"turn_id":context.turn_id,"usage":context.usage}),
                 )?;
-            }
-            if context.usage.total_tokens > 64_000 {
-                return self.fail_context(
-                    &context,
-                    "token_budget_exceeded",
-                    "Turn exceeded its token budget",
-                );
             }
             let assistant = Message {
                 role: "assistant".into(),
@@ -1234,14 +1232,9 @@ mod tests {
         let operations =
             Arc::new(suncode_operations::Operations::new(directory.join(".operations")).unwrap());
         let (events, _) = broadcast::channel(64);
-        let registry = crate::model_provider::ModelProviderRegistry::new(
+        let registry = crate::model_provider::ModelProviderRegistry::with_deepseek_endpoint(
             format!("http://{address}"),
-            "deepseek-v4-flash".into(),
-            "http://localhost".into(),
-            "glm-5.2".into(),
-            "http://localhost".into(),
-            "gpt-5.6-sol".into(),
-            CredentialStore::memory(Some("test-key"), None, None),
+            CredentialStore::memory(Some("test-key"), None, None, None, None, None),
         );
         (
             Agent::new(store.clone(), Arc::new(registry), operations, events, false),

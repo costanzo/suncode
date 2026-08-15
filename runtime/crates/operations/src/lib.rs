@@ -1,4 +1,4 @@
-//! Audited in-process operations for the Suncode runtime.
+//! Audited in-process operations for the SunCode runtime.
 
 #[cfg(test)]
 use base64::engine::general_purpose::STANDARD;
@@ -20,6 +20,7 @@ static PROCESSES: OnceLock<Mutex<std::collections::HashMap<String, Child>>> = On
 mod artifacts;
 mod checkpoint;
 mod filesystem;
+mod git;
 mod mutations;
 mod process;
 mod search;
@@ -43,6 +44,8 @@ fn execute_operation(
         return result;
     }
     match method {
+        "git/status" => git::status(project_root, params),
+        "git/diff-file" => git::diff_file(project_root, params),
         "sandbox/profiles" => sandbox_profiles(),
         "capability/check" => capability_check(project_root, params),
         "capability/execute" => capability_execute(project_root, checkpoint_root, params),
@@ -714,6 +717,59 @@ mod tests {
         assert_eq!(
             find_result["result"]["matches"].as_array().unwrap().len(),
             2
+        );
+        cleanup(&root, &checkpoints);
+    }
+
+    #[test]
+    fn searches_with_rust_regexes_and_ripgrep_filters() {
+        let (root, checkpoints) = temporary_roots("search-ripgrep");
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::create_dir_all(root.join(".git")).unwrap();
+        fs::write(root.join(".gitignore"), b"ignored.rs\n").unwrap();
+        fs::write(
+            root.join("src/main.rs"),
+            b"value 123 and value 456\nneedle\nneedle\n",
+        )
+        .unwrap();
+        fs::write(root.join("ignored.rs"), b"value 999\n").unwrap();
+        fs::write(root.join(".hidden.rs"), b"value 888\n").unwrap();
+
+        let regex = request(
+            "search/find",
+            json!({"query":"value \\d+","pattern":"**/*.rs","max_results":10}),
+        );
+        let regex_result = dispatch(regex, Some(&root), Some(&checkpoints)).unwrap();
+        assert_eq!(
+            regex_result["result"]["matches"],
+            json!([
+                {"path":"src/main.rs","line":1,"column":1,"preview":"value 123 and value 456"},
+                {"path":"src/main.rs","line":1,"column":15,"preview":"value 456"}
+            ])
+        );
+        assert_eq!(regex_result["result"]["truncated"], false);
+
+        let limited = request(
+            "search/find",
+            json!({"query":"needle","pattern":"**/*.rs","max_results":1}),
+        );
+        let limited_result = dispatch(limited, Some(&root), Some(&checkpoints)).unwrap();
+        assert_eq!(
+            limited_result["result"]["matches"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(limited_result["result"]["truncated"], true);
+
+        let invalid = request(
+            "search/find",
+            json!({"query":"[unterminated","pattern":"**/*.rs"}),
+        );
+        assert_eq!(
+            dispatch(invalid, Some(&root), Some(&checkpoints)).unwrap()["error"]["code"],
+            "invalid_arguments"
         );
         cleanup(&root, &checkpoints);
     }

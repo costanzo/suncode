@@ -14,15 +14,6 @@ QString takeSdkString(char *value)
     return result;
 }
 
-QString sdkPath(const QUrl &url)
-{
-    QString value = url.toString(QUrl::FullyEncoded);
-    if (value.isEmpty()) {
-        value = url.path(QUrl::FullyEncoded);
-    }
-    return value;
-}
-
 QVariantMap mapFromJson(const QJsonObject &object)
 {
     return object.toVariantMap();
@@ -50,7 +41,7 @@ QString eventText(const QVariantMap &event)
         return QStringLiteral("Checkpoint captured for %1").arg(payload.value(QStringLiteral("path")).toString());
     }
     if (eventType == QStringLiteral("checkpoint.restore_failed")) {
-        return QStringLiteral("Undo stopped because a file changed outside Suncode");
+        return QStringLiteral("Undo stopped because a file changed outside SunCode");
     }
     if (eventType == QStringLiteral("turn.state")) {
         return QStringLiteral("Turn %1").arg(payload.value(QStringLiteral("state")).toString());

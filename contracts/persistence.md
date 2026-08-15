@@ -2,7 +2,7 @@
 
 Status: Draft for Phase 1 implementation.
 
-The Rust runtime owns SQLite, migrations, secret records, projections, and operation bookkeeping. Qt, providers, and future extensions never open the database directly.
+The Rust runtime owns SQLite, migrations, secret records, projections, and operation bookkeeping. Avalonia, providers, and future extensions never open the database directly.
 
 The normative Phase 1 physical table definitions, constraints, and indexes are in `sqlite-schema.md`. Clients consume API DTOs and never depend on those table shapes.
 

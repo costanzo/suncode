@@ -36,9 +36,9 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
 
     QGuiApplication app(argc, argv);
-    app.setApplicationDisplayName(QStringLiteral("Suncode"));
-    app.setApplicationName(QStringLiteral("Suncode"));
-    app.setOrganizationName(QStringLiteral("Suncode"));
+    app.setApplicationDisplayName(QStringLiteral("SunCode"));
+    app.setApplicationName(QStringLiteral("SunCode"));
+    app.setOrganizationName(QStringLiteral("SunCode"));
     app.setWindowIcon(QIcon(QStringLiteral(":/assets/logo/suncode-logo-small-256.png")));
 
     const QString systemUiFont = app.font().family();
@@ -75,13 +75,13 @@ int main(int argc, char *argv[])
     appFont.setFamilies(uiFontStack);
     app.setFont(appFont);
 
-    qmlRegisterType<RuntimeClient>("Suncode.Runtime", 1, 0, "RuntimeClient");
+    qmlRegisterType<RuntimeClient>("SunCode.Runtime", 1, 0, "RuntimeClient");
 
     QQmlApplicationEngine engine;
-    engine.rootContext()->setContextProperty(QStringLiteral("SuncodeUiFontFamily"), uiFont);
-    engine.rootContext()->setContextProperty(QStringLiteral("SuncodeCjkFontFamily"), cjkFont);
-    engine.rootContext()->setContextProperty(QStringLiteral("SuncodeMonoFontFamily"), monoFont);
-    const QUrl url(QStringLiteral("qrc:/qt/qml/Suncode/Desktop/qml/app/ProjectHub.qml"));
+    engine.rootContext()->setContextProperty(QStringLiteral("SunCodeUiFontFamily"), uiFont);
+    engine.rootContext()->setContextProperty(QStringLiteral("SunCodeCjkFontFamily"), cjkFont);
+    engine.rootContext()->setContextProperty(QStringLiteral("SunCodeMonoFontFamily"), monoFont);
+    const QUrl url(QStringLiteral("qrc:/qt/qml/SunCode/Desktop/qml/app/ProjectHub.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
                      &app, [] { QCoreApplication::exit(EXIT_FAILURE); }, Qt::QueuedConnection);
     engine.load(url);

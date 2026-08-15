@@ -3,7 +3,7 @@
 ## Source
 
 - Added provider-keyed credential state for DeepSeek, Zhipu GLM, and OpenAI.
-- Added a model provider registry that resolves the selected Suncode model ID to the matching runtime provider.
+- Added a model provider registry that resolves the selected SunCode model ID to the matching runtime provider.
 - Added an OpenAI-compatible provider adapter for Zhipu GLM and OpenAI using streamed `/chat/completions` requests.
 - Shared canonical message normalization and SSE parsing across built-in providers.
 - Updated model defaults to `glm-5.2` for Zhipu GLM and `gpt-5.6-sol` for OpenAI.

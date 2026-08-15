@@ -10,15 +10,16 @@
 #include "runtime_sdk.h"
 
 #include <functional>
+#include <memory>
 
 class RuntimeClient : public QObject {
     Q_OBJECT
-    Q_PROPERTY(QString baseUrl READ baseUrl WRITE setBaseUrl NOTIFY baseUrlChanged)
     Q_PROPERTY(QString projectId READ projectId WRITE setProjectId NOTIFY projectIdChanged)
     Q_PROPERTY(QString sessionId READ sessionId WRITE setSessionId NOTIFY sessionIdChanged)
     Q_PROPERTY(QString sessionTitle READ sessionTitle NOTIFY sessionTitleChanged)
     Q_PROPERTY(QString activeTurnId READ activeTurnId NOTIFY activeTurnChanged)
     Q_PROPERTY(QString selectedModel READ selectedModel WRITE setSelectedModel NOTIFY selectedModelChanged)
+    Q_PROPERTY(qint64 sessionTotalTokens READ sessionTotalTokens NOTIFY sessionUsageChanged)
     Q_PROPERTY(QString themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
     Q_PROPERTY(bool autoSelectProject READ autoSelectProject WRITE setAutoSelectProject)
     Q_PROPERTY(QString connectionState READ connectionState NOTIFY connectionStateChanged)
@@ -34,13 +35,17 @@ class RuntimeClient : public QObject {
     Q_PROPERTY(QVariantList sessions READ sessions NOTIFY sessionsChanged)
     Q_PROPERTY(QVariantList checkpoints READ checkpoints NOTIFY checkpointsChanged)
     Q_PROPERTY(QVariantMap pendingApproval READ pendingApproval NOTIFY pendingApprovalChanged)
+    Q_PROPERTY(QVariantMap gitStatus READ gitStatus NOTIFY gitStatusChanged)
+    Q_PROPERTY(QVariantMap gitDiff READ gitDiff NOTIFY gitDiffChanged)
+    Q_PROPERTY(QVariantList gitDiffRows READ gitDiffRows NOTIFY gitDiffChanged)
+    Q_PROPERTY(QString gitState READ gitState NOTIFY gitStateChanged)
+    Q_PROPERTY(QString gitDiffState READ gitDiffState NOTIFY gitDiffStateChanged)
+    Q_PROPERTY(QString gitError READ gitError NOTIFY gitErrorChanged)
 
 public:
     explicit RuntimeClient(QObject *parent = nullptr);
     ~RuntimeClient() override;
 
-    QString baseUrl() const;
-    void setBaseUrl(const QString &value);
     QString projectId() const;
     void setProjectId(const QString &value);
     QString sessionId() const;
@@ -49,6 +54,7 @@ public:
     QString activeTurnId() const;
     QString selectedModel() const;
     void setSelectedModel(const QString &value);
+    qint64 sessionTotalTokens() const;
     QString themeMode() const;
     void setThemeMode(const QString &value);
     bool autoSelectProject() const { return m_autoSelectProject; }
@@ -66,6 +72,12 @@ public:
     QVariantList sessions() const;
     QVariantList checkpoints() const;
     QVariantMap pendingApproval() const;
+    QVariantMap gitStatus() const;
+    QVariantMap gitDiff() const;
+    QVariantList gitDiffRows() const;
+    QString gitState() const;
+    QString gitDiffState() const;
+    QString gitError() const;
 
     Q_INVOKABLE void connectToRuntime();
     Q_INVOKABLE void loadCredentialStatus();
@@ -88,15 +100,17 @@ public:
     Q_INVOKABLE void copyText(const QString &text);
     Q_INVOKABLE void clearSessionView();
     Q_INVOKABLE void refreshDiagnostics();
+    Q_INVOKABLE void refreshGitStatus();
+    Q_INVOKABLE void loadGitDiff(const QString &scope, const QString &path);
     Q_INVOKABLE void saveUserSetting(const QString &key, const QVariant &value);
 
 signals:
-    void baseUrlChanged();
     void projectIdChanged();
     void sessionIdChanged();
     void sessionTitleChanged();
     void activeTurnChanged();
     void selectedModelChanged();
+    void sessionUsageChanged();
     void themeModeChanged();
     void connectionStateChanged();
     void statusTextChanged();
@@ -111,20 +125,28 @@ signals:
     void sessionsChanged();
     void checkpointsChanged();
     void pendingApprovalChanged();
+    void gitStatusChanged();
+    void gitDiffChanged();
+    void gitStateChanged();
+    void gitDiffStateChanged();
+    void gitErrorChanged();
     void credentialStored();
     void projectOpened(const QString &projectId);
 
 private:
-    QUrl endpoint(const QString &path) const;
     void setConnectionState(const QString &state, const QString &status);
-    void requestJson(const QString &method, const QUrl &url, const QJsonObject &body,
-                     std::function<void(int, const QJsonObject &)> onSuccess);
+    void requestSdk(std::function<char *()> call,
+                    std::function<void(const QJsonObject &)> onSuccess,
+                    std::function<void(const QString &, const QString &)> onError = {});
     bool isModelConfigured(const QString &modelId) const;
     void loadHealth();
     void loadModels();
     void loadSettings();
     void loadSessions();
     void loadCheckpoints();
+    void loadSessionUsage();
+    void scheduleGitRefresh();
+    void clearGitView();
     void startEventStream();
     void consumeEvent(const QJsonObject &event);
     void emitReplayedSessionState();
@@ -132,15 +154,15 @@ private:
     void closeEventSubscription();
     static void sdkEventCallback(const char *eventJson, void *userData);
 
-    static SuncodeRuntimeHandle *sharedRuntimeHandle(QString *error);
-    SuncodeRuntimeHandle *m_runtimeHandle = nullptr;
-    SuncodeRuntimeSubscriptionHandle *m_eventSubscription = nullptr;
-    QString m_baseUrl;
+    static std::shared_ptr<SunCodeRuntimeHandle> sharedRuntimeHandle(QString *error);
+    std::shared_ptr<SunCodeRuntimeHandle> m_runtimeHandle;
+    SunCodeRuntimeSubscriptionHandle *m_eventSubscription = nullptr;
     QString m_projectId;
     QString m_sessionId;
     QString m_sessionTitle;
     QString m_activeTurnId;
     QString m_selectedModel = QStringLiteral("deepseek-v4-flash");
+    qint64 m_sessionTotalTokens = 0;
     QString m_themeMode = QStringLiteral("dark");
     QString m_connectionState = QStringLiteral("disconnected");
     QString m_statusText = QStringLiteral("Not connected");
@@ -154,7 +176,15 @@ private:
     QVariantList m_sessions;
     QVariantList m_checkpoints;
     QVariantMap m_pendingApproval;
+    QVariantMap m_gitStatus;
+    QVariantMap m_gitDiff;
+    QVariantList m_gitDiffRows;
+    QString m_gitState = QStringLiteral("idle");
+    QString m_gitDiffState = QStringLiteral("idle");
+    QString m_gitError;
+    QString m_gitDiffRequestKey;
     QVariantList m_credentials;
+    QTimer m_gitRefreshTimer;
     bool m_autoSelectProject = true;
     bool m_deferSessionReplaySignals = false;
     qint64 m_lastSequence = 0;

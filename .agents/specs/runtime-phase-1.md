@@ -1,7 +1,7 @@
 # Runtime Phase 1
 
-The runtime is one Rust process with one SQLite database under `~/.suncode/data/sqlite/runtime.sqlite3`.
+The runtime is an embedded Rust SDK inside its host process with one SQLite database under `~/.suncode/data/sqlite/runtime.sqlite3`.
 
-Startup acquires the runtime lock, opens the database, performs recovery, and serves the SDK/API surface. Session context is built from retained `session_messages`; streaming deltas are not stored durably.
+SDK startup acquires the runtime lock, opens the database, performs recovery, and exposes named in-process methods plus ordered event subscriptions. There is no client-facing listener, HTTP authentication token, endpoint discovery record, or standalone runtime binary. Session context is built from retained `session_messages`; streaming deltas are not stored durably. Provider-reported usage updates the cumulative `turns` projection, and the named session-usage method returns the sum across turns without estimating missing provider usage.
 
-Provider integration is Rust-owned. The built-in provider registry resolves `deepseek-v4-flash`, `glm-5.2`, and `gpt-5.6-sol` to trusted runtime adapters. `/credentials` returns redacted provider-keyed credential state, `/models` returns registered models with credential-derived availability, and provider API keys are loaded from plaintext SQLite `secret_records` or explicit non-interactive environment overrides only.
+Provider integration is Rust-owned. The built-in provider registry resolves twelve static model IDs, two per provider, to six trusted runtime adapters. The SDK credential-status method returns six redacted provider-keyed states, the model-list method returns every registered model with availability derived from its provider credential, and the selected model's wire ID is passed per turn submission. Provider API keys are loaded from plaintext SQLite `secret_records` or explicit non-interactive environment overrides only; provider endpoint/model environment overrides are not read. Provider adapters retain outbound HTTPS.

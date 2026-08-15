@@ -39,9 +39,9 @@
 - Added an Open Recent Project submenu to ProjectWindow; selecting a recent project opens that project in its own window, or focuses the existing window if it is already open.
 - Tightened project-window lifecycle handling so the hub stays hidden while any project window remains open and reappears only after the last one closes.
 - Restored Windows minimize, maximize/restore, and close controls in the frameless ProjectWindow title bar, reduced its Windows chrome height, and kept Windows maximize behavior distinct from macOS fullscreen.
-- Made project windows explicitly non-transient so hiding the project hub no longer removes the Suncode taskbar entry on Windows.
+- Made project windows explicitly non-transient so hiding the project hub no longer removes the SunCode taskbar entry on Windows.
 - Restored a compact 4px outer inset around Windows project windows so their frameless chrome has comparable visual breathing room to macOS without increasing the 36px title bar.
-- Added the Suncode logo to the upper-left corner of Windows project windows while preserving the macOS traffic-light control cluster.
+- Added the SunCode logo to the upper-left corner of Windows project windows while preserving the macOS traffic-light control cluster.
 - Aligned the Windows title-bar logo to the left gutter centerline and refined the minimize, maximize/restore, and close controls to Windows caption-button proportions and hover states, including the native-style red close hover.
 - Replaced the Windows minimize, maximize, and close glyphs with clean per-icon assets extracted from the supplied combined SVG while retaining the existing restore-state glyph.
 - Rendered the revised Windows caption assets at their native 12px canvas size without shrinking their 46x36px hit regions.
@@ -75,14 +75,14 @@
 
 - Added this requirement package and updated durable Qt desktop feature/design notes.
 
-- Changed the macOS green title-bar control to drive real fullscreen mode (`showFullScreen()` / `showNormal()`), hiding the custom title bar and rounded chrome in fullscreen.
+- Changed the macOS green title-bar control to drive real fullscreen mode (`showFullScreen()` / `showNormal()`), while keeping the custom title bar visible and disabling minimize in fullscreen.
 
-- Moved ProjectWindow project actions into the macOS system menu bar and set the app display name to Suncode.
+- Moved ProjectWindow project actions into the macOS system menu bar and set the app display name to SunCode.
 - Kept the native Open Recent Project submenu structurally visible while project data loads, disabling it when empty; this avoids a Qt 6.11.1 macOS crash in `QQuickMenuPrivate::setNativeMenuVisible()` when the asynchronous project list changes.
 - Added a compact project-window footer with a right-aligned placeholder and kept the frameless window's native bottom-edge and corner resize behavior attached to the true outer edge.
 - Unified ProjectWindow under one canvas-colored background and inset the toolbar, navigation, conversation, process, and footer surfaces as consistently spaced cards.
 - Made the exposed top canvas strip, clear toolbar area, and left navigation gutter native window-drag regions while keeping traffic lights, settings, and the navigation toggle interactive.
-- Replaced the footer placeholder with compact runtime connection and selected-model status while preserving fullscreen header/footer suppression.
+- Replaced the footer placeholder with compact runtime connection and selected-model status while preserving fullscreen footer suppression.
 - Replaced the right sidebar's full-height collapsed rail with a transparent draggable gutter and top-aligned toggle that mirrors the left navigation gutter.
 - Tightened ProjectWindow card gaps and outer inset, and reduced both side-card target widths so the conversation retains more space at default and minimum window sizes.
 - Flattened the ProjectWindow header and footer into the window background by removing their card surfaces and borders, and removed the redundant footer connection-status display.
@@ -94,4 +94,11 @@
 - Added a shared rounded ComboBox treatment for model/theme selectors, including rounded option popups, and replaced the Session dialog's default square title header with a rounded-surface-compatible header.
 - Replaced the Session row action menu's default square popup chrome with a themed rounded surface and rounded hover/focus states.
 - Simplified the Session create/rename dialog by removing explanatory copy and centering its title.
-- Regenerated all desktop logo PNGs and the macOS `Suncode.icns` from the SVG sources with transparent corners, removing the opaque white canvas visible around the Dock icon.
+- Regenerated all desktop logo PNGs and the macOS `suncode-desktop.icns` from the SVG sources with transparent corners, removing the opaque white canvas visible around the Dock icon.
+
+### 2026-08-15
+
+- Kept the macOS ProjectWindow custom title bar visible in fullscreen, disabled the minimize traffic light in that state, and left close/fullscreen controls available.
+- Regenerated `suncode-desktop.icns` with macOS `iconutil` from a complete iconset whose artwork is scaled to 76% of the canvas, giving the Dock icon more transparent optical padding while preserving the existing mark.
+- Removed the dark full-canvas background from the SunCode logo SVGs and regenerated the raster logo assets and `suncode-desktop.icns` from the transparent source art so the Dock icon no longer reads with a black rim.
+- Kept the compact ProjectWindow footer visible at a fixed 18px height in macOS fullscreen instead of suppressing it.
