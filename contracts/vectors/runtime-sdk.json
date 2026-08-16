@@ -73,6 +73,17 @@
     "aggregation": "latest cumulative usage per turn, summed across the session"
   },
   {
+    "id": "list-provider-exchanges",
+    "call": {"method":"list_provider_exchanges","session_id":"session-1"},
+    "expected_response_shape": {"session_id":"session-1","exchanges":[{"exchangeId":"exchange-1","turnId":"turn-1","provider":"deepseek","modelId":"deepseek-v4-flash","wireModel":"deepseek-chat","state":"completed","iteration":1,"inputMessages":[],"toolCalls":[],"usage":{"input_tokens":10,"output_tokens":5,"total_tokens":15,"cache_read_tokens":null,"cache_write_tokens":null}}]},
+    "privacy": "normalized provider exchange only; no API keys, HTTP authorization headers, or raw provider wire payloads"
+  },
+  {
+    "id": "provider-exchange",
+    "call": {"method":"provider_exchange","session_id":"session-1","exchange_id":"exchange-1"},
+    "expected_response_shape": {"exchangeId":"exchange-1","sessionId":"session-1","turnId":"turn-1","provider":"deepseek","state":"completed","inputMessages":[],"outputMessage":{"role":"assistant"},"toolCalls":[],"finishReason":"stop"}
+  },
+  {
     "id": "list-checkpoints",
     "call": {"method":"list_checkpoints","session_id":"session-1"},
     "expected_response_shape": {"session_id":"session-1","checkpoints":[{"manifestId":"manifest-1","turnId":"turn-1","status":"available","itemCount":2,"paths":["README.md","src/index.ts"],"expiresAt":"rfc3339"}]}

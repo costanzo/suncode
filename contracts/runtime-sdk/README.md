@@ -40,6 +40,8 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `reopen_session` | Reopen an archived session |
 | `session_snapshot` | Read a bounded session projection and retained events after a cursor |
 | `session_usage` | Read cumulative provider-reported token usage for a session |
+| `list_provider_exchanges` | List normalized provider exchange traces for a session |
+| `provider_exchange` | Inspect one normalized provider exchange trace |
 | `list_checkpoints` | List turn-level checkpoint manifests for a session |
 | `checkpoint_manifest` | Inspect one manifest and its items |
 | `restore_checkpoint` | Restore a manifest with ownership and post-image conflict checks |
@@ -54,6 +56,8 @@ Rust-generated project, session, turn, approval, checkpoint, event, and message 
 Git DTOs contain only opened-project-relative paths. `git_status` returns branch and detached-head information, aggregate file/addition/deletion/conflict counts, and per-file index/worktree status. `git_diff_file` returns structured hunks and lines with old/new line numbers plus a bounded plain-text patch. The runtime embeds vendored libgit2 and does not require a Git executable or a system libgit2 installation. The current Git SDK surface is read-only.
 
 `session_usage` returns `input_tokens`, `output_tokens`, and `total_tokens` summed from the latest cumulative usage projection for every turn in the session. Providers that omit usage metadata contribute zero; the runtime does not estimate missing usage.
+
+Provider exchange DTOs are local session diagnostics. They expose normalized input messages, normalized assistant output, tool calls, finish reason, redacted provider errors, and provider-reported usage including nullable cache-token fields when available. They never include provider API keys, HTTP authorization headers, or provider-private raw wire payloads.
 
 ## Outcomes
 
@@ -86,6 +90,8 @@ Panics are contained at native binding boundaries and converted to `runtime_unav
 ## Events
 
 Session events use a strictly increasing durable `content_sequence`. Streaming deltas are live-only and may carry sequence zero. Final messages and lifecycle events are durable.
+
+Provider exchange lifecycle events are durable: `provider.exchange.started`, `provider.exchange.completed`, and `provider.exchange.failed`. They project into the provider-exchange query surface and may be used by clients to refresh an open trace drawer.
 
 Subscription establishment follows this invariant:
 

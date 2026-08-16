@@ -102,3 +102,7 @@
 - Regenerated `suncode-desktop.icns` with macOS `iconutil` from a complete iconset whose artwork is scaled to 76% of the canvas, giving the Dock icon more transparent optical padding while preserving the existing mark.
 - Removed the dark full-canvas background from the SunCode logo SVGs and regenerated the raster logo assets and `suncode-desktop.icns` from the transparent source art so the Dock icon no longer reads with a black rim.
 - Kept the compact ProjectWindow footer visible at a fixed 18px height in macOS fullscreen instead of suppressing it.
+
+### 2026-08-16
+
+- Regenerated the macOS Dock icon assets with 80% artwork coverage so SunCode reads closer to neighboring Dock icons while preserving transparent padding.

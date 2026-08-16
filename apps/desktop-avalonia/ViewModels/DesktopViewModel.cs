@@ -18,6 +18,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private SessionItem? _selectedSession;
     private ModelItem? _selectedModel;
     private GitFileItem? _selectedGitFile;
+    private ProviderTraceItem? _selectedProviderTrace;
     private ApprovalItem? _pendingApproval;
     private string _connectionState = "disconnected";
     private string _statusText = "Starting local runtime...";
@@ -32,6 +33,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private string _gitPatch = string.Empty;
     private string _gitScope = "all";
     private string _gitFilter = string.Empty;
+    private string _providerTraceState = "idle";
+    private string _providerTraceError = string.Empty;
+    private string _providerTraceFilter = string.Empty;
     private string _gitBranch = string.Empty;
     private bool _gitStatusTruncated;
     private bool _gitDiffBinary;
@@ -48,7 +52,11 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private bool _reviewVisible = true;
     private bool _navigationPinned = true;
     private bool _gitVisible;
+    private bool _providerTraceVisible;
     private double _layoutWidth = 1440;
+    private double _navigationPaneWidth = 272;
+    private double _reviewPaneWidth = 312;
+    private double _bottomDrawerHeight = 360;
     private bool _isBusy;
     private bool _disposed;
 
@@ -65,6 +73,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public ObservableCollection<GitFileItem> GitFiles { get; } = [];
     public ObservableCollection<GitFileItem> FilteredGitFiles { get; } = [];
     public ObservableCollection<DiffLineItem> DiffLines { get; } = [];
+    public ObservableCollection<ProviderTraceItem> ProviderTraces { get; } = [];
+    public ObservableCollection<ProviderTraceItem> FilteredProviderTraces { get; } = [];
 
     public ProjectItem? SelectedProject
     {
@@ -119,6 +129,19 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
+    public ProviderTraceItem? SelectedProviderTrace
+    {
+        get => _selectedProviderTrace;
+        set
+        {
+            if (SetProperty(ref _selectedProviderTrace, value))
+            {
+                OnPropertyChanged(nameof(SelectedProviderTraceTitle));
+                OnPropertyChanged(nameof(HasSelectedProviderTrace));
+            }
+        }
+    }
+
     public ApprovalItem? PendingApproval
     {
         get => _pendingApproval;
@@ -169,6 +192,18 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public string GitPatch { get => _gitPatch; private set => SetProperty(ref _gitPatch, value); }
     public string GitScope { get => _gitScope; private set => SetProperty(ref _gitScope, value); }
     public string GitFilter { get => _gitFilter; private set { if (SetProperty(ref _gitFilter, value)) OnPropertyChanged(nameof(GitEmptyMessage)); } }
+    public string ProviderTraceState
+    {
+        get => _providerTraceState;
+        private set
+        {
+            if (!SetProperty(ref _providerTraceState, value)) return;
+            OnPropertyChanged(nameof(IsProviderTraceLoading));
+            OnPropertyChanged(nameof(ProviderTraceEmptyMessage));
+        }
+    }
+    public string ProviderTraceError { get => _providerTraceError; private set => SetProperty(ref _providerTraceError, value); }
+    public string ProviderTraceFilter { get => _providerTraceFilter; private set { if (SetProperty(ref _providerTraceFilter, value)) OnPropertyChanged(nameof(ProviderTraceEmptyMessage)); } }
     public string GitBranch { get => _gitBranch; private set { if (SetProperty(ref _gitBranch, value)) { OnPropertyChanged(nameof(GitSummary)); OnPropertyChanged(nameof(GitFooterBranchText)); } } }
     public int GitChangedFiles { get => _gitChangedFiles; private set { if (SetProperty(ref _gitChangedFiles, value)) { OnPropertyChanged(nameof(GitSummary)); OnPropertyChanged(nameof(GitChangeSummary)); OnPropertyChanged(nameof(IsGitClean)); OnPropertyChanged(nameof(IsGitDirty)); } } }
     public int GitAdditions { get => _gitAdditions; private set => SetProperty(ref _gitAdditions, value); }
@@ -184,6 +219,10 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public bool ReviewVisible { get => _reviewVisible; set { if (SetProperty(ref _reviewVisible, value)) OnPropertyChanged(nameof(ReviewWidth)); } }
     public bool NavigationPinned { get => _navigationPinned; set => SetProperty(ref _navigationPinned, value); }
     public bool GitVisible { get => _gitVisible; set => SetProperty(ref _gitVisible, value); }
+    public bool ProviderTraceVisible { get => _providerTraceVisible; set => SetProperty(ref _providerTraceVisible, value); }
+    public double NavigationPaneWidth { get => _navigationPaneWidth; set { if (SetProperty(ref _navigationPaneWidth, value)) OnPropertyChanged(nameof(NavigationWidth)); } }
+    public double ReviewPaneWidth { get => _reviewPaneWidth; set { if (SetProperty(ref _reviewPaneWidth, value)) OnPropertyChanged(nameof(ReviewWidth)); } }
+    public double BottomDrawerHeight { get => _bottomDrawerHeight; set => SetProperty(ref _bottomDrawerHeight, value); }
     public bool IsBusy { get => _isBusy; private set => SetProperty(ref _isBusy, value); }
 
     public bool IsProjectOpen => SelectedProject is not null;
@@ -193,7 +232,11 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public bool HasActivities => Activities.Count > 0;
     public bool HasCheckpoints => Checkpoints.Count > 0;
     public bool HasFilteredGitFiles => FilteredGitFiles.Count > 0;
+    public bool HasProviderTraces => ProviderTraces.Count > 0;
+    public bool HasFilteredProviderTraces => FilteredProviderTraces.Count > 0;
+    public bool HasSelectedProviderTrace => SelectedProviderTrace is not null;
     public string GitFileCountText => $"{FilteredGitFiles.Count} {(FilteredGitFiles.Count == 1 ? "file" : "files")}";
+    public string ProviderTraceCountText => $"{FilteredProviderTraces.Count} {(FilteredProviderTraces.Count == 1 ? "request" : "requests")}";
     public bool HasSelectedSession => SelectedSession is not null;
     public bool HasPendingApproval => PendingApproval is not null;
     public bool IsTurnActive => !string.IsNullOrWhiteSpace(ActiveTurnId);
@@ -212,8 +255,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public string GitSummary => GitState == "not_repository"
         ? "Not a Git repository"
         : string.IsNullOrWhiteSpace(GitBranch) ? "Git status unavailable" : $"{GitBranch}  ·  {GitChangedFiles} changed";
-    public GridLength NavigationWidth => NavigationVisible ? new GridLength(Math.Min(272, _layoutWidth * 0.22)) : new GridLength(0);
-    public GridLength ReviewWidth => ReviewVisible ? new GridLength(Math.Min(312, _layoutWidth * 0.25)) : new GridLength(0);
+    public GridLength NavigationWidth => NavigationVisible ? new GridLength(NavigationPaneWidth) : new GridLength(0);
+    public GridLength ReviewWidth => ReviewVisible ? new GridLength(ReviewPaneWidth) : new GridLength(0);
     public GridLength GitFileListWidth => new(Math.Min(300, Math.Max(228, (_layoutWidth - 80) * 0.28)));
     public bool IsGitReady => GitState == "ready";
     public bool IsGitClean => IsGitReady && GitChangedFiles == 0;
@@ -247,6 +290,24 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
+    public bool IsProviderTraceLoading => ProviderTraceState == "loading";
+    public string ProviderTraceSummary => ProviderTraces.Count == 0
+        ? "No provider requests"
+        : $"{ProviderTraces.Count} provider {(ProviderTraces.Count == 1 ? "request" : "requests")}";
+    public string SelectedProviderTraceTitle => SelectedProviderTrace?.Title ?? "No provider request selected";
+    public string ProviderTraceEmptyMessage
+    {
+        get
+        {
+            if (ProviderTraceState == "loading") return "Loading provider requests...";
+            if (ProviderTraceState == "error") return string.IsNullOrWhiteSpace(ProviderTraceError) ? "Provider trace is unavailable." : ProviderTraceError;
+            if (SelectedSession is null) return "Select a session to inspect provider requests.";
+            if (FilteredProviderTraces.Count == 0 && ProviderTraceFilter.Length > 0) return "No provider requests match this filter.";
+            if (FilteredProviderTraces.Count == 0) return "No provider requests have been recorded for this session.";
+            return "Select a provider request to inspect its input, output, usage, and tool calls.";
+        }
+    }
+
     public bool ScopeAll => GitScope == "all";
     public bool ScopeStaged => GitScope == "staged";
     public bool ScopeUnstaged => GitScope == "unstaged";
@@ -254,6 +315,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public void UpdateLayoutWidth(double width)
     {
         _layoutWidth = width;
+        NavigationPaneWidth = Math.Clamp(NavigationPaneWidth, 180, Math.Min(420, Math.Max(180, _layoutWidth - 560)));
+        ReviewPaneWidth = Math.Clamp(ReviewPaneWidth, 220, Math.Min(460, Math.Max(220, _layoutWidth - 560)));
         OnPropertyChanged(nameof(NavigationWidth));
         OnPropertyChanged(nameof(ReviewWidth));
         OnPropertyChanged(nameof(GitFileListWidth));
@@ -412,6 +475,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             ApplySnapshot(snapshot);
             await LoadSessionUsageAsync();
             await LoadCheckpointsAsync();
+            if (ProviderTraceVisible) await RefreshProviderTracesAsync();
             _subscription = _sdk.Subscribe(session.SessionId, _lastSequence, json => OnNativeEvent(session.SessionId, json));
         }, "Session loaded");
     }
@@ -557,6 +621,60 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             GitDiffState = "error";
             GitDiffError = exception.Message;
         }
+    }
+
+    public async Task RefreshProviderTracesAsync()
+    {
+        if (!EnsureSdk() || SelectedSession is null)
+        {
+            ClearProviderTraces();
+            return;
+        }
+        var sessionId = SelectedSession.SessionId;
+        ProviderTraceState = "loading";
+        ProviderTraceError = string.Empty;
+        try
+        {
+            var result = await _sdk!.ListProviderExchangesAsync(sessionId);
+            if (SelectedSession?.SessionId != sessionId) return;
+            ProviderTraces.Clear();
+            foreach (var item in result.Array("exchanges").OfType<JsonObject>())
+            {
+                ProviderTraces.Add(ProviderTraceFromJson(item));
+            }
+            ApplyProviderTraceFilter();
+            ProviderTraceState = "ready";
+            if (SelectedProviderTrace is null && FilteredProviderTraces.Count > 0)
+                SelectedProviderTrace = FilteredProviderTraces[0];
+        }
+        catch (Exception exception)
+        {
+            ProviderTraceState = "error";
+            ProviderTraceError = exception.Message;
+        }
+    }
+
+    public async Task LoadProviderTraceAsync(ProviderTraceItem trace)
+    {
+        if (!EnsureSdk() || SelectedSession is null) return;
+        var sessionId = SelectedSession.SessionId;
+        try
+        {
+            var result = await _sdk!.ProviderExchangeAsync(sessionId, trace.ExchangeId);
+            if (SelectedSession?.SessionId != sessionId) return;
+            SelectedProviderTrace = ProviderTraceFromJson(result);
+        }
+        catch (Exception exception)
+        {
+            ProviderTraceState = "error";
+            ProviderTraceError = exception.Message;
+        }
+    }
+
+    public void SetProviderTraceFilter(string filter)
+    {
+        ProviderTraceFilter = filter ?? string.Empty;
+        ApplyProviderTraceFilter();
     }
 
     public void SetGitScope(string scope)
@@ -795,7 +913,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             Messages.Add(new MessageItem { Role = type == "message.user" ? "user" : "assistant", Text = text, ContentSequence = sequence, TurnId = turnId });
             OnPropertyChanged(nameof(HasMessages));
         }
-        else
+        else if (!type.StartsWith("provider.exchange.", StringComparison.Ordinal))
         {
             Activities.Add(new ActivityItem(type, text, sequence, payload.String("state"), payload.String("operation")));
             OnPropertyChanged(nameof(HasActivities));
@@ -820,6 +938,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
         if (live && type.StartsWith("checkpoint.", StringComparison.Ordinal)) _ = LoadCheckpointsAsync();
         if (live && type == "usage.updated") _ = LoadSessionUsageAsync();
+        if (live && type.StartsWith("provider.exchange.", StringComparison.Ordinal) && ProviderTraceVisible) _ = RefreshProviderTracesAsync();
         if (live && (type.StartsWith("checkpoint.", StringComparison.Ordinal) || pathAdded)) _ = RefreshGitAsync();
     }
 
@@ -900,6 +1019,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         ChangedPaths.Clear();
         Checkpoints.Clear();
         DiffLines.Clear();
+        ClearProviderTraces();
         PendingApproval = null;
         ActiveTurnId = string.Empty;
         SessionTotalTokens = 0;
@@ -933,6 +1053,21 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         GitDiffDeletions = 0;
     }
 
+    private void ClearProviderTraces()
+    {
+        ProviderTraces.Clear();
+        FilteredProviderTraces.Clear();
+        SelectedProviderTrace = null;
+        ProviderTraceState = "idle";
+        ProviderTraceError = string.Empty;
+        ProviderTraceFilter = string.Empty;
+        OnPropertyChanged(nameof(HasProviderTraces));
+        OnPropertyChanged(nameof(HasFilteredProviderTraces));
+        OnPropertyChanged(nameof(ProviderTraceCountText));
+        OnPropertyChanged(nameof(ProviderTraceSummary));
+        OnPropertyChanged(nameof(ProviderTraceEmptyMessage));
+    }
+
     private void ApplyGitFilter()
     {
         var selectedPath = SelectedGitFile?.Path;
@@ -948,6 +1083,81 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasFilteredGitFiles));
         OnPropertyChanged(nameof(GitFileCountText));
         OnPropertyChanged(nameof(GitEmptyMessage));
+    }
+
+    private void ApplyProviderTraceFilter()
+    {
+        var selectedId = SelectedProviderTrace?.ExchangeId;
+        FilteredProviderTraces.Clear();
+        foreach (var trace in ProviderTraces.Where(trace => ProviderTraceMatches(trace, ProviderTraceFilter)))
+        {
+            FilteredProviderTraces.Add(trace);
+        }
+        SelectedProviderTrace = FilteredProviderTraces.FirstOrDefault(item => item.ExchangeId == selectedId)
+            ?? FilteredProviderTraces.FirstOrDefault();
+        OnPropertyChanged(nameof(HasProviderTraces));
+        OnPropertyChanged(nameof(HasFilteredProviderTraces));
+        OnPropertyChanged(nameof(ProviderTraceCountText));
+        OnPropertyChanged(nameof(ProviderTraceSummary));
+        OnPropertyChanged(nameof(ProviderTraceEmptyMessage));
+    }
+
+    private static bool ProviderTraceMatches(ProviderTraceItem trace, string filter)
+    {
+        if (string.IsNullOrWhiteSpace(filter)) return true;
+        return trace.ExchangeId.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || trace.TurnId.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || trace.Provider.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || trace.ModelId.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || trace.WireModel.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || trace.InputText.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || trace.OutputText.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || trace.ToolCallsText.Contains(filter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static ProviderTraceItem ProviderTraceFromJson(JsonObject item)
+    {
+        var usage = item.Object("usage");
+        return new ProviderTraceItem(
+            item.String("exchangeId", "exchange_id"),
+            item.String("turnId", "turn_id"),
+            item.String("provider"),
+            item.String("modelId", "model_id"),
+            item.String("wireModel", "wire_model"),
+            item.String("state"),
+            item.Int("iteration"),
+            item.String("startedAt", "started_at"),
+            item.String("completedAt", "completed_at"),
+            OptionalLong(usage, "input_tokens"),
+            OptionalLong(usage, "output_tokens"),
+            OptionalLong(usage, "cache_read_tokens"),
+            OptionalLong(usage, "cache_write_tokens"),
+            OptionalLong(usage, "total_tokens"),
+            item.String("finishReason", "finish_reason"),
+            Pretty(item["inputMessages"] ?? item["input_messages"]),
+            OutputText(item["outputMessage"] ?? item["output_message"]),
+            Pretty(item["toolCalls"] ?? item["tool_calls"]),
+            Pretty(item["error"]));
+    }
+
+    private static long? OptionalLong(JsonObject value, string name)
+    {
+        if (value.Count == 0) return null;
+        if (value[name] is not JsonValue item) return null;
+        return item.TryGetValue<long>(out var result) ? result : null;
+    }
+
+    private static string OutputText(JsonNode? node)
+    {
+        if (node is not JsonObject message) return string.Empty;
+        var text = MessageText(message);
+        return string.IsNullOrWhiteSpace(text) ? Pretty(node) : text;
+    }
+
+    private static string Pretty(JsonNode? node)
+    {
+        if (node is null) return string.Empty;
+        return node.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
     private void NotifyGitDiffPresentationChanged()

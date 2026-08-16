@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using SunCode.Desktop.Models;
@@ -9,10 +8,6 @@ namespace SunCode.Desktop.Views;
 
 public sealed partial class GitViewer : UserControl
 {
-    private bool _resizeActive;
-    private double _resizeStartY;
-    private double _resizeStartHeight;
-
     public GitViewer()
     {
         InitializeComponent();
@@ -49,31 +44,4 @@ public sealed partial class GitViewer : UserControl
     private void GitScopeStaged(object? sender, RoutedEventArgs e) => ViewModel.SetGitScope("staged");
     private void GitScopeUnstaged(object? sender, RoutedEventArgs e) => ViewModel.SetGitScope("unstaged");
     private void CloseGit(object? sender, RoutedEventArgs e) => ViewModel.GitVisible = false;
-
-    private void GitResizePressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (sender is not Control handle || !e.GetCurrentPoint(handle).Properties.IsLeftButtonPressed ||
-            TopLevel.GetTopLevel(this) is not Window window) return;
-        _resizeActive = true;
-        _resizeStartY = e.GetPosition(window).Y;
-        _resizeStartHeight = Height;
-        e.Pointer.Capture(handle);
-        e.Handled = true;
-    }
-
-    private void GitResizeMoved(object? sender, PointerEventArgs e)
-    {
-        if (!_resizeActive || TopLevel.GetTopLevel(this) is not Window window) return;
-        var delta = e.GetPosition(window).Y - _resizeStartY;
-        Height = Math.Clamp(_resizeStartHeight - delta, 240, Math.Max(240, window.Bounds.Height - 300));
-        e.Handled = true;
-    }
-
-    private void GitResizeReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        if (!_resizeActive) return;
-        _resizeActive = false;
-        e.Pointer.Capture(null);
-        e.Handled = true;
-    }
 }

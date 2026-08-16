@@ -11,6 +11,11 @@ public sealed partial class ProjectWorkspace : UserControl
 {
     private SessionItem? _sessionDialogTarget;
     private CheckpointItem? _pendingCheckpoint;
+    private string _layoutResizeTarget = string.Empty;
+    private Point _layoutResizeStart;
+    private double _layoutResizeStartNavigationWidth;
+    private double _layoutResizeStartReviewWidth;
+    private double _layoutResizeStartBottomHeight;
 
     public ProjectWorkspace()
     {
@@ -25,7 +30,8 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal void ClampGitViewerHeight()
     {
-        if (GitViewer.IsVisible) GitViewer.ClampHeightToWindow();
+        if (TopLevel.GetTopLevel(this) is not Window window) return;
+        ViewModel.BottomDrawerHeight = Math.Clamp(ViewModel.BottomDrawerHeight, 240, Math.Max(240, window.Bounds.Height - 300));
     }
 
     internal void SetFullScreenChrome(bool fullScreen)
@@ -79,8 +85,68 @@ public sealed partial class ProjectWorkspace : UserControl
     private void ToggleGit(object? sender, RoutedEventArgs e)
     {
         ViewModel.GitVisible = !ViewModel.GitVisible;
-        if (ViewModel.GitVisible) _ = ViewModel.RefreshGitAsync();
+        if (ViewModel.GitVisible)
+        {
+            ViewModel.ProviderTraceVisible = false;
+            _ = ViewModel.RefreshGitAsync();
+        }
     }
+
+    private void ToggleProviderTrace(object? sender, RoutedEventArgs e)
+    {
+        ViewModel.ProviderTraceVisible = !ViewModel.ProviderTraceVisible;
+        if (ViewModel.ProviderTraceVisible)
+        {
+            ViewModel.GitVisible = false;
+            _ = ViewModel.RefreshProviderTracesAsync();
+        }
+    }
+
+    private void LayoutResizePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Control handle || handle.Tag is not string target ||
+            !e.GetCurrentPoint(handle).Properties.IsLeftButtonPressed ||
+            TopLevel.GetTopLevel(this) is not Window window) return;
+        _layoutResizeTarget = target;
+        _layoutResizeStart = e.GetPosition(window);
+        _layoutResizeStartNavigationWidth = ViewModel.NavigationPaneWidth;
+        _layoutResizeStartReviewWidth = ViewModel.ReviewPaneWidth;
+        _layoutResizeStartBottomHeight = ViewModel.BottomDrawerHeight;
+        e.Pointer.Capture(handle);
+        e.Handled = true;
+    }
+
+    private void LayoutResizeMoved(object? sender, PointerEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_layoutResizeTarget) || TopLevel.GetTopLevel(this) is not Window window) return;
+        var point = e.GetPosition(window);
+        var deltaX = point.X - _layoutResizeStart.X;
+        var deltaY = point.Y - _layoutResizeStart.Y;
+        switch (_layoutResizeTarget)
+        {
+            case "Navigation":
+                ViewModel.NavigationPaneWidth = ClampPaneWidth(_layoutResizeStartNavigationWidth + deltaX, window.Bounds.Width, 180, 420);
+                break;
+            case "Review":
+                ViewModel.ReviewPaneWidth = ClampPaneWidth(_layoutResizeStartReviewWidth - deltaX, window.Bounds.Width, 220, 460);
+                break;
+            case "BottomDrawer":
+                ViewModel.BottomDrawerHeight = Math.Clamp(_layoutResizeStartBottomHeight - deltaY, 240, Math.Max(240, window.Bounds.Height - 300));
+                break;
+        }
+        e.Handled = true;
+    }
+
+    private void LayoutResizeReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_layoutResizeTarget)) return;
+        _layoutResizeTarget = string.Empty;
+        e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    private static double ClampPaneWidth(double width, double windowWidth, double min, double max) =>
+        Math.Clamp(width, min, Math.Min(max, Math.Max(min, windowWidth - 560)));
 
     private void SessionTitleChanged(object? sender, TextChangedEventArgs e) =>
         SessionDialogSubmitButton.IsEnabled = !string.IsNullOrWhiteSpace(SessionTitleInput.Text);

@@ -15,9 +15,9 @@
   </UserControl.Styles>
 
   <Border Classes="workspace-card" ClipToBounds="True">
-    <Grid RowDefinitions="*,120">
-      <ScrollViewer x:Name="ConversationScroll" Grid.Row="0" HorizontalScrollBarVisibility="Disabled">
-        <ItemsControl ItemsSource="{Binding Messages}" MaxWidth="780" HorizontalAlignment="Center" Margin="24,18,24,0">
+    <Grid>
+      <ScrollViewer x:Name="ConversationScroll" HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl ItemsSource="{Binding Messages}" MaxWidth="780" HorizontalAlignment="Center" Margin="24,18,24,128">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="models:MessageItem">
               <Grid Margin="12,8">
@@ -39,7 +39,7 @@
         </ItemsControl>
       </ScrollViewer>
 
-      <Border Grid.Row="1" Height="102" Margin="24,8,24,10" Padding="16,12,12,10" CornerRadius="16" Background="{DynamicResource ComposerBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" BoxShadow="0 6 14 0 #57000000">
+      <Border Height="102" Margin="24,0,24,10" Padding="16,12,12,10" CornerRadius="16" Background="{DynamicResource ComposerBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" BoxShadow="0 6 14 0 #57000000" VerticalAlignment="Bottom" ZIndex="2">
         <Grid>
           <TextBox x:Name="ComposerInput" Classes="composer-input" Margin="0,0,0,30" Text="{Binding ComposerText}" PlaceholderText="{Binding ComposerPlaceholder}" AcceptsReturn="True" TextWrapping="Wrap" Background="Transparent" BorderBrush="Transparent" BorderThickness="0" Padding="0" IsEnabled="{Binding CanCompose}">
             <TextBox.Resources>

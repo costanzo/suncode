@@ -3,8 +3,8 @@ use crate::{
     config::Config,
     credentials::{CredentialState, CredentialStore, ProviderKind},
     domain::{
-        ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectRecord, SessionEvent,
-        SessionRecord, SettingRecord,
+        ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectRecord,
+        ProviderExchange, SessionEvent, SessionRecord, SettingRecord,
     },
     model_provider::{ModelDescriptor, ModelProviderRegistry},
     persistence::{PersistenceError, Store},
@@ -167,6 +167,12 @@ pub struct SessionUsageResult {
     pub input_tokens: u64,
     pub output_tokens: u64,
     pub total_tokens: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProviderExchangesResult {
+    pub session_id: String,
+    pub exchanges: Vec<ProviderExchange>,
 }
 
 #[derive(Debug, Serialize)]
@@ -599,6 +605,33 @@ impl RuntimeSdk {
             output_tokens: usage.output_tokens,
             total_tokens: usage.total_tokens,
         })
+    }
+
+    pub fn list_provider_exchanges(
+        &self,
+        session_id: &str,
+    ) -> SdkResult<ProviderExchangesResult> {
+        if self.state.store.session_by_id(session_id)?.is_none() {
+            return Err(SdkError::missing("session"));
+        }
+        Ok(ProviderExchangesResult {
+            session_id: session_id.to_string(),
+            exchanges: self.state.store.provider_exchanges(session_id)?,
+        })
+    }
+
+    pub fn provider_exchange(
+        &self,
+        session_id: &str,
+        exchange_id: &str,
+    ) -> SdkResult<ProviderExchange> {
+        if exchange_id.trim().is_empty() {
+            return Err(SdkError::invalid("exchange_id is required"));
+        }
+        self.state
+            .store
+            .provider_exchange(session_id, exchange_id)?
+            .ok_or_else(|| SdkError::missing("provider_exchange"))
     }
 
     pub fn list_checkpoints(&self, session_id: &str) -> SdkResult<CheckpointsResult> {
@@ -1117,6 +1150,11 @@ ffi_one_string!(
     "session_id"
 );
 ffi_one_string!(
+    suncode_runtime_sdk_list_provider_exchanges,
+    list_provider_exchanges,
+    "session_id"
+);
+ffi_one_string!(
     suncode_runtime_sdk_checkpoint_manifest,
     checkpoint_manifest,
     "manifest_id"
@@ -1180,6 +1218,20 @@ pub unsafe extern "C" fn suncode_runtime_sdk_session_snapshot(
 ) -> *mut c_char {
     ffi_call(handle, |sdk| {
         sdk.session_snapshot(&c_string(session_id, "session_id")?, after)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_runtime_sdk_provider_exchange(
+    handle: *mut SunCodeRuntimeHandle,
+    session_id: *const c_char,
+    exchange_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.provider_exchange(
+            &c_string(session_id, "session_id")?,
+            &c_string(exchange_id, "exchange_id")?,
+        )
     })
 }
 
@@ -1426,6 +1478,30 @@ mod tests {
         let usage = sdk.session_usage(&session.session_id).unwrap();
         assert_eq!(usage.session_id, session.session_id);
         assert_eq!(usage.total_tokens, 0);
+        sdk.state
+            .store
+            .append_content(
+                &session.session_id,
+                "provider.exchange.started",
+                &json!({
+                    "exchange_id":"exchange-1",
+                    "turn_id":"turn-1",
+                    "provider":"openai",
+                    "model_id":"gpt-5.5",
+                    "wire_model":"gpt-5.5",
+                    "iteration":1,
+                    "input_messages":[{"role":"user","content":[{"type":"text","text":"Inspect package.json"}]}]
+                }),
+            )
+            .unwrap();
+        let traces = sdk.list_provider_exchanges(&session.session_id).unwrap();
+        assert_eq!(traces.exchanges.len(), 1);
+        assert_eq!(
+            sdk.provider_exchange(&session.session_id, "exchange-1")
+                .unwrap()
+                .provider,
+            "openai"
+        );
         assert_eq!(
             sdk.session_usage("missing-session").unwrap_err().code,
             "session_not_found"

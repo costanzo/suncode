@@ -74,6 +74,27 @@ pub struct SessionEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ProviderExchange {
+    pub exchange_id: String,
+    pub session_id: String,
+    pub turn_id: String,
+    pub provider: String,
+    pub model_id: String,
+    pub wire_model: String,
+    pub state: String,
+    pub iteration: i64,
+    pub started_at: String,
+    pub completed_at: Option<String>,
+    pub input_messages: Value,
+    pub output_message: Option<Value>,
+    pub tool_calls: Value,
+    pub usage: Option<Value>,
+    pub finish_reason: Option<String>,
+    pub error: Option<Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectRecord {
     pub project_id: String,
     pub canonical_root: String,

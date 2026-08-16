@@ -230,6 +230,45 @@ impl Store {
         })
     }
 
+    pub fn provider_exchanges(
+        &self,
+        session_id: &str,
+    ) -> Result<Vec<ProviderExchange>, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let mut statement = connection.prepare(
+            "SELECT exchange_id,session_id,turn_id,provider,model_id,wire_model,state,iteration,started_at,completed_at,input_messages_json,output_message_json,tool_calls_json,usage_json,finish_reason,error_json
+             FROM provider_exchanges
+             WHERE session_id=?
+             ORDER BY started_at DESC, exchange_id DESC",
+        )?;
+        let rows = statement.query_map([session_id], provider_exchange_from_row)?;
+        Ok(rows.collect::<Result<Vec<_>, _>>()?)
+    }
+
+    pub fn provider_exchange(
+        &self,
+        session_id: &str,
+        exchange_id: &str,
+    ) -> Result<Option<ProviderExchange>, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        connection
+            .query_row(
+                "SELECT exchange_id,session_id,turn_id,provider,model_id,wire_model,state,iteration,started_at,completed_at,input_messages_json,output_message_json,tool_calls_json,usage_json,finish_reason,error_json
+                 FROM provider_exchanges
+                 WHERE session_id=? AND exchange_id=?",
+                params![session_id, exchange_id],
+                provider_exchange_from_row,
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+
     pub fn begin_turn(
         &self,
         session_id: &str,
@@ -910,6 +949,96 @@ fn apply_projection(
             ));
         }
     }
+    if event_type == "provider.exchange.started" {
+        let exchange_id = payload
+            .get("exchange_id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| PersistenceError::Invalid("provider exchange is missing id".into()))?;
+        let turn_id = payload
+            .get("turn_id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| PersistenceError::Invalid("provider exchange is missing turn_id".into()))?;
+        let provider = payload
+            .get("provider")
+            .and_then(Value::as_str)
+            .ok_or_else(|| PersistenceError::Invalid("provider exchange is missing provider".into()))?;
+        let model_id = payload
+            .get("model_id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| PersistenceError::Invalid("provider exchange is missing model_id".into()))?;
+        let wire_model = payload
+            .get("wire_model")
+            .and_then(Value::as_str)
+            .ok_or_else(|| PersistenceError::Invalid("provider exchange is missing wire_model".into()))?;
+        let iteration = payload
+            .get("iteration")
+            .and_then(Value::as_i64)
+            .unwrap_or(1);
+        let input_messages = payload
+            .get("input_messages")
+            .cloned()
+            .unwrap_or_else(|| json!([]));
+        transaction.execute(
+            "INSERT INTO provider_exchanges(exchange_id,session_id,turn_id,provider,model_id,wire_model,state,iteration,started_at,input_messages_json,tool_calls_json)
+             VALUES (?,?,?,?,?,?, 'started',?,?,?,?)
+             ON CONFLICT(exchange_id) DO UPDATE SET state='started',input_messages_json=excluded.input_messages_json",
+            params![
+                exchange_id,
+                session_id,
+                turn_id,
+                provider,
+                model_id,
+                wire_model,
+                iteration,
+                occurred_at,
+                serde_json::to_string(&input_messages)?,
+                "[]",
+            ],
+        )?;
+    }
+    if event_type == "provider.exchange.completed" {
+        let exchange_id = payload
+            .get("exchange_id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| PersistenceError::Invalid("provider exchange completion is missing id".into()))?;
+        let output_message = payload.get("output_message").map(serde_json::to_string).transpose()?;
+        let tool_calls = payload
+            .get("tool_calls")
+            .cloned()
+            .unwrap_or_else(|| json!([]));
+        let usage = payload.get("usage").map(serde_json::to_string).transpose()?;
+        transaction.execute(
+            "UPDATE provider_exchanges
+             SET state='completed',completed_at=?,output_message_json=?,tool_calls_json=?,usage_json=?,finish_reason=?,error_json=NULL
+             WHERE session_id=? AND exchange_id=?",
+            params![
+                occurred_at,
+                output_message,
+                serde_json::to_string(&tool_calls)?,
+                usage,
+                payload.get("finish_reason").and_then(Value::as_str),
+                session_id,
+                exchange_id,
+            ],
+        )?;
+    }
+    if event_type == "provider.exchange.failed" {
+        let exchange_id = payload
+            .get("exchange_id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| PersistenceError::Invalid("provider exchange failure is missing id".into()))?;
+        transaction.execute(
+            "UPDATE provider_exchanges
+             SET state='failed',completed_at=?,finish_reason='error',error_json=?
+             WHERE session_id=? AND exchange_id=?",
+            params![
+                occurred_at,
+                payload.get("error").map(serde_json::to_string).transpose()?,
+                session_id,
+                exchange_id,
+            ],
+        )?;
+    }
     if event_type == "tool.state" {
         if let (Some(turn_id), Some(call_id), Some(name), Some(state)) = (
             payload.get("turn_id").and_then(Value::as_str),
@@ -1015,6 +1144,73 @@ fn session_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRecord> 
         archived_at: row.get(8)?,
     })
 }
+fn provider_exchange_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<ProviderExchange> {
+    let input_messages: String = row.get(10)?;
+    let output_message: Option<String> = row.get(11)?;
+    let tool_calls: String = row.get(12)?;
+    let usage: Option<String> = row.get(13)?;
+    let error: Option<String> = row.get(15)?;
+    Ok(ProviderExchange {
+        exchange_id: row.get(0)?,
+        session_id: row.get(1)?,
+        turn_id: row.get(2)?,
+        provider: row.get(3)?,
+        model_id: row.get(4)?,
+        wire_model: row.get(5)?,
+        state: row.get(6)?,
+        iteration: row.get(7)?,
+        started_at: row.get(8)?,
+        completed_at: row.get(9)?,
+        input_messages: serde_json::from_str(&input_messages).map_err(|error| {
+            rusqlite::Error::FromSqlConversionFailure(
+                10,
+                rusqlite::types::Type::Text,
+                Box::new(error),
+            )
+        })?,
+        output_message: output_message
+            .map(|value| {
+                serde_json::from_str(&value).map_err(|error| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        11,
+                        rusqlite::types::Type::Text,
+                        Box::new(error),
+                    )
+                })
+            })
+            .transpose()?,
+        tool_calls: serde_json::from_str(&tool_calls).map_err(|error| {
+            rusqlite::Error::FromSqlConversionFailure(
+                12,
+                rusqlite::types::Type::Text,
+                Box::new(error),
+            )
+        })?,
+        usage: usage
+            .map(|value| {
+                serde_json::from_str(&value).map_err(|error| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        13,
+                        rusqlite::types::Type::Text,
+                        Box::new(error),
+                    )
+                })
+            })
+            .transpose()?,
+        finish_reason: row.get(14)?,
+        error: error
+            .map(|value| {
+                serde_json::from_str(&value).map_err(|error| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        15,
+                        rusqlite::types::Type::Text,
+                        Box::new(error),
+                    )
+                })
+            })
+            .transpose()?,
+    })
+}
 fn now() -> String {
     Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
@@ -1078,9 +1274,9 @@ fn mark_schema_version(connection: &Connection) -> Result<(), PersistenceError> 
         [],
         |row| row.get(0),
     )?;
-    if version > 12 {
+    if version > 13 {
         return Err(PersistenceError::Invalid(format!(
-            "database schema version {version} is newer than supported version 12"
+            "database schema version {version} is newer than supported version 13"
         )));
     }
     if version < 10 {
@@ -1125,7 +1321,7 @@ fn mark_schema_version(connection: &Connection) -> Result<(), PersistenceError> 
     if version < 12 {
         migrate_turn_usage_to_v12(connection)?;
     }
-    for next in (version + 1)..=12 {
+    for next in (version + 1)..=13 {
         connection.execute(
             "INSERT INTO schema_migrations(version,applied_at) VALUES (?,?)",
             params![next, now()],
@@ -1381,6 +1577,64 @@ mod tests {
     }
 
     #[test]
+    fn provider_exchange_events_project_to_queryable_traces() {
+        let store = Store::open_memory().unwrap();
+        let session_id = session(&store);
+        store
+            .append_content(
+                &session_id,
+                "turn.state",
+                &json!({"turn_id":"turn-1","state":"calling_model","model_id":"deepseek-v4-flash"}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "provider.exchange.started",
+                &json!({
+                    "exchange_id":"exchange-1",
+                    "turn_id":"turn-1",
+                    "provider":"deepseek",
+                    "model_id":"deepseek-v4-flash",
+                    "wire_model":"deepseek-chat",
+                    "iteration":1,
+                    "input_messages":[{"role":"user","content":[{"type":"text","text":"hello"}]}]
+                }),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "provider.exchange.completed",
+                &json!({
+                    "exchange_id":"exchange-1",
+                    "turn_id":"turn-1",
+                    "output_message":{"role":"assistant","content":[{"type":"text","text":"hi"}]},
+                    "tool_calls":[],
+                    "usage":{"input_tokens":4,"output_tokens":2,"total_tokens":6,"cache_read_tokens":null,"cache_write_tokens":null},
+                    "finish_reason":"stop"
+                }),
+            )
+            .unwrap();
+
+        let exchanges = store.provider_exchanges(&session_id).unwrap();
+        assert_eq!(exchanges.len(), 1);
+        assert_eq!(exchanges[0].exchange_id, "exchange-1");
+        assert_eq!(exchanges[0].state, "completed");
+        assert_eq!(exchanges[0].provider, "deepseek");
+        assert_eq!(exchanges[0].usage.as_ref().unwrap()["total_tokens"], 6);
+        assert_eq!(
+            store
+                .provider_exchange(&session_id, "exchange-1")
+                .unwrap()
+                .unwrap()
+                .finish_reason
+                .as_deref(),
+            Some("stop")
+        );
+    }
+
+    #[test]
     fn opening_v11_database_backfills_turn_usage_projection() {
         let directory = tempfile::tempdir().unwrap();
         let database = directory.path().join("state.db");
@@ -1410,13 +1664,13 @@ mod tests {
                 )
                 .unwrap();
             connection
-                .execute("DELETE FROM schema_migrations WHERE version=12", [])
+                .execute("DELETE FROM schema_migrations WHERE version>=12", [])
                 .unwrap();
         }
 
         let store = Store::open(&database).unwrap();
 
-        assert_eq!(store.health().unwrap()["schema_version"], 12);
+        assert_eq!(store.health().unwrap()["schema_version"], 13);
         assert_eq!(
             store.session_usage(&session_id).unwrap(),
             Usage {
@@ -1455,7 +1709,7 @@ mod tests {
 
         let store = Store::open(&database).unwrap();
 
-        assert_eq!(store.health().unwrap()["schema_version"], 12);
+        assert_eq!(store.health().unwrap()["schema_version"], 13);
         assert!(store.secret_value("deepseek").unwrap().is_none());
         let connection = store.connection.lock().unwrap();
         assert!(table_has_column(&connection, "secret_records", "plaintext").unwrap());

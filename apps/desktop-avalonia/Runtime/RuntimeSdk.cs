@@ -89,6 +89,12 @@ public sealed class RuntimeSdk : IDisposable
     public Task<JsonObject> SessionUsageAsync(string sessionId) => WithUtf8Async(
         [sessionId], values => NativeMethods.suncode_runtime_sdk_session_usage(_handle, values[0]));
 
+    public Task<JsonObject> ListProviderExchangesAsync(string sessionId) => WithUtf8Async(
+        [sessionId], values => NativeMethods.suncode_runtime_sdk_list_provider_exchanges(_handle, values[0]));
+
+    public Task<JsonObject> ProviderExchangeAsync(string sessionId, string exchangeId) => WithUtf8Async(
+        [sessionId, exchangeId], values => NativeMethods.suncode_runtime_sdk_provider_exchange(_handle, values[0], values[1]));
+
     public Task<JsonObject> ListCheckpointsAsync(string sessionId) => WithUtf8Async(
         [sessionId], values => NativeMethods.suncode_runtime_sdk_list_checkpoints(_handle, values[0]));
 

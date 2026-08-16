@@ -493,18 +493,32 @@ impl Agent {
             if prompt.compacted {
                 context.messages = prompt.messages;
             }
+            let exchange_id = Uuid::new_v4().to_string();
+            self.emit(
+                &context.session_id,
+                "provider.exchange.started",
+                json!({
+                    "exchange_id": exchange_id,
+                    "turn_id": context.turn_id,
+                    "provider": provider.provider_id,
+                    "model_id": context.model,
+                    "wire_model": provider.wire_model,
+                    "iteration": context.iterations,
+                    "input_messages": context.messages,
+                }),
+            )?;
             let result = {
                 let (delta_sender, mut delta_receiver) = mpsc::unbounded_channel();
-                let provider = provider.provider.complete(
+                let provider_call = provider.provider.complete(
                     &context.messages,
                     provider.wire_model,
                     &token,
                     delta_sender,
                 );
-                tokio::pin!(provider);
+                tokio::pin!(provider_call);
                 let result = loop {
                     tokio::select! {
-                        value = &mut provider => break value?,
+                        value = &mut provider_call => break value,
                         Some(delta) = delta_receiver.recv() => {
                             self.emit_live(&context.session_id, "assistant.delta", json!({"turn_id":context.turn_id,"text":delta}));
                         }
@@ -519,6 +533,25 @@ impl Agent {
                 }
                 result
             };
+            let result = match result {
+                Ok(result) => result,
+                Err(error) => {
+                    self.emit(
+                        &context.session_id,
+                        "provider.exchange.failed",
+                        json!({
+                            "exchange_id": exchange_id,
+                            "turn_id": context.turn_id,
+                            "error": {
+                                "code": error.code,
+                                "message": error.message.clone(),
+                                "retryable": error.retryable,
+                            },
+                        }),
+                    )?;
+                    return Err(error.into());
+                }
+            };
             if result.text.len() > 8 * 1024 * 1024 {
                 return self.fail_context(
                     &context,
@@ -526,8 +559,8 @@ impl Agent {
                     "Provider output exceeded its budget",
                 );
             }
-            if let Some(usage) = result.usage {
-                context.usage.add(&usage);
+            if let Some(usage) = &result.usage {
+                context.usage.add(usage);
                 self.emit(
                     &context.session_id,
                     "usage.updated",
@@ -544,6 +577,24 @@ impl Agent {
                 tool_calls: result.tool_calls.clone(),
                 tool_call_id: None,
             };
+            self.emit(
+                &context.session_id,
+                "provider.exchange.completed",
+                json!({
+                    "exchange_id": exchange_id,
+                    "turn_id": context.turn_id,
+                    "output_message": assistant,
+                    "tool_calls": result.tool_calls.clone(),
+                    "usage": result.usage.as_ref().map(|usage| json!({
+                        "input_tokens": usage.input_tokens,
+                        "output_tokens": usage.output_tokens,
+                        "total_tokens": usage.total_tokens,
+                        "cache_read_tokens": Value::Null,
+                        "cache_write_tokens": Value::Null,
+                    })),
+                    "finish_reason": result.finish_reason.clone(),
+                }),
+            )?;
             context.messages.push(assistant.clone());
             self.emit(&context.session_id, "message.assistant", json!({"message_id":Uuid::new_v4(),"turn_id":context.turn_id,"message":assistant,"usage":context.usage,"finish_reason":result.finish_reason}))?;
             if result.tool_calls.is_empty() {

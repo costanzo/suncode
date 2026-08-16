@@ -83,6 +83,63 @@ public sealed record DiffLineItem(string Kind, string Text, string OldLine, stri
     public string DisplayText => IsHunk ? Text : $"{(IsAddition ? "+" : IsDeletion ? "-" : " ")}{Text}";
 }
 
+public sealed record ProviderTraceItem(
+    string ExchangeId,
+    string TurnId,
+    string Provider,
+    string ModelId,
+    string WireModel,
+    string State,
+    int Iteration,
+    string StartedAt,
+    string CompletedAt,
+    long? InputTokens,
+    long? OutputTokens,
+    long? CacheReadTokens,
+    long? CacheWriteTokens,
+    long? TotalTokens,
+    string FinishReason,
+    string InputText,
+    string OutputText,
+    string ToolCallsText,
+    string ErrorText)
+{
+    public string Title => $"{Provider}  ·  {ModelId}";
+    public string TurnText => $"turn {Short(TurnId)} · iter {Iteration}";
+    public string TokenSummary => TotalTokens is { } total
+        ? $"{Compact(total)} tokens"
+        : "usage not reported";
+    public string UsageSummary => string.Join("  ",
+        new[]
+        {
+            InputTokens is { } input ? $"in {Compact(input)}" : "in -",
+            OutputTokens is { } output ? $"out {Compact(output)}" : "out -",
+            CacheReadTokens is { } cacheRead ? $"cache read {Compact(cacheRead)}" : "cache read -",
+            CacheWriteTokens is { } cacheWrite ? $"cache write {Compact(cacheWrite)}" : "cache write -",
+        });
+    public string StatusText => State switch
+    {
+        "started" => "Running",
+        "completed" => string.IsNullOrWhiteSpace(FinishReason) ? "Completed" : FinishReason,
+        "failed" => "Failed",
+        _ => State
+    };
+    public bool IsRunning => State == "started";
+    public bool IsCompleted => State == "completed";
+    public bool IsFailed => State == "failed";
+    public bool HasOutput => !string.IsNullOrWhiteSpace(OutputText);
+    public bool HasToolCalls => !string.IsNullOrWhiteSpace(ToolCallsText) && ToolCallsText != "[]";
+    public bool HasError => !string.IsNullOrWhiteSpace(ErrorText);
+
+    private static string Short(string value) => value.Length <= 8 ? value : value[..8];
+    private static string Compact(long value) => value switch
+    {
+        >= 1_000_000 => $"{value / 1_000_000d:0.#}m",
+        >= 1_000 => $"{value / 1_000d:0.#}k",
+        _ => value.ToString()
+    };
+}
+
 public sealed record ApprovalItem(string ApprovalId, string Operation, string Arguments)
 {
     public static ApprovalItem? FromPayload(JsonObject payload)

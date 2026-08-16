@@ -1,6 +1,6 @@
 # Runtime SQLite Schema
 
-Status: Phase 1 contract, schema version 12.
+Status: Phase 1 contract, schema version 13.
 
 The embedded Rust runtime is the only component that opens this database. Host bindings, providers, and future extensions never read or write these tables directly. Host-visible shapes are defined by the runtime SDK contract and may differ from this physical schema.
 
@@ -23,7 +23,7 @@ The embedded Rust runtime is the only component that opens this database. Host b
 | `version` | INTEGER | Primary key |
 | `applied_at` | TEXT | Not null |
 
-Version 6 introduces the project, session, turn, tool-call, and checkpoint item projections. Version 7 adds the message projection and durable turn admission fields. Version 8 adds turn-level checkpoint manifests, expiry, aggregate restore state, and ordered checkpoint items. Version 9 adds scoped user/project/session settings. Version 10 makes streaming deltas ephemeral, adds a per-session content sequence high-water table, and extends `session_messages` to include tool messages for context rebuilds. Version 11 stores provider secrets as plaintext SQLite values and removes the old ciphertext/nonce columns. Earlier migrations remain in code for existing databases.
+Version 6 introduces the project, session, turn, tool-call, and checkpoint item projections. Version 7 adds the message projection and durable turn admission fields. Version 8 adds turn-level checkpoint manifests, expiry, aggregate restore state, and ordered checkpoint items. Version 9 adds scoped user/project/session settings. Version 10 makes streaming deltas ephemeral, adds a per-session content sequence high-water table, and extends `session_messages` to include tool messages for context rebuilds. Version 11 stores provider secrets as plaintext SQLite values and removes the old ciphertext/nonce columns. Version 12 backfills cumulative per-turn provider usage. Version 13 adds normalized provider exchange traces. Earlier migrations remain in code for existing databases.
 
 ## Query projections
 
@@ -101,6 +101,31 @@ Current child tool-call state derived from `tool.state` events.
 | `error_code` | TEXT | Nullable |
 
 The composite key avoids assuming that provider-issued call IDs are globally unique. Tool-call states are `requested`, `validating`, `policy_check`, `denied`, `awaiting_approval`, `authorized`, `executing`, `succeeded`, `failed`, `timed_out`, `unknown_completion`, and `reconciling`.
+
+### `provider_exchanges`
+
+One row per model-provider request made during a turn. This is a local diagnostic projection for the SDK trace drawer; it stores normalized provider-facing content and redacted outcomes, not credentials or raw HTTP headers.
+
+| Column | Type | Constraints |
+| --- | --- | --- |
+| `exchange_id` | TEXT | Primary key |
+| `session_id` | TEXT | Not null FK to `sessions`, cascade delete |
+| `turn_id` | TEXT | Not null |
+| `provider` | TEXT | Stable provider ID |
+| `model_id` | TEXT | Stable SunCode model ID |
+| `wire_model` | TEXT | Runtime catalog wire model |
+| `state` | TEXT | `started`, `completed`, or `failed` |
+| `iteration` | INTEGER | One-based turn iteration |
+| `started_at` | TEXT | Not null |
+| `completed_at` | TEXT | Nullable |
+| `input_messages_json` | TEXT | Normalized provider input messages |
+| `output_message_json` | TEXT | Nullable normalized assistant message |
+| `tool_calls_json` | TEXT | Normalized tool calls array |
+| `usage_json` | TEXT | Nullable provider-reported usage, with nullable cache-token fields |
+| `finish_reason` | TEXT | Nullable |
+| `error_json` | TEXT | Nullable redacted provider error |
+
+Provider exchange rows are projected from `provider.exchange.started`, `provider.exchange.completed`, and `provider.exchange.failed` session-content events. Providers that omit usage or cache-token fields are represented as null rather than estimated.
 
 ### `checkpoint_manifests`
 

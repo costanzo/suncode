@@ -58,13 +58,14 @@ public sealed partial class MainWindow : Window
     {
         if (_initialized) return;
         _initialized = true;
-        await ViewModel.InitializeAsync();
         ViewModel.Messages.CollectionChanged += MessagesChanged;
+        await ViewModel.InitializeAsync();
         if (_isHubWindow) ConfigureHubWindow();
         else
         {
             ConfigureProjectWindow();
             UpdateNativeProjectMenu();
+            ProjectWorkspaceView.ScrollConversationToEnd();
         }
     }
 

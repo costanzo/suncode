@@ -19,6 +19,7 @@ pub use openai_compatible::OpenAiCompatibleProvider;
 #[derive(Clone)]
 pub struct ModelRoute {
     pub provider: Arc<dyn LlmProvider>,
+    pub provider_id: &'static str,
     pub wire_model: &'static str,
 }
 
@@ -106,6 +107,7 @@ impl ModelProviderRegistry {
         };
         Some(ModelRoute {
             provider,
+            provider_id: model.provider,
             wire_model: model.wire_model,
         })
     }
