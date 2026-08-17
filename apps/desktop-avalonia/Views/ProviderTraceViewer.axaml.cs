@@ -27,6 +27,8 @@ public sealed partial class ProviderTraceViewer : UserControl
     {
         if (e.AddedItems.OfType<ProviderTraceItem>().FirstOrDefault() is { } trace)
             await ViewModel.LoadProviderTraceAsync(trace);
+        else if (e.AddedItems.OfType<ProviderTraceTurnItem>().Any())
+            ViewModel.SelectProviderTraceTurn();
     }
 
     private void TraceFilterChanged(object? sender, TextChangedEventArgs e)
@@ -36,21 +38,26 @@ public sealed partial class ProviderTraceViewer : UserControl
 
     private async void CopyTrace(object? sender, RoutedEventArgs e)
     {
-        if (TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard || ViewModel.SelectedProviderTrace is not { } trace) return;
+        if (TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard || ViewModel.SelectedProviderTraceDetails is not { } trace) return;
         await clipboard.SetTextAsync(string.Join(Environment.NewLine, new[]
         {
             trace.Title,
             trace.TurnText,
             trace.UsageSummary,
+            $"Cache hit {trace.CacheHitRateText}",
+            $"Duration {trace.DurationText}",
             "",
-            "Input",
+            "Messages",
+            string.Join(Environment.NewLine + Environment.NewLine, trace.Messages.Select(message => $"[{message.RoleText}] {message.Content}")),
+            "",
+            "Tools",
+            string.Join(Environment.NewLine + Environment.NewLine, trace.Tools.Select(tool => $"{tool.Name} [{tool.StateText}]{Environment.NewLine}{tool.Request}{Environment.NewLine}{tool.Result}")),
+            "",
+            "Model Request",
             trace.InputText,
             "",
-            "Output",
+            "Model Response",
             trace.OutputText,
-            "",
-            "Tool Calls",
-            trace.ToolCallsText,
             "",
             "Error",
             trace.ErrorText,

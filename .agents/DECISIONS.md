@@ -2,6 +2,90 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260820-configuration-and-provider-adapters
+
+- Date: 2026-08-20
+- Status: Accepted
+- Supersedes: ADR-20260820-project-settings
+- Context: Configuration was split between two tables and used a retired user scope, while custom provider rows did not state which `suncode-llm` implementation could speak their wire protocol. The conversation root also used the plural table name `sessions` while related tables were singular.
+- Decision: Rename `sessions` to `session`. Replace `project_setting` and `setting_records` with one `configuration` table whose scopes are `global`, `project`, and `session`, with explicit owner foreign keys and global-to-project-to-session precedence. Add required `llm_model_provider.adapter_type`; accept only adapter identifiers implemented by `suncode-llm`, currently `openai` for OpenAI-compatible endpoints.
+- Consequences: The current fresh schema contains 13 application tables. Custom provider identity remains independent from protocol compatibility, and unsupported adapters fail before registration. Configuration ownership and cascade cleanup are enforced relationally.
+- Details: `contracts/sqlite-schema.md`, `contracts/persistence.md`, `.agents/requirements/2026-08-20-project-settings/`
+
+## ADR-20260820-normalized-session-source
+
+- Date: 2026-08-20
+- Status: Accepted
+- Context: `session_content` duplicated normalized messages, calls, tool uses, and turn state while also retaining large provider payloads. This caused unbounded database growth and required a second replay cursor table.
+- Decision: Remove `session_content` and `session_sequences`. Normalized session tables are the durable source of truth. Runtime events are in-memory notifications only; subscriptions do not replay from SQLite. A lagged subscriber receives `resync.required` and reloads a normalized session snapshot.
+- Consequences: Durable event sequence fields and replay cursors are removed. Provider context, tool results, approvals, recovery, and session history remain queryable in their dedicated tables. The later configuration consolidation brings the current schema to 13 tables.
+- Details: `.agents/requirements/2026-08-20-session-storage/`, `contracts/runtime-sdk/README.md`, `contracts/sqlite-schema.md`
+
+## ADR-20260820-session-storage
+
+- Date: 2026-08-20
+- Status: Accepted
+- Context: Session persistence had separate legacy tables for turns, submissions, provider exchanges, tool calls, suspended continuations, and messages. This duplicated lifecycle ownership and made call/tool/message correlation incomplete.
+- Decision: Use `session_turn` as the single turn fact table, including submission idempotency, usage, and approval recovery. Use `session_call` for each LLM request, `session_tool_use` for each tool request/result/state, and `session_message` for user, assistant, thinking, and tool messages. Link readable messages and tool uses to calls where available. Order `session_message` by `created_at` with a rowid tie-breaker. Runtime events are live-only notifications and are not persisted as a duplicate journal.
+- Consequences: The legacy `turns`, `turn_submissions`, `provider_exchanges`, `tool_calls`, `suspended_turns`, and `session_messages` tables are removed from the fresh current schema. Existing provider-exchange DTO and SDK names remain compatibility aliases for the `session_call` projection.
+- Details: `.agents/requirements/2026-08-20-session-storage/`, `contracts/sqlite-schema.md`, `contracts/persistence.md`
+
+## ADR-20260820-project-settings
+
+- Date: 2026-08-20
+- Status: Superseded by ADR-20260820-configuration-and-provider-adapters
+- Context: Project-owned configuration was stored in the polymorphic `setting_records` table even though project settings have their own lifecycle and currently control the project's default model.
+- Decision: Keep `projects` unchanged and add `project_setting(project_id, key, value_json, updated_at)` with a foreign key to `projects` and cascade cleanup. Restrict `setting_records` to user and session scopes. Preserve the existing settings SDK shape while routing project writes and effective reads through the dedicated table. Resolve `default_model` from the project when session or turn callers omit a model.
+- Consequences: Project configuration has an explicit ownership boundary and can grow without adding nullable project columns. The project-settings delivery originally added `project_setting`; the later session-storage decision consolidates the current schema to 14 tables without changing this ownership boundary.
+- Details: `.agents/requirements/2026-08-20-project-settings/`, `contracts/sqlite-schema.md`
+
+## ADR-20260819-llm-package-boundary
+
+- Date: 2026-08-19
+- Status: Accepted
+- Supersedes: the custom-provider deferral in ADR-20260815-multi-model-provider-catalog and the blanket in-process provider-adapter exclusion in ADR-20260807-trusted-runtime-extension-isolation; dynamic and executable extension restrictions remain accepted
+- Context: Provider traits, canonical completion types, model metadata, HTTP adapters, credential persistence, tool declarations, and agent state were coupled inside runtime core. Enterprises also need to integrate private model gateways without coupling provider code to SunCode's SQLite schema.
+- Decision: Create the standalone `suncode-llm` package. It owns provider-neutral completion contracts, model metadata and routing, built-in models, OpenAI-compatible HTTP/SSE behavior, and public registration of trusted `LlmProvider` implementations. It has no database dependency. Core owns credential persistence and implements `ApiKeyResolver`, supplies tool schemas per request, converts persistence DTOs at the agent boundary, and lets Rust hosts extend the built-in registry during `RuntimeSdk` construction. Custom registration is trusted in-process Rust composition; persisted desktop configuration, C ABI registration, dynamic loading, and executable provider plugins remain deferred.
+- Consequences: Built-in and enterprise providers share one reusable LLM layer, identifiers can be owned rather than static, and provider tests no longer require runtime/database types. Custom implementations run with the host process's authority and are not sandboxed. The existing SDK ABI, schema, built-in IDs, and credential behavior remain unchanged.
+- Details: `.agents/requirements/2026-08-19-llm-package/`, `runtime/crates/llm/`
+
+## ADR-20260819-persisted-llm-catalog
+
+- Date: 2026-08-19
+- Status: Accepted
+- Context: Provider endpoints, API keys, model request codes, context limits, and auto-compaction settings must be durable and support custom enterprise providers, while `suncode-llm` must remain database-free.
+- Decision: Add `llm_model_provider` and `llm_model` to the current schema. Provider rows store built-in/custom provider identity, endpoint, plaintext API key, enabled state, and ordering. Model rows store provider ownership, display/request identifiers, context and auto-compaction token limits, output limits, capabilities, enabled state, and ordering. Seed six providers and twelve models idempotently. Core reads these rows and assembles the `suncode-llm` registry; the old `secret_records` table and static runtime catalog are removed from the current schema/source. `suncode-llm` never opens SQLite.
+- Consequences: Custom providers can be represented and routed through persisted endpoint/model rows, and model-aware compaction settings are durable. Existing development databases with the previous table set are rejected without migration. Provider/model CRUD beyond credential updates remains a future SDK contract.
+- Details: `.agents/requirements/2026-08-19-persisted-llm-catalog/`, `contracts/sqlite-schema.md`, `contracts/persistence.md`
+
+## ADR-20260819-current-schema-bootstrap
+
+- Date: 2026-08-19
+- Status: Accepted
+- Supersedes: ADR-20260819-sqlite-schema-v14 and the durable client-synchronization cursor portion of ADR-20260807-durable-stream-separation
+- Context: SunCode is a new system, but its database implementation mixed current storage behavior with historical schema versions, upgrade functions, and a monolithic SQL file.
+- Decision: Keep one current SQLite schema with no version or migration metadata. The dedicated `suncode-db` Cargo package at `runtime/crates/db` owns persistence DTOs, store operations, and schema/data resources; the runtime core consumes it as a library dependency. An ordered schema manifest applies one table-named SQL file per table and a separate ordered data manifest in one transaction. File names do not encode execution order. Reopening the current schema is idempotent, while an unexpected application table causes open to fail without conversion. Live session subscriptions recover through normalized snapshots rather than a persisted cursor table.
+- Consequences: Database ownership and table review are explicit, old compatibility code is removed, and incompatible development databases are never silently rewritten. Pending/resuming approvals remain recoverable, terminal continuation payloads are released, and focused recovery/retention indexes remain. Future released-schema evolution requires a new compatibility decision.
+- Details: `.agents/requirements/2026-08-19-db-module-layout/`, `../contracts/sqlite-schema.md`, `../contracts/persistence.md`
+
+## ADR-20260819-sqlite-schema-v14
+
+- Date: 2026-08-19
+- Status: Superseded before adoption by ADR-20260819-current-schema-bootstrap
+- Context: This proposal designed a version 14 upgrade from historical development databases.
+- Decision: Retained only as decision history. Its table/index review and terminal snapshot cleanup informed the current schema, but its version tracking, legacy conversion, and compatibility path are not implemented.
+- Details: `.agents/requirements/2026-08-19-sqlite-schema-v14-optimization/`
+
+## ADR-20260819-general-purpose-coding-agent
+
+- Date: 2026-08-19
+- Status: Accepted
+- Supersedes: the product-positioning conclusion of ADR-20260807-desktop-runtime-scope
+- Context: Product and interface copy defined SunCode by the deployment topology of its first desktop release. That wording incorrectly narrowed a coding agent intended for broad software-development work.
+- Decision: Define SunCode as a general-purpose coding agent. Treat the embedded Avalonia and Rust deployment as the current Phase 1 architecture, not as the product category or a permanent limit on future surfaces.
+- Consequences: Product, design, contributor, and interface copy lead with broad coding utility. Current desktop ownership, persistence, authority, and deferred hosted scope remain unchanged until separate requirements change them.
+- Details: `.agents/requirements/2026-08-19-general-coding-agent-positioning/`, `PRODUCT.md`, `ARCHITECTURE.md`
+
 ## ADR-20260816-avalonia-desktop-client
 
 - Date: 2026-08-16
@@ -15,9 +99,9 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20260815-session-token-usage
 
 - Date: 2026-08-15
-- Status: Accepted
+- Status: Accepted for usage projection; versioned backfill details superseded by ADR-20260819-current-schema-bootstrap
 - Context: The desktop footer needs a durable cumulative token-consumption value for the selected session. Usage events are retained, but repeated events contain cumulative turn values and cannot be summed directly without double counting.
-- Decision: Schema version 12 projects the latest provider-reported input, output, and total usage onto each `turns` row and backfills existing rows from retained events. The Rust SDK exposes a named `session_usage` aggregate. Qt displays only the compact session total and never opens SQLite or estimates missing provider usage.
+- Decision: Project the latest provider-reported input, output, and total usage onto each `turns` row. The Rust SDK exposes a named `session_usage` aggregate. The desktop displays only the compact session total and never opens SQLite or estimates missing provider usage.
 - Consequences: Repeated usage updates replace one turn's counters; session totals sum across turns; providers that omit usage contribute zero. The footer remains a low-noise status surface rather than a cost or context dashboard.
 - Details: `.agents/requirements/2026-08-15-session-token-usage/`, `../contracts/runtime-sdk/`, `../contracts/sqlite-schema.md`
 
@@ -25,7 +109,7 @@ Newest first. Historical context is retained only when it still explains a curre
 
 - Date: 2026-08-15
 - Status: Accepted
-- Supersedes: ADR-20260808-rust-sdk-client-facade and the client-facing transport portions of ADR-20260808-rust-unified-runtime, ADR-20260808-qt-client-state-boundary, and ADR-20260807-local-first-scope
+- Supersedes: ADR-20260808-rust-sdk-client-facade and the client-facing transport portions of ADR-20260808-rust-unified-runtime, ADR-20260808-qt-client-state-boundary, and ADR-20260807-desktop-runtime-scope
 - Context: Qt already embeds the Rust static library, but the facade reconstructs REST-like Axum requests and retains a standalone loopback HTTP/SSE server. Future TypeScript and Python packages need a reusable native runtime library, not a network service or duplicated runtime implementation.
 - Decision: SunCode's runtime is an embedded Rust SDK only. Hosts call named Rust SDK methods through native bindings. Qt uses the stable C ABI, future TypeScript uses N-API, and future Python uses PyO3 or the stable C ABI. Remove the client-facing HTTP/SSE server, synthetic HTTP dispatch, authentication token, endpoint discovery, and standalone runtime binary. Provider adapters retain outbound HTTPS. One runtime data directory may be owned by one host process; cross-process attach and replacement IPC are out of scope.
 - Consequences: SDK errors and outcomes are domain types rather than HTTP statuses; events use direct subscriptions rather than SSE; Qt no longer constructs paths; language SDKs embed the same Rust runtime and never open SQLite or implement runtime behavior. Separate processes cannot share one live runtime unless a future decision introduces an explicit IPC design.
@@ -35,7 +119,7 @@ Newest first. Historical context is retained only when it still explains a curre
 
 - Date: 2026-08-15
 - Status: Accepted
-- Context: Developers need Kimi, Claude, and Gemini in the same local-first Qt workflow already used for DeepSeek, Zhipu GLM, and OpenAI.
+- Context: Developers need Kimi, Claude, and Gemini in the same Qt coding workflow already used for DeepSeek, Zhipu GLM, and OpenAI.
 - Decision: Add Kimi, Claude, and Gemini as trusted built-in runtime providers using the documented OpenAI-compatible chat-completions surfaces. Their stable SunCode model identities are `kimi-k2.7-code`, `claude-opus-5`, and `gemini-3.6-flash`; provider endpoints, wire models, and environment aliases remain runtime configuration.
 - Consequences: Existing canonical message, tool, usage, streaming, cancellation, and error normalization code is reused. Provider-native Messages, Responses, and Gemini `generateContent` features remain deferred. Credentials stay provider-keyed in Rust-owned SQLite and Qt remains a presentation client.
 - Details: `.agents/requirements/2026-08-15-model-provider-expansion/`
@@ -52,9 +136,9 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20260812-plaintext-provider-secrets
 
 - Date: 2026-08-12
-- Status: Accepted
-- Context: Provider API keys need one cross-platform persistence path. The prior design used the OS credential store, and an intermediate implementation used a local encryption key beside SQLite. The product currently prioritizes a simple local-first implementation over at-rest encryption.
-- Decision: Store provider API keys as plaintext values in the Rust-owned SQLite `secret_records` table. Keep keys out of protocol responses, events, audit records, and logs. Accept explicit environment-variable overrides only in non-interactive mode. Migrate legacy macOS Keychain entries into SQLite when possible; encrypted experimental rows that cannot be decoded are discarded by the schema migration.
+- Status: Superseded by ADR-20260819-persisted-llm-catalog
+- Context: Provider API keys need one cross-platform persistence path. The prior design used the OS credential store, and an intermediate implementation used a local encryption key beside SQLite. The current desktop release prioritizes a simple embedded implementation over at-rest encryption.
+- Decision: Store provider API keys as plaintext values in the Rust-owned SQLite `llm_model_provider.api_key` column. Keep keys out of protocol responses, events, audit records, and logs. Accept explicit environment-variable overrides only in non-interactive mode. Import a legacy macOS Keychain value into an empty provider slot when possible.
 - Consequences: API keys are exposed to any process or user that can read the SQLite database and its backups. The runtime must keep database access inside Rust, restrict the data directory where the platform permits it, and never include secret values in diagnostics or serialized DTOs. Reintroducing encryption or an OS credential store requires a new decision record and migration plan.
 - Details: `ARCHITECTURE.md`, `contracts/persistence.md`, `contracts/sqlite-schema.md`
 
@@ -62,7 +146,7 @@ Newest first. Historical context is retained only when it still explains a curre
 
 - Date: 2026-08-11
 - Status: Accepted
-- Context: The Qt desktop client needs model provider choice while preserving the local-first runtime boundary and runtime-owned credential persistence.
+- Context: The Qt desktop client needs model provider choice while preserving the embedded runtime boundary and runtime-owned credential persistence.
 - Decision: Add Zhipu GLM and OpenAI as trusted built-in runtime providers alongside DeepSeek. Zhipu GLM and OpenAI use a shared OpenAI-compatible chat-completions adapter. Stable SunCode model identities are `deepseek-v4-flash`, `glm-5.2`, and `gpt-5.6-sol`.
 - Consequences: Provider credentials are provider-keyed and stored by the Rust runtime in SQLite. Qt consumes provider/model availability from the runtime and stores/removes credentials through provider-keyed runtime routes. Third-party provider adapters and OpenAI Responses-native behavior remain deferred.
 - Details: `.agents/requirements/2026-08-11-model-provider-expansion/`
@@ -79,9 +163,9 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20260809-ephemeral-streaming-deltas
 
 - Date: 2026-08-09
-- Status: Accepted
+- Status: Accepted for streaming behavior; versioned cleanup details superseded by ADR-20260819-current-schema-bootstrap
 - Context: OpenCode treats text, reasoning, and tool-input deltas as live projection data rather than durable database records. SunCode was persisting every `assistant.delta`, which made session startup slow when Qt replayed long histories and made token fragments look like part of the durable content model.
-- Decision: Streaming deltas are live-only events. SQLite schema version 10 removes legacy retained delta rows, records per-session sequence high-water marks, and uses `session_messages` as the message/context read model including tool messages. Durable history keeps final `message.assistant` rows and lifecycle events, not raw token deltas.
+- Decision: Streaming deltas are live-only events. Per-session sequence high-water marks prevent durable sequence reuse, and `session_messages` is the message/context read model including tool messages. Durable history keeps final `message.assistant` rows and lifecycle events, not raw token deltas.
 - Consequences: Connected clients keep streaming UX, while session replay and startup load compact final messages and durable activity only. Sequence numbers remain monotonic after compaction or delta removal. Rebuilding message projections no longer requires replaying high-volume transient events.
 - Details: `../contracts/sqlite-schema.md`
 
@@ -92,7 +176,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Supersedes: ADR-20260807-runtime-owns-durable-state, ADR-20260807-rust-boundary-rationale, and the process-topology portions of ADR-20260804-foundational-architecture
 - Context: The TypeScript runtime plus Rust child split duplicates lifecycle, protocol, recovery, and state coordination without providing OS isolation between processes running as the same user. Phase 1 has one Qt client and benefits more from one ownership model than from a language boundary.
 - Decision: Implement Phase 1 as one Rust runtime process. Rust owns provider integration, agent behavior, policy, SQLite, credentials, authenticated HTTP/SSE, and machine operations. Operations retain a narrow internal audited interface but are called in-process. Qt remains the only Phase 1 client. Production TypeScript, Node.js, and runtime-to-core JSON-RPC are removed after parity verification.
-- Consequences: SQLite ownership moves to Rust; the client API and schema remain compatibility targets. The internal operations boundary provides reviewability, not OS isolation. Shared protocol vectors remain hand-written. Existing TypeScript and stdio code are migration sources, not the final product.
+- Consequences: SQLite ownership moves to Rust; the client API and current schema remain explicit contracts. The internal operations boundary provides reviewability, not OS isolation. Shared protocol vectors remain hand-written. Existing TypeScript and stdio code are implementation references, not the final product.
 - Details: `ARCHITECTURE.md`
 
 ## ADR-20260808-rust-sdk-client-facade
@@ -100,7 +184,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Date: 2026-08-08
 - Status: Superseded by ADR-20260815-embedded-runtime-sdk
 - Context: Phase 1 needs the Rust runtime to be reusable by Qt now and by future Web, CLI, and TUI adapters later, without forcing the client boundary to stay network-only.
-- Decision: Expose the Rust runtime as a local SDK facade for direct client adapters, with Qt as the first consumer. Keep HTTP/SSE as a separate adapter over the same runtime core for compatibility and future non-Qt surfaces. The SDK is an embedding boundary, not a new authority boundary, and it does not change SQLite ownership or the local-first trust model.
+- Decision: Expose the Rust runtime as an embedded SDK facade for direct client adapters, with Qt as the first consumer. Keep HTTP/SSE as a separate adapter over the same runtime core for compatibility and future non-Qt surfaces. The SDK is an embedding boundary, not a new authority boundary, and it does not change SQLite ownership or the runtime trust model.
 - Consequences: Qt can call the Rust core without loopback transport, while Web/CLI/TUI can still use adapter-specific transports over the same runtime. The HTTP contract remains relevant for compatibility and future surfaces, but it is no longer the only Phase 1 client path.
 - Details: `../apps/desktop-qt/`, superseded contract replaced by `../contracts/runtime-sdk/README.md`
 
@@ -143,7 +227,7 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20260807-durable-stream-separation
 
 - Date: 2026-08-07
-- Status: Accepted
+- Status: Accepted; durable client-sync cursor superseded by ADR-20260819-current-schema-bootstrap
 - Context: A single append-only journal was serving audit, conversation content, client synchronization, and crash recovery. Those consumers have contradictory retention needs: audit wants immutability and long life, conversation wants compaction, client sync wants only the recent tail, recovery wants bounded size. Any retention rule written for one damaged another, and the requirement that projections be deterministically rebuildable from the journal conflicted with the requirement that the journal be compactable.
 - Decision: Split durable runtime state into three streams with independent lifetimes: an immutable audit log of authority decisions, a compactable session content store holding messages and tool results, and a disposable client synchronization cursor. Session content is the rebuild source for projections; audit is never rewritten; sync state is recreatable from content and never a source of truth.
 - Consequences: Retention, compaction, and export are specified per stream. Compaction can rewrite conversation history without touching the audit record. "Deterministically rebuildable" applies only to projections over the content store, not to the audit log. Anything crossing streams needs an explicit correlation identifier rather than a shared sequence.
@@ -168,13 +252,13 @@ Newest first. Historical context is retained only when it still explains a curre
 - Consequences: Contract documents are the human-readable source of truth but are not machine-enforced. Conformance is verified by shared test vectors — recorded message samples both sides must accept or reject — instead of by generated types. Adding a protocol field is a documented change plus a hand edit in each implementation. Divergence risk moves from generator correctness to test coverage, so the vector suite is mandatory rather than optional.
 - Details: `ARCHITECTURE.md` sections 5 and 11
 
-## ADR-20260807-local-first-scope
+## ADR-20260807-desktop-runtime-scope
 
 - Date: 2026-08-07
-- Status: Superseded in its network-client-boundary consequence by ADR-20260815-embedded-runtime-sdk; local-first scope remains accepted
+- Status: Product-positioning conclusion superseded by ADR-20260819-general-purpose-coding-agent; network-client-boundary consequence superseded by ADR-20260815-embedded-runtime-sdk; Phase 1 desktop scope remains accepted
 - Amends: ADR-20260804-foundational-architecture
-- Context: The foundation treated local and cloud-hosted execution as equally weighted deployment modes. Carrying hosting through every document forced tenancy, ingress, remote identity, and KMS concerns into designs for subsystems that had no implementation, and left the product without a clear thesis.
-- Decision: SunCode is local-first. The runtime and OS core run on the user's machine, and hosted execution is out of scope. Retain two properties that keep hosting possible later without designing for it now: the client-facing API stays a network protocol rather than in-process calls, and authority checks never assume the caller is trusted because it is local.
+- Context: The foundation treated desktop and cloud-hosted execution as equally weighted Phase 1 deployment modes. Carrying hosting through every document forced tenancy, ingress, remote identity, and KMS concerns into designs for subsystems that had no implementation.
+- Decision: The Phase 1 runtime and OS core run on the user's machine, and hosted execution is out of current scope. Retain two properties that keep hosting possible later without designing for it now: client boundaries stay explicit, and authority checks never assume the caller is trusted merely because it runs in the same environment.
 - Consequences: Tenancy, ingress, remote identity, cloud KMS, workspace provisioning, and sandbox-host infrastructure leave all current designs. Client authentication is a local-credential problem. The credential store is SQLite-backed local secret records. Cost and complexity drop across every package. Reintroducing hosting requires a new decision record.
 - Details: `PRODUCT.md`, `ARCHITECTURE.md` section 4
 

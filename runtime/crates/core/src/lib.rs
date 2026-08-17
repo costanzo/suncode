@@ -3,9 +3,6 @@ mod config;
 mod context;
 mod credentials;
 mod domain;
-mod llm;
-mod model_provider;
-mod persistence;
 mod policy;
 mod runtime_lock;
 mod sdk;
@@ -25,4 +22,4 @@ pub use domain::{
     ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectRecord, SessionEvent,
     SessionRecord, SettingRecord,
 };
-pub use model_provider::{ModelCapabilities, ModelDescriptor, ModelLimits};
+pub use suncode_llm::{ModelCapabilities, ModelDescriptor, ModelLimits};

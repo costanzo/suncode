@@ -19,9 +19,16 @@
   <Grid>
     <Border x:Name="ProjectChrome"
             Background="{DynamicResource CanvasBrush}"
+            BorderBrush="{DynamicResource WindowChromeBorderBrush}"
+            BorderThickness="0.5"
             CornerRadius="12"
-            ClipToBounds="True"
-            Padding="4,6,4,6">
+            Margin="16"
+            Padding="1.5">
+      <Border x:Name="ProjectChromeContent"
+              Background="{DynamicResource CanvasBrush}"
+              CornerRadius="11"
+              ClipToBounds="True"
+              Padding="4,6,4,6">
       <Grid RowDefinitions="36,4,*,4,14">
         <Grid Grid.Row="0"
               Background="#01000000"
@@ -31,7 +38,7 @@
               PointerMoved="TitleBarMoved"
               PointerReleased="TitleBarReleased"
               DoubleTapped="TitleBarDoubleTapped">
-          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" Margin="10,0,0,0" VerticalAlignment="Center">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" Margin="5,0,0,0" VerticalAlignment="Center">
             <Button x:Name="ProjectCloseLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="CloseProjectWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Close window">
               <svg:Svg Path="/Assets/traffic-lights/1-close-1-normal.svg" />
             </Button>
@@ -43,7 +50,7 @@
             </Button>
           </StackPanel>
           <TextBlock Grid.Column="1" Text="{Binding ProjectTitle}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" VerticalAlignment="Center" />
-          <Button Grid.Column="2" Classes="titlebar" Click="OpenSettings" ToolTip.Tip="Open settings" Margin="0,0,8,0">
+          <Button Grid.Column="2" Classes="titlebar" Click="OpenSettings" ToolTip.Tip="Open settings" Margin="0,0,1,0">
             <svg:Svg Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />
           </Button>
         </Grid>
@@ -129,6 +136,7 @@
           </StackPanel>
         </Grid>
       </Grid>
+      </Border>
     </Border>
 
     <Border x:Name="SessionDialogOverlay" IsVisible="False" Background="#99000000" ZIndex="200" PointerPressed="SessionOverlayPointerPressed">

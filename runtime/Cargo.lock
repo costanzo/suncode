@@ -1328,19 +1328,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
-name = "suncode-operations"
+name = "suncode-db"
 version = "0.1.0"
 dependencies = [
- "base64",
- "git2",
- "globset",
- "grep-matcher",
- "grep-regex",
- "grep-searcher",
- "ignore",
+ "chrono",
+ "rusqlite",
  "serde",
  "serde_json",
- "sha2",
+ "tempfile",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
+name = "suncode-llm"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "futures-util",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -1353,17 +1364,33 @@ dependencies = [
  "fs2",
  "futures-util",
  "git2",
- "reqwest",
- "rusqlite",
  "serde",
  "serde_json",
  "sha2",
- "suncode-operations",
+ "suncode-db",
+ "suncode-llm",
+ "suncode-tool",
  "tempfile",
  "thiserror",
  "tokio",
  "tokio-util",
  "uuid",
+]
+
+[[package]]
+name = "suncode-tool"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "git2",
+ "globset",
+ "grep-matcher",
+ "grep-regex",
+ "grep-searcher",
+ "ignore",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

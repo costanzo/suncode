@@ -12,34 +12,82 @@
       <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
     </Style>
+    <Style Selector="ListBox.conversation">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="24,18,24,128" />
+    </Style>
+    <Style Selector="ListBox.conversation ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="ListBox.conversation ListBoxItem:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="ListBox.conversation ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="ListBox.conversation ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
   </UserControl.Styles>
 
   <Border Classes="workspace-card" ClipToBounds="True">
     <Grid>
-      <ScrollViewer x:Name="ConversationScroll" HorizontalScrollBarVisibility="Disabled">
-        <ItemsControl ItemsSource="{Binding Messages}" MaxWidth="780" HorizontalAlignment="Center" Margin="24,18,24,128">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="models:MessageItem">
-              <Grid Margin="12,8">
-                <Border IsVisible="{Binding IsUser}" HorizontalAlignment="Right" MaxWidth="620" Padding="14" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                  <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" LineHeight="21" />
-                </Border>
-                <StackPanel IsVisible="{Binding !IsUser}" MaxWidth="720" HorizontalAlignment="Left" Spacing="6">
-                  <Grid>
-                    <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" LineHeight="21" IsVisible="{Binding Streaming}" />
-                    <controls:MarkdownText Markdown="{Binding Text}" IsVisible="{Binding !Streaming}" HorizontalAlignment="Stretch" />
-                  </Grid>
-                  <Button Classes="quiet" Width="26" Height="26" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response">
-                    <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
-                  </Button>
-                </StackPanel>
-              </Grid>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </ScrollViewer>
+      <ListBox x:Name="ConversationList" Classes="conversation" ItemsSource="{Binding Messages}" Focusable="False" ScrollViewer.HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasSelectedSession}">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate>
+            <VirtualizingStackPanel />
+          </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="models:MessageItem">
+            <Grid MaxWidth="780" Margin="12,8" HorizontalAlignment="Stretch">
+              <Border IsVisible="{Binding IsUser}" HorizontalAlignment="Right" MaxWidth="620" Padding="14" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" LineHeight="21" />
+              </Border>
+              <StackPanel IsVisible="{Binding !IsUser}" MaxWidth="720" HorizontalAlignment="Left" Spacing="6">
+                <Grid>
+                  <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" LineHeight="21" IsVisible="{Binding Streaming}" />
+                  <controls:MarkdownText Markdown="{Binding Text}" IsVisible="{Binding !Streaming}" HorizontalAlignment="Stretch" />
+                </Grid>
+                <Button Classes="quiet" Width="26" Height="26" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response">
+                  <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
+                </Button>
+              </StackPanel>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
 
-      <Border Height="102" Margin="24,0,24,10" Padding="16,12,12,10" CornerRadius="16" Background="{DynamicResource ComposerBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" BoxShadow="0 6 14 0 #57000000" VerticalAlignment="Bottom" ZIndex="2">
+      <StackPanel ZIndex="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding IsSessionLoadingVisible}">
+        <ProgressBar Width="160" Height="3" IsIndeterminate="True" />
+        <TextBlock Text="Loading conversation..." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+      </StackPanel>
+
+      <StackPanel MaxWidth="420" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding HasSessionLoadError}">
+        <TextBlock Text="Conversation could not be loaded" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding SessionLoadError}" FontSize="12" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" TextAlignment="Center" />
+        <Button Classes="compact" HorizontalAlignment="Center" Click="RetrySession">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <svg:Svg Width="14" Height="14" Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
+            <TextBlock Text="Retry" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6" IsVisible="{Binding !HasSelectedSession}">
+        <TextBlock Text="No session selected" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Text="Create a session to start a conversation." FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+      </StackPanel>
+
+      <Border Height="102" Margin="24,0,24,10" Padding="16,12,12,10" CornerRadius="16" Background="{DynamicResource ComposerBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" BoxShadow="0 6 14 0 #57000000" VerticalAlignment="Bottom" ZIndex="2" IsVisible="{Binding HasSelectedSession}">
         <Grid>
           <TextBox x:Name="ComposerInput" Classes="composer-input" Margin="0,0,0,30" Text="{Binding ComposerText}" PlaceholderText="{Binding ComposerPlaceholder}" AcceptsReturn="True" TextWrapping="Wrap" Background="Transparent" BorderBrush="Transparent" BorderThickness="0" Padding="0" IsEnabled="{Binding CanCompose}">
             <TextBox.Resources>

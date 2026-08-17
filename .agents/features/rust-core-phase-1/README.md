@@ -1,6 +1,6 @@
 # Rust Core Phase 1
 
-The audited Rust operations module handles canonical path checks, bounded reads and search, read-only Git status and file diffs, preconditioned writes and edits, checkpoint capture and restore, artifact handling, and bounded process execution.
+The audited Rust operations module in the `suncode-tool` package handles canonical path checks, bounded reads and search, read-only Git status and file diffs, preconditioned writes and edits, checkpoint capture and restore, artifact handling, and bounded process execution.
 
 It is called in-process by the runtime and reports operation results through typed runtime DTOs.
 

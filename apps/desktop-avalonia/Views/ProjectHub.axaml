@@ -5,11 +5,15 @@
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Views.ProjectHub"
              x:DataType="vm:DesktopViewModel">
-  <Border Margin="8"
+  <Border Margin="16"
           Background="{DynamicResource CanvasBrush}"
+          BorderBrush="{DynamicResource WindowChromeBorderBrush}"
+          BorderThickness="0.5"
           CornerRadius="12"
-          ClipToBounds="True"
-          BoxShadow="0 8 24 0 #40000000">
+          Padding="1.5">
+    <Border Background="{DynamicResource CanvasBrush}"
+            CornerRadius="11"
+            ClipToBounds="True">
     <Grid RowDefinitions="32,62,*">
       <Grid Grid.Row="0"
             Background="{DynamicResource CanvasBrush}"
@@ -30,7 +34,8 @@
             <svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" />
           </Button>
         </StackPanel>
-        <TextBlock Grid.Column="1" Text="Welcome to SunCode" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="Welcome to SunCode" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" 
+                   Margin="12, 0, 0, 0" />
       </Grid>
 
       <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
@@ -73,5 +78,6 @@
         </Grid>
       </Border>
     </Grid>
+    </Border>
   </Border>
 </UserControl>

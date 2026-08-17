@@ -27,7 +27,7 @@ Embedded content search in the Rust operations crate and its runtime integration
 ## Commands and results
 
 - `cargo test --manifest-path runtime/Cargo.toml --workspace` passed: 13 operations tests and 25 runtime tests.
-- `cargo clippy --manifest-path runtime/Cargo.toml -p suncode-operations --all-targets -- -D warnings` passed.
+- `cargo clippy --manifest-path runtime/Cargo.toml -p suncode-tool --all-targets -- -D warnings` passed.
 - `cargo fmt --manifest-path runtime/Cargo.toml --all -- --check` passed.
 - `git diff --check` passed.
 

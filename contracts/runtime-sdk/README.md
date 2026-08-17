@@ -8,7 +8,7 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 ## Lifecycle
 
-`open_default` loads configuration, acquires the data-directory lock, opens and migrates SQLite, initializes operations and providers, performs recovery, and returns an opaque runtime handle. A second process opening the same data directory receives `runtime_already_active`.
+`open_default` loads configuration, acquires the data-directory lock, opens and initializes the current SQLite schema, initializes operations and providers, performs recovery, and returns an opaque runtime handle. A second process opening the same data directory receives `runtime_already_active`. An incompatible database is rejected; the runtime does not migrate it.
 
 The runtime handle owns the Tokio runtime and all runtime services. Host wrappers may share one handle inside a process. Subscriptions must be closed before the final runtime handle is released. Closing a subscription stops callback delivery before returning.
 
@@ -24,7 +24,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `diagnostics` | Read redacted runtime, recovery, credential, and active-project diagnostics |
 | `list_models` | List stable models and credential-derived availability |
 | `list_settings` | Read effective non-secret settings with scope provenance |
-| `set_setting` | Store one user, project, or session setting |
+| `set_setting` | Store one global, project, or session configuration value |
 | `list_credentials` | Read redacted provider credential status |
 | `set_credential` | Store or replace one provider API key |
 | `remove_credential` | Remove one provider API key |
@@ -38,10 +38,10 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `rename_session` | Rename a session |
 | `archive_session` | Recoverably archive a session |
 | `reopen_session` | Reopen an archived session |
-| `session_snapshot` | Read a bounded session projection and retained events after a cursor |
+| `session_snapshot` | Read the normalized session projection; the cursor argument is ignored for compatibility |
 | `session_usage` | Read cumulative provider-reported token usage for a session |
-| `list_provider_exchanges` | List normalized provider exchange traces for a session |
-| `provider_exchange` | Inspect one normalized provider exchange trace |
+| `list_provider_exchanges` | List session turns and normalized provider call summaries for a trace tree |
+| `provider_exchange` | Inspect one normalized provider call with correlated messages and tool uses |
 | `list_checkpoints` | List turn-level checkpoint manifests for a session |
 | `checkpoint_manifest` | Inspect one manifest and its items |
 | `restore_checkpoint` | Restore a manifest with ownership and post-image conflict checks |
@@ -49,7 +49,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `cancel_turn` | Cooperatively cancel a running turn |
 | `get_approval` | Read one approval state |
 | `resolve_approval` | Resolve one pending approval with `allow_once` or `deny` |
-| `subscribe_session` | Replay retained events after a cursor and deliver subsequent live events |
+| `subscribe_session` | Deliver subsequent live events; lagged subscribers must reload `session_snapshot` |
 
 Rust-generated project, session, turn, approval, checkpoint, event, and message identifiers remain authoritative. Hosts do not manufacture IDs except idempotency keys.
 
@@ -57,7 +57,7 @@ Git DTOs contain only opened-project-relative paths. `git_status` returns branch
 
 `session_usage` returns `input_tokens`, `output_tokens`, and `total_tokens` summed from the latest cumulative usage projection for every turn in the session. Providers that omit usage metadata contribute zero; the runtime does not estimate missing usage.
 
-Provider exchange DTOs are local session diagnostics. They expose normalized input messages, normalized assistant output, tool calls, finish reason, redacted provider errors, and provider-reported usage including nullable cache-token fields when available. They never include provider API keys, HTTP authorization headers, or provider-private raw wire payloads.
+Provider exchange DTOs are local session diagnostics. The list result contains every session turn, including turns without calls, plus normalized call summaries. One exchange detail contains normalized input messages, assistant output, correlated `session_message` rows, correlated `session_tool_use` rows, tool calls, finish reason, redacted provider errors, and provider-reported usage. Usage includes nullable cache-read and cache-write token fields when available; clients may derive cache hit rate as `cache_read_tokens / input_tokens` only when both values are present and input is nonzero. These DTOs never include provider API keys, HTTP authorization headers, or provider-private raw wire payloads.
 
 ## Outcomes
 
@@ -89,18 +89,11 @@ Panics are contained at native binding boundaries and converted to `runtime_unav
 
 ## Events
 
-Session events use a strictly increasing durable `content_sequence`. Streaming deltas are live-only and may carry sequence zero. Final messages and lifecycle events are durable.
+Session events are live-only in-memory notifications. Normalized messages, turns, calls, tools, approvals, and checkpoints are the durable source of truth. Events do not carry a durable sequence.
 
 Provider exchange lifecycle events are durable: `provider.exchange.started`, `provider.exchange.completed`, and `provider.exchange.failed`. They project into the provider-exchange query surface and may be used by clients to refresh an open trace drawer.
 
-Subscription establishment follows this invariant:
-
-1. register for live events;
-2. read retained events after the supplied cursor;
-3. deliver replay in sequence order;
-4. deliver buffered and subsequent live events, discarding durable sequences already replayed.
-
-This prevents a replay-to-live loss window. A lagged receiver must recover from SQLite after its last delivered durable sequence. If retained history cannot satisfy recovery, the subscription reports `resync_required`; it never silently drops events.
+Subscription establishment registers for live events. There is no SQLite replay phase. If a receiver lags, the subscription reports `resync.required`; the host must reload `session_snapshot`, then continue receiving live events.
 
 Callbacks run on an SDK-owned thread. Hosts must copy the callback payload and marshal delivery to their runtime thread: Avalonia uses `Dispatcher.UIThread`, Node.js uses a thread-safe function, and Python acquires the GIL and schedules on the target event loop. Callback payload memory is valid only for the duration of the callback unless copied by the host.
 
@@ -108,7 +101,7 @@ Callbacks run on an SDK-owned thread. Hosts must copy the callback payload and m
 
 Embedding removes transport authentication because the host is inside the runtime process trust boundary. It does not remove project/session ownership checks, policy evaluation, approval, operation auditing, canonical path validation, checkpoint conflict checks, or credential redaction.
 
-Provider API keys remain Rust-owned plaintext SQLite secrets. Their values never appear in SDK results, events, diagnostics, audit records, or logs.
+Provider API keys remain Rust-owned plaintext values in `llm_model_provider.api_key`. Their values never appear in SDK results, events, diagnostics, audit records, or logs.
 
 ## Language bindings
 

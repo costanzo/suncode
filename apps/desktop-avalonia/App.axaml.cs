@@ -14,10 +14,15 @@ public sealed partial class App : Application
     private DesktopViewModel? _viewModel;
     private MainWindow? _hubWindow;
     private SettingsWindow? _settingsWindow;
+    private AboutWindow? _aboutWindow;
     private readonly Dictionary<string, MainWindow> _projectWindows = [];
     private readonly HashSet<string> _openingProjects = [];
 
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+        ConfigureNativeApplicationMenu();
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -31,6 +36,7 @@ public sealed partial class App : Application
             desktop.Exit += (_, _) =>
             {
                 _settingsWindow?.Close();
+                _aboutWindow?.Close();
                 foreach (var window in _projectWindows.Values.ToArray()) window.Close();
                 _viewModel.Dispose();
             };
@@ -101,6 +107,40 @@ public sealed partial class App : Application
             _settingsWindow = null;
         };
         _ = _settingsWindow.ShowDialog(owner);
+    }
+
+    internal void ShowAbout(Window owner)
+    {
+        if (_aboutWindow is not null)
+        {
+            _aboutWindow.Activate();
+            return;
+        }
+
+        _aboutWindow = new AboutWindow();
+        SetOtherWindowsEnabled(owner, false);
+        _aboutWindow.Closed += (_, _) =>
+        {
+            SetOtherWindowsEnabled(owner, true);
+            _aboutWindow = null;
+        };
+        _ = _aboutWindow.ShowDialog(owner);
+    }
+
+    private void ConfigureNativeApplicationMenu()
+    {
+        var menu = new NativeMenu();
+        var about = new NativeMenuItem { Header = $"About {AppInfo.ProductName}" };
+        about.Click += (_, _) =>
+        {
+            if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop) return;
+            var owner = desktop.Windows.FirstOrDefault(window => window.IsActive)
+                ?? desktop.Windows.FirstOrDefault(window => window.IsVisible)
+                ?? desktop.MainWindow;
+            if (owner is not null) ShowAbout(owner);
+        };
+        menu.Items.Add(about);
+        NativeMenu.SetMenu(this, menu);
     }
 
     internal bool IsProjectOpen(string projectId) => _projectWindows.ContainsKey(projectId);

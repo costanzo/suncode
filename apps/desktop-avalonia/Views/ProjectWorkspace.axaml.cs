@@ -36,8 +36,11 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal void SetFullScreenChrome(bool fullScreen)
     {
-        ProjectChrome.Padding = fullScreen ? new Thickness(0) : new Thickness(4, 6, 4, 6);
+        ProjectChrome.Margin = fullScreen ? new Thickness(0) : new Thickness(16);
+        ProjectChrome.Padding = fullScreen ? new Thickness(0) : new Thickness(1.5);
+        ProjectChrome.BorderThickness = fullScreen ? new Thickness(0) : new Thickness(0.5);
         ProjectChrome.CornerRadius = fullScreen ? new CornerRadius(0) : new CornerRadius(12);
+        ProjectChromeContent.CornerRadius = fullScreen ? new CornerRadius(0) : new CornerRadius(11);
     }
 
     internal bool HandleEscape()
@@ -82,7 +85,7 @@ public sealed partial class ProjectWorkspace : UserControl
     private void ToggleReview(object? sender, RoutedEventArgs e) =>
         ViewModel.ReviewVisible = !ViewModel.ReviewVisible;
 
-    private void ToggleGit(object? sender, RoutedEventArgs e)
+    internal void ToggleGitViewer()
     {
         ViewModel.GitVisible = !ViewModel.GitVisible;
         if (ViewModel.GitVisible)
@@ -91,6 +94,8 @@ public sealed partial class ProjectWorkspace : UserControl
             _ = ViewModel.RefreshGitAsync();
         }
     }
+
+    private void ToggleGit(object? sender, RoutedEventArgs e) => ToggleGitViewer();
 
     private void ToggleProviderTrace(object? sender, RoutedEventArgs e)
     {

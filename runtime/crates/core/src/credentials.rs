@@ -1,6 +1,7 @@
-use crate::{persistence::PersistenceError, persistence::Store};
 use serde::Serialize;
 use std::process::{Command, Stdio};
+use suncode_db::{PersistenceError, Store};
+use suncode_llm::ApiKeyResolver;
 
 #[derive(Clone)]
 pub struct CredentialStore {
@@ -45,12 +46,6 @@ impl ProviderKind {
         }
     }
 
-    pub fn parse(value: &str) -> Option<Self> {
-        Self::ALL
-            .into_iter()
-            .find(|provider| provider.as_str() == value)
-    }
-
     pub fn api_key_envs(self) -> &'static [&'static str] {
         match self {
             Self::DeepSeek => &["DEEPSEEK_API_KEY"],
@@ -61,22 +56,11 @@ impl ProviderKind {
             Self::Gemini => &["GEMINI_API_KEY", "GOOGLE_API_KEY"],
         }
     }
-
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::DeepSeek => "DeepSeek",
-            Self::Zhipu => "Zhipu GLM",
-            Self::OpenAI => "OpenAI",
-            Self::Kimi => "Kimi",
-            Self::Claude => "Claude",
-            Self::Gemini => "Gemini",
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct CredentialState {
-    pub provider: &'static str,
+    pub provider: String,
     pub configured: bool,
 }
 
@@ -118,7 +102,7 @@ impl CredentialStore {
         {
             if let Some(value) = value {
                 store
-                    .set_secret(provider.as_str(), value)
+                    .set_llm_provider_api_key(provider.as_str(), value)
                     .expect("provider secret");
             }
         }
@@ -134,48 +118,47 @@ impl CredentialStore {
         }
     }
 
-    pub fn configured(&self, provider: ProviderKind) -> bool {
-        self.value(provider).is_some()
+    pub fn configured(&self, provider_id: &str) -> bool {
+        self.value(provider_id).is_some()
     }
 
     pub fn state(&self) -> Vec<CredentialState> {
-        ProviderKind::ALL
+        self.store
+            .llm_model_providers(false)
+            .unwrap_or_default()
             .into_iter()
             .map(|provider| CredentialState {
-                provider: provider.as_str(),
-                configured: self.configured(provider),
+                provider: provider.provider_id.clone(),
+                configured: self.configured(&provider.provider_id),
             })
             .collect()
     }
 
-    pub fn api_key(&self, provider: ProviderKind) -> Option<String> {
-        self.value(provider)
-    }
-
-    pub fn set(&self, provider: ProviderKind, value: &str) -> Result<(), String> {
+    pub fn set(&self, provider_id: &str, value: &str) -> Result<(), String> {
         self.store
-            .set_secret(provider.as_str(), value)
+            .set_llm_provider_api_key(provider_id, value)
             .map_err(map_error)
     }
 
-    pub fn delete(&self, provider: ProviderKind) -> Result<(), String> {
+    pub fn delete(&self, provider_id: &str) -> Result<(), String> {
         self.store
-            .delete_secret(provider.as_str())
+            .delete_llm_provider_api_key(provider_id)
             .map_err(map_error)
     }
 
-    fn value(&self, provider: ProviderKind) -> Option<String> {
-        let override_value = match provider {
-            ProviderKind::DeepSeek => self.deepseek_override.as_ref(),
-            ProviderKind::Zhipu => self.zhipu_override.as_ref(),
-            ProviderKind::OpenAI => self.openai_override.as_ref(),
-            ProviderKind::Kimi => self.kimi_override.as_ref(),
-            ProviderKind::Claude => self.claude_override.as_ref(),
-            ProviderKind::Gemini => self.gemini_override.as_ref(),
+    fn value(&self, provider_id: &str) -> Option<String> {
+        let override_value = match provider_id {
+            "deepseek" => self.deepseek_override.as_ref(),
+            "zhipu" => self.zhipu_override.as_ref(),
+            "openai" => self.openai_override.as_ref(),
+            "kimi" => self.kimi_override.as_ref(),
+            "claude" => self.claude_override.as_ref(),
+            "gemini" => self.gemini_override.as_ref(),
+            _ => None,
         };
         override_value
             .cloned()
-            .or_else(|| self.store.secret_value(provider.as_str()).ok().flatten())
+            .or_else(|| self.store.llm_provider_api_key(provider_id).ok().flatten())
     }
 
     fn migrate_legacy_keychain(&self) {
@@ -185,7 +168,7 @@ impl CredentialStore {
         for provider in ProviderKind::ALL {
             if self
                 .store
-                .secret_value(provider.as_str())
+                .llm_provider_api_key(provider.as_str())
                 .ok()
                 .flatten()
                 .is_some()
@@ -195,10 +178,20 @@ impl CredentialStore {
             let Some(value) = keychain_get(provider.as_str()) else {
                 continue;
             };
-            if self.store.set_secret(provider.as_str(), &value).is_ok() {
+            if self
+                .store
+                .set_llm_provider_api_key(provider.as_str(), &value)
+                .is_ok()
+            {
                 let _ = keychain_delete(provider.as_str());
             }
         }
+    }
+}
+
+impl ApiKeyResolver for CredentialStore {
+    fn api_key(&self, provider_id: &str) -> Option<String> {
+        self.value(provider_id)
     }
 }
 

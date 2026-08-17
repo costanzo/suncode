@@ -1,6 +1,7 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="SunCode.Desktop.App"
+             Name="SunCode"
              RequestedThemeVariant="Dark">
   <Application.Styles>
     <FluentTheme DensityStyle="Compact" />
@@ -186,8 +187,19 @@
       <Setter Property="Margin" Value="0,0,0,4" />
       <Setter Property="CornerRadius" Value="6" />
     </Style>
+    <Style Selector="ListBox.git-files ListBoxItem">
+      <Setter Property="Margin" Value="4,1" />
+    </Style>
+    <Style Selector="ListBox.git-files ListBoxItem:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource AccentSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
     <Style Selector="ListBox.git-files ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Background" Value="{DynamicResource AccentSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     </Style>
     <Style Selector="ToggleButton.scope">
       <Setter Property="Width" Value="72" />
@@ -253,6 +265,7 @@
           <SolidColorBrush x:Key="TextSecondaryBrush" Color="#a7afb9" />
           <SolidColorBrush x:Key="TextMutedBrush" Color="#727c87" />
           <SolidColorBrush x:Key="TextDisabledBrush" Color="#525a64" />
+          <SolidColorBrush x:Key="WindowChromeBorderBrush" Color="#1c2126" />
           <SolidColorBrush x:Key="BorderBrush" Color="#292f36" />
           <SolidColorBrush x:Key="BorderStrongBrush" Color="#46505b" />
           <SolidColorBrush x:Key="AccentBrush" Color="#69c5b0" />
@@ -303,6 +316,7 @@
           <SolidColorBrush x:Key="TextSecondaryBrush" Color="#44515e" />
           <SolidColorBrush x:Key="TextMutedBrush" Color="#778491" />
           <SolidColorBrush x:Key="TextDisabledBrush" Color="#a6b0ba" />
+          <SolidColorBrush x:Key="WindowChromeBorderBrush" Color="#e5e9ec" />
           <SolidColorBrush x:Key="BorderBrush" Color="#d5dde4" />
           <SolidColorBrush x:Key="BorderStrongBrush" Color="#bac6d0" />
           <SolidColorBrush x:Key="AccentBrush" Color="#2f8f7d" />

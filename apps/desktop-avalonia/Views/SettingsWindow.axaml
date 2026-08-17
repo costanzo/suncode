@@ -13,12 +13,14 @@
         TransparencyLevelHint="Transparent"
         WindowStartupLocation="CenterOwner">
   <Border x:Name="SettingsChrome"
-          Margin="8"
+          Margin="16"
           Background="{DynamicResource CanvasBrush}"
+          BorderBrush="{DynamicResource WindowChromeBorderBrush}"
+          BorderThickness="0.5"
           CornerRadius="12"
-          BoxShadow="0 8 24 0 #40000000">
+          Padding="1.5">
   <Border Background="{DynamicResource CanvasBrush}"
-          CornerRadius="12"
+          CornerRadius="11"
           ClipToBounds="True">
   <Grid RowDefinitions="32,*">
     <Grid Grid.Row="0" Background="{DynamicResource CanvasBrush}" ColumnDefinitions="Auto,*" PointerPressed="SettingsTitleBarPressed" DoubleTapped="SettingsTitleBarDoubleTapped">

@@ -1,6 +1,6 @@
 ---
 name: SunCode Desktop
-description: A quiet, reviewable control desk for local-first coding work.
+description: A quiet, reviewable control desk for general-purpose coding work.
 colors:
   canvas: "#0d0f12"
   surface: "#121519"
@@ -10,6 +10,8 @@ colors:
   text: "#edf0f3"
   text-secondary: "#a7afb9"
   text-muted: "#838d98"
+  window-border: "#1c2126"
+  window-border-light: "#e5e9ec"
   border: "#292f36"
   accent: "#69c5b0"
   accent-hover: "#7dd2be"
@@ -48,7 +50,7 @@ components:
 
 **Creative North Star: “Quiet Control Desk”**
 
-SunCode is designed as a calm professional console for high-consequence local work. The conversation canvas is the primary surface; navigation, credentials, approvals, checkpoints, and diagnostics are supporting tool bays that can retreat when they are not needed. The system uses matte graphite layers and fine separators to create structure without visual noise.
+SunCode is designed as a calm professional console for high-consequence coding work. The conversation canvas is the primary surface; navigation, credentials, approvals, checkpoints, and diagnostics are supporting tool bays that can retreat when they are not needed. The system uses matte graphite layers and fine separators to create structure without visual noise.
 
 The interface is intentionally restrained. Teal is reserved for actions and active work, green confirms healthy local state, amber calls attention to authority decisions, and red is reserved for destructive or denied outcomes. There is no decorative glow, glass, gradient text, or dashboard theater.
 
@@ -84,6 +86,7 @@ The palette supports both a dark graphite mode and a lighter paper-and-slate mod
 - **Primary Text** (#edf0f3): Main copy and message content.
 - **Secondary Text** (#a7afb9): Supporting labels and status summaries.
 - **Muted Text** (#838d98): Empty-state guidance and metadata with accessible contrast on graphite surfaces.
+- **Window Chrome Hairline** (#1c2126 dark / #e5e9ec light): A 0.5-DIP low-contrast outer outline that lets the native window shadow carry elevation.
 - **Hairline Border** (#292f36): Panel boundaries and list separators.
 
 ### Named Rules
@@ -121,11 +124,11 @@ Panel content uses 16px horizontal padding, 10–12px control gaps, and 24px sep
 
 ## Elevation & Depth
 
-SunCode uses tonal layering rather than shadows. The canvas, surface, raised surface, and active surface are close graphite steps separated by one-pixel borders. Dialogs use a stronger border and a raised tonal surface; shadows are not part of the visual language.
+SunCode uses tonal layering rather than app-drawn shadows. The canvas, surface, raised surface, and active surface are close graphite steps separated by one-pixel borders. Dialogs use a stronger border and a raised tonal surface. Top-level windows retain the platform's native shadow, paired with a quieter window-specific hairline rather than the stronger internal border token.
 
 ## Shapes
 
-Controls use a compact 6px radius. Utility containers and approval surfaces use 10px. The undo dialog uses 14px. Borders are one pixel at rest and two pixels only for keyboard focus. There are no pill-shaped cards or oversized rounded containers.
+Controls use a compact 6px radius. Utility containers and approval surfaces use 10px. The undo dialog uses 14px. Internal borders are one DIP at rest and two DIPs only for keyboard focus; the top-level window chrome uses a 0.5-DIP hairline. There are no pill-shaped cards or oversized rounded containers.
 
 ## Components
 

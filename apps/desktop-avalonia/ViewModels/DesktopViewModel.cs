@@ -14,11 +14,13 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 {
     private RuntimeSdk? _sdk;
     private IDisposable? _subscription;
+    private BulkObservableCollection<MessageItem> _messages = [];
     private ProjectItem? _selectedProject;
     private SessionItem? _selectedSession;
     private ModelItem? _selectedModel;
     private GitFileItem? _selectedGitFile;
     private ProviderTraceItem? _selectedProviderTrace;
+    private ProviderTraceItem? _selectedProviderTraceDetails;
     private ApprovalItem? _pendingApproval;
     private string _connectionState = "disconnected";
     private string _statusText = "Starting local runtime...";
@@ -36,6 +38,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private string _providerTraceState = "idle";
     private string _providerTraceError = string.Empty;
     private string _providerTraceFilter = string.Empty;
+    private string _sessionLoadError = string.Empty;
     private string _gitBranch = string.Empty;
     private bool _gitStatusTruncated;
     private bool _gitDiffBinary;
@@ -47,7 +50,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private int _gitDeletions;
     private int _gitConflicts;
     private long _sessionTotalTokens;
-    private long _lastSequence;
+    private long _sessionLoadVersion;
+    private string? _loadedSessionId;
     private bool _navigationVisible = true;
     private bool _reviewVisible = true;
     private bool _navigationPinned = true;
@@ -58,23 +62,37 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private double _reviewPaneWidth = 312;
     private double _bottomDrawerHeight = 360;
     private bool _isBusy;
+    private bool _isSessionLoading;
+    private bool _isSessionLoadingVisible;
     private bool _disposed;
 
     public event Action<string>? ThemeChanged;
+    public event Action? ConversationChanged;
 
     public ObservableCollection<ProjectItem> Projects { get; } = [];
     public ObservableCollection<SessionItem> Sessions { get; } = [];
     public ObservableCollection<ModelItem> Models { get; } = [];
     public ObservableCollection<CredentialItem> Credentials { get; } = [];
-    public ObservableCollection<MessageItem> Messages { get; } = [];
-    public ObservableCollection<ActivityItem> Activities { get; } = [];
-    public ObservableCollection<string> ChangedPaths { get; } = [];
-    public ObservableCollection<CheckpointItem> Checkpoints { get; } = [];
+    public BulkObservableCollection<MessageItem> Messages
+    {
+        get => _messages;
+        private set
+        {
+            if (ReferenceEquals(_messages, value)) return;
+            _messages = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasMessages));
+        }
+    }
+    public BulkObservableCollection<ActivityItem> Activities { get; } = [];
+    public BulkObservableCollection<string> ChangedPaths { get; } = [];
+    public BulkObservableCollection<CheckpointItem> Checkpoints { get; } = [];
     public ObservableCollection<GitFileItem> GitFiles { get; } = [];
     public ObservableCollection<GitFileItem> FilteredGitFiles { get; } = [];
     public ObservableCollection<DiffLineItem> DiffLines { get; } = [];
     public ObservableCollection<ProviderTraceItem> ProviderTraces { get; } = [];
-    public ObservableCollection<ProviderTraceItem> FilteredProviderTraces { get; } = [];
+    public ObservableCollection<ProviderTraceTurnItem> ProviderTraceTurns { get; } = [];
+    public ObservableCollection<ProviderTraceTurnItem> FilteredProviderTraceTurns { get; } = [];
 
     public ProjectItem? SelectedProject
     {
@@ -94,14 +112,14 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         get => _selectedSession;
         private set
         {
-            if (SetProperty(ref _selectedSession, value))
-            {
-                OnPropertyChanged(nameof(SessionTitle));
-                OnPropertyChanged(nameof(CanSubmit));
-                OnPropertyChanged(nameof(CanCompose));
-                OnPropertyChanged(nameof(HasSelectedSession));
-                OnPropertyChanged(nameof(ComposerPlaceholder));
-            }
+            if (ReferenceEquals(_selectedSession, value)) return;
+            _selectedSession = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SessionTitle));
+            OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(CanCompose));
+            OnPropertyChanged(nameof(HasSelectedSession));
+            OnPropertyChanged(nameof(ComposerPlaceholder));
         }
     }
 
@@ -135,6 +153,20 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         set
         {
             if (SetProperty(ref _selectedProviderTrace, value))
+            {
+                SelectedProviderTraceDetails = null;
+                OnPropertyChanged(nameof(SelectedProviderTraceTitle));
+                OnPropertyChanged(nameof(HasSelectedProviderTrace));
+            }
+        }
+    }
+
+    public ProviderTraceItem? SelectedProviderTraceDetails
+    {
+        get => _selectedProviderTraceDetails;
+        private set
+        {
+            if (SetProperty(ref _selectedProviderTraceDetails, value))
             {
                 OnPropertyChanged(nameof(SelectedProviderTraceTitle));
                 OnPropertyChanged(nameof(HasSelectedProviderTrace));
@@ -204,6 +236,17 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     }
     public string ProviderTraceError { get => _providerTraceError; private set => SetProperty(ref _providerTraceError, value); }
     public string ProviderTraceFilter { get => _providerTraceFilter; private set { if (SetProperty(ref _providerTraceFilter, value)) OnPropertyChanged(nameof(ProviderTraceEmptyMessage)); } }
+    public string SessionLoadError
+    {
+        get => _sessionLoadError;
+        private set
+        {
+            if (!SetProperty(ref _sessionLoadError, value)) return;
+            OnPropertyChanged(nameof(HasSessionLoadError));
+            OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(CanCompose));
+        }
+    }
     public string GitBranch { get => _gitBranch; private set { if (SetProperty(ref _gitBranch, value)) { OnPropertyChanged(nameof(GitSummary)); OnPropertyChanged(nameof(GitFooterBranchText)); } } }
     public int GitChangedFiles { get => _gitChangedFiles; private set { if (SetProperty(ref _gitChangedFiles, value)) { OnPropertyChanged(nameof(GitSummary)); OnPropertyChanged(nameof(GitChangeSummary)); OnPropertyChanged(nameof(IsGitClean)); OnPropertyChanged(nameof(IsGitDirty)); } } }
     public int GitAdditions { get => _gitAdditions; private set => SetProperty(ref _gitAdditions, value); }
@@ -224,6 +267,18 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public double ReviewPaneWidth { get => _reviewPaneWidth; set { if (SetProperty(ref _reviewPaneWidth, value)) OnPropertyChanged(nameof(ReviewWidth)); } }
     public double BottomDrawerHeight { get => _bottomDrawerHeight; set => SetProperty(ref _bottomDrawerHeight, value); }
     public bool IsBusy { get => _isBusy; private set => SetProperty(ref _isBusy, value); }
+    public bool IsSessionLoading
+    {
+        get => _isSessionLoading;
+        private set
+        {
+            if (!SetProperty(ref _isSessionLoading, value)) return;
+            if (!value) IsSessionLoadingVisible = false;
+            OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(CanCompose));
+        }
+    }
+    public bool IsSessionLoadingVisible { get => _isSessionLoadingVisible; private set => SetProperty(ref _isSessionLoadingVisible, value); }
 
     public bool IsProjectOpen => SelectedProject is not null;
     public bool HasProjects => Projects.Count > 0;
@@ -233,15 +288,16 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public bool HasCheckpoints => Checkpoints.Count > 0;
     public bool HasFilteredGitFiles => FilteredGitFiles.Count > 0;
     public bool HasProviderTraces => ProviderTraces.Count > 0;
-    public bool HasFilteredProviderTraces => FilteredProviderTraces.Count > 0;
-    public bool HasSelectedProviderTrace => SelectedProviderTrace is not null;
+    public bool HasFilteredProviderTraces => FilteredProviderTraceTurns.Count > 0;
+    public bool HasSelectedProviderTrace => SelectedProviderTraceDetails is not null;
+    public bool HasSessionLoadError => !string.IsNullOrWhiteSpace(SessionLoadError);
     public string GitFileCountText => $"{FilteredGitFiles.Count} {(FilteredGitFiles.Count == 1 ? "file" : "files")}";
-    public string ProviderTraceCountText => $"{FilteredProviderTraces.Count} {(FilteredProviderTraces.Count == 1 ? "request" : "requests")}";
+    public string ProviderTraceCountText => $"{FilteredProviderTraceTurns.Count} turns · {FilteredProviderTraceTurns.Sum(turn => turn.Calls.Count)} calls";
     public bool HasSelectedSession => SelectedSession is not null;
     public bool HasPendingApproval => PendingApproval is not null;
     public bool IsTurnActive => !string.IsNullOrWhiteSpace(ActiveTurnId);
-    public bool CanCompose => ConnectionState == "connected" && SelectedSession is not null && SelectedModel?.Configured == true && !IsTurnActive;
-    public bool CanSubmit => SelectedSession is not null && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText);
+    public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && SelectedModel?.Configured == true && !IsTurnActive && !HasSessionLoadError;
+    public bool CanSubmit => SelectedSession is not null && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsSessionLoading && !HasSessionLoadError;
     public string ProjectTitle => SelectedProject?.DisplayName ?? "SunCode";
     public string SessionTitle => SelectedSession?.DisplayTitle ?? "No session selected";
     public string SessionTokenText => $"Session {CompactNumber(SessionTotalTokens)} tokens";
@@ -294,17 +350,17 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public string ProviderTraceSummary => ProviderTraces.Count == 0
         ? "No provider requests"
         : $"{ProviderTraces.Count} provider {(ProviderTraces.Count == 1 ? "request" : "requests")}";
-    public string SelectedProviderTraceTitle => SelectedProviderTrace?.Title ?? "No provider request selected";
+    public string SelectedProviderTraceTitle => SelectedProviderTraceDetails?.Title ?? SelectedProviderTrace?.Title ?? "No model call selected";
     public string ProviderTraceEmptyMessage
     {
         get
         {
-            if (ProviderTraceState == "loading") return "Loading provider requests...";
+            if (ProviderTraceState == "loading") return "Loading session trace...";
             if (ProviderTraceState == "error") return string.IsNullOrWhiteSpace(ProviderTraceError) ? "Provider trace is unavailable." : ProviderTraceError;
             if (SelectedSession is null) return "Select a session to inspect provider requests.";
-            if (FilteredProviderTraces.Count == 0 && ProviderTraceFilter.Length > 0) return "No provider requests match this filter.";
-            if (FilteredProviderTraces.Count == 0) return "No provider requests have been recorded for this session.";
-            return "Select a provider request to inspect its input, output, usage, and tool calls.";
+            if (FilteredProviderTraceTurns.Count == 0 && ProviderTraceFilter.Length > 0) return "No turns or model calls match this filter.";
+            if (FilteredProviderTraceTurns.Count == 0) return "No turns have been recorded for this session.";
+            return "Select a model call to inspect its messages, tools, request, response, and usage.";
         }
     }
 
@@ -465,19 +521,57 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
     public async Task SelectSessionAsync(SessionItem session)
     {
-        if (!EnsureSdk() || SelectedSession?.SessionId == session.SessionId) return;
+        if (!EnsureSdk()) return;
+        if (SelectedSession?.SessionId == session.SessionId
+            && (_loadedSessionId == session.SessionId || IsSessionLoading)) return;
+
         CloseSubscription();
         ClearSession(false);
         SelectedSession = session;
-        await RunAsync(async () =>
+        IsSessionLoading = true;
+        StatusText = "Loading session...";
+        var sessionId = session.SessionId;
+        var loadVersion = _sessionLoadVersion;
+        _ = RevealSessionLoadingAsync(sessionId, loadVersion);
+        try
         {
-            var snapshot = await _sdk!.SessionSnapshotAsync(session.SessionId);
-            ApplySnapshot(snapshot);
-            await LoadSessionUsageAsync();
-            await LoadCheckpointsAsync();
-            if (ProviderTraceVisible) await RefreshProviderTracesAsync();
-            _subscription = _sdk.Subscribe(session.SessionId, _lastSequence, json => OnNativeEvent(session.SessionId, json));
-        }, "Session loaded");
+            var snapshot = await _sdk!.SessionSnapshotAsync(sessionId);
+            if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
+            var projection = await Task.Run(() => ProjectSnapshot(snapshot));
+            if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
+            ApplySnapshot(projection);
+            await LoadSessionUsageAsync(sessionId, loadVersion);
+            if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
+            await LoadCheckpointsAsync(sessionId, loadVersion);
+            if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
+            if (ProviderTraceVisible) await RefreshProviderTracesAsync(sessionId, loadVersion);
+            if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
+
+            var subscription = _sdk.Subscribe(sessionId, 0, json => OnNativeEvent(sessionId, json));
+            if (!IsCurrentSessionLoad(sessionId, loadVersion))
+            {
+                subscription.Dispose();
+                return;
+            }
+
+            _subscription = subscription;
+            _loadedSessionId = sessionId;
+            StatusText = "Session loaded";
+            ConnectionState = "connected";
+        }
+        catch (Exception exception)
+        {
+            if (IsCurrentSessionLoad(sessionId, loadVersion))
+            {
+                _loadedSessionId = null;
+                SessionLoadError = exception.Message;
+                ReportError(exception);
+            }
+        }
+        finally
+        {
+            if (IsCurrentSessionLoad(sessionId, loadVersion)) IsSessionLoading = false;
+        }
     }
 
     public async Task SubmitTurnAsync()
@@ -623,32 +717,45 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
-    public async Task RefreshProviderTracesAsync()
+    public Task RefreshProviderTracesAsync() => RefreshProviderTracesAsync(null, null);
+
+    private async Task RefreshProviderTracesAsync(string? requestedSessionId, long? loadVersion)
     {
         if (!EnsureSdk() || SelectedSession is null)
         {
             ClearProviderTraces();
             return;
         }
-        var sessionId = SelectedSession.SessionId;
+        var sessionId = requestedSessionId ?? SelectedSession.SessionId;
+        if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
         ProviderTraceState = "loading";
         ProviderTraceError = string.Empty;
         try
         {
             var result = await _sdk!.ListProviderExchangesAsync(sessionId);
-            if (SelectedSession?.SessionId != sessionId) return;
+            if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
             ProviderTraces.Clear();
-            foreach (var item in result.Array("exchanges").OfType<JsonObject>())
+            ProviderTraceTurns.Clear();
+            var exchanges = result.Array("exchanges").OfType<JsonObject>().Select(ProviderTraceFromJson).ToList();
+            foreach (var exchange in exchanges) ProviderTraces.Add(exchange);
+            var turnValues = result.Array("turns").OfType<JsonObject>().ToList();
+            for (var index = 0; index < turnValues.Count; index++)
             {
-                ProviderTraces.Add(ProviderTraceFromJson(item));
+                var item = turnValues[index];
+                var turnId = item.String("turnId", "turn_id");
+                var calls = exchanges.Where(call => call.TurnId == turnId).OrderBy(call => call.Iteration).ThenBy(call => call.StartedAt).ToList();
+                ProviderTraceTurns.Add(ProviderTraceTurnFromJson(item, turnValues.Count - index, calls));
             }
             ApplyProviderTraceFilter();
             ProviderTraceState = "ready";
-            if (SelectedProviderTrace is null && FilteredProviderTraces.Count > 0)
-                SelectedProviderTrace = FilteredProviderTraces[0];
+            if (SelectedProviderTrace is { } selected)
+            {
+                await LoadProviderTraceAsync(selected);
+            }
         }
         catch (Exception exception)
         {
+            if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
             ProviderTraceState = "error";
             ProviderTraceError = exception.Message;
         }
@@ -658,14 +765,19 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     {
         if (!EnsureSdk() || SelectedSession is null) return;
         var sessionId = SelectedSession.SessionId;
+        SelectedProviderTrace = trace;
+        ProviderTraceState = "loading";
+        ProviderTraceError = string.Empty;
         try
         {
             var result = await _sdk!.ProviderExchangeAsync(sessionId, trace.ExchangeId);
-            if (SelectedSession?.SessionId != sessionId) return;
-            SelectedProviderTrace = ProviderTraceFromJson(result);
+            if (SelectedSession?.SessionId != sessionId || SelectedProviderTrace?.ExchangeId != trace.ExchangeId) return;
+            SelectedProviderTraceDetails = ProviderTraceFromJson(result);
+            ProviderTraceState = "ready";
         }
         catch (Exception exception)
         {
+            if (SelectedSession?.SessionId != sessionId || SelectedProviderTrace?.ExchangeId != trace.ExchangeId) return;
             ProviderTraceState = "error";
             ProviderTraceError = exception.Message;
         }
@@ -675,6 +787,12 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     {
         ProviderTraceFilter = filter ?? string.Empty;
         ApplyProviderTraceFilter();
+    }
+
+    public void SelectProviderTraceTurn()
+    {
+        SelectedProviderTrace = null;
+        if (ProviderTraceState == "loading") ProviderTraceState = "ready";
     }
 
     public void SetGitScope(string scope)
@@ -821,49 +939,87 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
-    private async Task LoadSessionUsageAsync()
+    private async Task LoadSessionUsageAsync(string? requestedSessionId = null, long? loadVersion = null)
     {
         if (_sdk is null || SelectedSession is null) return;
-        var result = await _sdk.SessionUsageAsync(SelectedSession.SessionId);
+        var sessionId = requestedSessionId ?? SelectedSession.SessionId;
+        var result = await _sdk.SessionUsageAsync(sessionId);
+        if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
         SessionTotalTokens = result.Long("total_tokens");
     }
 
-    private async Task LoadCheckpointsAsync()
+    private async Task LoadCheckpointsAsync(string? requestedSessionId = null, long? loadVersion = null)
     {
         if (_sdk is null || SelectedSession is null) return;
-        var result = await _sdk.ListCheckpointsAsync(SelectedSession.SessionId);
-        Checkpoints.Clear();
-        foreach (var item in result.Array("checkpoints").OfType<JsonObject>())
+        var sessionId = requestedSessionId ?? SelectedSession.SessionId;
+        var result = await _sdk.ListCheckpointsAsync(sessionId);
+        if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
+        var checkpoints = result.Array("checkpoints").OfType<JsonObject>().Select(item =>
         {
             var paths = item.Array("paths").Select(node => node?.GetValue<string>() ?? string.Empty).Where(path => path.Length > 0).ToArray();
-            Checkpoints.Add(new CheckpointItem(item.String("manifestId"), item.String("turnId"), item.String("status"), paths));
-        }
+            return new CheckpointItem(item.String("manifestId"), item.String("turnId"), item.String("status"), paths);
+        });
+        Checkpoints.ReplaceAll(checkpoints);
         OnPropertyChanged(nameof(HasCheckpoints));
     }
 
-    private void ApplySnapshot(JsonObject snapshot)
+    internal static SessionSnapshotProjection ProjectSnapshot(JsonObject snapshot)
     {
-        Messages.Clear();
-        Activities.Clear();
-        ChangedPaths.Clear();
-        PendingApproval = null;
-        ActiveTurnId = string.Empty;
-        _lastSequence = 0;
+        var messages = new List<MessageItem>();
+        var activities = new List<ActivityItem>();
+        var changedPaths = new List<string>();
+        var changedPathSet = new HashSet<string>(StringComparer.Ordinal);
+        ApprovalItem? pendingApproval = null;
+        var activeTurnId = string.Empty;
+
         foreach (var item in snapshot.Array("messages").OfType<JsonObject>())
         {
             var role = item.String("role");
             if (role is not ("user" or "assistant")) continue;
             var text = MessageText(item);
-            Messages.Add(new MessageItem { Role = role, Text = text, ContentSequence = Messages.Count + 1 });
+            messages.Add(new MessageItem { Role = role, Text = text, ContentSequence = messages.Count + 1 });
         }
-        OnPropertyChanged(nameof(HasMessages));
+
         foreach (var item in snapshot.Array("events").OfType<JsonObject>())
         {
             var type = item.String("event_type", "eventType");
             if (type is "message.user" or "message.assistant" or "message.tool") continue;
-            ApplyEvent(item, false);
+            var payload = item.Object("payload");
+            if (!type.StartsWith("provider.exchange.", StringComparison.Ordinal))
+            {
+                activities.Add(new ActivityItem(type, EventText(type, payload), activities.Count + 1, payload.String("state"), payload.String("operation")));
+            }
+
+            foreach (var path in new[] { payload.String("path"), payload.String("from"), payload.String("to") })
+            {
+                if (path.Length > 0 && changedPathSet.Add(path)) changedPaths.Add(path);
+            }
+
+            if (type == "approval.requested") pendingApproval = ApprovalItem.FromPayload(payload);
+            if (type == "approval.resolved") pendingApproval = null;
+            if (type == "turn.state")
+            {
+                var state = payload.String("state");
+                activeTurnId = state is "completed" or "failed" or "cancelled" or "interrupted"
+                    ? string.Empty
+                    : payload.String("turn_id");
+            }
         }
-        _lastSequence = Math.Max(_lastSequence, snapshot.Long("latest_sequence", "latestSequence"));
+
+        return new SessionSnapshotProjection(messages, activities, changedPaths, pendingApproval, activeTurnId);
+    }
+
+    internal void ApplySnapshot(SessionSnapshotProjection projection)
+    {
+        Messages = new BulkObservableCollection<MessageItem>(projection.Messages);
+        Activities.ReplaceAll(projection.Activities);
+        ChangedPaths.ReplaceAll(projection.ChangedPaths);
+        PendingApproval = projection.PendingApproval;
+        ActiveTurnId = projection.ActiveTurnId;
+        OnPropertyChanged(nameof(HasMessages));
+        OnPropertyChanged(nameof(HasActivities));
+        OnPropertyChanged(nameof(LatestActivityText));
+        ConversationChanged?.Invoke();
     }
 
     private void OnNativeEvent(string sessionId, string json) => Dispatcher.UIThread.Post(() =>
@@ -871,7 +1027,15 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         if (_disposed || SelectedSession?.SessionId != sessionId) return;
         try
         {
-            if (JsonNode.Parse(json) is JsonObject item) ApplyEvent(item, true);
+            if (JsonNode.Parse(json) is JsonObject item)
+            {
+                if (item.String("event_type", "eventType") == "resync.required")
+                {
+                    _ = ReloadCurrentSessionAsync(sessionId);
+                    return;
+                }
+                ApplyEvent(item, true);
+            }
         }
         catch (JsonException exception)
         {
@@ -879,11 +1043,16 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     });
 
+    private async Task ReloadCurrentSessionAsync(string sessionId)
+    {
+        if (SelectedSession?.SessionId != sessionId) return;
+        _loadedSessionId = null;
+        CloseSubscription();
+        await SelectSessionAsync(SelectedSession);
+    }
+
     private void ApplyEvent(JsonObject value, bool live)
     {
-        var sequence = value.Long("content_sequence", "contentSequence");
-        if (sequence > 0 && sequence <= _lastSequence) return;
-        if (sequence > 0) _lastSequence = sequence;
         var type = value.String("event_type", "eventType");
         var payload = value.Object("payload");
         var text = EventText(type, payload);
@@ -894,13 +1063,14 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             var streaming = Messages.LastOrDefault(message => message.TurnId == turnId && message.Streaming);
             if (streaming is null)
             {
-                Messages.Add(new MessageItem { Role = "assistant", Text = payload.String("text"), ContentSequence = sequence, TurnId = turnId, Streaming = true });
+                Messages.Add(new MessageItem { Role = "assistant", Text = payload.String("text"), ContentSequence = Messages.Count + 1, TurnId = turnId, Streaming = true });
             }
             else
             {
                 var index = Messages.IndexOf(streaming);
-                Messages[index] = new MessageItem { Role = streaming.Role, Text = streaming.Text + payload.String("text"), ContentSequence = sequence, TurnId = turnId, Streaming = true };
+                Messages[index] = new MessageItem { Role = streaming.Role, Text = streaming.Text + payload.String("text"), ContentSequence = streaming.ContentSequence, TurnId = turnId, Streaming = true };
             }
+            ConversationChanged?.Invoke();
         }
         else if (type is "message.user" or "message.assistant")
         {
@@ -910,12 +1080,13 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                 var streaming = Messages.LastOrDefault(message => message.TurnId == turnId && message.Streaming);
                 if (streaming is not null) Messages.Remove(streaming);
             }
-            Messages.Add(new MessageItem { Role = type == "message.user" ? "user" : "assistant", Text = text, ContentSequence = sequence, TurnId = turnId });
+            Messages.Add(new MessageItem { Role = type == "message.user" ? "user" : "assistant", Text = text, ContentSequence = Messages.Count + 1, TurnId = turnId });
             OnPropertyChanged(nameof(HasMessages));
+            ConversationChanged?.Invoke();
         }
         else if (!type.StartsWith("provider.exchange.", StringComparison.Ordinal))
         {
-            Activities.Add(new ActivityItem(type, text, sequence, payload.String("state"), payload.String("operation")));
+            Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.String("state"), payload.String("operation")));
             OnPropertyChanged(nameof(HasActivities));
             OnPropertyChanged(nameof(LatestActivityText));
         }
@@ -1014,7 +1185,11 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
     private void ClearSession(bool clearSelection = true)
     {
-        Messages.Clear();
+        Interlocked.Increment(ref _sessionLoadVersion);
+        _loadedSessionId = null;
+        IsSessionLoading = false;
+        SessionLoadError = string.Empty;
+        Messages = [];
         Activities.Clear();
         ChangedPaths.Clear();
         Checkpoints.Clear();
@@ -1023,12 +1198,26 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         PendingApproval = null;
         ActiveTurnId = string.Empty;
         SessionTotalTokens = 0;
-        _lastSequence = 0;
         if (clearSelection) SelectedSession = null;
-        OnPropertyChanged(nameof(HasMessages));
         OnPropertyChanged(nameof(HasActivities));
         OnPropertyChanged(nameof(HasCheckpoints));
     }
+
+    private bool IsCurrentSessionLoad(string sessionId, long loadVersion) =>
+        !_disposed
+        && _sessionLoadVersion == loadVersion
+        && SelectedSession?.SessionId == sessionId;
+
+    private async Task RevealSessionLoadingAsync(string sessionId, long loadVersion)
+    {
+        await Task.Delay(120);
+        if (IsSessionLoading && IsCurrentSessionLoad(sessionId, loadVersion)) IsSessionLoadingVisible = true;
+    }
+
+    private bool IsSessionContextCurrent(string sessionId, long? loadVersion) =>
+        !_disposed
+        && SelectedSession?.SessionId == sessionId
+        && (loadVersion is null || _sessionLoadVersion == loadVersion.Value);
 
     private void ClearGit()
     {
@@ -1056,8 +1245,10 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private void ClearProviderTraces()
     {
         ProviderTraces.Clear();
-        FilteredProviderTraces.Clear();
+        ProviderTraceTurns.Clear();
+        FilteredProviderTraceTurns.Clear();
         SelectedProviderTrace = null;
+        SelectedProviderTraceDetails = null;
         ProviderTraceState = "idle";
         ProviderTraceError = string.Empty;
         ProviderTraceFilter = string.Empty;
@@ -1088,13 +1279,21 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private void ApplyProviderTraceFilter()
     {
         var selectedId = SelectedProviderTrace?.ExchangeId;
-        FilteredProviderTraces.Clear();
-        foreach (var trace in ProviderTraces.Where(trace => ProviderTraceMatches(trace, ProviderTraceFilter)))
+        FilteredProviderTraceTurns.Clear();
+        foreach (var turn in ProviderTraceTurns)
         {
-            FilteredProviderTraces.Add(trace);
+            var turnMatches = ProviderTraceTurnMatches(turn, ProviderTraceFilter);
+            var calls = turnMatches
+                ? turn.Calls
+                : turn.Calls.Where(trace => ProviderTraceMatches(trace, ProviderTraceFilter)).ToList();
+            if (turnMatches || calls.Count > 0)
+            {
+                FilteredProviderTraceTurns.Add(turn with { Calls = calls });
+            }
         }
-        SelectedProviderTrace = FilteredProviderTraces.FirstOrDefault(item => item.ExchangeId == selectedId)
-            ?? FilteredProviderTraces.FirstOrDefault();
+        var visibleCalls = FilteredProviderTraceTurns.SelectMany(turn => turn.Calls).ToList();
+        SelectedProviderTrace = visibleCalls.FirstOrDefault(item => item.ExchangeId == selectedId)
+            ?? visibleCalls.FirstOrDefault();
         OnPropertyChanged(nameof(HasProviderTraces));
         OnPropertyChanged(nameof(HasFilteredProviderTraces));
         OnPropertyChanged(nameof(ProviderTraceCountText));
@@ -1115,9 +1314,44 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             || trace.ToolCallsText.Contains(filter, StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool ProviderTraceTurnMatches(ProviderTraceTurnItem turn, string filter)
+    {
+        if (string.IsNullOrWhiteSpace(filter)) return true;
+        return turn.TurnId.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || turn.ModelId.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || turn.State.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || turn.Sequence.ToString().Contains(filter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static ProviderTraceTurnItem ProviderTraceTurnFromJson(JsonObject item, int sequence, IReadOnlyList<ProviderTraceItem> calls) =>
+        new(
+            item.String("turnId", "turn_id"),
+            item.String("state"),
+            item.String("modelId", "model_id"),
+            item.String("createdAt", "created_at"),
+            item.String("completedAt", "completed_at"),
+            item.Long("inputTokens", "input_tokens"),
+            item.Long("outputTokens", "output_tokens"),
+            item.Long("totalTokens", "total_tokens"),
+            sequence,
+            calls);
+
     private static ProviderTraceItem ProviderTraceFromJson(JsonObject item)
     {
         var usage = item.Object("usage");
+        var messages = item.Array("messages").OfType<JsonObject>().Select(message => new ProviderTraceMessageItem(
+            message.String("messageId", "message_id"),
+            message.String("role"),
+            MessageText(message.Object("message")),
+            message.String("createdAt", "created_at"))).ToList();
+        var tools = item.Array("toolUses", "tool_uses").OfType<JsonObject>().Select(tool => new ProviderTraceToolItem(
+            tool.String("toolCallId", "tool_call_id"),
+            tool.String("name"),
+            tool.String("state"),
+            Pretty(tool["request"]),
+            Pretty(tool["result"]),
+            tool.String("errorCode", "error_code"),
+            tool.String("createdAt", "created_at"))).ToList();
         return new ProviderTraceItem(
             item.String("exchangeId", "exchange_id"),
             item.String("turnId", "turn_id"),
@@ -1137,7 +1371,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             Pretty(item["inputMessages"] ?? item["input_messages"]),
             OutputText(item["outputMessage"] ?? item["output_message"]),
             Pretty(item["toolCalls"] ?? item["tool_calls"]),
-            Pretty(item["error"]));
+            Pretty(item["error"]),
+            messages,
+            tools);
     }
 
     private static long? OptionalLong(JsonObject value, string name)
@@ -1179,8 +1415,16 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        Interlocked.Increment(ref _sessionLoadVersion);
         CloseSubscription();
         _sdk?.Dispose();
         _sdk = null;
     }
 }
+
+internal sealed record SessionSnapshotProjection(
+    IReadOnlyList<MessageItem> Messages,
+    IReadOnlyList<ActivityItem> Activities,
+    IReadOnlyList<string> ChangedPaths,
+    ApprovalItem? PendingApproval,
+    string ActiveTurnId);

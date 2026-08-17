@@ -29,6 +29,9 @@ public sealed partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+        WindowDecorations = OperatingSystem.IsMacOS()
+            ? Avalonia.Controls.WindowDecorations.BorderOnly
+            : Avalonia.Controls.WindowDecorations.None;
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
         Opened += (_, _) =>

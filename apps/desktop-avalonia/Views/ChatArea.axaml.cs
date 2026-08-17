@@ -12,6 +12,8 @@ namespace SunCode.Desktop.Views;
 
 public sealed partial class ChatArea : UserControl
 {
+    private bool _scrollPending;
+
     public ChatArea()
     {
         InitializeComponent();
@@ -20,11 +22,23 @@ public sealed partial class ChatArea : UserControl
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
 
-    internal void ScrollConversationToEnd() =>
-        Dispatcher.UIThread.Post(ConversationScroll.ScrollToEnd, DispatcherPriority.Background);
+    internal void ScrollConversationToEnd()
+    {
+        if (_scrollPending) return;
+        _scrollPending = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _scrollPending = false;
+            if (ViewModel.Messages.Count > 0) ConversationList.ScrollIntoView(ViewModel.Messages.Count - 1);
+        }, DispatcherPriority.Background);
+    }
 
     private async void SubmitTurn(object? sender, RoutedEventArgs e) => await ViewModel.SubmitTurnAsync();
     private async void CancelTurn(object? sender, RoutedEventArgs e) => await ViewModel.CancelTurnAsync();
+    private async void RetrySession(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedSession is { } session) await ViewModel.SelectSessionAsync(session);
+    }
 
     private async void CopyMessage(object? sender, RoutedEventArgs e)
     {

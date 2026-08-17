@@ -14,14 +14,17 @@ The Rust crate emits a `cdylib`; the desktop build invokes Cargo and copies the 
 
 - project hub, local folder opening, independent project windows, duplicate-window activation, and recent project selection
 - project-scoped session create, select, rename, and archive
-- snapshot replay and ordered live conversation/activity events
+- normalized session snapshots and live conversation/activity events with snapshot resync after lag
+- latest-selection-wins session loading that discards stale snapshots, projects replay data off the UI thread, atomically replaces the conversation message source, virtualizes conversation rows, exposes loading and retryable error states, and starts only the selected session's live subscription
 - per-turn model selection, submission, queue status, and cancellation
 - approval allow-once/deny decisions
 - touched paths, turn checkpoints, conflict-aware undo, and diagnostics
 - runtime-owned Git status and structured per-file diff review
+- a resizable session trace drawer with an expandable turn/call tree and call-level message, tool, request/response, timing, token, and cache diagnostics
 - provider credential status/store/remove, default model, and dark/light theme settings
 - responsive navigation and review bays with a stable conversation composer
 - Qt-style in-window dialogs, application-modal settings, and the native macOS project menu
+- project-window keyboard toggles for navigation (`Command+1`) and Git review (`Command+9`), with Control equivalents
 - one-to-one Qt-derived colors, geometry, states, shortcuts, assets, and font fallback stacks
 
 ## Verification

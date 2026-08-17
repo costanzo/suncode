@@ -8,19 +8,19 @@ adaptive
 
 ## Users
 
-Software developers working in local repositories. They use SunCode to start a session against a project, provide instructions with relevant context, follow streamed messages and tool activity, decide whether sensitive operations may run, review resulting changes, undo filesystem changes when needed, and resume earlier sessions.
+Software developers working in code repositories. They use SunCode to start a session against a project, provide instructions with relevant context, follow streamed messages and tool activity, decide whether sensitive operations may run, review resulting changes, undo filesystem changes when needed, and resume earlier sessions.
 
 ## Product Purpose
 
-SunCode is a local-first coding agent that runs on the developer's machine and works with projects already checked out there. It keeps conversation history, settings, and credentials in local storage owned by the user. Success means developers can delegate useful repository work while retaining clear visibility and control over what the agent is allowed to do and what it changed.
+SunCode is a general-purpose coding agent for understanding, changing, reviewing, and maintaining software projects. Success means developers can delegate useful repository work across languages, frameworks, and project types while retaining clear visibility and control over what the agent is allowed to do and what it changed.
 
 ## Positioning
 
-SunCode has no SunCode service dependency: the product remains local-first and contacts the network only for the model provider configured by the user. An embedded Rust SDK owns sessions and machine-affecting behavior inside its host process. Every such action passes through one narrow, audited authority path with explicit scope, approval where required, and turn-level filesystem undo.
+SunCode combines broad coding assistance with reviewable machine access. In the current desktop release, an embedded Rust SDK owns sessions and machine-affecting behavior inside its host process. Every such action passes through one narrow, audited authority path with explicit scope, approval where required, and turn-level filesystem undo.
 
 ## Operating Context
 
-The user opens a local project in the Avalonia desktop application, creates or resumes a session, submits turns, and watches ordered conversation and activity events as they stream. The runtime may inspect or mutate project files, run approved processes, and produce artifacts. Sensitive actions can suspend a turn until the user allows or denies them. The user can inspect files touched by a turn and restore checkpointed filesystem changes, subject to expiry and conflict status.
+The user opens a project in the Avalonia desktop application, creates or resumes a session, submits turns, and watches ordered conversation and activity events as they stream. The runtime may inspect or mutate project files, run approved processes, and produce artifacts. Sensitive actions can suspend a turn until the user allows or denies them. The user can inspect files touched by a turn and restore checkpointed filesystem changes, subject to expiry and conflict status.
 
 ## Capabilities and Constraints
 
@@ -30,13 +30,13 @@ The user opens a local project in the Avalonia desktop application, creates or r
 - The Avalonia client embeds the Rust SDK through its method-oriented C ABI and does not access SQLite, model providers, or project files directly.
 - Machine-affecting operations use an audited internal Rust dispatcher; this is an auditability boundary, not an OS sandbox.
 - Provider credentials are stored in Rust-owned plaintext SQLite secret records and must not enter SDK responses, events, audit rows, or logs.
-- The product is local-first. Cloud execution, multi-tenancy, hosted identity, collaboration, CLI/TUI/Web clients, mobile clients, IDE plugins, and executable third-party extensions are deferred or out of scope.
+- Phase 1 is an embedded desktop product. Cloud execution, multi-tenancy, hosted identity, collaboration, CLI/TUI/Web clients, mobile clients, IDE plugins, and executable third-party extensions are deferred or out of scope.
 - The production desktop application uses Avalonia; Qt and Electron are prohibited production dependencies. The retained Qt tree is a buildable visual and interaction fixture. Node.js and Bun are not Phase 1 production runtime dependencies.
 - Project, session, and turn are the product's domain terms; workspace and task are retired terms.
 
 ## Product Principles
 
-1. Keep the product useful without a SunCode account or hosted control plane.
+1. Support broad coding workflows across languages, tools, and project types.
 2. Make authority legible: users should understand scope, risk, approval, and outcome.
 3. Keep one authoritative Rust implementation across every native language binding.
 4. Preserve reversibility and honest recovery status for machine-affecting work.

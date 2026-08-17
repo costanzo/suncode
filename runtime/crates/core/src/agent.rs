@@ -1,8 +1,6 @@
 use crate::{
     context,
     domain::{Message, SessionEvent, ToolCall, Usage},
-    llm::ProviderError,
-    persistence::{PersistenceError, Store},
     policy::{evaluate, tool_risk, Decision, Risk},
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -14,6 +12,8 @@ use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
+use suncode_db::{ApprovalInput, PersistenceError, Store};
+use suncode_llm::{CompletionRequest, ModelProviderRegistry, ModelRoute, ProviderError};
 use tokio::sync::{broadcast, mpsc, Mutex as AsyncMutex};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
@@ -46,7 +46,7 @@ impl From<PersistenceError> for AgentError {
 }
 impl From<ProviderError> for AgentError {
     fn from(error: ProviderError) -> Self {
-        Self::new(error.code, error.message).details(json!({"retryable":error.retryable}))
+        Self::new(&error.code, error.message).details(json!({"retryable":error.retryable}))
     }
 }
 
@@ -92,6 +92,8 @@ struct Continuation {
     last_tool_signature: Option<String>,
     #[serde(default)]
     repeated_tool_stalls: u32,
+    #[serde(default)]
+    active_call_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -104,8 +106,8 @@ struct QueuedMessage {
 #[derive(Clone)]
 pub struct Agent {
     store: Store,
-    providers: Arc<crate::model_provider::ModelProviderRegistry>,
-    operations: Arc<suncode_operations::Operations>,
+    providers: Arc<ModelProviderRegistry>,
+    operations: Arc<suncode_tool::Operations>,
     events: broadcast::Sender<SessionEvent>,
     cancellations: Arc<Mutex<HashMap<String, CancellationToken>>>,
     active_turns: Arc<Mutex<HashMap<String, String>>>,
@@ -118,12 +120,12 @@ impl Agent {
     pub fn new<P>(
         store: Store,
         providers: P,
-        operations: Arc<suncode_operations::Operations>,
+        operations: Arc<suncode_tool::Operations>,
         events: broadcast::Sender<SessionEvent>,
         non_interactive: bool,
     ) -> Self
     where
-        P: Into<Arc<crate::model_provider::ModelProviderRegistry>>,
+        P: Into<Arc<ModelProviderRegistry>>,
     {
         Self {
             store,
@@ -146,8 +148,22 @@ impl Agent {
         model: Option<&str>,
     ) -> Result<TurnResponse, AgentError> {
         let session_lock = self.session_lock(session_id).await;
-        let model = model.unwrap_or("deepseek-v4-flash");
-        let Some(provider) = self.providers.route(model) else {
+        let model = match model {
+            Some(model) => model.to_string(),
+            None => {
+                let session = self
+                    .store
+                    .session_by_id(session_id)?
+                    .ok_or_else(|| AgentError::new("not_found", "session not found"))?;
+                let project_id = session.project_id.ok_or_else(|| {
+                    AgentError::new("conflict", "session is not bound to a project")
+                })?;
+                self.store
+                    .project_default_model(&project_id)?
+                    .unwrap_or_else(|| "deepseek-v4-flash".into())
+            }
+        };
+        let Some(provider) = self.providers.route(&model) else {
             return Err(AgentError::new(
                 "model_unavailable",
                 "model is not advertised",
@@ -167,7 +183,7 @@ impl Agent {
                 session_lock.lock().await
             }
         };
-        let admission = self.store.begin_turn(session_id, key, input, model)?;
+        let admission = self.store.begin_turn(session_id, key, input, &model)?;
         if !admission.created {
             if admission.status == "completed" {
                 let response = admission.response.ok_or_else(|| {
@@ -209,7 +225,7 @@ impl Agent {
             project_root: project.canonical_root,
             turn_id: admission.turn_id.clone(),
             submission_key: key.into(),
-            model: model.into(),
+            model,
             messages: self.store.context_messages(session_id)?,
             iterations: 0,
             tool_calls: 0,
@@ -219,6 +235,7 @@ impl Agent {
             context_compacted: false,
             last_tool_signature: None,
             repeated_tool_stalls: 0,
+            active_call_id: None,
         };
         let result = self
             .run(continuation.clone(), Some(input), token, provider)
@@ -440,7 +457,7 @@ impl Agent {
         mut context: Continuation,
         user_input: Option<&str>,
         token: CancellationToken,
-        provider: crate::model_provider::ModelRoute,
+        provider: ModelRoute,
     ) -> Result<TurnResponse, AgentError> {
         let started = Instant::now();
         if let Some(input) = user_input {
@@ -473,6 +490,9 @@ impl Agent {
                 self.providers
                     .limits(&context.model)
                     .and_then(|limits| limits.max_input_tokens),
+                self.providers
+                    .limits(&context.model)
+                    .and_then(|limits| limits.auto_compact_tokens),
             );
             if prompt.compacted && !context.context_compacted {
                 context.context_compacted = true;
@@ -494,6 +514,7 @@ impl Agent {
                 context.messages = prompt.messages;
             }
             let exchange_id = Uuid::new_v4().to_string();
+            context.active_call_id = Some(exchange_id.clone());
             self.emit(
                 &context.session_id,
                 "provider.exchange.started",
@@ -509,9 +530,18 @@ impl Agent {
             )?;
             let result = {
                 let (delta_sender, mut delta_receiver) = mpsc::unbounded_channel();
+                let llm_messages = context
+                    .messages
+                    .iter()
+                    .map(to_llm_message)
+                    .collect::<Vec<_>>();
+                let tool_definitions = crate::tools::definitions();
                 let provider_call = provider.provider.complete(
-                    &context.messages,
-                    provider.wire_model,
+                    CompletionRequest {
+                        messages: &llm_messages,
+                        wire_model: &provider.wire_model,
+                        tools: &tool_definitions,
+                    },
                     &token,
                     delta_sender,
                 );
@@ -559,7 +589,29 @@ impl Agent {
                     "Provider output exceeded its budget",
                 );
             }
-            if let Some(usage) = &result.usage {
+            let usage = result.usage.as_ref().map(|usage| Usage {
+                input_tokens: usage.input_tokens,
+                output_tokens: usage.output_tokens,
+                total_tokens: usage.total_tokens,
+            });
+            let cache_read_tokens = result
+                .usage
+                .as_ref()
+                .and_then(|usage| usage.cache_read_tokens);
+            let cache_write_tokens = result
+                .usage
+                .as_ref()
+                .and_then(|usage| usage.cache_write_tokens);
+            let tool_calls = result
+                .tool_calls
+                .iter()
+                .map(|call| ToolCall {
+                    call_id: call.call_id.clone(),
+                    name: call.name.clone(),
+                    arguments: call.arguments.clone(),
+                })
+                .collect::<Vec<_>>();
+            if let Some(usage) = &usage {
                 context.usage.add(usage);
                 self.emit(
                     &context.session_id,
@@ -574,7 +626,7 @@ impl Agent {
                 } else {
                     Message::text("assistant", result.text).content
                 },
-                tool_calls: result.tool_calls.clone(),
+                tool_calls: tool_calls.clone(),
                 tool_call_id: None,
             };
             self.emit(
@@ -584,20 +636,20 @@ impl Agent {
                     "exchange_id": exchange_id,
                     "turn_id": context.turn_id,
                     "output_message": assistant,
-                    "tool_calls": result.tool_calls.clone(),
-                    "usage": result.usage.as_ref().map(|usage| json!({
+                    "tool_calls": tool_calls.clone(),
+                    "usage": usage.as_ref().map(|usage| json!({
                         "input_tokens": usage.input_tokens,
                         "output_tokens": usage.output_tokens,
                         "total_tokens": usage.total_tokens,
-                        "cache_read_tokens": Value::Null,
-                        "cache_write_tokens": Value::Null,
+                        "cache_read_tokens": cache_read_tokens,
+                        "cache_write_tokens": cache_write_tokens,
                     })),
                     "finish_reason": result.finish_reason.clone(),
                 }),
             )?;
             context.messages.push(assistant.clone());
-            self.emit(&context.session_id, "message.assistant", json!({"message_id":Uuid::new_v4(),"turn_id":context.turn_id,"message":assistant,"usage":context.usage,"finish_reason":result.finish_reason}))?;
-            if result.tool_calls.is_empty() {
+            self.emit(&context.session_id, "message.assistant", json!({"message_id":Uuid::new_v4(),"turn_id":context.turn_id,"call_id":context.active_call_id,"message":assistant,"usage":context.usage,"finish_reason":result.finish_reason}))?;
+            if tool_calls.is_empty() {
                 if self.drain_queued_messages(&mut context)? {
                     self.turn_state(&context, "preparing", None)?;
                     continue;
@@ -621,7 +673,7 @@ impl Agent {
                 return Ok(response);
             }
             self.turn_state(&context, "resolving_calls", None)?;
-            self.resolve_calls(&mut context, result.tool_calls).await?;
+            self.resolve_calls(&mut context, tool_calls).await?;
             self.drain_queued_messages(&mut context)?;
             self.turn_state(&context, "preparing", None)?;
         }
@@ -676,7 +728,7 @@ impl Agent {
                     "Turn exceeded its tool-call budget",
                 );
             }
-            self.emit(&context.session_id, "tool.requested", json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"name":call.name,"arguments":call.arguments}))?;
+            self.emit(&context.session_id, "tool.requested", json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"name":call.name,"arguments":call.arguments}))?;
             let signature = tool_signature(call);
             if context.last_tool_signature.as_deref() == Some(signature.as_str()) {
                 context.repeated_tool_stalls += 1;
@@ -731,17 +783,15 @@ impl Agent {
                             "turn continuation could not be stored",
                         )
                     })?;
-                    let approval =
-                        self.store
-                            .create_approval(crate::persistence::ApprovalInput {
-                                project_id: Some(&context.project_id),
-                                session_id: &context.session_id,
-                                turn_id: &context.turn_id,
-                                tool_call_id: &call.call_id,
-                                operation: &call.name,
-                                arguments: &call.arguments,
-                                snapshot: &snapshot,
-                            })?;
+                    let approval = self.store.create_approval(ApprovalInput {
+                        project_id: Some(&context.project_id),
+                        session_id: &context.session_id,
+                        turn_id: &context.turn_id,
+                        tool_call_id: &call.call_id,
+                        operation: &call.name,
+                        arguments: &call.arguments,
+                        snapshot: &snapshot,
+                    })?;
                     self.emit(&context.session_id,"approval.requested",json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id,"operation":call.name,"arguments":call.arguments}))?;
                     return Err(AgentError::new("approval_required",format!("Tool call requires approval: {}",call.name)).details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id})));
                 }
@@ -830,6 +880,16 @@ impl Agent {
         result: Value,
     ) -> Result<(), AgentError> {
         self.tool_state(context, call, "succeeded", None)?;
+        self.emit(
+            &context.session_id,
+            "tool.result",
+            json!({
+                "turn_id": context.turn_id,
+                "call_id": context.active_call_id,
+                "tool_call_id": call.call_id,
+                "result": result,
+            }),
+        )?;
         self.store.append_audit(
             Some(&context.project_id),
             Some(&context.session_id),
@@ -873,7 +933,7 @@ impl Agent {
         self.emit(
             &context.session_id,
             "message.tool",
-            json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"message":tool}),
+            json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"message":tool}),
         )?;
         Ok(())
     }
@@ -914,7 +974,6 @@ impl Agent {
     fn emit_live(&self, session_id: &str, event_type: &str, payload: Value) {
         let event = SessionEvent {
             session_id: session_id.to_string(),
-            content_sequence: 0,
             occurred_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
             event_type: event_type.to_string(),
             payload,
@@ -936,7 +995,7 @@ impl Agent {
         state: &str,
         reason: Option<&str>,
     ) -> Result<(), AgentError> {
-        self.emit(&context.session_id,"tool.state",json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"name":call.name,"state":state,"reason":reason}))
+        self.emit(&context.session_id,"tool.state",json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"name":call.name,"state":state,"reason":reason}))
     }
     fn fail_context<T>(
         &self,
@@ -1160,6 +1219,30 @@ fn scoped_glob(path: &str, pattern: &str) -> String {
     format!("{base}/{}", pattern.trim_start_matches('/'))
 }
 
+fn to_llm_message(message: &Message) -> suncode_llm::Message {
+    suncode_llm::Message {
+        role: message.role.clone(),
+        content: message
+            .content
+            .iter()
+            .map(|part| suncode_llm::ContentPart {
+                kind: part.kind.clone(),
+                text: part.text.clone(),
+            })
+            .collect(),
+        tool_calls: message
+            .tool_calls
+            .iter()
+            .map(|call| suncode_llm::ToolCall {
+                call_id: call.call_id.clone(),
+                name: call.name.clone(),
+                arguments: call.arguments.clone(),
+            })
+            .collect(),
+        tool_call_id: message.tool_call_id.clone(),
+    }
+}
+
 fn normalize_result(name: &str, mut value: Value) -> Value {
     if matches!(name, "read" | "fs_read" | "fs.read") {
         if let Some(encoded) = value
@@ -1204,6 +1287,10 @@ mod tests {
     use super::*;
     use crate::credentials::CredentialStore;
     use axum::{http::header, response::IntoResponse, routing::post, Json, Router};
+    use suncode_llm::{
+        ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
+        OpenAiCompatibleProvider,
+    };
 
     async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
         let messages = body
@@ -1281,12 +1368,48 @@ mod tests {
             .create_session(&project.project_id, None, Some("deepseek-v4-flash"))
             .unwrap();
         let operations =
-            Arc::new(suncode_operations::Operations::new(directory.join(".operations")).unwrap());
+            Arc::new(suncode_tool::Operations::new(directory.join(".operations")).unwrap());
         let (events, _) = broadcast::channel(64);
-        let registry = crate::model_provider::ModelProviderRegistry::with_deepseek_endpoint(
+        let credentials = Arc::new(CredentialStore::memory(
+            Some("test-key"),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ));
+        let provider = Arc::new(OpenAiCompatibleProvider::new(
+            "deepseek",
+            "DeepSeek",
             format!("http://{address}"),
-            CredentialStore::memory(Some("test-key"), None, None, None, None, None),
-        );
+            credentials,
+        ));
+        let mut registry = ModelProviderRegistry::new();
+        let models = ["deepseek-v4-flash", "deepseek-v4-pro"]
+            .into_iter()
+            .enumerate()
+            .map(|(_index, model_id)| ModelDescriptor {
+                provider: "deepseek".into(),
+                provider_label: "DeepSeek".into(),
+                id: model_id.into(),
+                wire_model: model_id.into(),
+                api_base: format!("http://{address}"),
+                capabilities: ModelCapabilities {
+                    streaming: true,
+                    tool_use: true,
+                    vision: false,
+                    structured_output: false,
+                    cancellation: true,
+                },
+                limits: ModelLimits {
+                    max_input_tokens: Some(64_000),
+                    auto_compact_tokens: Some(47_616),
+                    max_output_tokens: None,
+                },
+                availability: "configured".into(),
+            })
+            .collect();
+        registry.register("deepseek", provider, models).unwrap();
         (
             Agent::new(store.clone(), Arc::new(registry), operations, events, false),
             store,
@@ -1307,20 +1430,9 @@ mod tests {
             response,
             TurnResponse::Completed { tool_calls: 1, .. }
         ));
-        let events = store.events(&session_id, 0).unwrap();
-        assert!(
-            events
-                .iter()
-                .any(|event| event.event_type == "tool.state"
-                    && event.payload["state"] == "succeeded")
-        );
-        assert!(!events
-            .iter()
-            .any(|event| event.event_type == "assistant.delta"));
-        assert!(events.iter().any(|event| {
-            event.event_type == "turn.state" && event.payload["state"] == "completed"
-        }));
-        assert_eq!(events.last().unwrap().event_type, "turn.completed");
+        let messages = store.messages(&session_id).unwrap();
+        assert!(messages.iter().any(|message| message.role == "tool"));
+        assert_eq!(messages.last().unwrap().role, "assistant");
         server.abort();
     }
 
@@ -1348,11 +1460,12 @@ mod tests {
             response,
             TurnResponse::Completed { iterations: 2, .. }
         ));
-        let events = store.events(&session_id, 0).unwrap();
-        assert!(events.iter().any(|event| event.event_type == "turn.queued"));
-        assert!(events.iter().any(|event| {
-            event.event_type == "message.user" && event.payload.get("queued_id").is_some()
-        }));
+        assert!(store
+            .messages(&session_id)
+            .unwrap()
+            .iter()
+            .filter(|message| message.role == "user")
+            .any(|message| message.text_content() == "follow up while running"));
         server.abort();
     }
 
@@ -1367,24 +1480,15 @@ mod tests {
             response,
             TurnResponse::Completed { tool_calls: 2, .. }
         ));
-        let events = store.events(&session_id, 0).unwrap();
-        let second_requested = events
-            .iter()
-            .position(|event| {
-                event.event_type == "tool.state"
-                    && event.payload["tool_call_id"] == "read-call-2"
-                    && event.payload["state"] == "requested"
-            })
-            .unwrap();
-        let first_executing = events
-            .iter()
-            .position(|event| {
-                event.event_type == "tool.state"
-                    && event.payload["tool_call_id"] == "read-call-1"
-                    && event.payload["state"] == "executing"
-            })
-            .unwrap();
-        assert!(second_requested < first_executing);
+        assert_eq!(
+            store
+                .messages(&session_id)
+                .unwrap()
+                .iter()
+                .filter(|message| message.role == "tool")
+                .count(),
+            2
+        );
         server.abort();
     }
 
@@ -1407,9 +1511,7 @@ mod tests {
             .unwrap());
         let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
         loop {
-            if store.events(&session_id, 0).unwrap().iter().any(|event| {
-                event.event_type == "turn.state" && event.payload["state"] == "completed"
-            }) {
+            if std::fs::read_to_string(root.join("README.md")).unwrap() == "updated" {
                 break;
             }
             assert!(

@@ -1,4 +1,4 @@
-//! Built-in tool declarations. Execution remains behind `suncode-operations`.
+//! Built-in tool declarations. Execution remains behind `suncode-tool`.
 //!
 //! The model-facing names follow OpenCode's built-in tool names. Internal
 //! operation methods stay narrower and are translated by the agent before
@@ -12,9 +12,9 @@ mod grep;
 mod read;
 mod write;
 
-use serde_json::{json, Value};
+use suncode_llm::ToolDefinition;
 
-pub fn definitions() -> Vec<Value> {
+pub fn definitions() -> Vec<ToolDefinition> {
     [
         read::definition(),
         glob::definition(),
@@ -25,8 +25,10 @@ pub fn definitions() -> Vec<Value> {
         bash::definition(),
     ]
     .into_iter()
-    .map(|(name, description, parameters)| {
-        json!({"type":"function","function":{"name":name,"description":description,"parameters":parameters}})
+    .map(|(name, description, parameters)| ToolDefinition {
+        name: name.into(),
+        description: description.into(),
+        parameters,
     })
     .collect()
 }
@@ -41,11 +43,7 @@ mod tests {
         let definitions = definitions();
         let names = definitions
             .iter()
-            .filter_map(|value| {
-                value
-                    .pointer("/function/name")
-                    .and_then(|name| name.as_str())
-            })
+            .map(|definition| definition.name.as_str())
             .collect::<HashSet<_>>();
         assert_eq!(names.len(), definitions.len());
     }

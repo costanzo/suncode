@@ -9,8 +9,13 @@
 - Split the Avalonia desktop surface into focused `ProjectHub`, `ProjectWorkspace`, `ChatArea`, `ProjectSidebar`, `AgentSidebar`, and `GitViewer` controls while keeping window lifecycle, native menus, dragging, resizing, and full-screen behavior in `MainWindow`.
 - Restored and retained the complete `apps/desktop-qt/` Qt/QML/CMake implementation as the authoritative parity fixture.
 - Reused the Qt logo, icons, macOS traffic lights, semantic palette, geometry, and font fallback behavior in Avalonia.
-- Closed the macOS parity gaps for threshold-based project-window dragging, traffic-light hover/press assets, animated native `NSWindow` full screen with post-transition Avalonia client-size synchronization, Dock/window icons, and the Hub border/elevation treatment.
+- Closed the macOS parity gaps for threshold-based project-window dragging, traffic-light hover/press assets, animated native `NSWindow` full screen through Avalonia's tracked window state, Dock/window icons, and the Hub border/elevation treatment.
+- Restored native macOS shadows for the hub, project, and settings windows by using border-only native decorations on macOS while retaining the custom title chrome and decoration-free behavior on other platforms.
+- Added theme-specific 0.5-DIP low-contrast window chrome borders so the native shadow carries top-level elevation without weakening internal panel and control boundaries or shifting content geometry.
 - Added macOS safe-area metadata and full-size-content window configuration so packaged full-screen windows can extend through the display's menu-bar/camera area instead of being compatibility-letterboxed.
+- Routed project-window full-screen transitions through Avalonia's tracked `WindowState.FullScreen` path, which invokes native Cocoa full screen on macOS, and removed the redundant direct Objective-C toggle that could report success without entering a full-screen space after border-only decorations were enabled.
+- Preserved the 4-DIP horizontal and 6-DIP vertical content insets in full screen so gutter controls and top/bottom chrome keep their normal optical spacing without carrying over the restored window's shadow margin.
+- Applied restored-window chrome before the native exit-full-screen transition, kept one transparent-capable composition surface throughout the lifecycle, and removed manual full-screen and restored-frame overrides so Cocoa alone owns the animated geometry without a duplicate-window afterimage.
 - Moved the project chrome inset from an external margin to internal padding so the canvas reaches the visible window edge and each 24px gutter control has the same 5px optical spacing to the window edge and its adjacent sidebar, matching the Qt layout.
 - Restored the Qt footer alignment by vertically centering every Git summary label alongside the already-centered branch icon.
 - Compressed the project footer toolbar from 24px to 14px while preserving its icon, label, and session-summary alignment.
@@ -26,6 +31,7 @@
 - Split the Git viewer's rounded clipping surface from a top-layer non-interactive outline so opaque drawer content can no longer cover the bottom corner borders.
 - Removed the ChatArea composer TextBox's accent focus outline with a local focus style and Fluent template resource override while preserving the caret and all other input focus behavior.
 - Reduced the ChatArea composer model selector and turn action buttons to compact 24px controls with roughly half their previous visual area.
+- Replaced the disabled composer shown without a selected session with a centered empty state, while keeping the message list and composer available whenever a session is selected.
 - Reduced the composer TextBox's reserved bottom action space from 40px to 30px, returning 10px of vertical room to message input without changing the controls.
 - Moved the model and turn action controls into the composer surface, added tunnel-routed Enter submission with Shift+Enter newline behavior, and rendered completed assistant responses as Markdown while retaining plain text during streaming. The conversation behavior follows the existing Qt surface and OpenCode's completed-versus-streaming message treatment.
 - Added a publish-time macOS `.app` bundle with `Info.plist` and the existing Qt-derived `.icns` resource.

@@ -25,8 +25,6 @@ public sealed partial class MainWindow : Window
     private bool _windowDragStarted;
     private PixelPoint _windowDragStartPointer;
     private PixelPoint _windowDragStartPosition;
-    private PixelPoint _normalPosition;
-    private Size _normalSize;
     private bool _isFullScreen;
     private bool _isFullScreenTransition;
     private NativeMenuItem? _toggleNavigationMenuItem;
@@ -40,6 +38,9 @@ public sealed partial class MainWindow : Window
     {
         _isHubWindow = isHubWindow;
         InitializeComponent();
+        WindowDecorations = OperatingSystem.IsMacOS()
+            ? Avalonia.Controls.WindowDecorations.BorderOnly
+            : Avalonia.Controls.WindowDecorations.None;
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
         Opened += OnOpened;
@@ -58,7 +59,7 @@ public sealed partial class MainWindow : Window
     {
         if (_initialized) return;
         _initialized = true;
-        ViewModel.Messages.CollectionChanged += MessagesChanged;
+        ViewModel.ConversationChanged += ConversationChanged;
         await ViewModel.InitializeAsync();
         if (_isHubWindow) ConfigureHubWindow();
         else
@@ -71,7 +72,7 @@ public sealed partial class MainWindow : Window
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
-        ViewModel.Messages.CollectionChanged -= MessagesChanged;
+        ViewModel.ConversationChanged -= ConversationChanged;
         if (_isHubWindow) ViewModel.Dispose();
     }
 
@@ -171,7 +172,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void MessagesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
+    private void ConversationChanged() =>
         ProjectWorkspaceView.ScrollConversationToEnd();
 
     private void WindowKeyDown(object? sender, KeyEventArgs e)
@@ -190,12 +191,27 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.D1 && ViewModel.IsProjectOpen)
+        if (IsToggleNavigationShortcut(e.Key, e.KeyModifiers, ViewModel.IsProjectOpen))
         {
             e.Handled = true;
             ViewModel.NavigationVisible = !ViewModel.NavigationVisible;
+            return;
+        }
+
+        if (IsToggleGitViewerShortcut(e.Key, e.KeyModifiers, ViewModel.IsProjectOpen))
+        {
+            e.Handled = true;
+            ProjectWorkspaceView.ToggleGitViewer();
         }
     }
+
+    internal static bool IsToggleNavigationShortcut(Key key, KeyModifiers modifiers, bool isProjectOpen) =>
+        isProjectOpen && key == Key.D1 &&
+        (modifiers.HasFlag(KeyModifiers.Meta) || modifiers.HasFlag(KeyModifiers.Control));
+
+    internal static bool IsToggleGitViewerShortcut(Key key, KeyModifiers modifiers, bool isProjectOpen) =>
+        isProjectOpen && key == Key.D9 &&
+        (modifiers.HasFlag(KeyModifiers.Meta) || modifiers.HasFlag(KeyModifiers.Control));
 
     private void WindowResizePressed(object? sender, PointerPressedEventArgs e)
     {
@@ -307,21 +323,13 @@ public sealed partial class MainWindow : Window
 
     private async Task EnterFullScreenAsync()
     {
-        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
-        if (screen is null) return;
         _isFullScreenTransition = true;
         _isFullScreen = true;
-        _normalPosition = Position;
-        _normalSize = Bounds.Size;
         Background = this.FindResource("CanvasBrush") as IBrush;
-        TransparencyLevelHint = [WindowTransparencyLevel.None];
         ProjectWorkspaceView.SetFullScreenChrome(true);
         SetResizeHandlesVisible(false);
-        if (!MacOSDockIcon.ToggleNativeFullScreen(this)) WindowState = WindowState.FullScreen;
+        WindowState = WindowState.FullScreen;
         await Task.Delay(900);
-        Position = screen.Bounds.Position;
-        Width = screen.Bounds.Width / screen.Scaling;
-        Height = screen.Bounds.Height / screen.Scaling;
         _isFullScreenTransition = false;
     }
 
@@ -329,15 +337,11 @@ public sealed partial class MainWindow : Window
     {
         _isFullScreenTransition = true;
         _isFullScreen = false;
-        if (!MacOSDockIcon.ToggleNativeFullScreen(this)) WindowState = WindowState.Normal;
-        await Task.Delay(900);
         ProjectWorkspaceView.SetFullScreenChrome(false);
         SetResizeHandlesVisible(true);
+        WindowState = WindowState.Normal;
+        await Task.Delay(900);
         Background = Brushes.Transparent;
-        TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
-        Position = _normalPosition;
-        Width = _normalSize.Width;
-        Height = _normalSize.Height;
         _isFullScreenTransition = false;
     }
 
@@ -376,7 +380,6 @@ public sealed partial class MainWindow : Window
 
     private void ConfigureProjectWindow()
     {
-        WindowDecorations = Avalonia.Controls.WindowDecorations.None;
         ExtendClientAreaToDecorationsHint = true;
         Title = ViewModel.ProjectTitle;
         MinWidth = 900;
@@ -388,7 +391,6 @@ public sealed partial class MainWindow : Window
     private void ConfigureHubWindow()
     {
         WindowState = WindowState.Normal;
-        WindowDecorations = Avalonia.Controls.WindowDecorations.None;
         ExtendClientAreaToDecorationsHint = true;
         Title = "Welcome to SunCode";
         MinWidth = 760;

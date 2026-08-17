@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using Avalonia.Controls;
 
 namespace SunCode.Desktop;
 
@@ -24,28 +23,6 @@ internal static class MacOSDockIcon
             SendBoolForKey(defaults, Selector("setBool:forKey:"), false, safeAreaKey);
     }
 
-    internal static bool ToggleNativeFullScreen(Window window)
-    {
-        if (!OperatingSystem.IsMacOS() || window.TryGetPlatformHandle() is not { Handle: not 0 } handle)
-            return false;
-
-        var nativeWindow = handle.Handle;
-        if (handle.HandleDescriptor?.Contains("NSView", StringComparison.OrdinalIgnoreCase) == true)
-            nativeWindow = Send(nativeWindow, Selector("window"));
-        if (nativeWindow == 0) return false;
-
-        const nuint fullScreenPrimary = 1 << 7;
-        var behavior = SendUIntResult(nativeWindow, Selector("collectionBehavior"));
-        SendUInt(nativeWindow, Selector("setCollectionBehavior:"), behavior | fullScreenPrimary);
-        const nuint fullSizeContentView = 1 << 15;
-        var styleMask = SendUIntResult(nativeWindow, Selector("styleMask"));
-        SendUInt(nativeWindow, Selector("setStyleMask:"), styleMask | fullSizeContentView);
-        SendUInt(nativeWindow, Selector("setTitleVisibility:"), 1);
-        SendUInt(nativeWindow, Selector("setTitlebarAppearsTransparent:"), 1);
-        SendVoid(nativeWindow, Selector("toggleFullScreen:"), IntPtr.Zero);
-        return true;
-    }
-
     private static IntPtr GetClass(string name) => objc_getClass(name);
     private static IntPtr Selector(string name) => sel_registerName(name);
 
@@ -66,12 +43,6 @@ internal static class MacOSDockIcon
 
     [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
     private static extern void SendVoid(IntPtr receiver, IntPtr selector, IntPtr argument);
-
-    [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
-    private static extern void SendUInt(IntPtr receiver, IntPtr selector, nuint argument);
-
-    [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
-    private static extern nuint SendUIntResult(IntPtr receiver, IntPtr selector);
 
     [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
     private static extern void SendBoolForKey(

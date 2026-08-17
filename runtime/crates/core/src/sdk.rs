@@ -1,13 +1,12 @@
 use crate::{
     agent::{Agent, AgentError, TurnResponse},
     config::Config,
-    credentials::{CredentialState, CredentialStore, ProviderKind},
+    credentials::{CredentialState, CredentialStore},
     domain::{
         ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectRecord,
-        ProviderExchange, SessionEvent, SessionRecord, SettingRecord,
+        ProviderExchange, SessionCallMessage, SessionCallToolUse, SessionEvent, SessionRecord,
+        SessionTraceTurn, SettingRecord,
     },
-    model_provider::{ModelDescriptor, ModelProviderRegistry},
-    persistence::{PersistenceError, Store},
     runtime_lock::RuntimeLock,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -20,6 +19,11 @@ use std::{
     sync::{Arc, Mutex},
     thread::JoinHandle,
 };
+use suncode_db::{PersistenceError, Store};
+use suncode_llm::{
+    ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
+    OpenAiCompatibleProvider, RegistrationError,
+};
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
@@ -28,7 +32,7 @@ pub const SUNCODE_RUNTIME_SDK_ABI_VERSION: u32 = 1;
 #[derive(Clone)]
 struct RuntimeState {
     store: Store,
-    operations: Arc<suncode_operations::Operations>,
+    operations: Arc<suncode_tool::Operations>,
     active_project: Arc<Mutex<Option<String>>>,
     events: broadcast::Sender<SessionEvent>,
     credentials: CredentialStore,
@@ -124,7 +128,7 @@ pub struct CredentialsResult {
 
 #[derive(Debug, Serialize)]
 pub struct CredentialUpdate {
-    pub provider: &'static str,
+    pub provider: String,
     pub configured: bool,
 }
 
@@ -156,9 +160,6 @@ pub struct SessionsResult {
 pub struct SessionSnapshot {
     pub session: SessionRecord,
     pub messages: Vec<Message>,
-    pub events: Vec<SessionEvent>,
-    pub latest_sequence: i64,
-    pub replay_available: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -172,7 +173,17 @@ pub struct SessionUsageResult {
 #[derive(Debug, Serialize)]
 pub struct ProviderExchangesResult {
     pub session_id: String,
+    pub turns: Vec<SessionTraceTurn>,
     pub exchanges: Vec<ProviderExchange>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderExchangeDetails {
+    #[serde(flatten)]
+    pub exchange: ProviderExchange,
+    pub messages: Vec<SessionCallMessage>,
+    pub tool_uses: Vec<SessionCallToolUse>,
 }
 
 #[derive(Debug, Serialize)]
@@ -268,15 +279,77 @@ pub struct ApprovalOutcome {
     pub decision: String,
 }
 
-async fn build_state(config: &Config) -> SdkResult<RuntimeState> {
+fn registry_from_store(
+    store: &Store,
+    keys: Arc<dyn suncode_llm::ApiKeyResolver>,
+) -> SdkResult<ModelProviderRegistry> {
+    let providers = store.llm_model_providers(true)?;
+    let models = store.llm_models(true)?;
+    let mut registry = ModelProviderRegistry::new();
+    for provider in providers {
+        let provider_models = models
+            .iter()
+            .filter(|model| model.provider_id == provider.provider_id)
+            .map(|model| ModelDescriptor {
+                provider: provider.provider_id.clone(),
+                provider_label: provider.display_name.clone(),
+                id: model.model_id.clone(),
+                wire_model: model.request_model.clone(),
+                api_base: provider.endpoint.clone(),
+                capabilities: ModelCapabilities {
+                    streaming: model.supports_streaming,
+                    tool_use: model.supports_tool_use,
+                    vision: model.supports_vision,
+                    structured_output: model.supports_structured_output,
+                    cancellation: model.supports_cancellation,
+                },
+                limits: ModelLimits {
+                    max_input_tokens: Some(model.context_tokens),
+                    auto_compact_tokens: Some(model.auto_compact_tokens),
+                    max_output_tokens: model.max_output_tokens,
+                },
+                availability: "configured".into(),
+            })
+            .collect::<Vec<_>>();
+        if provider_models.is_empty() {
+            continue;
+        }
+        let adapter = match provider.adapter_type.as_str() {
+            "openai" => Arc::new(OpenAiCompatibleProvider::new(
+                provider.provider_id.clone(),
+                provider.display_name,
+                provider.endpoint,
+                keys.clone(),
+            )),
+            adapter_type => {
+                return Err(SdkError::new(
+                    "provider_adapter_unsupported",
+                    format!("provider adapter is not supported: {adapter_type}"),
+                ));
+            }
+        };
+        registry
+            .register(provider.provider_id, adapter, provider_models)
+            .map_err(|error| SdkError::new("provider_registration_failed", error.to_string()))?;
+    }
+    Ok(registry)
+}
+
+async fn build_state<F>(config: &Config, configure_providers: F) -> SdkResult<RuntimeState>
+where
+    F: FnOnce(&mut ModelProviderRegistry) -> Result<(), RegistrationError>,
+{
     let store = Store::open(&config.database_path).map_err(SdkError::from)?;
     let operations = Arc::new(
-        suncode_operations::Operations::new(config.data_dir.join("operations"))
+        suncode_tool::Operations::new(config.data_dir.join("operations"))
             .map_err(|error| SdkError::unavailable(error.to_string()))?,
     );
     let (events, _) = broadcast::channel(256);
     let credentials = CredentialStore::load(store.clone(), config.non_interactive);
-    let providers = Arc::new(ModelProviderRegistry::new(credentials.clone()));
+    let mut providers = registry_from_store(&store, Arc::new(credentials.clone()))?;
+    configure_providers(&mut providers)
+        .map_err(|error| SdkError::new("provider_registration_failed", error.to_string()))?;
+    let providers = Arc::new(providers);
     let agent = Agent::new(
         store.clone(),
         providers.clone(),
@@ -305,6 +378,14 @@ pub struct RuntimeSdk {
 
 impl RuntimeSdk {
     pub fn open_default() -> SdkResult<Self> {
+        Self::open_default_with_providers(|_| Ok(()))
+    }
+
+    /// Opens the runtime after extending the built-in registry with trusted providers.
+    pub fn open_default_with_providers<F>(configure_providers: F) -> SdkResult<Self>
+    where
+        F: FnOnce(&mut ModelProviderRegistry) -> Result<(), RegistrationError>,
+    {
         let config = Config::load().map_err(SdkError::invalid)?;
         let lock = RuntimeLock::acquire(&config.data_dir).map_err(|error| {
             if error.kind() == std::io::ErrorKind::AlreadyExists {
@@ -320,7 +401,7 @@ impl RuntimeSdk {
             .map_err(|error| {
                 SdkError::unavailable(format!("tokio runtime unavailable: {error}"))
             })?;
-        let state = runtime.block_on(build_state(&config))?;
+        let state = runtime.block_on(build_state(&config, configure_providers))?;
         Ok(Self {
             _lock: Some(lock),
             runtime,
@@ -356,12 +437,10 @@ impl RuntimeSdk {
     pub fn list_models(&self) -> SdkResult<ModelsResult> {
         let mut models = self.state.providers.models();
         for model in &mut models {
-            let configured = ProviderKind::parse(model.provider)
-                .is_some_and(|provider| self.state.credentials.configured(provider));
-            model.availability = if configured {
-                "configured"
+            model.availability = if self.state.credentials.configured(&model.provider) {
+                "configured".into()
             } else {
-                "unconfigured"
+                "unconfigured".into()
             };
         }
         Ok(ModelsResult { models })
@@ -374,25 +453,43 @@ impl RuntimeSdk {
     }
 
     pub fn set_credential(&self, provider: &str, api_key: &str) -> SdkResult<CredentialUpdate> {
-        let provider = parse_provider(provider)?;
+        if !self
+            .state
+            .credentials
+            .state()
+            .iter()
+            .any(|state| state.provider == provider)
+        {
+            return Err(SdkError::invalid("provider is not supported"));
+        }
+        let provider = provider.to_string();
         self.state
             .credentials
-            .set(provider, api_key)
+            .set(&provider, api_key)
             .map_err(|error| SdkError::new("credential_unavailable", error))?;
         Ok(CredentialUpdate {
-            provider: provider.as_str(),
+            provider,
             configured: true,
         })
     }
 
     pub fn remove_credential(&self, provider: &str) -> SdkResult<CredentialUpdate> {
-        let provider = parse_provider(provider)?;
+        if !self
+            .state
+            .credentials
+            .state()
+            .iter()
+            .any(|state| state.provider == provider)
+        {
+            return Err(SdkError::invalid("provider is not supported"));
+        }
+        let provider = provider.to_string();
         self.state
             .credentials
-            .delete(provider)
+            .delete(&provider)
             .map_err(|error| SdkError::new("credential_unavailable", error))?;
         Ok(CredentialUpdate {
-            provider: provider.as_str(),
+            provider,
             configured: false,
         })
     }
@@ -416,10 +513,14 @@ impl RuntimeSdk {
         value: &Value,
     ) -> SdkResult<SettingUpdate> {
         let scope_id = match scope {
-            "user" => "default",
+            "global" => "global",
             "project" => project_id.ok_or_else(|| SdkError::invalid("project_id is required"))?,
             "session" => session_id.ok_or_else(|| SdkError::invalid("session_id is required"))?,
-            _ => return Err(SdkError::invalid("scope is invalid")),
+            _ => {
+                return Err(SdkError::invalid(
+                    "scope must be global, project, or session",
+                ))
+            }
         };
         self.state.store.set_setting(scope, scope_id, key, value)?;
         Ok(SettingUpdate {
@@ -535,7 +636,11 @@ impl RuntimeSdk {
         title: Option<&str>,
         model: Option<&str>,
     ) -> SdkResult<SessionRecord> {
-        if let Some(model) = model {
+        let selected_model = match model {
+            Some(model) => Some(model.to_string()),
+            None => self.state.store.project_default_model(project_id)?,
+        };
+        if let Some(model) = selected_model.as_deref() {
             if self.state.providers.route(model).is_none() {
                 return Err(SdkError::new(
                     "model_unavailable",
@@ -545,7 +650,7 @@ impl RuntimeSdk {
         }
         self.state
             .store
-            .create_session(project_id, title, model)
+            .create_session(project_id, title, selected_model.as_deref())
             .map_err(SdkError::from)
     }
 
@@ -573,25 +678,14 @@ impl RuntimeSdk {
             .map_err(SdkError::from)
     }
 
-    pub fn session_snapshot(&self, session_id: &str, after: i64) -> SdkResult<SessionSnapshot> {
+    pub fn session_snapshot(&self, session_id: &str, _after: i64) -> SdkResult<SessionSnapshot> {
         let session = self
             .state
             .store
             .session_by_id(session_id)?
             .ok_or_else(|| SdkError::missing("session"))?;
-        let events = self.state.store.events(session_id, after)?;
-        let latest_sequence = events
-            .last()
-            .map(|event| event.content_sequence)
-            .unwrap_or(after);
         let messages = self.state.store.messages(session_id)?;
-        Ok(SessionSnapshot {
-            session,
-            messages,
-            events,
-            latest_sequence,
-            replay_available: true,
-        })
+        Ok(SessionSnapshot { session, messages })
     }
 
     pub fn session_usage(&self, session_id: &str) -> SdkResult<SessionUsageResult> {
@@ -607,15 +701,13 @@ impl RuntimeSdk {
         })
     }
 
-    pub fn list_provider_exchanges(
-        &self,
-        session_id: &str,
-    ) -> SdkResult<ProviderExchangesResult> {
+    pub fn list_provider_exchanges(&self, session_id: &str) -> SdkResult<ProviderExchangesResult> {
         if self.state.store.session_by_id(session_id)?.is_none() {
             return Err(SdkError::missing("session"));
         }
         Ok(ProviderExchangesResult {
             session_id: session_id.to_string(),
+            turns: self.state.store.session_trace_turns(session_id)?,
             exchanges: self.state.store.provider_exchanges(session_id)?,
         })
     }
@@ -624,14 +716,23 @@ impl RuntimeSdk {
         &self,
         session_id: &str,
         exchange_id: &str,
-    ) -> SdkResult<ProviderExchange> {
+    ) -> SdkResult<ProviderExchangeDetails> {
         if exchange_id.trim().is_empty() {
             return Err(SdkError::invalid("exchange_id is required"));
         }
-        self.state
+        let exchange = self
+            .state
             .store
             .provider_exchange(session_id, exchange_id)?
-            .ok_or_else(|| SdkError::missing("provider_exchange"))
+            .ok_or_else(|| SdkError::missing("provider_exchange"))?;
+        Ok(ProviderExchangeDetails {
+            messages: self
+                .state
+                .store
+                .session_call_messages(session_id, exchange_id)?,
+            tool_uses: self.state.store.session_call_tool_uses(exchange_id)?,
+            exchange,
+        })
     }
 
     pub fn list_checkpoints(&self, session_id: &str) -> SdkResult<CheckpointsResult> {
@@ -822,7 +923,7 @@ impl RuntimeSdk {
     pub fn subscribe_session_events(
         &self,
         session_id: String,
-        after: i64,
+        _after: i64,
         callback: SunCodeEventCallback,
         user_data: *mut c_void,
     ) -> SdkResult<RuntimeSubscription> {
@@ -830,55 +931,36 @@ impl RuntimeSdk {
             return Err(SdkError::missing("session"));
         }
 
-        // Subscribe first, then replay. Durable live events buffered during replay are
-        // de-duplicated by sequence when the receiver is drained.
+        // Events are live-only. Hosts recover durable state by reading a fresh snapshot.
         let mut receiver = self.state.events.subscribe();
-        let replay = self.state.store.events(&session_id, after)?;
-        let store = self.state.store.clone();
         let cancellation = CancellationToken::new();
         let cancellation_for_thread = cancellation.clone();
         let handle = self.runtime.handle().clone();
         let user_data = user_data as usize;
-        let join = std::thread::spawn(move || {
-            let mut last_sequence = after;
-            for event in replay {
-                if cancellation_for_thread.is_cancelled() {
-                    return;
+        let join = std::thread::spawn(move || loop {
+            let next = handle.block_on(async {
+                tokio::select! {
+                    _ = cancellation_for_thread.cancelled() => None,
+                    value = receiver.recv() => Some(value),
                 }
-                if event.content_sequence > last_sequence {
-                    last_sequence = event.content_sequence;
+            });
+            match next {
+                None => break,
+                Some(Ok(event)) if event.session_id == session_id => {
                     emit_sdk_event(callback, user_data, &event);
                 }
-            }
-            loop {
-                let next = handle.block_on(async {
-                    tokio::select! {
-                        _ = cancellation_for_thread.cancelled() => None,
-                        value = receiver.recv() => Some(value),
-                    }
-                });
-                match next {
-                    None => break,
-                    Some(Ok(event)) if event.session_id == session_id => {
-                        if event.content_sequence == 0 || event.content_sequence > last_sequence {
-                            if event.content_sequence > 0 {
-                                last_sequence = event.content_sequence;
-                            }
-                            emit_sdk_event(callback, user_data, &event);
-                        }
-                    }
-                    Some(Ok(_)) => {}
-                    Some(Err(broadcast::error::RecvError::Lagged(_))) => {
-                        let Ok(recovered) = store.events(&session_id, last_sequence) else {
-                            break;
-                        };
-                        for event in recovered {
-                            last_sequence = event.content_sequence;
-                            emit_sdk_event(callback, user_data, &event);
-                        }
-                    }
-                    Some(Err(broadcast::error::RecvError::Closed)) => break,
+                Some(Ok(_)) => {}
+                Some(Err(broadcast::error::RecvError::Lagged(_))) => {
+                    let event = SessionEvent {
+                        session_id: session_id.clone(),
+                        occurred_at: chrono::Utc::now()
+                            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                        event_type: "resync.required".into(),
+                        payload: json!({"reason":"subscriber_lagged"}),
+                    };
+                    emit_sdk_event(callback, user_data, &event);
                 }
+                Some(Err(broadcast::error::RecvError::Closed)) => break,
             }
         });
         Ok(RuntimeSubscription {
@@ -900,10 +982,6 @@ impl RuntimeSdk {
             state,
         }
     }
-}
-
-fn parse_provider(provider: &str) -> SdkResult<ProviderKind> {
-    ProviderKind::parse(provider).ok_or_else(|| SdkError::invalid("provider is not supported"))
 }
 
 fn operation_error(error: Value) -> SdkError {
@@ -1435,10 +1513,11 @@ mod tests {
     fn test_state(directory: &std::path::Path) -> RuntimeState {
         let store = Store::open_memory().unwrap();
         let operations =
-            Arc::new(suncode_operations::Operations::new(directory.join("operations")).unwrap());
+            Arc::new(suncode_tool::Operations::new(directory.join("operations")).unwrap());
         let credentials = CredentialStore::memory(Some("test-key"), None, None, None, None, None);
         let (events, _) = broadcast::channel(16);
-        let providers = Arc::new(ModelProviderRegistry::new(credentials.clone()));
+        let providers =
+            Arc::new(registry_from_store(&store, Arc::new(credentials.clone())).unwrap());
         let agent = Agent::new(
             store.clone(),
             providers.clone(),
@@ -1482,6 +1561,18 @@ mod tests {
             .store
             .append_content(
                 &session.session_id,
+                "turn.state",
+                &json!({
+                    "turn_id":"turn-1",
+                    "state":"calling_model",
+                    "model_id":"gpt-5.5"
+                }),
+            )
+            .unwrap();
+        sdk.state
+            .store
+            .append_content(
+                &session.session_id,
                 "provider.exchange.started",
                 &json!({
                     "exchange_id":"exchange-1",
@@ -1496,16 +1587,43 @@ mod tests {
             .unwrap();
         let traces = sdk.list_provider_exchanges(&session.session_id).unwrap();
         assert_eq!(traces.exchanges.len(), 1);
+        assert_eq!(traces.turns.len(), 1);
         assert_eq!(
             sdk.provider_exchange(&session.session_id, "exchange-1")
                 .unwrap()
+                .exchange
                 .provider,
             "openai"
         );
+        let details = sdk
+            .provider_exchange(&session.session_id, "exchange-1")
+            .unwrap();
+        assert!(details.messages.is_empty());
+        assert!(details.tool_uses.is_empty());
         assert_eq!(
             sdk.session_usage("missing-session").unwrap_err().code,
             "session_not_found"
         );
+    }
+
+    #[test]
+    fn project_default_model_is_used_when_session_model_is_omitted() {
+        let directory = tempfile::tempdir().unwrap();
+        let sdk = RuntimeSdk::from_state_for_test(test_state(directory.path()));
+        let project = sdk
+            .open_project(directory.path().to_str().unwrap(), None)
+            .unwrap();
+        sdk.set_setting(
+            "project",
+            Some(&project.project_id),
+            None,
+            "default_model",
+            &json!("gpt-5.5"),
+        )
+        .unwrap();
+
+        let session = sdk.create_session(&project.project_id, None, None).unwrap();
+        assert_eq!(session.model_id.as_deref(), Some("gpt-5.5"));
     }
 
     #[test]
@@ -1602,7 +1720,7 @@ mod tests {
     }
 
     #[test]
-    fn subscription_replays_and_delivers_live_events_without_duplicates() {
+    fn subscription_delivers_live_events_without_replay() {
         let directory = tempfile::tempdir().unwrap();
         let state = test_state(directory.path());
         let project = state
@@ -1615,14 +1733,6 @@ mod tests {
                 &project.project_id,
                 Some("First"),
                 Some("deepseek-v4-flash"),
-            )
-            .unwrap();
-        let replayed = state
-            .store
-            .append_content(
-                &session.session_id,
-                "turn.state",
-                &json!({"turn_id": "turn-1", "state": "preparing"}),
             )
             .unwrap();
         let sender_for_live = state.events.clone();
@@ -1645,20 +1755,13 @@ mod tests {
             )
             .unwrap();
         let _ = sender_for_live.send(live.clone());
-        let first: SessionEvent = serde_json::from_str(
+        let received: SessionEvent = serde_json::from_str(
             &receiver
                 .recv_timeout(std::time::Duration::from_secs(2))
                 .unwrap(),
         )
         .unwrap();
-        let second: SessionEvent = serde_json::from_str(
-            &receiver
-                .recv_timeout(std::time::Duration::from_secs(2))
-                .unwrap(),
-        )
-        .unwrap();
-        assert_eq!(first.content_sequence, replayed.content_sequence);
-        assert_eq!(second.content_sequence, live.content_sequence);
+        assert_eq!(received.event_type, live.event_type);
         subscription.close();
     }
 }

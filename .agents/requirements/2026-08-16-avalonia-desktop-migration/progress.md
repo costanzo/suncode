@@ -1,7 +1,7 @@
 # Progress
 
 - Status: Complete
-- Last updated: 2026-08-16
+- Last updated: 2026-08-17
 
 ## Completed
 
@@ -23,6 +23,11 @@
 - None.
 
 ## Log
+
+### 2026-08-17
+
+- Restored and verified native macOS shadows for the custom-chrome hub, project, and settings windows without changing other platforms, then softened their theme-specific outer hairlines to 0.5 DIP without altering internal borders or content geometry.
+- Corrected the border-only macOS full-screen regression by using Avalonia's native-backed window-state transition instead of an untracked Objective-C toggle, retained the 4-by-6-DIP internal chrome spacing in full screen, removed manual frame and composition-surface changes that caused exit artifacts, and replaced the no-session composer with a centered empty state.
 
 ### 2026-08-16
 

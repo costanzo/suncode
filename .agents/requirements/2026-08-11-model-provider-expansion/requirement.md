@@ -2,7 +2,7 @@
 
 ## Background
 
-The Phase 1 Qt desktop client currently supports DeepSeek as the only built-in model provider. The settings page, runtime credential store, and model registry need to expand to support additional OpenAI-compatible providers without changing the local-first runtime boundary.
+The Phase 1 Qt desktop client currently supports DeepSeek as the only built-in model provider. The settings page, runtime credential store, and model registry need to expand to support additional OpenAI-compatible providers without changing the embedded runtime boundary.
 
 ## Goals
 

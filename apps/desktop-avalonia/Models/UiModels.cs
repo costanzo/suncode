@@ -102,10 +102,14 @@ public sealed record ProviderTraceItem(
     string InputText,
     string OutputText,
     string ToolCallsText,
-    string ErrorText)
+    string ErrorText,
+    IReadOnlyList<ProviderTraceMessageItem> Messages,
+    IReadOnlyList<ProviderTraceToolItem> Tools)
 {
     public string Title => $"{Provider}  ·  {ModelId}";
-    public string TurnText => $"turn {Short(TurnId)} · iter {Iteration}";
+    public string CallText => $"Call {Iteration}";
+    public string TurnText => $"turn {Short(TurnId)}";
+    public string IdentifierText => Short(ExchangeId);
     public string TokenSummary => TotalTokens is { } total
         ? $"{Compact(total)} tokens"
         : "usage not reported";
@@ -117,6 +121,27 @@ public sealed record ProviderTraceItem(
             CacheReadTokens is { } cacheRead ? $"cache read {Compact(cacheRead)}" : "cache read -",
             CacheWriteTokens is { } cacheWrite ? $"cache write {Compact(cacheWrite)}" : "cache write -",
         });
+    public string InputTokenText => Metric(InputTokens);
+    public string OutputTokenText => Metric(OutputTokens);
+    public string CacheReadTokenText => Metric(CacheReadTokens);
+    public string CacheWriteTokenText => Metric(CacheWriteTokens);
+    public string TotalTokenText => Metric(TotalTokens);
+    public string CacheHitRateText => InputTokens is > 0 && CacheReadTokens is { } cached
+        ? $"{cached * 100d / InputTokens.Value:0.#}%"
+        : "—";
+    public string DurationText
+    {
+        get
+        {
+            if (!DateTimeOffset.TryParse(StartedAt, out var started)) return "—";
+            var ended = DateTimeOffset.TryParse(CompletedAt, out var completed) ? completed : DateTimeOffset.Now;
+            var elapsed = ended - started;
+            return elapsed.TotalSeconds < 1 ? $"{elapsed.TotalMilliseconds:0} ms" : $"{elapsed.TotalSeconds:0.##} s";
+        }
+    }
+    public string TimingText => DateTimeOffset.TryParse(StartedAt, out var timestamp)
+        ? timestamp.ToLocalTime().ToString("HH:mm:ss.fff")
+        : StartedAt;
     public string StatusText => State switch
     {
         "started" => "Running",
@@ -130,14 +155,82 @@ public sealed record ProviderTraceItem(
     public bool HasOutput => !string.IsNullOrWhiteSpace(OutputText);
     public bool HasToolCalls => !string.IsNullOrWhiteSpace(ToolCallsText) && ToolCallsText != "[]";
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorText);
+    public bool HasMessages => Messages.Count > 0;
+    public bool HasTools => Tools.Count > 0;
 
     private static string Short(string value) => value.Length <= 8 ? value : value[..8];
+    private static string Metric(long? value) => value is { } number ? Compact(number) : "—";
     private static string Compact(long value) => value switch
     {
         >= 1_000_000 => $"{value / 1_000_000d:0.#}m",
         >= 1_000 => $"{value / 1_000d:0.#}k",
         _ => value.ToString()
     };
+}
+
+public sealed record ProviderTraceTurnItem(
+    string TurnId,
+    string State,
+    string ModelId,
+    string CreatedAt,
+    string CompletedAt,
+    long InputTokens,
+    long OutputTokens,
+    long TotalTokens,
+    int Sequence,
+    IReadOnlyList<ProviderTraceItem> Calls)
+{
+    public string Title => $"Turn {Sequence}";
+    public string IdentifierText => TurnId.Length <= 8 ? TurnId : TurnId[..8];
+    public string CallCountText => $"{Calls.Count} {(Calls.Count == 1 ? "call" : "calls")}";
+    public string TokenText => TotalTokens > 0 ? $"{Compact(TotalTokens)} tokens" : "no usage";
+    public string StateText => State.Replace('_', ' ');
+    public string TimeText => DateTimeOffset.TryParse(CreatedAt, out var timestamp)
+        ? timestamp.ToLocalTime().ToString("HH:mm:ss")
+        : CreatedAt;
+    public bool IsRunning => State is "admitted" or "queued" or "preparing" or "calling_model" or "resolving_calls" or "compacting";
+    public bool IsCompleted => State == "completed";
+    public bool IsFailed => State is "failed" or "cancelled" or "interrupted";
+
+    private static string Compact(long value) => value switch
+    {
+        >= 1_000_000 => $"{value / 1_000_000d:0.#}m",
+        >= 1_000 => $"{value / 1_000d:0.#}k",
+        _ => value.ToString()
+    };
+}
+
+public sealed record ProviderTraceMessageItem(string MessageId, string Role, string Content, string CreatedAt)
+{
+    public string RoleText => Role.ToUpperInvariant();
+    public string TimeText => DateTimeOffset.TryParse(CreatedAt, out var timestamp)
+        ? timestamp.ToLocalTime().ToString("HH:mm:ss.fff")
+        : CreatedAt;
+    public bool IsUser => Role == "user";
+    public bool IsAssistant => Role == "assistant";
+    public bool IsThinking => Role == "thinking";
+    public bool IsTool => Role == "tool";
+}
+
+public sealed record ProviderTraceToolItem(
+    string ToolCallId,
+    string Name,
+    string State,
+    string Request,
+    string Result,
+    string ErrorCode,
+    string CreatedAt)
+{
+    public string StateText => State.Replace('_', ' ');
+    public string TimeText => DateTimeOffset.TryParse(CreatedAt, out var timestamp)
+        ? timestamp.ToLocalTime().ToString("HH:mm:ss.fff")
+        : CreatedAt;
+    public bool IsSucceeded => State == "succeeded";
+    public bool IsFailed => State is "failed" or "denied" or "timed_out" or "unknown_completion";
+    public bool IsActive => !IsSucceeded && !IsFailed;
+    public bool HasRequest => !string.IsNullOrWhiteSpace(Request);
+    public bool HasResult => !string.IsNullOrWhiteSpace(Result);
+    public bool HasError => !string.IsNullOrWhiteSpace(ErrorCode);
 }
 
 public sealed record ApprovalItem(string ApprovalId, string Operation, string Arguments)
@@ -186,6 +279,12 @@ internal static class JsonExtensions
     public static JsonObject Object(this JsonObject value, string name) =>
         value[name] as JsonObject ?? [];
 
-    public static JsonArray Array(this JsonObject value, string name) =>
-        value[name] as JsonArray ?? [];
+    public static JsonArray Array(this JsonObject value, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (value[name] is JsonArray result) return result;
+        }
+        return [];
+    }
 }

@@ -1,6 +1,6 @@
 # Repository Guidance
 
-This repository is SunCode, a local-first coding agent. Unless the user requests otherwise, communicate and document work in English.
+This repository is SunCode, a general-purpose coding agent. Unless the user requests otherwise, communicate and document work in English.
 
 ## Current state
 
@@ -24,7 +24,7 @@ Before non-trivial work:
 - Protocol contracts are written documents, hand-implemented per language and verified by shared test vectors. Nothing is generated.
 - The agent runtime is Rust. Node.js and Bun are prohibited as Phase 1 production runtime dependencies.
 - The Rust boundary is not an OS-enforced sandbox around the runtime. Its value is containing third-party code and providing one auditable path. Do not write designs that assume it isolates a compromised runtime.
-- SunCode is local-first. Do not add tenancy, remote identity, or hosted-infrastructure assumptions.
+- Phase 1 uses an embedded desktop runtime. Do not add tenancy, remote identity, or hosted-infrastructure assumptions without an approved requirement.
 - Vocabulary: **project** (a directory tree the user opened), **session** (one conversation), **turn** (one user submission and its execution). "Workspace" and "task" are retired as domain nouns.
 
 ## Working principles

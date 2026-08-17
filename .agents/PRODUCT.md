@@ -1,6 +1,6 @@
 # SunCode Product Overview
 
-SunCode is a local-first coding agent. It runs on the developer's machine, works on projects already checked out there, and keeps conversation history, settings, and credentials in local storage owned by the user.
+SunCode is a general-purpose coding agent. It helps developers understand, change, review, and maintain software projects through an agentic workflow with visible tool activity and user-controlled machine access.
 
 It is comparable in purpose to Claude Code, Codex, and OpenCode.
 
@@ -8,13 +8,13 @@ It is comparable in purpose to Claude Code, Codex, and OpenCode.
 
 Three commitments differentiate SunCode. Every architectural tradeoff should be resolved in favor of these, and a design that weakens one needs an explicit decision record.
 
-1. **Local-first, no service dependency.** Project files, session history, and settings live on the user's machine. SunCode contacts the network only to reach the model provider the user configured. There is no SunCode account, no telemetry service, and no hosted control plane. The product remains fully functional for a user who never signs in to anything except their model provider.
+1. **Broad coding utility.** SunCode is designed for coding work across languages, frameworks, and project types rather than for one narrow development workflow. The current desktop release works with projects the user opens and keeps its application state in the embedded runtime.
 2. **Reviewable authority.** Every machine-affecting action the agent takes passes through one narrow, audited path with a stated scope. Users can see what the agent is permitted to do, what it did, and undo its filesystem changes. Approval is a real decision with real granularity, not a modal that trains users to click through.
 3. **One embedded runtime core, several native bindings.** One Rust SDK implementation owns session state and machine behavior inside its host process. Phase 1 embeds it in the .NET Avalonia client; future TypeScript and Python packages wrap the same implementation rather than connecting to a service or duplicating runtime logic.
 
 ## Users and primary jobs
 
-The user is a software developer working in local repositories. The jobs SunCode must make efficient:
+The user is a software developer working in code repositories. The jobs SunCode must make efficient:
 
 1. Point the agent at a project and start a session.
 2. Give instructions with relevant files as context.

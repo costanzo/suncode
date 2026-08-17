@@ -1,10 +1,10 @@
 [package]
-name = "suncode-operations"
+name = "suncode-tool"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "suncode_operations"
+name = "suncode_tool"
 path = "src/lib.rs"
 
 [dependencies]

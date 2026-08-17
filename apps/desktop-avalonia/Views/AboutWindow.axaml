@@ -1,0 +1,50 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+        x:Class="SunCode.Desktop.Views.AboutWindow"
+        Title="About SunCode"
+        Width="420" Height="320"
+        MinWidth="360" MinHeight="280"
+        Background="Transparent"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        WindowStartupLocation="CenterOwner">
+  <Border Margin="16"
+          Background="{DynamicResource CanvasBrush}"
+          BorderBrush="{DynamicResource WindowChromeBorderBrush}"
+          BorderThickness="0.5"
+          CornerRadius="12"
+          Padding="1.5">
+    <Border Background="{DynamicResource CanvasBrush}"
+            CornerRadius="11"
+            ClipToBounds="True">
+      <Grid RowDefinitions="32,*">
+        <Grid Grid.Row="0"
+              Background="{DynamicResource CanvasBrush}"
+              ColumnDefinitions="Auto,*"
+              PointerPressed="TitleBarPressed"
+              DoubleTapped="TitleBarDoubleTapped">
+          <StackPanel Orientation="Horizontal" Spacing="6" Margin="5,0,0,0" VerticalAlignment="Center">
+            <Button x:Name="AboutCloseLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="CloseAbout" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Close window">
+              <svg:Svg Path="/Assets/traffic-lights/1-close-1-normal.svg" />
+            </Button>
+            <Button x:Name="AboutMinimizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="MinimizeAbout" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Minimize window">
+              <svg:Svg Path="/Assets/traffic-lights/2-minimize-1-normal.svg" />
+            </Button>
+            <Button x:Name="AboutMaximizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="ToggleAboutMaximized" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Maximize window">
+              <svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" />
+            </Button>
+          </StackPanel>
+          <TextBlock Grid.Column="1" Text="About SunCode" FontSize="13" FontWeight="SemiBold" Margin="4,0,0,0" VerticalAlignment="Center" />
+        </Grid>
+
+        <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+          <Image Width="64" Height="64" Source="/Assets/logo/suncode-logo-64.png" />
+          <TextBlock Text="SunCode" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <TextBlock x:Name="VersionText" Classes="mono" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+          <TextBlock Text="General-purpose coding agent" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Border>
+</Window>

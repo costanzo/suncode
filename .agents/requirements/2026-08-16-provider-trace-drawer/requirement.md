@@ -9,7 +9,7 @@ The Avalonia project window exposes cumulative session token usage and tool acti
 - Add a docked Avalonia provider trace drawer modeled after the existing Git drawer.
 - Show one row per provider exchange in the selected session.
 - Show input tokens, output tokens, cache tokens when reported, total tokens, sent canonical messages, returned assistant content, finish reason, and tool calls.
-- Keep provider tracing local-first and Rust-owned.
+- Keep provider tracing private to the current desktop data directory and Rust-owned.
 - Preserve the Avalonia boundary: the client consumes SDK DTOs and subscriptions only.
 
 ## Non-goals

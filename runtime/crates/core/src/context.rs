@@ -28,16 +28,24 @@ pub struct ContextBuildResult {
     pub summary: Option<ContextSummary>,
 }
 
-pub fn build_for_model(messages: &[Message], max_input_tokens: Option<u64>) -> ContextBuildResult {
+pub fn build_for_model(
+    messages: &[Message],
+    max_input_tokens: Option<u64>,
+    auto_compact_tokens: Option<u64>,
+) -> ContextBuildResult {
     let context_window = max_input_tokens
         .and_then(|value| usize::try_from(value).ok())
         .unwrap_or(DEFAULT_CONTEXT_WINDOW_TOKENS)
-        .min(DEFAULT_CONTEXT_WINDOW_TOKENS)
-        .max(DEFAULT_RESERVE_TOKENS + 1);
+        .clamp(DEFAULT_RESERVE_TOKENS + 1, 2_000_000);
+    let compact_at = auto_compact_tokens
+        .and_then(|value| usize::try_from(value).ok())
+        .unwrap_or(context_window.saturating_sub(DEFAULT_RESERVE_TOKENS))
+        .clamp(1_000, context_window.saturating_sub(1));
+    let reserve_tokens = context_window.saturating_sub(compact_at);
     build_with_token_limits(
         messages,
         context_window,
-        DEFAULT_RESERVE_TOKENS,
+        reserve_tokens,
         DEFAULT_KEEP_RECENT_TOKENS,
     )
 }
@@ -110,7 +118,7 @@ pub fn build_with_token_limits(
     reserve_tokens: usize,
     keep_recent_tokens: usize,
 ) -> ContextBuildResult {
-    let context_window_tokens = context_window_tokens.clamp(16_000, 1_000_000);
+    let context_window_tokens = context_window_tokens.clamp(16_000, 2_000_000);
     let reserve_tokens = reserve_tokens.min(context_window_tokens.saturating_sub(1));
     let max_context_tokens = context_window_tokens.saturating_sub(reserve_tokens).max(1);
     let keep_recent_tokens = keep_recent_tokens.clamp(1_000, max_context_tokens);
@@ -308,5 +316,16 @@ mod tests {
         assert!(result.messages[0]
             .text_content()
             .contains("suncode_context_summary"));
+    }
+
+    #[test]
+    fn uses_model_auto_compact_threshold_before_context_limit() {
+        let messages = (0..100)
+            .map(|index| Message::text("user", format!("message {index} {}", "wide ".repeat(40))))
+            .collect::<Vec<_>>();
+        let result = build_for_model(&messages, Some(64_000), Some(2_000));
+
+        assert!(result.compacted);
+        assert!(result.retained_tokens <= 2_000);
     }
 }
