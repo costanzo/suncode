@@ -263,7 +263,7 @@ impl Agent {
                 self.store.fail_turn(
                     session_id,
                     key,
-                    &json!({"code":error.code,"message":error.message}),
+                    &json!({"code":error.code,"message":error.message,"details":error.details}),
                 )?;
             }
         }
@@ -408,7 +408,7 @@ impl Agent {
                 let _ = agent.store.fail_turn(
                     &continuation.session_id,
                     &continuation.submission_key,
-                    &json!({"code":error.code,"message":error.message}),
+                    &json!({"code":error.code,"message":error.message,"details":error.details}),
                 );
             }
             agent
@@ -515,6 +515,14 @@ impl Agent {
             }
             let exchange_id = Uuid::new_v4().to_string();
             context.active_call_id = Some(exchange_id.clone());
+            let mut llm_messages = vec![host_environment_message()];
+            llm_messages.extend(
+                context
+                    .messages
+                    .iter()
+                    .map(to_llm_message)
+                    .collect::<Vec<_>>(),
+            );
             self.emit(
                 &context.session_id,
                 "provider.exchange.started",
@@ -525,16 +533,11 @@ impl Agent {
                     "model_id": context.model,
                     "wire_model": provider.wire_model,
                     "iteration": context.iterations,
-                    "input_messages": context.messages,
+                    "input_messages": llm_messages,
                 }),
             )?;
             let result = {
                 let (delta_sender, mut delta_receiver) = mpsc::unbounded_channel();
-                let llm_messages = context
-                    .messages
-                    .iter()
-                    .map(to_llm_message)
-                    .collect::<Vec<_>>();
                 let tool_definitions = crate::tools::definitions();
                 let provider_call = provider.provider.complete(
                     CompletionRequest {
@@ -844,7 +847,7 @@ impl Agent {
             let result = match result {
                 Ok(result) => result,
                 Err(error) => {
-                    self.tool_state(context, &call, "failed", Some("execution_failed"))?;
+                    self.tool_state(context, &call, "failed", Some(&error.code))?;
                     return Err(error);
                 }
             };
@@ -867,8 +870,8 @@ impl Agent {
         let result = self
             .operation_in_project(&context.project_root, method, params)
             .await
-            .inspect_err(|_error| {
-                let _ = self.tool_state(context, call, "failed", Some("execution_failed"));
+            .inspect_err(|error| {
+                let _ = self.tool_state(context, call, "failed", Some(&error.code));
             })?;
         self.record_call_success(context, call, result)
     }
@@ -951,7 +954,7 @@ impl Agent {
             .await
             .map_err(|_| AgentError::new("runtime_unavailable", "operation task failed"))?
             .map_err(|error| {
-                AgentError::new(
+                let mut agent_error = AgentError::new(
                     error
                         .get("code")
                         .and_then(Value::as_str)
@@ -960,7 +963,11 @@ impl Agent {
                         .get("message")
                         .and_then(Value::as_str)
                         .unwrap_or("operation failed"),
-                )
+                );
+                if let Some(details) = error.get("details") {
+                    agent_error = agent_error.details(details.clone());
+                }
+                agent_error
             })
     }
     fn emit(&self, session_id: &str, event_type: &str, payload: Value) -> Result<(), AgentError> {
@@ -1079,7 +1086,8 @@ fn method_name(name: &str) -> Option<&'static str> {
         "write" => Some("tool/write"),
         "edit" => Some("tool/edit"),
         "apply_patch" => Some("tool/apply_patch"),
-        "bash" => Some("tool/bash"),
+        "bash" | "shell" | "shell_run" | "shell.run" => Some("shell/run"),
+        "process" | "process_run" | "process.run" => Some("process/run"),
         "project_inspect" | "project.inspect" => Some("project/inspect"),
         "fs_read" | "fs.read" => Some("fs/read"),
         "fs_metadata" | "fs.metadata" => Some("fs/metadata"),
@@ -1090,7 +1098,6 @@ fn method_name(name: &str) -> Option<&'static str> {
         "fs_patch" | "fs.patch" => Some("fs/patch"),
         "fs_move" | "fs.move" => Some("fs/move"),
         "fs_delete" | "fs.delete" => Some("fs/delete"),
-        "process_run" | "process.run" => Some("process/run"),
         _ => None,
     }
 }
@@ -1189,14 +1196,35 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
             object.remove("path");
         }
     }
-    if name == "bash" {
-        let command = result
-            .get("command")
+    if matches!(name, "shell" | "shell_run" | "shell.run" | "bash") {
+        let script = result
+            .get(if name == "bash" { "command" } else { "script" })
             .and_then(Value::as_str)
             .map(str::to_string)
-            .ok_or_else(|| AgentError::new("invalid_arguments", "command is required"))?;
-        result["command"] = json!("/bin/sh");
-        result["args"] = json!(["-lc", command]);
+            .ok_or_else(|| AgentError::new("invalid_arguments", "script is required"))?;
+        let (program, args) = shell_command(&script);
+        result["program"] = json!(program);
+        result["args"] = json!(args);
+        if let Some(workdir) = result.get("workdir").cloned() {
+            result["cwd"] = workdir;
+        }
+        if let Some(timeout) = result.get("timeout").cloned() {
+            result["timeout_ms"] = timeout;
+        }
+        if let Some(object) = result.as_object_mut() {
+            object.remove("script");
+            object.remove("command");
+            object.remove("workdir");
+            object.remove("timeout");
+        }
+    }
+    if matches!(name, "process" | "process_run" | "process.run") {
+        let program = result
+            .get("program")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .ok_or_else(|| AgentError::new("invalid_arguments", "program is required"))?;
+        result["program"] = json!(program);
         if let Some(workdir) = result.get("workdir").cloned() {
             result["cwd"] = workdir;
         }
@@ -1209,6 +1237,58 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
         }
     }
     Ok(result)
+}
+
+#[cfg(target_os = "windows")]
+fn shell_command(script: &str) -> (&'static str, Vec<String>) {
+    (
+        "powershell.exe",
+        vec![
+            "-NoLogo".into(),
+            "-NoProfile".into(),
+            "-NonInteractive".into(),
+            "-Command".into(),
+            script.into(),
+        ],
+    )
+}
+
+#[cfg(not(target_os = "windows"))]
+fn shell_command(script: &str) -> (&'static str, Vec<String>) {
+    ("/bin/sh", vec!["-lc".into(), script.into()])
+}
+
+fn host_environment_message() -> suncode_llm::Message {
+    let shell = if cfg!(target_os = "windows") {
+        "Windows PowerShell"
+    } else {
+        "POSIX sh"
+    };
+    let path_style = if cfg!(target_os = "windows") {
+        "Windows"
+    } else {
+        "POSIX"
+    };
+    let now = chrono::Local::now();
+    let local_time = now.to_rfc3339_opts(chrono::SecondsFormat::Secs, false);
+    let weekday = now.format("%A");
+    suncode_llm::Message {
+        role: "system".into(),
+        content: vec![suncode_llm::ContentPart {
+            kind: "text".into(),
+            text: format!(
+                "SunCode host environment: OS={}, architecture={}, shell tool dialect={}, path style={}, current local time={}, weekday={}. Prefer the process tool for explicit program arguments. Use the shell tool only for shell syntax, and write scripts in the stated shell dialect.",
+                std::env::consts::OS,
+                std::env::consts::ARCH,
+                shell,
+                path_style,
+                local_time,
+                weekday
+            ),
+        }],
+        tool_calls: Vec::new(),
+        tool_call_id: None,
+    }
 }
 
 fn scoped_glob(path: &str, pattern: &str) -> String {
@@ -1261,7 +1341,10 @@ fn normalize_result(name: &str, mut value: Value) -> Value {
             object.remove("data_base64");
         }
     }
-    if name == "bash" {
+    if matches!(
+        name,
+        "bash" | "shell" | "shell_run" | "shell.run" | "process" | "process_run" | "process.run"
+    ) {
         for (encoded_key, text_key) in [("stdout_base64", "stdout"), ("stderr_base64", "stderr")] {
             if let Some(encoded) = value
                 .get(encoded_key)
@@ -1291,6 +1374,52 @@ mod tests {
         ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
         OpenAiCompatibleProvider,
     };
+
+    #[test]
+    fn structured_process_translation_preserves_argv() {
+        let translated = translate_arguments(
+            "process",
+            &json!({"program":"git","args":["status","--short"],"workdir":"src"}),
+        )
+        .unwrap();
+        assert_eq!(translated["program"], "git");
+        assert_eq!(translated["args"], json!(["status", "--short"]));
+        assert_eq!(translated["cwd"], "src");
+    }
+
+    #[test]
+    fn legacy_bash_translation_uses_the_platform_shell() {
+        let translated = translate_arguments("bash", &json!({"command":"echo hello"})).unwrap();
+        #[cfg(target_os = "windows")]
+        {
+            assert_eq!(translated["program"], "powershell.exe");
+            assert_eq!(
+                translated["args"],
+                json!([
+                    "-NoLogo",
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-Command",
+                    "echo hello"
+                ])
+            );
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            assert_eq!(translated["program"], "/bin/sh");
+            assert_eq!(translated["args"], json!(["-lc", "echo hello"]));
+        }
+        assert!(translated.get("command").is_none());
+    }
+
+    #[test]
+    fn host_context_identifies_platform_and_current_time() {
+        let message = host_environment_message();
+        let text = message.content[0].text.as_str();
+        assert!(text.contains(std::env::consts::OS));
+        assert!(text.contains(std::env::consts::ARCH));
+        assert!(text.contains("current local time="));
+    }
 
     async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
         let messages = body

@@ -2,7 +2,7 @@
 
 ## Current state
 
-Qt Quick/QML composes the desktop UI and a C++ `RuntimeClient` adapts the Rust SDK C ABI into presentation state. The Rust runtime is linked as a static library.
+Avalonia XAML and C# view models compose the desktop UI and adapt the Rust SDK C ABI into presentation state. The Rust runtime is built as a dynamic library beside the managed executable.
 
 ## Proposed design
 
@@ -32,11 +32,11 @@ Native strings are copied and freed through the SDK allocator. API keys are sent
 
 ## Compatibility and migration
 
-The C ABI version and method payloads are unchanged. Adding `cdylib` is additive for Rust consumers. Avalonia is the production client; the Qt client stays intact as the authoritative parity fixture after Avalonia covers the same SDK surface.
+The C ABI version and method payloads are unchanged. Avalonia is the sole production client and consumes the existing SDK surface.
 
 ## Risks and rollback
 
-Native library discovery and platform packaging are the main integration risks. The project-local build copies the library beside the executable, while P/Invoke keeps a stable logical library name. The retained Qt tree provides a direct rollback and visual regression reference.
+Native library discovery and platform packaging are the main integration risks. The project-local build copies the library beside the executable, while P/Invoke keeps a stable logical library name.
 
 ## Open questions
 

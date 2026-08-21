@@ -30,7 +30,8 @@ pub fn tool_risk(name: &str) -> Option<Risk> {
         "write" | "edit" | "apply_patch" | "fs_write" | "fs.write" | "fs_edit" | "fs.edit"
         | "fs_patch" | "fs.patch" | "fs_move" | "fs.move" => Some(Risk::ProjectWrite),
         "fs_delete" | "fs.delete" => Some(Risk::DestructiveWrite),
-        "bash" | "process_run" | "process.run" => Some(Risk::ProcessExecution),
+        "bash" | "shell" | "shell_run" | "shell.run" | "process" | "process_run"
+        | "process.run" => Some(Risk::ProcessExecution),
         _ => None,
     }
 }
@@ -47,6 +48,14 @@ mod tests {
         );
         assert_eq!(
             evaluate(tool_risk("bash"), false),
+            Decision::ApprovalRequired
+        );
+        assert_eq!(
+            evaluate(tool_risk("shell"), false),
+            Decision::ApprovalRequired
+        );
+        assert_eq!(
+            evaluate(tool_risk("process"), false),
             Decision::ApprovalRequired
         );
         assert_eq!(evaluate(tool_risk("write"), true), Decision::Deny);

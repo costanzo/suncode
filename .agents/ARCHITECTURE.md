@@ -110,13 +110,14 @@ Approval precedes execution. Approval requests and suspended continuations are d
 
 Filesystem mutations capture pre-image checkpoints before changing disk. A turn-level manifest is the desktop undo unit and restores items in reverse operation order with post-image conflict checks. Process operations report the isolation actually enforced on the current platform; filtered environment or project-scoped working directory must never be described as network or OS sandboxing.
 
+Process execution has two explicit semantics: structured program-plus-argv execution never invokes a shell implicitly, while shell-script execution selects the documented host dialect (Windows PowerShell on Windows and POSIX `sh` on macOS/Linux). Both pass through the same policy and audited dispatcher. Shell syntax is platform-specific and is never translated between dialects.
+
 Startup marks non-recoverable in-memory turn execution interrupted, discovers admitted submissions and suspended approvals, and reconciles operation journal entries. Unknown completion remains visible and requires safe reconciliation.
 
 ## 10. Repository Layout
 
 ```text
 apps/desktop-avalonia/    .NET 10 Avalonia desktop client
-apps/desktop-qt/          retained Qt visual and interaction reference
 contracts/                hand-written protocols and shared vectors
 runtime/crates/core/      runtime core and embedded Rust SDK facade
 runtime/crates/db/        SQLite package, current schema, and persistence DTOs
@@ -126,7 +127,7 @@ sdks/                     native language binding packaging surfaces
 .agents/                  durable product and engineering knowledge
 ```
 
-The old `typescript/` packages and retired `rust/` workspace were migration sources and are removed from the production tree. The complete `apps/desktop-qt/` source remains as a non-production parity fixture so Avalonia behavior can be checked against the original implementation. Language SDK directories may contain placeholder documentation before implementation starts, but they must not pretend to ship a working package until one exists.
+The old `typescript/` packages and retired `rust/` workspace were migration sources and are removed from the production tree. Language SDK directories may contain placeholder documentation before implementation starts, but they must not pretend to ship a working package until one exists.
 
 ## 11. Dependency Rules
 

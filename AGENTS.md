@@ -4,7 +4,7 @@ This repository is SunCode, a general-purpose coding agent. Unless the user requ
 
 ## Current state
 
-The project has started implementation. A .NET 10 Avalonia desktop client and the Rust Phase 1 runtime exist and were focused-tested. The superseded Qt client is retained intact as the visual and interaction parity reference; it is not a production dependency. Migration to a reusable Rust SDK facade is in progress; do not describe it as complete until provider, agent loop, policy, SQLite, credentials, API, operations, approvals, recovery, and undo are all Rust-owned and the obsolete TypeScript production path is removed. CLI/TUI/Web and executable extensions remain deferred.
+The project has started implementation. A .NET 10 Avalonia desktop client and the Rust Phase 1 runtime exist and were focused-tested. Migration to a reusable Rust SDK facade is in progress; do not describe it as complete until provider, agent loop, policy, SQLite, credentials, API, operations, approvals, recovery, and undo are all Rust-owned and the obsolete TypeScript production path is removed. CLI/TUI/Web and executable extensions remain deferred.
 
 ## Start here
 
@@ -19,8 +19,8 @@ Before non-trivial work:
 
 - The runtime workspace owns the complete Rust implementation. Keep machine operations behind a narrow internal audited dispatcher, separate from provider and agent semantics.
 - TypeScript is migration-only and must not remain a Phase 1 production dependency.
-- Clients consume the client API or Rust SDK facade; they do not access SQLite or model providers directly. Phase 1 ships the Avalonia desktop client; the Qt tree is a parity reference, and CLI/TUI/Web are deferred.
-- The production desktop application uses .NET 10 and Avalonia. Qt and Electron are prohibited production dependencies; `apps/desktop-qt/` remains buildable reference source for one-to-one parity work.
+- Clients consume the client API or Rust SDK facade; they do not access SQLite or model providers directly. Phase 1 ships the Avalonia desktop client, and CLI/TUI/Web are deferred.
+- The production desktop application uses .NET 10 and Avalonia. Other desktop UI toolkits and Electron are not supported production dependencies.
 - Protocol contracts are written documents, hand-implemented per language and verified by shared test vectors. Nothing is generated.
 - The agent runtime is Rust. Node.js and Bun are prohibited as Phase 1 production runtime dependencies.
 - The Rust boundary is not an OS-enforced sandbox around the runtime. Its value is containing third-party code and providing one auditable path. Do not write designs that assume it isolates a compromised runtime.

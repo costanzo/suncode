@@ -17,7 +17,7 @@ Verify the Avalonia build, C ABI loading, view-model projections, and unchanged 
 ## Regression checks
 
 - Run the Rust workspace test suite.
-- Confirm the Avalonia production build has no Qt dependency and the Qt parity source remains complete.
+- Confirm the Avalonia production build has no alternate desktop UI dependency.
 
 ## Manual checks
 
@@ -36,9 +36,9 @@ Verify the Avalonia build, C ABI loading, view-model projections, and unchanged 
 - `dotnet format apps/desktop-avalonia/SunCode.Desktop.csproj --verify-no-changes --no-restore`: passed.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json apps/desktop-avalonia DESIGN.md`: returned `[]`.
 - Release startup: loaded the native runtime, listed projects, selected a project, and rendered runtime/Git projections without console errors.
-- Screenshot checks: passed for the Qt/Avalonia hub, 1440x900 workbench, 900x620 compact workbench, settings, Git drawer, and in-window session dialog.
+- Screenshot checks: passed for the hub, 1440x900 workbench, 900x620 compact workbench, settings, Git drawer, and in-window session dialog.
 - Multi-window checks: passed for shared native runtime ownership, two simultaneous project windows, duplicate-project activation/disablement, dynamic recent-project menus, and hub restoration after the last project closes.
-- Interaction checks: passed for project/session navigation, native project menu, title chrome, responsive resizing, Git drawer controls, settings, keyboard dismissal, composer gating, and Qt-derived focus styling.
+- Interaction checks: passed for project/session navigation, native project menu, title chrome, responsive resizing, Git drawer controls, settings, keyboard dismissal, composer gating, and focus styling.
 - Component extraction check: the Avalonia Release build passed after moving the hub, workspace, chat area, project sidebar, agent sidebar, and Git viewer into independent compiled `UserControl` files.
 - Avalonia 12 compatibility check: restore must resolve all core Avalonia assemblies to `12.1.1`, use Avalonia 12-native SVG and Markdown packages, then Debug and Release builds must complete without package downgrade or compatibility warnings.
 - macOS parity follow-up: passed for project-window drag (AX position changed from `135,80` to `255,140`), traffic-light asset hover, branded Dock icon, native Cocoa full-screen transition animation and full-display client coverage, composer-overlay layout, and Markdown rendering against existing persisted OpenCode-project session messages.

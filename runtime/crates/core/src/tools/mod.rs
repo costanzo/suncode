@@ -5,11 +5,12 @@
 //! execution.
 
 mod apply_patch;
-mod bash;
 mod edit;
 mod glob;
 mod grep;
+mod process;
 mod read;
+mod shell;
 mod write;
 
 use suncode_llm::ToolDefinition;
@@ -22,7 +23,8 @@ pub fn definitions() -> Vec<ToolDefinition> {
         write::definition(),
         edit::definition(),
         apply_patch::definition(),
-        bash::definition(),
+        process::definition(),
+        shell::definition(),
     ]
     .into_iter()
     .map(|(name, description, parameters)| ToolDefinition {
@@ -46,5 +48,8 @@ mod tests {
             .map(|definition| definition.name.as_str())
             .collect::<HashSet<_>>();
         assert_eq!(names.len(), definitions.len());
+        assert!(names.contains("process"));
+        assert!(names.contains("shell"));
+        assert!(!names.contains("bash"));
     }
 }

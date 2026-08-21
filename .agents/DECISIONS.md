@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260821-cross-platform-process-execution
+
+- Date: 2026-08-21
+- Status: Accepted
+- Context: The model-facing `bash` tool converted every script to `/bin/sh -lc`, so approved process calls could not start on Windows. The same tool also obscured the important distinction between portable argv execution and platform-specific shell syntax.
+- Decision: Advertise separate `process` and `shell` tools. `process` passes a program and explicit argv without implicit shell parsing. `shell` selects Windows PowerShell on Windows and POSIX `/bin/sh` on macOS/Linux. Inject ephemeral host OS, architecture, shell dialect, path style, and local date/time into provider requests. Keep `bash` only as a persisted-call compatibility alias and preserve stable process-start failures through the tool and turn projections.
+- Consequences: Coding commands can use portable argv where possible, scripts use an explicit host dialect, and Windows no longer depends on `/bin/sh`, Git Bash, Cygwin, or WSL. Shell scripts are not portable unless authored for the reported dialect. Process execution remains approval-gated and does not gain OS or network isolation.
+- Details: `.agents/requirements/2026-08-21-cross-platform-process/`, `runtime/crates/core/src/tools/`, `runtime/crates/operations/src/process.rs`
+
 ## ADR-20260820-configuration-and-provider-adapters
 
 - Date: 2026-08-20
@@ -92,7 +101,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Status: Accepted
 - Supersedes: Qt desktop requirements in ADR-20260815-embedded-runtime-sdk, ADR-20260808-rust-unified-runtime, ADR-20260808-qt-client-state-boundary, and related Phase 1 client records; their Rust ownership and presentation-state conclusions remain accepted
 - Context: Qt licensing concerns and its learning curve made the implemented Qt Quick/QML client unsuitable for continued development. The Rust SDK already provides a stable method-oriented C ABI, so the UI framework can change without moving runtime authority into the client.
-- Decision: Replace the Qt production client with a .NET 10 Avalonia application. Keep presentation and transient interaction state in XAML/C#, call C ABI version 1 through a hand-written P/Invoke adapter, and emit the Rust runtime as a `cdylib` beside the managed executable. Retain the complete Qt/QML/CMake tree as the authoritative visual and interaction parity reference, while excluding Qt from the Avalonia production dependency graph.
+- Decision: Replace the former desktop client with a .NET 10 Avalonia application. Keep presentation and transient interaction state in XAML/C#, call C ABI version 1 through a hand-written P/Invoke adapter, and emit the Rust runtime as a `cdylib` beside the managed executable. The alternate desktop source is removed; Avalonia is the sole desktop client.
 - Consequences: Phase 1 production now depends on .NET 10 and Avalonia rather than Qt. Rust remains the only owner of providers, agent behavior, policy, SQLite, credentials, operations, approvals, recovery, and undo. Qt assets and font-selection behavior may be reused by Avalonia under their existing licenses. Native library packaging, signing, and notarization become desktop release concerns. CLI/TUI/Web remain deferred.
 - Details: `.agents/requirements/2026-08-16-avalonia-desktop-migration/`, `apps/desktop-avalonia/`
 
@@ -186,7 +195,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Phase 1 needs the Rust runtime to be reusable by Qt now and by future Web, CLI, and TUI adapters later, without forcing the client boundary to stay network-only.
 - Decision: Expose the Rust runtime as an embedded SDK facade for direct client adapters, with Qt as the first consumer. Keep HTTP/SSE as a separate adapter over the same runtime core for compatibility and future non-Qt surfaces. The SDK is an embedding boundary, not a new authority boundary, and it does not change SQLite ownership or the runtime trust model.
 - Consequences: Qt can call the Rust core without loopback transport, while Web/CLI/TUI can still use adapter-specific transports over the same runtime. The HTTP contract remains relevant for compatibility and future surfaces, but it is no longer the only Phase 1 client path.
-- Details: `../apps/desktop-qt/`, superseded contract replaced by `../contracts/runtime-sdk/README.md`
+- Details: superseded contract replaced by `../contracts/runtime-sdk/README.md`
 
 ## ADR-20260808-qt-client-state-boundary
 
@@ -195,7 +204,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The Phase 1 desktop needs reconnect, conversation, activity, approvals, touched files, undo, credentials, and diagnostics without becoming a second runtime or reading local state directly.
 - Decision: The Qt C++ adapter holds only presentation state and an in-memory runtime credential. All durable state, file content, authority, recovery, provider, and diagnostic facts come from authenticated runtime DTOs and ordered SSE events. Conversation and activity are separate projections over the same event stream; Qt does not derive filesystem diffs by reading the project.
 - Consequences: Client restart is recovered through snapshots/replay, and additional client surfaces can reuse the same API. Rich diff computation remains a runtime/core-derived future package rather than Qt authority.
-- Details: `../apps/desktop-qt/`, `../contracts/runtime-sdk/README.md`, `features/qt-desktop-phase-1/`
+- Details: `../contracts/runtime-sdk/README.md`
 
 ## ADR-20260807-runtime-phase-1-defaults
 

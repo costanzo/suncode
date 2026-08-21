@@ -1,4 +1,5 @@
 use serde::Serialize;
+#[cfg(target_os = "macos")]
 use std::process::{Command, Stdio};
 use suncode_db::{PersistenceError, Store};
 use suncode_llm::ApiKeyResolver;

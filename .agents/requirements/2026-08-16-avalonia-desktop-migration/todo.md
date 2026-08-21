@@ -9,7 +9,7 @@
 
 - [x] Add the Avalonia source and build integration.
 - [x] Port all desktop workflows.
-- [x] Restore and retain Qt parity source outside the production dependency graph.
+- [x] Consolidate the desktop client in Avalonia.
 
 ## Verification
 

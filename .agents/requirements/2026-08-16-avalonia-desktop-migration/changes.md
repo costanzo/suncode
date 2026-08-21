@@ -5,10 +5,9 @@
 - Added `apps/desktop-avalonia/` targeting .NET 10 and Avalonia 12.1.
 - Added a hand-written C# P/Invoke adapter with UTF-8 ownership, SDK envelope parsing, async calls, a reference-counted process-wide runtime handle, deterministic subscription disposal, and UI-thread event delivery.
 - Added observable project, session, model, credential, message, activity, checkpoint, Git, diff, approval, diagnostics, usage, and theme projections.
-- Added the project hub, independent project windows, responsive project workbench, composer, approval/review inspector, Git drawer, application-modal settings, Qt-style in-window input and confirmation dialogs, macOS project menu, dark/light theme, and compact-width behavior.
+- Added the project hub, independent project windows, responsive project workbench, composer, approval/review inspector, Git drawer, application-modal settings, in-window input and confirmation dialogs, macOS project menu, dark/light theme, and compact-width behavior.
 - Split the Avalonia desktop surface into focused `ProjectHub`, `ProjectWorkspace`, `ChatArea`, `ProjectSidebar`, `AgentSidebar`, and `GitViewer` controls while keeping window lifecycle, native menus, dragging, resizing, and full-screen behavior in `MainWindow`.
-- Restored and retained the complete `apps/desktop-qt/` Qt/QML/CMake implementation as the authoritative parity fixture.
-- Reused the Qt logo, icons, macOS traffic lights, semantic palette, geometry, and font fallback behavior in Avalonia.
+- Consolidated the desktop implementation in Avalonia and removed the obsolete alternate client.
 - Closed the macOS parity gaps for threshold-based project-window dragging, traffic-light hover/press assets, animated native `NSWindow` full screen through Avalonia's tracked window state, Dock/window icons, and the Hub border/elevation treatment.
 - Restored native macOS shadows for the hub, project, and settings windows by using border-only native decorations on macOS while retaining the custom title chrome and decoration-free behavior on other platforms.
 - Added theme-specific 0.5-DIP low-contrast window chrome borders so the native shadow carries top-level elevation without weakening internal panel and control boundaries or shifting content geometry.
@@ -16,8 +15,8 @@
 - Routed project-window full-screen transitions through Avalonia's tracked `WindowState.FullScreen` path, which invokes native Cocoa full screen on macOS, and removed the redundant direct Objective-C toggle that could report success without entering a full-screen space after border-only decorations were enabled.
 - Preserved the 4-DIP horizontal and 6-DIP vertical content insets in full screen so gutter controls and top/bottom chrome keep their normal optical spacing without carrying over the restored window's shadow margin.
 - Applied restored-window chrome before the native exit-full-screen transition, kept one transparent-capable composition surface throughout the lifecycle, and removed manual full-screen and restored-frame overrides so Cocoa alone owns the animated geometry without a duplicate-window afterimage.
-- Moved the project chrome inset from an external margin to internal padding so the canvas reaches the visible window edge and each 24px gutter control has the same 5px optical spacing to the window edge and its adjacent sidebar, matching the Qt layout.
-- Restored the Qt footer alignment by vertically centering every Git summary label alongside the already-centered branch icon.
+- Moved the project chrome inset from an external margin to internal padding so the canvas reaches the visible window edge and each 24px gutter control has the same 5px optical spacing to the window edge and its adjacent sidebar.
+- Restored footer alignment by vertically centering every Git summary label alongside the already-centered branch icon.
 - Compressed the project footer toolbar from 24px to 14px while preserving its icon, label, and session-summary alignment.
 - Split the workspace gutters by responsibility: project navigation remains at the upper left, the agent sidebar remains at the upper right, and the Git drawer control now anchors at the lower left.
 - Unified the three gutter control states so closed panels have no border, while open panels show an active surface, accent border, and accent icon.
@@ -33,8 +32,8 @@
 - Reduced the ChatArea composer model selector and turn action buttons to compact 24px controls with roughly half their previous visual area.
 - Replaced the disabled composer shown without a selected session with a centered empty state, while keeping the message list and composer available whenever a session is selected.
 - Reduced the composer TextBox's reserved bottom action space from 40px to 30px, returning 10px of vertical room to message input without changing the controls.
-- Moved the model and turn action controls into the composer surface, added tunnel-routed Enter submission with Shift+Enter newline behavior, and rendered completed assistant responses as Markdown while retaining plain text during streaming. The conversation behavior follows the existing Qt surface and OpenCode's completed-versus-streaming message treatment.
-- Added a publish-time macOS `.app` bundle with `Info.plist` and the existing Qt-derived `.icns` resource.
+- Moved the model and turn action controls into the composer surface, added tunnel-routed Enter submission with Shift+Enter newline behavior, and rendered completed assistant responses as Markdown while retaining plain text during streaming.
+- Added a publish-time macOS `.app` bundle with `Info.plist` and the desktop icon resource.
 - Upgraded the core Avalonia framework, desktop backend, Fluent theme, and Inter font packages to `12.1.1`, migrated SVG rendering to `Svg.Controls.Skia.Avalonia 12.0.0.15`, and migrated Markdown rendering to the Avalonia 12-compatible `ClassIsland.Markdown.Avalonia.Tight 12.0.0` package.
 
 ## Contracts and generated artifacts
@@ -49,9 +48,9 @@
 
 - Existing Rust workspace tests cover 43 runtime and operation behaviors.
 - Compiled Avalonia bindings and native loading were exercised by Debug/Release builds and startup checks.
-- Multi-window runtime sharing, recent-project activation, dialog behavior, settings modality, default/minimum geometry, Git drawer behavior, and Qt/Avalonia screenshots were manually verified on macOS.
+- Multi-window runtime sharing, recent-project activation, dialog behavior, settings modality, default/minimum geometry, and Git drawer behavior were manually verified on macOS.
 
 ## Documentation
 
 - Updated current product, architecture, contributor, design, SDK, contract, feature, and decision records.
-- Updated the Qt feature record to distinguish its superseded production role from its retained parity-fixture role.
+- Updated product and architecture records to describe Avalonia as the only desktop client.

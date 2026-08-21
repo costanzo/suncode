@@ -24,14 +24,14 @@ The user opens a project in the Avalonia desktop application, creates or resumes
 
 ## Capabilities and Constraints
 
-- Phase 1 ships the .NET 10 Avalonia desktop client as the only production client surface. The original Qt source remains a parity reference.
+- Phase 1 ships the .NET 10 Avalonia desktop client as the only production client surface.
 - Rust owns the runtime core, provider integration, agent loop, policy, approvals, persistence, credentials, native SDK API, recovery, and operations.
 - The built-in catalog has six providers with two stable model identities each.
 - The Avalonia client embeds the Rust SDK through its method-oriented C ABI and does not access SQLite, model providers, or project files directly.
 - Machine-affecting operations use an audited internal Rust dispatcher; this is an auditability boundary, not an OS sandbox.
 - Provider credentials are stored in Rust-owned plaintext SQLite secret records and must not enter SDK responses, events, audit rows, or logs.
 - Phase 1 is an embedded desktop product. Cloud execution, multi-tenancy, hosted identity, collaboration, CLI/TUI/Web clients, mobile clients, IDE plugins, and executable third-party extensions are deferred or out of scope.
-- The production desktop application uses Avalonia; Qt and Electron are prohibited production dependencies. The retained Qt tree is a buildable visual and interaction fixture. Node.js and Bun are not Phase 1 production runtime dependencies.
+- The production desktop application uses Avalonia; other desktop UI toolkits and Electron are not supported production dependencies. Node.js and Bun are not Phase 1 production runtime dependencies.
 - Project, session, and turn are the product's domain terms; workspace and task are retired terms.
 
 ## Product Principles
@@ -44,7 +44,7 @@ The user opens a project in the Avalonia desktop application, creates or resumes
 
 ## Evidence on Hand
 
-The repository contains an implemented Avalonia desktop vertical slice under `apps/desktop-avalonia/`, its retained Qt parity reference under `apps/desktop-qt/`, a Rust runtime under `runtime/`, hand-written protocol contracts and shared vectors under `contracts/`, and SDK documentation under `sdks/`. Existing product and architecture records are maintained under `.agents/`. No external testimonials, customer claims, benchmarks, pricing, or other proof assets are established; future work must not fabricate them.
+The repository contains an implemented Avalonia desktop vertical slice under `apps/desktop-avalonia/`, a Rust runtime under `runtime/`, hand-written protocol contracts and shared vectors under `contracts/`, and SDK documentation under `sdks/`. Existing product and architecture records are maintained under `.agents/`. No external testimonials, customer claims, benchmarks, pricing, or other proof assets are established; future work must not fabricate them.
 
 ## Accessibility & Inclusion
 

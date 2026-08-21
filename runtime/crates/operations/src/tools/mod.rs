@@ -2,7 +2,6 @@
 
 mod apply_patch;
 mod artifact;
-mod bash;
 mod checkpoint_restore;
 mod edit;
 mod fs_delete;
@@ -10,6 +9,7 @@ mod fs_metadata;
 mod fs_move;
 mod glob;
 mod grep;
+mod process;
 mod project_inspect;
 mod read;
 mod write;
@@ -39,13 +39,15 @@ pub(super) fn dispatch(
         }
         "fs/move" => fs_move::execute(project_root, checkpoint_root, params),
         "fs/delete" => fs_delete::execute(project_root, checkpoint_root, params),
-        "tool/bash" | "process/run" => bash::run(project_root, checkpoint_root, params),
-        "process/start" => bash::start(project_root, params),
-        "process/status" => bash::status(params),
-        "operation/cancel" => bash::cancel(params),
-        "operation/status" => bash::operation_status(checkpoint_root, params),
-        "operation/reconcile" => bash::reconcile(project_root, checkpoint_root, params),
-        "core/recovery" => bash::recovery(project_root, checkpoint_root),
+        "tool/bash" | "shell/run" | "process/run" => {
+            process::run(project_root, checkpoint_root, params)
+        }
+        "process/start" => process::start(project_root, params),
+        "process/status" => process::status(params),
+        "operation/cancel" => process::cancel(params),
+        "operation/status" => process::operation_status(checkpoint_root, params),
+        "operation/reconcile" => process::reconcile(project_root, checkpoint_root, params),
+        "core/recovery" => process::recovery(project_root, checkpoint_root),
         "checkpoint/restore" => checkpoint_restore::execute(project_root, checkpoint_root, params),
         _ => return None,
     })

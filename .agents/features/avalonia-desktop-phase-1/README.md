@@ -2,7 +2,7 @@
 
 **Status:** Implemented and focused-tested
 
-SunCode's Phase 1 production client is a .NET 10 Avalonia desktop application under `apps/desktop-avalonia/`. The original Qt implementation under `apps/desktop-qt/` is retained as its parity reference. CLI, TUI, Web, mobile, and IDE clients remain deferred.
+SunCode's Phase 1 production client is a .NET 10 Avalonia desktop application under `apps/desktop-avalonia/`. CLI, TUI, Web, mobile, and IDE clients remain deferred.
 
 ## Boundary
 
@@ -23,10 +23,10 @@ The Rust crate emits a `cdylib`; the desktop build invokes Cargo and copies the 
 - a resizable session trace drawer with an expandable turn/call tree and call-level message, tool, request/response, timing, token, and cache diagnostics
 - provider credential status/store/remove, default model, and dark/light theme settings
 - responsive navigation and review bays with a stable conversation composer
-- Qt-style in-window dialogs, application-modal settings, and the native macOS project menu
+- in-window dialogs, application-modal settings, and the native macOS project menu
 - project-window keyboard toggles for navigation (`Command+1`) and Git review (`Command+9`), with Control equivalents
-- one-to-one Qt-derived colors, geometry, states, shortcuts, assets, and font fallback stacks
+- consistent colors, geometry, states, shortcuts, assets, and font fallback stacks
 
 ## Verification
 
-The source build verifies the Rust `cdylib` integration and compiled Avalonia bindings. Focused macOS startup checks compare the Qt and Avalonia project hub, workbench, compact layout, settings, and Git drawer while exercising native runtime loading, project listing/selection, diagnostics, and Git projections. Release signing and installer production remain separate release-engineering work.
+The source build verifies the Rust `cdylib` integration and compiled Avalonia bindings. Focused startup checks exercise native runtime loading, project listing/selection, diagnostics, and Git projections. Release signing and installer production remain separate release-engineering work.

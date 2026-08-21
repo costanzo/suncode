@@ -53,6 +53,8 @@ Errors use:
 
 The retired implementation included every method in the table. Paths were canonicalized and kept project-relative in results. Mutations required pre-images, capture opaque checkpoints, and used an optional core-private journal keyed by the supplied idempotency key. Text edit and patch rejected stale context; move and delete captured enough pre-image state for reverse restore. Process execution was argv-based, non-interactive, bounded, environment-filtered, and cancellable for managed starts. Large reads and process output used artifact IDs.
 
+The current embedded operations contract retains structured argv semantics for `process/run`: callers provide a program and string argument array, and the operation never invokes a shell implicitly. The current agent exposes platform shell scripts separately and resolves them to Windows PowerShell on Windows or POSIX `/bin/sh` on macOS/Linux before entering the audited process operation.
+
 ## Capability assertion
 
 An assertion names one operation and one canonical scope:

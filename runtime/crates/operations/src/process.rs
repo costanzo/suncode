@@ -6,22 +6,28 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
 use std::fs;
 use std::io::Read;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 fn command_arguments(params: &Value) -> Result<(String, Vec<String>), CoreFailure> {
-    let command = params
-        .get("command")
+    let program = params
+        .get("program")
+        .or_else(|| params.get("command"))
         .and_then(Value::as_str)
         .ok_or(CoreFailure {
             code: "invalid_arguments",
-            message: "command is required",
+            message: "program is required",
             retryable: false,
         })?;
-    if command.is_empty() || command.len() > 4096 {
+    if program.is_empty() || program.len() > 4096 {
         return Err(CoreFailure {
             code: "invalid_arguments",
-            message: "command is invalid",
+            message: "program is invalid",
             retryable: false,
         });
     }
@@ -49,7 +55,7 @@ fn command_arguments(params: &Value) -> Result<(String, Vec<String>), CoreFailur
             retryable: false,
         });
     }
-    Ok((command.to_string(), args))
+    Ok((program.to_string(), args))
 }
 
 fn process_cwd(root: &Path, params: &Value) -> Result<std::path::PathBuf, CoreFailure> {
@@ -58,7 +64,7 @@ fn process_cwd(root: &Path, params: &Value) -> Result<std::path::PathBuf, CoreFa
         .join(safe_relative_path(relative)?)
         .canonicalize()
         .map_err(|_| CoreFailure {
-            code: "path_unavailable",
+            code: "process_working_directory_unavailable",
             message: "working directory is unavailable",
             retryable: false,
         })?;
@@ -73,6 +79,8 @@ fn process_cwd(root: &Path, params: &Value) -> Result<std::path::PathBuf, CoreFa
 }
 
 fn configure_command(mut command: Command, params: &Value) -> Command {
+    #[cfg(target_os = "windows")]
+    command.creation_flags(CREATE_NO_WINDOW);
     command.env_clear();
     for key in [
         "PATH",
@@ -82,6 +90,8 @@ fn configure_command(mut command: Command, params: &Value) -> Command {
         "TEMP",
         "SystemRoot",
         "ComSpec",
+        "PATHEXT",
+        "USERPROFILE",
     ] {
         if let Some(value) = std::env::var_os(key) {
             command.env(key, value);
@@ -101,6 +111,26 @@ fn configure_command(mut command: Command, params: &Value) -> Command {
         }
     }
     command
+}
+
+fn process_start_failure(error: std::io::Error) -> CoreFailure {
+    match error.kind() {
+        std::io::ErrorKind::NotFound => CoreFailure {
+            code: "process_executable_not_found",
+            message: "process executable could not be found",
+            retryable: false,
+        },
+        std::io::ErrorKind::PermissionDenied => CoreFailure {
+            code: "process_permission_denied",
+            message: "process executable could not be started because permission was denied",
+            retryable: false,
+        },
+        _ => CoreFailure {
+            code: "process_start_failed",
+            message: "process could not be started",
+            retryable: false,
+        },
+    }
 }
 
 fn collect_bounded(mut reader: impl Read) -> Vec<u8> {
@@ -140,11 +170,7 @@ pub(super) fn run(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|_| CoreFailure {
-            code: "process_start_failed",
-            message: "process could not be started",
-            retryable: false,
-        })?;
+        .map_err(process_start_failure)?;
     let stdout = child
         .stdout
         .take()
@@ -210,11 +236,7 @@ pub(super) fn start(project_root: Option<&Path>, params: &Value) -> Result<Value
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .map_err(|_| CoreFailure {
-            code: "process_start_failed",
-            message: "process could not be started",
-            retryable: false,
-        })?;
+        .map_err(process_start_failure)?;
     let processes =
         PROCESSES.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()));
     processes
@@ -384,4 +406,71 @@ fn count_artifacts(root: &Path) -> usize {
     fs::read_dir(artifacts::artifact_directory(root))
         .map(|entries| entries.flatten().count())
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{command_arguments, process_start_failure, run};
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use serde_json::json;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn structured_process_arguments_remain_separate() {
+        let (program, args) = command_arguments(&json!({
+            "program": "git",
+            "args": ["status", "--short"]
+        }))
+        .unwrap();
+        assert_eq!(program, "git");
+        assert_eq!(args, ["status", "--short"]);
+    }
+
+    #[test]
+    fn legacy_command_is_one_executable_not_shell_text() {
+        let (program, args) = command_arguments(&json!({"command": "git status"})).unwrap();
+        assert_eq!(program, "git status");
+        assert!(args.is_empty());
+    }
+
+    #[test]
+    fn missing_executable_has_a_stable_error_code() {
+        let failure = process_start_failure(std::io::Error::from(std::io::ErrorKind::NotFound));
+        assert_eq!(failure.code, "process_executable_not_found");
+    }
+
+    #[test]
+    fn platform_shell_process_starts_and_captures_output() {
+        let root = std::env::temp_dir().join(format!(
+            "suncode-process-test-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let root = root.canonicalize().unwrap();
+        let checkpoint = root.join("checkpoints");
+        std::fs::create_dir_all(&checkpoint).unwrap();
+        #[cfg(target_os = "windows")]
+        let params = json!({
+            "program":"powershell.exe",
+            "args":["-NoLogo","-NoProfile","-NonInteractive","-Command","Write-Output suncode-ready"]
+        });
+        #[cfg(not(target_os = "windows"))]
+        let params = json!({"program":"/bin/sh","args":["-lc","printf suncode-ready"]});
+        let result = run(Some(&root), Some(&checkpoint), &params).unwrap();
+        assert_eq!(result["success"], true);
+        let output = STANDARD
+            .decode(result["stdout_base64"].as_str().unwrap())
+            .unwrap();
+        assert!(String::from_utf8(output).unwrap().contains("suncode-ready"));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_processes_use_the_no_window_creation_flag() {
+        assert_eq!(super::CREATE_NO_WINDOW, 0x0800_0000);
+    }
 }

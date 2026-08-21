@@ -27,7 +27,7 @@ The user is a software developer working in code repositories. The jobs SunCode 
 
 ## Scope
 
-The committed Phase 1 production surface is the Avalonia desktop application and it is the reference consumer of the Rust SDK facade. The superseded Qt client remains in the repository solely as the visual, interaction, and asset parity reference.
+The committed Phase 1 production surface is the Avalonia desktop application and it is the reference consumer of the Rust SDK facade.
 
 CLI, TUI, web, mobile, and IDE-plugin surfaces are future directions. They are deferred and must not shape current Phase 1 client implementation.
 
@@ -41,7 +41,7 @@ CLI, TUI, web, mobile, and IDE-plugin surfaces are future directions. They are d
 ## Constraints
 
 - Rust is the only supported Phase 1 runtime implementation; Node.js and Bun are not production runtime dependencies.
-- The production desktop application uses .NET 10 and Avalonia; Qt and Electron are prohibited production dependencies. The retained Qt source is a parity fixture, not a shipped dependency.
+- The production desktop application uses .NET 10 and Avalonia; other desktop UI toolkits and Electron are not supported production dependencies.
 - The trusted OS layer is Rust.
 - Protocol contracts are written as documentation and hand-implemented in each language. Contract-driven code generation is not used.
 
