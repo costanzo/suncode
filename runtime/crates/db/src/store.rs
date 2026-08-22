@@ -1034,13 +1034,13 @@ impl Store {
         let timestamp = now();
         let existing: Option<String> = connection
             .query_row(
-                "SELECT project_id FROM projects WHERE canonical_root=?",
+                "SELECT project_id FROM project WHERE canonical_root=?",
                 [root],
                 |row| row.get(0),
             )
             .optional()?;
         let id = existing.unwrap_or_else(|| Uuid::new_v4().to_string());
-        connection.execute("INSERT INTO projects (project_id,canonical_root,display_name,created_at,updated_at,last_opened_at,archived_at) VALUES (?,?,?,?,?,?,NULL) ON CONFLICT(project_id) DO UPDATE SET display_name=excluded.display_name,updated_at=excluded.updated_at,last_opened_at=excluded.last_opened_at,archived_at=NULL", params![id, root, display_name, timestamp, timestamp, timestamp])?;
+        connection.execute("INSERT INTO project (project_id,canonical_root,display_name,created_at,updated_at,last_opened_at,archived_at) VALUES (?,?,?,?,?,?,NULL) ON CONFLICT(project_id) DO UPDATE SET display_name=excluded.display_name,updated_at=excluded.updated_at,last_opened_at=excluded.last_opened_at,archived_at=NULL", params![id, root, display_name, timestamp, timestamp, timestamp])?;
         self.project_by_id_locked(&connection, &id)
     }
 
@@ -1050,9 +1050,9 @@ impl Store {
             .lock()
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         let sql = if include_archived {
-            "SELECT project_id,canonical_root,display_name,created_at,updated_at,last_opened_at,archived_at FROM projects ORDER BY last_opened_at DESC"
+            "SELECT project_id,canonical_root,display_name,created_at,updated_at,last_opened_at,archived_at FROM project ORDER BY last_opened_at DESC"
         } else {
-            "SELECT project_id,canonical_root,display_name,created_at,updated_at,last_opened_at,archived_at FROM projects WHERE archived_at IS NULL ORDER BY last_opened_at DESC"
+            "SELECT project_id,canonical_root,display_name,created_at,updated_at,last_opened_at,archived_at FROM project WHERE archived_at IS NULL ORDER BY last_opened_at DESC"
         };
         let mut statement = connection.prepare(sql)?;
         let rows = statement.query_map([], project_from_row)?;
@@ -1078,7 +1078,7 @@ impl Store {
             .lock()
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         let exists: bool = connection.query_row(
-            "SELECT EXISTS(SELECT 1 FROM projects WHERE project_id=? AND archived_at IS NULL)",
+            "SELECT EXISTS(SELECT 1 FROM project WHERE project_id=? AND archived_at IS NULL)",
             [project_id],
             |row| row.get(0),
         )?;
@@ -1171,7 +1171,7 @@ impl Store {
         connection: &Connection,
         id: &str,
     ) -> Result<Option<ProjectRecord>, PersistenceError> {
-        connection.query_row("SELECT project_id,canonical_root,display_name,created_at,updated_at,last_opened_at,archived_at FROM projects WHERE project_id=?", [id], project_from_row).optional().map_err(Into::into)
+        connection.query_row("SELECT project_id,canonical_root,display_name,created_at,updated_at,last_opened_at,archived_at FROM project WHERE project_id=?", [id], project_from_row).optional().map_err(Into::into)
     }
     fn session_by_id_locked(
         &self,
@@ -2146,9 +2146,12 @@ mod tests {
         let effective = store
             .settings(Some(&project.project_id), Some(&session_id))
             .unwrap();
-        assert_eq!(effective.len(), 1);
-        assert_eq!(effective[0].value, json!("glm-5.2"));
-        assert_eq!(effective[0].scope, "project");
+        let default_model = effective
+            .iter()
+            .find(|record| record.key == "default_model")
+            .unwrap();
+        assert_eq!(default_model.value, json!("glm-5.2"));
+        assert_eq!(default_model.scope, "project");
 
         store
             .set_setting("session", &session_id, "default_model", &json!("kimi-k3"))
@@ -2156,8 +2159,12 @@ mod tests {
         let effective = store
             .settings(Some(&project.project_id), Some(&session_id))
             .unwrap();
-        assert_eq!(effective[0].value, json!("kimi-k3"));
-        assert_eq!(effective[0].scope, "session");
+        let default_model = effective
+            .iter()
+            .find(|record| record.key == "default_model")
+            .unwrap();
+        assert_eq!(default_model.value, json!("kimi-k3"));
+        assert_eq!(default_model.scope, "session");
 
         let connection = store.connection.lock().unwrap();
         assert_eq!(
@@ -2165,8 +2172,25 @@ mod tests {
                 .query_row("SELECT COUNT(*) FROM configuration", [], |row| row
                     .get::<_, i64>(0),)
                 .unwrap(),
-            3
+            7
         );
+    }
+
+    #[test]
+    fn global_logging_configuration_has_typed_defaults() {
+        let store = Store::open_memory().unwrap();
+        let settings = store.settings(None, None).unwrap();
+        let value = |key: &str| {
+            settings
+                .iter()
+                .find(|record| record.key == key)
+                .map(|record| record.value.clone())
+                .unwrap()
+        };
+        assert_eq!(value("log_level"), json!("INFO"));
+        assert_eq!(value("log_directory"), json!(""));
+        assert_eq!(value("log_max_bytes"), json!(10 * 1024 * 1024));
+        assert_eq!(value("log_retention"), json!(5));
     }
 
     #[test]
@@ -2216,7 +2240,7 @@ mod tests {
                 "llm_model_by_provider_enabled_order_idx",
                 "llm_model_enabled_order_idx",
                 "llm_model_provider_enabled_order_idx",
-                "projects_last_opened_idx",
+                "project_last_opened_idx",
                 "session_call_session_started_idx",
                 "session_call_started_idx",
                 "session_call_turn_idx",
@@ -2270,6 +2294,38 @@ mod tests {
         assert_eq!(
             schema::table_names(&connection).unwrap(),
             vec!["legacy_state".to_string()]
+        );
+    }
+
+    #[test]
+    fn former_projects_table_is_rejected_without_being_renamed() {
+        let directory = tempfile::tempdir().unwrap();
+        let database = directory.path().join("state.db");
+        let connection = Connection::open(&database).unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE projects (
+                    project_id TEXT PRIMARY KEY,
+                    canonical_root TEXT NOT NULL,
+                    display_name TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    last_opened_at TEXT NOT NULL,
+                    archived_at TEXT
+                );",
+            )
+            .unwrap();
+        drop(connection);
+
+        let error = Store::open(&database).err().unwrap();
+        assert!(error
+            .to_string()
+            .contains("do not match the current schema"));
+
+        let connection = Connection::open(&database).unwrap();
+        assert_eq!(
+            schema::table_names(&connection).unwrap(),
+            vec!["projects".to_string()]
         );
     }
 

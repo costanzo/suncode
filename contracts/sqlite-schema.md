@@ -6,7 +6,7 @@ The Rust `suncode-db` package is the only database owner. The schema is fresh-sc
 
 There are 13 application tables:
 
-`approval_request`, `audit_record`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `projects`, `session`, `session_call`, `session_message`, `session_tool_use`, and `session_turn`.
+`approval_request`, `audit_record`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `project`, `session`, `session_call`, `session_message`, `session_tool_use`, and `session_turn`.
 
 ## Conventions
 
@@ -15,15 +15,17 @@ There are 13 application tables:
 - JSON columns must contain valid JSON. Queryable identity, state, ordering, and ownership remain relational columns.
 - Foreign keys are enabled on every connection. Projects and sessions are archived rather than normally deleted.
 
-## Projects And Settings
+## Project And Settings
 
-### `projects`
+### `project`
 
 One row per opened local directory tree: `project_id` primary key, unique non-empty `canonical_root`, non-empty `display_name`, lifecycle timestamps, and nullable `archived_at`.
 
 ### `configuration`
 
-Unified key/value configuration for `global`, `project`, and `session` scopes. Global rows have no owner ID; project rows reference `projects`; session rows reference `session`. A CHECK constraint enforces the exact owner shape for each scope, and partial unique indexes enforce one value per key at each scope. Effective reads apply `global < project < session` precedence. The initial project-aware key is `default_model`, stored as a JSON string containing a model ID.
+Unified key/value configuration for `global`, `project`, and `session` scopes. Global rows have no owner ID; project rows reference `project`; session rows reference `session`. A CHECK constraint enforces the exact owner shape for each scope, and partial unique indexes enforce one value per key at each scope. Effective reads apply `global < project < session` precedence. The project-aware `default_model` key is stored as a JSON string containing a model ID.
+
+Fresh databases also seed four global logging settings: `log_level` (`"INFO"`), `log_directory` (`""`), `log_max_bytes` (`10485760`), and `log_retention` (`5`). An empty log directory means `<data directory>/logs`. Logging settings are global-only. The SDK accepts `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `OFF`; a directory string; a maximum size of at least 1024 bytes; and a retention count from 0 through 100.
 
 ## Sessions
 

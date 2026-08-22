@@ -8,7 +8,9 @@ The normative Phase 1 physical table definitions, constraints, and indexes are i
 
 Configuration is stored in one `configuration` table across `global`, `project`, and `session` scopes. Effective reads apply global, project, then session precedence.
 
-SunCode currently has one schema and no database migration or version metadata. Initialization applies the ordered schema and data manifests transactionally. Reopening the current schema is idempotent; a database with an unexpected application table is rejected without conversion.
+Logging policy is durable global configuration rather than process-environment configuration. `log_level`, `log_directory`, `log_max_bytes`, and `log_retention` configure both production loggers; the Avalonia client and Rust runtime write separate `desktop.log` and `runtime.log` files. The database and data directory must still be located before configuration can be read, so data/database path inputs remain bootstrap configuration outside SQLite.
+
+SunCode currently has one schema and no database migration or version metadata. Initialization applies the ordered schema and data manifests transactionally. Reopening the current schema is idempotent; a database with an unexpected application table is rejected without conversion. The current project identity table is singular `project`; a database containing the former `projects` table is therefore incompatible and is not renamed automatically.
 
 ## Streams
 

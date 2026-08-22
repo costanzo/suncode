@@ -2,7 +2,7 @@ use rusqlite::Connection;
 
 pub(super) const SCRIPTS: &[&str] = &[
     include_str!("audit_record.sql"),
-    include_str!("projects.sql"),
+    include_str!("project.sql"),
     include_str!("session.sql"),
     include_str!("configuration.sql"),
     include_str!("session_turn.sql"),
@@ -24,7 +24,7 @@ pub(super) const TABLE_NAMES: &[&str] = &[
     "configuration",
     "llm_model",
     "llm_model_provider",
-    "projects",
+    "project",
     "session",
     "session_call",
     "session_message",

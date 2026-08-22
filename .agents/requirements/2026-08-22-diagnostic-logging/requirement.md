@@ -17,12 +17,12 @@ Session switching needs comparable diagnostics at the Avalonia and Rust boundari
 
 ## Requirements
 
-- Support `TRACE`, `DEBUG`, `INFO`, `WARN`, and `ERROR`, with `SUNCODE_LOG_LEVEL` as the minimum-level filter.
-- Use `SUNCODE_LOG_DIRECTORY` when set; otherwise write under the runtime data directory's `logs` folder.
+- Support `TRACE`, `DEBUG`, `INFO`, `WARN`, and `ERROR`, with the persisted global `log_level` setting as the minimum-level filter.
+- Use persisted global `log_directory`; an empty value writes under the runtime data directory's `logs` folder.
 - Write Avalonia records to `desktop.log` and Rust records to `runtime.log`.
 - Include an RFC 3339 timestamp, level, process/thread context, component, and bounded diagnostic fields.
 - Fall back to stderr if the log directory or file cannot be opened.
-- Roll files when they exceed `SUNCODE_LOG_MAX_BYTES` (default 10 MiB) and keep at most `SUNCODE_LOG_RETENTION` backups (default 5).
+- Roll files when they exceed persisted `log_max_bytes` (default 10 MiB) and keep at most `log_retention` backups (default 5).
 
 ## Edge cases
 

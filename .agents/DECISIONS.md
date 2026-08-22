@@ -2,6 +2,16 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260822-persisted-logging-and-project-table
+
+- Date: 2026-08-22
+- Status: Accepted
+- Supersedes: the `projects` naming conclusion in ADR-20260820-project-settings and the environment-owned logging configuration in `.agents/requirements/2026-08-22-diagnostic-logging/`
+- Context: Desktop and runtime loggers shared four process environment variables even though durable application configuration is Rust-owned in SQLite. The project identity table also retained a plural name while the rest of the current domain schema uses singular table names.
+- Decision: Seed `log_level`, `log_directory`, `log_max_bytes`, and `log_retention` as validated global rows in `configuration`. Rust loads them after opening SQLite and reconfigures immediately after SDK writes; Avalonia reads them through the SDK and writes a separate file. Keep only data/database location as external bootstrap inputs because SQLite cannot locate itself. Rename the physical `projects` table and its index to singular `project` and update all foreign keys and queries.
+- Consequences: Logging policy persists across launches without `SUNCODE_LOG_*` variables. The runtime writes `runtime.log`, Avalonia writes `desktop.log`, and an empty directory selects `<data directory>/logs`. Because Phase 1 has no migration runner, a database containing `projects` is incompatible and is rejected without mutation; only fresh databases receive `project`.
+- Details: `.agents/requirements/2026-08-22-persisted-logging-project-table/`, `contracts/sqlite-schema.md`, `contracts/persistence.md`
+
 ## ADR-20260821-cross-platform-process-execution
 
 - Date: 2026-08-21

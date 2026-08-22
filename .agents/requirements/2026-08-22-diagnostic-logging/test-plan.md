@@ -19,9 +19,9 @@ Logger initialization, level filtering, file separation, and session-switch diag
 
 ## Manual checks
 
-- Run with `SUNCODE_LOG_LEVEL=TRACE` and `SUNCODE_LOG_DIRECTORY=/tmp/suncode-logs`.
+- Set global `log_level` to `TRACE` and `log_directory` to a temporary directory through the settings SDK.
 - Switch sessions and verify `desktop.log` and `runtime.log` contain separate records.
-- Set `SUNCODE_LOG_MAX_BYTES=1024` and `SUNCODE_LOG_RETENTION=2` to verify `.1`/`.2` rollover.
+- Set global `log_max_bytes` to `1024` and `log_retention` to `2` to verify `.1`/`.2` rollover.
 
 ## Commands and results
 

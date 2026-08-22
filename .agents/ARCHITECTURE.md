@@ -93,12 +93,12 @@ Rust is the only database owner. Avalonia, providers, and future extensions neve
 SQLite keeps separate durable concerns:
 
 - immutable audit records for authority decisions and outcomes
-- normalized rows for projects, sessions, turns, model calls, tool uses, messages, approvals, and checkpoint manifests
+- normalized rows in `project`, `session`, turn, model-call, tool-use, message, approval, and checkpoint tables
 - ephemeral live streaming deltas that are broadcast to connected clients but not retained
 - durable turn admission and approval continuation
 - scoped settings and plaintext provider-key records
 
-The Phase 1 database has one current 13-table schema and no schema versions or migration runner. The `suncode-db` package applies an ordered manifest of table-owned SQL files and an explicit provider/model data manifest in one initialization transaction. It accepts only the exact current application table set; an incompatible database is rejected without conversion. `session` is the conversation root; `session_turn` is the single turn/submission/recovery record, `session_call` stores each LLM request plus independently nullable provider HTTP request and response-object identifiers, `session_tool_use` exclusively stores tool requests/results and state, and `session_message` stores user, assistant, and thinking messages. Provider context derives transient tool-role messages from succeeded tool-use rows. `configuration` owns global/project/session key-value overlays. Human-readable messages are ordered by timestamp. Runtime event payloads are not duplicated in SQLite; SDK snapshots read normalized rows and live subscribers resync after lag.
+The Phase 1 database has one current 13-table schema and no schema versions or migration runner. The `suncode-db` package applies an ordered manifest of table-owned SQL files and an explicit provider/model data manifest in one initialization transaction. It accepts only the exact current application table set; an incompatible database is rejected without conversion. `project` is the project identity table. `session` is the conversation root; `session_turn` is the single turn/submission/recovery record, `session_call` stores each LLM request plus independently nullable provider HTTP request and response-object identifiers, `session_tool_use` exclusively stores tool requests/results and state, and `session_message` stores user, assistant, and thinking messages. Provider context derives transient tool-role messages from succeeded tool-use rows. `configuration` owns global/project/session key-value overlays, including global logging policy. Human-readable messages are ordered by timestamp. Runtime event payloads are not duplicated in SQLite; SDK snapshots read normalized rows and live subscribers resync after lag.
 
 ## 8. Authority Model
 

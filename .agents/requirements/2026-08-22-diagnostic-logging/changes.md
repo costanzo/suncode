@@ -13,9 +13,8 @@
 
 ## Configuration and persistence
 
-- Added the shared `SUNCODE_LOG_LEVEL` and `SUNCODE_LOG_DIRECTORY` environment variables.
-- Added `SUNCODE_LOG_MAX_BYTES` and `SUNCODE_LOG_RETENTION` for log growth control.
-- No SQLite or durable product state changes.
+- Added shared global `log_level`, `log_directory`, `log_max_bytes`, and `log_retention` rows in `configuration`.
+- Rust loads and validates the settings; Avalonia consumes them through the SDK.
 
 ## Tests
 

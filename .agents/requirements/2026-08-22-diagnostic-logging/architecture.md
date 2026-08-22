@@ -10,11 +10,11 @@ Add one small logger module per host language. Each module owns level parsing, t
 
 ## Boundaries and dependencies
 
-The desktop logger is an Avalonia infrastructure utility. The Rust logger is a runtime-core utility. Neither is part of the SDK protocol or persistence layer.
+The desktop logger is an Avalonia infrastructure utility. The Rust logger is a runtime-core utility. Rust owns durable logging settings in `configuration`; Avalonia obtains them only through the SDK.
 
 ## Data and control flow
 
-The runtime initializes its logger after loading `Config`; the desktop initializes before Avalonia starts. Calls below the configured minimum level are discarded. Before an append that would exceed the configured size, the active file is renamed through the numbered retention set and a new active file is opened. Accepted records are appended to the component-specific file and flushed to stderr.
+The runtime opens SQLite, loads the global logging rows, and configures its logger before normal runtime diagnostics. The desktop begins with stderr available, then reads the same effective settings through the SDK and configures its file logger. Calls below the configured minimum level are discarded. Before an append that would exceed the configured size, the active file is renamed through the numbered retention set and a new active file is opened. Accepted records are appended to the component-specific file and flushed to stderr.
 
 ## Security and failure handling
 
@@ -22,11 +22,11 @@ Call sites must log identifiers, states, counts, and timings only. Credentials a
 
 ## Compatibility and migration
 
-No protocol, database, or ABI change is introduced. Existing diagnostic call sites use the new level-aware utility.
+The existing settings SDK shape carries logging values, so no ABI method is added. Fresh databases seed the four global rows. Data/database location remains external bootstrap configuration because the runtime must locate SQLite before it can read the rows.
 
 ## Risks and rollback
 
-Synchronous flushes add small diagnostic overhead and can be disabled with `SUNCODE_LOG_LEVEL=OFF`. Removing the logger modules restores the prior stderr-only behavior without data migration.
+Synchronous flushes add small diagnostic overhead and can be disabled with `log_level=OFF`. Removing the logger modules would leave the persisted rows unused.
 
 ## Open questions
 

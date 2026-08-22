@@ -16,6 +16,7 @@ use std::{
     ffi::{CStr, CString},
     os::raw::{c_char, c_void},
     panic::{catch_unwind, AssertUnwindSafe},
+    path::{Path, PathBuf},
     ptr,
     sync::{Arc, Mutex},
     thread::JoinHandle,
@@ -341,6 +342,7 @@ where
     F: FnOnce(&mut ModelProviderRegistry) -> Result<(), RegistrationError>,
 {
     let store = Store::open(&config.database_path).map_err(SdkError::from)?;
+    configure_logging(&store, &config.data_dir)?;
     let operations = Arc::new(
         suncode_tool::Operations::new(config.data_dir.join("operations"))
             .map_err(|error| SdkError::unavailable(error.to_string()))?,
@@ -371,8 +373,81 @@ where
     Ok(state)
 }
 
+fn configure_logging(store: &Store, data_dir: &Path) -> SdkResult<()> {
+    let settings = store.settings(None, None)?;
+    let value = |key: &str| {
+        settings
+            .iter()
+            .find(|record| record.key == key)
+            .map(|record| &record.value)
+    };
+    let level = value("log_level").and_then(Value::as_str).unwrap_or("INFO");
+    let directory = value("log_directory").and_then(Value::as_str);
+    let max_bytes = value("log_max_bytes")
+        .and_then(Value::as_u64)
+        .unwrap_or(10 * 1024 * 1024);
+    let retention = value("log_retention")
+        .and_then(Value::as_u64)
+        .and_then(|value| usize::try_from(value).ok())
+        .unwrap_or(5);
+    logging::configure(
+        data_dir,
+        logging::Config {
+            level,
+            directory,
+            max_bytes,
+            retention,
+        },
+    );
+    Ok(())
+}
+
+fn validate_logging_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
+    let is_logging_setting = matches!(
+        key,
+        "log_level" | "log_directory" | "log_max_bytes" | "log_retention"
+    );
+    if !is_logging_setting {
+        return Ok(());
+    }
+    if scope != "global" {
+        return Err(SdkError::invalid(format!("{key} is a global-only setting")));
+    }
+    match key {
+        "log_level" => {
+            let Some(level) = value.as_str() else {
+                return Err(SdkError::invalid("log_level must be a string"));
+            };
+            if !matches!(
+                level.trim().to_ascii_uppercase().as_str(),
+                "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR" | "OFF"
+            ) {
+                return Err(SdkError::invalid(
+                    "log_level must be TRACE, DEBUG, INFO, WARN, ERROR, or OFF",
+                ));
+            }
+        }
+        "log_directory" if !value.is_string() => {
+            return Err(SdkError::invalid("log_directory must be a string"));
+        }
+        "log_max_bytes" if value.as_u64().is_none_or(|size| size < 1024) => {
+            return Err(SdkError::invalid(
+                "log_max_bytes must be an integer greater than or equal to 1024",
+            ));
+        }
+        "log_retention" if value.as_u64().is_none_or(|count| count > 100) => {
+            return Err(SdkError::invalid(
+                "log_retention must be an integer between 0 and 100",
+            ));
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
 pub struct RuntimeSdk {
     _lock: Option<RuntimeLock>,
+    data_dir: PathBuf,
     runtime: tokio::runtime::Runtime,
     state: RuntimeState,
 }
@@ -388,12 +463,6 @@ impl RuntimeSdk {
         F: FnOnce(&mut ModelProviderRegistry) -> Result<(), RegistrationError>,
     {
         let config = Config::load().map_err(SdkError::invalid)?;
-        logging::initialize(&config.data_dir);
-        logging::write(
-            Level::Info,
-            "runtime",
-            format!("open data_dir={:?}", config.data_dir),
-        );
         let lock = RuntimeLock::acquire(&config.data_dir).map_err(|error| {
             if error.kind() == std::io::ErrorKind::AlreadyExists {
                 SdkError::new("runtime_already_active", error.to_string())
@@ -409,8 +478,10 @@ impl RuntimeSdk {
                 SdkError::unavailable(format!("tokio runtime unavailable: {error}"))
             })?;
         let state = runtime.block_on(build_state(&config, configure_providers))?;
+        logging::write(Level::Info, "runtime", "open completed");
         Ok(Self {
             _lock: Some(lock),
+            data_dir: config.data_dir,
             runtime,
             state,
         })
@@ -519,6 +590,7 @@ impl RuntimeSdk {
         key: &str,
         value: &Value,
     ) -> SdkResult<SettingUpdate> {
+        validate_logging_setting(scope, key, value)?;
         let scope_id = match scope {
             "global" => "global",
             "project" => project_id.ok_or_else(|| SdkError::invalid("project_id is required"))?,
@@ -530,6 +602,14 @@ impl RuntimeSdk {
             }
         };
         self.state.store.set_setting(scope, scope_id, key, value)?;
+        if scope == "global"
+            && matches!(
+                key,
+                "log_level" | "log_directory" | "log_max_bytes" | "log_retention"
+            )
+        {
+            configure_logging(&self.state.store, &self.data_dir)?;
+        }
         Ok(SettingUpdate {
             saved: true,
             key: key.to_string(),
@@ -1027,6 +1107,7 @@ impl RuntimeSdk {
             .unwrap();
         Self {
             _lock: None,
+            data_dir: PathBuf::new(),
             runtime,
             state,
         }
@@ -1694,6 +1775,20 @@ mod tests {
 
         let session = sdk.create_session(&project.project_id, None, None).unwrap();
         assert_eq!(session.model_id.as_deref(), Some("gpt-5.5"));
+    }
+
+    #[test]
+    fn logging_settings_are_global_and_typed() {
+        assert!(validate_logging_setting("global", "log_level", &json!("TRACE")).is_ok());
+        assert!(validate_logging_setting("global", "log_directory", &json!("")).is_ok());
+        assert!(validate_logging_setting("global", "log_max_bytes", &json!(1024)).is_ok());
+        assert!(validate_logging_setting("global", "log_retention", &json!(0)).is_ok());
+
+        assert!(validate_logging_setting("project", "log_level", &json!("INFO")).is_err());
+        assert!(validate_logging_setting("global", "log_level", &json!("VERBOSE")).is_err());
+        assert!(validate_logging_setting("global", "log_directory", &json!(7)).is_err());
+        assert!(validate_logging_setting("global", "log_max_bytes", &json!(1023)).is_err());
+        assert!(validate_logging_setting("global", "log_retention", &json!(101)).is_err());
     }
 
     #[test]

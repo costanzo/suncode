@@ -985,10 +985,33 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     {
         if (_sdk is null) return;
         var result = await _sdk.ListSettingsAsync();
-        foreach (var item in result.Array("settings").OfType<JsonObject>())
+        var settings = result.Array("settings").OfType<JsonObject>().ToArray();
+        string StringSetting(string key, string fallback)
+        {
+            var node = settings.FirstOrDefault(item => item.String("key") == key)?["value"];
+            return node is JsonValue value && value.TryGetValue<string>(out var parsed)
+                ? parsed
+                : fallback;
+        }
+        long LongSetting(string key, long fallback)
+        {
+            var node = settings.FirstOrDefault(item => item.String("key") == key)?["value"];
+            return node is JsonValue value && value.TryGetValue<long>(out var parsed)
+                ? parsed
+                : fallback;
+        }
+        var retention = LongSetting("log_retention", 5);
+        DiagnosticLog.Configure(
+            StringSetting("log_level", "INFO"),
+            StringSetting("log_directory", string.Empty),
+            LongSetting("log_max_bytes", 10 * 1024 * 1024),
+            retention is >= 0 and <= 100 ? (int)retention : 5);
+
+        foreach (var item in settings)
         {
             var key = item.String("key");
-            var value = item["value"]?.GetValue<string>() ?? string.Empty;
+            if (item["value"] is not JsonValue settingValue
+                || !settingValue.TryGetValue<string>(out var value)) continue;
             if (key == "theme_mode" && value is "dark" or "light") SetTheme(value);
             if (key == "default_model") SelectedModel = Models.FirstOrDefault(model => model.Id == value) ?? SelectedModel;
         }

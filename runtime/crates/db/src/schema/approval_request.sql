@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS approval_request (
     approval_id TEXT PRIMARY KEY CHECK(length(approval_id) > 0),
-    project_id TEXT REFERENCES projects(project_id) ON DELETE RESTRICT,
+    project_id TEXT REFERENCES project(project_id) ON DELETE RESTRICT,
     session_id TEXT NOT NULL REFERENCES session(session_id) ON DELETE CASCADE,
     turn_id TEXT NOT NULL,
     tool_call_id TEXT NOT NULL,

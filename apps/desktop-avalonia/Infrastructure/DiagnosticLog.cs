@@ -31,30 +31,31 @@ internal static class DiagnosticLog
         {
             if (_initialized) return;
             _initialized = true;
-            _minimumLevel = ParseLevel(Environment.GetEnvironmentVariable("SUNCODE_LOG_LEVEL"));
-            _maxBytes = ParseLong(Environment.GetEnvironmentVariable("SUNCODE_LOG_MAX_BYTES"), DefaultMaxBytes, 1024);
-            _retention = ParseInt(Environment.GetEnvironmentVariable("SUNCODE_LOG_RETENTION"), DefaultRetention, 0, 100);
+        }
+    }
+
+    public static void Configure(string level, string? directory, long maxBytes, int retention)
+    {
+        Initialize();
+        lock (Gate)
+        {
+            _minimumLevel = ParseLevel(level);
+            _maxBytes = maxBytes >= 1024 ? maxBytes : DefaultMaxBytes;
+            _retention = retention is >= 0 and <= 100 ? retention : DefaultRetention;
+            _file?.Dispose();
+            _file = null;
             try
             {
-                var directory = Environment.GetEnvironmentVariable("SUNCODE_LOG_DIRECTORY");
-                if (string.IsNullOrWhiteSpace(directory))
-                {
-                    directory = Environment.GetEnvironmentVariable("SUNCODE_DATA_DIRECTORY");
-                }
-                if (string.IsNullOrWhiteSpace(directory))
-                {
-                    directory = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".suncode");
-                }
-
-                var logDirectory = Path.Combine(directory, "logs");
+                var logDirectory = string.IsNullOrWhiteSpace(directory)
+                    ? DefaultLogDirectory()
+                    : directory;
                 Directory.CreateDirectory(logDirectory);
                 _filePath = Path.Combine(logDirectory, "desktop.log");
                 _file = OpenFile(_filePath);
             }
             catch (Exception exception)
             {
-                Console.Error.WriteLine($"[suncode][logger][ERROR] file_init_failed type={exception.GetType().Name} message={exception.Message}");
+                Console.Error.WriteLine($"[suncode][logger][ERROR] file_configure_failed type={exception.GetType().Name} message={exception.Message}");
             }
         }
     }
@@ -104,11 +105,16 @@ internal static class DiagnosticLog
         _ => DiagnosticLogLevel.Info
     };
 
-    private static long ParseLong(string? value, long fallback, long minimum) =>
-        long.TryParse(value, out var parsed) && parsed >= minimum ? parsed : fallback;
-
-    private static int ParseInt(string? value, int fallback, int minimum, int maximum) =>
-        int.TryParse(value, out var parsed) && parsed >= minimum && parsed <= maximum ? parsed : fallback;
+    private static string DefaultLogDirectory()
+    {
+        var dataDirectory = Environment.GetEnvironmentVariable("SUNCODE_DATA_DIRECTORY");
+        if (string.IsNullOrWhiteSpace(dataDirectory))
+        {
+            dataDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".suncode");
+        }
+        return Path.Combine(dataDirectory, "logs");
+    }
 
     private static StreamWriter OpenFile(string path) => new(new FileStream(
         path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite), Encoding.UTF8)

@@ -1,6 +1,5 @@
 use chrono::{Local, SecondsFormat};
 use std::{
-    env,
     fmt::Display,
     fs::{self, File, OpenOptions},
     io::{self, Write},
@@ -43,32 +42,50 @@ impl Level {
     }
 }
 
-struct Logger {
+struct LoggerState {
     minimum_level: Level,
     file_path: PathBuf,
     max_bytes: u64,
     retention: usize,
-    file: Mutex<Option<File>>,
+    file: Option<File>,
+}
+
+struct Logger {
+    state: Mutex<LoggerState>,
 }
 
 static LOGGER: OnceLock<Arc<Logger>> = OnceLock::new();
 
-pub(crate) fn initialize(data_dir: &Path) {
-    let _ = LOGGER.get_or_init(|| {
-        let minimum_level = Level::parse(env::var("SUNCODE_LOG_LEVEL").ok().as_deref());
-        let directory = env::var_os("SUNCODE_LOG_DIRECTORY")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| data_dir.join("logs"));
-        let file_path = directory.join("runtime.log");
-        let file = open_log_file(&file_path);
-        Arc::new(Logger {
-            minimum_level,
-            file_path,
-            max_bytes: parse_u64("SUNCODE_LOG_MAX_BYTES", 10 * 1024 * 1024, 1024),
-            retention: parse_usize("SUNCODE_LOG_RETENTION", 5, 0, 100),
-            file: Mutex::new(file),
-        })
-    });
+pub(crate) struct Config<'a> {
+    pub level: &'a str,
+    pub directory: Option<&'a str>,
+    pub max_bytes: u64,
+    pub retention: usize,
+}
+
+pub(crate) fn configure(data_dir: &Path, config: Config<'_>) {
+    let directory = config
+        .directory
+        .filter(|value| !value.trim().is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| data_dir.join("logs"));
+    let file_path = directory.join("runtime.log");
+    let state = LoggerState {
+        minimum_level: Level::parse(Some(config.level)),
+        file: open_log_file(&file_path),
+        file_path,
+        max_bytes: config.max_bytes.max(1024),
+        retention: config.retention.min(100),
+    };
+    if let Some(logger) = LOGGER.get() {
+        if let Ok(mut current) = logger.state.lock() {
+            *current = state;
+        }
+    } else {
+        let _ = LOGGER.set(Arc::new(Logger {
+            state: Mutex::new(state),
+        }));
+    }
 }
 
 pub(crate) fn write(level: Level, component: &str, message: impl Display) {
@@ -76,7 +93,10 @@ pub(crate) fn write(level: Level, component: &str, message: impl Display) {
         eprintln!("[suncode][{}][{}] {}", level.name(), component, message);
         return;
     };
-    if level < logger.minimum_level || logger.minimum_level == Level::Off {
+    let Ok(mut state) = logger.state.lock() else {
+        return;
+    };
+    if level < state.minimum_level || state.minimum_level == Level::Off {
         return;
     }
 
@@ -89,42 +109,24 @@ pub(crate) fn write(level: Level, component: &str, message: impl Display) {
         component,
         message
     );
-    if let Ok(mut file) = logger.file.lock() {
-        let file_path = logger.file_path.clone();
-        let max_bytes = logger.max_bytes;
-        let retention = logger.retention;
-        if file
-            .as_ref()
-            .and_then(|value| value.metadata().ok())
-            .is_some_and(|metadata| metadata.len() + line.len() as u64 + 1 > max_bytes)
-        {
-            if let Err(error) = rotate_log(&file_path, &mut file, retention) {
-                eprintln!("[suncode][ERROR][logger] file_rotate_failed error={error}");
-            }
+    let should_rotate = state
+        .file
+        .as_ref()
+        .and_then(|value| value.metadata().ok())
+        .is_some_and(|metadata| metadata.len() + line.len() as u64 + 1 > state.max_bytes);
+    if should_rotate {
+        let file_path = state.file_path.clone();
+        let retention = state.retention;
+        if let Err(error) = rotate_log(&file_path, &mut state.file, retention) {
+            eprintln!("[suncode][ERROR][logger] file_rotate_failed error={error}");
         }
-        if let Some(file) = file.as_mut() {
-            if writeln!(file, "{line}").and_then(|_| file.flush()).is_err() {
-                eprintln!("[suncode][ERROR][logger] file_write_failed");
-            }
+    }
+    if let Some(file) = state.file.as_mut() {
+        if writeln!(file, "{line}").and_then(|_| file.flush()).is_err() {
+            eprintln!("[suncode][ERROR][logger] file_write_failed");
         }
     }
     eprintln!("{line}");
-}
-
-fn parse_u64(name: &str, fallback: u64, minimum: u64) -> u64 {
-    env::var(name)
-        .ok()
-        .and_then(|value| value.parse().ok())
-        .filter(|value: &u64| *value >= minimum)
-        .unwrap_or(fallback)
-}
-
-fn parse_usize(name: &str, fallback: usize, minimum: usize, maximum: usize) -> usize {
-    env::var(name)
-        .ok()
-        .and_then(|value| value.parse().ok())
-        .filter(|value: &usize| *value >= minimum && *value <= maximum)
-        .unwrap_or(fallback)
 }
 
 fn rotate_log(path: &Path, file: &mut Option<File>, retention: usize) -> io::Result<()> {
