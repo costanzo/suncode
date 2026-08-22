@@ -52,12 +52,11 @@
               <Border IsVisible="{Binding IsUser}" HorizontalAlignment="Right" MaxWidth="620" Padding="14" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                 <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" LineHeight="21" />
               </Border>
-              <StackPanel IsVisible="{Binding !IsUser}" MaxWidth="720" HorizontalAlignment="Left" Spacing="6">
+              <StackPanel IsVisible="{Binding !IsUser}" MaxWidth="720" HorizontalAlignment="Left" Spacing="4">
                 <Grid>
-                  <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" LineHeight="21" IsVisible="{Binding Streaming}" />
-                  <controls:MarkdownText Markdown="{Binding Text}" IsVisible="{Binding !Streaming}" HorizontalAlignment="Stretch" />
+                  <controls:MarkdownText Markdown="{Binding Text}" HorizontalAlignment="Stretch" />
                 </Grid>
-                <Button Classes="quiet" Width="26" Height="26" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response">
+                <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response">
                   <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
                 </Button>
               </StackPanel>

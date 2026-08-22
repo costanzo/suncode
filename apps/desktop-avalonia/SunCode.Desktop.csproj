@@ -22,7 +22,7 @@
     <PackageReference Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.15" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
-    <PackageReference Include="ClassIsland.Markdown.Avalonia.Tight" Version="12.0.0" />
+    <PackageReference Include="LiveMarkdown.Avalonia" Version="2.3.2" />
   </ItemGroup>
 
   <ItemGroup>

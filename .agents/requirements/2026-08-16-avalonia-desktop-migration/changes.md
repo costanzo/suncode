@@ -32,9 +32,9 @@
 - Reduced the ChatArea composer model selector and turn action buttons to compact 24px controls with roughly half their previous visual area.
 - Replaced the disabled composer shown without a selected session with a centered empty state, while keeping the message list and composer available whenever a session is selected.
 - Reduced the composer TextBox's reserved bottom action space from 40px to 30px, returning 10px of vertical room to message input without changing the controls.
-- Moved the model and turn action controls into the composer surface, added tunnel-routed Enter submission with Shift+Enter newline behavior, and rendered completed assistant responses as Markdown while retaining plain text during streaming.
+- Moved the model and turn action controls into the composer surface, added tunnel-routed Enter submission with Shift+Enter newline behavior, and rendered assistant responses as Markdown during both streaming and completed states.
 - Added a publish-time macOS `.app` bundle with `Info.plist` and the desktop icon resource.
-- Upgraded the core Avalonia framework, desktop backend, Fluent theme, and Inter font packages to `12.1.1`, migrated SVG rendering to `Svg.Controls.Skia.Avalonia 12.0.0.15`, and migrated Markdown rendering to the Avalonia 12-compatible `ClassIsland.Markdown.Avalonia.Tight 12.0.0` package.
+- Upgraded the core Avalonia framework, desktop backend, Fluent theme, and Inter font packages to `12.1.1`, migrated SVG rendering to `Svg.Controls.Skia.Avalonia 12.0.0.15`, and migrated Markdown rendering to the Avalonia 12-compatible `LiveMarkdown.Avalonia 2.3.2` package.
 
 ## Contracts and generated artifacts
 

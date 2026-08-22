@@ -30,7 +30,7 @@ Verify the Avalonia build, C ABI loading, view-model projections, and unchanged 
 - `cargo fmt --manifest-path runtime/Cargo.toml --all -- --check`: passed.
 - `cargo test --manifest-path runtime/Cargo.toml --workspace`: passed, 43 tests.
 - `dotnet restore apps/desktop-avalonia/SunCode.Desktop.csproj`: passed without package downgrade or compatibility warnings; all Avalonia runtime assemblies resolved to `12.1.1`.
-- Avalonia 12 extension compatibility: removed the Avalonia 11 `Avalonia.Svg.Skia` and `Markdown.Avalonia.Tight` binaries after the SVG renderer raised a runtime `TypeLoadException`; restore now resolves `Svg.Controls.Skia.Avalonia 12.0.0.15` and `ClassIsland.Markdown.Avalonia.Tight 12.0.0`.
+- Avalonia 12 extension compatibility: removed the Avalonia 11 `Avalonia.Svg.Skia` and `Markdown.Avalonia.Tight` binaries after the SVG renderer raised a runtime `TypeLoadException`; restore now resolves `Svg.Controls.Skia.Avalonia 12.0.0.15` and `LiveMarkdown.Avalonia 2.3.2`.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore`: passed on Avalonia `12.1.1` with 0 warnings and 0 errors.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj -c Release --no-restore`: passed on Avalonia `12.1.1` with an optimized Rust `cdylib`, 0 warnings, and 0 errors.
 - `dotnet format apps/desktop-avalonia/SunCode.Desktop.csproj --verify-no-changes --no-restore`: passed.
