@@ -12,6 +12,10 @@ namespace SunCode.Desktop.Views.Chat;
 public sealed partial class ChatArea : UserControl
 {
     private bool _scrollPending;
+    private bool _forceScrollPending;
+    private bool _scrollingToEnd;
+    private bool _followTail = true;
+    private object? _messageSource;
 
     public ChatArea()
     {
@@ -22,14 +26,52 @@ public sealed partial class ChatArea : UserControl
 
     internal void ScrollConversationToEnd()
     {
+        var sourceChanged = !ReferenceEquals(_messageSource, ViewModel.Messages);
+        if (sourceChanged)
+        {
+            _messageSource = ViewModel.Messages;
+            _followTail = true;
+            _forceScrollPending = true;
+        }
+        if (!_followTail && !_forceScrollPending) return;
+        QueueScrollToEnd();
+    }
+
+    private void QueueScrollToEnd()
+    {
         if (_scrollPending) return;
         _scrollPending = true;
         Dispatcher.UIThread.Post(() =>
         {
             _scrollPending = false;
-            if (ViewModel.Messages.Count > 0) ConversationList.ScrollIntoView(ViewModel.Messages.Count - 1);
+            var force = _forceScrollPending;
+            _forceScrollPending = false;
+            if ((!force && !_followTail) || ViewModel.Messages.Count == 0) return;
+
+            _scrollingToEnd = true;
+            ConversationScroller.ScrollToEnd();
+            _followTail = true;
+            Dispatcher.UIThread.Post(
+                () => _scrollingToEnd = false,
+                DispatcherPriority.Background);
         }, DispatcherPriority.Background);
     }
+
+    private void ConversationScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (!_scrollingToEnd && Math.Abs(e.OffsetDelta.Y) > 0.1)
+            _followTail = IsNearConversationEnd();
+
+        // Markdown content can gain height over several layout passes. Continue following only
+        // when the user was already at the end; never steal their position while reading history.
+        if (_followTail && e.ExtentDelta.Y > 0.1)
+            QueueScrollToEnd();
+    }
+
+    private bool IsNearConversationEnd() =>
+        ConversationScroller.Extent.Height
+        - ConversationScroller.Viewport.Height
+        - ConversationScroller.Offset.Y <= 32;
 
     private async void RetrySession(object? sender, RoutedEventArgs e)
     {

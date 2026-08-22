@@ -7,6 +7,7 @@
 - Retained provider-reported cache-read and cache-write token usage in normalized OpenAI-compatible call records.
 - Rebuilt the Avalonia trace drawer as a turn/call tree with a call inspector for messages, tools, request/response data, timing, and usage metrics.
 - Added per-turn elapsed time to the trace tree, using the turn start/completion timestamps and a created-time fallback for older records.
+- Extended the tree to a third content level under each call. Call expansion lazily loads and deduplicates user, assistant, thinking, and tool-use entries; selecting an entry shows its focused content or request/result while preserving call metrics.
 
 ## Contracts and generated artifacts
 

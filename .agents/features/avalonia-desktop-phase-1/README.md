@@ -20,7 +20,7 @@ The Rust crate emits a `cdylib`; the desktop build invokes Cargo and copies the 
 - approval allow-once/deny decisions
 - touched paths, turn checkpoints, conflict-aware undo, and diagnostics
 - runtime-owned Git status and structured per-file diff review
-- a resizable session trace drawer with an expandable turn/call tree and call-level message, tool, request/response, timing, token, and cache diagnostics
+- a resizable session trace drawer with an expandable turn/call/content tree; each call lazily exposes user, assistant, thinking, and tool-use entries alongside call-level request/response, timing, token, and cache diagnostics
 - provider credential status/store/remove, default model, and dark/light theme settings
 - responsive navigation and review bays with a stable conversation composer
 - in-window dialogs, application-modal settings, and the native macOS project menu

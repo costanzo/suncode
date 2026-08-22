@@ -17,7 +17,7 @@
       <Setter Property="Padding" Value="0" />
       <Setter Property="Margin" Value="0" />
       <Setter Property="MinHeight" Value="0" />
-      <Setter Property="IsExpanded" Value="True" />
+      <Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded, Mode=TwoWay}" />
     </Style>
     <Style Selector="TreeView.trace-tree TreeViewItem /template/ Border#PART_LayoutRoot">
       <Setter Property="CornerRadius" Value="4" />
@@ -63,7 +63,7 @@
             </Grid>
             <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
             <Grid Grid.Row="2">
-              <TreeView Classes="trace-tree" ItemsSource="{Binding FilteredProviderTraceTurns}" SelectionChanged="TraceSelected">
+              <TreeView x:Name="TraceTree" Classes="trace-tree" ItemsSource="{Binding FilteredProviderTraceTurns}" SelectionChanged="TraceSelected">
                 <TreeView.DataTemplates>
                   <TreeDataTemplate DataType="models:ProviderTraceTurnItem" ItemsSource="{Binding Calls}">
                     <Grid Height="46" ColumnDefinitions="12,*,Auto" Margin="2,0,8,0">
@@ -86,7 +86,7 @@
                       </StackPanel>
                     </Grid>
                   </TreeDataTemplate>
-                  <DataTemplate DataType="models:ProviderTraceItem">
+                  <TreeDataTemplate DataType="models:ProviderTraceItem" ItemsSource="{Binding Contents}">
                     <Grid Height="50" ColumnDefinitions="10,*,Auto" Margin="2,0,8,0">
                       <Border Grid.Column="0" Width="1" Height="28" Background="{DynamicResource BorderStrongBrush}" HorizontalAlignment="Center" />
                       <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -102,6 +102,22 @@
                         <TextBlock Text="{Binding StatusText}" Classes="mono" FontSize="10" Foreground="{DynamicResource DangerBrush}" HorizontalAlignment="Right" IsVisible="{Binding IsFailed}" />
                         <TextBlock Text="{Binding TokenSummary}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right" />
                       </StackPanel>
+                    </Grid>
+                  </TreeDataTemplate>
+                  <DataTemplate DataType="models:ProviderTraceContentItem">
+                    <Grid Height="42" ColumnDefinitions="10,72,*,Auto" Margin="2,0,8,0">
+                      <Border Grid.Column="0" Width="1" Height="24" Background="{DynamicResource BorderBrush}" HorizontalAlignment="Center" />
+                      <Grid Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="USER" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsUser}" />
+                        <TextBlock Text="ASSISTANT" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsAssistant}" />
+                        <TextBlock Text="THINKING" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsThinking}" />
+                        <TextBlock Text="TOOL USE" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsTool}" />
+                      </Grid>
+                      <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="10" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Summary}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsPlaceholder}" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="3" Text="{Binding TimeText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
                     </Grid>
                   </DataTemplate>
                 </TreeView.DataTemplates>
@@ -133,7 +149,7 @@
             <Border Grid.Row="3" Background="{DynamicResource BorderBrush}" />
 
             <Grid Grid.Row="4">
-              <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasSelectedProviderTrace}">
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding ShowSelectedProviderTraceOverview}">
                 <StackPanel Margin="14,12,16,18" Spacing="16">
                   <Grid ColumnDefinitions="*,Auto">
                     <StackPanel>
@@ -227,6 +243,49 @@
                     <TextBlock Text="Provider Error" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource DangerBrush}" />
                     <Border Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
                       <SelectableTextBlock Text="{Binding SelectedProviderTraceDetails.ErrorText}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
+                    </Border>
+                  </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
+
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasSelectedProviderTraceContent}">
+                <StackPanel Margin="14,12,16,18" Spacing="14">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="3">
+                      <TextBlock Text="{Binding SelectedProviderTraceContent.KindText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding SelectedProviderTraceContent.IsAssistant}" />
+                      <TextBlock Text="{Binding SelectedProviderTraceContent.KindText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding SelectedProviderTraceContent.IsUser}" />
+                      <TextBlock Text="{Binding SelectedProviderTraceContent.KindText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding SelectedProviderTraceContent.IsThinking}" />
+                      <TextBlock Text="{Binding SelectedProviderTraceContent.KindText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding SelectedProviderTraceContent.IsTool}" />
+                      <TextBlock Text="{Binding SelectedProviderTraceContent.Title}" FontSize="14" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding SelectedProviderTraceContent.TimeText}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" />
+                  </Grid>
+
+                  <StackPanel Spacing="6" IsVisible="{Binding SelectedProviderTraceContent.HasContent}">
+                    <TextBlock Text="Content" FontSize="12" FontWeight="SemiBold" />
+                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                      <SelectableTextBlock Text="{Binding SelectedProviderTraceContent.Content}" FontSize="11" TextWrapping="Wrap" />
+                    </Border>
+                  </StackPanel>
+
+                  <StackPanel Spacing="6" IsVisible="{Binding SelectedProviderTraceContent.HasRequest}">
+                    <TextBlock Text="Request" FontSize="12" FontWeight="SemiBold" />
+                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                      <SelectableTextBlock Text="{Binding SelectedProviderTraceContent.Request}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
+                    </Border>
+                  </StackPanel>
+
+                  <StackPanel Spacing="6" IsVisible="{Binding SelectedProviderTraceContent.HasResult}">
+                    <TextBlock Text="Result" FontSize="12" FontWeight="SemiBold" />
+                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                      <SelectableTextBlock Text="{Binding SelectedProviderTraceContent.Result}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
+                    </Border>
+                  </StackPanel>
+
+                  <StackPanel Spacing="6" IsVisible="{Binding SelectedProviderTraceContent.HasError}">
+                    <TextBlock Text="Error" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource DangerBrush}" />
+                    <Border Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                      <SelectableTextBlock Text="{Binding SelectedProviderTraceContent.ErrorCode}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
                     </Border>
                   </StackPanel>
                 </StackPanel>

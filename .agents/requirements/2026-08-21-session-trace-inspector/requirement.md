@@ -22,7 +22,7 @@ The ProjectWorkspace provider trace drawer currently presents a flat list of mod
 
 - Turns without model calls remain visible.
 - Every turn row displays elapsed time from its start until completion, or until now while it is running.
-- Trace filtering preserves the turn/call hierarchy.
+- Trace filtering preserves the turn/call/content hierarchy.
 - Cache metrics remain unavailable when the provider does not report them.
 - Call detail reads normalized `session_call`, `session_message`, and `session_tool_use` rows through the Rust SDK.
 - Loading, empty, running, completed, failed, and missing-usage states remain legible.
@@ -36,7 +36,7 @@ The ProjectWorkspace provider trace drawer currently presents a flat list of mod
 
 ## Acceptance criteria
 
-- The trace drawer shows a turn/call tree for the current session.
+- The trace drawer shows a turn/call/content tree for the current session. Expanding a call lazily exposes its user, assistant, thinking, and tool-use entries as parallel third-level nodes.
 - Each turn in the trace tree shows its elapsed time.
 - Selecting a call loads its complete normalized detail.
 - Usage metrics include input, output, cache read, cache write, total, and cache hit rate.

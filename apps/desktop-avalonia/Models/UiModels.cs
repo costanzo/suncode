@@ -89,6 +89,7 @@ public sealed record CredentialItem(string Provider, bool Configured);
 
 public sealed class MessageItem
 {
+    public string MessageId { get; init; } = string.Empty;
     public required string Role { get; init; }
     public required string Text { get; set; }
     public required long ContentSequence { get; set; }
@@ -165,6 +166,10 @@ public sealed record ProviderTraceItem(
     IReadOnlyList<ProviderTraceMessageItem> Messages,
     IReadOnlyList<ProviderTraceToolItem> Tools)
 {
+    public ObservableCollection<ProviderTraceContentItem> Contents { get; } = [ProviderTraceContentItem.Placeholder()];
+    public bool IsExpanded { get; set; }
+    public bool ContentsLoaded { get; set; }
+    public bool ContentsLoading { get; set; }
     public string Title => $"{Provider}  ·  {ModelId}";
     public string CallText => $"Call {Iteration}";
     public string TurnText => $"turn {Short(TurnId)}";
@@ -242,6 +247,7 @@ public sealed record ProviderTraceTurnItem(
     int Sequence,
     IReadOnlyList<ProviderTraceItem> Calls)
 {
+    public bool IsExpanded { get; set; } = true;
     public string Title => $"Turn {Sequence}";
     public string IdentifierText => TurnId.Length <= 8 ? TurnId : TurnId[..8];
     public string CallCountText => $"{Calls.Count} {(Calls.Count == 1 ? "call" : "calls")}";
@@ -289,6 +295,43 @@ public sealed record ProviderTraceTurnItem(
         >= 1_000 => $"{value / 1_000d:0.#}k",
         _ => value.ToString()
     };
+}
+
+public sealed record ProviderTraceContentItem(
+    string ExchangeId,
+    string Kind,
+    string Title,
+    string Summary,
+    string Content,
+    string Request,
+    string Result,
+    string ErrorCode,
+    string CreatedAt,
+    bool IsPlaceholder = false)
+{
+    public bool IsExpanded { get; set; }
+    public string TimeText => DateTimeOffset.TryParse(CreatedAt, out var timestamp)
+        ? timestamp.ToLocalTime().ToString("HH:mm:ss.fff")
+        : CreatedAt;
+    public string KindText => Kind switch
+    {
+        "user" => "USER MESSAGE",
+        "assistant" => "ASSISTANT MESSAGE",
+        "thinking" => "THINKING MESSAGE",
+        "tool" => "TOOL USE",
+        _ => Kind.ToUpperInvariant()
+    };
+    public bool IsUser => Kind == "user";
+    public bool IsAssistant => Kind == "assistant";
+    public bool IsThinking => Kind == "thinking";
+    public bool IsTool => Kind == "tool";
+    public bool HasContent => !string.IsNullOrWhiteSpace(Content);
+    public bool HasRequest => !string.IsNullOrWhiteSpace(Request);
+    public bool HasResult => !string.IsNullOrWhiteSpace(Result);
+    public bool HasError => !string.IsNullOrWhiteSpace(ErrorCode);
+
+    public static ProviderTraceContentItem Placeholder(string title = "Load call contents") =>
+        new(string.Empty, "placeholder", title, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, true);
 }
 
 public sealed record ProviderTraceMessageItem(string MessageId, string Role, string Content, string CreatedAt)

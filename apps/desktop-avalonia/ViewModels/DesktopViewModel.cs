@@ -23,6 +23,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private GitFileItem? _selectedGitFile;
     private ProviderTraceItem? _selectedProviderTrace;
     private ProviderTraceItem? _selectedProviderTraceDetails;
+    private ProviderTraceContentItem? _selectedProviderTraceContent;
+    private readonly Dictionary<string, ProviderTraceItem> _providerTraceDetails = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Task<ProviderTraceItem>> _providerTraceDetailLoads = new(StringComparer.Ordinal);
     private ApprovalItem? _pendingApproval;
     private string _connectionState = "disconnected";
     private string _statusText = "Starting local runtime...";
@@ -164,8 +167,10 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _selectedProviderTrace, value))
             {
                 SelectedProviderTraceDetails = null;
+                SelectedProviderTraceContent = null;
                 OnPropertyChanged(nameof(SelectedProviderTraceTitle));
                 OnPropertyChanged(nameof(HasSelectedProviderTrace));
+                OnPropertyChanged(nameof(ShowSelectedProviderTraceOverview));
             }
         }
     }
@@ -179,6 +184,20 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             {
                 OnPropertyChanged(nameof(SelectedProviderTraceTitle));
                 OnPropertyChanged(nameof(HasSelectedProviderTrace));
+            }
+        }
+    }
+
+    public ProviderTraceContentItem? SelectedProviderTraceContent
+    {
+        get => _selectedProviderTraceContent;
+        private set
+        {
+            if (SetProperty(ref _selectedProviderTraceContent, value))
+            {
+                OnPropertyChanged(nameof(SelectedProviderTraceTitle));
+                OnPropertyChanged(nameof(HasSelectedProviderTraceContent));
+                OnPropertyChanged(nameof(ShowSelectedProviderTraceOverview));
             }
         }
     }
@@ -307,6 +326,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public bool HasProviderTraces => ProviderTraces.Count > 0;
     public bool HasFilteredProviderTraces => FilteredProviderTraceTurns.Count > 0;
     public bool HasSelectedProviderTrace => SelectedProviderTraceDetails is not null;
+    public bool HasSelectedProviderTraceContent => SelectedProviderTraceContent is not null;
+    public bool ShowSelectedProviderTraceOverview => HasSelectedProviderTrace && !HasSelectedProviderTraceContent;
     public bool HasSessionLoadError => !string.IsNullOrWhiteSpace(SessionLoadError);
     public string GitFileCountText => $"{FilteredGitFiles.Count} {(FilteredGitFiles.Count == 1 ? "file" : "files")}";
     public string ProviderTraceCountText => $"{FilteredProviderTraceTurns.Count} turns · {FilteredProviderTraceTurns.Sum(turn => turn.Calls.Count)} calls";
@@ -367,7 +388,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public string ProviderTraceSummary => ProviderTraces.Count == 0
         ? "No provider requests"
         : $"{ProviderTraces.Count} provider {(ProviderTraces.Count == 1 ? "request" : "requests")}";
-    public string SelectedProviderTraceTitle => SelectedProviderTraceDetails?.Title ?? SelectedProviderTrace?.Title ?? "No model call selected";
+    public string SelectedProviderTraceTitle => SelectedProviderTraceContent is { } content
+        ? $"{SelectedProviderTraceDetails?.Title ?? SelectedProviderTrace?.Title} · {content.Title}"
+        : SelectedProviderTraceDetails?.Title ?? SelectedProviderTrace?.Title ?? "No model call selected";
     public string ProviderTraceEmptyMessage
     {
         get
@@ -641,9 +664,11 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         CloseSubscription();
         LogSession(operationId, session.SessionId, $"select.close_subscription.end elapsed_ms={closeTimer.Elapsed.TotalMilliseconds:F1}");
         ClearSession(false);
+        // SelectedSession raises ListBox.SelectionChanged synchronously. Mark the load first so
+        // that the resulting selection callback cannot start a second load and subscription.
+        IsSessionLoading = true;
         SelectedSession = session;
         LogSession(operationId, session.SessionId, $"select.selected updated={SelectedSession.SessionId}");
-        IsSessionLoading = true;
         StatusText = "Loading session...";
         var sessionId = session.SessionId;
         var loadVersion = _sessionLoadVersion;
@@ -889,6 +914,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
             ProviderTraces.Clear();
             ProviderTraceTurns.Clear();
+            _providerTraceDetails.Clear();
+            _providerTraceDetailLoads.Clear();
             var exchanges = result.Array("exchanges").OfType<JsonObject>().Select(ProviderTraceFromJson).ToList();
             foreach (var exchange in exchanges) ProviderTraces.Add(exchange);
             var turnValues = result.Array("turns").OfType<JsonObject>().ToList();
@@ -919,13 +946,21 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         if (!EnsureSdk() || SelectedSession is null) return;
         var sessionId = SelectedSession.SessionId;
         SelectedProviderTrace = trace;
+        SelectedProviderTraceContent = null;
+        if (_providerTraceDetails.TryGetValue(trace.ExchangeId, out var cached))
+        {
+            SelectedProviderTraceDetails = cached;
+            PopulateProviderTraceContents(trace, cached);
+            return;
+        }
         ProviderTraceState = "loading";
         ProviderTraceError = string.Empty;
         try
         {
-            var result = await _sdk!.ProviderExchangeAsync(sessionId, trace.ExchangeId);
+            var details = await GetProviderTraceDetailsAsync(sessionId, trace.ExchangeId);
             if (SelectedSession?.SessionId != sessionId || SelectedProviderTrace?.ExchangeId != trace.ExchangeId) return;
-            SelectedProviderTraceDetails = ProviderTraceFromJson(result);
+            PopulateProviderTraceContents(trace, details);
+            SelectedProviderTraceDetails = details;
             ProviderTraceState = "ready";
         }
         catch (Exception exception)
@@ -934,6 +969,52 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             ProviderTraceState = "error";
             ProviderTraceError = exception.Message;
         }
+    }
+
+    public async Task LoadProviderTraceContentsAsync(ProviderTraceItem trace)
+    {
+        if (trace.ContentsLoaded || trace.ContentsLoading || !EnsureSdk() || SelectedSession is null) return;
+        trace.ContentsLoading = true;
+        trace.Contents.Clear();
+        trace.Contents.Add(ProviderTraceContentItem.Placeholder("Loading call contents..."));
+        try
+        {
+            ProviderTraceItem details;
+            if (!_providerTraceDetails.TryGetValue(trace.ExchangeId, out details!))
+            {
+                var sessionId = SelectedSession.SessionId;
+                details = await GetProviderTraceDetailsAsync(sessionId, trace.ExchangeId);
+                if (SelectedSession?.SessionId != sessionId) return;
+            }
+            PopulateProviderTraceContents(trace, details);
+            if (SelectedProviderTrace?.ExchangeId == trace.ExchangeId)
+                SelectedProviderTraceDetails = details;
+        }
+        catch (Exception exception)
+        {
+            trace.Contents.Clear();
+            trace.Contents.Add(ProviderTraceContentItem.Placeholder("Call contents are unavailable"));
+            ProviderTraceError = exception.Message;
+        }
+        finally
+        {
+            trace.ContentsLoading = false;
+        }
+    }
+
+    public async Task SelectProviderTraceContentAsync(ProviderTraceContentItem content)
+    {
+        if (content.IsPlaceholder) return;
+        var trace = ProviderTraces.FirstOrDefault(item => item.ExchangeId == content.ExchangeId);
+        if (trace is null) return;
+        if (!_providerTraceDetails.TryGetValue(trace.ExchangeId, out var details))
+        {
+            await LoadProviderTraceContentsAsync(trace);
+            if (!_providerTraceDetails.TryGetValue(trace.ExchangeId, out details)) return;
+        }
+        SelectedProviderTrace = trace;
+        SelectedProviderTraceDetails = details;
+        SelectedProviderTraceContent = content;
     }
 
     public void SetProviderTraceFilter(string filter)
@@ -1372,23 +1453,28 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         else if (type is "message.user" or "message.assistant")
         {
             var turnId = payload.String("turn_id");
+            var messageId = payload.String("message_id", "messageId");
             var changed = false;
             var streaming = type == "message.assistant"
                 ? Messages.LastOrDefault(message => message.TurnId == turnId && message.Streaming)
                 : null;
-            if (!string.IsNullOrWhiteSpace(text))
+            if (messageId.Length > 0 && Messages.Any(message => message.MessageId == messageId))
+            {
+                DiagnosticLog.Debug("session.message", $"duplicate ignored type={type} message={messageId} turn={turnId}");
+            }
+            else if (!string.IsNullOrWhiteSpace(text))
             {
                 if (streaming is not null)
                 {
                     Messages.Remove(streaming);
                 }
-                Messages.Add(new MessageItem { Role = type == "message.user" ? "user" : "assistant", Text = text, ContentSequence = Messages.Count + 1, TurnId = turnId });
+                Messages.Add(new MessageItem { MessageId = messageId, Role = type == "message.user" ? "user" : "assistant", Text = text, ContentSequence = Messages.Count + 1, TurnId = turnId });
                 changed = true;
             }
             else if (streaming is not null)
             {
                 var index = Messages.IndexOf(streaming);
-                Messages[index] = new MessageItem { Role = streaming.Role, Text = streaming.Text, ContentSequence = streaming.ContentSequence, TurnId = turnId };
+                Messages[index] = new MessageItem { MessageId = messageId, Role = streaming.Role, Text = streaming.Text, ContentSequence = streaming.ContentSequence, TurnId = turnId };
                 changed = true;
             }
             if (changed)
@@ -1593,6 +1679,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         FilteredProviderTraceTurns.Clear();
         SelectedProviderTrace = null;
         SelectedProviderTraceDetails = null;
+        SelectedProviderTraceContent = null;
+        _providerTraceDetails.Clear();
+        _providerTraceDetailLoads.Clear();
         ProviderTraceState = "idle";
         ProviderTraceError = string.Empty;
         ProviderTraceFilter = string.Empty;
@@ -1723,6 +1812,105 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             Pretty(item["error"]),
             messages,
             tools);
+    }
+
+    private async Task<ProviderTraceItem> GetProviderTraceDetailsAsync(string sessionId, string exchangeId)
+    {
+        if (_providerTraceDetails.TryGetValue(exchangeId, out var cached)) return cached;
+        if (!_providerTraceDetailLoads.TryGetValue(exchangeId, out var loading))
+        {
+            loading = LoadProviderTraceDetailsCoreAsync(sessionId, exchangeId);
+            _providerTraceDetailLoads[exchangeId] = loading;
+        }
+        try
+        {
+            var details = await loading;
+            _providerTraceDetails[exchangeId] = details;
+            return details;
+        }
+        finally
+        {
+            _providerTraceDetailLoads.Remove(exchangeId);
+        }
+    }
+
+    private async Task<ProviderTraceItem> LoadProviderTraceDetailsCoreAsync(string sessionId, string exchangeId)
+    {
+        var result = await _sdk!.ProviderExchangeAsync(sessionId, exchangeId);
+        return ProviderTraceFromJson(result);
+    }
+
+    private static void PopulateProviderTraceContents(ProviderTraceItem trace, ProviderTraceItem details)
+    {
+        if (trace.ContentsLoaded) return;
+        var contents = new List<ProviderTraceContentItem>();
+        var identities = new HashSet<string>(StringComparer.Ordinal);
+
+        void AddMessage(string role, string content, string createdAt)
+        {
+            if (role is not ("user" or "assistant" or "thinking") || string.IsNullOrWhiteSpace(content)) return;
+            var identity = $"{role}\n{content}";
+            if (!identities.Add(identity)) return;
+            contents.Add(new ProviderTraceContentItem(
+                trace.ExchangeId,
+                role,
+                role switch
+                {
+                    "user" => "User message",
+                    "assistant" => "Assistant message",
+                    _ => "Thinking message"
+                },
+                Preview(content),
+                content,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                createdAt));
+        }
+
+        JsonArray? inputMessages = null;
+        if (!string.IsNullOrWhiteSpace(details.InputText))
+        {
+            try
+            {
+                inputMessages = JsonNode.Parse(details.InputText) as JsonArray;
+            }
+            catch (JsonException)
+            {
+                // The raw request remains available in the call overview.
+            }
+        }
+        if (inputMessages is not null)
+        {
+            foreach (var message in inputMessages.OfType<JsonObject>())
+                AddMessage(message.String("role"), MessageText(message), string.Empty);
+        }
+        foreach (var message in details.Messages)
+            AddMessage(message.Role, message.Content, message.CreatedAt);
+        AddMessage("assistant", details.OutputText, details.CompletedAt);
+
+        contents.AddRange(details.Tools.Select(tool => new ProviderTraceContentItem(
+            trace.ExchangeId,
+            "tool",
+            tool.Name,
+            tool.StateText,
+            string.Empty,
+            tool.Request,
+            tool.Result,
+            tool.ErrorCode,
+            tool.CreatedAt)));
+
+        trace.Contents.Clear();
+        foreach (var content in contents) trace.Contents.Add(content);
+        if (trace.Contents.Count == 0)
+            trace.Contents.Add(ProviderTraceContentItem.Placeholder("No messages or tool uses"));
+        trace.ContentsLoaded = true;
+    }
+
+    private static string Preview(string value)
+    {
+        var compact = string.Join(" ", value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return compact.Length <= 72 ? compact : $"{compact[..72]}…";
     }
 
     private static long? OptionalLong(JsonObject value, string name)

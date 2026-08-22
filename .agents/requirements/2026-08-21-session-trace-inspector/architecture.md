@@ -6,7 +6,7 @@
 
 ## Proposed design
 
-Extend the existing read-only provider trace contract. The list result adds ordered turn summaries alongside call summaries. The detail result preserves the call shape and adds normalized correlated messages and tool uses. Avalonia groups call summaries under their owning turns and loads detail only for the selected call.
+Extend the existing read-only provider trace contract. The list result adds ordered turn summaries alongside call summaries. The detail result preserves the call shape and adds normalized correlated messages and tool uses. Avalonia groups call summaries under their owning turns and loads detail only when a call is selected or expanded. It then projects provider-input user/assistant/thinking messages, the assistant response, and correlated tool uses as parallel third-level content nodes without adding another SDK method.
 
 ## Boundaries and dependencies
 

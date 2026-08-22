@@ -11,6 +11,7 @@ public sealed partial class ProviderTraceViewer : UserControl
     public ProviderTraceViewer()
     {
         InitializeComponent();
+        TraceTree.AddHandler(TreeViewItem.ExpandedEvent, TraceItemExpanded, RoutingStrategies.Bubble);
     }
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
@@ -27,8 +28,16 @@ public sealed partial class ProviderTraceViewer : UserControl
     {
         if (e.AddedItems.OfType<ProviderTraceItem>().FirstOrDefault() is { } trace)
             await ViewModel.LoadProviderTraceAsync(trace);
+        else if (e.AddedItems.OfType<ProviderTraceContentItem>().FirstOrDefault() is { } content)
+            await ViewModel.SelectProviderTraceContentAsync(content);
         else if (e.AddedItems.OfType<ProviderTraceTurnItem>().Any())
             ViewModel.SelectProviderTraceTurn();
+    }
+
+    private async void TraceItemExpanded(object? sender, RoutedEventArgs e)
+    {
+        if (e.Source is TreeViewItem { DataContext: ProviderTraceItem trace })
+            await ViewModel.LoadProviderTraceContentsAsync(trace);
     }
 
     private void TraceFilterChanged(object? sender, TextChangedEventArgs e)

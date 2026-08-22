@@ -94,6 +94,7 @@ public sealed class SessionSnapshotProjectionTests
         {
           "event_type":"message.assistant",
           "payload":{
+            "message_id":"message-1",
             "turn_id":"turn-1",
             "message":{"role":"assistant","content":[]}
           }
@@ -103,8 +104,53 @@ public sealed class SessionSnapshotProjectionTests
         viewModel.ApplyEvent(emptyFinalMessage, live: true);
 
         var message = Assert.Single(viewModel.Messages);
+        Assert.Equal("message-1", message.MessageId);
         Assert.Equal("visible response", message.Text);
         Assert.False(message.Streaming);
+    }
+
+    [Fact]
+    public void DuplicateLiveMessageIdIsAppliedOnce()
+    {
+        var viewModel = new DesktopViewModel();
+        var userMessage = JsonNode.Parse("""
+        {
+          "event_type":"message.user",
+          "payload":{
+            "message_id":"message-1",
+            "turn_id":"turn-1",
+            "message":{"role":"user","content":[{"type":"text","text":"only once"}]}
+          }
+        }
+        """)!.AsObject();
+
+        viewModel.ApplyEvent(userMessage, live: true);
+        viewModel.ApplyEvent(userMessage, live: true);
+
+        var message = Assert.Single(viewModel.Messages);
+        Assert.Equal("message-1", message.MessageId);
+        Assert.Equal("only once", message.Text);
+    }
+
+    [Fact]
+    public void DistinctMessageIdsPreserveRepeatedText()
+    {
+        var viewModel = new DesktopViewModel();
+        foreach (var messageId in new[] { "message-1", "message-2" })
+        {
+            viewModel.ApplyEvent(JsonNode.Parse($$"""
+            {
+              "event_type":"message.user",
+              "payload":{
+                "message_id":"{{messageId}}",
+                "turn_id":"turn-1",
+                "message":{"role":"user","content":[{"type":"text","text":"same text"}]}
+              }
+            }
+            """)!.AsObject(), live: true);
+        }
+
+        Assert.Equal(2, viewModel.Messages.Count);
     }
 
     [Fact]
