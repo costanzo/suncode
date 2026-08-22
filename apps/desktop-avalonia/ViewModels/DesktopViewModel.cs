@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Avalonia;
@@ -28,6 +29,10 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private string _composerText = string.Empty;
     private string _activeTurnId = string.Empty;
     private string _themeMode = "dark";
+    private string _logLevel = "INFO";
+    private string _logDirectory = string.Empty;
+    private long _logMaxBytes = 10 * 1024 * 1024;
+    private int _logRetention = 5;
     private string _diagnosticsText = "Diagnostics unavailable";
     private string _gitState = "idle";
     private string _gitError = string.Empty;
@@ -196,6 +201,10 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) OnPropertyChanged(nameof(CanSubmit)); } }
     public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); } } }
     public string ThemeMode { get => _themeMode; private set => SetProperty(ref _themeMode, value); }
+    public string LogLevel { get => _logLevel; private set => SetProperty(ref _logLevel, value); }
+    public string LogDirectory { get => _logDirectory; private set => SetProperty(ref _logDirectory, value); }
+    public long LogMaxBytes { get => _logMaxBytes; private set => SetProperty(ref _logMaxBytes, value); }
+    public int LogRetention { get => _logRetention; private set => SetProperty(ref _logRetention, value); }
     public string DiagnosticsText { get => _diagnosticsText; private set => SetProperty(ref _diagnosticsText, value); }
     public string GitState
     {
@@ -912,6 +921,62 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }, "Theme saved");
     }
 
+    public async Task<bool> SaveLoggingSettingsAsync(
+        string level,
+        string? directory,
+        string maxBytesText,
+        string retentionText)
+    {
+        if (!EnsureSdk()) return false;
+
+        level = level.Trim().ToUpperInvariant();
+        directory = directory?.Trim() ?? string.Empty;
+        if (level is not ("TRACE" or "DEBUG" or "INFO" or "WARN" or "ERROR" or "OFF"))
+        {
+            StatusText = "Choose a valid logging level";
+            return false;
+        }
+        if (!long.TryParse(maxBytesText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var maxBytes)
+            || maxBytes < 1024)
+        {
+            StatusText = "Maximum log size must be at least 1024 bytes";
+            return false;
+        }
+        if (!int.TryParse(retentionText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var retention)
+            || retention is < 0 or > 100)
+        {
+            StatusText = "Log retention must be between 0 and 100 files";
+            return false;
+        }
+
+        IsBusy = true;
+        var sdk = _sdk!;
+        try
+        {
+            await sdk.SetSettingAsync("log_level", level);
+            await sdk.SetSettingAsync("log_directory", directory);
+            await sdk.SetSettingAsync("log_max_bytes", maxBytes);
+            await sdk.SetSettingAsync("log_retention", retention);
+            LogLevel = level;
+            LogDirectory = directory;
+            LogMaxBytes = maxBytes;
+            LogRetention = retention;
+            DiagnosticLog.Configure(level, directory, maxBytes, retention);
+            StatusText = "Logging settings saved";
+            ConnectionState = "connected";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+            return false;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     public bool IsProviderConfigured(string provider) =>
         Credentials.Any(item => item.Provider == provider && item.Configured);
 
@@ -1001,11 +1066,19 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                 : fallback;
         }
         var retention = LongSetting("log_retention", 5);
+        var configuredLevel = StringSetting("log_level", "INFO").Trim().ToUpperInvariant();
+        LogLevel = configuredLevel is "TRACE" or "DEBUG" or "INFO" or "WARN" or "ERROR" or "OFF"
+            ? configuredLevel
+            : "INFO";
+        LogDirectory = StringSetting("log_directory", string.Empty);
+        var maxBytes = LongSetting("log_max_bytes", 10 * 1024 * 1024);
+        LogMaxBytes = maxBytes >= 1024 ? maxBytes : 10 * 1024 * 1024;
+        LogRetention = retention is >= 0 and <= 100 ? (int)retention : 5;
         DiagnosticLog.Configure(
-            StringSetting("log_level", "INFO"),
-            StringSetting("log_directory", string.Empty),
-            LongSetting("log_max_bytes", 10 * 1024 * 1024),
-            retention is >= 0 and <= 100 ? (int)retention : 5);
+            LogLevel,
+            LogDirectory,
+            LogMaxBytes,
+            LogRetention);
 
         foreach (var item in settings)
         {

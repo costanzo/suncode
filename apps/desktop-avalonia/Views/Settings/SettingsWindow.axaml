@@ -46,6 +46,7 @@
             <TextBlock Classes="section-label" Text="GENERAL" Margin="10,0,0,0" />
             <Button x:Name="DefaultsNavigation" Classes="navigation selected" Content="Defaults" Click="ShowDefaults" />
             <Button x:Name="AppearanceNavigation" Classes="navigation" Content="Appearance" Click="ShowAppearance" />
+            <Button x:Name="LoggingNavigation" Classes="navigation" Content="Logging" Click="ShowLogging" />
             <Border Height="12" />
             <TextBlock Classes="section-label" Text="MODELS" Margin="10,0,0,0" />
             <Button x:Name="ProvidersNavigation" Classes="navigation" Click="ToggleProviders">
@@ -96,6 +97,54 @@
               </ComboBox>
             </Grid>
             <TextBlock Text="Changes apply immediately." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" />
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="LoggingPage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="32,28" Spacing="18">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Logging" FontSize="22" FontWeight="SemiBold" />
+              <TextBlock Text="Control diagnostic detail and how long local log files are kept." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <TextBlock Classes="section-label" Text="DIAGNOSTIC OUTPUT" />
+            <Grid ColumnDefinitions="*,180" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="14">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Minimum level" FontWeight="SemiBold" />
+                <TextBlock Text="Lower levels include more diagnostic detail." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+              <ComboBox x:Name="LogLevelSelector" Grid.Column="1" HorizontalAlignment="Stretch">
+                <ComboBoxItem Content="TRACE" Tag="TRACE" />
+                <ComboBoxItem Content="DEBUG" Tag="DEBUG" />
+                <ComboBoxItem Content="INFO" Tag="INFO" />
+                <ComboBoxItem Content="WARN" Tag="WARN" />
+                <ComboBoxItem Content="ERROR" Tag="ERROR" />
+                <ComboBoxItem Content="OFF" Tag="OFF" />
+              </ComboBox>
+
+              <StackPanel Grid.Row="1" Spacing="3">
+                <TextBlock Text="Log directory" FontWeight="SemiBold" />
+                <TextBlock Text="Leave empty to use the data directory's logs folder." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBox x:Name="LogDirectoryInput" Grid.Row="1" Grid.Column="1" Classes="mono" PlaceholderText="Default logs folder" />
+
+              <StackPanel Grid.Row="2" Spacing="3">
+                <TextBlock Text="Maximum file size" FontWeight="SemiBold" />
+                <TextBlock Text="Rotate each file after it reaches this many bytes. Minimum 1024." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBox x:Name="LogMaxBytesInput" Grid.Row="2" Grid.Column="1" Classes="mono" PlaceholderText="10485760" />
+
+              <StackPanel Grid.Row="3" Spacing="3">
+                <TextBlock Text="Retained backups" FontWeight="SemiBold" />
+                <TextBlock Text="Number of rotated backups to keep, from 0 to 100." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBox x:Name="LogRetentionInput" Grid.Row="3" Grid.Column="1" Classes="mono" PlaceholderText="5" />
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <Button Classes="compact primary" Content="Save logging settings" Click="SaveLogging" />
+              <TextBlock x:Name="LoggingStatus" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
           </StackPanel>
         </ScrollViewer>
 

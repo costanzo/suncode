@@ -23,6 +23,8 @@ Fresh schema construction, logging setting defaults and validation, runtime reco
 ## Manual checks
 
 - With a fresh data directory, verify `runtime.log` and `desktop.log` are created under its `logs` directory.
+- Open Settings > Logging, change each field, save, reopen the page, and verify the values persist.
+- Enter an invalid size or retention count and verify saving is rejected with a visible message.
 - Change global logging settings through the SDK and verify Rust uses them immediately and Avalonia uses them on its next settings load.
 - Preserve any existing incompatible database; do not test by deleting or rewriting user data.
 

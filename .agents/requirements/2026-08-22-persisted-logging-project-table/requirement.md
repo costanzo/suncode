@@ -8,6 +8,7 @@ The Avalonia and Rust logging modules were configured through `SUNCODE_LOG_*` en
 
 - Persist the shared logging policy as global `configuration` rows.
 - Apply one policy to separate Avalonia and Rust log files.
+- Expose the policy in the Avalonia Settings > Logging page.
 - Rename the physical `projects` table to `project`.
 - Preserve the existing SDK settings method and Rust-only SQLite ownership.
 
@@ -16,7 +17,6 @@ The Avalonia and Rust logging modules were configured through `SUNCODE_LOG_*` en
 - Store log records in SQLite.
 - Add a schema migration runner or silently convert an existing database.
 - Move the bootstrap data/database location into SQLite.
-- Add UI controls for editing the logging settings.
 
 ## Requirements
 
@@ -25,6 +25,7 @@ The Avalonia and Rust logging modules were configured through `SUNCODE_LOG_*` en
 - Accept logging settings only at global scope and validate their JSON types and ranges before persistence.
 - Configure Rust after SQLite opens and reconfigure it immediately after a logging setting changes through the SDK.
 - Configure Avalonia from the existing settings DTO after runtime startup.
+- Let users edit all four values in Settings > Logging and save them through the existing SDK settings method.
 - Use `project` in the schema manifest, foreign keys, indexes, and Store queries.
 
 ## Edge cases

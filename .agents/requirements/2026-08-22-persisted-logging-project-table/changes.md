@@ -4,6 +4,7 @@
 
 - Replaced Rust and Avalonia `SUNCODE_LOG_*` reads with configuration supplied through SQLite and the SDK.
 - Added runtime validation and immediate logger reconfiguration for known logging keys.
+- Added a Settings > Logging page with level selection, directory, size, retention inputs, validation feedback, and save action.
 - Renamed the project schema resource, table, index, foreign keys, and SQL queries to `project`.
 
 ## Contracts and generated artifacts

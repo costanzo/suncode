@@ -6,7 +6,7 @@ Rust owns SQLite and exposes effective configuration through the embedded SDK. A
 
 ## Proposed design
 
-The `configuration` schema resource seeds four global logging values. Runtime startup opens and validates SQLite first, reads those values, then configures `runtime.log`. Avalonia starts with stderr-only diagnostics, obtains the same values through `list_settings`, and configures `desktop.log`.
+The `configuration` schema resource seeds four global logging values. Runtime startup opens and validates SQLite first, reads those values, then configures `runtime.log`. Avalonia starts with stderr-only diagnostics, obtains the same values through `list_settings`, and configures `desktop.log`. The Settings > Logging page edits all four values and submits them through the existing global settings SDK method; Avalonia reconfigures its logger after a successful save.
 
 The project identity resource, physical table, index, foreign keys, and Store SQL use singular `project`. Public domain vocabulary and SDK response fields remain project/projects as grammatically appropriate; this change concerns only physical SQLite naming.
 

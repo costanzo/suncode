@@ -38,6 +38,12 @@ public sealed partial class SettingsWindow : Window
         {
             ThemeSelector.SelectedIndex = ViewModel.ThemeMode == "light" ? 1 : 0;
             DefaultModelSelector.SelectedItem = ViewModel.SelectedModel;
+            LogLevelSelector.SelectedItem = LogLevelSelector.Items
+                .OfType<ComboBoxItem>()
+                .FirstOrDefault(item => item.Tag as string == ViewModel.LogLevel);
+            LogDirectoryInput.Text = ViewModel.LogDirectory;
+            LogMaxBytesInput.Text = ViewModel.LogMaxBytes.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            LogRetentionInput.Text = ViewModel.LogRetention.ToString(System.Globalization.CultureInfo.InvariantCulture);
             ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
             _ready = true;
         };
@@ -99,6 +105,7 @@ public sealed partial class SettingsWindow : Window
     }
     private void ShowDefaults(object? sender, RoutedEventArgs e) => SelectPage("defaults", sender as Button);
     private void ShowAppearance(object? sender, RoutedEventArgs e) => SelectPage("appearance", sender as Button);
+    private void ShowLogging(object? sender, RoutedEventArgs e) => SelectPage("logging", sender as Button);
 
     private void ToggleProviders(object? sender, RoutedEventArgs e)
     {
@@ -123,11 +130,13 @@ public sealed partial class SettingsWindow : Window
     {
         DefaultsPage.IsVisible = page == "defaults";
         AppearancePage.IsVisible = page == "appearance";
+        LoggingPage.IsVisible = page == "logging";
         ProviderPage.IsVisible = page == "provider";
         foreach (var button in this.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("navigation")))
             button.Classes.Set("selected", button == selected);
         if (page == "defaults") DefaultsNavigation.Classes.Set("selected", true);
         if (page == "appearance") AppearanceNavigation.Classes.Set("selected", true);
+        if (page == "logging") LoggingNavigation.Classes.Set("selected", true);
     }
 
     private async void DefaultModelChanged(object? sender, SelectionChangedEventArgs e)
@@ -139,6 +148,18 @@ public sealed partial class SettingsWindow : Window
     {
         if (!_ready || ThemeSelector.SelectedItem is not ComboBoxItem { Tag: string mode }) return;
         await ViewModel.SaveThemeAsync(mode);
+    }
+
+    private async void SaveLogging(object? sender, RoutedEventArgs e)
+    {
+        var level = (LogLevelSelector.SelectedItem as ComboBoxItem)?.Tag as string ?? ViewModel.LogLevel;
+        var saved = await ViewModel.SaveLoggingSettingsAsync(
+            level,
+            LogDirectoryInput.Text,
+            LogMaxBytesInput.Text ?? string.Empty,
+            LogRetentionInput.Text ?? string.Empty);
+        LoggingStatus.Text = ViewModel.StatusText;
+        LoggingStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
     }
 
     private async void SaveCredential(object? sender, RoutedEventArgs e)
