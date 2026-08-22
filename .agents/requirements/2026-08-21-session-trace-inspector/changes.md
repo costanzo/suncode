@@ -6,6 +6,7 @@
 - Extended runtime provider trace summary and detail DTOs without adding a new C ABI method.
 - Retained provider-reported cache-read and cache-write token usage in normalized OpenAI-compatible call records.
 - Rebuilt the Avalonia trace drawer as a turn/call tree with a call inspector for messages, tools, request/response data, timing, and usage metrics.
+- Added per-turn elapsed time to the trace tree, using the turn start/completion timestamps and a created-time fallback for older records.
 
 ## Contracts and generated artifacts
 
@@ -21,6 +22,7 @@
 - Added database coverage for turns without calls and call-correlated messages/tools.
 - Added OpenAI-compatible cache-token parsing coverage.
 - Extended runtime SDK coverage for trace summary and detail responses.
+- Added desktop model coverage for completed, running, legacy, invalid, and negative turn timing cases.
 
 ## Documentation
 

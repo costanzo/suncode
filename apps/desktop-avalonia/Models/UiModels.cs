@@ -173,6 +173,7 @@ public sealed record ProviderTraceTurnItem(
     string State,
     string ModelId,
     string CreatedAt,
+    string StartedAt,
     string CompletedAt,
     long InputTokens,
     long OutputTokens,
@@ -184,6 +185,35 @@ public sealed record ProviderTraceTurnItem(
     public string IdentifierText => TurnId.Length <= 8 ? TurnId : TurnId[..8];
     public string CallCountText => $"{Calls.Count} {(Calls.Count == 1 ? "call" : "calls")}";
     public string TokenText => TotalTokens > 0 ? $"{Compact(TotalTokens)} tokens" : "no usage";
+    public string MetricsText => $"{CallCountText}  ·  {TokenText}";
+    public string DurationText
+    {
+        get
+        {
+            var startText = string.IsNullOrWhiteSpace(StartedAt) ? CreatedAt : StartedAt;
+            if (!DateTimeOffset.TryParse(startText, out var started)) return "—";
+
+            DateTimeOffset ended;
+            if (DateTimeOffset.TryParse(CompletedAt, out var completed))
+            {
+                ended = completed;
+            }
+            else if (IsRunning)
+            {
+                ended = DateTimeOffset.Now;
+            }
+            else
+            {
+                return "—";
+            }
+
+            var elapsed = ended - started;
+            if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+            return elapsed.TotalSeconds < 1
+                ? $"{elapsed.TotalMilliseconds:0} ms"
+                : $"{elapsed.TotalSeconds:0.##} s";
+        }
+    }
     public string StateText => State.Replace('_', ' ');
     public string TimeText => DateTimeOffset.TryParse(CreatedAt, out var timestamp)
         ? timestamp.ToLocalTime().ToString("HH:mm:ss")

@@ -10,6 +10,7 @@ Session trace summary/detail DTOs, provider cache usage parsing, Avalonia trace 
 - Verify call detail includes correlated messages and tool uses.
 - Verify OpenAI-compatible cache token fields are normalized.
 - Verify cache hit rate and unavailable usage presentation.
+- Verify completed and running turn durations, including legacy missing-start, invalid timestamp, and negative elapsed-time handling.
 
 ## Integration and conformance tests
 
@@ -26,6 +27,7 @@ Session trace summary/detail DTOs, provider cache usage parsing, Avalonia trace 
 
 - Inspect expanded/collapsed turns, call selection, filtering, loading, empty, failed, and cache-missing states.
 - Verify the drawer remains usable at minimum and typical project-window sizes.
+- Verify each turn row shows elapsed time without increasing the compact row height.
 
 ## Commands and results
 
@@ -35,6 +37,10 @@ Session trace summary/detail DTOs, provider cache usage parsing, Avalonia trace 
 - `cargo clippy -p suncode-llm --all-targets -- -D warnings`: passed.
 - `cargo clippy -p suncode-runtime --lib -- -D warnings`: passed.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore`: passed with zero warnings and zero errors.
+- `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore -p:DesignTimeBuild=true`: passed with zero warnings and zero errors.
+- `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore -c Release`: passed with zero warnings and zero errors.
+- `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore`: passed (17 tests).
+- `dotnet format apps/desktop-avalonia/SunCode.Desktop.csproj --verify-no-changes --no-restore`: passed.
 - `jq empty contracts/vectors/runtime-sdk.json`: passed.
 - `git diff --check`: passed.
 - Native startup with isolated `SUNCODE_DATA_DIRECTORY` and `SUNCODE_DATABASE_PATH`: passed; the welcome window rendered correctly.

@@ -81,8 +81,8 @@
                         <TextBlock Text="{Binding ModelId}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
                       </StackPanel>
                       <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
-                        <TextBlock Text="{Binding CallCountText}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" />
-                        <TextBlock Text="{Binding TokenText}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right" />
+                        <TextBlock Text="{Binding DurationText}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" />
+                        <TextBlock Text="{Binding MetricsText}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right" />
                       </StackPanel>
                     </Grid>
                   </TreeDataTemplate>

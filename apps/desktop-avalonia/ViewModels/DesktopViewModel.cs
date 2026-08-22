@@ -1329,6 +1329,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             item.String("state"),
             item.String("modelId", "model_id"),
             item.String("createdAt", "created_at"),
+            item.String("startedAt", "started_at"),
             item.String("completedAt", "completed_at"),
             item.Long("inputTokens", "input_tokens"),
             item.Long("outputTokens", "output_tokens"),
