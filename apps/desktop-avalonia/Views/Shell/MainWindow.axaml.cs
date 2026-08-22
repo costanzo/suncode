@@ -10,7 +10,7 @@ using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
-namespace SunCode.Desktop.Views;
+namespace SunCode.Desktop.Views.Shell;
 
 public sealed partial class MainWindow : Window
 {

@@ -5,7 +5,7 @@ using Avalonia.VisualTree;
 using SvgControl = Avalonia.Svg.Skia.Svg;
 using SunCode.Desktop.Models;
 
-namespace SunCode.Desktop.Views;
+namespace SunCode.Desktop.Views.About;
 
 public sealed partial class AboutWindow : Window
 {

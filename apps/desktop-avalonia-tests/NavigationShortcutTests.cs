@@ -1,5 +1,5 @@
 using Avalonia.Input;
-using SunCode.Desktop.Views;
+using SunCode.Desktop.Views.Shell;
 
 namespace SunCode.Desktop.Tests;
 

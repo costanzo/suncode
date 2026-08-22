@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -8,7 +7,7 @@ using SvgControl = Avalonia.Svg.Skia.Svg;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
-namespace SunCode.Desktop.Views;
+namespace SunCode.Desktop.Views.Chat;
 
 public sealed partial class ChatArea : UserControl
 {
@@ -17,7 +16,6 @@ public sealed partial class ChatArea : UserControl
     public ChatArea()
     {
         InitializeComponent();
-        ComposerInput.AddHandler(KeyDownEvent, ComposerKeyDown, RoutingStrategies.Tunnel);
     }
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
@@ -33,8 +31,6 @@ public sealed partial class ChatArea : UserControl
         }, DispatcherPriority.Background);
     }
 
-    private async void SubmitTurn(object? sender, RoutedEventArgs e) => await ViewModel.SubmitTurnAsync();
-    private async void CancelTurn(object? sender, RoutedEventArgs e) => await ViewModel.CancelTurnAsync();
     private async void RetrySession(object? sender, RoutedEventArgs e)
     {
         if (ViewModel.SelectedSession is { } session) await ViewModel.SelectSessionAsync(session);
@@ -55,13 +51,5 @@ public sealed partial class ChatArea : UserControl
         ToolTip.SetTip(button, "Copy response");
         if (button.GetVisualDescendants().OfType<SvgControl>().FirstOrDefault() is { } resetIcon)
             SvgControl.SetCss(resetIcon, this.FindResource("IconSvgCss") as string);
-    }
-
-    private async void ComposerKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter || e.KeyModifiers.HasFlag(KeyModifiers.Shift)) return;
-        e.Handled = true;
-        ViewModel.ComposerText = ComposerInput.Text ?? string.Empty;
-        await ViewModel.SubmitTurnAsync();
     }
 }

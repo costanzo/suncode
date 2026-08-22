@@ -296,8 +296,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public bool HasSelectedSession => SelectedSession is not null;
     public bool HasPendingApproval => PendingApproval is not null;
     public bool IsTurnActive => !string.IsNullOrWhiteSpace(ActiveTurnId);
-    public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && SelectedModel?.Configured == true && !IsTurnActive && !HasSessionLoadError;
-    public bool CanSubmit => SelectedSession is not null && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsSessionLoading && !HasSessionLoadError;
+    public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && SelectedModel?.Configured == true && !HasSessionLoadError;
+    public bool CanSubmit => SelectedSession is not null && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsTurnActive && !IsSessionLoading && !HasSessionLoadError;
     public string ProjectTitle => SelectedProject?.DisplayName ?? "SunCode";
     public string SessionTitle => SelectedSession?.DisplayTitle ?? "No session selected";
     public string SessionTokenText => $"Session {CompactNumber(SessionTotalTokens)} tokens";
@@ -577,7 +577,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public async Task SubmitTurnAsync()
     {
         var text = ComposerText.Trim();
-        if (!EnsureSdk() || SelectedSession is null || SelectedModel?.Configured != true || text.Length == 0) return;
+        if (!EnsureSdk() || SelectedSession is null || SelectedModel?.Configured != true || text.Length == 0 || IsTurnActive) return;
         ComposerText = string.Empty;
         await RunAsync(async () =>
         {

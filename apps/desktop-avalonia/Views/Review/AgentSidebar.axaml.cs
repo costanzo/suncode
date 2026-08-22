@@ -3,8 +3,9 @@ using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
+using SunCode.Desktop.Views.Projects;
 
-namespace SunCode.Desktop.Views;
+namespace SunCode.Desktop.Views.Review;
 
 public sealed partial class AgentSidebar : UserControl
 {

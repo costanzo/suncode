@@ -7,7 +7,7 @@ using SvgControl = Avalonia.Svg.Skia.Svg;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
-namespace SunCode.Desktop.Views;
+namespace SunCode.Desktop.Views.Settings;
 
 public sealed partial class SettingsWindow : Window
 {

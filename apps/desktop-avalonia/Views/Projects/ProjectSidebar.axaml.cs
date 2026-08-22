@@ -5,7 +5,7 @@ using Avalonia.VisualTree;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
-namespace SunCode.Desktop.Views;
+namespace SunCode.Desktop.Views.Projects;
 
 public sealed partial class ProjectSidebar : UserControl
 {

@@ -1,9 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:SunCode.Desktop.ViewModels"
-             xmlns:views="using:SunCode.Desktop.Views"
+             xmlns:chat="using:SunCode.Desktop.Views.Chat"
+             xmlns:projects="using:SunCode.Desktop.Views.Projects"
+             xmlns:review="using:SunCode.Desktop.Views.Review"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
-             x:Class="SunCode.Desktop.Views.ProjectWorkspace"
+             x:Class="SunCode.Desktop.Views.Projects.ProjectWorkspace"
              x:DataType="vm:DesktopViewModel">
   <UserControl.Styles>
     <Style Selector="Button.icon.gutter">
@@ -89,23 +91,23 @@
                 <ColumnDefinition Width="{Binding ReviewWidth}" />
               </Grid.ColumnDefinitions>
 
-              <views:ProjectSidebar Grid.Column="0" IsVisible="{Binding NavigationVisible}" />
+              <projects:ProjectSidebar Grid.Column="0" IsVisible="{Binding NavigationVisible}" />
 
               <Border Grid.Column="1" Background="#01000000" Cursor="SizeWestEast" Tag="Navigation" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding NavigationVisible}" />
 
-              <views:ChatArea x:Name="ChatArea" Grid.Column="2" />
+              <chat:ChatArea x:Name="ChatArea" Grid.Column="2" />
 
               <Border Grid.Column="3" Background="#01000000" Cursor="SizeWestEast" Tag="Review" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding ReviewVisible}" />
 
-              <views:AgentSidebar Grid.Column="4" IsVisible="{Binding ReviewVisible}" />
+              <review:AgentSidebar Grid.Column="4" IsVisible="{Binding ReviewVisible}" />
             </Grid>
 
             <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding GitVisible}" />
             <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding ProviderTraceVisible}" />
 
             <Grid Grid.Row="2">
-              <views:GitViewer x:Name="GitViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding GitVisible}" />
-              <views:ProviderTraceViewer x:Name="ProviderTraceViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding ProviderTraceVisible}" />
+              <review:GitViewer x:Name="GitViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding GitVisible}" />
+              <review:ProviderTraceViewer x:Name="ProviderTraceViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding ProviderTraceVisible}" />
             </Grid>
           </Grid>
 

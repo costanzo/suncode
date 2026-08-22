@@ -124,7 +124,7 @@ Panel content uses 16px horizontal padding, 10–12px control gaps, and 24px sep
 
 ## Elevation & Depth
 
-SunCode uses tonal layering rather than app-drawn shadows. The canvas, surface, raised surface, and active surface are close graphite steps separated by one-pixel borders. Dialogs use a stronger border and a raised tonal surface. Top-level windows retain the platform's native shadow, paired with a quieter window-specific hairline rather than the stronger internal border token.
+SunCode primarily uses tonal layering rather than app-drawn shadows. The canvas, surface, raised surface, and active surface are close graphite steps separated by one-pixel borders. The conversation composer is the single floating internal surface and uses a soft downward shadow with enough surrounding layout space to render without clipping. Dialogs use a stronger border and a raised tonal surface. Top-level windows retain the platform's native shadow, paired with a quieter window-specific hairline rather than the stronger internal border token.
 
 ## Shapes
 

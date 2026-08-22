@@ -7,7 +7,7 @@ Verify latest-selection-wins behavior, bounded collection notifications, virtual
 ## Unit tests
 
 - Bulk replacement raises one reset notification and preserves item order.
-- Snapshot projection preserves messages, final approval/turn state, activity, paths, and latest sequence.
+- Snapshot projection preserves normalized session messages.
 - Applying a snapshot replaces the message source, raises its binding property notification once, and requests one conversation scroll.
 
 ## Integration and conformance tests

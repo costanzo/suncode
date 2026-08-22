@@ -3,7 +3,7 @@
              xmlns:models="using:SunCode.Desktop.Models"
              xmlns:vm="using:SunCode.Desktop.ViewModels"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
-             x:Class="SunCode.Desktop.Views.ProviderTraceViewer"
+             x:Class="SunCode.Desktop.Views.Review.ProviderTraceViewer"
              x:DataType="vm:DesktopViewModel"
              Height="440"
              MinHeight="300">

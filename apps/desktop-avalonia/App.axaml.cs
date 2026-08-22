@@ -5,7 +5,9 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
-using SunCode.Desktop.Views;
+using SunCode.Desktop.Views.About;
+using SunCode.Desktop.Views.Settings;
+using SunCode.Desktop.Views.Shell;
 
 namespace SunCode.Desktop;
 

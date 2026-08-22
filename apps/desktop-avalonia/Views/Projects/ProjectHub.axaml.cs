@@ -2,8 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using SunCode.Desktop.Models;
+using SunCode.Desktop.Views.Shell;
 
-namespace SunCode.Desktop.Views;
+namespace SunCode.Desktop.Views.Projects;
 
 public sealed partial class ProjectHub : UserControl
 {

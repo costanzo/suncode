@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="using:SunCode.Desktop.Models"
              xmlns:vm="using:SunCode.Desktop.ViewModels"
-             x:Class="SunCode.Desktop.Views.AgentSidebar"
+             x:Class="SunCode.Desktop.Views.Review.AgentSidebar"
              x:DataType="vm:DesktopViewModel">
   <Border Classes="inspector-card">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled">

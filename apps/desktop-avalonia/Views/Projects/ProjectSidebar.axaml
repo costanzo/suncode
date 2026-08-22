@@ -3,7 +3,7 @@
              xmlns:models="using:SunCode.Desktop.Models"
              xmlns:vm="using:SunCode.Desktop.ViewModels"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
-             x:Class="SunCode.Desktop.Views.ProjectSidebar"
+             x:Class="SunCode.Desktop.Views.Projects.ProjectSidebar"
              x:DataType="vm:DesktopViewModel">
   <Border Classes="sidebar-card" PointerExited="NavigationPointerExited">
     <Grid Margin="16,14,16,12" RowDefinitions="34,10,*">

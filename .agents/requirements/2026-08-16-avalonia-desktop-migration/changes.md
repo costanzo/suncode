@@ -33,6 +33,10 @@
 - Replaced the disabled composer shown without a selected session with a centered empty state, while keeping the message list and composer available whenever a session is selected.
 - Reduced the composer TextBox's reserved bottom action space from 40px to 30px, returning 10px of vertical room to message input without changing the controls.
 - Moved the model and turn action controls into the composer surface, added tunnel-routed Enter submission with Shift+Enter newline behavior, and rendered assistant responses as Markdown during both streaming and completed states.
+- Extracted the chat composer into an independent `ChatInput` control that owns its input, model selection, submission, cancellation, and keyboard behavior while preserving the existing layout and bindings.
+- Kept the chat composer editable while an agent turn is active, with the visible turn action remaining the existing cancel control.
+- Preserved the composer's floating shadow after component extraction by reserving shadow-rendering space outside the unchanged 102px input surface.
+- Grouped the desktop views and their namespaces by product module under `Shell`, `Projects`, `Chat`, `Review`, `Settings`, and `About` so each surface can evolve without adding to one flat view directory.
 - Added a publish-time macOS `.app` bundle with `Info.plist` and the desktop icon resource.
 - Upgraded the core Avalonia framework, desktop backend, Fluent theme, and Inter font packages to `12.1.1`, migrated SVG rendering to `Svg.Controls.Skia.Avalonia 12.0.0.15`, and migrated Markdown rendering to the Avalonia 12-compatible `LiveMarkdown.Avalonia 2.3.2` package.
 

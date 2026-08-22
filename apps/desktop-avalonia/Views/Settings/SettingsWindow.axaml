@@ -3,7 +3,7 @@
         xmlns:models="using:SunCode.Desktop.Models"
         xmlns:vm="using:SunCode.Desktop.ViewModels"
         xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
-        x:Class="SunCode.Desktop.Views.SettingsWindow"
+        x:Class="SunCode.Desktop.Views.Settings.SettingsWindow"
         x:DataType="vm:DesktopViewModel"
         Title="Settings"
         Width="900" Height="672"

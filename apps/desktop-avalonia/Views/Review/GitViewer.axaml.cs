@@ -4,7 +4,7 @@ using Avalonia.Interactivity;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
-namespace SunCode.Desktop.Views;
+namespace SunCode.Desktop.Views.Review;
 
 public sealed partial class GitViewer : UserControl
 {

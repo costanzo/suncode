@@ -1,0 +1,99 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.Chat.ChatInput"
+             x:DataType="vm:DesktopViewModel"
+             Height="126"
+             Margin="10,0"
+             VerticalAlignment="Bottom"
+             ZIndex="2">
+  <UserControl.Styles>
+    <Style Selector="TextBox.composer-input:focus">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Margin="14,14,14,10"
+          Padding="16,12,12,10"
+          CornerRadius="16"
+          Background="{DynamicResource ComposerBrush}"
+          BorderBrush="{DynamicResource BorderStrongBrush}"
+          BorderThickness="1"
+          BoxShadow="0 6 14 0 #57000000">
+    <Grid>
+      <TextBox x:Name="ComposerInput"
+               Classes="composer-input"
+               Margin="0,0,0,30"
+               Text="{Binding ComposerText}"
+               PlaceholderText="{Binding ComposerPlaceholder}"
+               AcceptsReturn="True"
+               TextWrapping="Wrap"
+               Background="Transparent"
+               BorderBrush="Transparent"
+               BorderThickness="0"
+               Padding="0"
+               IsEnabled="{Binding CanCompose}">
+        <TextBox.Resources>
+          <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
+        </TextBox.Resources>
+      </TextBox>
+
+      <StackPanel VerticalAlignment="Bottom"
+                  HorizontalAlignment="Right"
+                  Orientation="Horizontal"
+                  Spacing="6">
+        <ComboBox Width="112"
+                  Height="24"
+                  MinHeight="24"
+                  Padding="6,1"
+                  Classes="mono"
+                  ItemsSource="{Binding Models}"
+                  SelectedItem="{Binding SelectedModel}"
+                  IsEnabled="{Binding CanCompose}"
+                  ToolTip.Tip="Model for this turn">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="models:ModelItem">
+              <TextBlock Classes="mono"
+                         Text="{Binding Id}"
+                         FontSize="11"
+                         MaxWidth="68"
+                         TextTrimming="CharacterEllipsis" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <Button Width="24"
+                Height="24"
+                MinHeight="24"
+                CornerRadius="12"
+                Padding="6"
+                Classes="primary"
+                Click="SubmitTurn"
+                IsVisible="{Binding !IsTurnActive}"
+                IsEnabled="{Binding CanSubmit}"
+                ToolTip.Tip="Send message">
+          <svg:Svg Path="/Assets/icons/arrow-up.svg" Css="{DynamicResource AccentInkSvgCss}" />
+        </Button>
+
+        <Button Width="24"
+                Height="24"
+                MinHeight="24"
+                CornerRadius="12"
+                Padding="7"
+                Classes="danger"
+                Click="CancelTurn"
+                IsVisible="{Binding IsTurnActive}"
+                ToolTip.Tip="Stop turn">
+          <Border Width="8"
+                  Height="8"
+                  CornerRadius="1.5"
+                  Background="{DynamicResource DangerBrush}" />
+        </Button>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>
