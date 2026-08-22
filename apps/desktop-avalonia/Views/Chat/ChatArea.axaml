@@ -52,7 +52,7 @@
                 <Grid>
                   <controls:MarkdownText Markdown="{Binding Text}" HorizontalAlignment="Stretch" />
                 </Grid>
-                <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response">
+                <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Margin="-7,0,0,0" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response">
                   <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
                 </Button>
               </StackPanel>

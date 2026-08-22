@@ -18,7 +18,7 @@ Immutable and long-lived. Records authority decisions only: requested capability
 
 ### Session content
 
-The normalized session tables are the source of truth: human-readable messages, LLM calls, tool uses, and turn state live directly in `session_message`, `session_call`, `session_tool_use`, and `session_turn`. Streaming and lifecycle events are broadcast in memory only. `session_message` history is ordered by `created_at` and does not contain a sequence column. A client that misses live events reloads a fresh session snapshot.
+The normalized session tables are the source of truth: user/assistant/thinking messages, LLM calls, tool uses/results, and turn state live directly in `session_message`, `session_call`, `session_tool_use`, and `session_turn`. `session_message` does not accept the `tool` role or store usage; provider context derives transient tool messages from succeeded `session_tool_use` results. Per-call usage belongs to `session_call`, and cumulative turn usage belongs to `session_turn`. Streaming and lifecycle events are broadcast in memory only. `session_message` history is ordered by `created_at` and does not contain a sequence column. A client that misses live events reloads a fresh session snapshot.
 
 The database stores no client replay cursor or duplicate event journal. Subscription callbacks are live-only; lagged subscribers receive `resync.required` and recover through the snapshot API.
 

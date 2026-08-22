@@ -9,6 +9,13 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
+const REQUEST_ID_HEADERS: &[&str] = &[
+    "x-request-id",
+    "request-id",
+    "x-amzn-requestid",
+    "x-goog-request-id",
+];
+
 #[derive(Clone)]
 pub struct OpenAiCompatibleProvider {
     client: reqwest::Client,
@@ -47,6 +54,7 @@ impl OpenAiCompatibleProvider {
                 code: "provider_unconfigured".into(),
                 message: format!("{} API key is not configured", self.provider_label),
                 retryable: false,
+                provider_request_id: None,
             })?;
         let body = json!({
             "model": request.wire_model,
@@ -68,8 +76,17 @@ impl OpenAiCompatibleProvider {
                 code: "transient".into(),
                 message: format!("{} request failed: {error}", self.provider_label),
                 retryable: true,
+                provider_request_id: None,
             })?,
         };
+        let provider_request_id = REQUEST_ID_HEADERS.iter().find_map(|name| {
+            response
+                .headers()
+                .get(*name)
+                .and_then(|value| value.to_str().ok())
+                .filter(|value| !value.is_empty())
+                .map(str::to_owned)
+        });
         if !response.status().is_success() {
             let status = response.status();
             let message = response
@@ -104,26 +121,49 @@ impl OpenAiCompatibleProvider {
                 retryable: status.as_u16() == 408
                     || status.as_u16() == 429
                     || status.is_server_error(),
+                provider_request_id,
             });
         }
         let mut parser = SseParser::new(self.provider_label.clone());
         let mut stream = response.bytes_stream();
         while let Some(chunk) = tokio::select! {
-            _ = cancellation.cancelled() => return Err(cancelled()),
+            _ = cancellation.cancelled() => {
+                let mut error = cancelled();
+                error.provider_request_id = provider_request_id.clone();
+                return Err(error);
+            },
             value = stream.next() => value
         } {
-            for delta in parser.push(&chunk.map_err(|error| ProviderError {
+            let chunk = chunk.map_err(|error| ProviderError {
                 code: "provider_protocol".into(),
                 message: format!("{} stream failed: {error}", self.provider_label),
                 retryable: true,
-            })?)? {
+                provider_request_id: provider_request_id.clone(),
+            })?;
+            let parsed = parser.push(&chunk).map_err(|mut error| {
+                error.provider_request_id = provider_request_id.clone();
+                error
+            })?;
+            for delta in parsed {
                 let _ = deltas.send(delta);
             }
         }
-        for delta in parser.flush()? {
+        for delta in parser.flush().map_err(|mut error| {
+            error.provider_request_id = provider_request_id.clone();
+            error
+        })? {
             let _ = deltas.send(delta);
         }
-        parser.finish()
+        match parser.finish() {
+            Ok(mut completion) => {
+                completion.provider_request_id = provider_request_id;
+                Ok(completion)
+            }
+            Err(mut error) => {
+                error.provider_request_id = provider_request_id;
+                Err(error)
+            }
+        }
     }
 }
 
@@ -173,11 +213,17 @@ mod tests {
         assert_eq!(body["model"], "company-model-v1");
         assert_eq!(body["tools"][0]["function"]["name"], "read");
         let response = concat!(
-            "data: {\"choices\":[{\"delta\":{\"content\":\"hello\"}}]}\n\n",
-            "data: {\"choices\":[{\"delta\":{\"content\":\" world\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2,\"total_tokens\":5,\"prompt_tokens_details\":{\"cached_tokens\":2}}}\n\n",
+            "data: {\"id\":\"chatcmpl-response-1\",\"choices\":[{\"delta\":{\"content\":\"hello\"}}]}\n\n",
+            "data: {\"id\":\"chatcmpl-response-1\",\"choices\":[{\"delta\":{\"content\":\" world\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2,\"total_tokens\":5,\"prompt_tokens_details\":{\"cached_tokens\":2}}}\n\n",
             "data: [DONE]\n\n"
         );
-        ([(header::CONTENT_TYPE, "text/event-stream")], response)
+        (
+            [
+                (header::CONTENT_TYPE.as_str(), "text/event-stream"),
+                ("x-request-id", "request-1"),
+            ],
+            response,
+        )
     }
 
     #[tokio::test]
@@ -218,6 +264,11 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(result.text, "hello world");
+        assert_eq!(result.provider_request_id.as_deref(), Some("request-1"));
+        assert_eq!(
+            result.provider_response_id.as_deref(),
+            Some("chatcmpl-response-1")
+        );
         let usage = result.usage.unwrap();
         assert_eq!(usage.total_tokens, 5);
         assert_eq!(usage.cache_read_tokens, Some(2));

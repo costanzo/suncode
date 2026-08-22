@@ -43,6 +43,9 @@ public sealed partial class ProviderTraceViewer : UserControl
         {
             trace.Title,
             trace.TurnText,
+            $"SunCode call {trace.ExchangeId}",
+            $"Provider request {trace.ProviderRequestId}",
+            $"Provider response {trace.ProviderResponseId}",
             trace.UsageSummary,
             $"Cache hit {trace.CacheHitRateText}",
             $"Duration {trace.DurationText}",

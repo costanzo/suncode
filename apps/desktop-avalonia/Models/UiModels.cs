@@ -89,6 +89,8 @@ public sealed record ProviderTraceItem(
     string Provider,
     string ModelId,
     string WireModel,
+    string ProviderRequestId,
+    string ProviderResponseId,
     string State,
     int Iteration,
     string StartedAt,
@@ -157,6 +159,8 @@ public sealed record ProviderTraceItem(
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorText);
     public bool HasMessages => Messages.Count > 0;
     public bool HasTools => Tools.Count > 0;
+    public bool HasProviderRequestId => !string.IsNullOrWhiteSpace(ProviderRequestId);
+    public bool HasProviderResponseId => !string.IsNullOrWhiteSpace(ProviderResponseId);
 
     private static string Short(string value) => value.Length <= 8 ? value : value[..8];
     private static string Metric(long? value) => value is { } number ? Compact(number) : "—";

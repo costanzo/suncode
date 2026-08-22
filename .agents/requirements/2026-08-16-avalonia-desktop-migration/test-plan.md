@@ -7,6 +7,7 @@ Verify the Avalonia build, C ABI loading, view-model projections, and unchanged 
 ## Unit tests
 
 - Event and snapshot projection tests for messages, activity, approvals, touched paths, and terminal turn state.
+- Conversation projection tests that keep tool-call records in the runtime but omit assistant rows without visible text in snapshot and live-event paths.
 - SDK envelope parsing tests for success, error, and malformed responses.
 
 ## Integration and conformance tests
@@ -34,6 +35,7 @@ Verify the Avalonia build, C ABI loading, view-model projections, and unchanged 
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore`: passed on Avalonia `12.1.1` with 0 warnings and 0 errors.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj -c Release --no-restore`: passed on Avalonia `12.1.1` with an optimized Rust `cdylib`, 0 warnings, and 0 errors.
 - `dotnet format apps/desktop-avalonia/SunCode.Desktop.csproj --verify-no-changes --no-restore`: passed.
+- Conversation projection follow-up: `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore` passed (21 tests); DesignTime and Release builds passed with zero warnings and errors; test-project format verification and `git diff --check` passed.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json apps/desktop-avalonia DESIGN.md`: returned `[]`.
 - Release startup: loaded the native runtime, listed projects, selected a project, and rendered runtime/Git projections without console errors.
 - Screenshot checks: passed for the hub, 1440x900 workbench, 900x620 compact workbench, settings, Git drawer, and in-window session dialog.

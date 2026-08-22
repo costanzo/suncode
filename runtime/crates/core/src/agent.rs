@@ -46,7 +46,10 @@ impl From<PersistenceError> for AgentError {
 }
 impl From<ProviderError> for AgentError {
     fn from(error: ProviderError) -> Self {
-        Self::new(&error.code, error.message).details(json!({"retryable":error.retryable}))
+        Self::new(&error.code, error.message).details(json!({
+            "retryable": error.retryable,
+            "provider_request_id": error.provider_request_id,
+        }))
     }
 }
 
@@ -580,6 +583,7 @@ impl Agent {
                                 "message": error.message.clone(),
                                 "retryable": error.retryable,
                             },
+                            "provider_request_id": error.provider_request_id,
                         }),
                     )?;
                     return Err(error.into());
@@ -647,6 +651,8 @@ impl Agent {
                         "cache_read_tokens": cache_read_tokens,
                         "cache_write_tokens": cache_write_tokens,
                     })),
+                    "provider_request_id": result.provider_request_id,
+                    "provider_response_id": result.provider_response_id,
                     "finish_reason": result.finish_reason.clone(),
                 }),
             )?;
@@ -731,7 +737,7 @@ impl Agent {
                     "Turn exceeded its tool-call budget",
                 );
             }
-            self.emit(&context.session_id, "tool.requested", json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"name":call.name,"arguments":call.arguments}))?;
+            self.emit(&context.session_id, "tool.requested", json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"name":call.name,"arguments":call.arguments,"ordinal":index}))?;
             let signature = tool_signature(call);
             if context.last_tool_signature.as_deref() == Some(signature.as_str()) {
                 context.repeated_tool_stalls += 1;
@@ -882,6 +888,7 @@ impl Agent {
         call: &ToolCall,
         result: Value,
     ) -> Result<(), AgentError> {
+        let normalized_result = normalize_result(&call.name, result.clone());
         self.tool_state(context, call, "succeeded", None)?;
         self.emit(
             &context.session_id,
@@ -890,7 +897,7 @@ impl Agent {
                 "turn_id": context.turn_id,
                 "call_id": context.active_call_id,
                 "tool_call_id": call.call_id,
-                "result": result,
+                "result": normalized_result,
             }),
         )?;
         self.store.append_audit(
@@ -928,8 +935,7 @@ impl Agent {
         }
         let mut tool = Message::text(
             "tool",
-            serde_json::to_string(&normalize_result(&call.name, result))
-                .unwrap_or_else(|_| "{}".into()),
+            serde_json::to_string(&normalized_result).unwrap_or_else(|_| "{}".into()),
         );
         tool.tool_call_id = Some(call.call_id.clone());
         context.messages.push(tool.clone());
@@ -1560,8 +1566,10 @@ mod tests {
             TurnResponse::Completed { tool_calls: 1, .. }
         ));
         let messages = store.messages(&session_id).unwrap();
-        assert!(messages.iter().any(|message| message.role == "tool"));
+        assert!(messages.iter().all(|message| message.role != "tool"));
         assert_eq!(messages.last().unwrap().role, "assistant");
+        let context = store.context_messages(&session_id).unwrap();
+        assert!(context.iter().any(|message| message.role == "tool"));
         server.abort();
     }
 
@@ -1609,9 +1617,14 @@ mod tests {
             response,
             TurnResponse::Completed { tool_calls: 2, .. }
         ));
+        assert!(store
+            .messages(&session_id)
+            .unwrap()
+            .iter()
+            .all(|message| message.role != "tool"));
         assert_eq!(
             store
-                .messages(&session_id)
+                .context_messages(&session_id)
                 .unwrap()
                 .iter()
                 .filter(|message| message.role == "tool")

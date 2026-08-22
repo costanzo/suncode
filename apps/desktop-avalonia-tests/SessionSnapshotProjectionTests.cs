@@ -30,6 +30,106 @@ public sealed class SessionSnapshotProjectionTests
     }
 
     [Fact]
+    public void ProjectionOmitsAssistantMessagesWithoutVisibleText()
+    {
+        var snapshot = JsonNode.Parse("""
+        {
+          "messages": [
+            {"role":"user","content":[{"type":"text","text":"inspect this"}]},
+            {
+              "role":"assistant",
+              "content":[],
+              "tool_calls":[{"call_id":"call-1","name":"read","arguments":{"path":"README.md"}}]
+            },
+            {"role":"assistant","content":[{"type":"text","text":"done"}]}
+          ]
+        }
+        """)!.AsObject();
+
+        var projection = DesktopViewModel.ProjectSnapshot(snapshot);
+
+        Assert.Collection(
+            projection.Messages,
+            message => Assert.Equal(("user", "inspect this", 1L), (message.Role, message.Text, message.ContentSequence)),
+            message => Assert.Equal(("assistant", "done", 2L), (message.Role, message.Text, message.ContentSequence)));
+    }
+
+    [Fact]
+    public void LiveProjectionOmitsAssistantMessagesWithoutVisibleText()
+    {
+        var viewModel = new DesktopViewModel();
+        var changes = 0;
+        viewModel.ConversationChanged += () => changes++;
+        var toolCallMessage = JsonNode.Parse("""
+        {
+          "event_type":"message.assistant",
+          "payload":{
+            "turn_id":"turn-1",
+            "message":{
+              "role":"assistant",
+              "content":[],
+              "tool_calls":[{"call_id":"call-1","name":"read","arguments":{"path":"README.md"}}]
+            }
+          }
+        }
+        """)!.AsObject();
+
+        viewModel.ApplyEvent(toolCallMessage, live: true);
+
+        Assert.Empty(viewModel.Messages);
+        Assert.Equal(0, changes);
+    }
+
+    [Fact]
+    public void EmptyFinalEventPreservesAlreadyStreamedAssistantText()
+    {
+        var viewModel = new DesktopViewModel();
+        viewModel.ApplyEvent(JsonNode.Parse("""
+        {
+          "event_type":"assistant.delta",
+          "payload":{"turn_id":"turn-1","text":"visible response"}
+        }
+        """)!.AsObject(), live: true);
+        var emptyFinalMessage = JsonNode.Parse("""
+        {
+          "event_type":"message.assistant",
+          "payload":{
+            "turn_id":"turn-1",
+            "message":{"role":"assistant","content":[]}
+          }
+        }
+        """)!.AsObject();
+
+        viewModel.ApplyEvent(emptyFinalMessage, live: true);
+
+        var message = Assert.Single(viewModel.Messages);
+        Assert.Equal("visible response", message.Text);
+        Assert.False(message.Streaming);
+    }
+
+    [Fact]
+    public void MessageProjectionCombinesAllTextParts()
+    {
+        var snapshot = JsonNode.Parse("""
+        {
+          "messages": [
+            {
+              "role":"assistant",
+              "content":[
+                {"type":"text","text":"first"},
+                {"type":"text","text":"second"}
+              ]
+            }
+          ]
+        }
+        """)!.AsObject();
+
+        var projection = DesktopViewModel.ProjectSnapshot(snapshot);
+
+        Assert.Equal("first\nsecond", Assert.Single(projection.Messages).Text);
+    }
+
+    [Fact]
     public void ApplyingProjectionReplacesTheMessageSourceAndSignalsOnce()
     {
         var viewModel = new DesktopViewModel();

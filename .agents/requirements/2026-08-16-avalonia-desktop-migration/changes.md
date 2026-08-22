@@ -35,6 +35,8 @@
 - Moved the model and turn action controls into the composer surface, added tunnel-routed Enter submission with Shift+Enter newline behavior, and rendered assistant responses as Markdown during both streaming and completed states.
 - Extracted the chat composer into an independent `ChatInput` control that owns its input, model selection, submission, cancellation, and keyboard behavior while preserving the existing layout and bindings.
 - Kept the chat composer editable while an agent turn is active, with the visible turn action remaining the existing cancel control.
+- Optically aligned the assistant-message copy glyph with the Markdown text edge while preserving its 26-DIP button target.
+- Kept tool-call-only assistant records in runtime storage and trace diagnostics while omitting their empty text rows from snapshot and live conversation projection.
 - Preserved the composer's floating shadow after component extraction by reserving shadow-rendering space outside the unchanged 102px input surface.
 - Grouped the desktop views and their namespaces by product module under `Shell`, `Projects`, `Chat`, `Review`, `Settings`, and `About` so each surface can evolve without adding to one flat view directory.
 - Added a publish-time macOS `.app` bundle with `Info.plist` and the desktop icon resource.
@@ -53,6 +55,7 @@
 - Existing Rust workspace tests cover 43 runtime and operation behaviors.
 - Compiled Avalonia bindings and native loading were exercised by Debug/Release builds and startup checks.
 - Multi-window runtime sharing, recent-project activation, dialog behavior, settings modality, default/minimum geometry, and Git drawer behavior were manually verified on macOS.
+- Added desktop regression coverage for filtering tool-call-only assistant messages from snapshot and live conversation projection and for combining multiple visible text parts.
 
 ## Documentation
 

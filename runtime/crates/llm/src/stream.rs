@@ -9,6 +9,7 @@ pub struct SseParser {
     calls: BTreeMap<u64, (String, String, String)>,
     finish_reason: String,
     usage: Option<Usage>,
+    response_id: Option<String>,
 }
 
 impl SseParser {
@@ -20,6 +21,7 @@ impl SseParser {
             calls: BTreeMap::new(),
             finish_reason: String::new(),
             usage: None,
+            response_id: None,
         }
     }
 
@@ -56,7 +58,15 @@ impl SseParser {
             code: "provider_protocol".into(),
             message: format!("{} returned malformed stream JSON", self.provider_label),
             retryable: false,
+            provider_request_id: None,
         })?;
+        if self.response_id.is_none() {
+            self.response_id = chunk
+                .get("id")
+                .and_then(Value::as_str)
+                .filter(|value| !value.is_empty())
+                .map(str::to_owned);
+        }
         if let Some(usage) = chunk.get("usage") {
             self.usage = Some(Usage {
                 input_tokens: usage
@@ -135,6 +145,7 @@ impl SseParser {
                         code: "malformed_tool_call".into(),
                         message: "Provider returned invalid tool arguments".into(),
                         retryable: false,
+                        provider_request_id: None,
                     })?,
                 })
             })
@@ -144,6 +155,8 @@ impl SseParser {
             tool_calls,
             finish_reason: self.finish_reason,
             usage: self.usage,
+            provider_request_id: None,
+            provider_response_id: self.response_id,
         })
     }
 }

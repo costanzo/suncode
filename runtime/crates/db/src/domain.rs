@@ -141,6 +141,8 @@ pub struct ProviderExchange {
     pub provider: String,
     pub model_id: String,
     pub wire_model: String,
+    pub provider_request_id: Option<String>,
+    pub provider_response_id: Option<String>,
     pub state: String,
     pub iteration: i64,
     pub started_at: String,
@@ -179,7 +181,6 @@ pub struct SessionCallMessage {
     pub session_call_id: Option<String>,
     pub role: String,
     pub message: Value,
-    pub usage: Option<Value>,
     pub created_at: String,
 }
 

@@ -39,7 +39,7 @@ Approval recovery is kept on the turn in `recovery_approval_id`, `recovery_snaps
 
 ### `session_call`
 
-One row per LLM request within a turn. `call_id` is the physical primary key and is linked to `session_turn`; provider/model/wire-model identity, iteration, lifecycle state, normalized input/output/tool-call/usage/error JSON, finish reason, and timestamps are retained. States are `started`, `completed`, and `failed`. Session, turn, and in-flight indexes support diagnostics and recovery.
+One row per LLM request within a turn. `call_id` is the SunCode-owned physical primary key and is linked to `session_turn`; nullable `provider_request_id` and `provider_response_id` retain the provider's HTTP request identifier and response-object identifier independently. Provider/model/wire-model identity, iteration, lifecycle state, normalized input/output/tool-call/usage/error JSON, finish reason, and timestamps are retained. States are `started`, `completed`, and `failed`. Session, turn, and in-flight indexes support diagnostics and recovery.
 
 ### `session_tool_use`
 
@@ -47,7 +47,7 @@ One row per tool invocation, keyed by `(turn_id, tool_call_id)`. It records the 
 
 ### `session_message`
 
-Human-readable and provider-context messages keyed by `message_id`. Each row links to its session, optionally to a turn and `session_call`, and stores role, message JSON, optional usage JSON, and `created_at`. Roles are `user`, `assistant`, `thinking`, and `tool`. Message history and context are ordered by `created_at` with `rowid` as a deterministic tie-breaker; no content sequence column is used.
+Human-readable messages keyed by `message_id`. Each row links to its session, optionally to a turn and `session_call`, and stores role, message JSON, and `created_at`. Roles are `user`, `assistant`, and `thinking`; the schema rejects `tool`. Message history is ordered by `created_at` with `rowid` as a deterministic tie-breaker; no content sequence or usage column is used. Provider-reported per-call usage belongs to `session_call`; cumulative turn usage belongs to `session_turn`.
 
 ### `audit_record`
 
@@ -79,4 +79,4 @@ Model row keyed by `model_id` and linked to `llm_model_provider`. It stores disp
 
 ## Projection Rules
 
-Durable projection updates occur in one transaction per runtime event. The runtime rebuilds provider context from `session_message`, repairing incomplete assistant/tool tails after interruption. Runtime events are broadcast in memory only; a client that misses events receives `resync.required` and reloads a fresh session snapshot. Audit rows remain immutable and independent from session projections.
+Durable projection updates occur in one transaction per runtime event. The runtime rebuilds provider context by merging `session_message` user/assistant/thinking rows with transient tool-role messages derived from succeeded `session_tool_use.result_json` rows, then repairs incomplete assistant/tool tails after interruption. Tool results are never duplicated in `session_message`. Runtime events are broadcast in memory only; a client that misses events receives `resync.required` and reloads a fresh session snapshot. Audit rows remain immutable and independent from session projections.

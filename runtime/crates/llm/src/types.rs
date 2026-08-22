@@ -11,6 +11,7 @@ pub struct ProviderError {
     pub code: String,
     pub message: String,
     pub retryable: bool,
+    pub provider_request_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -82,6 +83,8 @@ pub struct Completion {
     pub tool_calls: Vec<ToolCall>,
     pub finish_reason: String,
     pub usage: Option<Usage>,
+    pub provider_request_id: Option<String>,
+    pub provider_response_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]

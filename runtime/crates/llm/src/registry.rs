@@ -129,6 +129,8 @@ mod tests {
                     tool_calls: Vec::new(),
                     finish_reason: "stop".into(),
                     usage: None,
+                    provider_request_id: None,
+                    provider_response_id: None,
                 })
             })
         }

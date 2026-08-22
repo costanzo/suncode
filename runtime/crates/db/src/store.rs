@@ -123,7 +123,9 @@ impl Store {
             .lock()
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         let mut statement = connection.prepare(
-            "SELECT message_json FROM session_message WHERE session_id=? ORDER BY created_at,rowid",
+            "SELECT message_json FROM session_message
+             WHERE session_id=? AND role IN ('user','assistant','thinking')
+             ORDER BY created_at,rowid",
         )?;
         let rows = statement.query_map([session_id], |row| row.get::<_, String>(0))?;
         rows.map(|row| Ok(serde_json::from_str(&row?)?)).collect()
@@ -135,12 +137,46 @@ impl Store {
             .lock()
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         let mut statement = connection.prepare(
-            "SELECT message_json FROM session_message WHERE session_id=? ORDER BY created_at,rowid",
+            "SELECT kind,payload,tool_call_id
+             FROM (
+                 SELECT message.created_at AS occurred_at,0 AS kind_order,
+                        message.rowid AS stable_order,
+                        'message' AS kind,message.message_json AS payload,NULL AS tool_call_id,
+                        NULL AS ordinal,COALESCE(call.iteration,0) AS call_iteration
+                 FROM session_message AS message
+                 LEFT JOIN session_call AS call ON call.call_id=message.session_call_id
+                 WHERE message.session_id=?1 AND role IN ('user','assistant','thinking')
+                 UNION ALL
+                 SELECT COALESCE(tool.completed_at,tool.updated_at) AS occurred_at,
+                        1 AS kind_order,tool.rowid AS stable_order,
+                        'tool' AS kind,tool.result_json AS payload,tool.tool_call_id,
+                        tool.ordinal,COALESCE(call.iteration,9223372036854775807) AS call_iteration
+                 FROM session_tool_use AS tool
+                 JOIN session_turn AS turn ON turn.turn_id=tool.turn_id
+                 LEFT JOIN session_call AS call ON call.call_id=tool.session_call_id
+                 WHERE turn.session_id=?1 AND tool.state='succeeded'
+                   AND tool.result_json IS NOT NULL
+             )
+             ORDER BY occurred_at,call_iteration,kind_order,
+                      COALESCE(ordinal,9223372036854775807),stable_order",
         )?;
-        let rows = statement.query_map([session_id], |row| row.get::<_, String>(0))?;
+        let rows = statement.query_map([session_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+            ))
+        })?;
         let mut messages: Vec<Message> = Vec::new();
         for row in rows {
-            messages.push(serde_json::from_str(&row?)?);
+            let (kind, payload, tool_call_id) = row?;
+            if kind == "message" {
+                messages.push(serde_json::from_str(&payload)?);
+            } else {
+                let mut message = Message::text("tool", payload);
+                message.tool_call_id = tool_call_id;
+                messages.push(message);
+            }
         }
         Ok(repair_incomplete_tool_exchanges(messages))
     }
@@ -175,7 +211,7 @@ impl Store {
             .lock()
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         let mut statement = connection.prepare(
-            "SELECT call_id,session_id,turn_id,provider,model_id,wire_model,state,iteration,started_at,completed_at,input_messages_json,output_message_json,tool_calls_json,usage_json,finish_reason,error_json
+            "SELECT call_id,session_id,turn_id,provider,model_id,wire_model,provider_request_id,provider_response_id,state,iteration,started_at,completed_at,input_messages_json,output_message_json,tool_calls_json,usage_json,finish_reason,error_json
              FROM session_call
              WHERE session_id=?
              ORDER BY started_at DESC, call_id DESC",
@@ -195,7 +231,7 @@ impl Store {
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         connection
             .query_row(
-                "SELECT call_id,session_id,turn_id,provider,model_id,wire_model,state,iteration,started_at,completed_at,input_messages_json,output_message_json,tool_calls_json,usage_json,finish_reason,error_json
+                "SELECT call_id,session_id,turn_id,provider,model_id,wire_model,provider_request_id,provider_response_id,state,iteration,started_at,completed_at,input_messages_json,output_message_json,tool_calls_json,usage_json,finish_reason,error_json
                  FROM session_call
                  WHERE session_id=? AND call_id=?",
                 params![session_id, exchange_id],
@@ -233,9 +269,10 @@ impl Store {
             .lock()
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         let mut statement = connection.prepare(
-            "SELECT message_id,session_id,turn_id,session_call_id,role,message_json,usage_json,created_at
+            "SELECT message_id,session_id,turn_id,session_call_id,role,message_json,created_at
              FROM session_message
              WHERE session_id=? AND session_call_id=?
+               AND role IN ('user','assistant','thinking')
              ORDER BY created_at,rowid",
         )?;
         let rows = statement.query_map(params![session_id, call_id], |row| {
@@ -246,21 +283,12 @@ impl Store {
                 row.get::<_, Option<String>>(3)?,
                 row.get::<_, String>(4)?,
                 row.get::<_, String>(5)?,
-                row.get::<_, Option<String>>(6)?,
-                row.get::<_, String>(7)?,
+                row.get::<_, String>(6)?,
             ))
         })?;
         rows.map(|row| {
-            let (
-                message_id,
-                session_id,
-                turn_id,
-                session_call_id,
-                role,
-                message,
-                usage,
-                created_at,
-            ) = row?;
+            let (message_id, session_id, turn_id, session_call_id, role, message, created_at) =
+                row?;
             Ok(SessionCallMessage {
                 message_id,
                 session_id,
@@ -268,9 +296,6 @@ impl Store {
                 session_call_id,
                 role,
                 message: serde_json::from_str(&message)?,
-                usage: usage
-                    .map(|value| serde_json::from_str(&value))
-                    .transpose()?,
                 created_at,
             })
         })
@@ -1174,17 +1199,17 @@ fn apply_projection(
 ) -> Result<(), PersistenceError> {
     if matches!(
         event_type,
-        "message.user" | "message.assistant" | "message.thinking" | "message.tool"
+        "message.user" | "message.assistant" | "message.thinking"
     ) {
         if let Some(message) = payload.get("message") {
             let role = message.get("role").and_then(Value::as_str);
-            if matches!(role, Some("user" | "assistant" | "thinking" | "tool")) {
+            if matches!(role, Some("user" | "assistant" | "thinking")) {
                 let message_id = payload
                     .get("message_id")
                     .and_then(Value::as_str)
                     .map(str::to_string)
                     .unwrap_or_else(|| format!("event:{session_id}:{}", Uuid::new_v4()));
-                transaction.execute("INSERT OR IGNORE INTO session_message (message_id,session_id,turn_id,session_call_id,role,message_json,usage_json,created_at) VALUES (?,?,?,?,?,?,?,?)", params![message_id, session_id, payload.get("turn_id").and_then(Value::as_str), payload.get("call_id").or_else(|| payload.get("exchange_id")).and_then(Value::as_str), role, serde_json::to_string(message)?, payload.get("usage").map(serde_json::to_string).transpose()?, occurred_at])?;
+                transaction.execute("INSERT OR IGNORE INTO session_message (message_id,session_id,turn_id,session_call_id,role,message_json,created_at) VALUES (?,?,?,?,?,?,?)", params![message_id, session_id, payload.get("turn_id").and_then(Value::as_str), payload.get("call_id").or_else(|| payload.get("exchange_id")).and_then(Value::as_str), role, serde_json::to_string(message)?, occurred_at])?;
             }
         }
     }
@@ -1303,13 +1328,15 @@ fn apply_projection(
             .transpose()?;
         transaction.execute(
             "UPDATE session_call
-             SET state='completed',completed_at=?,output_message_json=?,tool_calls_json=?,usage_json=?,finish_reason=?,error_json=NULL
+             SET state='completed',completed_at=?,output_message_json=?,tool_calls_json=?,usage_json=?,provider_request_id=?,provider_response_id=?,finish_reason=?,error_json=NULL
              WHERE session_id=? AND call_id=?",
             params![
                 occurred_at,
                 output_message,
                 serde_json::to_string(&tool_calls)?,
                 usage,
+                payload.get("provider_request_id").and_then(Value::as_str),
+                payload.get("provider_response_id").and_then(Value::as_str),
                 payload.get("finish_reason").and_then(Value::as_str),
                 session_id,
                 exchange_id,
@@ -1325,10 +1352,11 @@ fn apply_projection(
             })?;
         transaction.execute(
             "UPDATE session_call
-             SET state='failed',completed_at=?,finish_reason='error',error_json=?
+             SET state='failed',completed_at=?,provider_request_id=?,finish_reason='error',error_json=?
              WHERE session_id=? AND call_id=?",
             params![
                 occurred_at,
+                payload.get("provider_request_id").and_then(Value::as_str),
                 payload
                     .get("error")
                     .map(serde_json::to_string)
@@ -1346,8 +1374,8 @@ fn apply_projection(
             payload.get("arguments"),
         ) {
             transaction.execute(
-                "INSERT INTO session_tool_use(turn_id,tool_call_id,session_call_id,name,request_json,state,created_at,updated_at) VALUES (?,?,?,?,?,'requested',?,?) ON CONFLICT(turn_id,tool_call_id) DO UPDATE SET session_call_id=COALESCE(excluded.session_call_id,session_tool_use.session_call_id),request_json=excluded.request_json,name=excluded.name,updated_at=excluded.updated_at",
-                params![turn_id, call_id, payload.get("call_id").and_then(Value::as_str), name, serde_json::to_string(arguments)?, occurred_at, occurred_at],
+                "INSERT INTO session_tool_use(turn_id,tool_call_id,session_call_id,name,request_json,state,ordinal,created_at,updated_at) VALUES (?,?,?,?,?,'requested',?,?,?) ON CONFLICT(turn_id,tool_call_id) DO UPDATE SET session_call_id=COALESCE(excluded.session_call_id,session_tool_use.session_call_id),request_json=excluded.request_json,name=excluded.name,ordinal=COALESCE(excluded.ordinal,session_tool_use.ordinal),updated_at=excluded.updated_at",
+                params![turn_id, call_id, payload.get("call_id").and_then(Value::as_str), name, serde_json::to_string(arguments)?, payload.get("ordinal").and_then(Value::as_i64), occurred_at, occurred_at],
             )?;
         }
     }
@@ -1469,11 +1497,11 @@ fn session_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRecord> 
     })
 }
 fn provider_exchange_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<ProviderExchange> {
-    let input_messages: String = row.get(10)?;
-    let output_message: Option<String> = row.get(11)?;
-    let tool_calls: String = row.get(12)?;
-    let usage: Option<String> = row.get(13)?;
-    let error: Option<String> = row.get(15)?;
+    let input_messages: String = row.get(12)?;
+    let output_message: Option<String> = row.get(13)?;
+    let tool_calls: String = row.get(14)?;
+    let usage: Option<String> = row.get(15)?;
+    let error: Option<String> = row.get(17)?;
     Ok(ProviderExchange {
         exchange_id: row.get(0)?,
         session_id: row.get(1)?,
@@ -1481,36 +1509,20 @@ fn provider_exchange_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Provi
         provider: row.get(3)?,
         model_id: row.get(4)?,
         wire_model: row.get(5)?,
-        state: row.get(6)?,
-        iteration: row.get(7)?,
-        started_at: row.get(8)?,
-        completed_at: row.get(9)?,
+        provider_request_id: row.get(6)?,
+        provider_response_id: row.get(7)?,
+        state: row.get(8)?,
+        iteration: row.get(9)?,
+        started_at: row.get(10)?,
+        completed_at: row.get(11)?,
         input_messages: serde_json::from_str(&input_messages).map_err(|error| {
-            rusqlite::Error::FromSqlConversionFailure(
-                10,
-                rusqlite::types::Type::Text,
-                Box::new(error),
-            )
-        })?,
-        output_message: output_message
-            .map(|value| {
-                serde_json::from_str(&value).map_err(|error| {
-                    rusqlite::Error::FromSqlConversionFailure(
-                        11,
-                        rusqlite::types::Type::Text,
-                        Box::new(error),
-                    )
-                })
-            })
-            .transpose()?,
-        tool_calls: serde_json::from_str(&tool_calls).map_err(|error| {
             rusqlite::Error::FromSqlConversionFailure(
                 12,
                 rusqlite::types::Type::Text,
                 Box::new(error),
             )
         })?,
-        usage: usage
+        output_message: output_message
             .map(|value| {
                 serde_json::from_str(&value).map_err(|error| {
                     rusqlite::Error::FromSqlConversionFailure(
@@ -1521,12 +1533,30 @@ fn provider_exchange_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Provi
                 })
             })
             .transpose()?,
-        finish_reason: row.get(14)?,
-        error: error
+        tool_calls: serde_json::from_str(&tool_calls).map_err(|error| {
+            rusqlite::Error::FromSqlConversionFailure(
+                14,
+                rusqlite::types::Type::Text,
+                Box::new(error),
+            )
+        })?,
+        usage: usage
             .map(|value| {
                 serde_json::from_str(&value).map_err(|error| {
                     rusqlite::Error::FromSqlConversionFailure(
                         15,
+                        rusqlite::types::Type::Text,
+                        Box::new(error),
+                    )
+                })
+            })
+            .transpose()?,
+        finish_reason: row.get(16)?,
+        error: error
+            .map(|value| {
+                serde_json::from_str(&value).map_err(|error| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        17,
                         rusqlite::types::Type::Text,
                         Box::new(error),
                     )
@@ -1547,6 +1577,21 @@ fn initialize(connection: &mut Connection) -> Result<(), PersistenceError> {
         return Err(PersistenceError::Invalid(format!(
             "database tables do not match the current schema: {actual_tables:?}"
         )));
+    }
+    if !schema::session_message_excludes_tool_role(&transaction)? {
+        return Err(PersistenceError::Invalid(
+            "session_message schema still permits the retired tool role".into(),
+        ));
+    }
+    if !schema::session_message_excludes_usage_column(&transaction)? {
+        return Err(PersistenceError::Invalid(
+            "session_message schema still contains the retired usage_json column".into(),
+        ));
+    }
+    if !schema::session_call_includes_provider_ids(&transaction)? {
+        return Err(PersistenceError::Invalid(
+            "session_call schema is missing provider request/response identifiers".into(),
+        ));
     }
     data::apply(&transaction)?;
     transaction.commit()?;
@@ -1737,9 +1782,13 @@ mod tests {
             }],
             tool_call_id: None,
         };
-        let mut tool = Message::text("tool", "{\"content\":\"hello\"}");
-        tool.tool_call_id = Some("call-1".into());
-
+        store
+            .append_content(
+                &session_id,
+                "turn.state",
+                &json!({"turn_id":"turn-1","state":"resolving_calls"}),
+            )
+            .unwrap();
         store
             .append_content(
                 &session_id,
@@ -1757,8 +1806,22 @@ mod tests {
         store
             .append_content(
                 &session_id,
-                "message.tool",
-                &json!({"turn_id":"turn-1","tool_call_id":"call-1","message":tool}),
+                "tool.requested",
+                &json!({"turn_id":"turn-1","tool_call_id":"call-1","name":"fs_read","arguments":{"path":"README.md"},"ordinal":0}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "tool.state",
+                &json!({"turn_id":"turn-1","tool_call_id":"call-1","name":"fs_read","state":"succeeded","ordinal":0}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "tool.result",
+                &json!({"turn_id":"turn-1","tool_call_id":"call-1","result":{"content":"hello"}}),
             )
             .unwrap();
 
@@ -1767,6 +1830,7 @@ mod tests {
         assert_eq!(messages[1].tool_calls[0].call_id, "call-1");
         assert_eq!(messages[2].role, "tool");
         assert_eq!(messages[2].tool_call_id.as_deref(), Some("call-1"));
+        assert_eq!(messages[2].text_content(), "{\"content\":\"hello\"}");
     }
 
     #[test]
@@ -1801,6 +1865,27 @@ mod tests {
         assert_eq!(messages.len(), 2);
         assert_eq!(messages[0].role, "thinking");
         assert_eq!(messages[1].role, "user");
+    }
+
+    #[test]
+    fn session_message_rejects_tool_role() {
+        let store = Store::open_memory().unwrap();
+        let session_id = session(&store);
+        let connection = store.connection.lock().unwrap();
+
+        let result = connection.execute(
+            "INSERT INTO session_message(message_id,session_id,role,message_json,created_at)
+             VALUES (?,?,?,?,?)",
+            params![
+                "tool-message-1",
+                session_id,
+                "tool",
+                serde_json::to_string(&Message::text("tool", "result")).unwrap(),
+                now(),
+            ],
+        );
+
+        assert!(result.is_err());
     }
 
     #[test]
@@ -2189,6 +2274,80 @@ mod tests {
     }
 
     #[test]
+    fn database_whose_message_schema_permits_tool_role_is_rejected() {
+        let directory = tempfile::tempdir().unwrap();
+        let database = directory.path().join("state.db");
+        let connection = Connection::open(&database).unwrap();
+        schema::apply(&connection).unwrap();
+        data::apply(&connection).unwrap();
+        connection
+            .execute_batch(
+                "PRAGMA foreign_keys=OFF;
+                 ALTER TABLE session_message RENAME TO session_message_current;
+                 CREATE TABLE session_message (
+                    message_id TEXT PRIMARY KEY,
+                    session_id TEXT NOT NULL,
+                    turn_id TEXT,
+                    session_call_id TEXT,
+                    role TEXT NOT NULL CHECK(role IN ('user','assistant','thinking','tool')),
+                    message_json TEXT NOT NULL CHECK(json_valid(message_json)),
+                    usage_json TEXT CHECK(usage_json IS NULL OR json_valid(usage_json)),
+                    created_at TEXT NOT NULL
+                 );
+                 DROP TABLE session_message_current;",
+            )
+            .unwrap();
+        drop(connection);
+
+        let error = Store::open(&database).err().unwrap();
+
+        assert!(error
+            .to_string()
+            .contains("session_message schema still permits the retired tool role"));
+    }
+
+    #[test]
+    fn database_whose_message_schema_contains_usage_column_is_rejected() {
+        let directory = tempfile::tempdir().unwrap();
+        let database = directory.path().join("state.db");
+        let connection = Connection::open(&database).unwrap();
+        schema::apply(&connection).unwrap();
+        data::apply(&connection).unwrap();
+        connection
+            .execute_batch("ALTER TABLE session_message ADD COLUMN usage_json TEXT;")
+            .unwrap();
+        drop(connection);
+
+        let error = Store::open(&database).err().unwrap();
+
+        assert!(error
+            .to_string()
+            .contains("session_message schema still contains the retired usage_json column"));
+    }
+
+    #[test]
+    fn database_whose_call_schema_lacks_provider_ids_is_rejected() {
+        let directory = tempfile::tempdir().unwrap();
+        let database = directory.path().join("state.db");
+        let connection = Connection::open(&database).unwrap();
+        schema::apply(&connection).unwrap();
+        data::apply(&connection).unwrap();
+        connection
+            .execute_batch(
+                "ALTER TABLE session_call DROP COLUMN provider_request_id;
+                 ALTER TABLE session_call DROP COLUMN provider_response_id;",
+            )
+            .unwrap();
+        drop(connection);
+
+        let error = Store::open(&database).err().unwrap();
+
+        assert!(error
+            .to_string()
+            .contains("session_call schema is missing provider request/response identifiers"));
+    }
+
+    #[test]
     fn terminal_turns_release_recovery_snapshots() {
         let store = Store::open_memory().unwrap();
         let session_id = session(&store);
@@ -2337,6 +2496,8 @@ mod tests {
                 &json!({
                     "exchange_id":"exchange-1",
                     "turn_id":"turn-1",
+                    "provider_request_id":"request-1",
+                    "provider_response_id":"chatcmpl-response-1",
                     "output_message":{"role":"assistant","content":[{"type":"text","text":"hi"}]},
                     "tool_calls":[],
                     "usage":{"input_tokens":4,"output_tokens":2,"total_tokens":6,"cache_read_tokens":null,"cache_write_tokens":null},
@@ -2350,6 +2511,14 @@ mod tests {
         assert_eq!(exchanges[0].exchange_id, "exchange-1");
         assert_eq!(exchanges[0].state, "completed");
         assert_eq!(exchanges[0].provider, "deepseek");
+        assert_eq!(
+            exchanges[0].provider_request_id.as_deref(),
+            Some("request-1")
+        );
+        assert_eq!(
+            exchanges[0].provider_response_id.as_deref(),
+            Some("chatcmpl-response-1")
+        );
         assert_eq!(exchanges[0].usage.as_ref().unwrap()["total_tokens"], 6);
         let turns = store.session_trace_turns(&session_id).unwrap();
         assert_eq!(turns.len(), 2);
@@ -2366,7 +2535,7 @@ mod tests {
     }
 
     #[test]
-    fn tool_use_and_messages_retain_call_correlation_and_result() {
+    fn tool_use_retains_call_correlation_and_result_without_tool_message_row() {
         let store = Store::open_memory().unwrap();
         let session_id = session(&store);
         store
@@ -2415,18 +2584,11 @@ mod tests {
                 }),
             )
             .unwrap();
-        let mut tool = Message::text("tool", "hello");
-        tool.tool_call_id = Some("tool-1".into());
         store
             .append_content(
                 &session_id,
                 "message.tool",
-                &json!({
-                    "turn_id":"turn-1",
-                    "call_id":"call-1",
-                    "tool_call_id":"tool-1",
-                    "message":tool
-                }),
+                &json!({"turn_id":"turn-1","call_id":"call-1","tool_call_id":"tool-1","message":{"role":"tool","content":[{"type":"text","text":"hello"}]}}),
             )
             .unwrap();
 
@@ -2447,20 +2609,18 @@ mod tests {
             serde_json::from_str::<Value>(&tool_row.2).unwrap()["content"],
             "hello"
         );
-        let message_call: String = connection
+        let tool_message_count: i64 = connection
             .query_row(
-                "SELECT session_call_id FROM session_message WHERE message_id LIKE 'event:%'",
+                "SELECT COUNT(*) FROM session_message WHERE role='tool'",
                 [],
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(message_call, "call-1");
+        assert_eq!(tool_message_count, 0);
         drop(connection);
 
         let messages = store.session_call_messages(&session_id, "call-1").unwrap();
-        assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0].role, "tool");
-        assert_eq!(messages[0].message["tool_call_id"], "tool-1");
+        assert!(messages.is_empty());
         let tools = store.session_call_tool_uses("call-1").unwrap();
         assert_eq!(tools.len(), 1);
         assert_eq!(tools[0].name, "fs.read");
@@ -2550,6 +2710,13 @@ mod tests {
         let mut tool = Message::text("tool", "{\"content\":\"hello\"}");
         tool.tool_call_id = Some("call-1".into());
 
+        store
+            .append_content(
+                &session_id,
+                "turn.state",
+                &json!({"turn_id":"turn-1","state":"resolving_calls"}),
+            )
+            .unwrap();
         store
             .append_content(
                 &session_id,

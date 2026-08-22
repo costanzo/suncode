@@ -1032,6 +1032,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             var role = item.String("role");
             if (role is not ("user" or "assistant")) continue;
             var text = MessageText(item);
+            if (string.IsNullOrWhiteSpace(text)) continue;
             messages.Add(new MessageItem { Role = role, Text = text, ContentSequence = messages.Count + 1 });
         }
 
@@ -1110,7 +1111,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         await SelectSessionAsync(SelectedSession);
     }
 
-    private void ApplyEvent(JsonObject value, bool live)
+    internal void ApplyEvent(JsonObject value, bool live)
     {
         var type = value.String("event_type", "eventType");
         var payload = value.Object("payload");
@@ -1122,26 +1123,47 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             var streaming = Messages.LastOrDefault(message => message.TurnId == turnId && message.Streaming);
             if (streaming is null)
             {
-                Messages.Add(new MessageItem { Role = "assistant", Text = payload.String("text"), ContentSequence = Messages.Count + 1, TurnId = turnId, Streaming = true });
+                var delta = payload.String("text");
+                if (delta.Length > 0)
+                {
+                    Messages.Add(new MessageItem { Role = "assistant", Text = delta, ContentSequence = Messages.Count + 1, TurnId = turnId, Streaming = true });
+                    ConversationChanged?.Invoke();
+                }
             }
             else
             {
                 var index = Messages.IndexOf(streaming);
                 Messages[index] = new MessageItem { Role = streaming.Role, Text = streaming.Text + payload.String("text"), ContentSequence = streaming.ContentSequence, TurnId = turnId, Streaming = true };
+                ConversationChanged?.Invoke();
             }
-            ConversationChanged?.Invoke();
         }
         else if (type is "message.user" or "message.assistant")
         {
             var turnId = payload.String("turn_id");
-            if (type == "message.assistant")
+            var changed = false;
+            var streaming = type == "message.assistant"
+                ? Messages.LastOrDefault(message => message.TurnId == turnId && message.Streaming)
+                : null;
+            if (!string.IsNullOrWhiteSpace(text))
             {
-                var streaming = Messages.LastOrDefault(message => message.TurnId == turnId && message.Streaming);
-                if (streaming is not null) Messages.Remove(streaming);
+                if (streaming is not null)
+                {
+                    Messages.Remove(streaming);
+                }
+                Messages.Add(new MessageItem { Role = type == "message.user" ? "user" : "assistant", Text = text, ContentSequence = Messages.Count + 1, TurnId = turnId });
+                changed = true;
             }
-            Messages.Add(new MessageItem { Role = type == "message.user" ? "user" : "assistant", Text = text, ContentSequence = Messages.Count + 1, TurnId = turnId });
-            OnPropertyChanged(nameof(HasMessages));
-            ConversationChanged?.Invoke();
+            else if (streaming is not null)
+            {
+                var index = Messages.IndexOf(streaming);
+                Messages[index] = new MessageItem { Role = streaming.Role, Text = streaming.Text, ContentSequence = streaming.ContentSequence, TurnId = turnId };
+                changed = true;
+            }
+            if (changed)
+            {
+                OnPropertyChanged(nameof(HasMessages));
+                ConversationChanged?.Invoke();
+            }
         }
         else if (!type.StartsWith("provider.exchange.", StringComparison.Ordinal))
         {
@@ -1175,8 +1197,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private static string EventText(string type, JsonObject payload)
     {
         var message = payload.Object("message");
-        var content = message.Array("content").OfType<JsonObject>().FirstOrDefault();
-        if (content?.String("type") == "text") return content.String("text");
+        var messageText = MessageText(message);
+        if (type is "message.user" or "message.assistant" or "message.tool" || !string.IsNullOrEmpty(messageText)) return messageText;
         return type switch
         {
             "approval.requested" => $"Approval required for {payload.String("operation")}",
@@ -1190,8 +1212,10 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
     private static string MessageText(JsonObject message)
     {
-        var part = message.Array("content").OfType<JsonObject>().FirstOrDefault();
-        return part?.String("type") == "text" ? part.String("text") : string.Empty;
+        return string.Join("\n", message.Array("content")
+            .OfType<JsonObject>()
+            .Where(part => part.String("type") == "text")
+            .Select(part => part.String("text")));
     }
 
     private async Task RunAsync(Func<Task> operation, string? success = null)
@@ -1397,6 +1421,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             || trace.Provider.Contains(filter, StringComparison.OrdinalIgnoreCase)
             || trace.ModelId.Contains(filter, StringComparison.OrdinalIgnoreCase)
             || trace.WireModel.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || trace.ProviderRequestId.Contains(filter, StringComparison.OrdinalIgnoreCase)
+            || trace.ProviderResponseId.Contains(filter, StringComparison.OrdinalIgnoreCase)
             || trace.InputText.Contains(filter, StringComparison.OrdinalIgnoreCase)
             || trace.OutputText.Contains(filter, StringComparison.OrdinalIgnoreCase)
             || trace.ToolCallsText.Contains(filter, StringComparison.OrdinalIgnoreCase);
@@ -1447,6 +1473,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             item.String("provider"),
             item.String("modelId", "model_id"),
             item.String("wireModel", "wire_model"),
+            item.String("providerRequestId", "provider_request_id"),
+            item.String("providerResponseId", "provider_response_id"),
             item.String("state"),
             item.Int("iteration"),
             item.String("startedAt", "started_at"),

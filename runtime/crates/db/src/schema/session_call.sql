@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS session_call (
     provider TEXT NOT NULL CHECK(length(provider) > 0),
     model_id TEXT NOT NULL CHECK(length(model_id) > 0),
     wire_model TEXT NOT NULL CHECK(length(wire_model) > 0),
+    provider_request_id TEXT,
+    provider_response_id TEXT,
     state TEXT NOT NULL CHECK(state IN ('started', 'completed', 'failed')),
     iteration INTEGER NOT NULL CHECK(iteration > 0),
     started_at TEXT NOT NULL,

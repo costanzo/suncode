@@ -139,6 +139,8 @@
                     <StackPanel>
                       <TextBlock Text="{Binding SelectedProviderTraceDetails.TurnText}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
                       <TextBlock Text="{Binding SelectedProviderTraceDetails.ExchangeId}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding SelectedProviderTraceDetails.ProviderRequestId, StringFormat={}request  {0}}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" IsVisible="{Binding SelectedProviderTraceDetails.HasProviderRequestId}" />
+                      <TextBlock Text="{Binding SelectedProviderTraceDetails.ProviderResponseId, StringFormat={}response {0}}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" IsVisible="{Binding SelectedProviderTraceDetails.HasProviderResponseId}" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" HorizontalAlignment="Right">
                       <TextBlock Text="{Binding SelectedProviderTraceDetails.StatusText}" Classes="mono" FontSize="11" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Right" IsVisible="{Binding SelectedProviderTraceDetails.IsRunning}" />

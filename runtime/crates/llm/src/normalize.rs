@@ -17,5 +17,6 @@ pub fn cancelled() -> ProviderError {
         code: "cancelled".into(),
         message: "Turn was cancelled".into(),
         retryable: false,
+        provider_request_id: None,
     }
 }
