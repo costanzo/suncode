@@ -1,3 +1,4 @@
+use crate::logging::{self, Level};
 use crate::{
     agent::{Agent, AgentError, TurnResponse},
     config::Config,
@@ -387,6 +388,12 @@ impl RuntimeSdk {
         F: FnOnce(&mut ModelProviderRegistry) -> Result<(), RegistrationError>,
     {
         let config = Config::load().map_err(SdkError::invalid)?;
+        logging::initialize(&config.data_dir);
+        logging::write(
+            Level::Info,
+            "runtime",
+            format!("open data_dir={:?}", config.data_dir),
+        );
         let lock = RuntimeLock::acquire(&config.data_dir).map_err(|error| {
             if error.kind() == std::io::ErrorKind::AlreadyExists {
                 SdkError::new("runtime_already_active", error.to_string())
@@ -679,12 +686,22 @@ impl RuntimeSdk {
     }
 
     pub fn session_snapshot(&self, session_id: &str, _after: i64) -> SdkResult<SessionSnapshot> {
+        logging::write(
+            Level::Debug,
+            "session_snapshot",
+            format!("begin session={session_id}"),
+        );
         let session = self
             .state
             .store
             .session_by_id(session_id)?
             .ok_or_else(|| SdkError::missing("session"))?;
         let messages = self.state.store.messages(session_id)?;
+        logging::write(
+            Level::Debug,
+            "session_snapshot",
+            format!("end session={session_id} messages={}", messages.len()),
+        );
         Ok(SessionSnapshot { session, messages })
     }
 
@@ -927,6 +944,11 @@ impl RuntimeSdk {
         callback: SunCodeEventCallback,
         user_data: *mut c_void,
     ) -> SdkResult<RuntimeSubscription> {
+        logging::write(
+            Level::Debug,
+            "subscribe",
+            format!("begin session={session_id} after={_after}"),
+        );
         if self.state.store.session_by_id(&session_id)?.is_none() {
             return Err(SdkError::missing("session"));
         }
@@ -937,6 +959,8 @@ impl RuntimeSdk {
         let cancellation_for_thread = cancellation.clone();
         let handle = self.runtime.handle().clone();
         let user_data = user_data as usize;
+        let log_session_id = session_id.clone();
+        let subscribed_session_id = session_id.clone();
         let join = std::thread::spawn(move || loop {
             let next = handle.block_on(async {
                 tokio::select! {
@@ -945,14 +969,26 @@ impl RuntimeSdk {
                 }
             });
             match next {
-                None => break,
-                Some(Ok(event)) if event.session_id == session_id => {
+                None => {
+                    logging::write(
+                        Level::Debug,
+                        "subscribe",
+                        format!("thread_exit session={log_session_id} reason=cancelled"),
+                    );
+                    break;
+                }
+                Some(Ok(event)) if event.session_id == subscribed_session_id => {
                     emit_sdk_event(callback, user_data, &event);
                 }
                 Some(Ok(_)) => {}
                 Some(Err(broadcast::error::RecvError::Lagged(_))) => {
+                    logging::write(
+                        Level::Warn,
+                        "subscribe",
+                        format!("lagged session={log_session_id}"),
+                    );
                     let event = SessionEvent {
-                        session_id: session_id.clone(),
+                        session_id: subscribed_session_id.clone(),
                         occurred_at: chrono::Utc::now()
                             .to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
                         event_type: "resync.required".into(),
@@ -960,10 +996,23 @@ impl RuntimeSdk {
                     };
                     emit_sdk_event(callback, user_data, &event);
                 }
-                Some(Err(broadcast::error::RecvError::Closed)) => break,
+                Some(Err(broadcast::error::RecvError::Closed)) => {
+                    logging::write(
+                        Level::Debug,
+                        "subscribe",
+                        format!("thread_exit session={log_session_id} reason=channel_closed"),
+                    );
+                    break;
+                }
             }
         });
+        logging::write(
+            Level::Info,
+            "subscribe",
+            format!("ready session={session_id}"),
+        );
         Ok(RuntimeSubscription {
+            session_id,
             cancellation,
             join: Mutex::new(Some(join)),
         })
@@ -1028,18 +1077,39 @@ fn emit_event(
 pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
 
 pub struct RuntimeSubscription {
+    session_id: String,
     cancellation: CancellationToken,
     join: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl RuntimeSubscription {
     fn close(&self) {
+        logging::write(
+            Level::Debug,
+            "subscription_close",
+            format!("cancel_begin session={}", self.session_id),
+        );
         self.cancellation.cancel();
         if let Ok(mut join) = self.join.lock() {
             if let Some(join) = join.take() {
+                logging::write(
+                    Level::Debug,
+                    "subscription_close",
+                    format!("join_begin session={}", self.session_id),
+                );
                 let _ = join.join();
+                logging::write(
+                    Level::Debug,
+                    "subscription_close",
+                    format!("join_end session={}", self.session_id),
+                );
             }
         }
+        logging::write(
+            Level::Debug,
+            "subscription_close",
+            format!("end session={}", self.session_id),
+        );
     }
 }
 

@@ -3,6 +3,7 @@ mod config;
 mod context;
 mod credentials;
 mod domain;
+mod logging;
 mod policy;
 mod runtime_lock;
 mod sdk;

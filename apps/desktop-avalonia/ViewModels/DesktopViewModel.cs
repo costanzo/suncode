@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Avalonia;
@@ -521,35 +522,79 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
     public async Task SelectSessionAsync(SessionItem session)
     {
-        if (!EnsureSdk()) return;
+        var operationId = Guid.NewGuid().ToString("N")[..8];
+        var operationTimer = Stopwatch.StartNew();
+        LogSession(operationId, session.SessionId, $"select.begin selected={SelectedSession?.SessionId ?? "<none>"} loaded={_loadedSessionId ?? "<none>"} version={_sessionLoadVersion} loading={IsSessionLoading}");
+        if (!EnsureSdk())
+        {
+            LogSession(operationId, session.SessionId, "select.return reason=sdk_unavailable");
+            return;
+        }
         if (SelectedSession?.SessionId == session.SessionId
-            && (_loadedSessionId == session.SessionId || IsSessionLoading)) return;
+            && (_loadedSessionId == session.SessionId || IsSessionLoading))
+        {
+            var reason = _loadedSessionId == session.SessionId ? "already_loaded" : "already_loading";
+            LogSession(operationId, session.SessionId, $"select.return reason={reason} version={_sessionLoadVersion}");
+            return;
+        }
 
+        LogSession(operationId, session.SessionId, "select.close_subscription.begin");
+        var closeTimer = Stopwatch.StartNew();
         CloseSubscription();
+        LogSession(operationId, session.SessionId, $"select.close_subscription.end elapsed_ms={closeTimer.Elapsed.TotalMilliseconds:F1}");
         ClearSession(false);
         SelectedSession = session;
+        LogSession(operationId, session.SessionId, $"select.selected updated={SelectedSession.SessionId}");
         IsSessionLoading = true;
         StatusText = "Loading session...";
         var sessionId = session.SessionId;
         var loadVersion = _sessionLoadVersion;
+        LogSession(operationId, sessionId, $"select.loading.begin version={loadVersion}");
         _ = RevealSessionLoadingAsync(sessionId, loadVersion);
         try
         {
+            var stageTimer = Stopwatch.StartNew();
+            LogSession(operationId, sessionId, $"snapshot.begin version={loadVersion}");
             var snapshot = await _sdk!.SessionSnapshotAsync(sessionId);
-            if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
+            LogSession(operationId, sessionId, $"snapshot.end elapsed_ms={stageTimer.Elapsed.TotalMilliseconds:F1} messages={snapshot.Array("messages").Count()} events={snapshot.Array("events").Count()}");
+            if (!IsCurrentSessionLoad(sessionId, loadVersion))
+            {
+                LogSession(operationId, sessionId, $"snapshot.discard reason=stale current={DescribeSessionContext()}");
+                return;
+            }
             var projection = await Task.Run(() => ProjectSnapshot(snapshot));
-            if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
+            if (!IsCurrentSessionLoad(sessionId, loadVersion))
+            {
+                LogSession(operationId, sessionId, $"projection.discard reason=stale current={DescribeSessionContext()}");
+                return;
+            }
             ApplySnapshot(projection);
             await LoadSessionUsageAsync(sessionId, loadVersion);
-            if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
+            if (!IsCurrentSessionLoad(sessionId, loadVersion))
+            {
+                LogSession(operationId, sessionId, $"usage.discard reason=stale current={DescribeSessionContext()}");
+                return;
+            }
             await LoadCheckpointsAsync(sessionId, loadVersion);
-            if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
-            if (ProviderTraceVisible) await RefreshProviderTracesAsync(sessionId, loadVersion);
-            if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
+            if (!IsCurrentSessionLoad(sessionId, loadVersion))
+            {
+                LogSession(operationId, sessionId, $"checkpoints.discard reason=stale current={DescribeSessionContext()}");
+                return;
+            }
+            if (ProviderTraceVisible)
+            {
+                await RefreshProviderTracesAsync(sessionId, loadVersion);
+            }
+            if (!IsCurrentSessionLoad(sessionId, loadVersion))
+            {
+                LogSession(operationId, sessionId, $"provider_traces.discard reason=stale current={DescribeSessionContext()}");
+                return;
+            }
 
             var subscription = _sdk.Subscribe(sessionId, 0, json => OnNativeEvent(sessionId, json));
             if (!IsCurrentSessionLoad(sessionId, loadVersion))
             {
+                LogSession(operationId, sessionId, $"subscribe.discard reason=stale current={DescribeSessionContext()}");
                 subscription.Dispose();
                 return;
             }
@@ -558,9 +603,11 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             _loadedSessionId = sessionId;
             StatusText = "Session loaded";
             ConnectionState = "connected";
+            LogSession(operationId, sessionId, $"select.completed elapsed_ms={operationTimer.Elapsed.TotalMilliseconds:F1} version={loadVersion}");
         }
         catch (Exception exception)
         {
+            LogSession(operationId, sessionId, $"select.failed elapsed_ms={operationTimer.Elapsed.TotalMilliseconds:F1} type={exception.GetType().Name} message={exception.Message}");
             if (IsCurrentSessionLoad(sessionId, loadVersion))
             {
                 _loadedSessionId = null;
@@ -570,7 +617,15 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            if (IsCurrentSessionLoad(sessionId, loadVersion)) IsSessionLoading = false;
+            if (IsCurrentSessionLoad(sessionId, loadVersion))
+            {
+                IsSessionLoading = false;
+                LogSession(operationId, sessionId, $"select.loading.end elapsed_ms={operationTimer.Elapsed.TotalMilliseconds:F1} current={DescribeSessionContext()}");
+            }
+            else
+            {
+                LogSession(operationId, sessionId, $"select.finally.stale elapsed_ms={operationTimer.Elapsed.TotalMilliseconds:F1} current={DescribeSessionContext()}");
+            }
         }
     }
 
@@ -1024,13 +1079,17 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
     private void OnNativeEvent(string sessionId, string json) => Dispatcher.UIThread.Post(() =>
     {
-        if (_disposed || SelectedSession?.SessionId != sessionId) return;
+        if (_disposed || SelectedSession?.SessionId != sessionId)
+        {
+            return;
+        }
         try
         {
             if (JsonNode.Parse(json) is JsonObject item)
             {
                 if (item.String("event_type", "eventType") == "resync.required")
                 {
+                    LogSession("event", sessionId, "resync.required reload_begin");
                     _ = ReloadCurrentSessionAsync(sessionId);
                     return;
                 }
@@ -1179,8 +1238,11 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
     private void CloseSubscription()
     {
+        var hadSubscription = _subscription is not null;
+        if (hadSubscription) DiagnosticLog.Debug("session", "close_subscription.dispose.begin");
         _subscription?.Dispose();
         _subscription = null;
+        if (hadSubscription) DiagnosticLog.Debug("session", "close_subscription.dispose.end");
     }
 
     private void ClearSession(bool clearSelection = true)
@@ -1211,13 +1273,39 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private async Task RevealSessionLoadingAsync(string sessionId, long loadVersion)
     {
         await Task.Delay(120);
-        if (IsSessionLoading && IsCurrentSessionLoad(sessionId, loadVersion)) IsSessionLoadingVisible = true;
+        if (IsSessionLoading && IsCurrentSessionLoad(sessionId, loadVersion))
+        {
+            IsSessionLoadingVisible = true;
+            LogSession("loading", sessionId, $"visible=true version={loadVersion}");
+        }
     }
 
     private bool IsSessionContextCurrent(string sessionId, long? loadVersion) =>
         !_disposed
         && SelectedSession?.SessionId == sessionId
         && (loadVersion is null || _sessionLoadVersion == loadVersion.Value);
+
+    private string DescribeSessionContext() =>
+        $"selected={SelectedSession?.SessionId ?? "<none>"},loaded={_loadedSessionId ?? "<none>"},version={_sessionLoadVersion},loading={IsSessionLoading}";
+
+    private static void LogSession(string operationId, string sessionId, string message) =>
+        DiagnosticLog.Write(SessionLogLevel(operationId, message), "session", $"op={operationId} session={sessionId} {message}");
+
+    private static DiagnosticLogLevel SessionLogLevel(string operationId, string message)
+    {
+        if (message.Contains("failed", StringComparison.OrdinalIgnoreCase)) return DiagnosticLogLevel.Error;
+        if (message.Contains("discard", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("ignored", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("stale", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("resync", StringComparison.OrdinalIgnoreCase)) return DiagnosticLogLevel.Warn;
+        if (operationId == "event") return DiagnosticLogLevel.Trace;
+        if (message.Contains(".begin", StringComparison.Ordinal)
+            || message.Contains(".end", StringComparison.Ordinal)
+            || message.Contains(".completed", StringComparison.Ordinal)
+            || message.Contains(".selected", StringComparison.Ordinal)
+            || message.Contains("visible=", StringComparison.Ordinal)) return DiagnosticLogLevel.Debug;
+        return DiagnosticLogLevel.Info;
+    }
 
     private void ClearGit()
     {

@@ -16,8 +16,10 @@
       <Grid Grid.Row="2">
         <ScrollViewer HorizontalScrollBarVisibility="Disabled">
           <ListBox Classes="sessions"
+                   x:Name="SessionList"
                    ItemsSource="{Binding Sessions}"
                    SelectedItem="{Binding SelectedSession, Mode=OneWay}"
+                   SelectionChanged="SessionSelectionChanged"
                    IsVisible="{Binding HasSessions}"
                    Background="Transparent"
                    BorderThickness="0"
@@ -25,7 +27,7 @@
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="models:SessionItem">
                 <Grid Height="48" ColumnDefinitions="*,28">
-                  <Button Grid.Column="0" Classes="quiet" Padding="10,4" HorizontalContentAlignment="Stretch" Click="SessionClicked">
+                  <Button Grid.Column="0" Classes="quiet" Padding="10,4" HorizontalContentAlignment="Stretch">
                     <StackPanel Spacing="2">
                       <TextBlock Text="{Binding DisplayTitle}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
                       <TextBlock Text="{Binding RelativeActivity}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />

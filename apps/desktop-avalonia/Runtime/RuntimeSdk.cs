@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using SunCode.Desktop.Infrastructure;
 
 namespace SunCode.Desktop.Runtime;
 
@@ -114,6 +115,7 @@ public sealed class RuntimeSdk : IDisposable
     public IDisposable Subscribe(string sessionId, long after, Action<string> onEvent)
     {
         ThrowIfDisposed();
+        DiagnosticLog.Debug("sdk.subscribe", $"begin session={sessionId} after={after}");
         return new Subscription(_handle, sessionId, after, onEvent);
     }
 
@@ -197,6 +199,7 @@ public sealed class RuntimeSdk : IDisposable
 
         public Subscription(IntPtr runtime, string sessionId, long after, Action<string> onEvent)
         {
+            _sessionId = sessionId;
             _callbackHandle = GCHandle.Alloc(onEvent);
             var session = Marshal.StringToCoTaskMemUTF8(sessionId);
             try
@@ -206,9 +209,12 @@ public sealed class RuntimeSdk : IDisposable
                 if (_subscription == IntPtr.Zero)
                 {
                     var message = TakeString(error, true) ?? "Session events could not be subscribed";
+                    DiagnosticLog.Error("sdk.subscribe", $"failed session={sessionId} error={message}");
                     _callbackHandle.Free();
                     throw new SdkException("subscription_failed", message);
                 }
+
+                DiagnosticLog.Info("sdk.subscribe", $"ready session={sessionId}");
             }
             finally
             {
@@ -216,6 +222,7 @@ public sealed class RuntimeSdk : IDisposable
             }
         }
 
+        private readonly string _sessionId;
         private static void Receive(IntPtr eventJson, IntPtr userData)
         {
             if (eventJson == IntPtr.Zero || userData == IntPtr.Zero) return;
@@ -227,12 +234,14 @@ public sealed class RuntimeSdk : IDisposable
 
         public void Dispose()
         {
+            DiagnosticLog.Debug("sdk.subscription", $"dispose begin session={_sessionId} native={_subscription != IntPtr.Zero}");
             if (_subscription != IntPtr.Zero)
             {
                 NativeMethods.suncode_runtime_sdk_subscription_close(_subscription);
                 _subscription = IntPtr.Zero;
             }
             if (_callbackHandle.IsAllocated) _callbackHandle.Free();
+            DiagnosticLog.Debug("sdk.subscription", $"dispose end session={_sessionId}");
         }
     }
 }
