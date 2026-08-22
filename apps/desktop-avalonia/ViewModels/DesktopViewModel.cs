@@ -1522,17 +1522,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             }
             else if (delta.Length > 0)
             {
-                var index = Messages.IndexOf(assistant);
-                Messages[index] = new MessageItem
-                {
-                    Role = assistant.Role,
-                    Text = assistant.Streaming ? assistant.Text + delta : delta,
-                    ContentSequence = assistant.ContentSequence,
-                    TurnId = turnId,
-                    Streaming = true,
-                    IsProcess = true,
-                    CanBeFinalAssistant = false
-                };
+                assistant.Text += delta;
                 ConversationChanged?.Invoke();
             }
         }
@@ -1555,17 +1545,10 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             {
                 if (streaming is not null)
                 {
-                    var index = Messages.IndexOf(streaming);
-                    Messages[index] = new MessageItem
-                    {
-                        MessageId = messageId,
-                        Role = "assistant",
-                        Text = text,
-                        ContentSequence = streaming.ContentSequence,
-                        TurnId = turnId,
-                        IsProcess = true,
-                        CanBeFinalAssistant = canBeFinalAssistant
-                    };
+                    streaming.MessageId = messageId;
+                    streaming.Text = text;
+                    streaming.Streaming = false;
+                    streaming.CanBeFinalAssistant = canBeFinalAssistant;
                 }
                 else
                 {
@@ -1584,17 +1567,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             }
             else if (streaming is not null)
             {
-                var index = Messages.IndexOf(streaming);
-                Messages[index] = new MessageItem
-                {
-                    MessageId = messageId,
-                    Role = streaming.Role,
-                    Text = streaming.Text,
-                    ContentSequence = streaming.ContentSequence,
-                    TurnId = turnId,
-                    IsProcess = true,
-                    CanBeFinalAssistant = canBeFinalAssistant
-                };
+                streaming.MessageId = messageId;
+                streaming.Streaming = false;
+                streaming.CanBeFinalAssistant = canBeFinalAssistant;
                 changed = true;
             }
             if (changed)

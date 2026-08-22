@@ -7,6 +7,7 @@
 - Added Avalonia turn-owned process items, stable message/tool update behavior, terminal collapse, retained expansion, and final-assistant presentation state.
 - Added compact assistant/tool process rows and an expand/collapse control before the retained process region and final response; process rows have no copy action.
 - Anchored the control before the retained process region so expanded work appears below the control rather than above it.
+- Kept the active assistant message instance stable while appending streaming Markdown and when committing its final event, preventing the item template and Markdown renderer from being recreated for every delta.
 
 ## Contracts and generated artifacts
 

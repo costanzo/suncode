@@ -29,7 +29,7 @@ Normalized session timeline snapshots and Avalonia live/collapsed turn presentat
 
 - `cargo test --manifest-path runtime/Cargo.toml -p suncode-db conversation_turns_group_messages_and_tools`: passed.
 - `cargo test --manifest-path runtime/Cargo.toml -p suncode-runtime session_snapshot_serializes_normalized_conversation_turns`: passed.
-- `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore`: passed, 33 tests.
+- `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore`: passed, 34 tests, including stable streaming/final message identity.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore`: passed with no warnings or errors.
 - `cargo test --manifest-path runtime/Cargo.toml --workspace`: passed, 86 unit tests and all doc tests.
 - `git diff --check`: passed.

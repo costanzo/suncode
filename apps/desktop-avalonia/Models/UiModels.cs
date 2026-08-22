@@ -89,6 +89,10 @@ public sealed record CredentialItem(string Provider, bool Configured);
 
 public sealed class MessageItem : ObservableObject
 {
+    private string _messageId = string.Empty;
+    private string _text = string.Empty;
+    private bool _canBeFinalAssistant;
+    private bool _streaming;
     private bool _isVisible = true;
     private bool _isProcess;
     private bool _isFinalAssistant;
@@ -97,9 +101,9 @@ public sealed class MessageItem : ObservableObject
     private bool _processExpanded;
     private int _processItemCount;
 
-    public string MessageId { get; init; } = string.Empty;
+    public string MessageId { get => _messageId; set => SetProperty(ref _messageId, value); }
     public required string Role { get; init; }
-    public required string Text { get; set; }
+    public required string Text { get => _text; set => SetProperty(ref _text, value); }
     public required long ContentSequence { get; set; }
     public string TurnId { get; init; } = string.Empty;
     public string Kind { get; init; } = "message";
@@ -107,8 +111,8 @@ public sealed class MessageItem : ObservableObject
     public string ToolName { get; init; } = string.Empty;
     public string ToolState { get; init; } = string.Empty;
     public string ToolDetail { get; init; } = string.Empty;
-    public bool CanBeFinalAssistant { get; init; }
-    public bool Streaming { get; set; }
+    public bool CanBeFinalAssistant { get => _canBeFinalAssistant; set => SetProperty(ref _canBeFinalAssistant, value); }
+    public bool Streaming { get => _streaming; set => SetProperty(ref _streaming, value); }
     public bool IsUser => Role == "user";
     public bool IsAssistant => Role == "assistant";
     public bool IsTool => Kind == "tool";

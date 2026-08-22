@@ -192,6 +192,7 @@ public sealed class SessionSnapshotProjectionTests
         var viewModel = new DesktopViewModel();
         viewModel.ApplyEvent(AssistantMessage("assistant-1", "turn-1", "previous stage"), live: true);
         viewModel.ApplyEvent(AssistantDelta("turn-1", "final "), live: true);
+        var streaming = viewModel.Messages.Last();
         viewModel.ApplyEvent(AssistantDelta("turn-1", "summary"), live: true);
 
         Assert.Collection(
@@ -199,10 +200,27 @@ public sealed class SessionSnapshotProjectionTests
             message => Assert.Equal("previous stage", message.Text),
             message =>
             {
+                Assert.Same(streaming, message);
                 Assert.Equal("final summary", message.Text);
                 Assert.True(message.Streaming);
                 Assert.True(message.IsProcess);
             });
+    }
+
+    [Fact]
+    public void FinalAssistantEventKeepsTheStreamingMessageInstance()
+    {
+        var viewModel = new DesktopViewModel();
+        viewModel.ApplyEvent(AssistantDelta("turn-1", "final summary"), live: true);
+        var streaming = Assert.Single(viewModel.Messages);
+
+        viewModel.ApplyEvent(AssistantMessage("assistant-1", "turn-1", "final summary"), live: true);
+
+        var completed = Assert.Single(viewModel.Messages);
+        Assert.Same(streaming, completed);
+        Assert.False(completed.Streaming);
+        Assert.Equal("assistant-1", completed.MessageId);
+        Assert.True(completed.CanBeFinalAssistant);
     }
 
     [Fact]
