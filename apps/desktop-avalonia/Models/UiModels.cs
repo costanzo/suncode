@@ -87,16 +87,88 @@ public sealed record ModelItem(string Id, string Provider, string Availability)
 
 public sealed record CredentialItem(string Provider, bool Configured);
 
-public sealed class MessageItem
+public sealed class MessageItem : ObservableObject
 {
+    private bool _isVisible = true;
+    private bool _isProcess;
+    private bool _isFinalAssistant;
+    private bool _showProcessToggle;
+    private bool _processContentVisible = true;
+    private bool _processExpanded;
+    private int _processItemCount;
+
     public string MessageId { get; init; } = string.Empty;
     public required string Role { get; init; }
     public required string Text { get; set; }
     public required long ContentSequence { get; set; }
     public string TurnId { get; init; } = string.Empty;
+    public string Kind { get; init; } = "message";
+    public string ToolCallId { get; init; } = string.Empty;
+    public string ToolName { get; init; } = string.Empty;
+    public string ToolState { get; init; } = string.Empty;
+    public string ToolDetail { get; init; } = string.Empty;
+    public bool CanBeFinalAssistant { get; init; }
     public bool Streaming { get; set; }
     public bool IsUser => Role == "user";
+    public bool IsAssistant => Role == "assistant";
+    public bool IsTool => Kind == "tool";
     public string Author => IsUser ? "You" : "SunCode";
+    public bool IsVisible { get => _isVisible; set => SetProperty(ref _isVisible, value); }
+    public bool IsProcess { get => _isProcess; set => SetProperty(ref _isProcess, value); }
+    public bool IsFinalAssistant
+    {
+        get => _isFinalAssistant;
+        set
+        {
+            if (SetProperty(ref _isFinalAssistant, value)) OnPropertyChanged(nameof(ShowCopy));
+        }
+    }
+    public bool ShowCopy => IsFinalAssistant;
+    public bool ShowProcessToggle { get => _showProcessToggle; set => SetProperty(ref _showProcessToggle, value); }
+    public bool ProcessContentVisible { get => _processContentVisible; set => SetProperty(ref _processContentVisible, value); }
+    public bool ProcessExpanded
+    {
+        get => _processExpanded;
+        set
+        {
+            if (!SetProperty(ref _processExpanded, value)) return;
+            OnPropertyChanged(nameof(ProcessCollapsed));
+            OnPropertyChanged(nameof(ProcessToggleText));
+        }
+    }
+    public bool ProcessCollapsed => !ProcessExpanded;
+    public int ProcessItemCount
+    {
+        get => _processItemCount;
+        set
+        {
+            if (SetProperty(ref _processItemCount, value)) OnPropertyChanged(nameof(ProcessToggleText));
+        }
+    }
+    public string ProcessToggleText => ProcessExpanded
+        ? "Hide work"
+        : $"Show work ({ProcessItemCount})";
+    public string ToolStateText => ToolState switch
+    {
+        "requested" or "validating" or "policy_check" or "authorized" => "Preparing",
+        "executing" => "Running",
+        "awaiting_approval" => "Waiting for approval",
+        "succeeded" => "Completed",
+        "denied" => "Denied",
+        "failed" => "Failed",
+        "timed_out" => "Timed out",
+        "unknown_completion" or "reconciling" => "Checking result",
+        _ => ToolState
+    };
+    public string ToolDetailText
+    {
+        get
+        {
+            var compact = string.Join(" ", ToolDetail.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+            return compact.Length <= 240 ? compact : $"{compact[..240]}…";
+        }
+    }
+    public bool HasToolDetail => !string.IsNullOrWhiteSpace(ToolDetail);
 }
 
 public sealed record ActivityItem(string EventType, string Text, long ContentSequence, string State, string Operation);

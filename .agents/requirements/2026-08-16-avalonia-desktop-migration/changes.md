@@ -56,6 +56,7 @@
 - Compiled Avalonia bindings and native loading were exercised by Debug/Release builds and startup checks.
 - Multi-window runtime sharing, recent-project activation, dialog behavior, settings modality, default/minimum geometry, and Git drawer behavior were manually verified on macOS.
 - Added desktop regression coverage for filtering tool-call-only assistant messages from snapshot and live conversation projection and for combining multiple visible text parts.
+- Added turn-scoped chat timelines that retain live assistant progress and tool activity in occurrence order, collapse those process items when the turn ends, and restore them from normalized snapshots; only the final assistant response exposes copy, with a control before the process region to expand or collapse retained work below it.
 
 ## Documentation
 

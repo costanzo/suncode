@@ -26,6 +26,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private ProviderTraceContentItem? _selectedProviderTraceContent;
     private readonly Dictionary<string, ProviderTraceItem> _providerTraceDetails = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Task<ProviderTraceItem>> _providerTraceDetailLoads = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _appliedMessageIds = new(StringComparer.Ordinal);
     private ApprovalItem? _pendingApproval;
     private string _connectionState = "disconnected";
     private string _statusText = "Starting local runtime...";
@@ -1340,13 +1341,74 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         ApprovalItem? pendingApproval = null;
         var activeTurnId = string.Empty;
 
-        foreach (var item in snapshot.Array("messages").OfType<JsonObject>())
+        var conversationTurns = snapshot.Array("conversationTurns").OfType<JsonObject>().ToArray();
+        if (conversationTurns.Length > 0)
         {
-            var role = item.String("role");
-            if (role is not ("user" or "assistant")) continue;
-            var text = MessageText(item);
-            if (string.IsNullOrWhiteSpace(text)) continue;
-            messages.Add(new MessageItem { Role = role, Text = text, ContentSequence = messages.Count + 1 });
+            foreach (var turn in conversationTurns)
+            {
+                var turnId = turn.String("turnId", "turn_id");
+                var state = turn.String("state");
+                if (!IsTerminalTurnState(state)) activeTurnId = turnId;
+                var toolUses = turn.Array("toolUses").OfType<JsonObject>().ToArray();
+                var toolsById = toolUses
+                    .Where(item => item.String("toolCallId", "tool_call_id").Length > 0)
+                    .ToDictionary(item => item.String("toolCallId", "tool_call_id"), StringComparer.Ordinal);
+                var projectedToolIds = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var item in turn.Array("messages").OfType<JsonObject>()
+                    .OrderBy(item => item.String("createdAt", "created_at"), StringComparer.Ordinal))
+                {
+                    var role = item.String("role");
+                    var message = item.Object("message");
+                    var text = MessageText(message);
+                    if (role is "user" or "assistant" && !string.IsNullOrWhiteSpace(text))
+                    {
+                        messages.Add(new MessageItem
+                        {
+                            MessageId = item.String("messageId", "message_id"),
+                            Role = role,
+                            Text = text,
+                            ContentSequence = messages.Count + 1,
+                            TurnId = turnId,
+                            IsProcess = role == "assistant",
+                            CanBeFinalAssistant = role == "assistant" && message.Array("tool_calls").Count == 0
+                        });
+                    }
+
+                    foreach (var call in message.Array("tool_calls").OfType<JsonObject>())
+                    {
+                        var toolCallId = call.String("call_id", "toolCallId", "tool_call_id");
+                        if (toolCallId.Length == 0 || !projectedToolIds.Add(toolCallId) ||
+                            !toolsById.TryGetValue(toolCallId, out var toolUse)) continue;
+                        messages.Add(ToolMessageItem(toolUse, turnId, messages.Count + 1));
+                    }
+                }
+                foreach (var item in toolUses
+                    .Where(item => !projectedToolIds.Contains(item.String("toolCallId", "tool_call_id")))
+                    .OrderBy(item => item.String("createdAt", "created_at"), StringComparer.Ordinal)
+                    .ThenBy(item => item.Int("ordinal")))
+                {
+                    messages.Add(ToolMessageItem(item, turnId, messages.Count + 1));
+                }
+                ConfigureTurnPresentation(messages, turnId, state, expanded: !IsTerminalTurnState(state));
+            }
+        }
+        else
+        {
+            foreach (var item in snapshot.Array("messages").OfType<JsonObject>())
+            {
+                var role = item.String("role");
+                if (role is not ("user" or "assistant")) continue;
+                var text = MessageText(item);
+                if (string.IsNullOrWhiteSpace(text)) continue;
+                messages.Add(new MessageItem
+                {
+                    Role = role,
+                    Text = text,
+                    ContentSequence = messages.Count + 1,
+                    IsFinalAssistant = role == "assistant",
+                    CanBeFinalAssistant = role == "assistant"
+                });
+            }
         }
 
         foreach (var item in snapshot.Array("events").OfType<JsonObject>())
@@ -1380,6 +1442,11 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
     internal void ApplySnapshot(SessionSnapshotProjection projection)
     {
+        _appliedMessageIds.Clear();
+        foreach (var message in projection.Messages)
+        {
+            if (message.MessageId.Length > 0) _appliedMessageIds.Add(message.MessageId);
+        }
         Messages = new BulkObservableCollection<MessageItem>(projection.Messages);
         Activities.ReplaceAll(projection.Activities);
         ChangedPaths.ReplaceAll(projection.ChangedPaths);
@@ -1433,20 +1500,39 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         if (type == "assistant.delta")
         {
             var turnId = payload.String("turn_id");
-            var streaming = Messages.LastOrDefault(message => message.TurnId == turnId && message.Streaming);
-            if (streaming is null)
+            var assistant = Messages.LastOrDefault(message =>
+                message.TurnId == turnId && message.Role == "assistant" && message.Streaming);
+            var delta = payload.String("text");
+            if (assistant is null)
             {
-                var delta = payload.String("text");
                 if (delta.Length > 0)
                 {
-                    Messages.Add(new MessageItem { Role = "assistant", Text = delta, ContentSequence = Messages.Count + 1, TurnId = turnId, Streaming = true });
+                    Messages.Add(new MessageItem
+                    {
+                        Role = "assistant",
+                        Text = delta,
+                        ContentSequence = Messages.Count + 1,
+                        TurnId = turnId,
+                        Streaming = true,
+                        IsProcess = true,
+                        CanBeFinalAssistant = false
+                    });
                     ConversationChanged?.Invoke();
                 }
             }
-            else
+            else if (delta.Length > 0)
             {
-                var index = Messages.IndexOf(streaming);
-                Messages[index] = new MessageItem { Role = streaming.Role, Text = streaming.Text + payload.String("text"), ContentSequence = streaming.ContentSequence, TurnId = turnId, Streaming = true };
+                var index = Messages.IndexOf(assistant);
+                Messages[index] = new MessageItem
+                {
+                    Role = assistant.Role,
+                    Text = assistant.Streaming ? assistant.Text + delta : delta,
+                    ContentSequence = assistant.ContentSequence,
+                    TurnId = turnId,
+                    Streaming = true,
+                    IsProcess = true,
+                    CanBeFinalAssistant = false
+                };
                 ConversationChanged?.Invoke();
             }
         }
@@ -1454,11 +1540,14 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         {
             var turnId = payload.String("turn_id");
             var messageId = payload.String("message_id", "messageId");
+            var message = payload.Object("message");
+            var canBeFinalAssistant = type == "message.assistant" && message.Array("tool_calls").Count == 0;
             var changed = false;
             var streaming = type == "message.assistant"
-                ? Messages.LastOrDefault(message => message.TurnId == turnId && message.Streaming)
+                ? Messages.LastOrDefault(message =>
+                    message.TurnId == turnId && message.Role == "assistant" && message.Streaming)
                 : null;
-            if (messageId.Length > 0 && Messages.Any(message => message.MessageId == messageId))
+            if (messageId.Length > 0 && !_appliedMessageIds.Add(messageId))
             {
                 DiagnosticLog.Debug("session.message", $"duplicate ignored type={type} message={messageId} turn={turnId}");
             }
@@ -1466,15 +1555,46 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             {
                 if (streaming is not null)
                 {
-                    Messages.Remove(streaming);
+                    var index = Messages.IndexOf(streaming);
+                    Messages[index] = new MessageItem
+                    {
+                        MessageId = messageId,
+                        Role = "assistant",
+                        Text = text,
+                        ContentSequence = streaming.ContentSequence,
+                        TurnId = turnId,
+                        IsProcess = true,
+                        CanBeFinalAssistant = canBeFinalAssistant
+                    };
                 }
-                Messages.Add(new MessageItem { MessageId = messageId, Role = type == "message.user" ? "user" : "assistant", Text = text, ContentSequence = Messages.Count + 1, TurnId = turnId });
+                else
+                {
+                    Messages.Add(new MessageItem
+                    {
+                        MessageId = messageId,
+                        Role = type == "message.user" ? "user" : "assistant",
+                        Text = text,
+                        ContentSequence = Messages.Count + 1,
+                        TurnId = turnId,
+                        IsProcess = type == "message.assistant",
+                        CanBeFinalAssistant = canBeFinalAssistant
+                    });
+                }
                 changed = true;
             }
             else if (streaming is not null)
             {
                 var index = Messages.IndexOf(streaming);
-                Messages[index] = new MessageItem { MessageId = messageId, Role = streaming.Role, Text = streaming.Text, ContentSequence = streaming.ContentSequence, TurnId = turnId };
+                Messages[index] = new MessageItem
+                {
+                    MessageId = messageId,
+                    Role = streaming.Role,
+                    Text = streaming.Text,
+                    ContentSequence = streaming.ContentSequence,
+                    TurnId = turnId,
+                    IsProcess = true,
+                    CanBeFinalAssistant = canBeFinalAssistant
+                };
                 changed = true;
             }
             if (changed)
@@ -1482,6 +1602,14 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(HasMessages));
                 ConversationChanged?.Invoke();
             }
+        }
+        else if (type is "tool.requested" or "tool.state" or "tool.result")
+        {
+            ApplyToolEvent(payload, type);
+            Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.String("state"), payload.String("name")));
+            OnPropertyChanged(nameof(HasActivities));
+            OnPropertyChanged(nameof(LatestActivityText));
+            ConversationChanged?.Invoke();
         }
         else if (!type.StartsWith("provider.exchange.", StringComparison.Ordinal))
         {
@@ -1504,13 +1632,130 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         if (type == "turn.state")
         {
             var state = payload.String("state");
-            ActiveTurnId = state is "completed" or "failed" or "cancelled" or "interrupted" ? string.Empty : payload.String("turn_id");
+            var turnId = payload.String("turn_id");
+            ActiveTurnId = IsTerminalTurnState(state) ? string.Empty : turnId;
+            ConfigureTurnPresentation(Messages, turnId, state, expanded: !IsTerminalTurnState(state));
+            ConversationChanged?.Invoke();
         }
         if (live && type.StartsWith("checkpoint.", StringComparison.Ordinal)) _ = LoadCheckpointsAsync();
         if (live && type == "usage.updated") _ = LoadSessionUsageAsync();
         if (live && type.StartsWith("provider.exchange.", StringComparison.Ordinal) && ProviderTraceVisible) _ = RefreshProviderTracesAsync();
         if (live && (type.StartsWith("checkpoint.", StringComparison.Ordinal) || pathAdded)) _ = RefreshGitAsync();
     }
+
+    public void ToggleTurnProcess(MessageItem toggleItem)
+    {
+        if (!toggleItem.ShowProcessToggle) return;
+        toggleItem.ProcessExpanded = !toggleItem.ProcessExpanded;
+        foreach (var item in Messages.Where(item =>
+            item.TurnId == toggleItem.TurnId && item.IsProcess))
+        {
+            item.IsVisible = item == toggleItem || toggleItem.ProcessExpanded;
+            item.ProcessContentVisible = toggleItem.ProcessExpanded;
+        }
+    }
+
+    private void ApplyToolEvent(JsonObject payload, string eventType)
+    {
+        var turnId = payload.String("turn_id");
+        var toolCallId = payload.String("tool_call_id");
+        if (turnId.Length == 0 || toolCallId.Length == 0) return;
+        var existing = Messages.LastOrDefault(message =>
+            message.IsTool && message.TurnId == turnId && message.ToolCallId == toolCallId);
+        var state = eventType == "tool.state"
+            ? payload.String("state")
+            : existing?.ToolState ?? "requested";
+        var name = payload.String("name");
+        if (name.Length == 0) name = existing?.ToolName ?? "tool";
+        var detail = eventType switch
+        {
+            "tool.requested" => Pretty(payload["arguments"]),
+            "tool.result" => Pretty(payload["result"]),
+            _ => existing?.ToolDetail ?? string.Empty
+        };
+        var replacement = new MessageItem
+        {
+            Role = "tool",
+            Kind = "tool",
+            Text = name,
+            ContentSequence = existing?.ContentSequence ?? Messages.Count + 1,
+            TurnId = turnId,
+            ToolCallId = toolCallId,
+            ToolName = name,
+            ToolState = state,
+            ToolDetail = detail,
+            IsProcess = true
+        };
+        if (existing is null) Messages.Add(replacement);
+        else Messages[Messages.IndexOf(existing)] = replacement;
+    }
+
+    private static MessageItem ToolMessageItem(JsonObject item, string turnId, long sequence) => new()
+    {
+        Role = "tool",
+        Kind = "tool",
+        Text = item.String("name"),
+        ContentSequence = sequence,
+        TurnId = turnId,
+        ToolCallId = item.String("toolCallId", "tool_call_id"),
+        ToolName = item.String("name"),
+        ToolState = item.String("state"),
+        ToolDetail = Pretty(item["result"] ?? item["request"]),
+        IsProcess = true
+    };
+
+    private static void ConfigureTurnPresentation(
+        IEnumerable<MessageItem> source,
+        string turnId,
+        string state,
+        bool expanded)
+    {
+        var turnItems = source.Where(item => item.TurnId == turnId).ToArray();
+        var assistants = turnItems.Where(item => item.Role == "assistant").ToArray();
+        foreach (var assistant in assistants)
+        {
+            assistant.IsFinalAssistant = false;
+            assistant.IsProcess = true;
+        }
+        foreach (var item in turnItems)
+        {
+            item.ShowProcessToggle = false;
+            item.ProcessContentVisible = item.IsProcess;
+        }
+        var terminal = IsTerminalTurnState(state);
+        if (!terminal)
+        {
+            foreach (var item in turnItems) item.IsVisible = true;
+            return;
+        }
+
+        var final = assistants.LastOrDefault(item => item.CanBeFinalAssistant);
+        if (final is null)
+        {
+            foreach (var item in turnItems) item.IsVisible = true;
+            return;
+        }
+
+        final.IsFinalAssistant = true;
+        final.IsProcess = false;
+        var processItems = turnItems.Where(item => item.IsProcess).ToArray();
+        var toggleItem = processItems.FirstOrDefault();
+        if (toggleItem is not null)
+        {
+            toggleItem.ShowProcessToggle = true;
+            toggleItem.ProcessItemCount = processItems.Length;
+            toggleItem.ProcessExpanded = expanded;
+        }
+        foreach (var item in processItems)
+        {
+            item.IsVisible = item == toggleItem || expanded;
+            item.ProcessContentVisible = expanded;
+        }
+        final.IsVisible = true;
+    }
+
+    private static bool IsTerminalTurnState(string state) =>
+        state is "completed" or "failed" or "cancelled" or "interrupted";
 
     private static string EventText(string type, JsonObject payload)
     {
@@ -1594,6 +1839,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         IsSessionLoading = false;
         SessionLoadError = string.Empty;
         Messages = [];
+        _appliedMessageIds.Clear();
         Activities.Clear();
         ChangedPaths.Clear();
         Checkpoints.Clear();

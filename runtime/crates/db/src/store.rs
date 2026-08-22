@@ -259,6 +259,140 @@ impl Store {
         Ok(rows.collect::<Result<Vec<_>, _>>()?)
     }
 
+    pub fn session_conversation_turns(
+        &self,
+        session_id: &str,
+    ) -> Result<Vec<SessionConversationTurn>, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let mut turn_statement = connection.prepare(
+            "SELECT turn_id,state,created_at
+             FROM session_turn
+             WHERE session_id=?
+             ORDER BY created_at,turn_id",
+        )?;
+        let turn_rows = turn_statement.query_map([session_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })?;
+        let turns = turn_rows.collect::<Result<Vec<_>, _>>()?;
+        let mut result = Vec::with_capacity(turns.len());
+        for (turn_id, state, created_at) in turns {
+            let mut message_statement = connection.prepare(
+                "SELECT message_id,session_id,turn_id,session_call_id,role,message_json,created_at
+                 FROM session_message
+                 WHERE session_id=? AND turn_id=? AND role IN ('user','assistant','thinking')
+                 ORDER BY created_at,rowid",
+            )?;
+            let message_rows =
+                message_statement.query_map(params![session_id, turn_id], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, Option<String>>(2)?,
+                        row.get::<_, Option<String>>(3)?,
+                        row.get::<_, String>(4)?,
+                        row.get::<_, String>(5)?,
+                        row.get::<_, String>(6)?,
+                    ))
+                })?;
+            let messages = message_rows
+                .map(|row| {
+                    let (
+                        message_id,
+                        session_id,
+                        turn_id,
+                        session_call_id,
+                        role,
+                        message,
+                        created_at,
+                    ) = row?;
+                    Ok(SessionCallMessage {
+                        message_id,
+                        session_id,
+                        turn_id,
+                        session_call_id,
+                        role,
+                        message: serde_json::from_str(&message)?,
+                        created_at,
+                    })
+                })
+                .collect::<Result<Vec<_>, PersistenceError>>()?;
+
+            let mut tool_statement = connection.prepare(
+                "SELECT turn_id,tool_call_id,session_call_id,name,request_json,result_json,state,ordinal,created_at,updated_at,completed_at,error_code
+                 FROM session_tool_use
+                 WHERE turn_id=?
+                 ORDER BY created_at,COALESCE(ordinal,9223372036854775807),tool_call_id",
+            )?;
+            let tool_rows = tool_statement.query_map([&turn_id], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, Option<String>>(4)?,
+                    row.get::<_, Option<String>>(5)?,
+                    row.get::<_, String>(6)?,
+                    row.get::<_, Option<i64>>(7)?,
+                    row.get::<_, String>(8)?,
+                    row.get::<_, String>(9)?,
+                    row.get::<_, Option<String>>(10)?,
+                    row.get::<_, Option<String>>(11)?,
+                ))
+            })?;
+            let tool_uses = tool_rows
+                .map(|row| {
+                    let (
+                        turn_id,
+                        tool_call_id,
+                        session_call_id,
+                        name,
+                        request,
+                        result,
+                        state,
+                        ordinal,
+                        created_at,
+                        updated_at,
+                        completed_at,
+                        error_code,
+                    ) = row?;
+                    Ok(SessionCallToolUse {
+                        turn_id,
+                        tool_call_id,
+                        session_call_id,
+                        name,
+                        request: request
+                            .map(|value| serde_json::from_str(&value))
+                            .transpose()?,
+                        result: result
+                            .map(|value| serde_json::from_str(&value))
+                            .transpose()?,
+                        state,
+                        ordinal,
+                        created_at,
+                        updated_at,
+                        completed_at,
+                        error_code,
+                    })
+                })
+                .collect::<Result<Vec<_>, PersistenceError>>()?;
+            result.push(SessionConversationTurn {
+                turn_id,
+                state,
+                created_at,
+                messages,
+                tool_uses,
+            });
+        }
+        Ok(result)
+    }
+
     pub fn session_call_messages(
         &self,
         session_id: &str,
@@ -1931,6 +2065,83 @@ mod tests {
         assert_eq!(messages[2].role, "tool");
         assert_eq!(messages[2].tool_call_id.as_deref(), Some("call-1"));
         assert_eq!(messages[2].text_content(), "{\"content\":\"hello\"}");
+    }
+
+    #[test]
+    fn conversation_turns_group_messages_and_tools() {
+        let store = Store::open_memory().unwrap();
+        let session_id = session(&store);
+        store
+            .append_content(
+                &session_id,
+                "turn.state",
+                &json!({"turn_id":"turn-1","state":"resolving_calls"}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "message.user",
+                &json!({"message_id":"user-1","turn_id":"turn-1","message":Message::text("user","inspect")}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "message.assistant",
+                &json!({"message_id":"assistant-1","turn_id":"turn-1","message":Message::text("assistant","reading")}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "tool.requested",
+                &json!({"turn_id":"turn-1","tool_call_id":"tool-1","name":"read","arguments":{"path":"README.md"},"ordinal":0}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "tool.state",
+                &json!({"turn_id":"turn-1","tool_call_id":"tool-1","name":"read","state":"succeeded"}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "tool.result",
+                &json!({"turn_id":"turn-1","tool_call_id":"tool-1","result":{"content":"hello"}}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "message.assistant",
+                &json!({"message_id":"assistant-2","turn_id":"turn-1","message":Message::text("assistant","done")}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "turn.state",
+                &json!({"turn_id":"turn-1","state":"completed"}),
+            )
+            .unwrap();
+
+        let turns = store.session_conversation_turns(&session_id).unwrap();
+        let turn = turns.first().unwrap();
+        assert_eq!(turn.turn_id, "turn-1");
+        assert_eq!(turn.state, "completed");
+        assert_eq!(turn.messages.len(), 3);
+        assert_eq!(turn.messages[0].message_id, "user-1");
+        assert_eq!(turn.messages[2].message_id, "assistant-2");
+        assert_eq!(turn.tool_uses.len(), 1);
+        assert_eq!(turn.tool_uses[0].tool_call_id, "tool-1");
+        assert_eq!(turn.tool_uses[0].state, "succeeded");
+        assert_eq!(
+            turn.tool_uses[0].result.as_ref().unwrap()["content"],
+            "hello"
+        );
     }
 
     #[test]

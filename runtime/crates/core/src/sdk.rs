@@ -196,6 +196,8 @@ pub struct SessionsResult {
 pub struct SessionSnapshot {
     pub session: SessionRecord,
     pub messages: Vec<Message>,
+    #[serde(rename = "conversationTurns")]
+    pub conversation_turns: Vec<suncode_db::SessionConversationTurn>,
 }
 
 #[derive(Debug, Serialize)]
@@ -928,12 +930,17 @@ impl RuntimeSdk {
             .session_by_id(session_id)?
             .ok_or_else(|| SdkError::missing("session"))?;
         let messages = self.state.store.messages(session_id)?;
+        let conversation_turns = self.state.store.session_conversation_turns(session_id)?;
         logging::write(
             Level::Debug,
             "session_snapshot",
             format!("end session={session_id} messages={}", messages.len()),
         );
-        Ok(SessionSnapshot { session, messages })
+        Ok(SessionSnapshot {
+            session,
+            messages,
+            conversation_turns,
+        })
     }
 
     pub fn session_usage(&self, session_id: &str) -> SdkResult<SessionUsageResult> {
@@ -2132,6 +2139,51 @@ mod tests {
             suncode_runtime_sdk_string_free(response);
             suncode_runtime_sdk_close(handle);
         }
+    }
+
+    #[test]
+    fn session_snapshot_serializes_normalized_conversation_turns() {
+        let directory = tempfile::tempdir().unwrap();
+        let state = test_state(directory.path());
+        let project = state
+            .store
+            .project(directory.path().to_str().unwrap(), "Test")
+            .unwrap();
+        let session = state
+            .store
+            .create_session(
+                &project.project_id,
+                Some("First"),
+                Some("deepseek-v4-flash"),
+            )
+            .unwrap();
+        state
+            .store
+            .append_content(
+                &session.session_id,
+                "turn.state",
+                &json!({"turn_id":"turn-1","state":"completed"}),
+            )
+            .unwrap();
+        state
+            .store
+            .append_content(
+                &session.session_id,
+                "message.user",
+                &json!({"message_id":"user-1","turn_id":"turn-1","message":Message::text("user","inspect")}),
+            )
+            .unwrap();
+        let sdk = RuntimeSdk::from_state_for_test(state);
+
+        let snapshot =
+            serde_json::to_value(sdk.session_snapshot(&session.session_id, 0).unwrap()).unwrap();
+
+        assert_eq!(snapshot["messages"][0]["role"], "user");
+        assert_eq!(snapshot["conversationTurns"][0]["turnId"], "turn-1");
+        assert_eq!(
+            snapshot["conversationTurns"][0]["messages"][0]["messageId"],
+            "user-1"
+        );
     }
 
     unsafe extern "C" fn collect_event(event_json: *const c_char, user_data: *mut c_void) {

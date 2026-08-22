@@ -32,15 +32,66 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="models:MessageItem">
-            <Grid MaxWidth="780" Margin="12,8" HorizontalAlignment="Stretch">
+            <Grid MaxWidth="780" Margin="12,8" HorizontalAlignment="Stretch" IsVisible="{Binding IsVisible}">
               <Border IsVisible="{Binding IsUser}" HorizontalAlignment="Right" MaxWidth="620" Padding="14" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                 <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" LineHeight="21" />
               </Border>
-              <StackPanel IsVisible="{Binding !IsUser}" MaxWidth="720" HorizontalAlignment="Left" Spacing="4">
+
+              <StackPanel IsVisible="{Binding IsProcess}" MaxWidth="720" HorizontalAlignment="Left" Spacing="5">
+                <Button Classes="quiet"
+                        MinHeight="26"
+                        Padding="4,3"
+                        Margin="-5,0,0,2"
+                        HorizontalAlignment="Left"
+                        Click="ToggleTurnProcess"
+                        IsVisible="{Binding ShowProcessToggle}"
+                        ToolTip.Tip="Show or hide this turn's work">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <svg:Svg Width="12"
+                             Height="12"
+                             Path="/Assets/icons/chevron-right.svg"
+                             Css="{DynamicResource IconSvgCss}"
+                             IsVisible="{Binding ProcessCollapsed}" />
+                    <svg:Svg Width="12"
+                             Height="12"
+                             Path="/Assets/icons/chevron-right.svg"
+                             Css="{DynamicResource IconSvgCss}"
+                             IsVisible="{Binding ProcessExpanded}"
+                             RenderTransformOrigin="50%,50%">
+                      <svg:Svg.RenderTransform>
+                        <RotateTransform Angle="90" />
+                      </svg:Svg.RenderTransform>
+                    </svg:Svg>
+                    <TextBlock Text="{Binding ProcessToggleText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+
+                <StackPanel IsVisible="{Binding ProcessContentVisible}" Spacing="5">
+                  <Grid IsVisible="{Binding IsAssistant}">
+                    <controls:MarkdownText Markdown="{Binding Text}" HorizontalAlignment="Stretch" />
+                  </Grid>
+
+                  <Border IsVisible="{Binding IsTool}"
+                          Padding="10,8"
+                          CornerRadius="6"
+                          Background="{DynamicResource SurfaceRaisedBrush}"
+                          BorderBrush="{DynamicResource BorderBrush}"
+                          BorderThickness="1">
+                    <Grid ColumnDefinitions="18,*,Auto" RowDefinitions="Auto,Auto">
+                      <svg:Svg Grid.Row="0" Grid.Column="0" Width="13" Height="13" Margin="0,1,0,0" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" />
+                      <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ToolName}" Classes="mono" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ToolStateText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                      <SelectableTextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding ToolDetailText}" Margin="0,5,0,0" Classes="mono" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" IsVisible="{Binding HasToolDetail}" />
+                    </Grid>
+                  </Border>
+                </StackPanel>
+              </StackPanel>
+
+              <StackPanel IsVisible="{Binding IsFinalAssistant}" MaxWidth="720" HorizontalAlignment="Left" Spacing="4">
                 <Grid>
                   <controls:MarkdownText Markdown="{Binding Text}" HorizontalAlignment="Stretch" />
                 </Grid>
-                <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Margin="-7,0,0,0" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response">
+                <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Margin="-7,0,0,0" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response" IsVisible="{Binding ShowCopy}">
                   <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
                 </Button>
               </StackPanel>

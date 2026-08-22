@@ -88,7 +88,7 @@
   {
     "id": "session-snapshot",
     "call": {"method":"session_snapshot","session_id":"session-1","after":0},
-    "expected_response_shape": {"session":{"sessionId":"session-1"},"messages":[]}
+    "expected_response_shape": {"session":{"sessionId":"session-1"},"messages":[],"conversationTurns":[{"turnId":"turn-1","state":"completed","createdAt":"rfc3339","messages":[{"messageId":"message-1","role":"assistant","message":{"role":"assistant"},"createdAt":"rfc3339"}],"toolUses":[{"toolCallId":"tool-1","name":"read","state":"succeeded","createdAt":"rfc3339"}]}]}
   },
   {
     "id": "session-usage",

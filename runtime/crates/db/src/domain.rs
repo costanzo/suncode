@@ -203,6 +203,16 @@ pub struct SessionCallToolUse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SessionConversationTurn {
+    pub turn_id: String,
+    pub state: String,
+    pub created_at: String,
+    pub messages: Vec<SessionCallMessage>,
+    pub tool_uses: Vec<SessionCallToolUse>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectRecord {
     pub project_id: String,
     pub canonical_root: String,
