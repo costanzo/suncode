@@ -31,6 +31,10 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `list_projects` | List known active projects |
 | `open_project` | Canonicalize and open a project |
 | `select_project` | Select a known project and reopen its canonical root |
+| `list_project_dependencies` | List stable IDs and display names for a project's read-only source dependencies |
+| `add_project_dependency` | Canonicalize and register a non-overlapping read-only source folder |
+| `remove_project_dependency` | Remove one dependency registration without changing its files |
+| `list_project_directory` | Lazily list one bounded project or dependency directory for Explorer |
 | `git_status` | Read the bounded Git index/worktree status and aggregate change counts for a project |
 | `git_diff_file` | Read one bounded structured file diff for the all, staged, or unstaged scope |
 | `list_sessions` | List active sessions in a project |
@@ -52,6 +56,10 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `subscribe_session` | Deliver subsequent live events; lagged subscribers must reload `session_snapshot` |
 
 Rust-generated project, session, turn, approval, checkpoint, event, and message identifiers remain authoritative. Hosts do not manufacture IDs except idempotency keys.
+
+Project dependency DTOs contain `dependencyId`, `projectId`, `displayName`, and `createdAt`, but never the canonical absolute root. `list_project_directory` selects the main project when `dependencyId` is null and a registered dependency otherwise. It returns at most 500 directories/files for one level, directories first, with root-relative slash-separated paths and a `truncated` flag. Symlinks and non-file entries are omitted. Adding a dependency rejects the project root, ancestors or descendants of the project, and roots that overlap another dependency.
+
+The model addresses dependency content as `dependency:<dependencyId>/<relativePath>`. Only `read`, `glob`, and `grep` accept this alias; their results preserve the same prefix so later calls cannot accidentally resolve against the main project. Writes, edits, deletion, moves, processes, Git operations, checkpoints, and other authority remain scoped to the opened project and reject dependency aliases with `scope_denied`.
 
 Git DTOs contain only opened-project-relative paths. `git_status` returns branch and detached-head information, aggregate file/addition/deletion/conflict counts, and per-file index/worktree status. `git_diff_file` returns structured hunks and lines with old/new line numbers plus a bounded plain-text patch. The runtime embeds vendored libgit2 and does not require a Git executable or a system libgit2 installation. The current Git SDK surface is read-only.
 

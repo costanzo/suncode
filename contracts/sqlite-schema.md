@@ -2,11 +2,11 @@
 
 Status: Current Phase 1 contract.
 
-The Rust `suncode-db` package is the only database owner. The schema is fresh-schema-only: there is one current table set, no version table, and no migration runner. `runtime/crates/db/src/schema/mod.rs` applies one table-owned SQL resource per manifest entry; `runtime/crates/db/src/data/mod.rs` separately applies idempotent provider/model seed data. File names do not encode execution order. Opening a database with any unexpected application table fails without conversion.
+The Rust `suncode-db` package is the only database owner. There is one current table set, no version table, and no general migration runner. `runtime/crates/db/src/schema/mod.rs` applies one table-owned SQL resource per manifest entry; `runtime/crates/db/src/data/mod.rs` separately applies idempotent provider/model seed data. File names do not encode execution order. Opening a database with any unexpected application table fails without conversion. Initialization transactionally adds a missing `project_dependency` table to an otherwise-current 13-table database; this narrowly scoped additive bootstrap extension does not rename, rewrite, or convert incompatible schemas.
 
-There are 13 application tables:
+There are 14 application tables:
 
-`approval_request`, `audit_record`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `project`, `session`, `session_call`, `session_message`, `session_tool_use`, and `session_turn`.
+`approval_request`, `audit_record`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `project`, `project_dependency`, `session`, `session_call`, `session_message`, `session_tool_use`, and `session_turn`.
 
 ## Conventions
 
@@ -20,6 +20,10 @@ There are 13 application tables:
 ### `project`
 
 One row per opened local directory tree: `project_id` primary key, unique non-empty `canonical_root`, non-empty `display_name`, lifecycle timestamps, and nullable `archived_at`.
+
+### `project_dependency`
+
+One registered read-only source root per row: opaque `dependency_id`, owning `project_id`, canonical root, display name, and creation timestamp. `(project_id, canonical_root)` is unique, and deleting a project cascades to its dependency registrations. The canonical root remains internal to Rust persistence and operations; client DTOs expose only the stable dependency ID and display name.
 
 ### `configuration`
 

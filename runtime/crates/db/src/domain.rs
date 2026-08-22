@@ -213,6 +213,16 @@ pub struct ProjectRecord {
     pub archived_at: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectDependencyRecord {
+    pub dependency_id: String,
+    pub project_id: String,
+    pub canonical_root: String,
+    pub display_name: String,
+    pub created_at: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionRecord {

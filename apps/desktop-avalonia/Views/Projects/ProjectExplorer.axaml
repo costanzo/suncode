@@ -1,0 +1,68 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.Projects.ProjectExplorer"
+             x:DataType="vm:DesktopViewModel">
+  <UserControl.Styles>
+    <Style Selector="TreeView.explorer-tree">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="TreeView.explorer-tree TreeViewItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded, Mode=TwoWay}" />
+    </Style>
+    <Style Selector="TreeView.explorer-tree TreeViewItem /template/ Border#PART_LayoutRoot">
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="TreeView.explorer-tree TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="sidebar-card">
+    <Grid Margin="12,12,10,10" RowDefinitions="34,8,*">
+      <Grid Grid.Row="0" ColumnDefinitions="*,28,28">
+        <TextBlock Classes="section-label" Text="EXPLORER" Margin="4,0,0,0" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="icon" Width="28" Height="28" Padding="6" Click="RefreshExplorer" ToolTip.Tip="Refresh explorer">
+          <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
+        <Button Grid.Column="2" Classes="icon" Width="28" Height="28" Padding="6" Click="AddDependency" ToolTip.Tip="Add dependency folder">
+          <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
+      </Grid>
+
+      <TreeView x:Name="ExplorerTree"
+                Grid.Row="2"
+                Classes="explorer-tree"
+                ItemsSource="{Binding ExplorerRoots}"
+                ScrollViewer.HorizontalScrollBarVisibility="Auto">
+        <TreeView.DataTemplates>
+          <TreeDataTemplate DataType="models:ExplorerNode" ItemsSource="{Binding Children}">
+            <Grid Height="28" ColumnDefinitions="18,*,24" Margin="1,0,2,0">
+              <Grid Grid.Column="0" VerticalAlignment="Center">
+                <svg:Svg Width="14" Height="14" Path="/Assets/icons/files.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsFile}" />
+                <svg:Svg Width="14" Height="14" Path="/Assets/icons/sidebar-project.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsDirectory}" />
+              </Grid>
+              <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <Button Grid.Column="2" Classes="quiet" Width="24" Height="24" Padding="5" IsVisible="{Binding CanRemove}" ToolTip.Tip="Dependency actions">
+                <Button.Flyout>
+                  <MenuFlyout>
+                    <MenuItem Header="Delete" CommandParameter="{Binding}" Click="DeleteDependency" />
+                  </MenuFlyout>
+                </Button.Flyout>
+                <svg:Svg Path="/Assets/icons/more-horizontal.svg" Css="{DynamicResource IconSvgCss}" />
+              </Button>
+            </Grid>
+          </TreeDataTemplate>
+        </TreeView.DataTemplates>
+      </TreeView>
+
+    </Grid>
+  </Border>
+</UserControl>

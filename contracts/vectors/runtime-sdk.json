@@ -52,6 +52,30 @@
     "expected_response_shape": {"projectId":"project-1","canonicalRoot":"/project","displayName":"project"}
   },
   {
+    "id": "list-project-dependencies",
+    "call": {"method":"list_project_dependencies","project_id":"project-1"},
+    "expected_response_shape": {"projectId":"project-1","dependencies":[{"dependencyId":"dependency-1","projectId":"project-1","displayName":"shared","createdAt":"rfc3339"}]},
+    "must_not_contain": ["canonicalRoot","/absolute/dependency/path"]
+  },
+  {
+    "id": "add-project-dependency",
+    "call": {"method":"add_project_dependency","project_id":"project-1","path":"/shared"},
+    "expected_response_shape": {"dependencyId":"dependency-1","projectId":"project-1","displayName":"shared","createdAt":"rfc3339"},
+    "possible_errors": ["project_not_found","invalid_arguments","scope_denied"]
+  },
+  {
+    "id": "list-dependency-directory",
+    "call": {"method":"list_project_directory","project_id":"project-1","dependency_id":"dependency-1","path":"src"},
+    "expected_response_shape": {"projectId":"project-1","dependencyId":"dependency-1","path":"src","entries":[{"name":"lib.rs","path":"src/lib.rs","kind":"file","expandable":false}],"truncated":false},
+    "possible_errors": ["project_not_found","dependency_not_found","scope_denied"]
+  },
+  {
+    "id": "remove-project-dependency",
+    "call": {"method":"remove_project_dependency","project_id":"project-1","dependency_id":"dependency-1"},
+    "expected_response_shape": {"dependencyId":"dependency-1","removed":true},
+    "possible_errors": ["dependency_not_found"]
+  },
+  {
     "id": "create-session",
     "call": {"method":"create_session","project_id":"project-1","title":"New session","model":"deepseek-v4-flash"},
     "expected_response_shape": {"sessionId":"session-1","projectId":"project-1","title":"New session","status":"active"}

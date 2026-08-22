@@ -12,6 +12,7 @@ public sealed partial class ProjectWorkspace : UserControl
 {
     private SessionItem? _sessionDialogTarget;
     private CheckpointItem? _pendingCheckpoint;
+    private ExplorerNode? _pendingDependencyDeletion;
     private string _layoutResizeTarget = string.Empty;
     private Point _layoutResizeStart;
     private double _layoutResizeStartNavigationWidth;
@@ -58,6 +59,12 @@ public sealed partial class ProjectWorkspace : UserControl
             return true;
         }
 
+        if (DependencyDeleteDialogOverlay.IsVisible)
+        {
+            HideDependencyDeleteDialog();
+            return true;
+        }
+
         return false;
     }
 
@@ -80,8 +87,35 @@ public sealed partial class ProjectWorkspace : UserControl
         UndoDialogOverlay.IsVisible = true;
     }
 
-    private void ToggleNavigation(object? sender, RoutedEventArgs e) =>
-        ViewModel.NavigationVisible = !ViewModel.NavigationVisible;
+    internal void ShowDependencyDeleteDialog(ExplorerNode node)
+    {
+        _pendingDependencyDeletion = node;
+        DependencyDeleteName.Text = node.Name;
+        DependencyDeleteDialogOverlay.IsVisible = true;
+    }
+
+    private void ToggleNavigation(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.NavigationVisible && !ViewModel.ExplorerVisible)
+        {
+            ViewModel.NavigationVisible = false;
+            return;
+        }
+        ViewModel.ExplorerVisible = false;
+        ViewModel.NavigationVisible = true;
+    }
+
+    private async void ToggleExplorer(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.NavigationVisible && ViewModel.ExplorerVisible)
+        {
+            ViewModel.NavigationVisible = false;
+            return;
+        }
+        ViewModel.ExplorerVisible = true;
+        ViewModel.NavigationVisible = true;
+        await ViewModel.LoadExplorerRootsAsync();
+    }
 
     private void ToggleReview(object? sender, RoutedEventArgs e) =>
         ViewModel.ReviewVisible = !ViewModel.ReviewVisible;
@@ -203,6 +237,26 @@ public sealed partial class ProjectWorkspace : UserControl
     {
         UndoDialogOverlay.IsVisible = false;
         _pendingCheckpoint = null;
+    }
+
+    private void CloseDependencyDeleteDialog(object? sender, RoutedEventArgs e) => HideDependencyDeleteDialog();
+
+    private async void ConfirmDependencyDeleteDialog(object? sender, RoutedEventArgs e)
+    {
+        var dependency = _pendingDependencyDeletion;
+        HideDependencyDeleteDialog();
+        if (dependency is not null) await ViewModel.RemoveProjectDependencyAsync(dependency);
+    }
+
+    private void DependencyDeleteOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.Source == sender) HideDependencyDeleteDialog();
+    }
+
+    private void HideDependencyDeleteDialog()
+    {
+        DependencyDeleteDialogOverlay.IsVisible = false;
+        _pendingDependencyDeletion = null;
     }
 
     private void OpenSettings(object? sender, RoutedEventArgs e) => Owner?.ShowSettings();

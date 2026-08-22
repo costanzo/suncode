@@ -519,6 +519,9 @@ impl Agent {
             let exchange_id = Uuid::new_v4().to_string();
             context.active_call_id = Some(exchange_id.clone());
             let mut llm_messages = vec![host_environment_message()];
+            if let Some(message) = self.dependency_context_message(&context.project_id)? {
+                llm_messages.push(message);
+            }
             llm_messages.extend(
                 context
                     .messages
@@ -762,6 +765,10 @@ impl Agent {
                     "Tool arguments must be an object",
                 ));
             }
+            if let Err(error) = self.validate_dependency_call(context, call) {
+                self.tool_state(context, call, "failed", Some(&error.code))?;
+                return Err(error);
+            }
             self.tool_state(context, call, "policy_check", None)?;
             let decision = evaluate(tool_risk(&call.name), self.non_interactive);
             self.store.append_audit(Some(&context.project_id), Some(&context.session_id), Some(&context.turn_id), "capability.decision", &json!({"tool_call_id":call.call_id,"operation":call.name,"decision":format!("{decision:?}")}))?;
@@ -834,12 +841,11 @@ impl Agent {
         for call in calls {
             self.tool_state(context, &call, "authorized", None)?;
             self.tool_state(context, &call, "executing", None)?;
-            let mut params = translate_arguments(&call.name, &call.arguments)?;
+            let (project_root, mut params) = self.prepare_call(context, &call)?;
             params["idempotency_key"] = json!(format!("{}:{}", context.turn_id, call.call_id));
             let method = method_name(&call.name)
                 .ok_or_else(|| AgentError::new("authorization_denied", "Unknown tool"))?
                 .to_string();
-            let project_root = context.project_root.clone();
             let agent = self.clone();
             futures.push(async move {
                 let result = agent
@@ -869,12 +875,12 @@ impl Agent {
     ) -> Result<(), AgentError> {
         self.tool_state(context, call, "authorized", None)?;
         self.tool_state(context, call, "executing", None)?;
-        let mut params = translate_arguments(&call.name, &call.arguments)?;
+        let (project_root, mut params) = self.prepare_call(context, call)?;
         params["idempotency_key"] = json!(format!("{}:{}", context.turn_id, call.call_id));
         let method = method_name(&call.name)
             .ok_or_else(|| AgentError::new("authorization_denied", "Unknown tool"))?;
         let result = self
-            .operation_in_project(&context.project_root, method, params)
+            .operation_in_project(&project_root, method, params)
             .await
             .inspect_err(|error| {
                 let _ = self.tool_state(context, call, "failed", Some(&error.code));
@@ -888,7 +894,13 @@ impl Agent {
         call: &ToolCall,
         result: Value,
     ) -> Result<(), AgentError> {
-        let normalized_result = normalize_result(&call.name, result.clone());
+        let dependency_id = call
+            .arguments
+            .get("path")
+            .and_then(Value::as_str)
+            .and_then(dependency_path)
+            .map(|(dependency_id, _)| dependency_id);
+        let normalized_result = normalize_result(&call.name, result.clone(), dependency_id);
         self.tool_state(context, call, "succeeded", None)?;
         self.emit(
             &context.session_id,
@@ -975,6 +987,114 @@ impl Agent {
                 }
                 agent_error
             })
+    }
+
+    fn prepare_call(
+        &self,
+        context: &Continuation,
+        call: &ToolCall,
+    ) -> Result<(String, Value), AgentError> {
+        let mut arguments = call.arguments.clone();
+        let Some(path) = arguments.get("path").and_then(Value::as_str) else {
+            return Ok((
+                context.project_root.clone(),
+                translate_arguments(&call.name, &arguments)?,
+            ));
+        };
+        if path.starts_with("dependency:") && dependency_path(path).is_none() {
+            return Err(AgentError::new(
+                "invalid_arguments",
+                "dependency path must include a dependency ID",
+            ));
+        }
+        let Some((dependency_id, relative_path)) = dependency_path(path) else {
+            return Ok((
+                context.project_root.clone(),
+                translate_arguments(&call.name, &arguments)?,
+            ));
+        };
+        if !dependency_tool_allowed(&call.name) {
+            return Err(AgentError::new(
+                "scope_denied",
+                "dependencies are read-only and support only read, glob, and grep",
+            ));
+        }
+        let dependency = self
+            .store
+            .project_dependency_by_id(&context.project_id, dependency_id)?
+            .ok_or_else(|| AgentError::new("dependency_not_found", "dependency not found"))?;
+        arguments["path"] = json!(relative_path);
+        Ok((
+            dependency.canonical_root,
+            translate_arguments(&call.name, &arguments)?,
+        ))
+    }
+
+    fn validate_dependency_call(
+        &self,
+        context: &Continuation,
+        call: &ToolCall,
+    ) -> Result<(), AgentError> {
+        let Some(path) = call.arguments.get("path").and_then(Value::as_str) else {
+            return Ok(());
+        };
+        if path.starts_with("dependency:") && dependency_path(path).is_none() {
+            return Err(AgentError::new(
+                "invalid_arguments",
+                "dependency path must include a dependency ID",
+            ));
+        }
+        let Some((dependency_id, _)) = dependency_path(path) else {
+            return Ok(());
+        };
+        if !dependency_tool_allowed(&call.name) {
+            return Err(AgentError::new(
+                "scope_denied",
+                "dependencies are read-only and support only read, glob, and grep",
+            ));
+        }
+        if self
+            .store
+            .project_dependency_by_id(&context.project_id, dependency_id)?
+            .is_none()
+        {
+            return Err(AgentError::new(
+                "dependency_not_found",
+                "dependency not found",
+            ));
+        }
+        Ok(())
+    }
+
+    fn dependency_context_message(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<suncode_llm::Message>, AgentError> {
+        let dependencies = self.store.project_dependencies(project_id)?;
+        if dependencies.is_empty() {
+            return Ok(None);
+        }
+        let roots = dependencies
+            .iter()
+            .map(|dependency| {
+                format!(
+                    "- {}: dependency:{}",
+                    dependency.display_name, dependency.dependency_id
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        Ok(Some(suncode_llm::Message {
+            role: "system".into(),
+            content: vec![suncode_llm::ContentPart {
+                kind: "text".into(),
+                text: format!(
+                    "Registered read-only source dependencies:\n{roots}\nUse dependency:<dependencyId>/<relativePath> with read, or dependency:<dependencyId> as the glob/grep path. Dependencies cannot be modified or used as a process working directory."
+                ),
+            }],
+            tool_calls: Vec::new(),
+            tool_call_id: None,
+        }))
     }
     fn emit(&self, session_id: &str, event_type: &str, payload: Value) -> Result<(), AgentError> {
         let event = self
@@ -1305,6 +1425,30 @@ fn scoped_glob(path: &str, pattern: &str) -> String {
     format!("{base}/{}", pattern.trim_start_matches('/'))
 }
 
+fn dependency_path(path: &str) -> Option<(&str, &str)> {
+    let value = path.strip_prefix("dependency:")?;
+    let (dependency_id, relative_path) = value.split_once('/').unwrap_or((value, "."));
+    if dependency_id.is_empty() {
+        return None;
+    }
+    Some((dependency_id, relative_path))
+}
+
+fn dependency_tool_allowed(name: &str) -> bool {
+    matches!(
+        name,
+        "read"
+            | "glob"
+            | "grep"
+            | "fs_read"
+            | "fs.read"
+            | "search_glob"
+            | "search.glob"
+            | "search_find"
+            | "search.find"
+    )
+}
+
 fn to_llm_message(message: &Message) -> suncode_llm::Message {
     suncode_llm::Message {
         role: message.role.clone(),
@@ -1329,7 +1473,7 @@ fn to_llm_message(message: &Message) -> suncode_llm::Message {
     }
 }
 
-fn normalize_result(name: &str, mut value: Value) -> Value {
+fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -> Value {
     if matches!(name, "read" | "fs_read" | "fs.read") {
         if let Some(encoded) = value
             .get("data_base64")
@@ -1368,7 +1512,44 @@ fn normalize_result(name: &str, mut value: Value) -> Value {
             }
         }
     }
+    if let Some(dependency_id) = dependency_id {
+        if matches!(name, "read" | "fs_read" | "fs.read") {
+            prefix_result_path(&mut value, "path", dependency_id);
+        }
+        if matches!(name, "glob" | "search_glob" | "search.glob") {
+            if let Some(paths) = value.get_mut("paths").and_then(Value::as_array_mut) {
+                for path in paths {
+                    if let Some(relative) = path.as_str() {
+                        *path = json!(dependency_alias(dependency_id, relative));
+                    }
+                }
+            }
+        }
+        if matches!(name, "grep" | "search_find" | "search.find") {
+            if let Some(matches) = value.get_mut("matches").and_then(Value::as_array_mut) {
+                for matched in matches {
+                    prefix_result_path(matched, "path", dependency_id);
+                }
+            }
+        }
+    }
     value
+}
+
+fn prefix_result_path(value: &mut Value, key: &str, dependency_id: &str) {
+    let Some(relative) = value.get(key).and_then(Value::as_str) else {
+        return;
+    };
+    value[key] = json!(dependency_alias(dependency_id, relative));
+}
+
+fn dependency_alias(dependency_id: &str, relative: &str) -> String {
+    let relative = relative.trim_start_matches('/');
+    if relative.is_empty() || relative == "." {
+        format!("dependency:{dependency_id}")
+    } else {
+        format!("dependency:{dependency_id}/{relative}")
+    }
 }
 
 #[cfg(test)]
@@ -1391,6 +1572,55 @@ mod tests {
         assert_eq!(translated["program"], "git");
         assert_eq!(translated["args"], json!(["status", "--short"]));
         assert_eq!(translated["cwd"], "src");
+    }
+
+    #[test]
+    fn dependency_paths_are_parsed_without_exposing_absolute_roots() {
+        assert_eq!(
+            dependency_path("dependency:dependency-1/src/lib.rs"),
+            Some(("dependency-1", "src/lib.rs"))
+        );
+        assert_eq!(
+            dependency_path("dependency:dependency-1"),
+            Some(("dependency-1", "."))
+        );
+        assert_eq!(dependency_path("src/lib.rs"), None);
+        assert_eq!(dependency_path("dependency:"), None);
+        assert!(dependency_tool_allowed("read"));
+        assert!(!dependency_tool_allowed("write"));
+    }
+
+    #[test]
+    fn dependency_results_preserve_the_stable_alias() {
+        let read = normalize_result(
+            "read",
+            json!({"path":"src/lib.rs","data_base64":STANDARD.encode("hello")}),
+            Some("dependency-1"),
+        );
+        assert_eq!(read["path"], "dependency:dependency-1/src/lib.rs");
+
+        let glob = normalize_result(
+            "glob",
+            json!({"paths":["src/lib.rs","README.md"]}),
+            Some("dependency-1"),
+        );
+        assert_eq!(
+            glob["paths"],
+            json!([
+                "dependency:dependency-1/src/lib.rs",
+                "dependency:dependency-1/README.md"
+            ])
+        );
+
+        let grep = normalize_result(
+            "grep",
+            json!({"matches":[{"path":"src/lib.rs","line":1}]}),
+            Some("dependency-1"),
+        );
+        assert_eq!(
+            grep["matches"][0]["path"],
+            "dependency:dependency-1/src/lib.rs"
+        );
     }
 
     #[test]
@@ -1444,6 +1674,18 @@ mod tests {
             .and_then(|message| message.get("content"))
             .and_then(Value::as_str)
             .unwrap_or_default();
+        let dependency_alias = messages
+            .iter()
+            .filter(|message| message.get("role").and_then(Value::as_str) == Some("system"))
+            .filter_map(|message| message.get("content").and_then(Value::as_str))
+            .find_map(|content| {
+                content
+                    .split_whitespace()
+                    .find(|value| value.starts_with("dependency:") && !value.contains('<'))
+                    .map(|value| {
+                        value.trim_end_matches(|character: char| character.is_ascii_punctuation())
+                    })
+            });
         if user_text.contains("slow") {
             tokio::time::sleep(Duration::from_millis(150)).await;
         }
@@ -1454,6 +1696,16 @@ mod tests {
         } else if user_text.contains("slow") || user_text.contains("follow up") {
             vec![
                 json!({"choices":[{"delta":{"content":"queued done"},"finish_reason":"stop"}],"usage":{"prompt_tokens":4,"completion_tokens":2,"total_tokens":6}}),
+            ]
+        } else if user_text.contains("dependency read") {
+            let path = format!("{}/lib.rs", dependency_alias.unwrap());
+            vec![
+                json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"dependency-read","function":{"name":"read","arguments":serde_json::to_string(&json!({"path":path})).unwrap()}}]},"finish_reason":"tool_calls"}]}),
+            ]
+        } else if user_text.contains("dependency write") {
+            let path = format!("{}/lib.rs", dependency_alias.unwrap());
+            vec![
+                json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"dependency-write","function":{"name":"write","arguments":serde_json::to_string(&json!({"path":path,"content":"changed"})).unwrap()}}]},"finish_reason":"tool_calls"}]}),
             ]
         } else if user_text.contains("read two") {
             vec![json!({"choices":[{"delta":{"tool_calls":[
@@ -1499,6 +1751,16 @@ mod tests {
         let store = Store::open_memory().unwrap();
         let root = directory.canonicalize().unwrap();
         let project = store.project(root.to_str().unwrap(), "Fixture").unwrap();
+        let dependency_root = directory.join("dependency-source");
+        std::fs::create_dir_all(&dependency_root).unwrap();
+        std::fs::write(dependency_root.join("lib.rs"), "pub fn shared() {}\n").unwrap();
+        store
+            .add_project_dependency(
+                &project.project_id,
+                dependency_root.to_str().unwrap(),
+                "Shared source",
+            )
+            .unwrap();
         let session = store
             .create_session(&project.project_id, None, Some("deepseek-v4-flash"))
             .unwrap();
@@ -1570,6 +1832,39 @@ mod tests {
         assert_eq!(messages.last().unwrap().role, "assistant");
         let context = store.context_messages(&session_id).unwrap();
         assert!(context.iter().any(|message| message.role == "tool"));
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn dependency_read_is_routed_and_write_is_rejected_before_approval() {
+        let (agent, store, root, server, session_id) = fixture().await;
+        let response = agent
+            .submit(&session_id, "dependency-read-1", "dependency read", None)
+            .await
+            .unwrap();
+        assert!(matches!(
+            response,
+            TurnResponse::Completed { tool_calls: 1, .. }
+        ));
+        let result = store
+            .context_messages(&session_id)
+            .unwrap()
+            .into_iter()
+            .find(|message| message.role == "tool")
+            .unwrap()
+            .text_content();
+        assert!(result.contains("dependency:"));
+        assert!(!result.contains(root.to_str().unwrap()));
+
+        let error = agent
+            .submit(&session_id, "dependency-write-1", "dependency write", None)
+            .await
+            .unwrap_err();
+        assert_eq!(error.code, "scope_denied");
+        assert_eq!(
+            std::fs::read_to_string(root.join("dependency-source/lib.rs")).unwrap(),
+            "pub fn shared() {}\n"
+        );
         server.abort();
     }
 

@@ -4,9 +4,9 @@ use crate::{
     config::Config,
     credentials::{CredentialState, CredentialStore},
     domain::{
-        ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectRecord,
-        ProviderExchange, SessionCallMessage, SessionCallToolUse, SessionEvent, SessionRecord,
-        SessionTraceTurn, SettingRecord,
+        ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectDependencyRecord,
+        ProjectRecord, ProviderExchange, SessionCallMessage, SessionCallToolUse, SessionEvent,
+        SessionRecord, SessionTraceTurn, SettingRecord,
     },
     runtime_lock::RuntimeLock,
 };
@@ -150,6 +150,40 @@ pub struct SettingUpdate {
 #[derive(Debug, Serialize)]
 pub struct ProjectsResult {
     pub projects: Vec<ProjectRecord>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectDependencyDto {
+    pub dependency_id: String,
+    pub project_id: String,
+    pub display_name: String,
+    pub created_at: String,
+}
+
+impl From<ProjectDependencyRecord> for ProjectDependencyDto {
+    fn from(value: ProjectDependencyRecord) -> Self {
+        Self {
+            dependency_id: value.dependency_id,
+            project_id: value.project_id,
+            display_name: value.display_name,
+            created_at: value.created_at,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectDependenciesResult {
+    pub project_id: String,
+    pub dependencies: Vec<ProjectDependencyDto>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DependencyRemoval {
+    pub dependency_id: String,
+    pub removed: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -658,6 +692,123 @@ impl RuntimeSdk {
             *active = Some(project.project_id.clone());
         }
         Ok(project)
+    }
+
+    pub fn list_project_dependencies(
+        &self,
+        project_id: &str,
+    ) -> SdkResult<ProjectDependenciesResult> {
+        if self.state.store.project_by_id(project_id)?.is_none() {
+            return Err(SdkError::missing("project"));
+        }
+        Ok(ProjectDependenciesResult {
+            project_id: project_id.to_string(),
+            dependencies: self
+                .state
+                .store
+                .project_dependencies(project_id)?
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+        })
+    }
+
+    pub fn add_project_dependency(
+        &self,
+        project_id: &str,
+        path: &str,
+    ) -> SdkResult<ProjectDependencyDto> {
+        let project = self
+            .state
+            .store
+            .project_by_id(project_id)?
+            .ok_or_else(|| SdkError::missing("project"))?;
+        let opened = self
+            .state
+            .operations
+            .open_project(Path::new(path))
+            .map_err(operation_error)?;
+        let canonical_root = opened
+            .get("canonical_path")
+            .and_then(Value::as_str)
+            .ok_or_else(|| SdkError::unavailable("dependency root was not canonicalized"))?;
+        let display_name = opened
+            .get("display_name")
+            .and_then(Value::as_str)
+            .unwrap_or("Dependency");
+        let dependency_root = Path::new(canonical_root);
+        let project_root = Path::new(&project.canonical_root);
+        if dependency_root.starts_with(project_root) || project_root.starts_with(dependency_root) {
+            return Err(SdkError::invalid(
+                "dependency root must not equal, contain, or be contained by the project root",
+            ));
+        }
+        if self
+            .state
+            .store
+            .project_dependencies(project_id)?
+            .iter()
+            .map(|dependency| Path::new(&dependency.canonical_root))
+            .any(|existing| {
+                dependency_root.starts_with(existing) || existing.starts_with(dependency_root)
+            })
+        {
+            return Err(SdkError::invalid(
+                "dependency roots must not equal, contain, or be contained by each other",
+            ));
+        }
+        self.state
+            .store
+            .add_project_dependency(project_id, canonical_root, display_name)
+            .map(Into::into)
+            .map_err(SdkError::from)
+    }
+
+    pub fn remove_project_dependency(
+        &self,
+        project_id: &str,
+        dependency_id: &str,
+    ) -> SdkResult<DependencyRemoval> {
+        let removed = self
+            .state
+            .store
+            .remove_project_dependency(project_id, dependency_id)?;
+        if !removed {
+            return Err(SdkError::missing("dependency"));
+        }
+        Ok(DependencyRemoval {
+            dependency_id: dependency_id.to_string(),
+            removed,
+        })
+    }
+
+    pub fn list_project_directory(
+        &self,
+        project_id: &str,
+        dependency_id: Option<&str>,
+        path: &str,
+    ) -> SdkResult<Value> {
+        let root = if let Some(dependency_id) = dependency_id {
+            self.state
+                .store
+                .project_dependency_by_id(project_id, dependency_id)?
+                .ok_or_else(|| SdkError::missing("dependency"))?
+                .canonical_root
+        } else {
+            self.state
+                .store
+                .project_by_id(project_id)?
+                .ok_or_else(|| SdkError::missing("project"))?
+                .canonical_root
+        };
+        let mut value = self
+            .state
+            .operations
+            .list_directory(Path::new(&root), path, 500)
+            .map_err(operation_error)?;
+        value["projectId"] = json!(project_id);
+        value["dependencyId"] = dependency_id.map_or(Value::Null, |value| json!(value));
+        Ok(value)
     }
 
     pub fn list_sessions(&self, project_id: &str) -> SdkResult<SessionsResult> {
@@ -1257,6 +1408,61 @@ ffi_no_args!(suncode_runtime_sdk_list_credentials, list_credentials);
 ffi_no_args!(suncode_runtime_sdk_list_projects, list_projects);
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_runtime_sdk_list_project_dependencies(
+    handle: *mut SunCodeRuntimeHandle,
+    project_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.list_project_dependencies(&c_string(project_id, "project_id")?)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_runtime_sdk_add_project_dependency(
+    handle: *mut SunCodeRuntimeHandle,
+    project_id: *const c_char,
+    path: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.add_project_dependency(
+            &c_string(project_id, "project_id")?,
+            &c_string(path, "path")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_runtime_sdk_remove_project_dependency(
+    handle: *mut SunCodeRuntimeHandle,
+    project_id: *const c_char,
+    dependency_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.remove_project_dependency(
+            &c_string(project_id, "project_id")?,
+            &c_string(dependency_id, "dependency_id")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_runtime_sdk_list_project_directory(
+    handle: *mut SunCodeRuntimeHandle,
+    project_id: *const c_char,
+    dependency_id: *const c_char,
+    path: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let dependency_id = optional_c_string(dependency_id, "dependency_id")?;
+        sdk.list_project_directory(
+            &c_string(project_id, "project_id")?,
+            dependency_id.as_deref(),
+            &c_string(path, "path")?,
+        )
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_runtime_sdk_list_settings(
     handle: *mut SunCodeRuntimeHandle,
     project_id: *const c_char,
@@ -1775,6 +1981,56 @@ mod tests {
 
         let session = sdk.create_session(&project.project_id, None, None).unwrap();
         assert_eq!(session.model_id.as_deref(), Some("gpt-5.5"));
+    }
+
+    #[test]
+    fn project_dependencies_are_read_only_and_browsed_on_demand() {
+        let directory = tempfile::tempdir().unwrap();
+        let project_root = directory.path().join("project");
+        let dependency_root = directory.path().join("dependency");
+        std::fs::create_dir_all(project_root.join("src")).unwrap();
+        std::fs::create_dir_all(dependency_root.join("lib")).unwrap();
+        std::fs::create_dir_all(dependency_root.join("nested")).unwrap();
+        std::fs::write(dependency_root.join("lib/code.rs"), "pub fn shared() {}\n").unwrap();
+        let sdk = RuntimeSdk::from_state_for_test(test_state(directory.path()));
+        let project = sdk
+            .open_project(project_root.to_str().unwrap(), None)
+            .unwrap();
+        let dependency = sdk
+            .add_project_dependency(&project.project_id, dependency_root.to_str().unwrap())
+            .unwrap();
+        assert_eq!(
+            sdk.list_project_dependencies(&project.project_id)
+                .unwrap()
+                .dependencies
+                .len(),
+            1
+        );
+        let root = sdk
+            .list_project_directory(&project.project_id, Some(&dependency.dependency_id), ".")
+            .unwrap();
+        assert_eq!(root["entries"][0]["name"], "lib");
+        let nested = sdk
+            .list_project_directory(&project.project_id, Some(&dependency.dependency_id), "lib")
+            .unwrap();
+        assert_eq!(nested["entries"][0]["name"], "code.rs");
+        assert!(sdk
+            .add_project_dependency(&project.project_id, project_root.to_str().unwrap())
+            .is_err());
+        assert!(sdk
+            .add_project_dependency(
+                &project.project_id,
+                dependency_root.join("nested").to_str().unwrap()
+            )
+            .is_err());
+        assert!(sdk
+            .add_project_dependency(&project.project_id, directory.path().to_str().unwrap())
+            .is_err());
+        assert!(
+            sdk.remove_project_dependency(&project.project_id, &dependency.dependency_id)
+                .unwrap()
+                .removed
+        );
     }
 
     #[test]

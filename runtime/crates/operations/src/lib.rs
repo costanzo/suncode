@@ -577,6 +577,70 @@ impl Operations {
             .map_err(failure_value)
     }
 
+    pub fn list_directory(
+        &self,
+        root_path: &Path,
+        relative_path: &str,
+        max_entries: usize,
+    ) -> Result<Value, Value> {
+        let canonical_root = root_path.canonicalize().map_err(|_| {
+            json!({"code":"project_unavailable","message":"directory root is unavailable","retryable":false})
+        })?;
+        if !canonical_root.is_dir() {
+            return Err(
+                json!({"code":"project_unavailable","message":"directory root is not a directory","retryable":false}),
+            );
+        }
+        let relative = if relative_path.trim().is_empty() || relative_path == "." {
+            PathBuf::new()
+        } else {
+            safe_relative_path(relative_path).map_err(failure_value)?
+        };
+        let candidate = canonical_root.join(&relative);
+        let canonical_directory = candidate.canonicalize().map_err(|_| {
+            json!({"code":"path_unavailable","message":"directory is unavailable","retryable":false})
+        })?;
+        if !canonical_directory.starts_with(&canonical_root) || !canonical_directory.is_dir() {
+            return Err(
+                json!({"code":"scope_denied","message":"directory must remain inside its root","retryable":false}),
+            );
+        }
+        let limit = max_entries.clamp(1, 1000);
+        let mut entries = fs::read_dir(&canonical_directory)
+            .map_err(|_| json!({"code":"project_read_failed","message":"directory could not be read","retryable":true}))?
+            .filter_map(Result::ok)
+            .filter_map(|entry| {
+                let file_type = entry.file_type().ok()?;
+                if file_type.is_symlink() {
+                    return None;
+                }
+                let kind = if file_type.is_dir() {
+                    "directory"
+                } else if file_type.is_file() {
+                    "file"
+                } else {
+                    return None;
+                };
+                let name = entry.file_name().to_string_lossy().into_owned();
+                let entry_path = relative.join(&name).to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/");
+                Some((kind == "file", name.to_ascii_lowercase(), json!({
+                    "name": name,
+                    "path": entry_path,
+                    "kind": kind,
+                    "expandable": kind == "directory"
+                })))
+            })
+            .collect::<Vec<_>>();
+        entries.sort_by(|left, right| (left.0, &left.1).cmp(&(right.0, &right.1)));
+        let truncated = entries.len() > limit;
+        entries.truncate(limit);
+        Ok(json!({
+            "path": relative.to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/"),
+            "entries": entries.into_iter().map(|(_, _, value)| value).collect::<Vec<_>>(),
+            "truncated": truncated
+        }))
+    }
+
     pub fn execute_in_project(
         &self,
         project_path: &Path,
@@ -601,7 +665,7 @@ impl Operations {
 
 #[cfg(test)]
 mod tests {
-    use super::{execute_operation, failure_value, open_project, safe_relative_path};
+    use super::{execute_operation, failure_value, open_project, safe_relative_path, Operations};
     use base64::Engine;
     use serde::Deserialize;
     use serde_json::json;
@@ -661,6 +725,29 @@ mod tests {
     fn rejects_parent_paths() {
         assert!(safe_relative_path("../outside").is_err());
         assert!(safe_relative_path("/outside").is_err());
+    }
+
+    #[test]
+    fn lists_directories_without_following_symlinks() {
+        let (root, checkpoints) = temporary_roots("directory-list");
+        fs::create_dir_all(root.join("folder")).unwrap();
+        fs::write(root.join("z.txt"), b"z").unwrap();
+        fs::write(root.join("a.txt"), b"a").unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(root.join("folder"), root.join("linked-folder")).unwrap();
+
+        let operations = Operations::new(checkpoints.clone()).unwrap();
+        let result = operations.list_directory(&root, ".", 2).unwrap();
+        assert_eq!(result["entries"][0]["name"], "folder");
+        assert_eq!(result["entries"][1]["name"], "a.txt");
+        assert_eq!(result["truncated"], true);
+        #[cfg(unix)]
+        assert!(result["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|entry| entry["name"] != "linked-folder"));
+        cleanup(&root, &checkpoints);
     }
 
     #[test]

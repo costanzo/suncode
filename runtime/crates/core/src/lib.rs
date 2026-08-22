@@ -11,16 +11,17 @@ mod tools;
 
 pub use sdk::{
     ApprovalOutcome, CancellationOutcome, CheckpointDetails, CheckpointsResult, CredentialUpdate,
-    CredentialsResult, DiagnosticsResult, HealthResult, ModelsResult, ProjectsResult,
-    RecoveryStatus, RestoreOutcome, RuntimeSdk, SdkError, SdkResult, SessionSnapshot,
-    SessionUsageResult, SessionsResult, SettingUpdate, SettingsResult, SunCodeEventCallback,
+    CredentialsResult, DependencyRemoval, DiagnosticsResult, HealthResult, ModelsResult,
+    ProjectDependenciesResult, ProjectDependencyDto, ProjectsResult, RecoveryStatus,
+    RestoreOutcome, RuntimeSdk, SdkError, SdkResult, SessionSnapshot, SessionUsageResult,
+    SessionsResult, SettingUpdate, SettingsResult, SunCodeEventCallback,
     SUNCODE_RUNTIME_SDK_ABI_VERSION,
 };
 
 pub use agent::TurnResponse;
 pub use credentials::CredentialState;
 pub use domain::{
-    ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectRecord, SessionEvent,
-    SessionRecord, SettingRecord,
+    ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectDependencyRecord,
+    ProjectRecord, SessionEvent, SessionRecord, SettingRecord,
 };
 pub use suncode_llm::{ModelCapabilities, ModelDescriptor, ModelLimits};

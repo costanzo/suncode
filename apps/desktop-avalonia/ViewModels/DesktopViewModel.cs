@@ -61,6 +61,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private bool _navigationVisible = true;
     private bool _reviewVisible = true;
     private bool _navigationPinned = true;
+    private bool _explorerVisible;
     private bool _gitVisible;
     private bool _providerTraceVisible;
     private double _layoutWidth = 1440;
@@ -79,6 +80,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public ObservableCollection<SessionItem> Sessions { get; } = [];
     public ObservableCollection<ModelItem> Models { get; } = [];
     public ObservableCollection<CredentialItem> Credentials { get; } = [];
+    public ObservableCollection<ProjectDependencyItem> ProjectDependencies { get; } = [];
+    public ObservableCollection<ExplorerNode> ExplorerRoots { get; } = [];
     public BulkObservableCollection<MessageItem> Messages
     {
         get => _messages;
@@ -268,7 +271,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public int GitDiffAdditions { get => _gitDiffAdditions; private set => SetProperty(ref _gitDiffAdditions, value); }
     public int GitDiffDeletions { get => _gitDiffDeletions; private set => SetProperty(ref _gitDiffDeletions, value); }
     public long SessionTotalTokens { get => _sessionTotalTokens; private set { if (SetProperty(ref _sessionTotalTokens, value)) OnPropertyChanged(nameof(SessionTokenText)); } }
-    public bool NavigationVisible { get => _navigationVisible; set { if (SetProperty(ref _navigationVisible, value)) OnPropertyChanged(nameof(NavigationWidth)); } }
+    public bool NavigationVisible { get => _navigationVisible; set { if (SetProperty(ref _navigationVisible, value)) { OnPropertyChanged(nameof(NavigationWidth)); OnPropertyChanged(nameof(SessionSidebarVisible)); OnPropertyChanged(nameof(ExplorerSidebarVisible)); } } }
+    public bool ExplorerVisible { get => _explorerVisible; set { if (SetProperty(ref _explorerVisible, value)) { OnPropertyChanged(nameof(SessionSidebarVisible)); OnPropertyChanged(nameof(ExplorerSidebarVisible)); } } }
     public bool ReviewVisible { get => _reviewVisible; set { if (SetProperty(ref _reviewVisible, value)) OnPropertyChanged(nameof(ReviewWidth)); } }
     public bool NavigationPinned { get => _navigationPinned; set => SetProperty(ref _navigationPinned, value); }
     public bool GitVisible { get => _gitVisible; set => SetProperty(ref _gitVisible, value); }
@@ -292,6 +296,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
     public bool IsProjectOpen => SelectedProject is not null;
     public bool HasProjects => Projects.Count > 0;
+    public bool HasProjectDependencies => ProjectDependencies.Count > 0;
+    public bool SessionSidebarVisible => NavigationVisible && !ExplorerVisible;
+    public bool ExplorerSidebarVisible => NavigationVisible && ExplorerVisible;
     public bool HasSessions => Sessions.Count > 0;
     public bool HasMessages => Messages.Count > 0;
     public bool HasActivities => Activities.Count > 0;
@@ -457,6 +464,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         {
             await _sdk!.SelectProjectAsync(project.ProjectId);
             SelectedProject = project;
+            await LoadProjectDependenciesAsync();
+            ResetExplorerRoots();
             await LoadSessionsAsync();
             await RefreshGitAsync();
         }, "Project selected");
@@ -468,7 +477,87 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         ClearSession();
         SelectedProject = null;
         Sessions.Clear();
+        ProjectDependencies.Clear();
+        ExplorerRoots.Clear();
         ClearGit();
+    }
+
+    public async Task AddProjectDependencyAsync(string path)
+    {
+        if (!EnsureSdk() || SelectedProject is null || string.IsNullOrWhiteSpace(path)) return;
+        await RunAsync(async () =>
+        {
+            await _sdk!.AddProjectDependencyAsync(SelectedProject.ProjectId, path);
+            await LoadProjectDependenciesAsync();
+            ResetExplorerRoots();
+            await LoadExplorerRootsAsync();
+        }, "Dependency added");
+    }
+
+    public async Task RemoveProjectDependencyAsync(ExplorerNode node)
+    {
+        if (!EnsureSdk() || SelectedProject is null || !node.CanRemove || node.DependencyId is null) return;
+        await RunAsync(async () =>
+        {
+            await _sdk!.RemoveProjectDependencyAsync(SelectedProject.ProjectId, node.DependencyId);
+            await LoadProjectDependenciesAsync();
+            ResetExplorerRoots();
+            await LoadExplorerRootsAsync();
+        }, "Dependency removed");
+    }
+
+    public async Task LoadExplorerChildrenAsync(ExplorerNode node)
+    {
+        if (!EnsureSdk() || SelectedProject is null || !node.IsDirectory || node.IsGroup || node.IsLoaded || node.IsLoading) return;
+        node.IsLoading = true;
+        try
+        {
+            var result = await _sdk!.ListProjectDirectoryAsync(
+                SelectedProject.ProjectId,
+                node.DependencyId,
+                node.Path);
+            node.Children.Clear();
+            foreach (var item in result.Array("entries").OfType<JsonObject>())
+            {
+                node.Children.Add(new ExplorerNode(
+                    item.String("name"),
+                    item.String("path"),
+                    item.String("kind"),
+                    node.DependencyId));
+            }
+            node.IsLoaded = true;
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+        }
+        finally
+        {
+            node.IsLoading = false;
+        }
+    }
+
+    public async Task RefreshExplorerAsync()
+    {
+        if (SelectedProject is null) return;
+        ResetExplorerRoots();
+        await LoadExplorerRootsAsync();
+    }
+
+    public async Task LoadExplorerRootsAsync()
+    {
+        foreach (var root in ExplorerRoots)
+        {
+            if (root.IsGroup)
+            {
+                foreach (var dependency in root.Children)
+                    await LoadExplorerChildrenAsync(dependency);
+            }
+            else
+            {
+                await LoadExplorerChildrenAsync(root);
+            }
+        }
     }
 
     public async Task CreateSessionAsync(string title)
@@ -996,6 +1085,53 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             Projects.Add(new ProjectItem(item.String("projectId"), item.String("displayName"), item.String("canonicalRoot")));
         }
         OnPropertyChanged(nameof(HasProjects));
+    }
+
+    private async Task LoadProjectDependenciesAsync()
+    {
+        ProjectDependencies.Clear();
+        if (_sdk is null || SelectedProject is null)
+        {
+            OnPropertyChanged(nameof(HasProjectDependencies));
+            return;
+        }
+        var result = await _sdk.ListProjectDependenciesAsync(SelectedProject.ProjectId);
+        foreach (var item in result.Array("dependencies").OfType<JsonObject>())
+        {
+            ProjectDependencies.Add(new ProjectDependencyItem(
+                item.String("dependencyId"),
+                item.String("displayName")));
+        }
+        OnPropertyChanged(nameof(HasProjectDependencies));
+    }
+
+    private void ResetExplorerRoots()
+    {
+        ExplorerRoots.Clear();
+        if (SelectedProject is null) return;
+        ExplorerRoots.Add(new ExplorerNode(
+            SelectedProject.DisplayName,
+            ".",
+            "directory",
+            isRoot: true));
+        var dependencyGroup = new ExplorerNode(
+            "Dependencies",
+            ".",
+            "group",
+            isRoot: true,
+            isGroup: true);
+        foreach (var dependency in ProjectDependencies)
+        {
+            dependencyGroup.Children.Add(new ExplorerNode(
+                dependency.DisplayName,
+                ".",
+                "directory",
+                dependency.DependencyId,
+                isRoot: true,
+                isDependency: true));
+        }
+        dependencyGroup.IsLoaded = true;
+        ExplorerRoots.Add(dependencyGroup);
     }
 
     private async Task LoadSessionsAsync(string? preferredSessionId = null)

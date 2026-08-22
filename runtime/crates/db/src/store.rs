@@ -1067,6 +1067,82 @@ impl Store {
         self.project_by_id_optional_locked(&connection, id)
     }
 
+    pub fn add_project_dependency(
+        &self,
+        project_id: &str,
+        canonical_root: &str,
+        display_name: &str,
+    ) -> Result<ProjectDependencyRecord, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let project = self
+            .project_by_id_optional_locked(&connection, project_id)?
+            .ok_or_else(|| PersistenceError::Invalid("project not found".into()))?;
+        if project.canonical_root == canonical_root {
+            return Err(PersistenceError::Invalid(
+                "project cannot depend on its own root".into(),
+            ));
+        }
+        let existing: Option<String> = connection
+            .query_row(
+                "SELECT dependency_id FROM project_dependency WHERE project_id=? AND canonical_root=?",
+                params![project_id, canonical_root],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let dependency_id = existing.unwrap_or_else(|| Uuid::new_v4().to_string());
+        connection.execute(
+            "INSERT INTO project_dependency(dependency_id,project_id,canonical_root,display_name,created_at) VALUES (?,?,?,?,?) ON CONFLICT(project_id,canonical_root) DO UPDATE SET display_name=excluded.display_name",
+            params![dependency_id, project_id, canonical_root, display_name, now()],
+        )?;
+        self.project_dependency_by_id_locked(&connection, project_id, &dependency_id)?
+            .ok_or_else(|| PersistenceError::Invalid("dependency was not stored".into()))
+    }
+
+    pub fn project_dependencies(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<ProjectDependencyRecord>, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let mut statement = connection.prepare(
+            "SELECT dependency_id,project_id,canonical_root,display_name,created_at FROM project_dependency WHERE project_id=? ORDER BY display_name COLLATE NOCASE,dependency_id",
+        )?;
+        let rows = statement.query_map([project_id], project_dependency_from_row)?;
+        Ok(rows.collect::<Result<Vec<_>, _>>()?)
+    }
+
+    pub fn project_dependency_by_id(
+        &self,
+        project_id: &str,
+        dependency_id: &str,
+    ) -> Result<Option<ProjectDependencyRecord>, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        self.project_dependency_by_id_locked(&connection, project_id, dependency_id)
+    }
+
+    pub fn remove_project_dependency(
+        &self,
+        project_id: &str,
+        dependency_id: &str,
+    ) -> Result<bool, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        Ok(connection.execute(
+            "DELETE FROM project_dependency WHERE project_id=? AND dependency_id=?",
+            params![project_id, dependency_id],
+        )? == 1)
+    }
+
     pub fn create_session(
         &self,
         project_id: &str,
@@ -1172,6 +1248,18 @@ impl Store {
         id: &str,
     ) -> Result<Option<ProjectRecord>, PersistenceError> {
         connection.query_row("SELECT project_id,canonical_root,display_name,created_at,updated_at,last_opened_at,archived_at FROM project WHERE project_id=?", [id], project_from_row).optional().map_err(Into::into)
+    }
+    fn project_dependency_by_id_locked(
+        &self,
+        connection: &Connection,
+        project_id: &str,
+        dependency_id: &str,
+    ) -> Result<Option<ProjectDependencyRecord>, PersistenceError> {
+        connection.query_row(
+            "SELECT dependency_id,project_id,canonical_root,display_name,created_at FROM project_dependency WHERE project_id=? AND dependency_id=?",
+            params![project_id, dependency_id],
+            project_dependency_from_row,
+        ).optional().map_err(Into::into)
     }
     fn session_by_id_locked(
         &self,
@@ -1481,6 +1569,18 @@ fn project_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<ProjectRecord> 
         updated_at: row.get(4)?,
         last_opened_at: row.get(5)?,
         archived_at: row.get(6)?,
+    })
+}
+
+fn project_dependency_from_row(
+    row: &rusqlite::Row<'_>,
+) -> rusqlite::Result<ProjectDependencyRecord> {
+    Ok(ProjectDependencyRecord {
+        dependency_id: row.get(0)?,
+        project_id: row.get(1)?,
+        canonical_root: row.get(2)?,
+        display_name: row.get(3)?,
+        created_at: row.get(4)?,
     })
 }
 fn session_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRecord> {
@@ -2211,6 +2311,33 @@ mod tests {
     }
 
     #[test]
+    fn project_dependencies_are_unique_scoped_and_removable() {
+        let store = Store::open_memory().unwrap();
+        let project = store.project("/tmp/main-project", "Main").unwrap();
+        let first = store
+            .add_project_dependency(&project.project_id, "/tmp/shared-source", "Shared")
+            .unwrap();
+        let repeated = store
+            .add_project_dependency(&project.project_id, "/tmp/shared-source", "Renamed")
+            .unwrap();
+        assert_eq!(first.dependency_id, repeated.dependency_id);
+        assert_eq!(
+            store.project_dependencies(&project.project_id).unwrap()[0].display_name,
+            "Renamed"
+        );
+        assert!(store
+            .add_project_dependency(&project.project_id, "/tmp/main-project", "Self")
+            .is_err());
+        assert!(store
+            .remove_project_dependency(&project.project_id, &first.dependency_id)
+            .unwrap());
+        assert!(store
+            .project_dependencies(&project.project_id)
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
     fn fresh_schema_is_complete_and_consistent() {
         let store = Store::open_memory().unwrap();
         let health = store.health().unwrap();
@@ -2240,6 +2367,7 @@ mod tests {
                 "llm_model_by_provider_enabled_order_idx",
                 "llm_model_enabled_order_idx",
                 "llm_model_provider_enabled_order_idx",
+                "project_dependency_project_name_idx",
                 "project_last_opened_idx",
                 "session_call_session_started_idx",
                 "session_call_started_idx",
@@ -2294,6 +2422,27 @@ mod tests {
         assert_eq!(
             schema::table_names(&connection).unwrap(),
             vec!["legacy_state".to_string()]
+        );
+    }
+
+    #[test]
+    fn current_database_receives_the_additive_dependency_table() {
+        let directory = tempfile::tempdir().unwrap();
+        let database = directory.path().join("state.db");
+        let connection = Connection::open(&database).unwrap();
+        schema::apply(&connection).unwrap();
+        data::apply(&connection).unwrap();
+        connection
+            .execute_batch("DROP TABLE project_dependency;")
+            .unwrap();
+        assert_eq!(schema::table_names(&connection).unwrap().len(), 13);
+        drop(connection);
+
+        let store = Store::open(&database).unwrap();
+        let connection = store.connection.lock().unwrap();
+        assert_eq!(
+            schema::table_names(&connection).unwrap(),
+            schema::TABLE_NAMES
         );
     }
 

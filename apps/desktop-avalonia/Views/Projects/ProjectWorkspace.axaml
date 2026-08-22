@@ -60,20 +60,26 @@
         <Grid Grid.Row="2" ColumnDefinitions="26,4,*,4,26">
           <Border Grid.Column="0" Background="#01000000" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
           <Border Grid.Column="4" Background="#01000000" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
-          <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto,6,Auto" Margin="1,10,1,10">
-            <Button Grid.Row="0" Classes="icon gutter" Classes.active="{Binding NavigationVisible}" Width="24" Height="28" Padding="3.5" Click="ToggleNavigation" ToolTip.Tip="Show or hide project navigation">
+          <Grid Grid.Column="0" RowDefinitions="Auto,6,Auto,*,Auto,6,Auto" Margin="1,10,1,10">
+            <Button Grid.Row="0" Classes="icon gutter" Classes.active="{Binding SessionSidebarVisible}" Width="24" Height="28" Padding="3.5" Click="ToggleNavigation" ToolTip.Tip="Show sessions">
               <Grid>
-                <svg:Svg Path="/Assets/icons/panel-left.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !NavigationVisible}" />
-                <svg:Svg Path="/Assets/icons/panel-left.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding NavigationVisible}" />
+                <svg:Svg Path="/Assets/icons/panel-left.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !SessionSidebarVisible}" />
+                <svg:Svg Path="/Assets/icons/panel-left.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding SessionSidebarVisible}" />
               </Grid>
             </Button>
-            <Button Grid.Row="2" Classes="icon gutter" Classes.active="{Binding GitVisible}" Width="24" Height="28" Padding="3.5" Click="ToggleGit" ToolTip.Tip="Show or hide source control">
+            <Button Grid.Row="2" Classes="icon gutter" Classes.active="{Binding ExplorerSidebarVisible}" Width="24" Height="28" Padding="3.5" Click="ToggleExplorer" ToolTip.Tip="Show explorer">
+              <Grid>
+                <svg:Svg Path="/Assets/icons/files.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !ExplorerSidebarVisible}" />
+                <svg:Svg Path="/Assets/icons/files.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding ExplorerSidebarVisible}" />
+              </Grid>
+            </Button>
+            <Button Grid.Row="4" Classes="icon gutter" Classes.active="{Binding GitVisible}" Width="24" Height="28" Padding="3.5" Click="ToggleGit" ToolTip.Tip="Show or hide source control">
               <Grid>
                 <svg:Svg Path="/Assets/icons/git-branch.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !GitVisible}" />
                 <svg:Svg Path="/Assets/icons/git-branch.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding GitVisible}" />
               </Grid>
             </Button>
-            <Button Grid.Row="4" Classes="icon gutter" Classes.active="{Binding ProviderTraceVisible}" Width="24" Height="28" Padding="3.5" Click="ToggleProviderTrace" ToolTip.Tip="Show or hide provider trace">
+            <Button Grid.Row="6" Classes="icon gutter" Classes.active="{Binding ProviderTraceVisible}" Width="24" Height="28" Padding="3.5" Click="ToggleProviderTrace" ToolTip.Tip="Show or hide provider trace">
               <Grid>
                 <svg:Svg Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !ProviderTraceVisible}" />
                 <svg:Svg Path="/Assets/icons/activity.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding ProviderTraceVisible}" />
@@ -91,7 +97,10 @@
                 <ColumnDefinition Width="{Binding ReviewWidth}" />
               </Grid.ColumnDefinitions>
 
-              <projects:ProjectSidebar Grid.Column="0" IsVisible="{Binding NavigationVisible}" />
+              <Grid Grid.Column="0" IsVisible="{Binding NavigationVisible}">
+                <projects:ProjectSidebar IsVisible="{Binding SessionSidebarVisible}" />
+                <projects:ProjectExplorer IsVisible="{Binding ExplorerSidebarVisible}" />
+              </Grid>
 
               <Border Grid.Column="1" Background="#01000000" Cursor="SizeWestEast" Tag="Navigation" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding NavigationVisible}" />
 
@@ -168,6 +177,23 @@
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
             <Button Content="Cancel" Click="CloseUndoDialog" />
             <Button Classes="primary" Content="Undo changes" Click="ConfirmUndoDialog" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border x:Name="DependencyDeleteDialogOverlay" IsVisible="False" Background="#99000000" ZIndex="200" PointerPressed="DependencyDeleteOverlayPointerPressed">
+      <Border Width="420" MaxWidth="420" Margin="24" Padding="20,16,20,18" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="8">
+        <StackPanel Spacing="14">
+          <TextBlock Text="Delete dependency?" FontSize="17" FontWeight="SemiBold" />
+          <TextBlock TextWrapping="Wrap">
+            <Run Text="Remove " />
+            <Run x:Name="DependencyDeleteName" FontWeight="SemiBold" />
+            <Run Text=" from this project's dependencies? The folder and its files will not be deleted." />
+          </TextBlock>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Cancel" Click="CloseDependencyDeleteDialog" />
+            <Button Classes="danger" Content="Delete dependency" Click="ConfirmDependencyDeleteDialog" />
           </StackPanel>
         </StackPanel>
       </Border>

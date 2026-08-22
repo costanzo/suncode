@@ -66,6 +66,18 @@ public sealed class RuntimeSdk : IDisposable
     public Task<JsonObject> SelectProjectAsync(string projectId) => WithUtf8Async(
         [projectId], values => NativeMethods.suncode_runtime_sdk_select_project(_handle, values[0]));
 
+    public Task<JsonObject> ListProjectDependenciesAsync(string projectId) => WithUtf8Async(
+        [projectId], values => NativeMethods.suncode_runtime_sdk_list_project_dependencies(_handle, values[0]));
+
+    public Task<JsonObject> AddProjectDependencyAsync(string projectId, string path) => WithUtf8Async(
+        [projectId, path], values => NativeMethods.suncode_runtime_sdk_add_project_dependency(_handle, values[0], values[1]));
+
+    public Task<JsonObject> RemoveProjectDependencyAsync(string projectId, string dependencyId) => WithUtf8Async(
+        [projectId, dependencyId], values => NativeMethods.suncode_runtime_sdk_remove_project_dependency(_handle, values[0], values[1]));
+
+    public Task<JsonObject> ListProjectDirectoryAsync(string projectId, string? dependencyId, string path) => WithNullableUtf8Async(
+        [projectId, dependencyId, path], values => NativeMethods.suncode_runtime_sdk_list_project_directory(_handle, values[0], values[1], values[2]));
+
     public Task<JsonObject> GitStatusAsync(string projectId) => WithUtf8Async(
         [projectId], values => NativeMethods.suncode_runtime_sdk_git_status(_handle, values[0]));
 
