@@ -8,6 +8,7 @@
 - Implemented separate desktop and runtime log files.
 - Added shared environment configuration and level filtering.
 - Preserved stderr output and excluded credentials/content.
+- Added size-based rotation with bounded backups.
 - Verified Rust tests and Avalonia build.
 
 ## In progress

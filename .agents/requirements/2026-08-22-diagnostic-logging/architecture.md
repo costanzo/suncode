@@ -6,7 +6,7 @@ The desktop used an ad hoc stderr writer and the runtime used direct `eprintln!`
 
 ## Proposed design
 
-Add one small logger module per host language. Each module owns level parsing, timestamped formatting, a process-local synchronized file writer, and stderr mirroring. The desktop and runtime intentionally use different files.
+Add one small logger module per host language. Each module owns level parsing, timestamped formatting, a process-local synchronized file writer, bounded size-based rotation, and stderr mirroring. The desktop and runtime intentionally use different files.
 
 ## Boundaries and dependencies
 
@@ -14,7 +14,7 @@ The desktop logger is an Avalonia infrastructure utility. The Rust logger is a r
 
 ## Data and control flow
 
-The runtime initializes its logger after loading `Config`; the desktop initializes before Avalonia starts. Calls below the configured minimum level are discarded. Accepted records are appended to the component-specific file and flushed to stderr.
+The runtime initializes its logger after loading `Config`; the desktop initializes before Avalonia starts. Calls below the configured minimum level are discarded. Before an append that would exceed the configured size, the active file is renamed through the numbered retention set and a new active file is opened. Accepted records are appended to the component-specific file and flushed to stderr.
 
 ## Security and failure handling
 
@@ -30,4 +30,4 @@ Synchronous flushes add small diagnostic overhead and can be disabled with `SUNC
 
 ## Open questions
 
-- Rotation and retention require a later operational decision.
+- Time-based rotation and compression require a later operational decision.

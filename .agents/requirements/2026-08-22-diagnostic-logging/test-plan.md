@@ -21,6 +21,7 @@ Logger initialization, level filtering, file separation, and session-switch diag
 
 - Run with `SUNCODE_LOG_LEVEL=TRACE` and `SUNCODE_LOG_DIRECTORY=/tmp/suncode-logs`.
 - Switch sessions and verify `desktop.log` and `runtime.log` contain separate records.
+- Set `SUNCODE_LOG_MAX_BYTES=1024` and `SUNCODE_LOG_RETENTION=2` to verify `.1`/`.2` rollover.
 
 ## Commands and results
 
@@ -31,4 +32,4 @@ Logger initialization, level filtering, file separation, and session-switch diag
 
 ## Residual risks
 
-- There is no rotation or retention policy yet.
+- Rotation is size-based and synchronous; time-based rotation and compression are not implemented.

@@ -45,6 +45,9 @@ impl Level {
 
 struct Logger {
     minimum_level: Level,
+    file_path: PathBuf,
+    max_bytes: u64,
+    retention: usize,
     file: Mutex<Option<File>>,
 }
 
@@ -56,9 +59,13 @@ pub(crate) fn initialize(data_dir: &Path) {
         let directory = env::var_os("SUNCODE_LOG_DIRECTORY")
             .map(PathBuf::from)
             .unwrap_or_else(|| data_dir.join("logs"));
-        let file = open_log_file(&directory.join("runtime.log"));
+        let file_path = directory.join("runtime.log");
+        let file = open_log_file(&file_path);
         Arc::new(Logger {
             minimum_level,
+            file_path,
+            max_bytes: parse_u64("SUNCODE_LOG_MAX_BYTES", 10 * 1024 * 1024, 1024),
+            retention: parse_usize("SUNCODE_LOG_RETENTION", 5, 0, 100),
             file: Mutex::new(file),
         })
     });
@@ -83,6 +90,18 @@ pub(crate) fn write(level: Level, component: &str, message: impl Display) {
         message
     );
     if let Ok(mut file) = logger.file.lock() {
+        let file_path = logger.file_path.clone();
+        let max_bytes = logger.max_bytes;
+        let retention = logger.retention;
+        if file
+            .as_ref()
+            .and_then(|value| value.metadata().ok())
+            .is_some_and(|metadata| metadata.len() + line.len() as u64 + 1 > max_bytes)
+        {
+            if let Err(error) = rotate_log(&file_path, &mut file, retention) {
+                eprintln!("[suncode][ERROR][logger] file_rotate_failed error={error}");
+            }
+        }
         if let Some(file) = file.as_mut() {
             if writeln!(file, "{line}").and_then(|_| file.flush()).is_err() {
                 eprintln!("[suncode][ERROR][logger] file_write_failed");
@@ -90,6 +109,50 @@ pub(crate) fn write(level: Level, component: &str, message: impl Display) {
         }
     }
     eprintln!("{line}");
+}
+
+fn parse_u64(name: &str, fallback: u64, minimum: u64) -> u64 {
+    env::var(name)
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .filter(|value: &u64| *value >= minimum)
+        .unwrap_or(fallback)
+}
+
+fn parse_usize(name: &str, fallback: usize, minimum: usize, maximum: usize) -> usize {
+    env::var(name)
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .filter(|value: &usize| *value >= minimum && *value <= maximum)
+        .unwrap_or(fallback)
+}
+
+fn rotate_log(path: &Path, file: &mut Option<File>, retention: usize) -> io::Result<()> {
+    let _ = file.take();
+    if retention == 0 {
+        if path.exists() {
+            fs::remove_file(path)?;
+        }
+    } else {
+        let oldest = path.with_extension(format!("log.{retention}"));
+        if oldest.exists() {
+            fs::remove_file(oldest)?;
+        }
+        for index in (1..retention).rev() {
+            let source = path.with_extension(format!("log.{index}"));
+            if source.exists() {
+                fs::rename(source, path.with_extension(format!("log.{}", index + 1)))?;
+            }
+        }
+        if path.exists() {
+            fs::rename(path, path.with_extension("log.1"))?;
+        }
+    }
+    *file = open_log_file(path);
+    if file.is_none() {
+        return Err(io::Error::other("log file could not be reopened"));
+    }
+    Ok(())
 }
 
 fn open_log_file(path: &Path) -> Option<File> {
@@ -124,4 +187,30 @@ fn restrict_permissions(path: &Path) -> io::Result<()> {
 #[cfg(not(unix))]
 fn restrict_permissions(_path: &Path) -> io::Result<()> {
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rotates_active_file_and_keeps_bounded_backups() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("runtime.log");
+        fs::write(&path, "active").unwrap();
+        fs::write(path.with_extension("log.1"), "older").unwrap();
+        let mut file = open_log_file(&path);
+
+        rotate_log(&path, &mut file, 2).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(path.with_extension("log.1")).unwrap(),
+            "active"
+        );
+        assert_eq!(
+            fs::read_to_string(path.with_extension("log.2")).unwrap(),
+            "older"
+        );
+        assert!(path.exists());
+    }
 }

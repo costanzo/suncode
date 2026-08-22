@@ -15,8 +15,13 @@ internal enum DiagnosticLogLevel
 
 internal static class DiagnosticLog
 {
+    private const long DefaultMaxBytes = 10 * 1024 * 1024;
+    private const int DefaultRetention = 5;
     private static readonly object Gate = new();
     private static StreamWriter? _file;
+    private static string? _filePath;
+    private static long _maxBytes = DefaultMaxBytes;
+    private static int _retention = DefaultRetention;
     private static DiagnosticLogLevel _minimumLevel = DiagnosticLogLevel.Info;
     private static bool _initialized;
 
@@ -27,6 +32,8 @@ internal static class DiagnosticLog
             if (_initialized) return;
             _initialized = true;
             _minimumLevel = ParseLevel(Environment.GetEnvironmentVariable("SUNCODE_LOG_LEVEL"));
+            _maxBytes = ParseLong(Environment.GetEnvironmentVariable("SUNCODE_LOG_MAX_BYTES"), DefaultMaxBytes, 1024);
+            _retention = ParseInt(Environment.GetEnvironmentVariable("SUNCODE_LOG_RETENTION"), DefaultRetention, 0, 100);
             try
             {
                 var directory = Environment.GetEnvironmentVariable("SUNCODE_LOG_DIRECTORY");
@@ -42,12 +49,8 @@ internal static class DiagnosticLog
 
                 var logDirectory = Path.Combine(directory, "logs");
                 Directory.CreateDirectory(logDirectory);
-                var path = Path.Combine(logDirectory, "desktop.log");
-                _file = new StreamWriter(new FileStream(
-                    path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite), Encoding.UTF8)
-                {
-                    AutoFlush = true
-                };
+                _filePath = Path.Combine(logDirectory, "desktop.log");
+                _file = OpenFile(_filePath);
             }
             catch (Exception exception)
             {
@@ -77,6 +80,7 @@ internal static class DiagnosticLog
         {
             try
             {
+                RotateIfNeeded(line);
                 _file?.WriteLine(line);
             }
             catch (Exception exception)
@@ -99,6 +103,45 @@ internal static class DiagnosticLog
         "OFF" or "NONE" => DiagnosticLogLevel.Off,
         _ => DiagnosticLogLevel.Info
     };
+
+    private static long ParseLong(string? value, long fallback, long minimum) =>
+        long.TryParse(value, out var parsed) && parsed >= minimum ? parsed : fallback;
+
+    private static int ParseInt(string? value, int fallback, int minimum, int maximum) =>
+        int.TryParse(value, out var parsed) && parsed >= minimum && parsed <= maximum ? parsed : fallback;
+
+    private static StreamWriter OpenFile(string path) => new(new FileStream(
+        path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite), Encoding.UTF8)
+    {
+        AutoFlush = true
+    };
+
+    private static void RotateIfNeeded(string line)
+    {
+        if (_file is null || _filePath is null) return;
+        _file.Flush();
+        var incomingBytes = Encoding.UTF8.GetByteCount(line) + Encoding.UTF8.GetByteCount(Environment.NewLine);
+        if (_file.BaseStream.Length + incomingBytes <= _maxBytes) return;
+
+        _file.Dispose();
+        _file = null;
+        if (_retention == 0)
+        {
+            File.Delete(_filePath);
+        }
+        else
+        {
+            var oldest = $"{_filePath}.{_retention}";
+            if (File.Exists(oldest)) File.Delete(oldest);
+            for (var index = _retention - 1; index >= 1; index--)
+            {
+                var source = $"{_filePath}.{index}";
+                if (File.Exists(source)) File.Move(source, $"{_filePath}.{index + 1}");
+            }
+            if (File.Exists(_filePath)) File.Move(_filePath, $"{_filePath}.1");
+        }
+        _file = OpenFile(_filePath);
+    }
 
     private static string LevelName(DiagnosticLogLevel level) => level switch
     {
