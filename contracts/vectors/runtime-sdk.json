@@ -25,6 +25,12 @@
     "expected_error": "authorization_denied"
   },
   {
+    "id": "allow-session-full-control",
+    "call": {"method":"resolve_approval","approval_id":"approval-2","decision":"allow_session"},
+    "expected_events": ["approval.resolved","tool.state"],
+    "expected_configuration": {"scope":"session","session_id":"session-1","key":"full_control","value":true}
+  },
+  {
     "id": "list-projects",
     "call": {"method":"list_projects"},
     "expected_response_shape": {"projects":[{"projectId":"project-1","canonicalRoot":"/project","displayName":"Project","createdAt":"rfc3339","updatedAt":"rfc3339","lastOpenedAt":"rfc3339"}]}

@@ -670,6 +670,16 @@ impl Store {
             return Ok(None);
         }
         let row: (String, String, String, String) = transaction.query_row("SELECT recovery_approval_id,session_id,turn_id,recovery_snapshot_json FROM session_turn JOIN session USING(session_id) WHERE recovery_approval_id=? AND recovery_status='pending'", [id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?)))?;
+        if decision == "allow_session" {
+            transaction.execute(
+                "INSERT INTO configuration(scope,session_id,key,value_json,updated_at) VALUES ('session',?,'full_control','true',?) ON CONFLICT(session_id,key) WHERE scope='session' DO UPDATE SET value_json='true',updated_at=excluded.updated_at",
+                params![&row.1, now()],
+            )?;
+            transaction.execute(
+                "INSERT INTO audit_record(project_id,session_id,turn_id,occurred_at,event_type,payload_json) VALUES (?,?,?,?,?,?)",
+                params![Option::<String>::None, &row.1, &row.2, now(), "session.full_control.changed", "{\"enabled\":true,\"source\":\"approval\"}"],
+            )?;
+        }
         transaction.execute(
             "UPDATE session_turn SET recovery_status=?,recovery_updated_at=? WHERE recovery_approval_id=?",
             params![if approved { "resuming" } else { "denied" }, now(), id],
@@ -802,6 +812,30 @@ impl Store {
             });
         }
         Ok(records)
+    }
+
+    pub fn session_full_control(&self, session_id: &str) -> Result<bool, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let value = connection
+            .query_row(
+                "SELECT value_json FROM configuration WHERE scope='session' AND session_id=? AND key='full_control'",
+                [session_id],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?;
+        match value {
+            None => Ok(false),
+            Some(value) => serde_json::from_str::<Value>(&value)?
+                .as_bool()
+                .ok_or_else(|| {
+                    PersistenceError::Invalid(
+                        "session full_control configuration must be a boolean".into(),
+                    )
+                }),
+        }
     }
 
     pub fn project_default_model(
@@ -2485,6 +2519,95 @@ mod tests {
                 .unwrap(),
             7
         );
+    }
+
+    #[test]
+    fn session_full_control_defaults_false_and_requires_a_boolean() {
+        let store = Store::open_memory().unwrap();
+        let project = store
+            .project("/tmp/suncode-session-full-control", "Full control")
+            .unwrap();
+        let session_id = store
+            .create_session(&project.project_id, None, Some("deepseek-v4-flash"))
+            .unwrap()
+            .session_id;
+
+        assert!(!store.session_full_control(&session_id).unwrap());
+        store
+            .set_setting("session", &session_id, "full_control", &json!(true))
+            .unwrap();
+        assert!(store.session_full_control(&session_id).unwrap());
+        store
+            .set_setting("session", &session_id, "full_control", &json!(false))
+            .unwrap();
+        assert!(!store.session_full_control(&session_id).unwrap());
+        store
+            .set_setting("session", &session_id, "full_control", &json!("yes"))
+            .unwrap();
+        assert!(store.session_full_control(&session_id).is_err());
+    }
+
+    #[test]
+    fn allow_session_atomically_enables_full_control_for_a_pending_approval() {
+        let store = Store::open_memory().unwrap();
+        let project = store
+            .project("/tmp/suncode-session-approval", "Approval")
+            .unwrap();
+        let session = store
+            .create_session(&project.project_id, None, Some("deepseek-v4-flash"))
+            .unwrap();
+        let admission = store
+            .begin_turn(
+                &session.session_id,
+                "turn-key",
+                "write",
+                "deepseek-v4-flash",
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session.session_id,
+                "tool.requested",
+                &json!({
+                    "turn_id": admission.turn_id,
+                    "tool_call_id": "write-call",
+                    "name": "write",
+                    "arguments": {"path":"README.md","content":"updated"}
+                }),
+            )
+            .unwrap();
+        let approval = store
+            .create_approval(ApprovalInput {
+                project_id: Some(&project.project_id),
+                session_id: &session.session_id,
+                turn_id: &admission.turn_id,
+                tool_call_id: "write-call",
+                operation: "write",
+                arguments: &json!({"path":"README.md","content":"updated"}),
+                snapshot: &json!({}),
+            })
+            .unwrap();
+
+        assert!(!store.session_full_control(&session.session_id).unwrap());
+        assert!(store
+            .resolve_approval(&approval.approval_id, "allow_session")
+            .unwrap()
+            .is_some());
+        assert!(store.session_full_control(&session.session_id).unwrap());
+
+        store
+            .set_setting(
+                "session",
+                &session.session_id,
+                "full_control",
+                &json!(false),
+            )
+            .unwrap();
+        assert!(store
+            .resolve_approval(&approval.approval_id, "allow_session")
+            .unwrap()
+            .is_none());
+        assert!(!store.session_full_control(&session.session_id).unwrap());
     }
 
     #[test]

@@ -1,12 +1,20 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              xmlns:vm="using:SunCode.Desktop.ViewModels"
              x:Class="SunCode.Desktop.Views.Review.AgentSidebar"
              x:DataType="vm:DesktopViewModel">
   <Border Classes="inspector-card">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled">
       <StackPanel Margin="16" Spacing="12">
+        <Border Padding="10" CornerRadius="8" Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="{Binding FullControlEnabled}">
+          <Grid ColumnDefinitions="Auto,8,*,Auto">
+            <svg:Svg Width="16" Height="16" Path="/Assets/icons/unlock.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="Full Control enabled" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            <Button Grid.Column="3" Classes="compact danger" Content="Turn off" Click="DisableFullControl" Margin="8,0,0,0" />
+          </Grid>
+        </Border>
         <Grid ColumnDefinitions="*,Auto">
           <TextBlock Classes="eyebrow" Text="AGENT PROCESSES" />
           <Ellipse Grid.Column="1" Width="7" Height="7" Classes="process-dot" Classes.active="{Binding IsTurnActive}" />
@@ -38,7 +46,7 @@
                 <TextBlock Text="{Binding PendingApproval.ActionText}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
               </StackPanel>
               <Border Grid.Column="1" Background="{DynamicResource WarningBrush}" CornerRadius="5" Padding="7,4" VerticalAlignment="Top">
-                <TextBlock Text="ONE TIME" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource WarningSurfaceBrush}" />
+                <TextBlock Text="REVIEW" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource WarningSurfaceBrush}" />
               </Border>
             </Grid>
             <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="10" IsVisible="{Binding PendingApproval.HasDetail}">
@@ -64,6 +72,7 @@
               <Button Grid.Column="0" Classes="compact primary" Content="Allow once" Click="ApproveOnce" />
               <Button Grid.Column="2" Classes="compact danger" Content="Deny" Click="DenyApproval" />
             </Grid>
+            <Button Classes="compact" Content="Allow for session" Foreground="{DynamicResource WarningBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" Click="ApproveForSession" />
           </StackPanel>
         </Border>
         <TextBlock Text="No pending approvals" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding !HasPendingApproval}" />

@@ -52,7 +52,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `submit_turn` | Idempotently submit input to a session and selected model |
 | `cancel_turn` | Cooperatively cancel a running turn |
 | `get_approval` | Read one approval state |
-| `resolve_approval` | Resolve one pending approval with `allow_once` or `deny` |
+| `resolve_approval` | Resolve one pending approval with `allow_once`, `allow_session`, or `deny` |
 | `subscribe_session` | Deliver subsequent live events; lagged subscribers must reload `session_snapshot` |
 
 Rust-generated project, session, turn, approval, checkpoint, event, and message identifiers remain authoritative. Hosts do not manufacture IDs except idempotency keys.
@@ -80,6 +80,8 @@ Turn submission returns a tagged outcome:
 - `queued`: input was accepted as an in-memory continuation of the active turn.
 
 Cancellation returns `cancellation_requested`; cancelling a turn that is not active returns `conflict`.
+
+`allow_session` atomically approves the pending operation and persists session-scoped `full_control=true` in `configuration`. While enabled, known approval-gated tools skip interactive approval for that session, but validation, project and dependency scope, auditing, checkpoints, cancellation, and unknown-tool denial remain enforced. Writing session-scoped `full_control=false` through `set_setting` restores normal approval behavior.
 
 ## Errors
 

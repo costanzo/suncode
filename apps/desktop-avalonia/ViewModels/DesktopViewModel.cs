@@ -51,6 +51,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private string _sessionLoadError = string.Empty;
     private string _gitBranch = string.Empty;
     private bool _gitStatusTruncated;
+    private bool _fullControlEnabled;
     private bool _gitDiffBinary;
     private bool _gitDiffTruncated;
     private int _gitDiffAdditions;
@@ -229,6 +230,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public long LogMaxBytes { get => _logMaxBytes; private set => SetProperty(ref _logMaxBytes, value); }
     public int LogRetention { get => _logRetention; private set => SetProperty(ref _logRetention, value); }
     public string DiagnosticsText { get => _diagnosticsText; private set => SetProperty(ref _diagnosticsText, value); }
+    public bool FullControlEnabled { get => _fullControlEnabled; private set => SetProperty(ref _fullControlEnabled, value); }
     public string GitState
     {
         get => _gitState;
@@ -693,6 +695,12 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                 return;
             }
             ApplySnapshot(projection);
+            await LoadSessionControlAsync(sessionId, loadVersion);
+            if (!IsCurrentSessionLoad(sessionId, loadVersion))
+            {
+                LogSession(operationId, sessionId, $"session_control.discard reason=stale current={DescribeSessionContext()}");
+                return;
+            }
             await LoadSessionUsageAsync(sessionId, loadVersion);
             if (!IsCurrentSessionLoad(sessionId, loadVersion))
             {
@@ -782,8 +790,25 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         await RunAsync(async () =>
         {
             await _sdk!.ResolveApprovalAsync(PendingApproval.ApprovalId, decision);
+            if (decision == "allow_session") FullControlEnabled = true;
             PendingApproval = null;
-        }, decision == "allow_once" ? "Approval granted once" : "Approval denied");
+        }, decision switch
+        {
+            "allow_once" => "Approval granted once",
+            "allow_session" => "Full Control enabled for this session",
+            _ => "Approval denied"
+        });
+    }
+
+    public async Task DisableFullControlAsync()
+    {
+        if (!EnsureSdk() || SelectedSession is null || !FullControlEnabled) return;
+        var sessionId = SelectedSession.SessionId;
+        await RunAsync(async () =>
+        {
+            await _sdk!.SetSessionFullControlAsync(sessionId, false);
+            if (SelectedSession?.SessionId == sessionId) FullControlEnabled = false;
+        }, "Full Control turned off");
     }
 
     public async Task RestoreCheckpointAsync(CheckpointItem checkpoint)
@@ -1308,6 +1333,19 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
+    private async Task LoadSessionControlAsync(string sessionId, long loadVersion)
+    {
+        if (_sdk is null || SelectedProject is null) return;
+        var result = await _sdk.ListSessionSettingsAsync(SelectedProject.ProjectId, sessionId);
+        if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
+        var setting = result.Array("settings")
+            .OfType<JsonObject>()
+            .FirstOrDefault(item => item.String("key") == "full_control");
+        FullControlEnabled = setting?["value"] is JsonValue value
+            && value.TryGetValue<bool>(out var enabled)
+            && enabled;
+    }
+
     private async Task LoadSessionUsageAsync(string? requestedSessionId = null, long? loadVersion = null)
     {
         if (_sdk is null || SelectedSession is null) return;
@@ -1603,7 +1641,11 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             }
         }
         if (type == "approval.requested") PendingApproval = ApprovalItem.FromPayload(payload);
-        if (type == "approval.resolved") PendingApproval = null;
+        if (type == "approval.resolved")
+        {
+            if (payload.String("decision") == "allow_session") FullControlEnabled = true;
+            PendingApproval = null;
+        }
         if (type == "turn.state")
         {
             var state = payload.String("state");
@@ -1830,6 +1872,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         DiffLines.Clear();
         ClearProviderTraces();
         PendingApproval = null;
+        FullControlEnabled = false;
         ActiveTurnId = string.Empty;
         SessionTotalTokens = 0;
         if (clearSelection) SelectedSession = null;

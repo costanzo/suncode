@@ -439,6 +439,15 @@ fn configure_logging(store: &Store, data_dir: &Path) -> SdkResult<()> {
 }
 
 fn validate_logging_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
+    if key == "full_control" {
+        if scope != "session" {
+            return Err(SdkError::invalid("full_control is a session-only setting"));
+        }
+        if !value.is_boolean() {
+            return Err(SdkError::invalid("full_control must be a boolean"));
+        }
+        return Ok(());
+    }
     let is_logging_setting = matches!(
         key,
         "log_level" | "log_directory" | "log_max_bytes" | "log_retention"
@@ -638,6 +647,15 @@ impl RuntimeSdk {
             }
         };
         self.state.store.set_setting(scope, scope_id, key, value)?;
+        if scope == "session" && key == "full_control" {
+            self.state.store.append_audit(
+                None,
+                Some(scope_id),
+                None,
+                "session.full_control.changed",
+                &json!({"enabled": value.as_bool().unwrap_or(false), "source": "user"}),
+            )?;
+        }
         if scope == "global"
             && matches!(
                 key,
@@ -1157,7 +1175,7 @@ impl RuntimeSdk {
         approval_id: &str,
         decision: &str,
     ) -> SdkResult<ApprovalOutcome> {
-        if !["deny", "allow_once"].contains(&decision) {
+        if !["deny", "allow_once", "allow_session"].contains(&decision) {
             return Err(SdkError::invalid("invalid approval decision"));
         }
         let resolved = self
@@ -1988,6 +2006,23 @@ mod tests {
 
         let session = sdk.create_session(&project.project_id, None, None).unwrap();
         assert_eq!(session.model_id.as_deref(), Some("gpt-5.5"));
+        sdk.set_setting(
+            "session",
+            None,
+            Some(&session.session_id),
+            "full_control",
+            &json!(true),
+        )
+        .unwrap();
+        let setting = sdk
+            .list_settings(Some(&project.project_id), Some(&session.session_id))
+            .unwrap()
+            .settings
+            .into_iter()
+            .find(|setting| setting.key == "full_control")
+            .unwrap();
+        assert_eq!(setting.value, json!(true));
+        assert_eq!(setting.scope, "session");
     }
 
     #[test]
@@ -2052,6 +2087,9 @@ mod tests {
         assert!(validate_logging_setting("global", "log_directory", &json!(7)).is_err());
         assert!(validate_logging_setting("global", "log_max_bytes", &json!(1023)).is_err());
         assert!(validate_logging_setting("global", "log_retention", &json!(101)).is_err());
+        assert!(validate_logging_setting("session", "full_control", &json!(true)).is_ok());
+        assert!(validate_logging_setting("global", "full_control", &json!(true)).is_err());
+        assert!(validate_logging_setting("session", "full_control", &json!("yes")).is_err());
     }
 
     #[test]

@@ -777,7 +777,11 @@ impl Agent {
                 continue;
             }
             self.tool_state(context, call, "policy_check", None)?;
-            let decision = evaluate(tool_risk(&call.name), self.non_interactive);
+            let decision = evaluate(
+                tool_risk(&call.name),
+                self.non_interactive,
+                self.store.session_full_control(&context.session_id)?,
+            );
             self.store.append_audit(Some(&context.project_id), Some(&context.session_id), Some(&context.turn_id), "capability.decision", &json!({"tool_call_id":call.call_id,"operation":call.name,"decision":format!("{decision:?}")}))?;
             match decision {
                 Decision::Deny => {
@@ -1955,6 +1959,10 @@ mod tests {
                     {"index":0,"id":"read-call-1","function":{"name":"read","arguments":"{\"path\":\"README.md\"}"}},
                     {"index":1,"id":"read-call-2","function":{"name":"read","arguments":"{\"path\":\"README.md\"}"}}
                 ]},"finish_reason":"tool_calls"}]})]
+        } else if user_text.contains("write again") {
+            vec![
+                json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"write-again-call","function":{"name":"write","arguments":"{\"path\":\"README.md\",\"content\":\"updated again\",\"expected_base64\":\"dXBkYXRlZA==\"}"}}]},"finish_reason":"tool_calls"}]}),
+            ]
         } else if user_text.contains("write") {
             vec![
                 json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"write-call","function":{"name":"write","arguments":"{\"path\":\"README.md\",\"content\":\"updated\",\"expected_base64\":\"aGVsbG8=\"}"}}]},"finish_reason":"tool_calls"}]}),
@@ -2243,6 +2251,54 @@ mod tests {
                 .unwrap()
                 .len(),
             1
+        );
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn allow_session_skips_later_approvals_for_the_same_session() {
+        let (agent, store, root, server, session_id) = fixture().await;
+        let error = agent
+            .submit(&session_id, "write-session-1", "write the file", None)
+            .await
+            .unwrap_err();
+        assert_eq!(error.code, "approval_required");
+        let approval_id = error.details["approval_id"].as_str().unwrap();
+        assert!(agent
+            .resolve_approval(approval_id, "allow_session")
+            .await
+            .unwrap());
+
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+        loop {
+            let completed = store
+                .session_trace_turns(&session_id)
+                .unwrap()
+                .first()
+                .map(|turn| turn.state == "completed")
+                .unwrap_or(false);
+            if completed {
+                break;
+            }
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "session approval continuation did not complete"
+            );
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert!(store.session_full_control(&session_id).unwrap());
+
+        let response = agent
+            .submit(&session_id, "write-session-2", "write again", None)
+            .await
+            .unwrap();
+        assert!(matches!(
+            response,
+            TurnResponse::Completed { tool_calls: 1, .. }
+        ));
+        assert_eq!(
+            std::fs::read_to_string(root.join("README.md")).unwrap(),
+            "updated again"
         );
         server.abort();
     }
