@@ -17,12 +17,14 @@ mod write;
 use super::CoreFailure;
 use serde_json::Value;
 use std::path::Path;
+use std::sync::atomic::AtomicBool;
 
 pub(super) fn dispatch(
     method: &str,
     params: &Value,
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
+    cancellation: Option<&AtomicBool>,
 ) -> Option<Result<Value, CoreFailure>> {
     Some(match method {
         "project/inspect" => project_inspect::execute(project_root, params),
@@ -40,7 +42,7 @@ pub(super) fn dispatch(
         "fs/move" => fs_move::execute(project_root, checkpoint_root, params),
         "fs/delete" => fs_delete::execute(project_root, checkpoint_root, params),
         "tool/bash" | "shell/run" | "process/run" => {
-            process::run(project_root, checkpoint_root, params)
+            process::run(project_root, checkpoint_root, params, cancellation)
         }
         "process/start" => process::start(project_root, params),
         "process/status" => process::status(params),

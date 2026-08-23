@@ -11,8 +11,7 @@ pub fn definition() -> (&'static str, &'static str, Value) {
                 "script":{"type":"string"},
                 "workdir":{"type":"string"},
                 "cwd":{"type":"string"},
-                "timeout":{"type":"integer"},
-                "timeout_ms":{"type":"integer"},
+                "timeout":{"type":"number","description":"Timeout in seconds (maximum 600)"},
                 "env":{"type":"object"}
             },
             "additionalProperties":false

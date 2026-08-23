@@ -10,6 +10,7 @@ use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
 use std::process::Child;
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -40,7 +41,19 @@ fn execute_operation(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
 ) -> Result<Value, CoreFailure> {
-    if let Some(result) = tools::dispatch(method, params, project_root, checkpoint_root) {
+    execute_operation_with_cancellation(method, params, project_root, checkpoint_root, None)
+}
+
+fn execute_operation_with_cancellation(
+    method: &str,
+    params: &Value,
+    project_root: Option<&Path>,
+    checkpoint_root: Option<&Path>,
+    cancellation: Option<&AtomicBool>,
+) -> Result<Value, CoreFailure> {
+    if let Some(result) =
+        tools::dispatch(method, params, project_root, checkpoint_root, cancellation)
+    {
         return result;
     }
     match method {
@@ -48,7 +61,9 @@ fn execute_operation(
         "git/diff-file" => git::diff_file(project_root, params),
         "sandbox/profiles" => sandbox_profiles(),
         "capability/check" => capability_check(project_root, params),
-        "capability/execute" => capability_execute(project_root, checkpoint_root, params),
+        "capability/execute" => {
+            capability_execute(project_root, checkpoint_root, params, cancellation)
+        }
         _ => Err(CoreFailure {
             code: "method_unavailable",
             message: "method unavailable",
@@ -170,6 +185,7 @@ fn capability_execute(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
     params: &Value,
+    cancellation: Option<&AtomicBool>,
 ) -> Result<Value, CoreFailure> {
     let operation = params
         .get("operation")
@@ -189,7 +205,7 @@ fn capability_execute(
         "fs.patch" => mutations::patch(project_root, checkpoint_root, arguments),
         "fs.move" => mutations::move_file(project_root, checkpoint_root, arguments),
         "fs.delete" => mutations::delete(project_root, checkpoint_root, arguments),
-        "process.run" => process::run(project_root, checkpoint_root, arguments),
+        "process.run" => process::run(project_root, checkpoint_root, arguments, cancellation),
         "process.start" => process::start(project_root, arguments),
         "artifact.read" => artifacts::read(checkpoint_root, arguments),
         "checkpoint.restore" => checkpoint::restore(project_root, checkpoint_root, arguments),
@@ -658,6 +674,29 @@ impl Operations {
             &params,
             Some(&canonical),
             Some(&self.checkpoint_root),
+        )
+        .map_err(failure_value)
+    }
+
+    pub fn execute_in_project_with_cancellation(
+        &self,
+        project_path: &Path,
+        method: &str,
+        params: Value,
+        cancellation: Option<&AtomicBool>,
+    ) -> Result<Value, Value> {
+        let canonical = project_path.canonicalize().map_err(|_| json!({"code":"project_unavailable","message":"project root is unavailable","retryable":false}))?;
+        if !canonical.is_dir() {
+            return Err(
+                json!({"code":"project_unavailable","message":"project root is not a directory","retryable":false}),
+            );
+        }
+        execute_operation_with_cancellation(
+            method,
+            &params,
+            Some(&canonical),
+            Some(&self.checkpoint_root),
+            cancellation,
         )
         .map_err(failure_value)
     }

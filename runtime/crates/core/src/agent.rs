@@ -434,10 +434,12 @@ impl Agent {
         token: CancellationToken,
     ) -> Result<TurnResponse, AgentError> {
         if let Some(call) = continuation.pending_call.take() {
-            self.execute_call(continuation, &call).await?;
+            self.execute_call(continuation, &call, token.clone())
+                .await?;
         }
         let siblings = std::mem::take(&mut continuation.remaining_calls);
-        self.resolve_calls(continuation, siblings).await?;
+        self.resolve_calls(continuation, siblings, token.clone())
+            .await?;
         let provider = self
             .providers
             .route(&continuation.model)
@@ -685,7 +687,8 @@ impl Agent {
                 return Ok(response);
             }
             self.turn_state(&context, "resolving_calls", None)?;
-            self.resolve_calls(&mut context, tool_calls).await?;
+            self.resolve_calls(&mut context, tool_calls, token.clone())
+                .await?;
             self.drain_queued_messages(&mut context)?;
             self.turn_state(&context, "preparing", None)?;
         }
@@ -729,6 +732,7 @@ impl Agent {
         &self,
         context: &mut Continuation,
         calls: Vec<ToolCall>,
+        token: CancellationToken,
     ) -> Result<(), AgentError> {
         let mut allowed_calls = Vec::new();
         for (index, call) in calls.iter().enumerate() {
@@ -774,8 +778,12 @@ impl Agent {
             self.store.append_audit(Some(&context.project_id), Some(&context.session_id), Some(&context.turn_id), "capability.decision", &json!({"tool_call_id":call.call_id,"operation":call.name,"decision":format!("{decision:?}")}))?;
             match decision {
                 Decision::Deny => {
-                    self.execute_allowed_calls(context, std::mem::take(&mut allowed_calls))
-                        .await?;
+                    self.execute_allowed_calls(
+                        context,
+                        std::mem::take(&mut allowed_calls),
+                        token.clone(),
+                    )
+                    .await?;
                     self.tool_state(context, call, "denied", Some("authorization_denied"))?;
                     return Err(AgentError::new(
                         "authorization_denied",
@@ -783,8 +791,12 @@ impl Agent {
                     ));
                 }
                 Decision::ApprovalRequired => {
-                    self.execute_allowed_calls(context, std::mem::take(&mut allowed_calls))
-                        .await?;
+                    self.execute_allowed_calls(
+                        context,
+                        std::mem::take(&mut allowed_calls),
+                        token.clone(),
+                    )
+                    .await?;
                     self.tool_state(
                         context,
                         call,
@@ -814,7 +826,8 @@ impl Agent {
                 Decision::Allow => allowed_calls.push(call.clone()),
             }
         }
-        self.execute_allowed_calls(context, allowed_calls).await?;
+        self.execute_allowed_calls(context, allowed_calls, token)
+            .await?;
         Ok(())
     }
 
@@ -822,6 +835,7 @@ impl Agent {
         &self,
         context: &mut Continuation,
         calls: Vec<ToolCall>,
+        token: CancellationToken,
     ) -> Result<(), AgentError> {
         if calls.is_empty() {
             return Ok(());
@@ -832,7 +846,7 @@ impl Agent {
                 .all(|call| tool_risk(&call.name) == Some(Risk::ReadOnly));
         if !parallel_read_only {
             for call in calls {
-                self.execute_call(context, &call).await?;
+                self.execute_call(context, &call, token.clone()).await?;
             }
             return Ok(());
         }
@@ -847,9 +861,10 @@ impl Agent {
                 .ok_or_else(|| AgentError::new("authorization_denied", "Unknown tool"))?
                 .to_string();
             let agent = self.clone();
+            let token = token.clone();
             futures.push(async move {
                 let result = agent
-                    .operation_in_project(&project_root, &method, params)
+                    .operation_in_project(&project_root, &method, params, token)
                     .await;
                 (call, result)
             });
@@ -872,6 +887,7 @@ impl Agent {
         &self,
         context: &mut Continuation,
         call: &ToolCall,
+        token: CancellationToken,
     ) -> Result<(), AgentError> {
         self.tool_state(context, call, "authorized", None)?;
         self.tool_state(context, call, "executing", None)?;
@@ -880,7 +896,7 @@ impl Agent {
         let method = method_name(&call.name)
             .ok_or_else(|| AgentError::new("authorization_denied", "Unknown tool"))?;
         let result = self
-            .operation_in_project(&project_root, method, params)
+            .operation_in_project(&project_root, method, params, token)
             .await
             .inspect_err(|error| {
                 let _ = self.tool_state(context, call, "failed", Some(&error.code));
@@ -964,12 +980,29 @@ impl Agent {
         project_root: &str,
         method: &str,
         params: Value,
+        token: CancellationToken,
     ) -> Result<Value, AgentError> {
         let operations = self.operations.clone();
         let root = std::path::PathBuf::from(project_root);
         let method = method.to_string();
-        tokio::task::spawn_blocking(move || operations.execute_in_project(&root, &method, params))
-            .await
+        let cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let cancelled_for_operation = cancelled.clone();
+        let mut operation = Box::pin(tokio::task::spawn_blocking(move || {
+            operations.execute_in_project_with_cancellation(
+                &root,
+                &method,
+                params,
+                Some(&cancelled_for_operation),
+            )
+        }));
+        let join_result = tokio::select! {
+            result = &mut operation => result,
+            _ = token.cancelled() => {
+                cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
+                (&mut operation).await
+            }
+        };
+        join_result
             .map_err(|_| AgentError::new("runtime_unavailable", "operation task failed"))?
             .map_err(|error| {
                 let mut agent_error = AgentError::new(
@@ -1335,7 +1368,7 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
             result["cwd"] = workdir;
         }
         if let Some(timeout) = result.get("timeout").cloned() {
-            result["timeout_ms"] = timeout;
+            result["timeout_ms"] = json!(timeout_millis(&timeout)?);
         }
         if let Some(object) = result.as_object_mut() {
             object.remove("script");
@@ -1355,7 +1388,7 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
             result["cwd"] = workdir;
         }
         if let Some(timeout) = result.get("timeout").cloned() {
-            result["timeout_ms"] = timeout;
+            result["timeout_ms"] = json!(timeout_millis(&timeout)?);
         }
         if let Some(object) = result.as_object_mut() {
             object.remove("workdir");
@@ -1363,6 +1396,22 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
         }
     }
     Ok(result)
+}
+
+fn timeout_millis(value: &Value) -> Result<u64, AgentError> {
+    let seconds = value.as_f64().ok_or_else(|| {
+        AgentError::new(
+            "invalid_arguments",
+            "timeout must be a finite number of seconds",
+        )
+    })?;
+    if !seconds.is_finite() || seconds <= 0.0 || seconds > 600.0 {
+        return Err(AgentError::new(
+            "invalid_arguments",
+            "timeout must be greater than zero and no more than 600 seconds",
+        ));
+    }
+    Ok((seconds * 1000.0).ceil() as u64)
 }
 
 #[cfg(target_os = "windows")]
@@ -1496,6 +1545,7 @@ fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -
         "bash" | "shell" | "shell_run" | "shell.run" | "process" | "process_run" | "process.run"
     ) {
         for (encoded_key, text_key) in [("stdout_base64", "stdout"), ("stderr_base64", "stderr")] {
+            let mut decoded_text = false;
             if let Some(encoded) = value
                 .get(encoded_key)
                 .and_then(Value::as_str)
@@ -1504,11 +1554,16 @@ fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -
                 if let Ok(bytes) = STANDARD.decode(&encoded) {
                     if let Ok(text) = String::from_utf8(bytes) {
                         value[text_key] = json!(text);
+                        decoded_text = true;
                     }
                 }
             }
-            if let Some(object) = value.as_object_mut() {
-                object.remove(encoded_key);
+            if decoded_text {
+                if let Some(object) = value.as_object_mut() {
+                    object.remove(encoded_key);
+                }
+            } else if value.get(encoded_key).is_some() {
+                value["binary_output"] = json!(true);
             }
         }
     }
@@ -1572,6 +1627,24 @@ mod tests {
         assert_eq!(translated["program"], "git");
         assert_eq!(translated["args"], json!(["status", "--short"]));
         assert_eq!(translated["cwd"], "src");
+    }
+
+    #[test]
+    fn process_timeout_is_translated_from_seconds_to_milliseconds() {
+        let translated =
+            translate_arguments("process", &json!({"program":"sleep","timeout":1.25})).unwrap();
+        assert_eq!(translated["timeout_ms"], 1250);
+        assert!(translate_arguments("process", &json!({"program":"sleep","timeout":0})).is_err());
+        assert!(translate_arguments("process", &json!({"program":"sleep","timeout":601})).is_err());
+    }
+
+    #[test]
+    fn binary_process_output_keeps_base64_for_consumers() {
+        let encoded = STANDARD.encode([0_u8, 159_u8, 146_u8, 150_u8]);
+        let normalized = normalize_result("process", json!({"stdout_base64": encoded}), None);
+        assert_eq!(normalized["binary_output"], true);
+        assert!(normalized["stdout_base64"].as_str().is_some());
+        assert!(normalized.get("stdout").is_none());
     }
 
     #[test]
