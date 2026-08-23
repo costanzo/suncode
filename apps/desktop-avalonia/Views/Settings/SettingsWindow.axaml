@@ -72,13 +72,32 @@
           <StackPanel Margin="32,28" Spacing="18">
             <StackPanel Spacing="4">
               <TextBlock Text="Defaults" FontSize="22" FontWeight="SemiBold" />
-              <TextBlock Text="Choose the model SunCode uses when a project starts a new turn." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+              <TextBlock Text="Configure model and turn defaults." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
             </StackPanel>
             <TextBlock Classes="section-label" Text="DEFAULT MODEL" />
             <ComboBox x:Name="DefaultModelSelector" HorizontalAlignment="Stretch" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}" SelectionChanged="DefaultModelChanged">
               <ComboBox.ItemTemplate><DataTemplate x:DataType="models:ModelItem"><TextBlock Classes="mono" Text="{Binding Id}" /></DataTemplate></ComboBox.ItemTemplate>
             </ComboBox>
             <TextBlock Text="Only models registered by the local runtime appear here." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
+            <TextBlock Classes="section-label" Text="TURN EXECUTION" />
+            <Grid ColumnDefinitions="*,140">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Tool-call limit" FontWeight="SemiBold" />
+                <TextBlock x:Name="ToolCallLimitScope" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+              <NumericUpDown x:Name="ToolCallLimitInput"
+                            Grid.Column="1"
+                            HorizontalAlignment="Stretch"
+                            Minimum="1"
+                            Maximum="256"
+                            Increment="1"
+                            FormatString="0" />
+            </Grid>
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <Button x:Name="SaveToolCallLimitButton" Classes="compact primary" Content="Save project limit" Click="SaveToolCallLimit" />
+              <TextBlock x:Name="ToolCallLimitStatus" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
           </StackPanel>
         </ScrollViewer>
 

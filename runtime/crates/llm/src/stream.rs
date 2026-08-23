@@ -86,12 +86,25 @@ impl SseParser {
                 cache_read_tokens: usage
                     .pointer("/prompt_tokens_details/cached_tokens")
                     .or_else(|| usage.pointer("/input_tokens_details/cached_tokens"))
+                    .or_else(|| usage.get("cached_tokens"))
+                    .or_else(|| usage.get("prompt_cache_hit_tokens"))
                     .or_else(|| usage.get("cache_read_input_tokens"))
                     .or_else(|| usage.get("cache_read_tokens"))
+                    .and_then(Value::as_u64),
+                cache_miss_tokens: usage
+                    .pointer("/prompt_tokens_details/cache_miss_tokens")
+                    .or_else(|| usage.pointer("/input_tokens_details/cache_miss_tokens"))
+                    .or_else(|| usage.get("prompt_cache_miss_tokens"))
+                    .or_else(|| usage.get("cache_miss_tokens"))
                     .and_then(Value::as_u64),
                 cache_write_tokens: usage
                     .get("cache_creation_input_tokens")
                     .or_else(|| usage.get("cache_write_tokens"))
+                    .and_then(Value::as_u64),
+                reasoning_tokens: usage
+                    .pointer("/completion_tokens_details/reasoning_tokens")
+                    .or_else(|| usage.pointer("/output_tokens_details/reasoning_tokens"))
+                    .or_else(|| usage.get("reasoning_tokens"))
                     .and_then(Value::as_u64),
             });
         }
@@ -158,5 +171,73 @@ impl SseParser {
             provider_request_id: None,
             provider_response_id: self.response_id,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SseParser;
+
+    fn parse_usage(usage: &str) -> crate::Usage {
+        let usage: serde_json::Value = serde_json::from_str(usage).unwrap();
+        let mut parser = SseParser::new("Test provider");
+        parser
+            .push(format!("data: {}\n\n", serde_json::json!({"usage": usage})).as_bytes())
+            .unwrap();
+        parser.finish().unwrap().usage.unwrap()
+    }
+
+    #[test]
+    fn normalizes_kimi_cache_and_reasoning_usage() {
+        let usage = parse_usage(
+            r#"{
+                "prompt_tokens":86,
+                "completion_tokens":99,
+                "total_tokens":185,
+                "cached_tokens":86,
+                "completion_tokens_details":{"reasoning_tokens":72},
+                "prompt_tokens_details":{"cached_tokens":86}
+            }"#,
+        );
+
+        assert_eq!(usage.input_tokens, 86);
+        assert_eq!(usage.output_tokens, 99);
+        assert_eq!(usage.cache_read_tokens, Some(86));
+        assert_eq!(usage.cache_miss_tokens, None);
+        assert_eq!(usage.reasoning_tokens, Some(72));
+    }
+
+    #[test]
+    fn normalizes_deepseek_cache_hit_and_miss_usage() {
+        let usage = parse_usage(
+            r#"{
+                "prompt_tokens":10,
+                "completion_tokens":121,
+                "total_tokens":131,
+                "prompt_tokens_details":{"cached_tokens":0},
+                "completion_tokens_details":{"reasoning_tokens":109},
+                "prompt_cache_hit_tokens":0,
+                "prompt_cache_miss_tokens":10
+            }"#,
+        );
+
+        assert_eq!(usage.cache_read_tokens, Some(0));
+        assert_eq!(usage.cache_miss_tokens, Some(10));
+        assert_eq!(usage.cache_write_tokens, None);
+        assert_eq!(usage.reasoning_tokens, Some(109));
+    }
+
+    #[test]
+    fn accepts_top_level_cached_tokens_when_details_are_absent() {
+        let usage = parse_usage(
+            r#"{
+                "prompt_tokens":86,
+                "completion_tokens":1,
+                "total_tokens":87,
+                "cached_tokens":86
+            }"#,
+        );
+
+        assert_eq!(usage.cache_read_tokens, Some(86));
     }
 }

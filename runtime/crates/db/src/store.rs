@@ -589,7 +589,22 @@ impl Store {
             .lock()
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         let timestamp = now();
-        connection.execute("UPDATE session_turn SET state='failed',error_json=?,completed_at=?,updated_at=? WHERE session_id=? AND submission_idempotency_key=? AND state NOT IN ('completed','failed','cancelled','interrupted')", params![serde_json::to_string(error)?, timestamp, timestamp, session_id, key])?;
+        let error_code = error.get("code").and_then(Value::as_str);
+        connection.execute(
+            "UPDATE session_turn
+             SET state='failed',error_json=?,error_code=COALESCE(?,error_code),
+                 completed_at=COALESCE(completed_at,?),updated_at=?
+             WHERE session_id=? AND submission_idempotency_key=?
+               AND state NOT IN ('completed','cancelled','interrupted')",
+            params![
+                serde_json::to_string(error)?,
+                error_code,
+                timestamp,
+                timestamp,
+                session_id,
+                key
+            ],
+        )?;
         Ok(())
     }
 
@@ -857,6 +872,39 @@ impl Store {
             return Ok(None);
         }
         Ok(Some(model.trim().to_string()))
+    }
+
+    pub fn project_tool_call_limit(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<u32>, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let value = connection
+            .query_row(
+                "SELECT value_json FROM configuration
+                 WHERE scope='project' AND project_id=? AND key='tool_call_limit'",
+                [project_id],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?;
+        let Some(value) = value else {
+            return Ok(None);
+        };
+        let value = serde_json::from_str::<Value>(&value)?;
+        let limit = value.as_u64().ok_or_else(|| {
+            PersistenceError::Invalid(
+                "project tool_call_limit must be an integer between 1 and 256".into(),
+            )
+        })?;
+        if !(1..=256).contains(&limit) {
+            return Err(PersistenceError::Invalid(
+                "project tool_call_limit must be an integer between 1 and 256".into(),
+            ));
+        }
+        Ok(Some(limit as u32))
     }
 
     pub fn llm_model_providers(
@@ -2572,6 +2620,127 @@ mod tests {
     }
 
     #[test]
+    fn project_tool_call_limit_is_typed_and_bounded() {
+        let store = Store::open_memory().unwrap();
+        let project = store
+            .project("/tmp/suncode-tool-call-limit", "Tool limit")
+            .unwrap();
+
+        assert_eq!(
+            store.project_tool_call_limit(&project.project_id).unwrap(),
+            None
+        );
+        store
+            .set_setting(
+                "project",
+                &project.project_id,
+                "tool_call_limit",
+                &json!(64),
+            )
+            .unwrap();
+        assert_eq!(
+            store.project_tool_call_limit(&project.project_id).unwrap(),
+            Some(64)
+        );
+
+        for invalid in [json!(0), json!(257), json!(1.5), json!("64")] {
+            store
+                .set_setting("project", &project.project_id, "tool_call_limit", &invalid)
+                .unwrap();
+            assert!(store.project_tool_call_limit(&project.project_id).is_err());
+        }
+    }
+
+    #[test]
+    fn fail_turn_enriches_an_already_failed_projection() {
+        let store = Store::open_memory().unwrap();
+        let session_id = session(&store);
+        let admission = store
+            .begin_turn(
+                &session_id,
+                "failure-1",
+                "run too many tools",
+                "deepseek-v4-flash",
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
+                "turn.state",
+                &json!({
+                    "turn_id": admission.turn_id,
+                    "submission_idempotency_key": "failure-1",
+                    "state": "failed",
+                    "reason": "tool_budget_exceeded"
+                }),
+            )
+            .unwrap();
+
+        let error = json!({
+            "code": "tool_budget_exceeded",
+            "message": "Turn exceeded its tool-call budget",
+            "details": {"limit": 64}
+        });
+        store.fail_turn(&session_id, "failure-1", &error).unwrap();
+
+        let connection = store.connection.lock().unwrap();
+        let (state, error_code, error_json): (String, Option<String>, Option<String>) = connection
+            .query_row(
+                "SELECT state,error_code,error_json FROM session_turn WHERE turn_id=?",
+                [&admission.turn_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(state, "failed");
+        assert_eq!(error_code.as_deref(), Some("tool_budget_exceeded"));
+        assert_eq!(
+            serde_json::from_str::<Value>(&error_json.unwrap()).unwrap(),
+            error
+        );
+    }
+
+    #[test]
+    fn fail_turn_does_not_overwrite_other_terminal_states() {
+        let store = Store::open_memory().unwrap();
+        let session_id = session(&store);
+        for state in ["completed", "cancelled", "interrupted"] {
+            let key = format!("terminal-{state}");
+            let admission = store
+                .begin_turn(&session_id, &key, "terminal turn", "deepseek-v4-flash")
+                .unwrap();
+            store
+                .append_content(
+                    &session_id,
+                    "turn.state",
+                    &json!({
+                        "turn_id": admission.turn_id,
+                        "submission_idempotency_key": key,
+                        "state": state
+                    }),
+                )
+                .unwrap();
+            store
+                .fail_turn(
+                    &session_id,
+                    &key,
+                    &json!({"code":"late_failure","message":"must not overwrite"}),
+                )
+                .unwrap();
+
+            let connection = store.connection.lock().unwrap();
+            let (stored_state, error_json): (String, Option<String>) = connection
+                .query_row(
+                    "SELECT state,error_json FROM session_turn WHERE turn_id=?",
+                    [&admission.turn_id],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .unwrap();
+            assert_eq!(stored_state, state);
+            assert!(error_json.is_none());
+        }
+    }
+
+    #[test]
     fn session_full_control_defaults_false_and_requires_a_boolean() {
         let store = Store::open_memory().unwrap();
         let project = store
@@ -3089,7 +3258,7 @@ mod tests {
                     "provider_response_id":"chatcmpl-response-1",
                     "output_message":{"role":"assistant","content":[{"type":"text","text":"hi"}]},
                     "tool_calls":[],
-                    "usage":{"input_tokens":4,"output_tokens":2,"total_tokens":6,"cache_read_tokens":null,"cache_write_tokens":null},
+                    "usage":{"input_tokens":4,"output_tokens":2,"total_tokens":6,"cache_read_tokens":3,"cache_miss_tokens":1,"cache_write_tokens":null,"reasoning_tokens":2},
                     "finish_reason":"stop"
                 }),
             )
@@ -3098,6 +3267,9 @@ mod tests {
         let exchanges = store.provider_exchanges(&session_id).unwrap();
         assert_eq!(exchanges.len(), 1);
         assert_eq!(exchanges[0].exchange_id, "exchange-1");
+        assert_eq!(exchanges[0].usage.as_ref().unwrap()["cache_read_tokens"], 3);
+        assert_eq!(exchanges[0].usage.as_ref().unwrap()["cache_miss_tokens"], 1);
+        assert_eq!(exchanges[0].usage.as_ref().unwrap()["reasoning_tokens"], 2);
         assert_eq!(exchanges[0].state, "completed");
         assert_eq!(exchanges[0].provider, "deepseek");
         assert_eq!(

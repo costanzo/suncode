@@ -438,7 +438,23 @@ fn configure_logging(store: &Store, data_dir: &Path) -> SdkResult<()> {
     Ok(())
 }
 
-fn validate_logging_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
+fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
+    if key == "tool_call_limit" {
+        if scope != "project" {
+            return Err(SdkError::invalid(
+                "tool_call_limit is a project-only setting",
+            ));
+        }
+        if value
+            .as_u64()
+            .is_none_or(|limit| !(1..=256).contains(&limit))
+        {
+            return Err(SdkError::invalid(
+                "tool_call_limit must be an integer between 1 and 256",
+            ));
+        }
+        return Ok(());
+    }
     if key == "full_control" {
         if scope != "session" {
             return Err(SdkError::invalid("full_control is a session-only setting"));
@@ -635,7 +651,7 @@ impl RuntimeSdk {
         key: &str,
         value: &Value,
     ) -> SdkResult<SettingUpdate> {
-        validate_logging_setting(scope, key, value)?;
+        validate_setting(scope, key, value)?;
         let scope_id = match scope {
             "global" => "global",
             "project" => project_id.ok_or_else(|| SdkError::invalid("project_id is required"))?,
@@ -2095,19 +2111,26 @@ mod tests {
 
     #[test]
     fn logging_settings_are_global_and_typed() {
-        assert!(validate_logging_setting("global", "log_level", &json!("TRACE")).is_ok());
-        assert!(validate_logging_setting("global", "log_directory", &json!("")).is_ok());
-        assert!(validate_logging_setting("global", "log_max_bytes", &json!(1024)).is_ok());
-        assert!(validate_logging_setting("global", "log_retention", &json!(0)).is_ok());
+        assert!(validate_setting("global", "log_level", &json!("TRACE")).is_ok());
+        assert!(validate_setting("global", "log_directory", &json!("")).is_ok());
+        assert!(validate_setting("global", "log_max_bytes", &json!(1024)).is_ok());
+        assert!(validate_setting("global", "log_retention", &json!(0)).is_ok());
 
-        assert!(validate_logging_setting("project", "log_level", &json!("INFO")).is_err());
-        assert!(validate_logging_setting("global", "log_level", &json!("VERBOSE")).is_err());
-        assert!(validate_logging_setting("global", "log_directory", &json!(7)).is_err());
-        assert!(validate_logging_setting("global", "log_max_bytes", &json!(1023)).is_err());
-        assert!(validate_logging_setting("global", "log_retention", &json!(101)).is_err());
-        assert!(validate_logging_setting("session", "full_control", &json!(true)).is_ok());
-        assert!(validate_logging_setting("global", "full_control", &json!(true)).is_err());
-        assert!(validate_logging_setting("session", "full_control", &json!("yes")).is_err());
+        assert!(validate_setting("project", "log_level", &json!("INFO")).is_err());
+        assert!(validate_setting("global", "log_level", &json!("VERBOSE")).is_err());
+        assert!(validate_setting("global", "log_directory", &json!(7)).is_err());
+        assert!(validate_setting("global", "log_max_bytes", &json!(1023)).is_err());
+        assert!(validate_setting("global", "log_retention", &json!(101)).is_err());
+        assert!(validate_setting("session", "full_control", &json!(true)).is_ok());
+        assert!(validate_setting("global", "full_control", &json!(true)).is_err());
+        assert!(validate_setting("session", "full_control", &json!("yes")).is_err());
+        assert!(validate_setting("project", "tool_call_limit", &json!(1)).is_ok());
+        assert!(validate_setting("project", "tool_call_limit", &json!(256)).is_ok());
+        assert!(validate_setting("global", "tool_call_limit", &json!(64)).is_err());
+        assert!(validate_setting("session", "tool_call_limit", &json!(64)).is_err());
+        assert!(validate_setting("project", "tool_call_limit", &json!(0)).is_err());
+        assert!(validate_setting("project", "tool_call_limit", &json!(257)).is_err());
+        assert!(validate_setting("project", "tool_call_limit", &json!(64.0)).is_err());
     }
 
     #[test]

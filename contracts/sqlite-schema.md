@@ -29,6 +29,8 @@ One registered read-only source root per row: opaque `dependency_id`, owning `pr
 
 Unified key/value configuration for `global`, `project`, and `session` scopes. Global rows have no owner ID; project rows reference `project`; session rows reference `session`. A CHECK constraint enforces the exact owner shape for each scope, and partial unique indexes enforce one value per key at each scope. Effective reads apply `global < project < session` precedence. The project-aware `default_model` key is stored as a JSON string containing a model ID.
 
+The project-only `tool_call_limit` key is a JSON integer from 1 through 256. When the row is absent, core uses 64.
+
 Fresh databases also seed four global logging settings: `log_level` (`"INFO"`), `log_directory` (`""`), `log_max_bytes` (`10485760`), and `log_retention` (`5`). An empty log directory means `<data directory>/logs`. Logging settings are global-only. The SDK accepts `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `OFF`; a directory string; a maximum size of at least 1024 bytes; and a retention count from 0 through 100.
 
 ## Sessions
@@ -41,11 +43,13 @@ One conversation per row, linked to a project. It stores optional title/model, `
 
 The single source of truth for a turn. It combines turn lifecycle, submission idempotency, input/response/error JSON, model selection, cumulative provider usage, and approval continuation state. States are `admitted`, `queued`, `preparing`, `calling_model`, `resolving_calls`, `compacting`, `completed`, `failed`, `cancelled`, and `interrupted`.
 
+A structured failure write can populate `error_json` and `error_code` after a failed lifecycle projection, but cannot replace completed, cancelled, or interrupted state.
+
 Approval recovery is kept on the turn in `recovery_approval_id`, `recovery_snapshot_json`, `recovery_status`, and recovery timestamps; there is no suspended-turn table. The unique `(session_id, submission_idempotency_key)` constraint makes retries idempotent. Recovery, resuming, and session chronology indexes support startup and history queries.
 
 ### `session_call`
 
-One row per LLM request within a turn. `call_id` is the SunCode-owned physical primary key and is linked to `session_turn`; nullable `provider_request_id` and `provider_response_id` retain the provider's HTTP request identifier and response-object identifier independently. Provider/model/wire-model identity, iteration, lifecycle state, normalized input/output/tool-call/usage/error JSON, finish reason, and timestamps are retained. States are `started`, `completed`, and `failed`. Session, turn, and in-flight indexes support diagnostics and recovery.
+One row per LLM request within a turn. `call_id` is the SunCode-owned physical primary key and is linked to `session_turn`; nullable `provider_request_id` and `provider_response_id` retain the provider's HTTP request identifier and response-object identifier independently. Provider/model/wire-model identity, iteration, lifecycle state, normalized input/output/tool-call/usage/error JSON, finish reason, and timestamps are retained. Normalized usage may include nullable `cache_read_tokens`, `cache_miss_tokens`, `cache_write_tokens`, and `reasoning_tokens` in addition to input, output, and total tokens; provider-private aliases are not duplicated. States are `started`, `completed`, and `failed`. Session, turn, and in-flight indexes support diagnostics and recovery.
 
 ### `session_tool_use`
 

@@ -67,7 +67,9 @@ pub struct Usage {
     pub output_tokens: u64,
     pub total_tokens: u64,
     pub cache_read_tokens: Option<u64>,
+    pub cache_miss_tokens: Option<u64>,
     pub cache_write_tokens: Option<u64>,
+    pub reasoning_tokens: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

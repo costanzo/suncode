@@ -94,14 +94,15 @@ public sealed partial class App : Application
 
     internal void ShowSettings(Window owner)
     {
-        if (_viewModel is null) return;
+        var viewModel = owner.DataContext as DesktopViewModel ?? _viewModel;
+        if (viewModel is null) return;
         if (_settingsWindow is not null)
         {
             _settingsWindow.Activate();
             return;
         }
 
-        _settingsWindow = new SettingsWindow { DataContext = _viewModel };
+        _settingsWindow = new SettingsWindow { DataContext = viewModel };
         SetOtherWindowsEnabled(owner, false);
         _settingsWindow.Closed += (_, _) =>
         {

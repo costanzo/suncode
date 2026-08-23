@@ -272,7 +272,9 @@ mod tests {
         let usage = result.usage.unwrap();
         assert_eq!(usage.total_tokens, 5);
         assert_eq!(usage.cache_read_tokens, Some(2));
+        assert_eq!(usage.cache_miss_tokens, None);
         assert_eq!(usage.cache_write_tokens, None);
+        assert_eq!(usage.reasoning_tokens, None);
         assert_eq!(receiver.recv().await.as_deref(), Some("hello"));
         server.abort();
     }

@@ -37,6 +37,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private string _logDirectory = string.Empty;
     private long _logMaxBytes = 10 * 1024 * 1024;
     private int _logRetention = 5;
+    private int _toolCallLimit = 64;
     private string _diagnosticsText = "Diagnostics unavailable";
     private string _gitState = "idle";
     private string _gitError = string.Empty;
@@ -229,6 +230,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public string LogDirectory { get => _logDirectory; private set => SetProperty(ref _logDirectory, value); }
     public long LogMaxBytes { get => _logMaxBytes; private set => SetProperty(ref _logMaxBytes, value); }
     public int LogRetention { get => _logRetention; private set => SetProperty(ref _logRetention, value); }
+    public int ToolCallLimit { get => _toolCallLimit; private set => SetProperty(ref _toolCallLimit, value); }
     public string DiagnosticsText { get => _diagnosticsText; private set => SetProperty(ref _diagnosticsText, value); }
     public bool FullControlEnabled { get => _fullControlEnabled; private set => SetProperty(ref _fullControlEnabled, value); }
     public string GitState
@@ -502,6 +504,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         CloseSubscription();
         ClearSession();
         SelectedProject = null;
+        ToolCallLimit = 64;
         Sessions.Clear();
         ProjectDependencies.Clear();
         ExplorerRoots.Clear();
@@ -1169,6 +1172,64 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             LogRetention = retention;
             DiagnosticLog.Configure(level, directory, maxBytes, retention);
             StatusText = "Logging settings saved";
+            ConnectionState = "connected";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+            return false;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    public async Task LoadProjectToolCallLimitAsync()
+    {
+        ToolCallLimit = 64;
+        if (_sdk is null || SelectedProject is null) return;
+
+        try
+        {
+            var result = await _sdk.ListProjectSettingsAsync(SelectedProject.ProjectId);
+            var node = result.Array("settings")
+                .OfType<JsonObject>()
+                .FirstOrDefault(item => item.String("key") == "tool_call_limit"
+                    && item.String("scope") == "project")?["value"];
+            if (node is JsonValue value
+                && value.TryGetValue<int>(out var limit)
+                && limit is >= 1 and <= 256)
+            {
+                ToolCallLimit = limit;
+            }
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+        }
+    }
+
+    public async Task<bool> SaveProjectToolCallLimitAsync(int limit)
+    {
+        if (!EnsureSdk() || SelectedProject is null)
+        {
+            StatusText = "Open a project to configure its tool-call limit";
+            return false;
+        }
+        if (limit is < 1 or > 256)
+        {
+            StatusText = "Tool-call limit must be between 1 and 256";
+            return false;
+        }
+
+        IsBusy = true;
+        try
+        {
+            await _sdk!.SetProjectSettingAsync(SelectedProject.ProjectId, "tool_call_limit", limit);
+            ToolCallLimit = limit;
+            StatusText = "Project tool-call limit saved";
             ConnectionState = "connected";
             return true;
         }

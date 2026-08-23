@@ -6,7 +6,7 @@ The Rust runtime owns SQLite initialization, provider secrets, projections, and 
 
 The normative Phase 1 physical table definitions, constraints, and indexes are in `sqlite-schema.md`. Clients consume API DTOs and never depend on those table shapes.
 
-Configuration is stored in one `configuration` table across `global`, `project`, and `session` scopes. Effective reads apply global, project, then session precedence.
+Configuration is stored in one `configuration` table across `global`, `project`, and `session` scopes. Effective reads apply global, project, then session precedence. `tool_call_limit` is project-only, accepts JSON integers from 1 through 256, and defaults in core to 64 when absent.
 
 Logging policy is durable global configuration rather than process-environment configuration. `log_level`, `log_directory`, `log_max_bytes`, and `log_retention` configure both production loggers; the Avalonia client and Rust runtime write separate `desktop.log` and `runtime.log` files. The database and data directory must still be located before configuration can be read, so data/database path inputs remain bootstrap configuration outside SQLite.
 
@@ -22,11 +22,11 @@ Immutable and long-lived. Records authority decisions only: requested capability
 
 ### Session content
 
-The normalized session tables are the source of truth: user/assistant/thinking messages, LLM calls, tool uses/results, and turn state live directly in `session_message`, `session_call`, `session_tool_use`, and `session_turn`. `session_message` does not accept the `tool` role or store usage; provider context derives transient tool messages from succeeded `session_tool_use` results. Per-call usage belongs to `session_call`, and cumulative turn usage belongs to `session_turn`. Streaming and lifecycle events are broadcast in memory only. `session_message` history is ordered by `created_at` and does not contain a sequence column. A client that misses live events reloads a fresh session snapshot.
+The normalized session tables are the source of truth: user/assistant/thinking messages, LLM calls, tool uses/results, and turn state live directly in `session_message`, `session_call`, `session_tool_use`, and `session_turn`. `session_message` does not accept the `tool` role or store usage; provider context derives transient tool messages from succeeded `session_tool_use` results. Per-call usage belongs to `session_call`, including nullable normalized cache-read, cache-miss, cache-write, and reasoning token counts when reported; cumulative turn usage belongs to `session_turn` and includes only input, output, and total tokens. Streaming and lifecycle events are broadcast in memory only. `session_message` history is ordered by `created_at` and does not contain a sequence column. A client that misses live events reloads a fresh session snapshot.
 
 The database stores no client replay cursor or duplicate event journal. Subscription callbacks are live-only; lagged subscribers receive `resync.required` and recover through the snapshot API.
 
-Approval requests and turn-submission idempotency are durable relational state. While pending or resuming, `session_turn.recovery_snapshot_json` preserves canonical messages, model, usage, budgets, the pending call, remaining sibling calls, and the originating submission key. Terminal resolution clears that recovery-only payload while retaining lifecycle metadata. Approval creation is idempotent by operation key, resolution and continuation claims are single-use, and every resolution emits an audit row plus a live event. Turn submissions are represented directly by `session_turn` and remain idempotent across retries.
+Approval requests and turn-submission idempotency are durable relational state. While pending or resuming, `session_turn.recovery_snapshot_json` preserves canonical messages, model, usage, budgets, the pending call, remaining sibling calls, and the originating submission key. The snapshotted tool-call limit defaults to 64 when reading a legacy continuation. Terminal resolution clears that recovery-only payload while retaining lifecycle metadata. A final failure write may enrich an already failed turn with structured `error_json` and `error_code`, but it never overwrites completed, cancelled, or interrupted state. Approval creation is idempotent by operation key, resolution and continuation claims are single-use, and every resolution emits an audit row plus a live event. Turn submissions are represented directly by `session_turn` and remain idempotent across retries.
 
 ## Secrets
 

@@ -49,6 +49,10 @@ public sealed class RuntimeSdk : IDisposable
     public Task<JsonObject> ListSettingsAsync() => CallAsync(handle =>
         NativeMethods.suncode_runtime_sdk_list_settings(handle, IntPtr.Zero, IntPtr.Zero));
 
+    public Task<JsonObject> ListProjectSettingsAsync(string projectId) => WithUtf8Async(
+        [projectId], values =>
+            NativeMethods.suncode_runtime_sdk_list_settings(_handle, values[0], IntPtr.Zero));
+
     public Task<JsonObject> ListSessionSettingsAsync(string projectId, string sessionId) => WithUtf8Async(
         [projectId, sessionId], values =>
             NativeMethods.suncode_runtime_sdk_list_settings(_handle, values[0], values[1]));
@@ -57,6 +61,11 @@ public sealed class RuntimeSdk : IDisposable
         ["global", key, $"{{\"value\":{JsonSerializer.Serialize(value)}}}"],
         values => NativeMethods.suncode_runtime_sdk_set_setting(
             _handle, values[0], IntPtr.Zero, IntPtr.Zero, values[1], values[2]));
+
+    public Task<JsonObject> SetProjectSettingAsync(string projectId, string key, object value) => WithUtf8Async(
+        ["project", projectId, key, $"{{\"value\":{JsonSerializer.Serialize(value)}}}"],
+        values => NativeMethods.suncode_runtime_sdk_set_setting(
+            _handle, values[0], values[1], IntPtr.Zero, values[2], values[3]));
 
     public Task<JsonObject> SetSessionFullControlAsync(string sessionId, bool enabled) => WithUtf8Async(
         ["session", sessionId, "full_control", $"{{\"value\":{JsonSerializer.Serialize(enabled)}}}"],

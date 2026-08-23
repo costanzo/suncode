@@ -8,10 +8,10 @@
       "events": [
         {"type": "text_delta", "text": "hello"},
         {"type": "text_delta", "text": " world"},
-        {"type": "completed", "finish_reason": "stop", "usage": {"input_tokens": 4, "output_tokens": 2, "total_tokens": 6}}
+        {"type": "completed", "finish_reason": "stop", "usage": {"input_tokens": 4, "output_tokens": 2, "total_tokens": 6, "cache_read_tokens": 3, "cache_miss_tokens": 1, "cache_write_tokens": null, "reasoning_tokens": 1}}
       ]
     },
-    "expected": {"text": "hello world", "finish_reason": "stop", "usage": {"input_tokens": 4, "output_tokens": 2, "total_tokens": 6}}
+    "expected": {"text": "hello world", "finish_reason": "stop", "usage": {"input_tokens": 4, "output_tokens": 2, "total_tokens": 6, "cache_read_tokens": 3, "cache_miss_tokens": 1, "cache_write_tokens": null, "reasoning_tokens": 1}}
   },
   {
     "id": "deepseek-tool-call",

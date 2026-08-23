@@ -18,6 +18,12 @@ use tokio::sync::{broadcast, mpsc, Mutex as AsyncMutex};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
+const DEFAULT_TOOL_CALL_LIMIT: u32 = 64;
+
+fn default_tool_call_limit() -> u32 {
+    DEFAULT_TOOL_CALL_LIMIT
+}
+
 #[derive(Debug)]
 pub struct AgentError {
     pub code: String,
@@ -78,6 +84,8 @@ pub enum TurnResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Continuation {
     session_id: String,
+    #[serde(default)]
+    session_started_at: String,
     project_id: String,
     project_root: String,
     turn_id: String,
@@ -86,6 +94,8 @@ struct Continuation {
     messages: Vec<Message>,
     iterations: u32,
     tool_calls: u32,
+    #[serde(default = "default_tool_call_limit")]
+    tool_call_limit: u32,
     usage: Usage,
     pending_call: Option<ToolCall>,
     remaining_calls: Vec<ToolCall>,
@@ -186,6 +196,22 @@ impl Agent {
                 session_lock.lock().await
             }
         };
+        let session = self
+            .store
+            .session_by_id(session_id)?
+            .ok_or_else(|| AgentError::new("not_found", "session not found"))?;
+        let session_started_at = session.created_at.clone();
+        let project_id = session
+            .project_id
+            .ok_or_else(|| AgentError::new("conflict", "session is not bound to a project"))?;
+        let project = self
+            .store
+            .project_by_id(&project_id)?
+            .ok_or_else(|| AgentError::new("not_found", "project not found"))?;
+        let tool_call_limit = self
+            .store
+            .project_tool_call_limit(&project_id)?
+            .unwrap_or(DEFAULT_TOOL_CALL_LIMIT);
         let admission = self.store.begin_turn(session_id, key, input, &model)?;
         if !admission.created {
             if admission.status == "completed" {
@@ -202,17 +228,6 @@ impl Agent {
             ));
         }
         self.store.mark_turn_started(session_id, key)?;
-        let session = self
-            .store
-            .session_by_id(session_id)?
-            .ok_or_else(|| AgentError::new("not_found", "session not found"))?;
-        let project_id = session
-            .project_id
-            .ok_or_else(|| AgentError::new("conflict", "session is not bound to a project"))?;
-        let project = self
-            .store
-            .project_by_id(&project_id)?
-            .ok_or_else(|| AgentError::new("not_found", "project not found"))?;
         let token = CancellationToken::new();
         self.cancellations
             .lock()
@@ -224,6 +239,7 @@ impl Agent {
             .insert(session_id.to_string(), admission.turn_id.clone());
         let continuation = Continuation {
             session_id: session_id.into(),
+            session_started_at,
             project_id,
             project_root: project.canonical_root,
             turn_id: admission.turn_id.clone(),
@@ -232,6 +248,7 @@ impl Agent {
             messages: self.store.context_messages(session_id)?,
             iterations: 0,
             tool_calls: 0,
+            tool_call_limit,
             usage: Usage::default(),
             pending_call: None,
             remaining_calls: Vec::new(),
@@ -520,7 +537,7 @@ impl Agent {
             }
             let exchange_id = Uuid::new_v4().to_string();
             context.active_call_id = Some(exchange_id.clone());
-            let mut llm_messages = vec![host_environment_message()];
+            let mut llm_messages = vec![host_environment_message(&context.session_started_at)];
             if let Some(message) = self.dependency_context_message(&context.project_id)? {
                 llm_messages.push(message);
             }
@@ -610,10 +627,18 @@ impl Agent {
                 .usage
                 .as_ref()
                 .and_then(|usage| usage.cache_read_tokens);
+            let cache_miss_tokens = result
+                .usage
+                .as_ref()
+                .and_then(|usage| usage.cache_miss_tokens);
             let cache_write_tokens = result
                 .usage
                 .as_ref()
                 .and_then(|usage| usage.cache_write_tokens);
+            let reasoning_tokens = result
+                .usage
+                .as_ref()
+                .and_then(|usage| usage.reasoning_tokens);
             let tool_calls = result
                 .tool_calls
                 .iter()
@@ -654,7 +679,9 @@ impl Agent {
                         "output_tokens": usage.output_tokens,
                         "total_tokens": usage.total_tokens,
                         "cache_read_tokens": cache_read_tokens,
+                        "cache_miss_tokens": cache_miss_tokens,
                         "cache_write_tokens": cache_write_tokens,
+                        "reasoning_tokens": reasoning_tokens,
                     })),
                     "provider_request_id": result.provider_request_id,
                     "provider_response_id": result.provider_response_id,
@@ -734,16 +761,39 @@ impl Agent {
         calls: Vec<ToolCall>,
         token: CancellationToken,
     ) -> Result<(), AgentError> {
+        let batch_size = u32::try_from(calls.len()).unwrap_or(u32::MAX);
+        let next_tool_calls = context.tool_calls.saturating_add(batch_size);
+        if next_tool_calls > context.tool_call_limit {
+            context.tool_calls = next_tool_calls;
+            for (index, call) in calls.iter().enumerate() {
+                self.emit(
+                    &context.session_id,
+                    "tool.requested",
+                    json!({
+                        "turn_id": context.turn_id,
+                        "call_id": context.active_call_id,
+                        "tool_call_id": call.call_id,
+                        "name": call.name,
+                        "arguments": call.arguments,
+                        "ordinal": index
+                    }),
+                )?;
+                self.tool_state(context, call, "failed", Some("tool_budget_exceeded"))?;
+            }
+            self.turn_state(context, "failed", Some("tool_budget_exceeded"))?;
+            return Err(AgentError::new(
+                "tool_budget_exceeded",
+                "Turn exceeded its tool-call budget",
+            )
+            .details(json!({
+                "limit": context.tool_call_limit,
+                "requested_total": context.tool_calls,
+                "rejected_batch_size": batch_size
+            })));
+        }
+        context.tool_calls = next_tool_calls;
         let mut allowed_calls = Vec::new();
         for (index, call) in calls.iter().enumerate() {
-            context.tool_calls += 1;
-            if context.tool_calls > 32 {
-                return self.fail_context::<()>(
-                    context,
-                    "tool_budget_exceeded",
-                    "Turn exceeded its tool-call budget",
-                );
-            }
             self.emit(&context.session_id, "tool.requested", json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"name":call.name,"arguments":call.arguments,"ordinal":index}))?;
             let signature = tool_signature(call);
             if context.last_tool_signature.as_deref() == Some(signature.as_str()) {
@@ -1611,7 +1661,7 @@ fn shell_command(script: &str) -> (&'static str, Vec<String>) {
     ("/bin/sh", vec!["-lc".into(), script.into()])
 }
 
-fn host_environment_message() -> suncode_llm::Message {
+fn host_environment_message(session_started_at: &str) -> suncode_llm::Message {
     let shell = if cfg!(target_os = "windows") {
         "Windows PowerShell"
     } else {
@@ -1622,21 +1672,22 @@ fn host_environment_message() -> suncode_llm::Message {
     } else {
         "POSIX"
     };
-    let now = chrono::Local::now();
-    let local_time = now.to_rfc3339_opts(chrono::SecondsFormat::Secs, false);
-    let weekday = now.format("%A");
+    let session_started_at = if session_started_at.is_empty() {
+        "unavailable"
+    } else {
+        session_started_at
+    };
     suncode_llm::Message {
         role: "system".into(),
         content: vec![suncode_llm::ContentPart {
             kind: "text".into(),
             text: format!(
-                "SunCode host environment: OS={}, architecture={}, shell tool dialect={}, path style={}, current local time={}, weekday={}. Use the bash tool for command execution, and write commands in the stated shell dialect.",
+                "SunCode host environment: OS={}, architecture={}, shell tool dialect={}, path style={}, session started at={}. Use the bash tool for command execution, and write commands in the stated shell dialect.",
                 std::env::consts::OS,
                 std::env::consts::ARCH,
                 shell,
                 path_style,
-                local_time,
-                weekday
+                session_started_at
             ),
         }],
         tool_calls: Vec::new(),
@@ -1921,12 +1972,13 @@ mod tests {
     }
 
     #[test]
-    fn host_context_identifies_platform_and_current_time() {
-        let message = host_environment_message();
+    fn host_context_identifies_platform_and_stable_session_time() {
+        let session_started_at = "2026-08-23T01:02:03.000Z";
+        let message = host_environment_message(session_started_at);
         let text = message.content[0].text.as_str();
         assert!(text.contains(std::env::consts::OS));
         assert!(text.contains(std::env::consts::ARCH));
-        assert!(text.contains("current local time="));
+        assert!(text.contains(&format!("session started at={session_started_at}")));
     }
 
     async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
@@ -1975,7 +2027,7 @@ mod tests {
             ]
         } else if last_role == Some("tool") {
             vec![
-                json!({"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}],"usage":{"prompt_tokens":8,"completion_tokens":1,"total_tokens":9}}),
+                json!({"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}],"usage":{"prompt_tokens":8,"completion_tokens":1,"total_tokens":9,"prompt_cache_hit_tokens":6,"prompt_cache_miss_tokens":2,"completion_tokens_details":{"reasoning_tokens":1}}}),
             ]
         } else if user_text.contains("slow") || user_text.contains("follow up") {
             vec![
@@ -2120,6 +2172,17 @@ mod tests {
         assert_eq!(messages.last().unwrap().role, "assistant");
         let context = store.context_messages(&session_id).unwrap();
         assert!(context.iter().any(|message| message.role == "tool"));
+        let exchanges = store.provider_exchanges(&session_id).unwrap();
+        assert_eq!(exchanges.len(), 2);
+        assert_eq!(
+            exchanges[0].input_messages[0],
+            exchanges[1].input_messages[0]
+        );
+        let usage = exchanges[0].usage.as_ref().unwrap();
+        assert_eq!(usage["cache_read_tokens"], 6);
+        assert_eq!(usage["cache_miss_tokens"], 2);
+        assert_eq!(usage["cache_write_tokens"], serde_json::Value::Null);
+        assert_eq!(usage["reasoning_tokens"], 1);
         server.abort();
     }
 
@@ -2245,6 +2308,44 @@ mod tests {
                 .count(),
             2
         );
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn over_budget_batch_is_rejected_before_any_call_executes() {
+        let (agent, store, _root, server, session_id) = fixture().await;
+        let project_id = store
+            .session_by_id(&session_id)
+            .unwrap()
+            .unwrap()
+            .project_id
+            .unwrap();
+        store
+            .set_setting("project", &project_id, "tool_call_limit", &json!(1))
+            .unwrap();
+
+        let error = agent
+            .submit(&session_id, "over-budget-1", "read two files", None)
+            .await
+            .unwrap_err();
+        assert_eq!(error.code, "tool_budget_exceeded");
+        assert_eq!(error.details["limit"], 1);
+        assert_eq!(error.details["rejected_batch_size"], 2);
+
+        let turns = store.session_conversation_turns(&session_id).unwrap();
+        let turn = turns.last().unwrap();
+        assert_eq!(turn.state, "failed");
+        assert_eq!(turn.tool_uses.len(), 2);
+        assert!(turn.tool_uses.iter().all(|tool| {
+            tool.state == "failed"
+                && tool.error_code.as_deref() == Some("tool_budget_exceeded")
+                && tool.result.is_none()
+        }));
+        assert!(store
+            .context_messages(&session_id)
+            .unwrap()
+            .iter()
+            .all(|message| message.role != "tool"));
         server.abort();
     }
 

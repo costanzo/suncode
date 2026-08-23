@@ -34,10 +34,17 @@ public sealed partial class SettingsWindow : Window
             : Avalonia.Controls.WindowDecorations.None;
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
-        Opened += (_, _) =>
+        Opened += async (_, _) =>
         {
+            await ViewModel.LoadProjectToolCallLimitAsync();
             ThemeSelector.SelectedIndex = ViewModel.ThemeMode == "light" ? 1 : 0;
             DefaultModelSelector.SelectedItem = ViewModel.SelectedModel;
+            ToolCallLimitInput.Value = ViewModel.ToolCallLimit;
+            ToolCallLimitInput.IsEnabled = ViewModel.IsProjectOpen;
+            SaveToolCallLimitButton.IsEnabled = ViewModel.IsProjectOpen;
+            ToolCallLimitScope.Text = ViewModel.SelectedProject is { } project
+                ? $"Project: {project.DisplayName}"
+                : "Open a project to configure this setting.";
             LogLevelSelector.SelectedItem = LogLevelSelector.Items
                 .OfType<ComboBoxItem>()
                 .FirstOrDefault(item => item.Tag as string == ViewModel.LogLevel);
@@ -160,6 +167,14 @@ public sealed partial class SettingsWindow : Window
             LogRetentionInput.Text ?? string.Empty);
         LoggingStatus.Text = ViewModel.StatusText;
         LoggingStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
+    }
+
+    private async void SaveToolCallLimit(object? sender, RoutedEventArgs e)
+    {
+        if (ToolCallLimitInput.Value is not { } value) return;
+        var saved = await ViewModel.SaveProjectToolCallLimitAsync(decimal.ToInt32(value));
+        ToolCallLimitStatus.Text = ViewModel.StatusText;
+        ToolCallLimitStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
     }
 
     private async void SaveCredential(object? sender, RoutedEventArgs e)
