@@ -20,16 +20,16 @@
       "provider": "deepseek",
       "model": "deepseek-v4-flash",
       "events": [
-        {"type": "tool_call", "call_id": "call-1", "name": "project.inspect", "arguments_json": "{\"depth\":1}"},
+        {"type": "tool_call", "call_id": "call-1", "name": "read", "arguments_json": "{\"path\":\"README.md\"}"},
         {"type": "completed", "finish_reason": "tool_call", "usage": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}}
       ]
     },
-    "expected": {"text": "", "tool_calls": [{"call_id": "call-1", "name": "project.inspect", "arguments": {"depth": 1}}], "finish_reason": "tool_call", "usage": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}}
+    "expected": {"text": "", "tool_calls": [{"call_id": "call-1", "name": "read", "arguments": {"path": "README.md"}}], "finish_reason": "tool_call", "usage": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}}
   },
   {
     "id": "deepseek-malformed-tool-arguments",
     "kind": "invalid_provider_result",
-    "input": {"type": "tool_call", "call_id": "call-2", "name": "project.inspect", "arguments_json": "{bad"},
+    "input": {"type": "tool_call", "call_id": "call-2", "name": "read", "arguments_json": "{bad"},
     "expected_error": "malformed_tool_call"
   }
 ]

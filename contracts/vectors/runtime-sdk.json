@@ -111,7 +111,7 @@
   {
     "id": "provider-exchange",
     "call": {"method":"provider_exchange","session_id":"session-1","exchange_id":"exchange-1"},
-    "expected_response_shape": {"exchangeId":"exchange-1","sessionId":"session-1","turnId":"turn-1","provider":"deepseek","state":"completed","inputMessages":[],"outputMessage":{"role":"assistant"},"toolCalls":[],"finishReason":"stop","messages":[{"messageId":"message-1","role":"assistant","message":{"role":"assistant"}}],"toolUses":[{"toolCallId":"tool-1","name":"fs.read","state":"succeeded","request":{"path":"README.md"},"result":{"content":"..."}}]}
+    "expected_response_shape": {"exchangeId":"exchange-1","sessionId":"session-1","turnId":"turn-1","provider":"deepseek","state":"completed","inputMessages":[],"outputMessage":{"role":"assistant"},"toolCalls":[],"finishReason":"stop","messages":[{"messageId":"message-1","role":"assistant","message":{"role":"assistant"}}],"toolUses":[{"toolCallId":"tool-1","name":"read","state":"succeeded","request":{"path":"README.md"},"result":{"content":"..."}}]}
   },
   {
     "id": "list-checkpoints",

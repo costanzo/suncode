@@ -160,16 +160,13 @@ public sealed class MessageItem : ObservableObject
         : $"Show work ({ProcessItemCount})";
     public string ToolSummaryText => ToolName switch
     {
-        "shell" or "shell_run" or "shell.run" or "bash" => "Run shell command",
-        "process" or "process_run" or "process.run" => "Run program",
-        "read" or "fs_read" or "fs.read" => "Read file",
-        "glob" or "search_glob" or "search.glob" => "Find files",
-        "grep" or "search_find" or "search.find" => "Search files",
-        "write" or "fs_write" or "fs.write" => "Write file",
-        "edit" or "fs_edit" or "fs.edit" => "Edit file",
-        "apply_patch" or "fs_patch" or "fs.patch" => "Apply patch",
-        "fs_move" or "fs.move" => "Move file",
-        "fs_delete" or "fs.delete" => "Delete file",
+        "bash" => "Run shell command",
+        "webfetch" => "Fetch web content",
+        "read" => "Read file",
+        "glob" => "Find files",
+        "grep" => "Search files",
+        "write" => "Write file",
+        "edit" => "Edit file",
         _ => string.IsNullOrWhiteSpace(ToolName) ? "Run operation" : ToolName
     };
     public bool IsToolFailed => ToolState is "failed" or "denied" or "timed_out" or "unknown_completion";
@@ -206,6 +203,7 @@ public sealed class MessageItem : ObservableObject
         "scope_denied" => "The operation was outside the project scope.",
         "process_executable_not_found" => "The executable could not be found.",
         "process_start_failed" => "The process could not be started.",
+        "webfetch_failed" => "The web request could not be completed.",
         _ => ToolError.Replace('_', ' ')
     };
 }
@@ -498,35 +496,28 @@ public sealed record ApprovalItem(string ApprovalId, string Operation, string Ar
 
     public string ActionText => Operation switch
     {
-        "shell" or "shell_run" or "shell.run" or "bash" => "Run a shell command",
-        "process" or "process_run" or "process.run" =>
-            string.IsNullOrWhiteSpace(ProgramText) ? "Run a program" : $"Run {ProgramText}",
-        "fs.write" or "fs_write" or "fs/write" or "write" => "Write to a project file",
-        "fs.edit" or "fs_edit" or "fs/edit" or "edit" => "Edit a project file",
-        "fs.patch" or "fs_patch" or "fs/patch" or "apply_patch" => "Apply a patch to a project file",
-        "fs.delete" or "fs_delete" or "fs/delete" or "delete" => "Delete a project file",
-        "fs.move" or "fs_move" or "fs/move" or "move" => "Move a project file",
+        "bash" => "Run a shell command",
+        "webfetch" => "Fetch web content",
+        "write" => "Write to a project file",
+        "edit" => "Edit a project file",
         _ => "Perform a project action"
     };
 
     public string OperationText => Operation switch
     {
-        "shell" or "shell_run" or "shell.run" or "bash" => "Shell command",
-        "process" or "process_run" or "process.run" => "Program execution",
-        "fs.write" or "fs_write" or "fs/write" or "write" => "File write",
-        "fs.edit" or "fs_edit" or "fs/edit" or "edit" => "File edit",
-        "fs.patch" or "fs_patch" or "fs/patch" or "apply_patch" => "File patch",
-        "fs.delete" or "fs_delete" or "fs/delete" or "delete" => "File deletion",
-        "fs.move" or "fs_move" or "fs/move" or "move" => "File move",
+        "bash" => "Shell command",
+        "webfetch" => "Web request",
+        "write" => "File write",
+        "edit" => "File edit",
         _ => string.IsNullOrWhiteSpace(Operation) ? "Project action" : Operation
     };
 
-    public string DetailLabel => IsCommand ? "Command" : IsMove ? "Files" : "Target";
+    public string DetailLabel => IsCommand ? "Command" : IsWebFetch ? "URL" : "Target";
 
     public string DetailText => IsCommand
         ? CommandText
-        : IsMove
-            ? $"{Value("from")}  ->  {Value("to")}"
+        : IsWebFetch
+            ? Value("url")
             : Value("path", "file", "target");
 
     public bool HasDetail => !string.IsNullOrWhiteSpace(DetailText);
@@ -535,12 +526,11 @@ public sealed record ApprovalItem(string ApprovalId, string Operation, string Ar
 
     public bool HasWorkingDirectory => IsCommand && !string.IsNullOrWhiteSpace(WorkingDirectoryText);
 
-    public bool IsCommand => Operation is "shell" or "shell_run" or "shell.run" or "bash"
-        or "process" or "process_run" or "process.run";
+    public bool IsCommand => Operation == "bash";
 
     public string ProgramText => Value("program", "command");
 
-    private bool IsMove => Operation is "fs.move" or "fs_move" or "fs/move" or "move";
+    private bool IsWebFetch => Operation == "webfetch";
 
     private string CommandText
     {

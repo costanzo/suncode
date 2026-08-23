@@ -12,17 +12,17 @@
   },
   {
     "id": "read-in-project",
-    "request": {"jsonrpc":"2.0","id":"2","method":"fs/read","params":{"project_id":"project-1","path":"src/index.ts","max_bytes":4096}},
+    "request": {"jsonrpc":"2.0","id":"2","method":"tool/read","params":{"path":"src/index.ts","max_bytes":4096}},
     "expected_result_shape": {"path":"src/index.ts","truncated":false,"bytes":"base64"}
   },
   {
     "id": "search-glob",
-    "request": {"jsonrpc":"2.0","id":"glob-1","method":"search/glob","params":{"pattern":"**/*.ts","max_results":100}},
+    "request": {"jsonrpc":"2.0","id":"glob-1","method":"tool/glob","params":{"pattern":"**/*.ts","max_results":100}},
     "expected_result_shape": {"pattern":"**/*.ts","paths":["src/index.ts"],"truncated":false}
   },
   {
     "id": "search-find",
-    "request": {"jsonrpc":"2.0","id":"find-1","method":"search/find","params":{"query":"needle","pattern":"**/*.ts","max_results":100}},
+    "request": {"jsonrpc":"2.0","id":"find-1","method":"tool/grep","params":{"query":"needle","pattern":"**/*.ts","max_results":100}},
     "expected_result_shape": {"query":"needle","matches":[{"path":"src/index.ts","line":1,"column":1,"preview":"needle"}],"truncated":false}
   },
   {
@@ -32,12 +32,12 @@
   },
   {
     "id": "write-precondition-conflict",
-    "request": {"jsonrpc":"2.0","id":"4","method":"fs/write","params":{"path":"README.md","content_base64":"dXBkYXRlZA==","expected_base64":"c3RhbGU="}},
+    "request": {"jsonrpc":"2.0","id":"4","method":"tool/write","params":{"path":"README.md","content_base64":"dXBkYXRlZA==","expected_base64":"c3RhbGU="}},
     "expected_error": "conflict"
   },
   {
     "id": "write-checkpoint",
-    "request": {"jsonrpc":"2.0","id":"5","method":"fs/write","params":{"path":"README.md","content_base64":"dXBkYXRlZA==","expected_base64":"YmVmb3Jl"}},
+    "request": {"jsonrpc":"2.0","id":"5","method":"tool/write","params":{"path":"README.md","content_base64":"dXBkYXRlZA==","expected_base64":"YmVmb3Jl"}},
     "expected_result_shape": {"path":"README.md","bytes":7,"created":false,"checkpoint_id":"opaque"}
   },
   {

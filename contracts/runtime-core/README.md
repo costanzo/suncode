@@ -35,42 +35,13 @@ Errors use:
 | `search/find` | runtime -> core | Find bounded text matches with line previews |
 | `fs/write` | runtime -> core | Write a bounded in-project file when its pre-image matches |
 | `fs/edit` | runtime -> core | Apply preconditioned text replacements |
-| `fs/patch` | runtime -> core | Apply a preconditioned unified text patch |
 | `fs/move` | runtime -> core | Move one regular in-project file |
 | `fs/delete` | runtime -> core | Delete one regular in-project file |
-| `artifact/read` | runtime -> core | Read a bounded opaque artifact |
-| `artifact/sweep` | runtime -> core | Delete runtime-marked artifact IDs |
-| `process/run` | runtime -> core | Run one bounded non-interactive process |
-| `process/start` | runtime -> core | Start a cancellable non-interactive process |
-| `process/status` | runtime -> core | Read a managed process status |
 | `checkpoint/restore` | runtime -> core | Restore one checkpoint after verifying the current post-image |
-| `capability/check` | runtime -> core | Authoritatively evaluate an asserted operation |
-| `capability/execute` | runtime -> core | Execute an already authorized operation |
-| `operation/cancel` | runtime -> core | Cooperatively cancel an operation |
-| `operation/reconcile` | runtime -> core | Resolve unknown completion after restart |
-| `operation/status` | runtime -> core | Read a journaled operation status |
-| `core/recovery` | runtime -> core | Report pending operations and managed artifacts |
 
-The retired implementation included every method in the table. Paths were canonicalized and kept project-relative in results. Mutations required pre-images, capture opaque checkpoints, and used an optional core-private journal keyed by the supplied idempotency key. Text edit and patch rejected stale context; move and delete captured enough pre-image state for reverse restore. Process execution was argv-based, non-interactive, bounded, environment-filtered, and cancellable for managed starts. Large reads and process output used artifact IDs.
+Persisted historical tool rows remain readable as data, but removed operation names are no longer executable.
 
-The current embedded operations contract retains structured argv semantics for `process/run`: callers provide a program and string argument array, and the operation never invokes a shell implicitly. The current agent exposes an OpenCode-compatible `bash` model tool with `command`, optional millisecond `timeout`, and optional `workdir`, then resolves the command to Windows PowerShell on Windows or POSIX `/bin/sh` on macOS/Linux before entering the audited process operation. Historical shell/script aliases are accepted only by the compatibility translator.
-
-## Capability assertion
-
-An assertion names one operation and one canonical scope:
-
-```json
-{
-  "operation": "fs.read",
-  "project_id": "project-1",
-  "resource": {"path": "src/index.ts"},
-  "scope": {"kind": "project", "project_id": "project-1"},
-  "grant_id": "grant-1",
-  "expires_at": "2026-08-07T00:10:00Z"
-}
-```
-
-Rust re-canonicalizes paths and independently checks scope, expiry, operation class, and limits. A runtime decision never replaces core enforcement.
+The current embedded operations contract exposes canonical `tool/*` methods for the seven model tools and a typed checkpoint restore method. `bash` resolves its command to Windows PowerShell on Windows or POSIX `/bin/sh` on macOS/Linux before entering the private audited process runner.
 
 ## Bounded results
 

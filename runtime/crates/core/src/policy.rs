@@ -3,7 +3,7 @@ pub enum Risk {
     ReadOnly,
     ProjectWrite,
     ProcessExecution,
-    DestructiveWrite,
+    NetworkAccess,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,14 +25,10 @@ pub fn evaluate(risk: Option<Risk>, non_interactive: bool, full_control: bool) -
 
 pub fn tool_risk(name: &str) -> Option<Risk> {
     match name {
-        "read" | "glob" | "grep" | "project_inspect" | "project.inspect" | "fs_read"
-        | "fs.read" | "fs_metadata" | "fs.metadata" | "search_glob" | "search.glob"
-        | "search_find" | "search.find" => Some(Risk::ReadOnly),
-        "write" | "edit" | "apply_patch" | "fs_write" | "fs.write" | "fs_edit" | "fs.edit"
-        | "fs_patch" | "fs.patch" | "fs_move" | "fs.move" => Some(Risk::ProjectWrite),
-        "fs_delete" | "fs.delete" => Some(Risk::DestructiveWrite),
-        "bash" | "shell" | "shell_run" | "shell.run" | "process" | "process_run"
-        | "process.run" => Some(Risk::ProcessExecution),
+        "read" | "glob" | "grep" => Some(Risk::ReadOnly),
+        "webfetch" => Some(Risk::NetworkAccess),
+        "write" | "edit" => Some(Risk::ProjectWrite),
+        "bash" => Some(Risk::ProcessExecution),
         _ => None,
     }
 }
@@ -52,11 +48,7 @@ mod tests {
             Decision::ApprovalRequired
         );
         assert_eq!(
-            evaluate(tool_risk("shell"), false, false),
-            Decision::ApprovalRequired
-        );
-        assert_eq!(
-            evaluate(tool_risk("process"), false, false),
+            evaluate(tool_risk("webfetch"), false, false),
             Decision::ApprovalRequired
         );
         assert_eq!(evaluate(tool_risk("write"), true, false), Decision::Deny);
@@ -68,7 +60,7 @@ mod tests {
         assert_eq!(evaluate(tool_risk("write"), false, true), Decision::Allow);
         assert_eq!(evaluate(tool_risk("bash"), false, true), Decision::Allow);
         assert_eq!(
-            evaluate(tool_risk("fs_delete"), false, true),
+            evaluate(tool_risk("webfetch"), false, true),
             Decision::Allow
         );
         assert_eq!(evaluate(tool_risk("unknown"), false, true), Decision::Deny);

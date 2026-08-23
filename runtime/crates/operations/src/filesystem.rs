@@ -1,5 +1,5 @@
 use super::artifacts::{checkpoint_root_from_env, write_artifact};
-use super::{existing_file, require_project, safe_relative_path, CoreFailure};
+use super::{safe_relative_path, CoreFailure};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
 use std::fs;
@@ -75,26 +75,5 @@ pub(super) fn read(project_root: Option<&Path>, params: &Value) -> Result<Value,
     }
     Ok(
         json!({"path": path, "bytes": bytes.len(), "data_base64": STANDARD.encode(bytes), "truncated": truncated}),
-    )
-}
-
-pub(super) fn metadata(project_root: Option<&Path>, params: &Value) -> Result<Value, CoreFailure> {
-    let root = require_project(project_root)?;
-    let path = params
-        .get("path")
-        .and_then(Value::as_str)
-        .ok_or(CoreFailure {
-            code: "invalid_arguments",
-            message: "path is required",
-            retryable: false,
-        })?;
-    let (canonical, bytes) = existing_file(root, path)?;
-    let metadata = fs::metadata(&canonical).map_err(|_| CoreFailure {
-        code: "path_unavailable",
-        message: "path is unavailable",
-        retryable: false,
-    })?;
-    Ok(
-        json!({"path": path, "bytes": bytes.len(), "sha256": super::sha256_hex(&bytes), "is_binary": bytes.iter().take(4096).any(|byte| *byte == 0), "readonly": metadata.permissions().readonly()}),
     )
 }

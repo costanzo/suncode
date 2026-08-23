@@ -91,7 +91,7 @@ public sealed class SessionSnapshotProjectionTests
         var payload = JsonNode.Parse("""
         {
           "approval_id": "approval-2",
-          "operation": "fs_write",
+          "operation": "write",
           "arguments": {"path":"src/App.cs","content":"class App {}"}
         }
         """)!.AsObject();
@@ -102,6 +102,38 @@ public sealed class SessionSnapshotProjectionTests
         Assert.Equal("Target", approval.DetailLabel);
         Assert.Equal("src/App.cs", approval.DetailText);
         Assert.Contains("\n", approval.Arguments);
+    }
+
+    [Fact]
+    public void ApprovalItemSummarizesWebFetchByUrl()
+    {
+        var payload = new JsonObject
+        {
+            ["approval_id"] = "approval-web",
+            ["operation"] = "webfetch",
+            ["arguments"] = new JsonObject
+            {
+                ["url"] = "https://example.com/reference",
+                ["format"] = "markdown"
+            }
+        };
+
+        var approval = ApprovalItem.FromPayload(payload)!;
+
+        Assert.Equal("Fetch web content", approval.ActionText);
+        Assert.Equal("Web request", approval.OperationText);
+        Assert.Equal("URL", approval.DetailLabel);
+        Assert.Equal("https://example.com/reference", approval.DetailText);
+
+        var message = new MessageItem
+        {
+            Role = "tool",
+            Text = "webfetch",
+            ContentSequence = 1,
+            Kind = "tool",
+            ToolName = "webfetch"
+        };
+        Assert.Equal("Fetch web content", message.ToolSummaryText);
     }
 
     [Fact]

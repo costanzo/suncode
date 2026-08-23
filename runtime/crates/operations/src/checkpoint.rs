@@ -69,60 +69,6 @@ pub(super) fn capture(
     Ok(checkpoint_id)
 }
 
-pub(super) fn capture_state(
-    checkpoint_root: &Path,
-    project_root: &Path,
-    path: &str,
-    pre_image: Option<&[u8]>,
-    post_image: Option<&[u8]>,
-) -> Result<String, CoreFailure> {
-    let mut hasher = Sha256::new();
-    hasher.update(
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos()
-            .to_le_bytes(),
-    );
-    hasher.update(std::process::id().to_le_bytes());
-    hasher.update(
-        CHECKPOINT_SEQUENCE
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-            .to_le_bytes(),
-    );
-    hasher.update(project_root.to_string_lossy().as_bytes());
-    hasher.update(path.as_bytes());
-    let checkpoint_id = format!("{:x}", hasher.finalize());
-    fs::create_dir_all(checkpoint_root).map_err(|_| CoreFailure {
-        code: "checkpoint_failed",
-        message: "checkpoint directory could not be created",
-        retryable: true,
-    })?;
-    let record = CheckpointRecord {
-        project_root_sha256: sha256_hex(project_root.to_string_lossy().as_bytes()),
-        path: path.to_string(),
-        pre_image_base64: pre_image.map(|bytes| STANDARD.encode(bytes)),
-        post_image_sha256: post_image
-            .map(sha256_hex)
-            .unwrap_or_else(|| sha256_hex(&[])),
-        post_image_base64: post_image.map(|bytes| STANDARD.encode(bytes)),
-    };
-    fs::write(
-        checkpoint_root.join(format!("{}.json", checkpoint_id)),
-        serde_json::to_vec(&record).map_err(|_| CoreFailure {
-            code: "checkpoint_failed",
-            message: "checkpoint could not be encoded",
-            retryable: false,
-        })?,
-    )
-    .map_err(|_| CoreFailure {
-        code: "checkpoint_failed",
-        message: "checkpoint could not be written",
-        retryable: true,
-    })?;
-    Ok(checkpoint_id)
-}
-
 pub(super) fn restore(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,

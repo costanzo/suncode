@@ -2045,7 +2045,7 @@ mod tests {
             content: Vec::new(),
             tool_calls: vec![ToolCall {
                 call_id: "call-1".into(),
-                name: "fs_read".into(),
+                name: "read".into(),
                 arguments: json!({"path":"README.md"}),
             }],
             tool_call_id: None,
@@ -2075,14 +2075,14 @@ mod tests {
             .append_content(
                 &session_id,
                 "tool.requested",
-                &json!({"turn_id":"turn-1","tool_call_id":"call-1","name":"fs_read","arguments":{"path":"README.md"},"ordinal":0}),
+                &json!({"turn_id":"turn-1","tool_call_id":"call-1","name":"read","arguments":{"path":"README.md"},"ordinal":0}),
             )
             .unwrap();
         store
             .append_content(
                 &session_id,
                 "tool.state",
-                &json!({"turn_id":"turn-1","tool_call_id":"call-1","name":"fs_read","state":"succeeded","ordinal":0}),
+                &json!({"turn_id":"turn-1","tool_call_id":"call-1","name":"read","state":"succeeded","ordinal":0}),
             )
             .unwrap();
         store
@@ -2904,7 +2904,7 @@ mod tests {
                 &json!({
                     "turn_id":"turn-1",
                     "tool_call_id":"call-1",
-                    "name":"fs_write",
+                    "name":"write",
                     "state":"awaiting_approval"
                 }),
             )
@@ -2915,7 +2915,7 @@ mod tests {
                 session_id: &session_id,
                 turn_id: "turn-1",
                 tool_call_id: "call-1",
-                operation: "fs.write",
+                operation: "write",
                 arguments: &json!({"path":"README.md"}),
                 snapshot: &json!({"messages":[{"role":"user","content":"sensitive"}]}),
             })
@@ -3106,7 +3106,7 @@ mod tests {
                     "turn_id":"turn-1",
                     "call_id":"call-1",
                     "tool_call_id":"tool-1",
-                    "name":"fs.read",
+                    "name":"read",
                     "arguments":{"path":"README.md"}
                 }),
             )
@@ -3162,7 +3162,7 @@ mod tests {
         assert!(messages.is_empty());
         let tools = store.session_call_tool_uses("call-1").unwrap();
         assert_eq!(tools.len(), 1);
-        assert_eq!(tools[0].name, "fs.read");
+        assert_eq!(tools[0].name, "read");
         assert_eq!(tools[0].request.as_ref().unwrap()["path"], "README.md");
         assert_eq!(tools[0].result.as_ref().unwrap()["content"], "hello");
     }
@@ -3200,7 +3200,7 @@ mod tests {
             content: Vec::new(),
             tool_calls: vec![ToolCall {
                 call_id: "call-1".into(),
-                name: "fs_write".into(),
+                name: "write".into(),
                 arguments: json!({"path":"README.md","content":"updated"}),
             }],
             tool_call_id: None,
@@ -3235,12 +3235,12 @@ mod tests {
             tool_calls: vec![
                 ToolCall {
                     call_id: "call-1".into(),
-                    name: "fs_read".into(),
+                    name: "read".into(),
                     arguments: json!({"path":"README.md"}),
                 },
                 ToolCall {
                     call_id: "call-2".into(),
-                    name: "fs_read".into(),
+                    name: "read".into(),
                     arguments: json!({"path":"Cargo.toml"}),
                 },
             ],

@@ -4,13 +4,12 @@
 //! operation methods stay narrower and are translated by the agent before
 //! execution.
 
-mod apply_patch;
 mod edit;
 mod glob;
 mod grep;
-mod process;
 mod read;
 mod shell;
+mod webfetch;
 mod write;
 
 use suncode_llm::ToolDefinition;
@@ -22,9 +21,8 @@ pub fn definitions() -> Vec<ToolDefinition> {
         grep::definition(),
         write::definition(),
         edit::definition(),
-        apply_patch::definition(),
-        process::definition(),
         shell::definition(),
+        webfetch::definition(),
     ]
     .into_iter()
     .map(|(name, description, parameters)| ToolDefinition {
@@ -38,19 +36,20 @@ pub fn definitions() -> Vec<ToolDefinition> {
 #[cfg(test)]
 mod tests {
     use super::definitions;
-    use std::collections::HashSet;
+    use std::collections::BTreeSet;
 
     #[test]
-    fn built_in_tool_names_are_unique() {
+    fn built_in_tool_names_match_the_model_contract() {
         let definitions = definitions();
         let names = definitions
             .iter()
             .map(|definition| definition.name.as_str())
-            .collect::<HashSet<_>>();
-        assert_eq!(names.len(), definitions.len());
-        assert!(names.contains("process"));
-        assert!(names.contains("bash"));
-        assert!(!names.contains("shell"));
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            names,
+            BTreeSet::from(["bash", "edit", "glob", "grep", "read", "webfetch", "write",])
+        );
+        assert_eq!(definitions.len(), names.len());
         let bash = definitions
             .iter()
             .find(|definition| definition.name == "bash")
@@ -59,5 +58,14 @@ mod tests {
         assert!(bash.parameters["properties"]["command"].is_object());
         assert_eq!(bash.parameters["properties"]["timeout"]["type"], "integer");
         assert_eq!(bash.parameters["properties"]["workdir"]["type"], "string");
+        let webfetch = definitions
+            .iter()
+            .find(|definition| definition.name == "webfetch")
+            .unwrap();
+        assert_eq!(webfetch.parameters["required"], serde_json::json!(["url"]));
+        assert_eq!(
+            webfetch.parameters["properties"]["format"]["enum"],
+            serde_json::json!(["text", "markdown", "html"])
+        );
     }
 }

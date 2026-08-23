@@ -2,22 +2,17 @@
 
 #[cfg(test)]
 use base64::engine::general_purpose::STANDARD;
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
-use std::process::Child;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
-use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static CHECKPOINT_SEQUENCE: AtomicU64 = AtomicU64::new(1);
-static PROCESSES: OnceLock<Mutex<std::collections::HashMap<String, Child>>> = OnceLock::new();
-
 mod artifacts;
 mod checkpoint;
 mod filesystem;
@@ -59,11 +54,6 @@ fn execute_operation_with_cancellation(
     match method {
         "git/status" => git::status(project_root, params),
         "git/diff-file" => git::diff_file(project_root, params),
-        "sandbox/profiles" => sandbox_profiles(),
-        "capability/check" => capability_check(project_root, params),
-        "capability/execute" => {
-            capability_execute(project_root, checkpoint_root, params, cancellation)
-        }
         _ => Err(CoreFailure {
             code: "method_unavailable",
             message: "method unavailable",
@@ -106,172 +96,8 @@ fn open_project(path: &Path) -> Result<(PathBuf, Value), CoreFailure> {
     Ok((root, value))
 }
 
-fn sandbox_profiles() -> Result<Value, CoreFailure> {
-    Ok(json!({"profiles": [
-        {"id": "project-default", "network": "not_enforced", "filesystem": "project-cwd", "environment": "filtered", "os_isolation": false},
-        {"id": "project-readonly", "network": "not_enforced", "filesystem": "project-cwd", "environment": "filtered", "os_isolation": false}
-    ]}))
-}
-
-fn capability_check(project_root: Option<&Path>, params: &Value) -> Result<Value, CoreFailure> {
-    let operation = params
-        .get("operation")
-        .and_then(Value::as_str)
-        .ok_or(CoreFailure {
-            code: "invalid_arguments",
-            message: "operation is required",
-            retryable: false,
-        })?;
-    let known = [
-        "fs.read",
-        "fs.metadata",
-        "fs.write",
-        "fs.edit",
-        "fs.patch",
-        "fs.move",
-        "fs.delete",
-        "process.run",
-        "process.start",
-        "artifact.read",
-        "checkpoint.restore",
-    ];
-    if !known.contains(&operation) {
-        return Err(CoreFailure {
-            code: "capability_denied",
-            message: "operation is not available",
-            retryable: false,
-        });
-    }
-    if !matches!(operation, "artifact.read") && project_root.is_none() {
-        return Err(CoreFailure {
-            code: "project_unconfigured",
-            message: "project root is not configured",
-            retryable: false,
-        });
-    }
-    if let Some(resource) = params.get("resource").and_then(Value::as_object) {
-        for key in ["path", "from", "to"] {
-            if let Some(path) = resource.get(key).and_then(Value::as_str) {
-                safe_relative_path(path)?;
-            }
-        }
-    }
-    let grant_id = params
-        .get("grant_id")
-        .and_then(Value::as_str)
-        .ok_or(CoreFailure {
-            code: "capability_denied",
-            message: "grant_id is required",
-            retryable: false,
-        })?;
-    let assertion_id = sha256_hex(
-        format!(
-            "{}:{}:{}",
-            operation,
-            grant_id,
-            params
-                .get("expires_at")
-                .and_then(Value::as_str)
-                .unwrap_or("session")
-        )
-        .as_bytes(),
-    );
-    Ok(
-        json!({"allowed": true, "operation": operation, "assertion_id": assertion_id, "sandbox_profile": params.get("sandbox_profile").and_then(Value::as_str).unwrap_or("project-default")}),
-    )
-}
-
-fn capability_execute(
-    project_root: Option<&Path>,
-    checkpoint_root: Option<&Path>,
-    params: &Value,
-    cancellation: Option<&AtomicBool>,
-) -> Result<Value, CoreFailure> {
-    let operation = params
-        .get("operation")
-        .and_then(Value::as_str)
-        .ok_or(CoreFailure {
-            code: "invalid_arguments",
-            message: "operation is required",
-            retryable: false,
-        })?;
-    capability_check(project_root, params)?;
-    let arguments = params.get("arguments").unwrap_or(params);
-    match operation {
-        "fs.read" => filesystem::read(project_root, arguments),
-        "fs.metadata" => filesystem::metadata(project_root, arguments),
-        "fs.write" => write::write(project_root, checkpoint_root, arguments),
-        "fs.edit" => mutations::edit(project_root, checkpoint_root, arguments),
-        "fs.patch" => mutations::patch(project_root, checkpoint_root, arguments),
-        "fs.move" => mutations::move_file(project_root, checkpoint_root, arguments),
-        "fs.delete" => mutations::delete(project_root, checkpoint_root, arguments),
-        "process.run" => process::run(project_root, checkpoint_root, arguments, cancellation),
-        "process.start" => process::start(project_root, arguments),
-        "artifact.read" => artifacts::read(checkpoint_root, arguments),
-        "checkpoint.restore" => checkpoint::restore(project_root, checkpoint_root, arguments),
-        _ => Err(CoreFailure {
-            code: "capability_denied",
-            message: "operation is not executable",
-            retryable: false,
-        }),
-    }
-}
-
 fn failure_value(failure: CoreFailure) -> Value {
     json!({"code":failure.code,"message":failure.message,"retryable":failure.retryable})
-}
-
-fn project_inspect(project_root: Option<&Path>, params: &Value) -> Result<Value, CoreFailure> {
-    let root = project_root.ok_or(CoreFailure {
-        code: "project_unconfigured",
-        message: "project root is not configured",
-        retryable: false,
-    })?;
-    let metadata = fs::metadata(root).map_err(|_| CoreFailure {
-        code: "project_unavailable",
-        message: "project root is unavailable",
-        retryable: false,
-    })?;
-    if !metadata.is_dir() {
-        return Err(CoreFailure {
-            code: "project_unavailable",
-            message: "project root is not a directory",
-            retryable: false,
-        });
-    }
-    let requested = params
-        .get("max_entries")
-        .and_then(Value::as_u64)
-        .unwrap_or(100)
-        .clamp(1, 1000) as usize;
-    let mut entries = Vec::new();
-    for item in fs::read_dir(root).map_err(|_| CoreFailure {
-        code: "project_read_failed",
-        message: "project directory could not be read",
-        retryable: true,
-    })? {
-        let item = item.map_err(|_| CoreFailure {
-            code: "project_read_failed",
-            message: "project directory entry could not be read",
-            retryable: true,
-        })?;
-        let kind = item.file_type().map_err(|_| CoreFailure {
-            code: "project_read_failed",
-            message: "project entry type could not be read",
-            retryable: true,
-        })?;
-        entries.push(json!({
-            "name": item.file_name().to_string_lossy(),
-            "kind": if kind.is_dir() {"directory"} else if kind.is_file() {"file"} else if kind.is_symlink() {"symlink"} else {"other"}
-        }));
-        if entries.len() > requested {
-            break;
-        }
-    }
-    entries.sort_by(|left, right| left["name"].as_str().cmp(&right["name"].as_str()));
-    let truncated = entries.len() > requested;
-    entries.truncate(requested);
-    Ok(json!({"path": ".", "kind": "directory", "entries": entries, "truncated": truncated}))
 }
 
 fn existing_file(root: &Path, path: &str) -> Result<(PathBuf, Vec<u8>), CoreFailure> {
@@ -817,12 +643,6 @@ mod tests {
         .unwrap();
         let opened = dispatch_with_project(open, &mut project_root, None).unwrap();
         assert!(opened["result"]["canonical_path"].is_string());
-        let inspect = serde_json::from_value(json!({
-            "jsonrpc":"2.0","id":"2","method":"project/inspect","params":{}
-        }))
-        .unwrap();
-        let inspected = dispatch_with_project(inspect, &mut project_root, None).unwrap();
-        assert_eq!(inspected["result"]["entries"][0]["name"], "README.md");
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -832,11 +652,11 @@ mod tests {
         fs::create_dir_all(root.join("src")).unwrap();
         fs::write(root.join("src/main.rs"), b"needle here\nsecond").unwrap();
         fs::write(root.join("README.md"), b"needle docs").unwrap();
-        let glob = request("search/glob", json!({"pattern":"**/*.rs","max_results":10}));
+        let glob = request("tool/glob", json!({"pattern":"**/*.rs","max_results":10}));
         let glob_result = dispatch(glob, Some(&root), Some(&checkpoints)).unwrap();
         assert_eq!(glob_result["result"]["paths"], json!(["src/main.rs"]));
         let find = request(
-            "search/find",
+            "tool/grep",
             json!({"query":"needle","pattern":"**/*","max_results":10}),
         );
         let find_result = dispatch(find, Some(&root), Some(&checkpoints)).unwrap();
@@ -862,7 +682,7 @@ mod tests {
         fs::write(root.join(".hidden.rs"), b"value 888\n").unwrap();
 
         let regex = request(
-            "search/find",
+            "tool/grep",
             json!({"query":"value \\d+","pattern":"**/*.rs","max_results":10}),
         );
         let regex_result = dispatch(regex, Some(&root), Some(&checkpoints)).unwrap();
@@ -876,7 +696,7 @@ mod tests {
         assert_eq!(regex_result["result"]["truncated"], false);
 
         let limited = request(
-            "search/find",
+            "tool/grep",
             json!({"query":"needle","pattern":"**/*.rs","max_results":1}),
         );
         let limited_result = dispatch(limited, Some(&root), Some(&checkpoints)).unwrap();
@@ -890,7 +710,7 @@ mod tests {
         assert_eq!(limited_result["result"]["truncated"], true);
 
         let invalid = request(
-            "search/find",
+            "tool/grep",
             json!({"query":"[unterminated","pattern":"**/*.rs"}),
         );
         assert_eq!(
@@ -903,7 +723,7 @@ mod tests {
     #[test]
     fn does_not_expose_absolute_project_root() {
         let request = serde_json::from_value(
-            json!({"jsonrpc":"2.0","id":"1","method":"project/inspect","params":{}}),
+            json!({"jsonrpc":"2.0","id":"1","method":"tool/read","params":{"path":"."}}),
         )
         .unwrap();
         let response = dispatch(request, Some(Path::new(".")), None).unwrap();
@@ -929,7 +749,7 @@ mod tests {
         fs::write(root.join("file.txt"), b"before").unwrap();
         let expected = super::STANDARD.encode(b"before");
         let request = serde_json::from_value(json!({
-            "jsonrpc":"2.0","id":"1","method":"fs/write",
+            "jsonrpc":"2.0","id":"1","method":"tool/write",
             "params":{"path":"file.txt","content_base64":super::STANDARD.encode(b"after"),"expected_base64":expected}
         })).unwrap();
         let response = dispatch(request, Some(&root), Some(&checkpoints)).unwrap();
@@ -937,7 +757,7 @@ mod tests {
         assert!(response["result"]["checkpoint_id"].is_string());
         assert_eq!(fs::read_to_string(root.join("file.txt")).unwrap(), "after");
         let conflict = serde_json::from_value(json!({
-            "jsonrpc":"2.0","id":"2","method":"fs/write",
+            "jsonrpc":"2.0","id":"2","method":"tool/write",
             "params":{"path":"file.txt","content_base64":super::STANDARD.encode(b"third"),"expected_base64":expected}
         })).unwrap();
         assert_eq!(
@@ -952,7 +772,7 @@ mod tests {
         let (root, checkpoints) = temporary_roots("restore-existing");
         fs::write(root.join("file.txt"), b"before").unwrap();
         let write = request(
-            "fs/write",
+            "tool/write",
             json!({
                 "path":"file.txt",
                 "content_base64":super::STANDARD.encode(b"after"),
@@ -984,7 +804,7 @@ mod tests {
     fn restore_removes_file_created_by_write() {
         let (root, checkpoints) = temporary_roots("restore-created");
         let write = request(
-            "fs/write",
+            "tool/write",
             json!({
                 "path":"created.txt",
                 "content_base64":super::STANDARD.encode(b"created"),
@@ -1008,7 +828,7 @@ mod tests {
         let (root, checkpoints) = temporary_roots("restore-conflict");
         fs::write(root.join("file.txt"), b"before").unwrap();
         let write = request(
-            "fs/write",
+            "tool/write",
             json!({
                 "path":"file.txt",
                 "content_base64":super::STANDARD.encode(b"after"),
@@ -1037,7 +857,7 @@ mod tests {
 
         let (root, checkpoints) = temporary_roots("restore-symlink");
         let write = request(
-            "fs/write",
+            "tool/write",
             json!({
                 "path":"created.txt",
                 "content_base64":super::STANDARD.encode(b"created"),
@@ -1060,7 +880,7 @@ mod tests {
             "restore_conflict"
         );
         let write_through_link = request(
-            "fs/write",
+            "tool/write",
             json!({
                 "path":"created.txt",
                 "content_base64":super::STANDARD.encode(b"changed"),
@@ -1077,68 +897,25 @@ mod tests {
     }
 
     #[test]
-    fn supports_preconditioned_edit_patch_move_delete_and_artifacts() {
-        let (root, checkpoints) = temporary_roots("catalog");
-        fs::write(root.join("file.txt"), b"one\ntwo\n").unwrap();
-        let base = super::STANDARD.encode(b"one\ntwo\n");
-        let edit = dispatch(request("fs/edit", json!({"path":"file.txt","expected_base64":base,"replacements":[{"old":"two","new":"three"}]})), Some(&root), Some(&checkpoints)).unwrap();
-        assert_eq!(
-            fs::read_to_string(root.join("file.txt")).unwrap(),
-            "one\nthree\n"
-        );
-        let patch = dispatch(request("fs/patch", json!({"path":"file.txt","expected_base64":super::STANDARD.encode(b"one\nthree\n"),"patch":"@@\n-one\n+ONE"})), Some(&root), Some(&checkpoints)).unwrap();
-        assert!(patch["result"]["checkpoint_id"].is_string());
-        assert_eq!(
-            fs::read_to_string(root.join("file.txt")).unwrap(),
-            "ONE\nthree\n"
-        );
-        let move_result = dispatch(request("fs/move", json!({"from":"file.txt","to":"moved.txt","expected_base64":super::STANDARD.encode(b"ONE\nthree\n")})), Some(&root), Some(&checkpoints)).unwrap();
-        assert_eq!(
-            move_result["result"]["checkpoint_ids"]
-                .as_array()
-                .unwrap()
-                .len(),
-            2
-        );
-        assert!(!root.join("file.txt").exists());
-        let delete = dispatch(request("fs/delete", json!({"path":"moved.txt","expected_base64":super::STANDARD.encode(b"ONE\nthree\n")})), Some(&root), Some(&checkpoints)).unwrap();
-        assert_eq!(delete["result"]["deleted"], true);
-        let artifact_id =
-            super::artifacts::write_artifact(&checkpoints, &vec![b'x'; 70_000]).unwrap();
-        let artifact = dispatch(
-            request("artifact/read", json!({"artifact_id": artifact_id})),
-            Some(&root),
-            Some(&checkpoints),
-        )
-        .unwrap();
-        assert_eq!(artifact["result"]["truncated"], false);
-        assert!(edit["result"]["checkpoint_id"].is_string());
-        cleanup(&root, &checkpoints);
-    }
-
-    #[test]
     fn journals_write_and_reconciles_known_completion() {
         let (root, checkpoints) = temporary_roots("journal");
         let params = json!({"path":"file.txt","content_base64":super::STANDARD.encode(b"after"),"expected_base64":null,"idempotency_key":"write-once"});
         let first = dispatch(
-            request("fs/write", params.clone()),
+            request("tool/write", params.clone()),
             Some(&root),
             Some(&checkpoints),
         )
         .unwrap();
-        let second =
-            dispatch(request("fs/write", params), Some(&root), Some(&checkpoints)).unwrap();
+        let second = dispatch(
+            request("tool/write", params),
+            Some(&root),
+            Some(&checkpoints),
+        )
+        .unwrap();
         assert_eq!(
             first["result"]["checkpoint_id"],
             second["result"]["checkpoint_id"]
         );
-        let status = dispatch(
-            request("operation/status", json!({"operation_id":"write-once"})),
-            Some(&root),
-            Some(&checkpoints),
-        )
-        .unwrap();
-        assert_eq!(status["result"]["status"], "succeeded");
         cleanup(&root, &checkpoints);
     }
 

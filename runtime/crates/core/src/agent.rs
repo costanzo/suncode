@@ -776,6 +776,12 @@ impl Agent {
                 }
                 continue;
             }
+            if let Err(error) = validate_before_policy(&call.name, &call.arguments) {
+                if !self.record_recoverable_call_error(context, call, &error)? {
+                    return Err(error);
+                }
+                continue;
+            }
             self.tool_state(context, call, "policy_check", None)?;
             let decision = evaluate(
                 tool_risk(&call.name),
@@ -1347,19 +1353,8 @@ fn method_name(name: &str) -> Option<&'static str> {
         "grep" => Some("tool/grep"),
         "write" => Some("tool/write"),
         "edit" => Some("tool/edit"),
-        "apply_patch" => Some("tool/apply_patch"),
-        "bash" | "shell" | "shell_run" | "shell.run" => Some("shell/run"),
-        "process" | "process_run" | "process.run" => Some("process/run"),
-        "project_inspect" | "project.inspect" => Some("project/inspect"),
-        "fs_read" | "fs.read" => Some("fs/read"),
-        "fs_metadata" | "fs.metadata" => Some("fs/metadata"),
-        "search_glob" | "search.glob" => Some("search/glob"),
-        "search_find" | "search.find" => Some("search/find"),
-        "fs_write" | "fs.write" => Some("fs/write"),
-        "fs_edit" | "fs.edit" => Some("fs/edit"),
-        "fs_patch" | "fs.patch" => Some("fs/patch"),
-        "fs_move" | "fs.move" => Some("fs/move"),
-        "fs_delete" | "fs.delete" => Some("fs/delete"),
+        "bash" => Some("tool/bash"),
+        "webfetch" => Some("tool/webfetch"),
         _ => None,
     }
 }
@@ -1374,7 +1369,10 @@ fn tool_signature(call: &ToolCall) -> String {
 
 fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
     let mut result = value.clone();
-    if matches!(name, "write" | "fs_write" | "fs.write") {
+    if name == "webfetch" {
+        validate_webfetch_arguments(&result)?;
+    }
+    if name == "write" {
         let content = result
             .get("content")
             .and_then(Value::as_str)
@@ -1402,16 +1400,6 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
             object.remove("oldString");
             object.remove("newString");
             object.remove("replaceAll");
-        }
-    }
-    if name == "apply_patch" {
-        let patch = result
-            .get("patchText")
-            .and_then(Value::as_str)
-            .ok_or_else(|| AgentError::new("invalid_arguments", "patchText is required"))?;
-        result["patch"] = json!(patch);
-        if let Some(object) = result.as_object_mut() {
-            object.remove("patchText");
         }
     }
     if name == "glob" {
@@ -1458,11 +1446,9 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
             object.remove("path");
         }
     }
-    if matches!(name, "bash" | "shell" | "shell_run" | "shell.run") {
+    if name == "bash" {
         let command = result
             .get("command")
-            .or_else(|| result.get("script"))
-            .or_else(|| result.get("shell"))
             .and_then(Value::as_str)
             .filter(|command| !command.trim().is_empty())
             .map(str::to_string)
@@ -1479,39 +1465,68 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
             result["cwd"] = workdir;
         }
         if let Some(timeout) = result.get("timeout").cloned() {
-            result["timeout_ms"] = if name == "bash" {
-                json!(timeout_millis(&timeout)?)
-            } else {
-                json!(timeout_seconds_millis(&timeout)?)
-            };
+            result["timeout_ms"] = json!(timeout_millis(&timeout)?);
         }
         if let Some(object) = result.as_object_mut() {
-            object.remove("script");
             object.remove("command");
-            object.remove("shell");
-            object.remove("workdir");
-            object.remove("timeout");
-        }
-    }
-    if matches!(name, "process" | "process_run" | "process.run") {
-        let program = result
-            .get("program")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .ok_or_else(|| AgentError::new("invalid_arguments", "program is required"))?;
-        result["program"] = json!(program);
-        if let Some(workdir) = result.get("workdir").cloned() {
-            result["cwd"] = workdir;
-        }
-        if let Some(timeout) = result.get("timeout").cloned() {
-            result["timeout_ms"] = json!(timeout_seconds_millis(&timeout)?);
-        }
-        if let Some(object) = result.as_object_mut() {
             object.remove("workdir");
             object.remove("timeout");
         }
     }
     Ok(result)
+}
+
+fn validate_before_policy(name: &str, value: &Value) -> Result<(), AgentError> {
+    if name == "webfetch" {
+        validate_webfetch_arguments(value)?;
+    }
+    Ok(())
+}
+
+fn validate_webfetch_arguments(value: &Value) -> Result<(), AgentError> {
+    let raw_url = value
+        .get("url")
+        .and_then(Value::as_str)
+        .filter(|url| !url.trim().is_empty())
+        .ok_or_else(|| AgentError::new("invalid_arguments", "url is required"))?;
+    let url = url::Url::parse(raw_url).map_err(|_| {
+        AgentError::new("invalid_arguments", "url must be a valid HTTP or HTTPS URL")
+    })?;
+    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+        return Err(AgentError::new(
+            "invalid_arguments",
+            "url must be a valid HTTP or HTTPS URL",
+        ));
+    }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err(AgentError::new(
+            "invalid_arguments",
+            "url must not contain embedded credentials",
+        ));
+    }
+    if let Some(format) = value.get("format") {
+        if !matches!(format.as_str(), Some("text" | "markdown" | "html")) {
+            return Err(AgentError::new(
+                "invalid_arguments",
+                "format must be text, markdown, or html",
+            ));
+        }
+    }
+    if let Some(timeout) = value.get("timeout") {
+        let seconds = timeout
+            .as_f64()
+            .filter(|value| value.is_finite())
+            .ok_or_else(|| {
+                AgentError::new("invalid_arguments", "timeout must be a number of seconds")
+            })?;
+        if seconds <= 0.0 || seconds > 120.0 {
+            return Err(AgentError::new(
+                "invalid_arguments",
+                "timeout must be greater than zero and no more than 120 seconds",
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn timeout_millis(value: &Value) -> Result<u64, AgentError> {
@@ -1528,22 +1543,6 @@ fn timeout_millis(value: &Value) -> Result<u64, AgentError> {
         ));
     }
     Ok(milliseconds)
-}
-
-fn timeout_seconds_millis(value: &Value) -> Result<u64, AgentError> {
-    let seconds = value.as_f64().ok_or_else(|| {
-        AgentError::new(
-            "invalid_arguments",
-            "timeout must be a finite number of seconds",
-        )
-    })?;
-    if !seconds.is_finite() || seconds <= 0.0 || seconds > 600.0 {
-        return Err(AgentError::new(
-            "invalid_arguments",
-            "timeout must be greater than zero and no more than 600 seconds",
-        ));
-    }
-    Ok((seconds * 1000.0).ceil() as u64)
 }
 
 #[cfg(target_os = "windows")]
@@ -1584,7 +1583,7 @@ fn host_environment_message() -> suncode_llm::Message {
         content: vec![suncode_llm::ContentPart {
             kind: "text".into(),
             text: format!(
-                "SunCode host environment: OS={}, architecture={}, shell tool dialect={}, path style={}, current local time={}, weekday={}. Prefer the process tool for explicit program arguments. Use the bash tool only for shell syntax, and write commands in the stated shell dialect.",
+                "SunCode host environment: OS={}, architecture={}, shell tool dialect={}, path style={}, current local time={}, weekday={}. Use the bash tool for command execution, and write commands in the stated shell dialect.",
                 std::env::consts::OS,
                 std::env::consts::ARCH,
                 shell,
@@ -1616,18 +1615,7 @@ fn dependency_path(path: &str) -> Option<(&str, &str)> {
 }
 
 fn dependency_tool_allowed(name: &str) -> bool {
-    matches!(
-        name,
-        "read"
-            | "glob"
-            | "grep"
-            | "fs_read"
-            | "fs.read"
-            | "search_glob"
-            | "search.glob"
-            | "search_find"
-            | "search.find"
-    )
+    matches!(name, "read" | "glob" | "grep")
 }
 
 fn to_llm_message(message: &Message) -> suncode_llm::Message {
@@ -1655,7 +1643,7 @@ fn to_llm_message(message: &Message) -> suncode_llm::Message {
 }
 
 fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -> Value {
-    if matches!(name, "read" | "fs_read" | "fs.read") {
+    if name == "read" {
         if let Some(encoded) = value
             .get("data_base64")
             .and_then(Value::as_str)
@@ -1672,10 +1660,7 @@ fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -
             object.remove("data_base64");
         }
     }
-    if matches!(
-        name,
-        "bash" | "shell" | "shell_run" | "shell.run" | "process" | "process_run" | "process.run"
-    ) {
+    if name == "bash" {
         for (encoded_key, text_key) in [("stdout_base64", "stdout"), ("stderr_base64", "stderr")] {
             let mut decoded_text = false;
             if let Some(encoded) = value
@@ -1700,10 +1685,10 @@ fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -
         }
     }
     if let Some(dependency_id) = dependency_id {
-        if matches!(name, "read" | "fs_read" | "fs.read") {
+        if name == "read" {
             prefix_result_path(&mut value, "path", dependency_id);
         }
-        if matches!(name, "glob" | "search_glob" | "search.glob") {
+        if name == "glob" {
             if let Some(paths) = value.get_mut("paths").and_then(Value::as_array_mut) {
                 for path in paths {
                     if let Some(relative) = path.as_str() {
@@ -1712,7 +1697,7 @@ fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -
                 }
             }
         }
-        if matches!(name, "grep" | "search_find" | "search.find") {
+        if name == "grep" {
             if let Some(matches) = value.get_mut("matches").and_then(Value::as_array_mut) {
                 for matched in matches {
                     prefix_result_path(matched, "path", dependency_id);
@@ -1750,27 +1735,6 @@ mod tests {
     };
 
     #[test]
-    fn structured_process_translation_preserves_argv() {
-        let translated = translate_arguments(
-            "process",
-            &json!({"program":"git","args":["status","--short"],"workdir":"src"}),
-        )
-        .unwrap();
-        assert_eq!(translated["program"], "git");
-        assert_eq!(translated["args"], json!(["status", "--short"]));
-        assert_eq!(translated["cwd"], "src");
-    }
-
-    #[test]
-    fn process_timeout_is_translated_from_seconds_to_milliseconds() {
-        let translated =
-            translate_arguments("process", &json!({"program":"sleep","timeout":1.25})).unwrap();
-        assert_eq!(translated["timeout_ms"], 1250);
-        assert!(translate_arguments("process", &json!({"program":"sleep","timeout":0})).is_err());
-        assert!(translate_arguments("process", &json!({"program":"sleep","timeout":601})).is_err());
-    }
-
-    #[test]
     fn bash_translation_uses_opencode_command_and_millisecond_timeout() {
         let translated = translate_arguments(
             "bash",
@@ -1788,12 +1752,28 @@ mod tests {
     }
 
     #[test]
-    fn binary_process_output_keeps_base64_for_consumers() {
-        let encoded = STANDARD.encode([0_u8, 159_u8, 146_u8, 150_u8]);
-        let normalized = normalize_result("process", json!({"stdout_base64": encoded}), None);
-        assert_eq!(normalized["binary_output"], true);
-        assert!(normalized["stdout_base64"].as_str().is_some());
-        assert!(normalized.get("stdout").is_none());
+    fn webfetch_arguments_are_validated_before_policy() {
+        assert!(validate_before_policy(
+            "webfetch",
+            &json!({"url":"https://example.com","format":"markdown","timeout":30})
+        )
+        .is_ok());
+        assert!(validate_before_policy("webfetch", &json!({"url":"file:///tmp/example"})).is_err());
+        assert!(validate_before_policy(
+            "webfetch",
+            &json!({"url":"https://user:secret@example.com"})
+        )
+        .is_err());
+        assert!(validate_before_policy(
+            "webfetch",
+            &json!({"url":"https://example.com","format":"pdf"})
+        )
+        .is_err());
+        assert!(validate_before_policy(
+            "webfetch",
+            &json!({"url":"https://example.com","timeout":121})
+        )
+        .is_err());
     }
 
     #[test]
@@ -1868,19 +1848,6 @@ mod tests {
             assert_eq!(translated["args"], json!(["-lc", "echo hello"]));
         }
         assert!(translated.get("command").is_none());
-    }
-
-    #[test]
-    fn shell_translation_accepts_non_empty_legacy_command_but_rejects_empty_input() {
-        let translated = translate_arguments("shell", &json!({"command":"echo hello"})).unwrap();
-        #[cfg(target_os = "windows")]
-        assert_eq!(translated["args"][4], "echo hello");
-        #[cfg(not(target_os = "windows"))]
-        assert_eq!(translated["args"][1], "echo hello");
-
-        let error = translate_arguments("shell", &json!({"command":""})).unwrap_err();
-        assert_eq!(error.code, "invalid_arguments");
-        assert_eq!(error.message, "bash command must be a non-empty string");
     }
 
     #[test]

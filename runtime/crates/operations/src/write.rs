@@ -180,7 +180,7 @@ pub(super) fn write(
     let operation_id = journal_intent(
         checkpoint_root,
         params,
-        "fs.write",
+        "write",
         Some(path),
         current.as_deref(),
         Some(&bytes),
