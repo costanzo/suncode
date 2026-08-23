@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Linq;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using SunCode.Desktop.Infrastructure;
 
@@ -111,6 +114,9 @@ public sealed class MessageItem : ObservableObject
     public string ToolName { get; init; } = string.Empty;
     public string ToolState { get; init; } = string.Empty;
     public string ToolDetail { get; init; } = string.Empty;
+    public string ToolRequest { get; init; } = string.Empty;
+    public string ToolResult { get; init; } = string.Empty;
+    public string ToolError { get; init; } = string.Empty;
     public bool CanBeFinalAssistant { get => _canBeFinalAssistant; set => SetProperty(ref _canBeFinalAssistant, value); }
     public bool Streaming { get => _streaming; set => SetProperty(ref _streaming, value); }
     public bool IsUser => Role == "user";
@@ -152,6 +158,23 @@ public sealed class MessageItem : ObservableObject
     public string ProcessToggleText => ProcessExpanded
         ? "Hide work"
         : $"Show work ({ProcessItemCount})";
+    public string ToolSummaryText => ToolName switch
+    {
+        "shell" or "shell_run" or "shell.run" or "bash" => "Run shell command",
+        "process" or "process_run" or "process.run" => "Run program",
+        "read" or "fs_read" or "fs.read" => "Read file",
+        "glob" or "search_glob" or "search.glob" => "Find files",
+        "grep" or "search_find" or "search.find" => "Search files",
+        "write" or "fs_write" or "fs.write" => "Write file",
+        "edit" or "fs_edit" or "fs.edit" => "Edit file",
+        "apply_patch" or "fs_patch" or "fs.patch" => "Apply patch",
+        "fs_move" or "fs.move" => "Move file",
+        "fs_delete" or "fs.delete" => "Delete file",
+        _ => string.IsNullOrWhiteSpace(ToolName) ? "Run operation" : ToolName
+    };
+    public bool IsToolFailed => ToolState is "failed" or "denied" or "timed_out" or "unknown_completion";
+    public bool IsToolSucceeded => ToolState == "succeeded";
+    public bool IsToolActive => !IsToolFailed && !IsToolSucceeded;
     public string ToolStateText => ToolState switch
     {
         "requested" or "validating" or "policy_check" or "authorized" => "Preparing",
@@ -173,6 +196,18 @@ public sealed class MessageItem : ObservableObject
         }
     }
     public bool HasToolDetail => !string.IsNullOrWhiteSpace(ToolDetail);
+    public bool HasToolRequest => !string.IsNullOrWhiteSpace(ToolRequest);
+    public bool HasToolResult => !string.IsNullOrWhiteSpace(ToolResult);
+    public bool HasToolError => !string.IsNullOrWhiteSpace(ToolError);
+    public string ToolErrorText => ToolError switch
+    {
+        "invalid_arguments" => "The operation arguments were invalid.",
+        "authorization_denied" => "The operation was not authorized.",
+        "scope_denied" => "The operation was outside the project scope.",
+        "process_executable_not_found" => "The executable could not be found.",
+        "process_start_failed" => "The process could not be started.",
+        _ => ToolError.Replace('_', ' ')
+    };
 }
 
 public sealed record ActivityItem(string EventType, string Text, long ContentSequence, string State, string Operation);
@@ -445,13 +480,125 @@ public sealed record ProviderTraceToolItem(
 
 public sealed record ApprovalItem(string ApprovalId, string Operation, string Arguments)
 {
+    private JsonObject ArgumentObject
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(Arguments)) return [];
+            try
+            {
+                return JsonNode.Parse(Arguments) as JsonObject ?? [];
+            }
+            catch (JsonException)
+            {
+                return [];
+            }
+        }
+    }
+
+    public string ActionText => Operation switch
+    {
+        "shell" or "shell_run" or "shell.run" or "bash" => "Run a shell command",
+        "process" or "process_run" or "process.run" =>
+            string.IsNullOrWhiteSpace(ProgramText) ? "Run a program" : $"Run {ProgramText}",
+        "fs.write" or "fs_write" or "fs/write" or "write" => "Write to a project file",
+        "fs.edit" or "fs_edit" or "fs/edit" or "edit" => "Edit a project file",
+        "fs.patch" or "fs_patch" or "fs/patch" or "apply_patch" => "Apply a patch to a project file",
+        "fs.delete" or "fs_delete" or "fs/delete" or "delete" => "Delete a project file",
+        "fs.move" or "fs_move" or "fs/move" or "move" => "Move a project file",
+        _ => "Perform a project action"
+    };
+
+    public string OperationText => Operation switch
+    {
+        "shell" or "shell_run" or "shell.run" or "bash" => "Shell command",
+        "process" or "process_run" or "process.run" => "Program execution",
+        "fs.write" or "fs_write" or "fs/write" or "write" => "File write",
+        "fs.edit" or "fs_edit" or "fs/edit" or "edit" => "File edit",
+        "fs.patch" or "fs_patch" or "fs/patch" or "apply_patch" => "File patch",
+        "fs.delete" or "fs_delete" or "fs/delete" or "delete" => "File deletion",
+        "fs.move" or "fs_move" or "fs/move" or "move" => "File move",
+        _ => string.IsNullOrWhiteSpace(Operation) ? "Project action" : Operation
+    };
+
+    public string DetailLabel => IsCommand ? "Command" : IsMove ? "Files" : "Target";
+
+    public string DetailText => IsCommand
+        ? CommandText
+        : IsMove
+            ? $"{Value("from")}  ->  {Value("to")}"
+            : Value("path", "file", "target");
+
+    public bool HasDetail => !string.IsNullOrWhiteSpace(DetailText);
+
+    public string WorkingDirectoryText => Value("workdir", "cwd");
+
+    public bool HasWorkingDirectory => IsCommand && !string.IsNullOrWhiteSpace(WorkingDirectoryText);
+
+    public bool IsCommand => Operation is "shell" or "shell_run" or "shell.run" or "bash"
+        or "process" or "process_run" or "process.run";
+
+    public string ProgramText => Value("program", "command");
+
+    private bool IsMove => Operation is "fs.move" or "fs_move" or "fs/move" or "move";
+
+    private string CommandText
+    {
+        get
+        {
+            var script = Value("script");
+            if (!string.IsNullOrWhiteSpace(script)) return script;
+
+            var program = ProgramText;
+            if (string.IsNullOrWhiteSpace(program)) return string.Empty;
+
+            var args = ArgumentObject["args"] as JsonArray;
+            return args is null || args.Count == 0
+                ? program
+                : string.Join(" ", new[] { program }.Concat(args.Select(FormatArgument)));
+        }
+    }
+
+    private string Value(params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (ArgumentObject[name] is JsonValue value && value.TryGetValue<string>(out var text))
+                return text ?? string.Empty;
+        }
+        return string.Empty;
+    }
+
+    private static string FormatArgument(JsonNode? value)
+    {
+        if (value is not JsonValue jsonValue || !jsonValue.TryGetValue<string>(out var text))
+            return value?.ToJsonString() ?? string.Empty;
+
+        if (string.IsNullOrEmpty(text) || text.Any(char.IsWhiteSpace) || text.Contains('"'))
+            return $"\"{text.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+        return text;
+    }
+
     public static ApprovalItem? FromPayload(JsonObject payload)
     {
         var id = payload.String("approval_id", "approvalId");
         return string.IsNullOrWhiteSpace(id)
             ? null
-            : new ApprovalItem(id, payload.String("operation"), payload["arguments"]?.ToJsonString() ?? "{}");
+            : new ApprovalItem(
+                id,
+                payload.String("operation"),
+                payload["arguments"]?.ToJsonString(DisplayJson.Options) ?? "{}");
     }
+}
+
+internal static class DisplayJson
+{
+    // This text is rendered in a read-only desktop code view, not emitted to HTML or a script.
+    public static JsonSerializerOptions Options { get; } = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
 }
 
 internal static class JsonExtensions

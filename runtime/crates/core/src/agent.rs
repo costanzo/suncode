@@ -763,15 +763,18 @@ impl Agent {
             self.tool_state(context, call, "requested", None)?;
             self.tool_state(context, call, "validating", None)?;
             if !call.arguments.is_object() {
-                self.tool_state(context, call, "failed", Some("malformed_tool_call"))?;
-                return Err(AgentError::new(
-                    "malformed_tool_call",
-                    "Tool arguments must be an object",
-                ));
+                let error =
+                    AgentError::new("malformed_tool_call", "Tool arguments must be an object");
+                if !self.record_recoverable_call_error(context, call, &error)? {
+                    return Err(error);
+                }
+                continue;
             }
             if let Err(error) = self.validate_dependency_call(context, call) {
-                self.tool_state(context, call, "failed", Some(&error.code))?;
-                return Err(error);
+                if !self.record_recoverable_call_error(context, call, &error)? {
+                    return Err(error);
+                }
+                continue;
             }
             self.tool_state(context, call, "policy_check", None)?;
             let decision = evaluate(tool_risk(&call.name), self.non_interactive);
@@ -855,11 +858,24 @@ impl Agent {
         for call in calls {
             self.tool_state(context, &call, "authorized", None)?;
             self.tool_state(context, &call, "executing", None)?;
-            let (project_root, mut params) = self.prepare_call(context, &call)?;
+            let (project_root, mut params) = match self.prepare_call(context, &call) {
+                Ok(prepared) => prepared,
+                Err(error) => {
+                    if !self.record_recoverable_call_error(context, &call, &error)? {
+                        return Err(error);
+                    }
+                    continue;
+                }
+            };
             params["idempotency_key"] = json!(format!("{}:{}", context.turn_id, call.call_id));
-            let method = method_name(&call.name)
-                .ok_or_else(|| AgentError::new("authorization_denied", "Unknown tool"))?
-                .to_string();
+            let method = match method_name(&call.name) {
+                Some(method) => method.to_string(),
+                None => {
+                    let error = AgentError::new("authorization_denied", "Unknown tool");
+                    self.tool_state(context, &call, "failed", Some(&error.code))?;
+                    return Err(error);
+                }
+            };
             let agent = self.clone();
             let token = token.clone();
             futures.push(async move {
@@ -874,8 +890,10 @@ impl Agent {
             let result = match result {
                 Ok(result) => result,
                 Err(error) => {
-                    self.tool_state(context, &call, "failed", Some(&error.code))?;
-                    return Err(error);
+                    if !self.record_recoverable_call_error(context, &call, &error)? {
+                        return Err(error);
+                    }
+                    continue;
                 }
             };
             self.record_call_success(context, &call, result)?;
@@ -891,17 +909,98 @@ impl Agent {
     ) -> Result<(), AgentError> {
         self.tool_state(context, call, "authorized", None)?;
         self.tool_state(context, call, "executing", None)?;
-        let (project_root, mut params) = self.prepare_call(context, call)?;
+        let (project_root, mut params) = match self.prepare_call(context, call) {
+            Ok(prepared) => prepared,
+            Err(error) => {
+                if !self.record_recoverable_call_error(context, call, &error)? {
+                    return Err(error);
+                }
+                return Ok(());
+            }
+        };
         params["idempotency_key"] = json!(format!("{}:{}", context.turn_id, call.call_id));
-        let method = method_name(&call.name)
-            .ok_or_else(|| AgentError::new("authorization_denied", "Unknown tool"))?;
-        let result = self
+        let method = match method_name(&call.name) {
+            Some(method) => method,
+            None => {
+                let error = AgentError::new("authorization_denied", "Unknown tool");
+                self.tool_state(context, call, "failed", Some(&error.code))?;
+                return Err(error);
+            }
+        };
+        let result = match self
             .operation_in_project(&project_root, method, params, token)
             .await
-            .inspect_err(|error| {
-                let _ = self.tool_state(context, call, "failed", Some(&error.code));
-            })?;
+        {
+            Ok(result) => result,
+            Err(error) => {
+                if !self.record_recoverable_call_error(context, call, &error)? {
+                    return Err(error);
+                }
+                return Ok(());
+            }
+        };
         self.record_call_success(context, call, result)
+    }
+
+    fn record_recoverable_call_error(
+        &self,
+        context: &mut Continuation,
+        call: &ToolCall,
+        error: &AgentError,
+    ) -> Result<bool, AgentError> {
+        self.tool_state(context, call, "failed", Some(&error.code))?;
+        if !matches!(
+            error.code.as_str(),
+            "invalid_arguments" | "malformed_tool_call"
+        ) {
+            return Ok(false);
+        }
+        let result = json!({
+            "error": {
+                "code": error.code,
+                "message": error.message,
+                "details": error.details,
+            }
+        });
+        self.emit(
+            &context.session_id,
+            "tool.result",
+            json!({
+                "turn_id": context.turn_id,
+                "call_id": context.active_call_id,
+                "tool_call_id": call.call_id,
+                "result": result,
+            }),
+        )?;
+        self.store.append_audit(
+            Some(&context.project_id),
+            Some(&context.session_id),
+            Some(&context.turn_id),
+            "operation.result",
+            &json!({
+                "tool_call_id": call.call_id,
+                "operation": call.name,
+                "outcome": "failed",
+                "error_code": error.code,
+            }),
+        )?;
+        let mut tool = Message::text(
+            "tool",
+            serde_json::to_string(&result).unwrap_or_else(|_| "{\"error\":{}}".into()),
+        );
+        tool.tool_call_id = Some(call.call_id.clone());
+        context.messages.push(tool.clone());
+        self.emit(
+            &context.session_id,
+            "message.tool",
+            json!({
+                "turn_id": context.turn_id,
+                "call_id": context.active_call_id,
+                "tool_call_id": call.call_id,
+                "message": tool,
+            }),
+        )?;
+        Ok(true)
     }
 
     fn record_call_success(
@@ -1355,24 +1454,37 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
             object.remove("path");
         }
     }
-    if matches!(name, "shell" | "shell_run" | "shell.run" | "bash") {
-        let script = result
-            .get(if name == "bash" { "command" } else { "script" })
+    if matches!(name, "bash" | "shell" | "shell_run" | "shell.run") {
+        let command = result
+            .get("command")
+            .or_else(|| result.get("script"))
+            .or_else(|| result.get("shell"))
             .and_then(Value::as_str)
+            .filter(|command| !command.trim().is_empty())
             .map(str::to_string)
-            .ok_or_else(|| AgentError::new("invalid_arguments", "script is required"))?;
-        let (program, args) = shell_command(&script);
+            .ok_or_else(|| {
+                AgentError::new(
+                    "invalid_arguments",
+                    "bash command must be a non-empty string",
+                )
+            })?;
+        let (program, args) = shell_command(&command);
         result["program"] = json!(program);
         result["args"] = json!(args);
-        if let Some(workdir) = result.get("workdir").cloned() {
+        if let Some(workdir) = result.get("workdir").or_else(|| result.get("cwd")).cloned() {
             result["cwd"] = workdir;
         }
         if let Some(timeout) = result.get("timeout").cloned() {
-            result["timeout_ms"] = json!(timeout_millis(&timeout)?);
+            result["timeout_ms"] = if name == "bash" {
+                json!(timeout_millis(&timeout)?)
+            } else {
+                json!(timeout_seconds_millis(&timeout)?)
+            };
         }
         if let Some(object) = result.as_object_mut() {
             object.remove("script");
             object.remove("command");
+            object.remove("shell");
             object.remove("workdir");
             object.remove("timeout");
         }
@@ -1388,7 +1500,7 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
             result["cwd"] = workdir;
         }
         if let Some(timeout) = result.get("timeout").cloned() {
-            result["timeout_ms"] = json!(timeout_millis(&timeout)?);
+            result["timeout_ms"] = json!(timeout_seconds_millis(&timeout)?);
         }
         if let Some(object) = result.as_object_mut() {
             object.remove("workdir");
@@ -1399,6 +1511,22 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
 }
 
 fn timeout_millis(value: &Value) -> Result<u64, AgentError> {
+    let milliseconds = value.as_u64().ok_or_else(|| {
+        AgentError::new(
+            "invalid_arguments",
+            "timeout must be a positive integer number of milliseconds",
+        )
+    })?;
+    if milliseconds == 0 || milliseconds > 600_000 {
+        return Err(AgentError::new(
+            "invalid_arguments",
+            "timeout must be greater than zero and no more than 600000 milliseconds",
+        ));
+    }
+    Ok(milliseconds)
+}
+
+fn timeout_seconds_millis(value: &Value) -> Result<u64, AgentError> {
     let seconds = value.as_f64().ok_or_else(|| {
         AgentError::new(
             "invalid_arguments",
@@ -1452,7 +1580,7 @@ fn host_environment_message() -> suncode_llm::Message {
         content: vec![suncode_llm::ContentPart {
             kind: "text".into(),
             text: format!(
-                "SunCode host environment: OS={}, architecture={}, shell tool dialect={}, path style={}, current local time={}, weekday={}. Prefer the process tool for explicit program arguments. Use the shell tool only for shell syntax, and write scripts in the stated shell dialect.",
+                "SunCode host environment: OS={}, architecture={}, shell tool dialect={}, path style={}, current local time={}, weekday={}. Prefer the process tool for explicit program arguments. Use the bash tool only for shell syntax, and write commands in the stated shell dialect.",
                 std::env::consts::OS,
                 std::env::consts::ARCH,
                 shell,
@@ -1639,6 +1767,23 @@ mod tests {
     }
 
     #[test]
+    fn bash_translation_uses_opencode_command_and_millisecond_timeout() {
+        let translated = translate_arguments(
+            "bash",
+            &json!({"command":"echo hello","timeout":120_000,"workdir":"src"}),
+        )
+        .unwrap();
+        assert_eq!(translated["timeout_ms"], 120_000);
+        assert_eq!(translated["cwd"], "src");
+        assert!(translated.get("command").is_none());
+        assert!(translate_arguments("bash", &json!({"command":"echo hello","timeout":0})).is_err());
+        assert!(
+            translate_arguments("bash", &json!({"command":"echo hello","timeout":600_001}))
+                .is_err()
+        );
+    }
+
+    #[test]
     fn binary_process_output_keeps_base64_for_consumers() {
         let encoded = STANDARD.encode([0_u8, 159_u8, 146_u8, 150_u8]);
         let normalized = normalize_result("process", json!({"stdout_base64": encoded}), None);
@@ -1722,6 +1867,19 @@ mod tests {
     }
 
     #[test]
+    fn shell_translation_accepts_non_empty_legacy_command_but_rejects_empty_input() {
+        let translated = translate_arguments("shell", &json!({"command":"echo hello"})).unwrap();
+        #[cfg(target_os = "windows")]
+        assert_eq!(translated["args"][4], "echo hello");
+        #[cfg(not(target_os = "windows"))]
+        assert_eq!(translated["args"][1], "echo hello");
+
+        let error = translate_arguments("shell", &json!({"command":""})).unwrap_err();
+        assert_eq!(error.code, "invalid_arguments");
+        assert_eq!(error.message, "bash command must be a non-empty string");
+    }
+
+    #[test]
     fn host_context_identifies_platform_and_current_time() {
         let message = host_environment_message();
         let text = message.content[0].text.as_str();
@@ -1740,6 +1898,14 @@ mod tests {
             .last()
             .and_then(|message| message.get("role"))
             .and_then(Value::as_str);
+        let has_tool_error = messages.iter().any(|message| {
+            message.get("role").and_then(Value::as_str) == Some("tool")
+                && message
+                    .get("content")
+                    .and_then(Value::as_str)
+                    .map(|content| content.contains("invalid_arguments"))
+                    .unwrap_or(false)
+        });
         let user_text = messages
             .iter()
             .rev()
@@ -1762,7 +1928,11 @@ mod tests {
         if user_text.contains("slow") {
             tokio::time::sleep(Duration::from_millis(150)).await;
         }
-        let data = if last_role == Some("tool") {
+        let data = if user_text.contains("invalid arguments") && !has_tool_error {
+            vec![
+                json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"invalid-read-call","function":{"name":"read","arguments":"{\"path\":123}"}}]},"finish_reason":"tool_calls"}]}),
+            ]
+        } else if last_role == Some("tool") {
             vec![
                 json!({"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}],"usage":{"prompt_tokens":8,"completion_tokens":1,"total_tokens":9}}),
             ]
@@ -1905,6 +2075,37 @@ mod tests {
         assert_eq!(messages.last().unwrap().role, "assistant");
         let context = store.context_messages(&session_id).unwrap();
         assert!(context.iter().any(|message| message.role == "tool"));
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn invalid_tool_arguments_are_returned_to_model_for_recovery() {
+        let (agent, store, _root, server, session_id) = fixture().await;
+        let response = agent
+            .submit(
+                &session_id,
+                "invalid-arguments-1",
+                "invalid arguments",
+                None,
+            )
+            .await
+            .unwrap();
+        assert!(matches!(
+            response,
+            TurnResponse::Completed {
+                iterations: 2,
+                tool_calls: 1,
+                ..
+            }
+        ));
+        let context = store.context_messages(&session_id).unwrap();
+        let tool = context
+            .iter()
+            .find(|message| message.role == "tool")
+            .expect("invalid tool result should be retained in context");
+        assert_eq!(tool.tool_call_id.as_deref(), Some("invalid-read-call"));
+        assert!(tool.text_content().contains("invalid_arguments"));
+        assert!(tool.text_content().contains("path is required"));
         server.abort();
     }
 

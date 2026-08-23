@@ -11,6 +11,18 @@
     <Style Selector="ItemsControl.conversation ContentPresenter">
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
+    <Style Selector="Button.tool-card">
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="10,8" />
+    </Style>
+    <Style Selector="Button.tool-card:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    </Style>
   </UserControl.Styles>
 
   <Border Classes="workspace-card" ClipToBounds="True">
@@ -71,19 +83,19 @@
                     <controls:MarkdownText Markdown="{Binding Text}" HorizontalAlignment="Stretch" />
                   </Grid>
 
-                  <Border IsVisible="{Binding IsTool}"
-                          Padding="10,8"
-                          CornerRadius="6"
-                          Background="{DynamicResource SurfaceRaisedBrush}"
-                          BorderBrush="{DynamicResource BorderBrush}"
-                          BorderThickness="1">
-                    <Grid ColumnDefinitions="18,*,Auto" RowDefinitions="Auto,Auto">
+                  <Button Classes="tool-card"
+                          IsVisible="{Binding IsTool}"
+                          Click="OpenToolDetail"
+                          ToolTip.Tip="View operation details">
+                    <Grid ColumnDefinitions="18,*,Auto,16">
                       <svg:Svg Grid.Row="0" Grid.Column="0" Width="13" Height="13" Margin="0,1,0,0" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" />
-                      <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ToolName}" Classes="mono" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ToolStateText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-                      <SelectableTextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding ToolDetailText}" Margin="0,5,0,0" Classes="mono" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" IsVisible="{Binding HasToolDetail}" />
+                      <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ToolSummaryText}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ToolStateText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsToolSucceeded}" />
+                      <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ToolStateText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsToolFailed}" />
+                      <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ToolStateText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsToolActive}" />
+                      <svg:Svg Grid.Row="0" Grid.Column="3" Width="12" Height="12" HorizontalAlignment="Right" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
                     </Grid>
-                  </Border>
+                  </Button>
                 </StackPanel>
               </StackPanel>
 
@@ -121,6 +133,60 @@
         <TextBlock Text="No session selected" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
         <TextBlock Text="Create a session to start a conversation." FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
       </StackPanel>
+
+      <Border x:Name="ToolDetailOverlay"
+              IsVisible="False"
+              Background="#99000000"
+              ZIndex="200">
+        <Border Width="560"
+                MaxWidth="560"
+                MaxHeight="620"
+                Margin="24"
+                Padding="20,16,20,18"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="{DynamicResource SurfaceRaisedBrush}"
+                BorderBrush="{DynamicResource BorderStrongBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+          <Grid RowDefinitions="Auto,*,Auto" MinHeight="180">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,14">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Operation details" Classes="eyebrow" />
+                <TextBlock x:Name="ToolDetailTitle" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBlock x:Name="ToolDetailState" Grid.Column="1" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+              <StackPanel Spacing="12">
+                <StackPanel x:Name="ToolDetailErrorPanel" Spacing="5" IsVisible="False">
+                  <TextBlock Text="Error" Classes="eyebrow" Foreground="{DynamicResource DangerBrush}" />
+                  <Border Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                    <TextBlock x:Name="ToolDetailError" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" />
+                  </Border>
+                </StackPanel>
+                <StackPanel x:Name="ToolDetailRequestPanel" Spacing="5" IsVisible="False">
+                  <TextBlock Text="Request" Classes="eyebrow" />
+                  <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                    <SelectableTextBlock x:Name="ToolDetailRequest" Classes="mono" FontSize="11" TextWrapping="Wrap" />
+                  </Border>
+                </StackPanel>
+                <StackPanel x:Name="ToolDetailResultPanel" Spacing="5" IsVisible="False">
+                  <TextBlock Text="Result" Classes="eyebrow" />
+                  <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                    <SelectableTextBlock x:Name="ToolDetailResult" Classes="mono" FontSize="11" TextWrapping="Wrap" />
+                  </Border>
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,16,0,0">
+              <Button Classes="compact" Content="Close" Click="CloseToolDetail" />
+            </StackPanel>
+          </Grid>
+        </Border>
+      </Border>
 
       <chat:ChatInput IsVisible="{Binding HasSelectedSession}" />
     </Grid>

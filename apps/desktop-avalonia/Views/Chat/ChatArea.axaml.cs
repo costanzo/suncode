@@ -84,6 +84,23 @@ public sealed partial class ChatArea : UserControl
             ViewModel.ToggleTurnProcess(message);
     }
 
+    private void OpenToolDetail(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is not MessageItem message) return;
+
+        ToolDetailTitle.Text = message.ToolSummaryText;
+        ToolDetailState.Text = message.ToolStateText;
+        ToolDetailRequest.Text = message.ToolRequest;
+        ToolDetailResult.Text = message.ToolResult;
+        ToolDetailError.Text = message.ToolErrorText;
+        ToolDetailRequestPanel.IsVisible = message.HasToolRequest;
+        ToolDetailResultPanel.IsVisible = message.HasToolResult;
+        ToolDetailErrorPanel.IsVisible = message.HasToolError;
+        ToolDetailOverlay.IsVisible = true;
+    }
+
+    private void CloseToolDetail(object? sender, RoutedEventArgs e) => ToolDetailOverlay.IsVisible = false;
+
     private async void CopyMessage(object? sender, RoutedEventArgs e)
     {
         if ((sender as Control)?.DataContext is not MessageItem message ||

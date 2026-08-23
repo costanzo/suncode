@@ -49,7 +49,15 @@ mod tests {
             .collect::<HashSet<_>>();
         assert_eq!(names.len(), definitions.len());
         assert!(names.contains("process"));
-        assert!(names.contains("shell"));
-        assert!(!names.contains("bash"));
+        assert!(names.contains("bash"));
+        assert!(!names.contains("shell"));
+        let bash = definitions
+            .iter()
+            .find(|definition| definition.name == "bash")
+            .unwrap();
+        assert_eq!(bash.parameters["required"], serde_json::json!(["command"]));
+        assert!(bash.parameters["properties"]["command"].is_object());
+        assert_eq!(bash.parameters["properties"]["timeout"]["type"], "integer");
+        assert_eq!(bash.parameters["properties"]["workdir"]["type"], "string");
     }
 }

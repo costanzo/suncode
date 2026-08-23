@@ -28,16 +28,40 @@
             <TextBlock Text="No tool activity yet" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding !HasActivities}" />
           </StackPanel>
         </Border>
-        <TextBlock Text="The current runtime exposes one agent loop. Tool activity and approval state appear here as the turn progresses." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" LineHeight="17" />
         <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
         <TextBlock Classes="section-label" Text="REVIEW QUEUE" />
         <Border Padding="13" CornerRadius="10" Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="{Binding HasPendingApproval}">
-          <StackPanel Spacing="8">
-            <TextBlock Text="Approval required" Foreground="{DynamicResource WarningBrush}" FontSize="12" FontWeight="SemiBold" />
-            <TextBlock Classes="mono" Text="{Binding PendingApproval.Operation}" FontSize="11" TextWrapping="Wrap" />
-            <TextBlock Classes="mono" Text="{Binding PendingApproval.Arguments}" FontSize="11" TextWrapping="Wrap" />
+          <StackPanel Spacing="11">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Approval required" Foreground="{DynamicResource WarningBrush}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding PendingApproval.ActionText}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+              </StackPanel>
+              <Border Grid.Column="1" Background="{DynamicResource WarningBrush}" CornerRadius="5" Padding="7,4" VerticalAlignment="Top">
+                <TextBlock Text="ONE TIME" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource WarningSurfaceBrush}" />
+              </Border>
+            </Grid>
+            <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="10" IsVisible="{Binding PendingApproval.HasDetail}">
+              <StackPanel Spacing="6">
+                <TextBlock Text="{Binding PendingApproval.DetailLabel}" Classes="eyebrow" />
+                <ScrollViewer MaxHeight="148" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                  <SelectableTextBlock Text="{Binding PendingApproval.DetailText}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap" />
+                </ScrollViewer>
+              </StackPanel>
+            </Border>
+            <StackPanel Spacing="4" IsVisible="{Binding PendingApproval.HasWorkingDirectory}">
+              <TextBlock Text="Working directory" Classes="eyebrow" />
+              <TextBlock Text="{Binding PendingApproval.WorkingDirectoryText}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+            <Expander Header="View raw request" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
+              <Border Margin="0,7,0,0" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="9">
+                <ScrollViewer MaxHeight="130" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                  <SelectableTextBlock Text="{Binding PendingApproval.Arguments}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+                </ScrollViewer>
+              </Border>
+            </Expander>
             <Grid ColumnDefinitions="*,8,*">
-              <Button Grid.Column="0" Classes="compact primary" Content="Approve once" Click="ApproveOnce" />
+              <Button Grid.Column="0" Classes="compact primary" Content="Allow once" Click="ApproveOnce" />
               <Button Grid.Column="2" Classes="compact danger" Content="Deny" Click="DenyApproval" />
             </Grid>
           </StackPanel>

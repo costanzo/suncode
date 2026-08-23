@@ -1642,12 +1642,15 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             : existing?.ToolState ?? "requested";
         var name = payload.String("name");
         if (name.Length == 0) name = existing?.ToolName ?? "tool";
-        var detail = eventType switch
-        {
-            "tool.requested" => Pretty(payload["arguments"]),
-            "tool.result" => Pretty(payload["result"]),
-            _ => existing?.ToolDetail ?? string.Empty
-        };
+        var request = eventType == "tool.requested"
+            ? Pretty(payload["arguments"])
+            : existing?.ToolRequest ?? string.Empty;
+        var result = eventType == "tool.result"
+            ? Pretty(payload["result"])
+            : existing?.ToolResult ?? string.Empty;
+        var error = eventType == "tool.state"
+            ? payload.String("reason")
+            : existing?.ToolError ?? string.Empty;
         var replacement = new MessageItem
         {
             Role = "tool",
@@ -1658,7 +1661,10 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             ToolCallId = toolCallId,
             ToolName = name,
             ToolState = state,
-            ToolDetail = detail,
+            ToolDetail = result.Length > 0 ? result : request,
+            ToolRequest = request,
+            ToolResult = result,
+            ToolError = error,
             IsProcess = true
         };
         if (existing is null) Messages.Add(replacement);
@@ -1676,6 +1682,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         ToolName = item.String("name"),
         ToolState = item.String("state"),
         ToolDetail = Pretty(item["result"] ?? item["request"]),
+        ToolRequest = Pretty(item["request"]),
+        ToolResult = Pretty(item["result"]),
+        ToolError = item.String("errorCode", "error_code"),
         IsProcess = true
     };
 
@@ -2151,7 +2160,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private static string Pretty(JsonNode? node)
     {
         if (node is null) return string.Empty;
-        return node.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        return node.ToJsonString(DisplayJson.Options);
     }
 
     private void NotifyGitDiffPresentationChanged()

@@ -18,7 +18,8 @@ The Rust crate emits a `cdylib`; the desktop build invokes Cargo and copies the 
 - Codex-style turn timelines: running turns show ordered assistant progress and tool activity without copy actions; terminal turns retain that process history collapsed above the final visible, copyable assistant response and can expand it on demand, including after snapshot reload
 - latest-selection-wins session loading that discards stale snapshots, projects replay data off the UI thread, atomically replaces the conversation message source, uses stable variable-height conversation layout, exposes loading and retryable error states, and starts only the selected session's live subscription
 - per-turn model selection, submission, queue status, and cancellation
-- approval allow-once/deny decisions
+- approval allow-once/deny decisions with readable action summaries, focused command or target details, and expandable raw requests
+- conversation tool activity cards that show concise operation summaries and open selectable request/result/error details on demand
 - touched paths, turn checkpoints, conflict-aware undo, and diagnostics
 - runtime-owned Git status and structured per-file diff review
 - a resizable session trace drawer with an expandable turn/call/content tree; each call lazily exposes user, assistant, thinking, and tool-use entries alongside call-level request/response, timing, token, and cache diagnostics

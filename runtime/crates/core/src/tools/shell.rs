@@ -2,29 +2,17 @@ use serde_json::{json, Value};
 
 pub fn definition() -> (&'static str, &'static str, Value) {
     (
-        "shell",
-        shell_description(),
+        "bash",
+        "Execute one shell command string in the project after approval. Use the active host shell syntax.",
         json!({
             "type":"object",
-            "required":["script"],
+            "required":["command"],
             "properties":{
-                "script":{"type":"string"},
-                "workdir":{"type":"string"},
-                "cwd":{"type":"string"},
-                "timeout":{"type":"number","description":"Timeout in seconds (maximum 600)"},
-                "env":{"type":"object"}
+                "command":{"type":"string","description":"Shell command string to execute"},
+                "timeout":{"type":"integer","description":"Timeout in milliseconds. Defaults to 120000 and may not exceed 600000."},
+                "workdir":{"type":"string","description":"Working directory for the command. Defaults to the active project directory."}
             },
             "additionalProperties":false
         }),
     )
-}
-
-#[cfg(target_os = "windows")]
-fn shell_description() -> &'static str {
-    "Run a bounded non-interactive Windows PowerShell script in the project after approval. Use PowerShell syntax."
-}
-
-#[cfg(not(target_os = "windows"))]
-fn shell_description() -> &'static str {
-    "Run a bounded non-interactive POSIX shell script in the project after approval. Use POSIX sh syntax."
 }

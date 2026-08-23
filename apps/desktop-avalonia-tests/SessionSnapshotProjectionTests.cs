@@ -1,10 +1,109 @@
 using System.Text.Json.Nodes;
+using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
 namespace SunCode.Desktop.Tests;
 
 public sealed class SessionSnapshotProjectionTests
 {
+    [Fact]
+    public void ToolMessagesShowAnOperationSummaryAndKeepDetailsForTheDialog()
+    {
+        var message = new MessageItem
+        {
+            Role = "tool",
+            Text = "bash",
+            ContentSequence = 1,
+            Kind = "tool",
+            ToolName = "bash",
+            ToolState = "failed",
+            ToolRequest = "{\"command\":\"echo hello\"}",
+            ToolError = "invalid_arguments"
+        };
+
+        Assert.Equal("Run shell command", message.ToolSummaryText);
+        Assert.Equal("Failed", message.ToolStateText);
+        Assert.Equal("The operation arguments were invalid.", message.ToolErrorText);
+        Assert.True(message.HasToolRequest);
+        Assert.True(message.HasToolError);
+    }
+
+    [Fact]
+    public void ApprovalItemFormatsShellRequestsForReview()
+    {
+        var payload = JsonNode.Parse("""
+        {
+          "approval_id": "approval-1",
+          "operation": "bash",
+          "arguments": {
+            "command": "find . -type f -name \"*.cs\" | head -200 && echo done",
+            "timeout": 120000,
+            "workdir": "src"
+          }
+        }
+        """)!.AsObject();
+
+        var approval = ApprovalItem.FromPayload(payload)!;
+
+        Assert.Equal("Run a shell command", approval.ActionText);
+        Assert.Equal("Command", approval.DetailLabel);
+        Assert.Equal("find . -type f -name \"*.cs\" | head -200 && echo done", approval.DetailText);
+        Assert.Equal("src", approval.WorkingDirectoryText);
+        Assert.DoesNotContain("\\u0022", approval.DetailText);
+        Assert.Contains("&&", approval.Arguments);
+        Assert.DoesNotContain("\\u0026", approval.Arguments);
+    }
+
+    [Fact]
+    public void ToolDetailsKeepShellOperatorsReadable()
+    {
+        var snapshot = JsonNode.Parse("""
+        {
+          "conversationTurns": [
+            {
+              "turnId": "turn-1",
+              "state": "completed",
+              "toolUses": [
+                {
+                  "toolCallId": "tool-1",
+                  "name": "bash",
+                  "state": "succeeded",
+                  "request": {"command": "echo one && echo two"},
+                  "result": {"stdout": "one && two"}
+                }
+              ]
+            }
+          ]
+        }
+        """)!.AsObject();
+
+        var message = Assert.Single(DesktopViewModel.ProjectSnapshot(snapshot).Messages);
+
+        Assert.Contains("&&", message.ToolRequest);
+        Assert.Contains("&&", message.ToolResult);
+        Assert.DoesNotContain("\\u0026", message.ToolRequest);
+        Assert.DoesNotContain("\\u0026", message.ToolResult);
+    }
+
+    [Fact]
+    public void ApprovalItemSummarizesFileTargetsAndKeepsRawRequestReadable()
+    {
+        var payload = JsonNode.Parse("""
+        {
+          "approval_id": "approval-2",
+          "operation": "fs_write",
+          "arguments": {"path":"src/App.cs","content":"class App {}"}
+        }
+        """)!.AsObject();
+
+        var approval = ApprovalItem.FromPayload(payload)!;
+
+        Assert.Equal("Write to a project file", approval.ActionText);
+        Assert.Equal("Target", approval.DetailLabel);
+        Assert.Equal("src/App.cs", approval.DetailText);
+        Assert.Contains("\n", approval.Arguments);
+    }
+
     [Fact]
     public void ProjectionPreservesNormalizedMessages()
     {

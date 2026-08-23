@@ -154,7 +154,7 @@ impl Store {
                  FROM session_tool_use AS tool
                  JOIN session_turn AS turn ON turn.turn_id=tool.turn_id
                  LEFT JOIN session_call AS call ON call.call_id=tool.session_call_id
-                 WHERE turn.session_id=?1 AND tool.state='succeeded'
+                 WHERE turn.session_id=?1 AND tool.state IN ('succeeded','failed')
                    AND tool.result_json IS NOT NULL
              )
              ORDER BY occurred_at,call_iteration,kind_order,
