@@ -64,7 +64,7 @@ public sealed class ExplorerNode : ObservableObject
     private static ExplorerNode Placeholder() => new();
 }
 
-public sealed record SessionItem(string SessionId, string Title, string LastActivityAt)
+public sealed record SessionItem(string SessionId, string Title, string LastActivityAt, bool IsPinned)
 {
     public string DisplayTitle => string.IsNullOrWhiteSpace(Title) ? "Untitled session" : Title;
     public string RelativeActivity

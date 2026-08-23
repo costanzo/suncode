@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS session (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     last_activity_at TEXT NOT NULL,
+    pin_at TEXT,
     archived_at TEXT,
     CHECK(
         (status = 'active' AND archived_at IS NULL)

@@ -929,6 +929,13 @@ impl RuntimeSdk {
             .map_err(SdkError::from)
     }
 
+    pub fn set_session_pinned(&self, session_id: &str, pinned: bool) -> SdkResult<SessionRecord> {
+        self.state
+            .store
+            .set_session_pinned(session_id, pinned)
+            .map_err(SdkError::from)
+    }
+
     pub fn reopen_session(&self, session_id: &str) -> SdkResult<SessionRecord> {
         self.state
             .store
@@ -1594,6 +1601,17 @@ ffi_one_string!(
     archive_session,
     "session_id"
 );
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_runtime_sdk_set_session_pinned(
+    handle: *mut SunCodeRuntimeHandle,
+    session_id: *const c_char,
+    pinned: u8,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.set_session_pinned(&c_string(session_id, "session_id")?, pinned != 0)
+    })
+}
 ffi_one_string!(
     suncode_runtime_sdk_reopen_session,
     reopen_session,

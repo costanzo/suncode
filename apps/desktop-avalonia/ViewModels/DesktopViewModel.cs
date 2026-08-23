@@ -644,6 +644,16 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }, "Session archived");
     }
 
+    public async Task SetSessionPinnedAsync(SessionItem session, bool pinned)
+    {
+        if (!EnsureSdk()) return;
+        await RunAsync(async () =>
+        {
+            await _sdk!.SetSessionPinnedAsync(session.SessionId, pinned);
+            await LoadSessionsAsync(SelectedSession?.SessionId);
+        }, pinned ? "Session pinned" : "Session unpinned");
+    }
+
     public async Task SelectSessionAsync(SessionItem session)
     {
         var operationId = Guid.NewGuid().ToString("N")[..8];
@@ -1248,7 +1258,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         Sessions.Clear();
         foreach (var item in result.Array("sessions").OfType<JsonObject>())
         {
-            Sessions.Add(new SessionItem(item.String("sessionId"), item.String("title"), item.String("lastActivityAt")));
+            Sessions.Add(new SessionItem(item.String("sessionId"), item.String("title"), item.String("lastActivityAt"), !string.IsNullOrWhiteSpace(item.String("pinAt", "pin_at"))));
         }
         OnPropertyChanged(nameof(HasSessions));
         var session = Sessions.FirstOrDefault(item => item.SessionId == preferredSessionId)

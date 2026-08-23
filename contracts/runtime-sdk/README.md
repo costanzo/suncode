@@ -41,6 +41,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `create_session` | Create a session with an optional title and selected model |
 | `rename_session` | Rename a session |
 | `archive_session` | Recoverably archive a session |
+| `set_session_pinned` | Persist or clear a session's project-local pinned state in `session.pin_at` |
 | `reopen_session` | Reopen an archived session |
 | `session_snapshot` | Read the normalized session projection; the cursor argument is ignored for compatibility |
 | `session_usage` | Read cumulative provider-reported token usage for a session |

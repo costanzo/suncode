@@ -33,6 +33,7 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_runtime_sdk_create_session(IntPtr handle, IntPtr projectId, IntPtr title, IntPtr model);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_runtime_sdk_rename_session(IntPtr handle, IntPtr sessionId, IntPtr title);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_runtime_sdk_archive_session(IntPtr handle, IntPtr sessionId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_runtime_sdk_set_session_pinned(IntPtr handle, IntPtr sessionId, byte pinned);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_runtime_sdk_session_snapshot(IntPtr handle, IntPtr sessionId, long after);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_runtime_sdk_session_usage(IntPtr handle, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_runtime_sdk_list_provider_exchanges(IntPtr handle, IntPtr sessionId);

@@ -38,7 +38,7 @@
   {
     "id": "list-project-sessions",
     "call": {"method":"list_sessions","project_id":"project-1"},
-    "expected_response_shape": {"project_id":"project-1","sessions":[{"sessionId":"session-1","projectId":"project-1","status":"active","createdAt":"rfc3339","updatedAt":"rfc3339","lastActivityAt":"rfc3339"}]}
+    "expected_response_shape": {"project_id":"project-1","sessions":[{"sessionId":"session-1","projectId":"project-1","status":"active","pinAt":null,"createdAt":"rfc3339","updatedAt":"rfc3339","lastActivityAt":"rfc3339"}]}
   },
   {
     "id": "git-status",
@@ -90,6 +90,11 @@
     "id": "archive-session",
     "call": {"method":"archive_session","session_id":"session-1"},
     "expected_response_shape": {"sessionId":"session-1","status":"archived","archivedAt":"rfc3339"}
+  },
+  {
+    "id": "pin-session",
+    "call": {"method":"set_session_pinned","session_id":"session-1","pinned":true},
+    "expected_response_shape": {"sessionId":"session-1","pinAt":"rfc3339","status":"active"}
   },
   {
     "id": "session-snapshot",

@@ -71,6 +71,18 @@ public sealed partial class ProjectSidebar : UserControl
             await ViewModel.ArchiveSessionAsync(session);
     }
 
+    private async void PinSessionItem(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { CommandParameter: SessionItem session })
+            await ViewModel.SetSessionPinnedAsync(session, true);
+    }
+
+    private async void UnpinSessionItem(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { CommandParameter: SessionItem session })
+            await ViewModel.SetSessionPinnedAsync(session, false);
+    }
+
     private async void NavigationPointerExited(object? sender, PointerEventArgs e)
     {
         if (ViewModel.NavigationPinned) return;

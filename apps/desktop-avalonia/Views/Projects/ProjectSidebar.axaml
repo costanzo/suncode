@@ -26,16 +26,19 @@
                    Padding="0">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="models:SessionItem">
-                <Grid Height="48" ColumnDefinitions="*,28">
-                  <Button Grid.Column="0" Classes="quiet" Padding="10,4" HorizontalContentAlignment="Stretch">
+                <Grid Height="48" ColumnDefinitions="18,*,28">
+                  <svg:Svg Grid.Column="0" Width="13" Height="13" HorizontalAlignment="Center" VerticalAlignment="Center" Path="/Assets/icons/pin.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding IsPinned}" />
+                  <Button Grid.Column="1" Classes="quiet" Padding="4,4,10,4" HorizontalContentAlignment="Stretch">
                     <StackPanel Spacing="2">
                       <TextBlock Text="{Binding DisplayTitle}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
                       <TextBlock Text="{Binding RelativeActivity}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
                     </StackPanel>
                   </Button>
-                  <Button Grid.Column="1" Classes="quiet" Width="28" Padding="6" ToolTip.Tip="Session actions">
+                  <Button Grid.Column="2" Classes="quiet" Width="28" Padding="6" ToolTip.Tip="Session actions">
                     <Button.Flyout>
                       <MenuFlyout>
+                        <MenuItem Header="Pin" CommandParameter="{Binding}" Click="PinSessionItem" IsVisible="{Binding !IsPinned}" />
+                        <MenuItem Header="Unpin" CommandParameter="{Binding}" Click="UnpinSessionItem" IsVisible="{Binding IsPinned}" />
                         <MenuItem Header="Rename" CommandParameter="{Binding}" Click="RenameSessionItem" />
                         <MenuItem Header="Archive" CommandParameter="{Binding}" Click="ArchiveSessionItem" />
                       </MenuFlyout>

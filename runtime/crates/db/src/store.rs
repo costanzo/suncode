@@ -1333,7 +1333,7 @@ impl Store {
         }
         let id = Uuid::new_v4().to_string();
         let timestamp = now();
-        connection.execute("INSERT INTO session (session_id,project_id,title,model_id,status,created_at,updated_at,last_activity_at,archived_at) VALUES (?,?,?,?,?,?,?,?,NULL)", params![id, project_id, title, model_id, "active", timestamp, timestamp, timestamp])?;
+        connection.execute("INSERT INTO session (session_id,project_id,title,model_id,status,created_at,updated_at,last_activity_at,pin_at,archived_at) VALUES (?,?,?,?,?,?,?,?,NULL,NULL)", params![id, project_id, title, model_id, "active", timestamp, timestamp, timestamp])?;
         self.session_by_id_locked(&connection, &id)
     }
 
@@ -1355,9 +1355,9 @@ impl Store {
             .lock()
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         let sql = if include_archived {
-            "SELECT session_id,project_id,title,model_id,status,created_at,updated_at,last_activity_at,archived_at FROM session WHERE project_id=? ORDER BY last_activity_at DESC,session_id"
+            "SELECT session_id,project_id,title,model_id,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE project_id=? ORDER BY (pin_at IS NOT NULL) DESC,pin_at DESC,last_activity_at DESC,session_id"
         } else {
-            "SELECT session_id,project_id,title,model_id,status,created_at,updated_at,last_activity_at,archived_at FROM session WHERE project_id=? AND status='active' ORDER BY last_activity_at DESC,session_id"
+            "SELECT session_id,project_id,title,model_id,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE project_id=? AND status='active' ORDER BY (pin_at IS NOT NULL) DESC,pin_at DESC,last_activity_at DESC,session_id"
         };
         let mut statement = connection.prepare(sql)?;
         let rows = statement.query_map([project_id], session_from_row)?;
@@ -1375,7 +1375,7 @@ impl Store {
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         let timestamp = now();
         connection.execute(
-            "UPDATE session SET status=?,archived_at=?,updated_at=? WHERE session_id=?",
+            "UPDATE session SET status=?,pin_at=NULL,archived_at=?,updated_at=? WHERE session_id=?",
             params![
                 if archived { "archived" } else { "active" },
                 if archived {
@@ -1386,6 +1386,31 @@ impl Store {
                 timestamp,
                 id
             ],
+        )?;
+        self.session_by_id_locked(&connection, id)
+    }
+
+    pub fn set_session_pinned(
+        &self,
+        id: &str,
+        pinned: bool,
+    ) -> Result<SessionRecord, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let status: String = connection
+            .query_row("SELECT status FROM session WHERE session_id=?", [id], |row| row.get(0))
+            .optional()?
+            .ok_or_else(|| PersistenceError::Invalid("session not found".into()))?;
+        if status != "active" && pinned {
+            return Err(PersistenceError::Invalid(
+                "archived sessions cannot be pinned".into(),
+            ));
+        }
+        connection.execute(
+            "UPDATE session SET pin_at=? WHERE session_id=?",
+            params![if pinned { Some(now()) } else { None }, id],
         )?;
         self.session_by_id_locked(&connection, id)
     }
@@ -1442,7 +1467,7 @@ impl Store {
         connection: &Connection,
         id: &str,
     ) -> Result<Option<SessionRecord>, PersistenceError> {
-        connection.query_row("SELECT session_id,project_id,title,model_id,status,created_at,updated_at,last_activity_at,archived_at FROM session WHERE session_id=?", [id], session_from_row).optional().map_err(Into::into)
+        connection.query_row("SELECT session_id,project_id,title,model_id,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE session_id=?", [id], session_from_row).optional().map_err(Into::into)
     }
 }
 
@@ -1761,7 +1786,8 @@ fn session_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRecord> 
         created_at: row.get(5)?,
         updated_at: row.get(6)?,
         last_activity_at: row.get(7)?,
-        archived_at: row.get(8)?,
+        pin_at: row.get(8)?,
+        archived_at: row.get(9)?,
     })
 }
 fn provider_exchange_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<ProviderExchange> {
@@ -2034,6 +2060,30 @@ mod tests {
             .create_session(&project.project_id, None, Some("deepseek-v4-flash"))
             .unwrap()
             .session_id
+    }
+
+    #[test]
+    fn session_pinning_is_project_local_and_archiving_clears_it() {
+        let store = Store::open_memory().unwrap();
+        let project = store.project("/tmp/suncode-pinning", "Pinning").unwrap();
+        let first = store
+            .create_session(&project.project_id, Some("First"), Some("deepseek-v4-flash"))
+            .unwrap();
+        let second = store
+            .create_session(&project.project_id, Some("Second"), Some("deepseek-v4-flash"))
+            .unwrap();
+
+        assert!(first.pin_at.is_none());
+        store.set_session_pinned(&second.session_id, true).unwrap();
+        let sessions = store.sessions_for_project(&project.project_id, true).unwrap();
+        assert_eq!(sessions[0].session_id, second.session_id);
+        assert!(sessions[0].pin_at.is_some());
+        assert!(sessions[1].pin_at.is_none());
+
+        store.set_session_archived(&second.session_id, true).unwrap();
+        let archived = store.session_by_id(&second.session_id).unwrap().unwrap();
+        assert!(archived.pin_at.is_none());
+        assert!(store.set_session_pinned(&second.session_id, true).is_err());
     }
 
     #[test]

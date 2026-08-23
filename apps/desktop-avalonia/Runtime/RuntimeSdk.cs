@@ -105,6 +105,9 @@ public sealed class RuntimeSdk : IDisposable
     public Task<JsonObject> ArchiveSessionAsync(string sessionId) => WithUtf8Async(
         [sessionId], values => NativeMethods.suncode_runtime_sdk_archive_session(_handle, values[0]));
 
+    public Task<JsonObject> SetSessionPinnedAsync(string sessionId, bool pinned) => WithUtf8Async(
+        [sessionId], values => NativeMethods.suncode_runtime_sdk_set_session_pinned(_handle, values[0], pinned ? (byte)1 : (byte)0));
+
     public Task<JsonObject> SessionSnapshotAsync(string sessionId) => WithUtf8Async(
         [sessionId], values => NativeMethods.suncode_runtime_sdk_session_snapshot(_handle, values[0], 0));
 

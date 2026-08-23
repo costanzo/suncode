@@ -245,6 +245,7 @@ pub struct SessionRecord {
     pub updated_at: String,
     pub last_activity_at: String,
     pub archived_at: Option<String>,
+    pub pin_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

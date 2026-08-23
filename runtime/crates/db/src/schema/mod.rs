@@ -116,4 +116,18 @@ mod tests {
         apply(&connection).unwrap();
         assert!(session_call_includes_provider_ids(&connection).unwrap());
     }
+
+    #[test]
+    fn session_schema_includes_pin_at() {
+        let connection = Connection::open_in_memory().unwrap();
+        apply(&connection).unwrap();
+        let columns = connection
+            .prepare("PRAGMA table_info(session)")
+            .unwrap()
+            .query_map([], |row| row.get::<_, String>(1))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert!(columns.iter().any(|column| column == "pin_at"));
+    }
 }

@@ -35,7 +35,7 @@ Fresh databases also seed four global logging settings: `log_level` (`"INFO"`), 
 
 ### `session`
 
-One conversation per row, linked to a project. It stores optional title/model, `active`/`archived` status, activity timestamps, and archive consistency checks.
+One conversation per row, linked to a project. It stores optional title/model, `active`/`archived` status, activity timestamps, nullable `pin_at`, and archive consistency checks. A non-null `pin_at` marks the session as pinned and records when it was pinned.
 
 ### `session_turn`
 
