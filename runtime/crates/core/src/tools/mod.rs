@@ -58,6 +58,17 @@ mod tests {
         assert!(bash.parameters["properties"]["command"].is_object());
         assert_eq!(bash.parameters["properties"]["timeout"]["type"], "integer");
         assert_eq!(bash.parameters["properties"]["workdir"]["type"], "string");
+        let glob = definitions
+            .iter()
+            .find(|definition| definition.name == "glob")
+            .unwrap();
+        assert!(glob.parameters["properties"].get("limit").is_none());
+        let grep = definitions
+            .iter()
+            .find(|definition| definition.name == "grep")
+            .unwrap();
+        assert!(grep.parameters["properties"].get("query").is_none());
+        assert!(grep.parameters["properties"].get("max_results").is_none());
         let webfetch = definitions
             .iter()
             .find(|definition| definition.name == "webfetch")

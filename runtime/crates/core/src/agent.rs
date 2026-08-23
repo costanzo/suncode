@@ -1026,7 +1026,22 @@ impl Agent {
             .and_then(dependency_path)
             .map(|(dependency_id, _)| dependency_id);
         let normalized_result = normalize_result(&call.name, result.clone(), dependency_id);
-        self.tool_state(context, call, "succeeded", None)?;
+        let process_failed = call.name == "bash"
+            && normalized_result.get("success").and_then(Value::as_bool) == Some(false);
+        self.tool_state(
+            context,
+            call,
+            if process_failed {
+                "failed"
+            } else {
+                "succeeded"
+            },
+            if process_failed {
+                normalized_result.get("status").and_then(Value::as_str)
+            } else {
+                None
+            },
+        )?;
         self.emit(
             &context.session_id,
             "tool.result",
@@ -1042,7 +1057,7 @@ impl Agent {
             Some(&context.session_id),
             Some(&context.turn_id),
             "operation.result",
-            &json!({"tool_call_id":call.call_id,"operation":call.name,"outcome":"succeeded"}),
+            &json!({"tool_call_id":call.call_id,"operation":call.name,"outcome":if process_failed { "failed" } else { "succeeded" }, "status": normalized_result.get("status")}),
         )?;
         let checkpoint_ids = result
             .get("checkpoint_ids")
@@ -1383,23 +1398,55 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
         }
     }
     if name == "edit" {
-        let old = result
-            .get("oldString")
-            .and_then(Value::as_str)
-            .ok_or_else(|| AgentError::new("invalid_arguments", "oldString is required"))?;
-        let new = result
-            .get("newString")
-            .and_then(Value::as_str)
-            .ok_or_else(|| AgentError::new("invalid_arguments", "newString is required"))?;
-        let replace_all = result
-            .get("replaceAll")
-            .and_then(Value::as_bool)
-            .unwrap_or(false);
-        result["replacements"] = json!([{"old": old, "new": new, "replace_all": replace_all}]);
+        let replacements = if let Some(edits) = result.get("edits").and_then(Value::as_array) {
+            if edits.is_empty() {
+                return Err(AgentError::new(
+                    "invalid_arguments",
+                    "edits must not be empty",
+                ));
+            }
+            edits
+                .iter()
+                .map(|edit| {
+                    let object = edit.as_object().ok_or_else(|| {
+                        AgentError::new("invalid_arguments", "each edit must be an object")
+                    })?;
+                    let old = object
+                        .get("oldText")
+                        .and_then(Value::as_str)
+                        .ok_or_else(|| {
+                            AgentError::new("invalid_arguments", "oldText is required")
+                        })?;
+                    let new = object
+                        .get("newText")
+                        .and_then(Value::as_str)
+                        .ok_or_else(|| {
+                            AgentError::new("invalid_arguments", "newText is required")
+                        })?;
+                    Ok(json!({"old": old, "new": new, "replace_all": false}))
+                })
+                .collect::<Result<Vec<_>, AgentError>>()?
+        } else {
+            let old = result
+                .get("oldString")
+                .and_then(Value::as_str)
+                .ok_or_else(|| AgentError::new("invalid_arguments", "oldString is required"))?;
+            let new = result
+                .get("newString")
+                .and_then(Value::as_str)
+                .ok_or_else(|| AgentError::new("invalid_arguments", "newString is required"))?;
+            let replace_all = result
+                .get("replaceAll")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            vec![json!({"old": old, "new": new, "replace_all": replace_all})]
+        };
+        result["replacements"] = json!(replacements);
         if let Some(object) = result.as_object_mut() {
             object.remove("oldString");
             object.remove("newString");
             object.remove("replaceAll");
+            object.remove("edits");
         }
     }
     if name == "glob" {
@@ -1420,8 +1467,8 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
     }
     if name == "grep" {
         let query = result
-            .get("query")
-            .or_else(|| result.get("pattern"))
+            .get("pattern")
+            .or_else(|| result.get("query"))
             .and_then(Value::as_str)
             .ok_or_else(|| AgentError::new("invalid_arguments", "pattern is required"))?;
         result["query"] = json!(query);
@@ -1652,7 +1699,12 @@ fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -
             if let Ok(bytes) = STANDARD.decode(&encoded) {
                 if let Ok(text) = String::from_utf8(bytes) {
                     value["content"] = json!(text);
-                    value["precondition_base64"] = json!(encoded);
+                    let complete = value.get("truncated").and_then(Value::as_bool) != Some(true)
+                        && value.get("offset").and_then(Value::as_u64).unwrap_or(1) == 1
+                        && value.get("limit").is_none();
+                    if complete && value.get("precondition_base64").is_none() {
+                        value["precondition_base64"] = json!(encoded);
+                    }
                 }
             }
         }
@@ -1749,6 +1801,24 @@ mod tests {
             translate_arguments("bash", &json!({"command":"echo hello","timeout":600_001}))
                 .is_err()
         );
+    }
+
+    #[test]
+    fn edit_translation_accepts_multiple_disjoint_edits() {
+        let translated = translate_arguments(
+            "edit",
+            &json!({
+                "path":"file.txt",
+                "expected_base64":"YmVmb3Jl",
+                "edits":[
+                    {"oldText":"one","newText":"two"},
+                    {"oldText":"three","newText":"four"}
+                ]
+            }),
+        )
+        .unwrap();
+        assert_eq!(translated["replacements"].as_array().unwrap().len(), 2);
+        assert!(translated.get("edits").is_none());
     }
 
     #[test]

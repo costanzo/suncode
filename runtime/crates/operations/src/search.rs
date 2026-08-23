@@ -1,4 +1,4 @@
-use super::{collect_files, glob_matches, require_project, CoreFailure};
+use super::{glob_matches, require_project, CoreFailure};
 use globset::GlobBuilder;
 use grep_matcher::Matcher;
 use grep_regex::{RegexMatcher, RegexMatcherBuilder};
@@ -32,14 +32,35 @@ pub(super) fn glob(project_root: Option<&Path>, params: &Value) -> Result<Value,
     let max_results = params
         .get("max_results")
         .and_then(Value::as_u64)
-        .unwrap_or(200)
+        .unwrap_or(100)
         .clamp(1, 1000) as usize;
     let mut paths = Vec::new();
-    collect_files(root, root, &mut |relative, _| {
-        if glob_matches(pattern, relative) && paths.len() <= max_results {
-            paths.push(relative.to_string());
+    let walker = WalkBuilder::new(root)
+        .standard_filters(true)
+        .follow_links(false)
+        .build();
+    for entry in walker {
+        let Ok(entry) = entry else { continue };
+        let Some(file_type) = entry.file_type() else {
+            continue;
+        };
+        if !file_type.is_file() {
+            continue;
         }
-    })?;
+        let absolute = entry.into_path();
+        let Ok(relative_path) = absolute.strip_prefix(root) else {
+            continue;
+        };
+        let relative = relative_path
+            .to_string_lossy()
+            .replace(std::path::MAIN_SEPARATOR, "/");
+        if glob_matches(pattern, &relative) {
+            paths.push(relative);
+            if paths.len() > max_results {
+                break;
+            }
+        }
+    }
     let truncated = paths.len() > max_results;
     paths.truncate(max_results);
     paths.sort();

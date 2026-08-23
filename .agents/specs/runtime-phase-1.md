@@ -1,5 +1,7 @@
 # Runtime Phase 1
 
+Tool execution hardening keeps the compact model contracts aligned with audited behavior: `read` applies 1-indexed line ranges before its byte cap, `glob` respects ignore rules, `edit` preserves BOM and line endings while rejecting overlaps, and failed bash exits are represented as failed tool operations with structured status.
+
 The runtime is an embedded Rust SDK inside its host process with one SQLite database under `~/.suncode/data/sqlite/runtime.sqlite3`.
 
 The `suncode-db` Cargo package under `runtime/crates/db` owns the SQLite store, persistence DTOs, current schema resources, and seeded LLM provider/model catalog. The `suncode-runtime` core package consumes it and does not depend on `rusqlite` directly.

@@ -463,7 +463,17 @@ pub(super) fn run(
     } else {
         None
     };
-    let mut result = json!({"operation_id": operation_id, "status": if cancelled {"cancelled"} else if timed_out {"timed_out"} else {"completed"}, "exit_code": status.code(), "success": status.success() && !cancelled && !timed_out, "stdout_base64": STANDARD.encode(&out.preview), "stderr_base64": STANDARD.encode(&err.preview), "truncated": out.total_bytes + err.total_bytes > PREVIEW_BYTES, "sandbox": {"profile": params.get("sandbox_profile").and_then(Value::as_str).unwrap_or("project-default"), "network": "not_enforced", "environment": "filtered", "os_isolation": false}});
+    let success = status.success() && !cancelled && !timed_out;
+    let status_name = if cancelled {
+        "cancelled"
+    } else if timed_out {
+        "timed_out"
+    } else if success {
+        "completed"
+    } else {
+        "failed"
+    };
+    let mut result = json!({"operation_id": operation_id, "status": status_name, "exit_code": status.code(), "success": success, "stdout_base64": STANDARD.encode(&out.preview), "stderr_base64": STANDARD.encode(&err.preview), "truncated": out.total_bytes + err.total_bytes > PREVIEW_BYTES, "sandbox": {"profile": params.get("sandbox_profile").and_then(Value::as_str).unwrap_or("project-default"), "network": "not_enforced", "environment": "filtered", "os_isolation": false}});
     if let Some(id) = artifact_id {
         result["artifact_id"] = json!(id);
     }
@@ -528,6 +538,33 @@ mod tests {
             .decode(result["stdout_base64"].as_str().unwrap())
             .unwrap();
         assert!(String::from_utf8(output).unwrap().contains("suncode-ready"));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn non_zero_exit_is_reported_as_failed_status() {
+        let root = std::env::temp_dir().join(format!(
+            "suncode-process-failure-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let root = root.canonicalize().unwrap();
+        let checkpoint = root.join("checkpoints");
+        std::fs::create_dir_all(&checkpoint).unwrap();
+        #[cfg(target_os = "windows")]
+        let params = json!({
+            "program":"cmd.exe",
+            "args":["/C", "exit", "7"]
+        });
+        #[cfg(not(target_os = "windows"))]
+        let params = json!({"program":"/bin/sh","args":["-lc","exit 7"]});
+        let result = run(Some(&root), Some(&checkpoint), &params, None).unwrap();
+        assert_eq!(result["status"], "failed");
+        assert_eq!(result["success"], false);
+        assert_eq!(result["exit_code"], 7);
         std::fs::remove_dir_all(root).unwrap();
     }
 

@@ -43,11 +43,19 @@ pub(super) fn edit(
         })?;
     let (_, current) = existing_file(root, path)?;
     verify_expected(&current, params)?;
-    let mut text = String::from_utf8(current.clone()).map_err(|_| CoreFailure {
+    let raw_text = String::from_utf8(current.clone()).map_err(|_| CoreFailure {
         code: "encoding_unsupported",
         message: "edit requires UTF-8 text",
         retryable: false,
     })?;
+    let has_bom = raw_text.starts_with('\u{feff}');
+    let text_without_bom = raw_text.strip_prefix('\u{feff}').unwrap_or(&raw_text);
+    let line_ending = if text_without_bom.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    let normalized = text_without_bom.replace("\r\n", "\n").replace('\r', "\n");
     let replacements = params
         .get("replacements")
         .and_then(Value::as_array)
@@ -63,6 +71,7 @@ pub(super) fn edit(
             retryable: false,
         });
     }
+    let mut requested = Vec::with_capacity(replacements.len());
     for replacement in replacements {
         let object = replacement.as_object().ok_or(CoreFailure {
             code: "invalid_arguments",
@@ -96,20 +105,58 @@ pub(super) fn edit(
             .get("replace_all")
             .and_then(Value::as_bool)
             .unwrap_or(false);
-        if !text.contains(old) {
+        requested.push((
+            old.replace("\r\n", "\n").replace('\r', "\n"),
+            new.replace("\r\n", "\n").replace('\r', "\n"),
+            replace_all,
+        ));
+    }
+    let mut ranges = Vec::<(usize, usize, String)>::new();
+    for (old, new, replace_all) in requested {
+        let mut search_from = 0;
+        let mut found = 0;
+        while let Some(relative) = normalized[search_from..].find(&old) {
+            let start = search_from + relative;
+            let end = start + old.len();
+            ranges.push((start, end, new.clone()));
+            found += 1;
+            search_from = end;
+            if !replace_all {
+                break;
+            }
+        }
+        if found == 0 {
             return Err(CoreFailure {
                 code: "edit_conflict",
                 message: "replacement text was not found",
                 retryable: false,
             });
         }
-        text = if replace_all {
-            text.replace(old, new)
-        } else {
-            text.replacen(old, new, 1)
-        };
     }
-    let mut write_params = json!({"path": path, "content_base64": STANDARD.encode(text.as_bytes()), "expected_base64": STANDARD.encode(current)});
+    ranges.sort_by_key(|(start, _, _)| *start);
+    for pair in ranges.windows(2) {
+        if pair[0].1 > pair[1].0 {
+            return Err(CoreFailure {
+                code: "edit_conflict",
+                message: "replacement ranges overlap",
+                retryable: false,
+            });
+        }
+    }
+    let mut text = normalized;
+    for (start, end, new) in ranges.into_iter().rev() {
+        text.replace_range(start..end, &new);
+    }
+    let mut final_text = String::new();
+    if has_bom {
+        final_text.push('\u{feff}');
+    }
+    if line_ending == "\r\n" {
+        final_text.push_str(&text.replace('\n', "\r\n"));
+    } else {
+        final_text.push_str(&text);
+    }
+    let mut write_params = json!({"path": path, "content_base64": STANDARD.encode(final_text.as_bytes()), "expected_base64": STANDARD.encode(current)});
     if let Some(key) = params.get("idempotency_key") {
         write_params["idempotency_key"] = key.clone();
     }

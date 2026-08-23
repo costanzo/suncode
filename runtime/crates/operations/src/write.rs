@@ -159,18 +159,7 @@ pub(super) fn write(
         }
     }
     if let Some(parent) = candidate.parent() {
-        let canonical_parent = parent.canonicalize().map_err(|_| CoreFailure {
-            code: "path_unavailable",
-            message: "parent directory is unavailable",
-            retryable: false,
-        })?;
-        if !canonical_parent.starts_with(root) {
-            return Err(CoreFailure {
-                code: "scope_denied",
-                message: "parent directory is outside the project",
-                retryable: false,
-            });
-        }
+        ensure_parent_directory(root, parent)?;
     }
     let checkpoint_root = checkpoint_root.ok_or(CoreFailure {
         code: "checkpoint_unavailable",
@@ -200,4 +189,47 @@ pub(super) fn write(
         Some(result.clone()),
     );
     Ok(result)
+}
+
+fn ensure_parent_directory(root: &Path, parent: &Path) -> Result<(), CoreFailure> {
+    let mut existing = parent.to_path_buf();
+    while !existing.exists() {
+        if !existing.pop() {
+            return Err(CoreFailure {
+                code: "path_unavailable",
+                message: "parent directory is unavailable",
+                retryable: false,
+            });
+        }
+    }
+    let canonical_existing = existing.canonicalize().map_err(|_| CoreFailure {
+        code: "path_unavailable",
+        message: "parent directory is unavailable",
+        retryable: false,
+    })?;
+    if !canonical_existing.starts_with(root) {
+        return Err(CoreFailure {
+            code: "scope_denied",
+            message: "parent directory is outside the project",
+            retryable: false,
+        });
+    }
+    fs::create_dir_all(parent).map_err(|_| CoreFailure {
+        code: "write_failed",
+        message: "parent directory could not be created",
+        retryable: true,
+    })?;
+    let canonical_parent = parent.canonicalize().map_err(|_| CoreFailure {
+        code: "path_unavailable",
+        message: "parent directory is unavailable",
+        retryable: false,
+    })?;
+    if !canonical_parent.starts_with(root) {
+        return Err(CoreFailure {
+            code: "scope_denied",
+            message: "parent directory is outside the project",
+            retryable: false,
+        });
+    }
+    Ok(())
 }

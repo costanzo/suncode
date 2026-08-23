@@ -1,5 +1,7 @@
 # Runtime Phase 1
 
+The built-in file tools now apply bounded line continuation, ignore-aware glob traversal, and preconditioned BOM/line-ending-preserving edits. Failed shell exits, timeouts, and cancellation remain visible as failed tool operations while retaining structured output.
+
 SunCode's runtime is an embedded Rust SDK owning provider integration, agent turns, policy, SQLite state, approvals, checkpoints, credentials, and the client-facing native SDK surface. It has no standalone server or client-facing HTTP/SSE adapter.
 
 The runtime persists durable history and per-turn provider-reported token usage in SQLite, keeps streaming deltas ephemeral, and exposes named methods, session usage aggregates, snapshots, and ordered direct subscriptions to its host process.

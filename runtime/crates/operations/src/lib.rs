@@ -158,42 +158,6 @@ fn require_project(project_root: Option<&Path>) -> Result<&Path, CoreFailure> {
     Ok(root)
 }
 
-fn collect_files(
-    root: &Path,
-    current: &Path,
-    visit: &mut impl FnMut(&str, &Path),
-) -> Result<(), CoreFailure> {
-    let mut entries = fs::read_dir(current)
-        .map_err(|_| CoreFailure {
-            code: "project_read_failed",
-            message: "project directory could not be read",
-            retryable: true,
-        })?
-        .filter_map(Result::ok)
-        .collect::<Vec<_>>();
-    entries.sort_by_key(|entry| entry.file_name());
-    for entry in entries {
-        let file_type = entry.file_type().map_err(|_| CoreFailure {
-            code: "project_read_failed",
-            message: "project entry type could not be read",
-            retryable: true,
-        })?;
-        let absolute = entry.path();
-        let Ok(relative_path) = absolute.strip_prefix(root) else {
-            continue;
-        };
-        let relative = relative_path
-            .to_string_lossy()
-            .replace(std::path::MAIN_SEPARATOR, "/");
-        if file_type.is_dir() {
-            collect_files(root, &absolute, visit)?;
-        } else if file_type.is_file() {
-            visit(&relative, &absolute);
-        }
-    }
-    Ok(())
-}
-
 fn glob_matches(pattern: &str, value: &str) -> bool {
     let pattern_parts = pattern.split('/').collect::<Vec<_>>();
     let value_parts = value.split('/').collect::<Vec<_>>();
@@ -650,8 +614,12 @@ mod tests {
     fn searches_bounded_globs_and_text_without_following_links() {
         let (root, checkpoints) = temporary_roots("search");
         fs::create_dir_all(root.join("src")).unwrap();
+        fs::create_dir_all(root.join(".git")).unwrap();
         fs::write(root.join("src/main.rs"), b"needle here\nsecond").unwrap();
         fs::write(root.join("README.md"), b"needle docs").unwrap();
+        fs::write(root.join(".gitignore"), b"ignored.rs\n").unwrap();
+        fs::write(root.join("ignored.rs"), b"ignored").unwrap();
+        fs::write(root.join(".hidden.rs"), b"hidden").unwrap();
         let glob = request("tool/glob", json!({"pattern":"**/*.rs","max_results":10}));
         let glob_result = dispatch(glob, Some(&root), Some(&checkpoints)).unwrap();
         assert_eq!(glob_result["result"]["paths"], json!(["src/main.rs"]));
@@ -664,6 +632,32 @@ mod tests {
             find_result["result"]["matches"].as_array().unwrap().len(),
             2
         );
+        cleanup(&root, &checkpoints);
+    }
+
+    #[test]
+    fn read_applies_line_offset_and_limit() {
+        let (root, checkpoints) = temporary_roots("read-range");
+        fs::write(root.join("file.txt"), b"one\ntwo\nthree\nfour\n").unwrap();
+        let response = dispatch(
+            request("tool/read", json!({"path":"file.txt","offset":2,"limit":2})),
+            Some(&root),
+            Some(&checkpoints),
+        )
+        .unwrap();
+        let bytes = super::STANDARD
+            .decode(response["result"]["data_base64"].as_str().unwrap())
+            .unwrap();
+        assert_eq!(bytes, b"two\nthree\n");
+        assert_eq!(response["result"]["offset"], 2);
+        assert_eq!(response["result"]["limit"], 2);
+        let invalid = dispatch(
+            request("tool/read", json!({"path":"file.txt","offset":0})),
+            Some(&root),
+            Some(&checkpoints),
+        )
+        .unwrap();
+        assert_eq!(invalid["error"]["code"], "invalid_arguments");
         cleanup(&root, &checkpoints);
     }
 
@@ -765,6 +759,65 @@ mod tests {
             "conflict"
         );
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn write_creates_nested_parent_and_edit_preserves_bom_and_crlf() {
+        let (root, checkpoints) = temporary_roots("mutation-format");
+        let write = dispatch(
+            request(
+                "tool/write",
+                json!({
+                    "path":"nested/file.txt",
+                    "content_base64":super::STANDARD.encode(b"\xef\xbb\xbfone\r\ntwo\r\n"),
+                    "expected_base64":null
+                }),
+            ),
+            Some(&root),
+            Some(&checkpoints),
+        )
+        .unwrap();
+        assert_eq!(write["result"]["created"], true);
+        let current = fs::read(root.join("nested/file.txt")).unwrap();
+        let edit = dispatch(
+            request(
+                "tool/edit",
+                json!({
+                    "path":"nested/file.txt",
+                    "expected_base64":super::STANDARD.encode(&current),
+                    "replacements":[
+                        {"old":"one","new":"uno","replace_all":false},
+                        {"old":"two","new":"dos","replace_all":false}
+                    ]
+                }),
+            ),
+            Some(&root),
+            Some(&checkpoints),
+        )
+        .unwrap();
+        assert!(edit["result"]["checkpoint_id"].is_string());
+        assert_eq!(
+            fs::read(root.join("nested/file.txt")).unwrap(),
+            b"\xef\xbb\xbfuno\r\ndos\r\n"
+        );
+        let overlap = dispatch(
+            request(
+                "tool/edit",
+                json!({
+                    "path":"nested/file.txt",
+                    "expected_base64":super::STANDARD.encode(b"\xef\xbb\xbfuno\r\ndos\r\n"),
+                    "replacements":[
+                        {"old":"uno","new":"x","replace_all":false},
+                        {"old":"uno\r\ndos","new":"y","replace_all":false}
+                    ]
+                }),
+            ),
+            Some(&root),
+            Some(&checkpoints),
+        )
+        .unwrap();
+        assert_eq!(overlap["error"]["code"], "edit_conflict");
+        cleanup(&root, &checkpoints);
     }
 
     #[test]
