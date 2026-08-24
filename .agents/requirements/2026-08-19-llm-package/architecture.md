@@ -9,7 +9,7 @@ The runtime core owns the provider trait, built-in catalog, registry, HTTP clien
 `suncode-llm` owns provider-neutral LLM types and provider execution:
 
 ```text
-suncode-runtime/core
+suncode-agent/core
     |- loads credentials from suncode-db
     |- implements ApiKeyResolver
     |- converts persistent messages at the agent boundary

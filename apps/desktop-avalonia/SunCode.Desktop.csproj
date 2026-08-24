@@ -33,19 +33,19 @@
 
   <PropertyGroup>
     <SunCodeRepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../..'))</SunCodeRepositoryRoot>
-    <SunCodeRuntimeDirectory>$(SunCodeRepositoryRoot)/runtime</SunCodeRuntimeDirectory>
-    <SunCodeRuntimeProfile Condition="'$(Configuration)' == 'Release'">release</SunCodeRuntimeProfile>
-    <SunCodeRuntimeProfile Condition="'$(SunCodeRuntimeProfile)' == ''">debug</SunCodeRuntimeProfile>
+    <SunCodeAgentDirectory>$(SunCodeRepositoryRoot)/agent</SunCodeAgentDirectory>
+    <SunCodeAgentProfile Condition="'$(Configuration)' == 'Release'">release</SunCodeAgentProfile>
+    <SunCodeAgentProfile Condition="'$(SunCodeAgentProfile)' == ''">debug</SunCodeAgentProfile>
     <SunCodeCargoProfileArgument Condition="'$(Configuration)' == 'Release'">--release</SunCodeCargoProfileArgument>
-    <SunCodeRuntimeOutput>$(SunCodeRuntimeDirectory)/target/$(SunCodeRuntimeProfile)</SunCodeRuntimeOutput>
+    <SunCodeAgentOutput>$(SunCodeAgentDirectory)/target/$(SunCodeAgentProfile)</SunCodeAgentOutput>
   </PropertyGroup>
 
-  <Target Name="BuildSunCodeRuntime" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true'">
-    <Exec Command="cargo build --manifest-path &quot;$(SunCodeRuntimeDirectory)/Cargo.toml&quot; -p suncode-runtime --lib $(SunCodeCargoProfileArgument)" />
+  <Target Name="BuildSunCodeAgent" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="cargo build --manifest-path &quot;$(SunCodeAgentDirectory)/Cargo.toml&quot; -p suncode-agent --lib $(SunCodeCargoProfileArgument)" />
     <ItemGroup>
-      <SunCodeNativeLibrary Include="$(SunCodeRuntimeOutput)/libsuncode_runtime.dylib" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
-      <SunCodeNativeLibrary Include="$(SunCodeRuntimeOutput)/libsuncode_runtime.so" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
-      <SunCodeNativeLibrary Include="$(SunCodeRuntimeOutput)/suncode_runtime.dll" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+      <SunCodeNativeLibrary Include="$(SunCodeAgentOutput)/libsuncode_agent.dylib" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+      <SunCodeNativeLibrary Include="$(SunCodeAgentOutput)/libsuncode_agent.so" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+      <SunCodeNativeLibrary Include="$(SunCodeAgentOutput)/suncode_agent.dll" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     </ItemGroup>
     <Copy SourceFiles="@(SunCodeNativeLibrary)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>

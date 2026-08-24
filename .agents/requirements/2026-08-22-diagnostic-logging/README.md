@@ -3,7 +3,7 @@
 - Date: 2026-08-22
 - Status: Complete
 - Related features: Avalonia desktop runtime diagnostics
-- Related specifications: `contracts/runtime-sdk/README.md`
+- Related specifications: `contracts/agent-sdk/README.md`
 - Related decisions: `ADR-20260815-embedded-runtime-sdk`
 
 ## Documents

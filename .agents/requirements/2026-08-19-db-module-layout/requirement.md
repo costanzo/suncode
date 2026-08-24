@@ -10,7 +10,7 @@ SunCode is a new system. It needs one current schema and does not need schema ve
 
 ## Goals
 
-- Give database code one explicit `runtime/crates/db/` package boundary.
+- Give database code one explicit `agent/crates/db/` package boundary.
 - Name the Cargo package `suncode-db` and its Rust library crate `suncode_db`.
 - Keep the ordered schema manifest separate from per-table SQL files.
 - Keep future reference/seed data in a separate ordered `data/` manifest.
@@ -27,10 +27,10 @@ SunCode is a new system. It needs one current schema and does not need schema ve
 
 ## Requirements
 
-- `runtime/crates/db/src/store.rs` owns runtime queries and transactions.
-- `runtime/crates/db/src/schema/mod.rs` is the ordered schema master list.
-- `runtime/crates/db/src/schema/*.sql` contains exactly one table definition and that table's indexes or triggers.
-- `runtime/crates/db/src/data/mod.rs` is an explicit ordered master list and may be empty.
+- `agent/crates/db/src/store.rs` owns runtime queries and transactions.
+- `agent/crates/db/src/schema/mod.rs` is the ordered schema master list.
+- `agent/crates/db/src/schema/*.sql` contains exactly one table definition and that table's indexes or triggers.
+- `agent/crates/db/src/data/mod.rs` is an explicit ordered master list and may be empty.
 - Persistence DTOs used by the store API are owned and exported by the database package; core may re-export them for its public SDK surface.
 - Schema and data scripts execute in one initialization transaction.
 - SQL file names contain no ordering numbers; manifest position is the only execution order.

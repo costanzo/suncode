@@ -6,7 +6,7 @@
 
 ## Proposed design
 
-Treat `turns` as the durable usage projection. Applying `usage.updated` replaces the turn's cumulative counters. `Store::session_usage` sums those counters, and `RuntimeSdk::session_usage` exposes the aggregate through a named C ABI operation. Qt stores only the returned session total and renders it beside the selected model.
+Treat `turns` as the durable usage projection. Applying `usage.updated` replaces the turn's cumulative counters. `Store::session_usage` sums those counters, and `AgentSdk::session_usage` exposes the aggregate through a named C ABI operation. Qt stores only the returned session total and renders it beside the selected model.
 
 ## Boundaries and dependencies
 

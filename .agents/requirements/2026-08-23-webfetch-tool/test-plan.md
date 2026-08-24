@@ -33,12 +33,12 @@ Schema, argument validation, network policy, redirects, HTTP response bounds, HT
 - Focused operations WebFetch tests: 7 passed.
 - Focused core argument validation and registry tests: passed.
 - Focused Avalonia approval tests: 3 passed.
-- `cargo test --manifest-path runtime/Cargo.toml --workspace`: 35 database, 3 LLM, 36 runtime, and 31 operations tests passed.
+- `cargo test --manifest-path agent/Cargo.toml --workspace`: 35 database, 3 LLM, 36 runtime, and 31 operations tests passed.
 - `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore`: 39 passed.
-- `cargo fmt --manifest-path runtime/Cargo.toml --all -- --check`: passed.
-- `cargo clippy --manifest-path runtime/Cargo.toml --workspace --lib -- -D warnings`: passed.
+- `cargo fmt --manifest-path agent/Cargo.toml --all -- --check`: passed.
+- `cargo clippy --manifest-path agent/Cargo.toml --workspace --lib -- -D warnings`: passed.
 - `git diff --check`: passed.
-- `cargo clippy --manifest-path runtime/Cargo.toml --workspace --all-targets -- -D warnings`: blocked by unrelated existing test warnings in `runtime/crates/operations/src/git.rs:569` (`len() >= 1`) and `runtime/crates/core/src/agent.rs:2126` (discarded enumerate index).
+- `cargo clippy --manifest-path agent/Cargo.toml --workspace --all-targets -- -D warnings`: blocked by unrelated existing test warnings in `agent/crates/operations/src/git.rs:569` (`len() >= 1`) and `agent/crates/core/src/agent.rs:2126` (discarded enumerate index).
 
 ## Residual risks
 

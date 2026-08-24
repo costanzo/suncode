@@ -24,4 +24,4 @@
 
 - Requirement initialized for the Avalonia provider trace drawer.
 - Added normalized provider exchange projection, SDK methods, C ABI bindings, C# wrapper, and bottom drawer UI.
-- Verified with `cargo test -p suncode-runtime --quiet`, `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj`, and `git diff --check`.
+- Verified with `cargo test -p suncode-agent --quiet`, `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj`, and `git diff --check`.

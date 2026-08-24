@@ -2,7 +2,7 @@
 
 ## Current state
 
-`runtime/crates/operations/src/search.rs` recursively reads regular files and calls `str::find`. It neither uses ripgrep libraries nor implements its advertised regular-expression semantics.
+`agent/crates/operations/src/search.rs` recursively reads regular files and calls `str::find`. It neither uses ripgrep libraries nor implements its advertised regular-expression semantics.
 
 ## Proposed design
 

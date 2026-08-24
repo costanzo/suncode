@@ -6,7 +6,7 @@ Provider traits, model metadata, HTTP adapters, streaming normalization, databas
 
 ## Goals
 
-- Create a standalone `suncode-llm` Cargo package under `runtime/crates/llm`.
+- Create a standalone `suncode-llm` Cargo package under `agent/crates/llm`.
 - Move all provider-neutral LLM contracts, built-in model metadata, provider routing, HTTP adapters, and stream parsing into it.
 - Keep the package independent of SQLite and all SunCode persistence types.
 - Allow trusted Rust callers to register custom provider implementations and models.
@@ -23,7 +23,7 @@ Provider traits, model metadata, HTTP adapters, streaming normalization, databas
 
 ## Requirements
 
-- The LLM package must not depend on `suncode-db`, `suncode-runtime`, or `suncode-tool`.
+- The LLM package must not depend on `suncode-db`, `suncode-agent`, or `suncode-tool`.
 - Provider credentials must be obtained through an injected provider-neutral interface.
 - Completion requests must carry provider-neutral messages and tool definitions owned by the LLM package.
 - The registry must reject duplicate provider and model registrations deterministically.

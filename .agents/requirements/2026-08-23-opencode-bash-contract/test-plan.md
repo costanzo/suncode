@@ -28,9 +28,9 @@ New bash schema, millisecond timeout translation, legacy shell compatibility, an
 
 ## Commands and results
 
-- `cargo test --manifest-path runtime/Cargo.toml --workspace --quiet`: 33 + 3 + 33 + 24 tests passed.
+- `cargo test --manifest-path agent/Cargo.toml --workspace --quiet`: 33 + 3 + 33 + 24 tests passed.
 - `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore`: 38 passed.
-- `cargo fmt --manifest-path runtime/Cargo.toml --all -- --check`: passed.
+- `cargo fmt --manifest-path agent/Cargo.toml --all -- --check`: passed.
 - `git diff --check`: passed.
 
 ## Residual risks

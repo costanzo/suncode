@@ -2,6 +2,24 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260824-agent-naming
+
+- Date: 2026-08-24
+- Status: Accepted
+- Context: The previous `harness` name was still an awkward product boundary and did not match the user's preferred vocabulary for the coding agent core.
+- Decision: Name the Rust core, embedded SDK, current contracts, and desktop integration `agent`. Keep lower-level Tokio `runtime` terminology when it describes the async executor. The production workspace is `agent/`, the crate is `suncode-agent`, the native library is `suncode_agent`, and the C ABI uses `suncode_agent_sdk_*` symbols.
+- Compatibility: Bump the C ABI to version 3 because the symbol family and DTO names changed. The new project has no database, credential, or native-host migration path; clients use the current `agent` ABI and `agent.sqlite3` database directly.
+- Details: `.agents/requirements/2026-08-24-agent-naming/`, `agent/crates/core/`, `contracts/agent-sdk/`
+
+## ADR-20260824-harness-naming
+
+- Date: 2026-08-24
+- Status: Accepted
+- Context: The agent core was consistently named `runtime`, which conflated agent orchestration with lower-level execution mechanisms such as Tokio and made the ownership boundary less clear.
+- Decision: Name the Rust agent core and embedded SDK `harness`. Rename its workspace directory, core crate, native library, C ABI symbols, Avalonia binding namespace, current contracts, and current feature/specification records. Keep lower-level Tokio runtime terminology where it describes the async executor. Bump the C ABI version to 2 because the exported symbol family and health/error DTO names changed.
+- Compatibility: New harness startup reads the existing `runtime.sqlite3` database path when `harness.sqlite3` is absent and keeps the old macOS Keychain service as a legacy import source. Existing compiled native clients must be rebuilt against the version 2 harness ABI.
+- Details: `.agents/requirements/2026-08-24-harness-naming/`, `agent/crates/core/`, `contracts/agent-sdk/`
+
 ## ADR-20260823-remove-unused-tools
 
 - Date: 2026-08-23
@@ -9,7 +27,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The model registry had seven current tools, but retired patch, process, shell, filesystem, capability, and recovery aliases remained executable in the agent and operations dispatcher without production callers.
 - Decision: Accept only the seven canonical model names (`read`, `glob`, `grep`, `write`, `edit`, `bash`, `webfetch`) at the agent boundary. Remove the patch implementation, retired filesystem and capability wrappers, asynchronous process/recovery dispatcher entries, and desktop aliases. Keep the private synchronous process runner required by `bash`, including bounded output, cancellation, checkpoints for writes, and managed artifacts.
 - Consequences: Unknown and retired operation names fail closed. Persisted historical rows remain inspectable as data but are not replayable. The typed SDK keeps Git and checkpoint restore methods.
-- Details: `.agents/requirements/2026-08-23-remove-unused-tools/`, `runtime/crates/core/src/agent.rs`, `runtime/crates/operations/src/tools/mod.rs`
+- Details: `.agents/requirements/2026-08-23-remove-unused-tools/`, `agent/crates/core/src/agent.rs`, `agent/crates/operations/src/tools/mod.rs`
 
 ## ADR-20260823-audited-webfetch-tool
 
@@ -19,7 +37,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: SunCode could inspect local project sources and use an approved shell, but it had no narrow model tool for retrieving public reference pages without delegating the request to a general process. OpenCode exposes a bounded `webfetch` contract with text, Markdown, and HTML output.
 - Decision: Advertise `webfetch(url, format?, timeout?)` and execute it only through the audited Rust operations dispatcher after network approval. Validate arguments before approval and again at execution. Limit redirects to the approved host/port or a standard HTTP-to-HTTPS upgrade, reject embedded credentials and non-text content, bound raw responses to 5 MiB, expose a 64 KiB model preview, and retain larger converted text in managed artifact storage. Use parser-backed HTML conversion and rustls-based HTTP.
 - Consequences: The model-facing registry has seven built-in tools. Web retrieval has visible authority and bounded context impact; invalid calls can be repaired in the same turn without presenting approval. Images and other binary responses remain unsupported until the provider-neutral tool-result contract gains attachments. Full Control can pre-authorize this known network risk but does not bypass URL, redirect, response, audit, or cancellation checks.
-- Details: `.agents/requirements/2026-08-23-webfetch-tool/`, `runtime/crates/core/src/tools/webfetch.rs`, `runtime/crates/operations/src/tools/webfetch.rs`
+- Details: `.agents/requirements/2026-08-23-webfetch-tool/`, `agent/crates/core/src/tools/webfetch.rs`, `agent/crates/operations/src/tools/webfetch.rs`
 
 ## ADR-20260822-read-only-project-dependencies
 
@@ -28,7 +46,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Developers often need the agent and desktop Explorer to inspect related local repositories without opening them as the active project or granting them the active project's mutation and process authority.
 - Decision: Persist project-owned dependency folders in `project_dependency`, canonicalize them in Rust, and reject roots that equal, contain, are contained by, or overlap the active project or another dependency. Expose only opaque dependency IDs and display names to clients and the model. Add a lazy Avalonia Explorer for the project plus a `Dependencies` group. Route `dependency:<id>/...` only through bounded `read`, `glob`, and `grep`; preserve the alias in results and reject every other dependency operation. Add the missing table transactionally to an otherwise-current 13-table database as a narrow additive bootstrap extension, without introducing a general migration runner.
 - Consequences: Related source becomes inspectable without extending write, process, Git, checkpoint, or undo authority. Absolute dependency roots do not cross the SDK/model boundary. The current schema has 14 tables; unknown and structurally incompatible databases remain rejected.
-- Details: `.agents/requirements/2026-08-22-project-dependencies/`, `contracts/runtime-sdk/README.md`, `contracts/sqlite-schema.md`
+- Details: `.agents/requirements/2026-08-22-project-dependencies/`, `contracts/agent-sdk/README.md`, `contracts/sqlite-schema.md`
 
 ## ADR-20260822-persisted-logging-and-project-table
 
@@ -47,7 +65,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The model-facing `bash` tool converted every script to `/bin/sh -lc`, so approved process calls could not start on Windows. The same tool also obscured the important distinction between portable argv execution and platform-specific shell syntax.
 - Decision: Advertise separate `process` and `shell` tools. `process` passes a program and explicit argv without implicit shell parsing. `shell` selects Windows PowerShell on Windows and POSIX `/bin/sh` on macOS/Linux. Inject ephemeral host OS, architecture, shell dialect, path style, and local date/time into provider requests. Keep `bash` only as a persisted-call compatibility alias and preserve stable process-start failures through the tool and turn projections.
 - Consequences: Coding commands can use portable argv where possible, scripts use an explicit host dialect, and Windows no longer depends on `/bin/sh`, Git Bash, Cygwin, or WSL. Shell scripts are not portable unless authored for the reported dialect. Process execution remains approval-gated and does not gain OS or network isolation.
-- Details: `.agents/requirements/2026-08-21-cross-platform-process/`, `runtime/crates/core/src/tools/`, `runtime/crates/operations/src/process.rs`
+- Details: `.agents/requirements/2026-08-21-cross-platform-process/`, `agent/crates/core/src/tools/`, `agent/crates/operations/src/process.rs`
 
 ## ADR-20260820-configuration-and-provider-adapters
 
@@ -66,7 +84,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: `session_content` duplicated normalized messages, calls, tool uses, and turn state while also retaining large provider payloads. This caused unbounded database growth and required a second replay cursor table.
 - Decision: Remove `session_content` and `session_sequences`. Normalized session tables are the durable source of truth. Runtime events are in-memory notifications only; subscriptions do not replay from SQLite. A lagged subscriber receives `resync.required` and reloads a normalized session snapshot.
 - Consequences: Durable event sequence fields and replay cursors are removed. Provider context, tool results, approvals, recovery, and session history remain queryable in their dedicated tables. The later configuration consolidation brings the current schema to 13 tables.
-- Details: `.agents/requirements/2026-08-20-session-storage/`, `contracts/runtime-sdk/README.md`, `contracts/sqlite-schema.md`
+- Details: `.agents/requirements/2026-08-20-session-storage/`, `contracts/agent-sdk/README.md`, `contracts/sqlite-schema.md`
 
 ## ADR-20260820-session-storage
 
@@ -92,9 +110,9 @@ Newest first. Historical context is retained only when it still explains a curre
 - Status: Accepted
 - Supersedes: the custom-provider deferral in ADR-20260815-multi-model-provider-catalog and the blanket in-process provider-adapter exclusion in ADR-20260807-trusted-runtime-extension-isolation; dynamic and executable extension restrictions remain accepted
 - Context: Provider traits, canonical completion types, model metadata, HTTP adapters, credential persistence, tool declarations, and agent state were coupled inside runtime core. Enterprises also need to integrate private model gateways without coupling provider code to SunCode's SQLite schema.
-- Decision: Create the standalone `suncode-llm` package. It owns provider-neutral completion contracts, model metadata and routing, built-in models, OpenAI-compatible HTTP/SSE behavior, and public registration of trusted `LlmProvider` implementations. It has no database dependency. Core owns credential persistence and implements `ApiKeyResolver`, supplies tool schemas per request, converts persistence DTOs at the agent boundary, and lets Rust hosts extend the built-in registry during `RuntimeSdk` construction. Custom registration is trusted in-process Rust composition; persisted desktop configuration, C ABI registration, dynamic loading, and executable provider plugins remain deferred.
-- Consequences: Built-in and enterprise providers share one reusable LLM layer, identifiers can be owned rather than static, and provider tests no longer require runtime/database types. Custom implementations run with the host process's authority and are not sandboxed. The existing SDK ABI, schema, built-in IDs, and credential behavior remain unchanged.
-- Details: `.agents/requirements/2026-08-19-llm-package/`, `runtime/crates/llm/`
+- Decision: Create the standalone `suncode-llm` package. It owns provider-neutral completion contracts, model metadata and routing, built-in models, OpenAI-compatible HTTP/SSE behavior, and public registration of trusted `LlmProvider` implementations. It has no database dependency. Core owns credential persistence and implements `ApiKeyResolver`, supplies tool schemas per request, converts persistence DTOs at the agent boundary, and lets Rust hosts extend the built-in registry during `AgentSdk` construction. Custom registration is trusted in-process Rust composition; persisted desktop configuration, C ABI registration, dynamic loading, and executable provider plugins remain deferred.
+- Consequences: Built-in and enterprise providers share one reusable LLM layer, identifiers can be owned rather than static, and provider tests no longer require agent/database types. Custom implementations run with the host process's authority and are not sandboxed. The existing SDK ABI, schema, built-in IDs, and credential behavior remain unchanged.
+- Details: `.agents/requirements/2026-08-19-llm-package/`, `agent/crates/llm/`
 
 ## ADR-20260819-persisted-llm-catalog
 
@@ -111,7 +129,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Status: Accepted
 - Supersedes: ADR-20260819-sqlite-schema-v14 and the durable client-synchronization cursor portion of ADR-20260807-durable-stream-separation
 - Context: SunCode is a new system, but its database implementation mixed current storage behavior with historical schema versions, upgrade functions, and a monolithic SQL file.
-- Decision: Keep one current SQLite schema with no version or migration metadata. The dedicated `suncode-db` Cargo package at `runtime/crates/db` owns persistence DTOs, store operations, and schema/data resources; the runtime core consumes it as a library dependency. An ordered schema manifest applies one table-named SQL file per table and a separate ordered data manifest in one transaction. File names do not encode execution order. Reopening the current schema is idempotent, while an unexpected application table causes open to fail without conversion. Live session subscriptions recover through normalized snapshots rather than a persisted cursor table.
+- Decision: Keep one current SQLite schema with no version or migration metadata. The dedicated `suncode-db` Cargo package at `agent/crates/db` owns persistence DTOs, store operations, and schema/data resources; the runtime core consumes it as a library dependency. An ordered schema manifest applies one table-named SQL file per table and a separate ordered data manifest in one transaction. File names do not encode execution order. Reopening the current schema is idempotent, while an unexpected application table causes open to fail without conversion. Live session subscriptions recover through normalized snapshots rather than a persisted cursor table.
 - Consequences: Database ownership and table review are explicit, old compatibility code is removed, and incompatible development databases are never silently rewritten. Pending/resuming approvals remain recoverable, terminal continuation payloads are released, and focused recovery/retention indexes remain. Future released-schema evolution requires a new compatibility decision.
 - Details: `.agents/requirements/2026-08-19-db-module-layout/`, `../contracts/sqlite-schema.md`, `../contracts/persistence.md`
 
@@ -150,7 +168,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The desktop footer needs a durable cumulative token-consumption value for the selected session. Usage events are retained, but repeated events contain cumulative turn values and cannot be summed directly without double counting.
 - Decision: Project the latest provider-reported input, output, and total usage onto each `turns` row. The Rust SDK exposes a named `session_usage` aggregate. The desktop displays only the compact session total and never opens SQLite or estimates missing provider usage.
 - Consequences: Repeated usage updates replace one turn's counters; session totals sum across turns; providers that omit usage contribute zero. The footer remains a low-noise status surface rather than a cost or context dashboard.
-- Details: `.agents/requirements/2026-08-15-session-token-usage/`, `../contracts/runtime-sdk/`, `../contracts/sqlite-schema.md`
+- Details: `.agents/requirements/2026-08-15-session-token-usage/`, `../contracts/agent-sdk/`, `../contracts/sqlite-schema.md`
 
 ## ADR-20260815-embedded-runtime-sdk
 
@@ -160,7 +178,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Qt already embeds the Rust static library, but the facade reconstructs REST-like Axum requests and retains a standalone loopback HTTP/SSE server. Future TypeScript and Python packages need a reusable native runtime library, not a network service or duplicated runtime implementation.
 - Decision: SunCode's runtime is an embedded Rust SDK only. Hosts call named Rust SDK methods through native bindings. Qt uses the stable C ABI, future TypeScript uses N-API, and future Python uses PyO3 or the stable C ABI. Remove the client-facing HTTP/SSE server, synthetic HTTP dispatch, authentication token, endpoint discovery, and standalone runtime binary. Provider adapters retain outbound HTTPS. One runtime data directory may be owned by one host process; cross-process attach and replacement IPC are out of scope.
 - Consequences: SDK errors and outcomes are domain types rather than HTTP statuses; events use direct subscriptions rather than SSE; Qt no longer constructs paths; language SDKs embed the same Rust runtime and never open SQLite or implement runtime behavior. Separate processes cannot share one live runtime unless a future decision introduces an explicit IPC design.
-- Details: `.agents/requirements/2026-08-15-embedded-runtime-sdk/`, `../contracts/runtime-sdk/`
+- Details: `.agents/requirements/2026-08-15-embedded-runtime-sdk/`, `../contracts/agent-sdk/`
 
 ## ADR-20260815-built-in-provider-expansion
 
@@ -203,7 +221,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Date: 2026-08-09
 - Status: Accepted
 - Context: The root `rust/` workspace name described the implementation language instead of the product role. Future TypeScript and Python SDK packages need a home without implying that they own runtime state or duplicate runtime behavior.
-- Decision: Rename the product runtime workspace to `runtime/`, keep the Rust core at `runtime/crates/core`, keep audited operations at `runtime/crates/operations`, and introduce `sdks/` for future TypeScript and Python language bindings. Keep `contracts/` at the root as the shared protocol and storage contract source.
+- Decision: Rename the product runtime workspace to `agent/`, keep the Rust core at `agent/crates/core`, keep audited operations at `agent/crates/operations`, and introduce `sdks/` for future TypeScript and Python language bindings. Keep `contracts/` at the root as the shared protocol and storage contract source.
 - Consequences: Repository layout now names responsibilities rather than languages. Qt continues to link the Rust runtime static library through CMake. Future SDKs wrap the native runtime boundary instead of reading SQLite or calling providers directly.
 - Details: `ARCHITECTURE.md`
 
@@ -233,7 +251,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Phase 1 needs the Rust runtime to be reusable by Qt now and by future Web, CLI, and TUI adapters later, without forcing the client boundary to stay network-only.
 - Decision: Expose the Rust runtime as an embedded SDK facade for direct client adapters, with Qt as the first consumer. Keep HTTP/SSE as a separate adapter over the same runtime core for compatibility and future non-Qt surfaces. The SDK is an embedding boundary, not a new authority boundary, and it does not change SQLite ownership or the runtime trust model.
 - Consequences: Qt can call the Rust core without loopback transport, while Web/CLI/TUI can still use adapter-specific transports over the same runtime. The HTTP contract remains relevant for compatibility and future surfaces, but it is no longer the only Phase 1 client path.
-- Details: superseded contract replaced by `../contracts/runtime-sdk/README.md`
+- Details: superseded contract replaced by `../contracts/agent-sdk/README.md`
 
 ## ADR-20260808-qt-client-state-boundary
 
@@ -241,8 +259,8 @@ Newest first. Historical context is retained only when it still explains a curre
 - Status: Superseded in its transport details by ADR-20260815-embedded-runtime-sdk; presentation-state ownership remains accepted
 - Context: The Phase 1 desktop needs reconnect, conversation, activity, approvals, touched files, undo, credentials, and diagnostics without becoming a second runtime or reading local state directly.
 - Decision: The Qt C++ adapter holds only presentation state and an in-memory runtime credential. All durable state, file content, authority, recovery, provider, and diagnostic facts come from authenticated runtime DTOs and ordered SSE events. Conversation and activity are separate projections over the same event stream; Qt does not derive filesystem diffs by reading the project.
-- Consequences: Client restart is recovered through snapshots/replay, and additional client surfaces can reuse the same API. Rich diff computation remains a runtime/core-derived future package rather than Qt authority.
-- Details: `../contracts/runtime-sdk/README.md`
+- Consequences: Client restart is recovered through snapshots/replay, and additional client surfaces can reuse the same API. Rich diff computation remains a agent/core-derived future package rather than Qt authority.
+- Details: `../contracts/agent-sdk/README.md`
 
 ## ADR-20260807-runtime-phase-1-defaults
 
@@ -251,7 +269,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The first provider and vertical slice require concrete choices for authentication, message normalization, authorization, and bounded execution.
 - Decision: Phase 1 uses DeepSeek V4 with API-key authentication. The canonical provider schema is SunCode-owned, role-based messages containing text content parts; the schema remains extensible, but multimodal content is deferred. The default interactive policy permits read-only project inspection and requires approval for writes, process execution, network access, secret use, destructive operations, and access outside the project. Non-interactive runs deny operations without an explicit profile grant. Default per-turn limits are 32 iterations, 32 tool calls, 10 minutes wall-clock, a configurable cost cap, and 8 MiB total output. Provider-reported token usage is recorded but is not a fixed turn termination threshold.
 - Consequences: Provider credentials are user secrets resolved through plaintext SQLite secret records; environment variables are supported only as an explicit CI/script override. Provider adapters translate the canonical schema and never expose vendor payloads to clients. The runtime must enforce every limit and fail closed when authorization or credential resolution is unavailable.
-- Details: `contracts/runtime-core/`, `contracts/runtime-sdk/`, `contracts/persistence.md`
+- Details: `contracts/agent-core/`, `contracts/agent-sdk/`, `contracts/persistence.md`
 
 ## ADR-20260807-first-provider-deepseek-v4
 
@@ -324,7 +342,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The built-in Rust content search was a literal in-process directory walk, while the grep tool contract described regular-expression search. Calling an `rg` executable would add an installation, PATH, and child-process dependency to the embedded runtime.
 - Decision: Embed ripgrep's reusable Rust crates (`ignore`, `globset`, `grep-regex`, and `grep-searcher`) in the audited operations crate. Use Rust regular expressions, standard ripgrep ignore/hidden-file traversal, bounded project-relative glob filtering, and the existing bounded JSON result contract. Do not invoke an external `rg` process and defer PCRE2.
 - Consequences: The desktop runtime has no ripgrep installation prerequisite and remains inside the Rust operation boundary. The search behavior now follows ripgrep standard filters and regex syntax; callers needing literal punctuation must escape it. Command-line-only features and output formats remain outside the operation contract.
-- Details: `.agents/requirements/2026-08-15-embedded-ripgrep/`, `runtime/crates/operations/src/search.rs`
+- Details: `.agents/requirements/2026-08-15-embedded-ripgrep/`, `agent/crates/operations/src/search.rs`
 
 ## ADR-20260815-embedded-git2-review
 
@@ -333,4 +351,4 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The Qt project window needs the actual Git working-tree and index state, but invoking a Git executable would add an installation, PATH, and child-process dependency and allowing Qt to inspect `.git` would violate the SDK ownership boundary.
 - Decision: Embed `git2` with vendored libgit2 in the audited Rust operations crate. Expose bounded read-only status and per-file diff methods through the typed Rust SDK and C ABI. Repository discovery may locate a root above the opened project, but every result and requested path remains filtered to the opened project. Qt owns only transient drawer presentation state.
 - Consequences: The desktop can review all, staged, unstaged, untracked, renamed, deleted, binary, and conflicted local changes without an installed Git executable or system libgit2. Vendoring increases build time and binary size, and the Qt static-library link must include libgit2's native compression and character-conversion dependencies. Stage, discard, commit, refs, remotes, and credentials require separate policy and recovery designs.
-- Details: `.agents/requirements/2026-08-15-git-diff-drawer/`, `runtime/crates/operations/src/git.rs`
+- Details: `.agents/requirements/2026-08-15-git-diff-drawer/`, `agent/crates/operations/src/git.rs`

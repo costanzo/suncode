@@ -28,8 +28,8 @@ Verify the Avalonia build, C ABI loading, view-model projections, and unchanged 
 
 ## Commands and results
 
-- `cargo fmt --manifest-path runtime/Cargo.toml --all -- --check`: passed.
-- `cargo test --manifest-path runtime/Cargo.toml --workspace`: passed, 43 tests.
+- `cargo fmt --manifest-path agent/Cargo.toml --all -- --check`: passed.
+- `cargo test --manifest-path agent/Cargo.toml --workspace`: passed, 43 tests.
 - `dotnet restore apps/desktop-avalonia/SunCode.Desktop.csproj`: passed without package downgrade or compatibility warnings; all Avalonia runtime assemblies resolved to `12.1.1`.
 - Avalonia 12 extension compatibility: removed the Avalonia 11 `Avalonia.Svg.Skia` and `Markdown.Avalonia.Tight` binaries after the SVG renderer raised a runtime `TypeLoadException`; restore now resolves `Svg.Controls.Skia.Avalonia 12.0.0.15` and `LiveMarkdown.Avalonia 2.3.2`.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore`: passed on Avalonia `12.1.1` with 0 warnings and 0 errors.
@@ -37,7 +37,7 @@ Verify the Avalonia build, C ABI loading, view-model projections, and unchanged 
 - `dotnet format apps/desktop-avalonia/SunCode.Desktop.csproj --verify-no-changes --no-restore`: passed.
 - Conversation projection follow-up: `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore` passed (21 tests); DesignTime and Release builds passed with zero warnings and errors; test-project format verification and `git diff --check` passed.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json apps/desktop-avalonia DESIGN.md`: returned `[]`.
-- Release startup: loaded the native runtime, listed projects, selected a project, and rendered runtime/Git projections without console errors.
+- Release startup: loaded the native runtime, listed projects, selected a project, and rendered agent/Git projections without console errors.
 - Screenshot checks: passed for the hub, 1440x900 workbench, 900x620 compact workbench, settings, Git drawer, and in-window session dialog.
 - Multi-window checks: passed for shared native runtime ownership, two simultaneous project windows, duplicate-project activation/disablement, dynamic recent-project menus, and hub restoration after the last project closes.
 - Interaction checks: passed for project/session navigation, native project menu, title chrome, responsive resizing, Git drawer controls, settings, keyboard dismissal, composer gating, and focus styling.

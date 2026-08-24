@@ -51,7 +51,7 @@ SunCode now commits to an embedded SDK model. The Rust runtime is a library load
 ## Acceptance criteria
 
 - No production client-facing Axum router, listener, HTTP authentication, SSE endpoint, discovery endpoint record, or runtime server binary remains.
-- `suncode_runtime_sdk_request_json` is removed from Rust and Qt.
+- `suncode_agent_sdk_request_json` is removed from Rust and Qt.
 - Qt project/session/settings/credential/turn/approval/checkpoint flows use named SDK methods.
 - Existing session snapshot, event ordering, approval, cancellation, checkpoint, credential, and model behavior passes focused verification.
 - The Rust dependency tree no longer includes dependencies used only by the removed inbound server.

@@ -14,7 +14,7 @@ Unix commands run in a dedicated process group and are terminated with a negativ
 
 ## Boundaries and dependencies
 
-- suncode-runtime owns cancellation-token observation and async scheduling.
+- suncode-agent owns cancellation-token observation and async scheduling.
 - suncode-tool owns process creation, output capture, process-tree termination, and artifacts.
 - suncode-tool adds the platform libc dependency only for Unix process-group signals.
 - Avalonia and provider code remain unchanged.

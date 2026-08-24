@@ -20,12 +20,12 @@ SunCode combines broad coding assistance with reviewable machine access. In the 
 
 ## Operating Context
 
-The user opens a project in the Avalonia desktop application, creates or resumes a session, submits turns, and watches ordered conversation and activity events as they stream. The runtime may inspect or mutate project files, run approved processes, and produce artifacts. Sensitive actions can suspend a turn until the user allows or denies them. The user can inspect files touched by a turn and restore checkpointed filesystem changes, subject to expiry and conflict status.
+The user opens a project in the Avalonia desktop application, creates or resumes a session, submits turns, and watches ordered conversation and activity events as they stream. The agent may inspect or mutate project files, run approved processes, and produce artifacts. Sensitive actions can suspend a turn until the user allows or denies them. The user can inspect files touched by a turn and restore checkpointed filesystem changes, subject to expiry and conflict status.
 
 ## Capabilities and Constraints
 
 - Phase 1 ships the .NET 10 Avalonia desktop client as the only production client surface.
-- Rust owns the runtime core, provider integration, agent loop, policy, approvals, persistence, credentials, native SDK API, recovery, and operations.
+- Rust owns the agent core, provider integration, agent loop, policy, approvals, persistence, credentials, native SDK API, recovery, and operations.
 - The built-in catalog has six providers with two stable model identities each.
 - The Avalonia client embeds the Rust SDK through its method-oriented C ABI and does not access SQLite, model providers, or project files directly.
 - Machine-affecting operations use an audited internal Rust dispatcher; this is an auditability boundary, not an OS sandbox.
@@ -44,7 +44,7 @@ The user opens a project in the Avalonia desktop application, creates or resumes
 
 ## Evidence on Hand
 
-The repository contains an implemented Avalonia desktop vertical slice under `apps/desktop-avalonia/`, a Rust runtime under `runtime/`, hand-written protocol contracts and shared vectors under `contracts/`, and SDK documentation under `sdks/`. Existing product and architecture records are maintained under `.agents/`. No external testimonials, customer claims, benchmarks, pricing, or other proof assets are established; future work must not fabricate them.
+The repository contains an implemented Avalonia desktop vertical slice under `apps/desktop-avalonia/`, a Rust agent under `agent/`, hand-written protocol contracts and shared vectors under `contracts/`, and SDK documentation under `sdks/`. Existing product and architecture records are maintained under `.agents/`. No external testimonials, customer claims, benchmarks, pricing, or other proof assets are established; future work must not fabricate them.
 
 ## Accessibility & Inclusion
 

@@ -21,7 +21,7 @@
 cargo fmt --all -- --check
 cargo test --workspace
 cargo clippy -p suncode-db --all-targets -- -D warnings
-cargo clippy -p suncode-runtime --lib -- -D warnings
+cargo clippy -p suncode-agent --lib -- -D warnings
 dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore -c Release
 dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore
 git diff --check
@@ -29,10 +29,10 @@ git diff --check
 
 ## Current results
 
-- `cargo fmt --manifest-path runtime/Cargo.toml --all -- --check`: passed.
-- `cargo test --manifest-path runtime/Cargo.toml --workspace`: passed (74 tests plus doc tests).
-- `cargo clippy --manifest-path runtime/Cargo.toml -p suncode-db --all-targets -- -D warnings`: passed.
-- `cargo clippy --manifest-path runtime/Cargo.toml -p suncode-runtime --lib -- -D warnings`: passed.
+- `cargo fmt --manifest-path agent/Cargo.toml --all -- --check`: passed.
+- `cargo test --manifest-path agent/Cargo.toml --workspace`: passed (74 tests plus doc tests).
+- `cargo clippy --manifest-path agent/Cargo.toml -p suncode-db --all-targets -- -D warnings`: passed.
+- `cargo clippy --manifest-path agent/Cargo.toml -p suncode-agent --lib -- -D warnings`: passed.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore -c Release`: passed with no warnings.
 - `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore`: passed (21 tests).
 - `git diff --check`: passed.

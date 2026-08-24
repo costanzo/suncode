@@ -23,4 +23,4 @@
 ### 2026-08-14
 
 - Requirement initialized and implementation started.
-- Focused and full `suncode-runtime` tests passed.
+- Focused and full `suncode-agent` tests passed.

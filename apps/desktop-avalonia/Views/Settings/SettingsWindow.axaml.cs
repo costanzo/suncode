@@ -199,7 +199,7 @@ public sealed partial class SettingsWindow : Window
     {
         var configured = ViewModel.IsProviderConfigured(_provider);
         CredentialStatus.Text = configured
-            ? "API key configured in the local runtime credential store."
+            ? "API key configured in the local agent credential store."
             : "No API key configured.";
         CredentialStatus.Foreground = this.FindResource(configured ? "SuccessBrush" : "WarningBrush") as Avalonia.Media.IBrush;
         RemoveCredentialButton.IsEnabled = configured;

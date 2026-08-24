@@ -11,7 +11,7 @@ Adopt three PI Agent ideas in SunCode-native form:
 - Token-window compaction: context construction estimates tokens from content, compacts when estimated context exceeds `model_window - reserve`, and retains a recent tail by estimated tokens.
 
 ## Boundaries and dependencies
-The queue is owned by `runtime/crates/core/src/agent.rs` and is intentionally in-memory. SQLite schema, provider adapters, operations, and Qt DTO ownership stay unchanged. Model limits come from the existing runtime model catalog.
+The queue is owned by `agent/crates/core/src/agent.rs` and is intentionally in-memory. SQLite schema, provider adapters, operations, and Qt DTO ownership stay unchanged. Model limits come from the existing runtime model catalog.
 
 ## Data and control flow
 1. `submit` validates the model, tries to acquire the session lock, and queues the message if the lock is busy.

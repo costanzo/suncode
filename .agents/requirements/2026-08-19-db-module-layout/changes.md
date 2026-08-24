@@ -2,8 +2,8 @@
 
 ## Source
 
-- Added the standalone `suncode-db` package under `runtime/crates/db` as the database ownership boundary.
-- Moved `persistence.rs` to `runtime/crates/db/src/store.rs` and updated core imports.
+- Added the standalone `suncode-db` package under `agent/crates/db` as the database ownership boundary.
+- Moved `persistence.rs` to `agent/crates/db/src/store.rs` and updated core imports.
 - Moved persistence DTO ownership into the database package and retained core re-exports for SDK compatibility.
 - Removed core's direct `rusqlite` dependency.
 - Added ordered `schema` and `data` manifests with table-named schema files.

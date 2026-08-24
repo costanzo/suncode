@@ -27,10 +27,10 @@ Exact model names, policy, argument translation, operation dispatch, process exe
 
 ## Commands and results
 
-- `cargo test --manifest-path runtime/Cargo.toml --workspace`: passed (35 db, 3 LLM, 32 core, 30 operations).
+- `cargo test --manifest-path agent/Cargo.toml --workspace`: passed (35 db, 3 LLM, 32 core, 30 operations).
 - `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore`: passed (39).
-- `cargo fmt --manifest-path runtime/Cargo.toml --all -- --check`: passed.
-- `cargo clippy --manifest-path runtime/Cargo.toml --workspace --lib -- -D warnings`: passed.
+- `cargo fmt --manifest-path agent/Cargo.toml --all -- --check`: passed.
+- `cargo clippy --manifest-path agent/Cargo.toml --workspace --lib -- -D warnings`: passed.
 - `git diff --check`: passed.
 
 ## Residual risks

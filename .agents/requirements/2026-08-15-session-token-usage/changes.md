@@ -3,8 +3,8 @@
 ## Source
 
 - Added durable `usage.updated` projection into the owning `turns` row.
-- Added session-wide usage aggregation and the typed `RuntimeSdk::session_usage` method.
-- Added the named `suncode_runtime_sdk_session_usage` C ABI function.
+- Added session-wide usage aggregation and the typed `AgentSdk::session_usage` method.
+- Added the named `suncode_agent_sdk_session_usage` C ABI function.
 - Added the Qt `sessionTotalTokens` property with session-switch race protection and live refresh.
 - Added the compact footer value beside the selected model.
 

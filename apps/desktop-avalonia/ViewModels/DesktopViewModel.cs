@@ -8,13 +8,13 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
-using SunCode.Desktop.Runtime;
+using SunCode.Desktop.Agent;
 
 namespace SunCode.Desktop.ViewModels;
 
 public sealed class DesktopViewModel : ObservableObject, IDisposable
 {
-    private RuntimeSdk? _sdk;
+    private AgentSdk? _sdk;
     private IDisposable? _subscription;
     private BulkObservableCollection<MessageItem> _messages = [];
     private ProjectItem? _selectedProject;
@@ -29,7 +29,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private readonly HashSet<string> _appliedMessageIds = new(StringComparer.Ordinal);
     private ApprovalItem? _pendingApproval;
     private string _connectionState = "disconnected";
-    private string _statusText = "Starting local runtime...";
+    private string _statusText = "Starting local agent...";
     private string _composerText = string.Empty;
     private string _activeTurnId = string.Empty;
     private string _themeMode = "dark";
@@ -427,13 +427,13 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     {
         if (_sdk is not null || _disposed) return;
         ConnectionState = "connecting";
-        StatusText = "Starting local runtime...";
+        StatusText = "Starting local agent...";
         try
         {
-            _sdk = await RuntimeSdk.OpenAsync();
+            _sdk = await AgentSdk.OpenAsync();
             await _sdk.HealthAsync();
             ConnectionState = "connected";
-            StatusText = "Connected to local runtime";
+            StatusText = "Connected to local agent";
             await LoadModelsAsync();
             await LoadSettingsAsync();
             await LoadCredentialsAsync();
@@ -845,8 +845,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             var database = health.Object("database");
             DiagnosticsText = health.Count == 0
                 ? "Diagnostics unavailable"
-                : $"Runtime  {health.String("runtime")}\nDatabase  {(database.Bool("ok") ? "Ready" : "Check required")}";
-            OnPropertyChanged(nameof(IsRuntimeHealthy));
+                : $"Agent  {health.String("agent")}\nDatabase  {(database.Bool("ok") ? "Ready" : "Check required")}";
+            OnPropertyChanged(nameof(IsAgentHealthy));
         });
     }
 
@@ -1086,7 +1086,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         if (SelectedGitFile is not null) _ = LoadGitDiffAsync(SelectedGitFile, GitScope);
     }
 
-    public bool IsRuntimeHealthy => DiagnosticsText.Contains("Ready", StringComparison.Ordinal);
+    public bool IsAgentHealthy => DiagnosticsText.Contains("Ready", StringComparison.Ordinal);
 
     public async Task SaveCredentialAsync(string provider, string apiKey)
     {
@@ -1588,7 +1588,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
         catch (JsonException exception)
         {
-            StatusText = $"Ignored malformed runtime event: {exception.Message}";
+            StatusText = $"Ignored malformed agent event: {exception.Message}";
         }
     });
 
@@ -1903,7 +1903,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private bool EnsureSdk()
     {
         if (_sdk is not null && !_disposed) return true;
-        StatusText = "Runtime SDK is not connected";
+        StatusText = "Agent SDK is not connected";
         ConnectionState = "error";
         return false;
     }

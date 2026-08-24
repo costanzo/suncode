@@ -1,7 +1,7 @@
 # Test Plan
 
 - `cargo test -p suncode-tool`
-- `cargo test -p suncode-runtime`
+- `cargo test -p suncode-agent`
 - Verify read range output and out-of-range errors.
 - Verify glob excludes ignored and hidden files.
 - Verify edit preserves BOM/CRLF and rejects overlapping ranges.

@@ -31,7 +31,7 @@ The standalone LLM package, custom registration, built-in OpenAI-compatible stre
 - `cargo fmt --all -- --check`: passed.
 - `cargo tree -p suncode-llm --depth 1`: confirmed no SunCode database, runtime, or tool dependency.
 - `git diff --check`: passed.
-- `cargo clippy -p suncode-runtime --lib -- -D warnings`: blocked by the pre-existing `manual_clamp` warning in `runtime/crates/core/src/context.rs`; the changed LLM package passes strict clippy.
+- `cargo clippy -p suncode-agent --lib -- -D warnings`: blocked by the pre-existing `manual_clamp` warning in `agent/crates/core/src/context.rs`; the changed LLM package passes strict clippy.
 
 ## Residual risks
 

@@ -10,7 +10,7 @@ Session `pin_at` persistence, ordering, archive behavior, runtime DTO shape, and
 
 ## Integration and conformance tests
 
-- `suncode-runtime` unit suite and shared runtime vector JSON validation.
+- `suncode-agent` unit suite and shared runtime vector JSON validation.
 
 ## Regression checks
 
@@ -23,8 +23,8 @@ Session `pin_at` persistence, ordering, archive behavior, runtime DTO shape, and
 ## Commands and results
 
 - `PATH=... cargo test -p suncode-db`: passed, 37 tests.
-- `PATH=... cargo test -p suncode-runtime`: passed, 32 tests.
-- `PATH=... cargo test -p suncode-runtime`: passed, 32 tests.
+- `PATH=... cargo test -p suncode-agent`: passed, 32 tests.
+- `PATH=... cargo test -p suncode-agent`: passed, 32 tests.
 - `dotnet build apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore`: passed.
 - `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-build --no-restore`: passed, 39 tests.
 - `git diff --check`: passed.

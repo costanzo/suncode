@@ -1,14 +1,14 @@
-# Runtime Persistence Contract
+# Agent Persistence Contract
 
 Status: Draft for Phase 1 implementation.
 
-The Rust runtime owns SQLite initialization, provider secrets, projections, and operation bookkeeping. Avalonia, providers, and future extensions never open the database directly.
+The Rust agent owns SQLite initialization, provider secrets, projections, and operation bookkeeping. Avalonia, providers, and future extensions never open the database directly.
 
 The normative Phase 1 physical table definitions, constraints, and indexes are in `sqlite-schema.md`. Clients consume API DTOs and never depend on those table shapes.
 
 Configuration is stored in one `configuration` table across `global`, `project`, and `session` scopes. Effective reads apply global, project, then session precedence. `tool_call_limit` is project-only, accepts JSON integers from 1 through 256, and defaults in core to 64 when absent.
 
-Logging policy is durable global configuration rather than process-environment configuration. `log_level`, `log_directory`, `log_max_bytes`, and `log_retention` configure both production loggers; the Avalonia client and Rust runtime write separate `desktop.log` and `runtime.log` files. The database and data directory must still be located before configuration can be read, so data/database path inputs remain bootstrap configuration outside SQLite.
+Logging policy is durable global configuration rather than process-environment configuration. `log_level`, `log_directory`, `log_max_bytes`, and `log_retention` configure both production loggers; the Avalonia client and Rust agent write separate `desktop.log` and `agent.log` files. The database and data directory must still be located before configuration can be read, so data/database path inputs remain bootstrap configuration outside SQLite.
 
 SunCode currently has one schema and no database migration or version metadata. Initialization applies the ordered schema and data manifests transactionally. Reopening the current schema is idempotent; a database with an unexpected application table is rejected without conversion. As one explicit additive bootstrap extension, initialization adds the empty `project_dependency` table to an otherwise-current 13-table database before validating the 14-table manifest. It does not provide a general migration mechanism. The current project identity table is singular `project`; a database containing the former `projects` table is therefore incompatible and is not renamed automatically.
 
@@ -30,9 +30,9 @@ Approval requests and turn-submission idempotency are durable relational state. 
 
 ## Secrets
 
-Provider API keys are classified user secrets. The runtime stores the plaintext value on `llm_model_provider.api_key`. The SQLite data directory and its backups must be treated as sensitive. The key never enters a protocol message, audit record, session content event, log, or client response. Updating a provider key replaces the current value in one row.
+Provider API keys are classified user secrets. The agent stores the plaintext value on `llm_model_provider.api_key`. The SQLite data directory and its backups must be treated as sensitive. The key never enters a protocol message, audit record, session content event, log, or client response. Updating a provider key replaces the current value in one row.
 
-`llm_model_provider` and `llm_model` are the durable source for provider endpoints, adapter compatibility, built-in and custom model identities, request model codes, context lengths, auto-compaction thresholds, output limits, capability flags, enabled state, and ordering. Every provider row names a known `suncode-llm` adapter; currently `openai` is the supported OpenAI-compatible adapter and is the default for custom endpoints. `suncode-db` exposes these rows to runtime core; `suncode-llm` remains database-free.
+`llm_model_provider` and `llm_model` are the durable source for provider endpoints, adapter compatibility, built-in and custom model identities, request model codes, context lengths, auto-compaction thresholds, output limits, capability flags, enabled state, and ordering. Every provider row names a known `suncode-llm` adapter; currently `openai` is the supported OpenAI-compatible adapter and is the default for custom endpoints. `suncode-db` exposes these rows to agent core; `suncode-llm` remains database-free.
 
 ## Retention and compaction
 

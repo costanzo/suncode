@@ -28,9 +28,9 @@ Session configuration persistence, approval atomicity, policy behavior, session 
 
 ## Commands and results
 
-- `cargo test --manifest-path runtime/Cargo.toml --workspace --quiet`: 35 + 3 + 35 + 24 tests passed.
+- `cargo test --manifest-path agent/Cargo.toml --workspace --quiet`: 35 + 3 + 35 + 24 tests passed.
 - `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore`: 38 passed.
-- `cargo fmt --manifest-path runtime/Cargo.toml --all -- --check`: passed.
+- `cargo fmt --manifest-path agent/Cargo.toml --all -- --check`: passed.
 - `git diff --check`: passed.
 - `dotnet run --project apps/desktop-avalonia/SunCode.Desktop.csproj`: application started; the existing disabled-state sidebar was visually inspected at the current project-window width.
 

@@ -57,7 +57,7 @@ coverage/
 # Rust build output
 target/
 
-# SQLite runtime databases and sidecar files
+# SQLite harness databases and sidecar files
 *.db
 *.db-journal
 *.db-shm

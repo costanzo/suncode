@@ -6,7 +6,7 @@ The Qt client receives project, session, checkpoint, and activity DTOs from the 
 
 ## Proposed design
 
-Add a read-only `git` module to `runtime/crates/operations` backed by `git2` with vendored libgit2 and no remote transport features. The module returns bounded structured status and per-file diff DTOs. The Rust SDK resolves the project record, calls the operation with its canonical root, and exposes named C ABI methods. The Qt adapter retains only current presentation projections.
+Add a read-only `git` module to `agent/crates/operations` backed by `git2` with vendored libgit2 and no remote transport features. The module returns bounded structured status and per-file diff DTOs. The Rust SDK resolves the project record, calls the operation with its canonical root, and exposes named C ABI methods. The Qt adapter retains only current presentation projections.
 
 Restructure the project-window body as fixed gutters around a vertical work area. The existing navigation/conversation/process row remains the upper work area. A resizable Git drawer occupies the lower work area when open. The footer remains outside the drawer and exposes a compact Git summary.
 

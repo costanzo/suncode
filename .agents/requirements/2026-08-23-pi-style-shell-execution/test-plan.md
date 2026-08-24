@@ -27,9 +27,9 @@ Timeout translation, process output draining and artifact preservation, cancella
 
 ## Commands and results
 
-- cargo fmt --manifest-path runtime/Cargo.toml --all: passed.
-- cargo test --manifest-path runtime/Cargo.toml -p suncode-tool -p suncode-runtime: passed, 53 tests plus doc tests.
-- cargo test --manifest-path runtime/Cargo.toml --workspace --quiet: passed, 90 tests.
+- cargo fmt --manifest-path agent/Cargo.toml --all: passed.
+- cargo test --manifest-path agent/Cargo.toml -p suncode-tool -p suncode-agent: passed, 53 tests plus doc tests.
+- cargo test --manifest-path agent/Cargo.toml --workspace --quiet: passed, 90 tests.
 - dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore: passed, 34 tests.
 - git diff --check: passed.
 

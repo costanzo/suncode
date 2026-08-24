@@ -2,7 +2,7 @@
 
 - Date: 2026-08-19
 - Status: Complete
-- Related features: `features/runtime-phase-1/`
+- Related features: `features/agent-phase-1/`
 - Related specifications: `contracts/sqlite-schema.md`, `contracts/persistence.md`
 - Related decisions: `ADR-20260819-current-schema-bootstrap`
 

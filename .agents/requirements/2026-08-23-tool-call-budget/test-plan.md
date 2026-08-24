@@ -28,9 +28,9 @@ Terminal turn persistence, project setting validation/resolution, agent batch en
 ## Commands and results
 
 - `cargo test -p suncode-db --lib`: passed, 40 tests.
-- `cargo test -p suncode-runtime --lib`: passed, 34 tests.
+- `cargo test -p suncode-agent --lib`: passed, 34 tests.
 - `cargo test --workspace`: passed, 113 tests plus doc tests.
-- `cargo clippy -p suncode-runtime --lib -- -D warnings`: passed.
+- `cargo clippy -p suncode-agent --lib -- -D warnings`: passed.
 - `cargo clippy -p suncode-db --all-targets -- -D warnings`: passed.
 - `dotnet build SunCode.Desktop.csproj`: passed with zero warnings and errors.
 - `jq empty` for runtime SDK/provider vectors: passed.

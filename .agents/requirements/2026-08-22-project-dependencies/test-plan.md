@@ -32,8 +32,8 @@ Persistence ownership, path containment, SDK DTO privacy, dependency routing, Ex
 ## Commands and results
 
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore`: passed, 0 warnings/errors.
-- `cargo fmt --manifest-path runtime/Cargo.toml --all -- --check`: passed.
-- `cargo test --manifest-path runtime/Cargo.toml --workspace`: passed (84 tests: DB 32, LLM 3, runtime 27, operations 22).
+- `cargo fmt --manifest-path agent/Cargo.toml --all -- --check`: passed.
+- `cargo test --manifest-path agent/Cargo.toml --workspace`: passed (84 tests: DB 32, LLM 3, runtime 27, operations 22).
 - `jq empty contracts/vectors/runtime-sdk.json`: passed.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json ...`: passed with no findings.
 - `git diff --check`: passed.

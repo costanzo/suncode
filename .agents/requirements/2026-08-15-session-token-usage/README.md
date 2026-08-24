@@ -2,8 +2,8 @@
 
 - Date: 2026-08-15
 - Status: Complete
-- Related features: `runtime-phase-1`, `qt-desktop-phase-1`
-- Related specifications: `runtime-phase-1`
+- Related features: `agent-phase-1`, `qt-desktop-phase-1`
+- Related specifications: `agent-phase-1`
 - Related decisions: `ADR-20260815-embedded-runtime-sdk`
 
 ## Documents

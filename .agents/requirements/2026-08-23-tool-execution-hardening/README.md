@@ -2,8 +2,8 @@
 
 - Date: 2026-08-23
 - Status: In progress
-- Related features: runtime-phase-1, rust-core-phase-1
-- Related specifications: runtime-phase-1.md, rust-core-phase-1.md
+- Related features: agent-phase-1, rust-core-phase-1
+- Related specifications: agent-phase-1.md, rust-core-phase-1.md
 
 ## Documents
 

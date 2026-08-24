@@ -11,7 +11,7 @@
 
 ## Contracts and generated artifacts
 
-- Added the Git status and file-diff SDK contract to `contracts/runtime-sdk/README.md`.
+- Added the Git status and file-diff SDK contract to `contracts/agent-sdk/README.md`.
 - Added shared result vectors to `contracts/vectors/runtime-sdk.json`.
 
 ## Configuration and persistence
@@ -25,4 +25,4 @@
 
 ## Documentation
 
-- Added this requirement package and updated architecture, Qt/runtime/core feature records, and `ADR-20260815-embedded-git2-review`.
+- Added this requirement package and updated architecture, Qt/agent/core feature records, and `ADR-20260815-embedded-git2-review`.

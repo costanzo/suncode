@@ -26,14 +26,14 @@ OpenAI-compatible usage parsing, provider-call persistence, and session-stable h
 
 ## Commands and results
 
-- `cargo test --manifest-path runtime/Cargo.toml --workspace`: passed, 109 unit tests plus doc tests.
-- `cargo clippy --manifest-path runtime/Cargo.toml -p suncode-llm --all-targets -- -D warnings`: passed.
-- `cargo clippy --manifest-path runtime/Cargo.toml -p suncode-runtime --lib -- -D warnings`: passed.
-- `cargo clippy --manifest-path runtime/Cargo.toml -p suncode-db --all-targets -- -D warnings`: passed.
+- `cargo test --manifest-path agent/Cargo.toml --workspace`: passed, 109 unit tests plus doc tests.
+- `cargo clippy --manifest-path agent/Cargo.toml -p suncode-llm --all-targets -- -D warnings`: passed.
+- `cargo clippy --manifest-path agent/Cargo.toml -p suncode-agent --lib -- -D warnings`: passed.
+- `cargo clippy --manifest-path agent/Cargo.toml -p suncode-db --all-targets -- -D warnings`: passed.
 - Focused Rustfmt checks for changed source files: passed.
 - `jq empty contracts/vectors/provider-normalization.json contracts/vectors/runtime-sdk.json`: passed.
 - `git diff --check`: passed.
-- Workspace-wide strict Clippy reached a pre-existing `clippy::len_zero` error in `runtime/crates/operations/src/git.rs:569`; the affected crates pass their strict checks.
+- Workspace-wide strict Clippy reached a pre-existing `clippy::len_zero` error in `agent/crates/operations/src/git.rs:569`; the affected crates pass their strict checks.
 
 ## Residual risks
 

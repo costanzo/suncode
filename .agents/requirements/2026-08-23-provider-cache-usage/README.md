@@ -2,8 +2,8 @@
 
 - Date: 2026-08-23
 - Status: Complete
-- Related features: `.agents/features/runtime-phase-1/README.md`
-- Related specifications: `.agents/specs/runtime-phase-1.md`, `contracts/runtime-sdk/README.md`
+- Related features: `.agents/features/agent-phase-1/README.md`
+- Related specifications: `.agents/specs/agent-phase-1.md`, `contracts/agent-sdk/README.md`
 - Related decisions: `ADR-20260819-llm-provider-package`
 
 ## Documents

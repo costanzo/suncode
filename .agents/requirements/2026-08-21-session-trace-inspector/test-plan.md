@@ -35,7 +35,7 @@ Session trace summary/detail DTOs, provider cache usage parsing, Avalonia trace 
 - `cargo fmt --all -- --check`: passed.
 - `cargo clippy -p suncode-db --all-targets -- -D warnings`: passed.
 - `cargo clippy -p suncode-llm --all-targets -- -D warnings`: passed.
-- `cargo clippy -p suncode-runtime --lib -- -D warnings`: passed.
+- `cargo clippy -p suncode-agent --lib -- -D warnings`: passed.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore`: passed with zero warnings and zero errors.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore -p:DesignTimeBuild=true`: passed with zero warnings and zero errors.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore -c Release`: passed with zero warnings and zero errors.

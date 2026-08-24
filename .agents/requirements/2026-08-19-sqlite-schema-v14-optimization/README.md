@@ -2,7 +2,7 @@
 
 - Date: 2026-08-19
 - Status: Superseded by `../2026-08-19-db-module-layout/`
-- Related features: `features/runtime-phase-1/`
+- Related features: `features/agent-phase-1/`
 - Related specifications: `contracts/sqlite-schema.md`, `contracts/persistence.md`
 - Related decisions: `ADR-20260819-sqlite-schema-v14`, `ADR-20260808-rust-unified-runtime`
 

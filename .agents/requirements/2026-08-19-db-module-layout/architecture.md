@@ -9,7 +9,7 @@ The original core crate had a monolithic persistence module and schema file. Dat
 ## Proposed design
 
 ```text
-runtime/crates/db/
+agent/crates/db/
   Cargo.toml
   src/
     lib.rs
@@ -43,7 +43,7 @@ Database open enables connection pragmas, starts one transaction, applies the co
 ## Data and control flow
 
 ```text
-RuntimeSdk::open
+AgentSdk::open
   -> Store::open
      -> configure SQLite connection
      -> begin transaction

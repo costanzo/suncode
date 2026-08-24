@@ -6,7 +6,7 @@ Avalonia XAML and C# view models compose the desktop UI and adapt the Rust SDK C
 
 ## Proposed design
 
-`apps/desktop-avalonia/` is a .NET 10 Avalonia application. XAML owns layout, semantic styles, and native controls. C# view models own transient presentation state. `RuntimeSdk` is a narrow P/Invoke adapter over ABI version 1 and returns parsed SDK DTOs. `DesktopViewModel` projects DTOs and ordered events into observable UI collections.
+`apps/desktop-avalonia/` is a .NET 10 Avalonia application. XAML owns layout, semantic styles, and native controls. C# view models own transient presentation state. `AgentSdk` is a narrow P/Invoke adapter over ABI version 1 and returns parsed SDK DTOs. `DesktopViewModel` projects DTOs and ordered events into observable UI collections.
 
 The Rust crate produces `rlib`, `staticlib`, and `cdylib`. The desktop build invokes Cargo and copies the platform dynamic library into the managed output directory.
 

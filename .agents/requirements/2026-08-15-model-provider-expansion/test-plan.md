@@ -6,7 +6,7 @@ Verify six-provider registration, credential state, model availability, shared c
 
 ## Unit tests
 
-- `cargo test -p suncode-runtime`
+- `cargo test -p suncode-agent`
 - Registry resolves all six stable model IDs.
 - Credential state returns all six providers and isolates configured state.
 - Shared compatibility adapter continues to normalize text, tool calls, usage, and cancellation.
@@ -19,7 +19,7 @@ Verify six-provider registration, credential state, model availability, shared c
 
 ## Regression checks
 
-- `cargo check -p suncode-runtime`
+- `cargo check -p suncode-agent`
 - `cmake --build apps/desktop-qt/build -j2`
 - `qmllint apps/desktop-qt/qml/features/settings/GlobalSettings.qml`
 - `node .agents/skills/impeccable/scripts/detect.mjs --json --scope layout apps/desktop-qt/qml/features/settings/GlobalSettings.qml`
@@ -34,8 +34,8 @@ Verify six-provider registration, credential state, model availability, shared c
 
 ## Commands and results
 
-- `cargo test -p suncode-runtime` passed: 25 tests.
-- `cargo check -p suncode-runtime` passed.
+- `cargo test -p suncode-agent` passed: 25 tests.
+- `cargo check -p suncode-agent` passed.
 - `cmake --build apps/desktop-qt/build -j2` passed, with the existing macOS target-version linker warnings.
 - `qmllint apps/desktop-qt/qml/features/settings/GlobalSettings.qml` completed with the existing import/unqualified-access warnings.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json --scope layout apps/desktop-qt/qml/features/settings/GlobalSettings.qml` returned `[]`.

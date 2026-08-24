@@ -34,10 +34,10 @@ Verify latest-selection-wins behavior, bounded collection notifications, virtual
 - `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore`: passed, 3 tests.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj -c Release --no-restore`: passed with 0 warnings and 0 errors.
 - `dotnet format` for the desktop and test projects: passed.
-- `cargo test --manifest-path runtime/Cargo.toml --workspace`: passed, 44 tests.
+- `cargo test --manifest-path agent/Cargo.toml --workspace`: passed, 44 tests.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json apps/desktop-avalonia DESIGN.md`: returned `[]`.
 - `git diff --check`: passed.
-- `cargo fmt --manifest-path runtime/Cargo.toml --all -- --check`: did not pass because untouched `persistence.rs` and `sdk.rs` already differ from the current rustfmt output.
+- `cargo fmt --manifest-path agent/Cargo.toml --all -- --check`: did not pass because untouched `persistence.rs` and `sdk.rs` already differ from the current rustfmt output.
 
 ## Residual risks
 

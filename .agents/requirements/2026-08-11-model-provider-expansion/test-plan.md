@@ -6,7 +6,7 @@ Verify that the runtime registers DeepSeek, Zhipu GLM, and OpenAI; credential st
 
 ## Unit tests
 
-- `cargo test -p suncode-runtime`
+- `cargo test -p suncode-agent`
 
 ## Integration and conformance tests
 
@@ -16,7 +16,7 @@ Verify that the runtime registers DeepSeek, Zhipu GLM, and OpenAI; credential st
 
 ## Regression checks
 
-- `cargo check -p suncode-runtime`
+- `cargo check -p suncode-agent`
 - `cmake --build apps/desktop-qt/build -j2`
 - `qmllint apps/desktop-qt/qml/*.qml` when available.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json --scope layout apps/desktop-qt/qml/GlobalSettings.qml apps/desktop-qt/qml/ConversationPanel.qml`
@@ -32,8 +32,8 @@ Verify that the runtime registers DeepSeek, Zhipu GLM, and OpenAI; credential st
 
 ## Commands and results
 
-- `cargo check -p suncode-runtime` passed.
-- `cargo test -p suncode-runtime` passed: 18 tests.
+- `cargo check -p suncode-agent` passed.
+- `cargo test -p suncode-agent` passed: 18 tests.
 - `cmake --build apps/desktop-qt/build -j2` passed, with existing macOS link target-version warnings.
 - `qmllint apps/desktop-qt/qml/GlobalSettings.qml apps/desktop-qt/qml/ConversationPanel.qml` completed with warnings for source-tree import resolution and existing unqualified-access style.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json --scope layout apps/desktop-qt/qml/GlobalSettings.qml apps/desktop-qt/qml/ConversationPanel.qml` returned `[]`.

@@ -17,7 +17,7 @@
 
 ## Verification note
 
-- Workspace-wide clippy remains blocked by an existing `manual_clamp` warning in `runtime/crates/core/src/context.rs`; the changed operations crate passes clippy with `-D warnings`.
+- Workspace-wide clippy remains blocked by an existing `manual_clamp` warning in `agent/crates/core/src/context.rs`; the changed operations crate passes clippy with `-D warnings`.
 
 ## Blocked
 

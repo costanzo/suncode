@@ -2,7 +2,7 @@
 
 ## Current state
 
-Qt links `suncode-runtime` as a static library and obtains one shared opaque runtime handle. Request/response calls still cross a generic C ABI as method, REST-like path, and JSON body strings. Rust creates a synthetic authenticated Axum request and dispatches it through an in-process router. A separate binary can bind the same router to loopback HTTP and SSE.
+Qt links `suncode-agent` as a static library and obtains one shared opaque runtime handle. Request/response calls still cross a generic C ABI as method, REST-like path, and JSON body strings. Rust creates a synthetic authenticated Axum request and dispatches it through an in-process router. A separate binary can bind the same router to loopback HTTP and SSE.
 
 ## Proposed design
 
@@ -20,7 +20,7 @@ Qt C++ adapter       future N-API binding       future PyO3 binding
            agent, policy, persistence, providers, operations
 ```
 
-The initial implementation may keep the facade and service in the existing `suncode-runtime` crate while establishing typed boundaries. Separate binding crates are introduced only when they contain buildable packaging code.
+The initial implementation may keep the facade and service in the existing `suncode-agent` crate while establishing typed boundaries. Separate binding crates are introduced only when they contain buildable packaging code.
 
 ## Boundaries and dependencies
 

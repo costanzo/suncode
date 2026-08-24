@@ -30,8 +30,8 @@ Fresh schema construction, logging setting defaults and validation, runtime reco
 
 ## Commands and results
 
-- `cargo fmt --manifest-path runtime/Cargo.toml --all -- --check`: passed.
-- `cargo test --manifest-path runtime/Cargo.toml --workspace`: passed.
+- `cargo fmt --manifest-path agent/Cargo.toml --all -- --check`: passed.
+- `cargo test --manifest-path agent/Cargo.toml --workspace`: passed.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore`: passed with 0 warnings and 0 errors.
 - `git diff --check`: passed.
 

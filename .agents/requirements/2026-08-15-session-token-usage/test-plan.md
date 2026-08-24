@@ -34,7 +34,7 @@ Verify durable usage projection, historical migration, SDK aggregation, Qt integ
 - `cmake --build apps/desktop-qt/build --parallel`: passed with existing macOS SDK-version linker warnings.
 - `cmake --build apps/desktop-qt/build --target all_qmllint`: passed with existing import and unqualified-access warnings.
 - `jq empty contracts/vectors/runtime-sdk.json`: passed.
-- Static-library inspection found `suncode_runtime_sdk_session_usage` and no generic request symbol; Apple's `nm` also reported its existing LLVM reader-version warnings.
+- Static-library inspection found `suncode_agent_sdk_session_usage` and no generic request symbol; Apple's `nm` also reported its existing LLVM reader-version warnings.
 - `git diff --check`: passed.
 - Project-window QML screenshots at 1440x900 and 900x620 kept the model and `Session 13.8k tokens` footer value legible without overlap.
 

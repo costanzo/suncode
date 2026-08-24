@@ -26,7 +26,7 @@ Verify the version 14 physical schema, migration preservation, terminal snapshot
 
 ## Commands and results
 
-- `cargo test -p suncode-runtime persistence::tests`: passed, 12 tests.
+- `cargo test -p suncode-agent persistence::tests`: passed, 12 tests.
 - `cargo test --workspace`: passed, 47 tests.
 - `cargo fmt --all -- --check`: passed.
 - Fresh in-memory schema: 17 tables, 23 explicit indexes, no retired objects, integrity check passed, and no foreign-key errors.

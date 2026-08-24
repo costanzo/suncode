@@ -2,8 +2,8 @@
 
 - Date: 2026-08-23
 - Status: Superseded by `../2026-08-23-remove-unused-tools/` (WebFetch addition remains accepted)
-- Related features: runtime-phase-1
-- Related specifications: specs/runtime-phase-1.md
+- Related features: agent-phase-1
+- Related specifications: specs/agent-phase-1.md
 - Related decisions:
 
 ## Documents

@@ -8,9 +8,9 @@
 
 ## 1. Purpose
 
-SunCode is a general-purpose coding agent. Phase 1 embeds one Rust runtime SDK inside the .NET 10 Avalonia desktop process. Rust owns the complete runtime: provider integration, agent behavior, policy, durable state, the SDK API, and machine-affecting operations.
+SunCode is a general-purpose coding agent. Phase 1 embeds one Rust agent SDK inside the .NET 10 Avalonia desktop process. Rust owns the complete agent: provider integration, agent behavior, policy, durable state, the SDK API, and machine-affecting operations.
 
-The architecture favors explicit ownership, reviewable authority, and one authoritative runtime. It does not claim that a process running as the user is an OS sandbox.
+The architecture favors explicit ownership, reviewable authority, and one authoritative agent. It does not claim that a process running as the user is an OS sandbox.
 
 ## 2. Process Topology
 
@@ -19,7 +19,7 @@ The architecture favors explicit ownership, reviewable authority, and one author
     | P/Invoke over C ABI
 Embedded Rust SDK facade
     |
-Rust SunCode runtime core
+Rust SunCode agent core
     |- typed SDK services and subscriptions
     |- agent loop using the suncode-llm provider layer
     |- context, policy, approvals, and scheduling
@@ -30,19 +30,19 @@ Rust SunCode runtime core
 Future TypeScript N-API and Python PyO3 bindings embed the same SDK.
 ```
 
-There is no runtime-to-core process boundary and no client-facing server. Operations are Rust modules called in-process after policy authorization. The old TypeScript runtime, core client, runtime server, JSON-RPC stdio core, and loopback HTTP/SSE adapter are not production architecture. Provider adapters still make outbound HTTPS requests to configured model providers.
+There is no agent-to-core process boundary and no client-facing server. Operations are Rust modules called in-process after policy authorization. The old TypeScript runtime, core client, runtime server, JSON-RPC stdio core, and loopback HTTP/SSE adapter are not production architecture. Provider adapters still make outbound HTTPS requests to configured model providers.
 
 ## 3. Ownership Boundaries
 
 ### 3.1 Avalonia desktop
 
-Avalonia XAML and C# view models own presentation, navigation, and transient interaction state. They consume runtime DTOs and live events through the SDK facade. They never open SQLite, contact model providers, read project files directly, or invoke operation modules.
+Avalonia XAML and C# view models own presentation, navigation, and transient interaction state. They consume agent DTOs and live events through the SDK facade. They never open SQLite, contact model providers, read project files directly, or invoke operation modules.
 
 Phase 1 has no CLI, TUI, Web, mobile, or IDE client.
 
-### 3.2 Rust runtime
+### 3.2 Rust agent
 
-The Rust runtime packages own:
+The Rust agent packages own:
 
 - built-in model provider integrations and canonical provider messages
 - context construction, turn scheduling, budgets, cancellation, and the agent loop
@@ -54,29 +54,29 @@ The Rust runtime packages own:
 - project boundary checks and machine-affecting operations
 - checkpoints, undo, managed artifacts, and operation reconciliation
 
-Provider and orchestration modules cannot perform project operations directly. They construct typed operation requests which pass through policy and the runtime operation dispatcher.
+Provider and orchestration modules cannot perform project operations directly. They construct typed operation requests which pass through policy and the agent operation dispatcher.
 
 ### 3.3 LLM providers
 
-The `suncode-llm` package owns provider-neutral messages, tool schemas, completion results, provider errors, model metadata, model routing, and OpenAI-compatible HTTP/SSE behavior. It has no database, runtime-core, SDK, desktop, or machine-operation dependency. Core loads the seeded or custom database catalog, converts its rows into LLM descriptors, and supplies credentials through the `ApiKeyResolver` trait at the agent boundary.
+The `suncode-llm` package owns provider-neutral messages, tool schemas, completion results, provider errors, model metadata, model routing, and OpenAI-compatible HTTP/SSE behavior. It has no database, agent-core, SDK, desktop, or machine-operation dependency. Core loads the seeded or custom database catalog, converts its rows into LLM descriptors, and supplies credentials through the `ApiKeyResolver` trait at the agent boundary.
 
-The registry accepts trusted in-process Rust implementations of `LlmProvider` with owned provider and model identifiers. Enterprise OpenAI-compatible gateways can use the built-in adapter with a custom endpoint; other trusted integrations can implement the trait. Rust hosts can extend the built-in registry during `RuntimeSdk` construction. This is library composition inside the host process, not dynamic plugin loading or an isolation boundary.
+The registry accepts trusted in-process Rust implementations of `LlmProvider` with owned provider and model identifiers. Enterprise OpenAI-compatible gateways can use the built-in adapter with a custom endpoint; other trusted integrations can implement the trait. Rust hosts can extend the built-in registry during `AgentSdk` construction. This is library composition inside the host process, not dynamic plugin loading or an isolation boundary.
 
 ### 3.4 Operations
 
-Operations are narrow Rust modules in the `suncode-tool` package inside the runtime. They own canonical path validation, bounded reads/searches, read-only Git repository inspection, mutations, process execution, checkpoint payloads, artifacts, and operation journal records. They do not own provider semantics, conversation state, UI DTOs, or policy grants.
+Operations are narrow Rust modules in the `suncode-tool` package inside the agent. They own canonical path validation, bounded reads/searches, read-only Git repository inspection, mutations, process execution, checkpoint payloads, artifacts, and operation journal records. They do not own provider semantics, conversation state, UI DTOs, or policy grants.
 
 This internal boundary is for auditability and testing. It is not a child-process security boundary.
 
-## 4. Runtime Lifecycle
+## 4. Agent Lifecycle
 
-One runtime instance exists per data directory. Its host process acquires a single-instance lock, opens and initializes the current SQLite schema, reconciles interrupted local work, and retains the SDK handle until shutdown. It does not bind a client-facing socket, create a runtime credential, or publish an endpoint discovery record.
+One agent instance exists per data directory. Its host process acquires a single-instance lock, opens and initializes the current SQLite schema, reconciles interrupted local work, and retains the SDK handle until shutdown. It does not bind a client-facing socket, create an agent credential, or publish an endpoint discovery record.
 
-The Avalonia client embeds and opens the runtime, fetches a session snapshot, then receives live events through a direct subscription. A lagged subscription or reconnect reloads the normalized snapshot and never treats client cache as authoritative. A second process cannot attach to an active runtime; replacement IPC requires a new architectural decision.
+The Avalonia client embeds and opens the agent, fetches a session snapshot, then receives live events through a direct subscription. A lagged subscription or reconnect reloads the normalized snapshot and never treats client cache as authoritative. A second process cannot attach to an active agent; replacement IPC requires a new architectural decision.
 
 ## 5. SDK Contract
 
-Phase 1 keeps the embedded SDK contract in `contracts/runtime-sdk/`. C# calls named methods through the stable C ABI using P/Invoke. Future TypeScript and Python packages wrap the same Rust facade through native bindings. DTOs are hand-implemented in Rust and each host language and verified with shared vectors. Contract generation is prohibited.
+Phase 1 keeps the embedded SDK contract in `contracts/agent-sdk/`. C# calls named methods through the stable C ABI using P/Invoke. Future TypeScript and Python packages wrap the same Rust facade through native bindings. DTOs are hand-implemented in Rust and each host language and verified with shared vectors. Contract generation is prohibited.
 
 Mutating calls carry idempotency keys where replay could duplicate work. Session snapshots read normalized tables directly. Subscriptions deliver live in-memory events only; if a subscriber lags, it receives `resync.required` and reloads a snapshot.
 
@@ -84,7 +84,7 @@ Mutating calls carry idempotency keys where replay could duplicate work. Session
 
 The seeded providers are DeepSeek, Zhipu GLM, OpenAI, Kimi, Claude, and Gemini. The seeded database catalog currently exposes two models per provider: `deepseek-v4-flash` and `deepseek-v4-pro`; `glm-5.2` and `glm-5.3`; `gpt-5.5` and `gpt-5.6-sol`; `kimi-k2.7-code` and `kimi-k3`; `claude-sonnet-5` and `claude-opus-5`; and `gemini-3.5` and `gemini-3.6-flash`. Users may add provider and model rows for custom OpenAI-compatible gateways. One trusted adapter serves each provider, while each model route supplies its own vendor wire model. Kimi, Claude, and Gemini use their documented OpenAI-compatible chat-completions surfaces. Vendor request and streaming response shapes remain inside `suncode-llm`. Clients receive canonical messages, tool activity, usage, and redacted errors only.
 
-The API key is read from the plaintext `llm_model_provider.api_key` column in SQLite. Provider endpoints and required `adapter_type` values are read from `llm_model_provider`; model request codes, context lengths, auto-compaction thresholds, output limits, capability flags, and enabled/order state are read from `llm_model`. A custom provider must select an adapter implemented by `suncode-llm`; the current persisted adapter is `openai` for OpenAI-compatible endpoints. Plaintext credentials never enter protocol responses, events, audit rows, or logs. An environment override is allowed only in an explicitly configured non-interactive execution mode. On macOS, the runtime may populate an empty provider row from a legacy Keychain value.
+The API key is read from the plaintext `llm_model_provider.api_key` column in SQLite. Provider endpoints and required `adapter_type` values are read from `llm_model_provider`; model request codes, context lengths, auto-compaction thresholds, output limits, capability flags, and enabled/order state are read from `llm_model`. A custom provider must select an adapter implemented by `suncode-llm`; the current persisted adapter is `openai` for OpenAI-compatible endpoints. Plaintext credentials never enter protocol responses, events, audit rows, or logs. An environment override is allowed only in an explicitly configured non-interactive execution mode.
 
 ## 7. Persistence
 
@@ -98,7 +98,7 @@ SQLite keeps separate durable concerns:
 - durable turn admission and approval continuation
 - scoped settings and plaintext provider-key records
 
-The Phase 1 database has one current 14-table schema and no schema versions or general migration runner. The `suncode-db` package applies an ordered manifest of table-owned SQL files and an explicit provider/model data manifest in one initialization transaction. Initialization may add the current empty `project_dependency` table to an otherwise-current 13-table database; unexpected or structurally incompatible databases remain rejected without conversion. `project` is the project identity table, and `project_dependency` stores its registered read-only source roots. `session` is the conversation root; `session_turn` is the single turn/submission/recovery record, `session_call` stores each LLM request plus independently nullable provider HTTP request and response-object identifiers, `session_tool_use` exclusively stores tool requests/results and state, and `session_message` stores user, assistant, and thinking messages. Provider context derives transient tool-role messages from succeeded tool-use rows. `configuration` owns global/project/session key-value overlays, including global logging policy. Human-readable messages are ordered by timestamp. Runtime event payloads are not duplicated in SQLite; SDK snapshots read normalized rows and live subscribers resync after lag.
+The Phase 1 database has one current 14-table schema and no schema versions or general migration runner. The `suncode-db` package applies an ordered manifest of table-owned SQL files and an explicit provider/model data manifest in one initialization transaction. Initialization may add the current empty `project_dependency` table to an otherwise-current 13-table database; unexpected or structurally incompatible databases remain rejected without conversion. `project` is the project identity table, and `project_dependency` stores its registered read-only source roots. `session` is the conversation root; `session_turn` is the single turn/submission/recovery record, `session_call` stores each LLM request plus independently nullable provider HTTP request and response-object identifiers, `session_tool_use` exclusively stores tool requests/results and state, and `session_message` stores user, assistant, and thinking messages. Provider context derives transient tool-role messages from succeeded tool-use rows. `configuration` owns global/project/session key-value overlays, including global logging policy. Human-readable messages are ordered by timestamp. Agent event payloads are not duplicated in SQLite; SDK snapshots read normalized rows and live subscribers resync after lag.
 
 ## 8. Authority Model
 
@@ -121,10 +121,10 @@ Startup marks non-recoverable in-memory turn execution interrupted, discovers ad
 ```text
 apps/desktop-avalonia/    .NET 10 Avalonia desktop client
 contracts/                hand-written protocols and shared vectors
-runtime/crates/core/      runtime core and embedded Rust SDK facade
-runtime/crates/db/        SQLite package, current schema, and persistence DTOs
-runtime/crates/llm/       provider-neutral LLM contracts, catalog, registry, and adapters
-runtime/crates/operations/ `suncode-tool` package for audited in-process machine operations
+agent/crates/core/      agent core and embedded Rust SDK facade
+agent/crates/db/        SQLite package, current schema, and persistence DTOs
+agent/crates/llm/       provider-neutral LLM contracts, catalog, registry, and adapters
+agent/crates/operations/ `suncode-tool` package for audited in-process machine operations
 sdks/                     native language binding packaging surfaces
 .agents/                  durable product and engineering knowledge
 ```
@@ -134,12 +134,12 @@ The old `typescript/` packages and retired `rust/` workspace were migration sour
 ## 11. Dependency Rules
 
 - Avalonia depends only on .NET/Avalonia and the native SDK contract.
-- Native binding functions call typed runtime services, never SQLite or provider wire types directly.
+- Native binding functions call typed agent services, never SQLite or provider wire types directly.
 - Agent and provider modules call operations through the authorized dispatcher.
-- The database crate does not depend on the runtime core, Avalonia, native bindings, operations, or provider wire types.
-- The runtime core depends on the database crate for durable state and persistence DTOs.
-- The LLM crate does not depend on the database, runtime core, SDK, desktop, or operations crates.
-- The runtime core supplies credentials and tool schemas to the LLM crate through provider-neutral interfaces and request DTOs.
+- The database crate does not depend on the agent core, Avalonia, native bindings, operations, or provider wire types.
+- The agent core depends on the database crate for durable state and persistence DTOs.
+- The LLM crate does not depend on the database, agent core, SDK, desktop, or operations crates.
+- The agent core supplies credentials and tool schemas to the LLM crate through provider-neutral interfaces and request DTOs.
 - Operations do not depend on agent, provider, persistence projections, or client DTOs.
 - No production TypeScript or Node.js process remains in Phase 1.
 

@@ -25,8 +25,8 @@ Logger initialization, level filtering, file separation, and session-switch diag
 
 ## Commands and results
 
-- `cargo fmt --manifest-path runtime/Cargo.toml --all`: passed.
-- `cargo test --manifest-path runtime/Cargo.toml -p suncode-runtime`: 21 passed.
+- `cargo fmt --manifest-path agent/Cargo.toml --all`: passed.
+- `cargo test --manifest-path agent/Cargo.toml -p suncode-agent`: 21 passed.
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore`: passed.
 - `git diff --check`: passed before final documentation-only additions.
 

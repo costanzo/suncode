@@ -78,7 +78,7 @@
             <ComboBox x:Name="DefaultModelSelector" HorizontalAlignment="Stretch" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}" SelectionChanged="DefaultModelChanged">
               <ComboBox.ItemTemplate><DataTemplate x:DataType="models:ModelItem"><TextBlock Classes="mono" Text="{Binding Id}" /></DataTemplate></ComboBox.ItemTemplate>
             </ComboBox>
-            <TextBlock Text="Only models registered by the local runtime appear here." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+            <TextBlock Text="Only models registered by the local agent appear here." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
             <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
             <TextBlock Classes="section-label" Text="TURN EXECUTION" />
             <Grid ColumnDefinitions="*,140">
@@ -183,7 +183,7 @@
             <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
             <TextBlock Classes="section-label" Text="AVAILABLE MODELS" />
             <TextBlock x:Name="ProviderModelsText" Classes="mono" TextWrapping="Wrap" />
-            <TextBlock Text="The runtime owns provider availability and model registration." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+            <TextBlock Text="The agent owns provider availability and model registration." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
           </StackPanel>
         </ScrollViewer>
       </Grid>

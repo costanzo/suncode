@@ -1,8 +1,8 @@
-# Runtime SQLite Schema
+# Agent SQLite Schema
 
 Status: Current Phase 1 contract.
 
-The Rust `suncode-db` package is the only database owner. There is one current table set, no version table, and no general migration runner. `runtime/crates/db/src/schema/mod.rs` applies one table-owned SQL resource per manifest entry; `runtime/crates/db/src/data/mod.rs` separately applies idempotent provider/model seed data. File names do not encode execution order. Opening a database with any unexpected application table fails without conversion. Initialization transactionally adds a missing `project_dependency` table to an otherwise-current 13-table database; this narrowly scoped additive bootstrap extension does not rename, rewrite, or convert incompatible schemas.
+The Rust `suncode-db` package is the only database owner. There is one current table set, no version table, and no general migration runner. `agent/crates/db/src/schema/mod.rs` applies one table-owned SQL resource per manifest entry; `agent/crates/db/src/data/mod.rs` separately applies idempotent provider/model seed data. File names do not encode execution order. Opening a database with any unexpected application table fails without conversion. Initialization transactionally adds a missing `project_dependency` table to an otherwise-current 13-table database; this narrowly scoped additive bootstrap extension does not rename, rewrite, or convert incompatible schemas.
 
 There are 14 application tables:
 
@@ -10,7 +10,7 @@ There are 14 application tables:
 
 ## Conventions
 
-- IDs are non-empty opaque text; runtime IDs are UUIDs.
+- IDs are non-empty opaque text; agent IDs are UUIDs.
 - Timestamps are UTC RFC 3339 strings with millisecond precision.
 - JSON columns must contain valid JSON. Queryable identity, state, ordering, and ownership remain relational columns.
 - Foreign keys are enabled on every connection. Projects and sessions are archived rather than normally deleted.
@@ -89,4 +89,4 @@ Model row keyed by `model_id` and linked to `llm_model_provider`. It stores disp
 
 ## Projection Rules
 
-Durable projection updates occur in one transaction per runtime event. The runtime rebuilds provider context by merging `session_message` user/assistant/thinking rows with transient tool-role messages derived from succeeded `session_tool_use.result_json` rows, then repairs incomplete assistant/tool tails after interruption. Tool results are never duplicated in `session_message`. Runtime events are broadcast in memory only; a client that misses events receives `resync.required` and reloads a fresh session snapshot. Audit rows remain immutable and independent from session projections.
+Durable projection updates occur in one transaction per agent event. The agent rebuilds provider context by merging `session_message` user/assistant/thinking rows with transient tool-role messages derived from succeeded `session_tool_use.result_json` rows, then repairs incomplete assistant/tool tails after interruption. Tool results are never duplicated in `session_message`. Agent events are broadcast in memory only; a client that misses events receives `resync.required` and reloads a fresh session snapshot. Audit rows remain immutable and independent from session projections.

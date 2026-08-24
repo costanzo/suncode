@@ -29,7 +29,7 @@ Tool-card summaries, detail data projection, shell argument compatibility, and f
 
 ## Commands and results
 
-- `cargo test --manifest-path runtime/Cargo.toml -p suncode-runtime --quiet`: passed, 31 tests.
+- `cargo test --manifest-path agent/Cargo.toml -p suncode-agent --quiet`: passed, 31 tests.
 - `dotnet test apps/desktop-avalonia-tests/SunCode.Desktop.Tests.csproj --no-restore`: passed, 37 tests.
 - `git diff --check`: passed.
 

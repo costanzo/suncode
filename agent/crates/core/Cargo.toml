@@ -1,0 +1,32 @@
+[package]
+name = "suncode-agent"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "suncode_agent"
+path = "src/lib.rs"
+crate-type = ["rlib", "staticlib", "cdylib"]
+
+[dependencies]
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+futures-util = "0.3"
+fs2 = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+suncode-tool = { path = "../operations" }
+suncode-db = { path = "../db" }
+suncode-llm = { path = "../llm" }
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
+tokio-util = "0.7"
+uuid = { version = "1", features = ["v4", "serde"] }
+url = "2"
+
+[dev-dependencies]
+axum = "0.8"
+git2 = { version = "0.21", default-features = false, features = ["vendored-libgit2"] }
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time", "net"] }

@@ -26,13 +26,13 @@ Model tool registration, host prompt guidance, and retained internal compatibili
 
 ## Commands and results
 
-- `cargo test --manifest-path runtime/Cargo.toml -p suncode-runtime tools::tests::built_in_tool_names_match_the_model_contract -- --exact`: passed.
-- `cargo test --manifest-path runtime/Cargo.toml --workspace`: 35 database, 3 LLM, 35 runtime, and 24 operations tests passed.
-- `cargo fmt --manifest-path runtime/Cargo.toml --all -- --check`: passed.
-- `cargo clippy --manifest-path runtime/Cargo.toml --workspace --lib -- -D warnings`: passed.
+- `cargo test --manifest-path agent/Cargo.toml -p suncode-agent tools::tests::built_in_tool_names_match_the_model_contract -- --exact`: passed.
+- `cargo test --manifest-path agent/Cargo.toml --workspace`: 35 database, 3 LLM, 35 runtime, and 24 operations tests passed.
+- `cargo fmt --manifest-path agent/Cargo.toml --all -- --check`: passed.
+- `cargo clippy --manifest-path agent/Cargo.toml --workspace --lib -- -D warnings`: passed.
 - Removed-tool registry and host-prompt source scan: no matches.
 - `git diff --check`: passed.
-- `cargo clippy --manifest-path runtime/Cargo.toml --workspace --all-targets -- -D warnings`: blocked by unrelated existing test warnings in `runtime/crates/operations/src/git.rs:569` (`len() >= 1`) and `runtime/crates/core/src/agent.rs:2126` (discarded enumerate index).
+- `cargo clippy --manifest-path agent/Cargo.toml --workspace --all-targets -- -D warnings`: blocked by unrelated existing test warnings in `agent/crates/operations/src/git.rs:569` (`len() >= 1`) and `agent/crates/core/src/agent.rs:2126` (discarded enumerate index).
 
 ## Residual risks
 

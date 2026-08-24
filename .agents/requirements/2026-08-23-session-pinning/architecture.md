@@ -11,13 +11,13 @@ Store nullable `pin_at` directly on `session`. The database query derives pinned
 ## Boundaries and dependencies
 
 - `suncode-db`: session column, projection, ordering, and persistence tests.
-- `suncode-runtime`: typed method and C ABI export.
+- `suncode-agent`: typed method and C ABI export.
 - Runtime contract: method table and shared response vector.
 - Avalonia: P/Invoke declaration, JSON projection, menu handlers, and pin icon.
 
 ## Data and control flow
 
-`MenuFlyout -> ProjectSidebar handler -> DesktopViewModel -> RuntimeSdk -> C ABI -> RuntimeSdk -> Store.session`; the next `list_sessions` query returns ordered DTOs and the sidebar reloads without changing the selected session content.
+`MenuFlyout -> ProjectSidebar handler -> DesktopViewModel -> AgentSdk -> C ABI -> AgentSdk -> Store.session`; the next `list_sessions` query returns ordered DTOs and the sidebar reloads without changing the selected session content.
 
 ## Security and failure handling
 

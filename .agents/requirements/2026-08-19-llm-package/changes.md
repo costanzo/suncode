@@ -6,7 +6,7 @@
 - Moved the built-in catalog and OpenAI-compatible HTTP/SSE adapter out of runtime core.
 - Added owned custom provider/model registration and an injectable `ApiKeyResolver`.
 - Adapted core credentials, tools, persistent messages, tool calls, and usage at the package boundary.
-- Added `RuntimeSdk::open_default_with_providers` so Rust hosts can extend the built-in registry before agent startup.
+- Added `AgentSdk::open_default_with_providers` so Rust hosts can extend the built-in registry before agent startup.
 - Removed the old core `llm` and `model_provider` modules and core's direct `reqwest` dependency.
 
 ## Contracts and generated artifacts

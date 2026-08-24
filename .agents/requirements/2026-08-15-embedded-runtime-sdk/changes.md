@@ -25,7 +25,7 @@
 
 - Added focused SDK method, credential, C ABI version/envelope, runtime lock, and replay/live subscription tests.
 - Passed 35 Rust workspace tests, the Qt desktop build, QML lint target, offscreen startup, Rust formatting, JSON validation, SDK symbol inspection, normal dependency inspection, and `git diff --check`.
-- Clippy completed with one pre-existing `manual_clamp` warning in `runtime/crates/core/src/context.rs`.
+- Clippy completed with one pre-existing `manual_clamp` warning in `agent/crates/core/src/context.rs`.
 
 ## Documentation
 

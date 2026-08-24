@@ -13,7 +13,7 @@
 ## Contracts and documentation
 
 - Rewrote `contracts/sqlite-schema.md` for the current normalized schema.
-- Updated `contracts/persistence.md`, `.agents/ARCHITECTURE.md`, `.agents/features/runtime-phase-1/README.md`, and `.agents/specs/runtime-phase-1.md`.
+- Updated `contracts/persistence.md`, `.agents/ARCHITECTURE.md`, `.agents/features/agent-phase-1/README.md`, and `.agents/specs/agent-phase-1.md`.
 
 ## Tests
 

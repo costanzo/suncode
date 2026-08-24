@@ -13,7 +13,7 @@ suncode-db
     `- seed data for built-in providers/models
               |
               v
-suncode-runtime/core
+suncode-agent/core
     |- reads catalog rows and updates provider keys
     |- creates ApiKeyResolver over provider rows
     |- builds suncode-llm ModelProviderRegistry
