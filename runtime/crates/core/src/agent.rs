@@ -1682,7 +1682,7 @@ fn host_environment_message(session_started_at: &str) -> suncode_llm::Message {
         content: vec![suncode_llm::ContentPart {
             kind: "text".into(),
             text: format!(
-                "SunCode host environment: OS={}, architecture={}, shell tool dialect={}, path style={}, session started at={}. Use the bash tool for command execution, and write commands in the stated shell dialect.",
+                "SunCode host environment: OS={}, architecture={}, shell tool dialect={}, path style={}, session started at={}. Use the bash tool for terminal commands and write commands in the stated shell dialect. For file discovery and content search, use glob, grep, and read instead of running find, grep, or rg through bash.",
                 std::env::consts::OS,
                 std::env::consts::ARCH,
                 shell,
@@ -1979,6 +1979,9 @@ mod tests {
         assert!(text.contains(std::env::consts::OS));
         assert!(text.contains(std::env::consts::ARCH));
         assert!(text.contains(&format!("session started at={session_started_at}")));
+        assert!(text.contains(
+            "use glob, grep, and read instead of running find, grep, or rg through bash"
+        ));
     }
 
     async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {

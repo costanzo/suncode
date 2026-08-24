@@ -67,8 +67,13 @@ mod tests {
             .iter()
             .find(|definition| definition.name == "grep")
             .unwrap();
+        assert!(grep.description.contains("Do not use bash"));
+        assert!(grep.description.contains("counting matches"));
         assert!(grep.parameters["properties"].get("query").is_none());
         assert!(grep.parameters["properties"].get("max_results").is_none());
+        assert!(bash
+            .description
+            .contains("Do not use this tool for file operations"));
         let webfetch = definitions
             .iter()
             .find(|definition| definition.name == "webfetch")

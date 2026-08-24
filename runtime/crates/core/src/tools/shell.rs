@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 pub fn definition() -> (&'static str, &'static str, Value) {
     (
         "bash",
-        "Execute one shell command string in the project after approval. Use the active host shell syntax.",
+        "Execute one terminal shell command string in the project after approval. Do not use this tool for file operations such as reading, writing, editing, finding, or searching; use the specialized read, write, edit, glob, and grep tools instead. Use the active host shell syntax.",
         json!({
             "type":"object",
             "required":["command"],
