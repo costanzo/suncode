@@ -21,7 +21,7 @@ use std::{
     sync::{Arc, Mutex},
     thread::JoinHandle,
 };
-use suncode_db::{PersistenceError, Store};
+use suncode_data::{PersistenceError, Store};
 use suncode_llm::{
     ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
     OpenAiCompatibleProvider, RegistrationError,
@@ -197,7 +197,7 @@ pub struct SessionSnapshot {
     pub session: SessionRecord,
     pub messages: Vec<Message>,
     #[serde(rename = "conversationTurns")]
-    pub conversation_turns: Vec<suncode_db::SessionConversationTurn>,
+    pub conversation_turns: Vec<suncode_data::SessionConversationTurn>,
     #[serde(rename = "pendingQuestion", skip_serializing_if = "Option::is_none")]
     pub pending_question: Option<Value>,
 }

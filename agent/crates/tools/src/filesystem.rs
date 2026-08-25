@@ -1,3 +1,4 @@
+use super::arguments::ReadArguments;
 use super::artifacts::{checkpoint_root_from_env, write_artifact};
 use super::{safe_relative_path, CoreFailure};
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -6,20 +7,16 @@ use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-pub(super) fn read(project_root: Option<&Path>, params: &Value) -> Result<Value, CoreFailure> {
+pub(super) fn read(
+    project_root: Option<&Path>,
+    args: &ReadArguments,
+) -> Result<Value, CoreFailure> {
     let root = project_root.ok_or(CoreFailure {
         code: "project_unconfigured",
         message: "project root is not configured",
         retryable: false,
     })?;
-    let path = params
-        .get("path")
-        .and_then(Value::as_str)
-        .ok_or(CoreFailure {
-            code: "invalid_arguments",
-            message: "path is required",
-            retryable: false,
-        })?;
+    let path = args.path.as_str();
     let relative = safe_relative_path(path)?;
     let candidate = root.join(relative);
     let canonical = candidate.canonicalize().map_err(|_| CoreFailure {
@@ -46,15 +43,10 @@ pub(super) fn read(project_root: Option<&Path>, params: &Value) -> Result<Value,
             retryable: false,
         });
     }
-    let offset = positive_integer(params, "offset", 1, "offset must be at least 1")?;
-    let limit = optional_positive_integer(params, "limit", "limit must be at least 1")?;
-    let max_bytes = positive_integer(
-        params,
-        "max_bytes",
-        64 * 1024,
-        "max_bytes must be at least 1",
-    )?
-    .clamp(1, 1024 * 1024) as usize;
+    let offset = positive_integer(args.offset, 1, "offset must be at least 1")?;
+    let limit = optional_positive_integer(args.limit, "limit must be at least 1")?;
+    let max_bytes = positive_integer(args.max_bytes, 64 * 1024, "max_bytes must be at least 1")?
+        .clamp(1, 1024 * 1024) as usize;
     let original = if offset == 1 && limit.is_none() {
         Some(fs::read(&canonical).map_err(|_| CoreFailure {
             code: "read_failed",
@@ -137,48 +129,32 @@ fn read_line_range(path: &Path, offset: u64, limit: Option<u64>) -> Result<Vec<u
 }
 
 fn positive_integer(
-    params: &Value,
-    key: &str,
+    value: Option<u64>,
     default: u64,
     message: &'static str,
 ) -> Result<u64, CoreFailure> {
-    let Some(value) = params.get(key) else {
-        return Ok(default);
-    };
-    let number = value.as_i64().ok_or(CoreFailure {
-        code: "invalid_arguments",
-        message,
-        retryable: false,
-    })?;
-    if number <= 0 {
+    let number = value.unwrap_or(default);
+    if number == 0 {
         return Err(CoreFailure {
             code: "invalid_arguments",
             message,
             retryable: false,
         });
     }
-    Ok(number as u64)
+    Ok(number)
 }
 
 fn optional_positive_integer(
-    params: &Value,
-    key: &str,
+    value: Option<u64>,
     message: &'static str,
 ) -> Result<Option<u64>, CoreFailure> {
-    let Some(value) = params.get(key) else {
-        return Ok(None);
-    };
-    let number = value.as_i64().ok_or(CoreFailure {
-        code: "invalid_arguments",
-        message,
-        retryable: false,
-    })?;
-    if number <= 0 {
+    let Some(number) = value else { return Ok(None) };
+    if number == 0 {
         return Err(CoreFailure {
             code: "invalid_arguments",
             message,
             retryable: false,
         });
     }
-    Ok(Some(number as u64))
+    Ok(Some(number))
 }

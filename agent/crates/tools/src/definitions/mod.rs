@@ -99,7 +99,7 @@ mod tests {
             .iter()
             .find(|definition| definition.name == "glob")
             .unwrap();
-        assert!(glob.parameters["properties"].get("limit").is_none());
+        assert_eq!(glob.parameters["properties"]["limit"]["minimum"], 1);
         let grep = definitions
             .iter()
             .find(|definition| definition.name == "grep")
@@ -107,7 +107,7 @@ mod tests {
         assert!(grep.description.contains("Do not use bash"));
         assert!(grep.description.contains("counting matches"));
         assert!(grep.parameters["properties"].get("query").is_none());
-        assert!(grep.parameters["properties"].get("max_results").is_none());
+        assert_eq!(grep.parameters["properties"]["limit"]["maximum"], 500);
         assert!(bash
             .description
             .contains("Do not use this tool for file operations"));

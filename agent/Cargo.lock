@@ -1472,7 +1472,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "suncode-db",
+ "suncode-data",
  "suncode-llm",
  "suncode-tool",
  "tempfile",
@@ -1484,16 +1484,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "suncode-db"
+name = "suncode-data"
 version = "0.1.0"
 dependencies = [
  "chrono",
  "diesel",
  "serde",
  "serde_json",
- "tempfile",
+ "suncode-database",
  "thiserror",
  "uuid",
+]
+
+[[package]]
+name = "suncode-database"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
 ]
 
 [[package]]

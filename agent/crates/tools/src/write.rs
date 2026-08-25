@@ -1,3 +1,4 @@
+use super::arguments::WriteArguments;
 use super::{
     checkpoint, journal_finish, journal_id, journal_intent, load_journal, safe_relative_path,
     CoreFailure,
@@ -11,22 +12,21 @@ use std::path::Path;
 pub(super) fn write(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
-    params: &Value,
+    args: &WriteArguments,
 ) -> Result<Value, CoreFailure> {
     let root = project_root.ok_or(CoreFailure {
         code: "project_unconfigured",
         message: "project root is not configured",
         retryable: false,
     })?;
-    let path = params
-        .get("path")
-        .and_then(Value::as_str)
-        .ok_or(CoreFailure {
-            code: "invalid_arguments",
-            message: "path is required",
-            retryable: false,
-        })?;
-    if let (Some(checkpoint_root), Some(id)) = (checkpoint_root, journal_id(params)) {
+    let path = args.path.as_str();
+    if let (Some(checkpoint_root), Some(id)) = (
+        checkpoint_root,
+        journal_id(
+            args.idempotency_key.as_deref(),
+            args.operation_id.as_deref(),
+        ),
+    ) {
         if let Some(existing) = load_journal(checkpoint_root, &id) {
             if existing.status == "succeeded" {
                 if let Some(result) = existing.result {
@@ -42,14 +42,7 @@ pub(super) fn write(
             }
         }
     }
-    let content = params
-        .get("content_base64")
-        .and_then(Value::as_str)
-        .ok_or(CoreFailure {
-            code: "invalid_arguments",
-            message: "content_base64 is required",
-            retryable: false,
-        })?;
+    let content = args.content_base64.as_str();
     let bytes = STANDARD.decode(content).map_err(|_| CoreFailure {
         code: "invalid_arguments",
         message: "content_base64 is invalid",
@@ -118,21 +111,12 @@ pub(super) fn write(
     } else {
         None
     };
-    let expected = params.get("expected_base64");
-    let expected_bytes = match (current.as_ref(), expected) {
-        (Some(_), Some(value)) => Some(
-            STANDARD
-                .decode(value.as_str().ok_or(CoreFailure {
-                    code: "invalid_arguments",
-                    message: "expected_base64 is invalid",
-                    retryable: false,
-                })?)
-                .map_err(|_| CoreFailure {
-                    code: "invalid_arguments",
-                    message: "expected_base64 is invalid",
-                    retryable: false,
-                })?,
-        ),
+    let expected_bytes = match (current.as_ref(), args.expected_base64.as_deref()) {
+        (Some(_), Some(value)) => Some(STANDARD.decode(value).map_err(|_| CoreFailure {
+            code: "invalid_arguments",
+            message: "expected_base64 is invalid",
+            retryable: false,
+        })?),
         (Some(_), None) => {
             return Err(CoreFailure {
                 code: "precondition_required",
@@ -140,14 +124,14 @@ pub(super) fn write(
                 retryable: false,
             })
         }
-        (None, Some(value)) if !value.is_null() => {
+        (None, Some(_)) => {
             return Err(CoreFailure {
                 code: "conflict",
                 message: "file appeared before the write",
                 retryable: false,
             })
         }
-        (None, None) | (None, Some(_)) => None,
+        (None, None) => None,
     };
     if let (Some(actual), Some(expected)) = (current.as_ref(), expected_bytes.as_ref()) {
         if actual != expected {
@@ -168,7 +152,8 @@ pub(super) fn write(
     })?;
     let operation_id = journal_intent(
         checkpoint_root,
-        params,
+        args.idempotency_key.as_deref(),
+        args.operation_id.as_deref(),
         "write",
         Some(path),
         current.as_deref(),

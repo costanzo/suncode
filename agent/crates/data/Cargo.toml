@@ -1,19 +1,17 @@
 [package]
-name = "suncode-db"
+name = "suncode-data"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "suncode_db"
+name = "suncode_data"
 path = "src/lib.rs"
 
 [dependencies]
 chrono = "0.4"
 diesel = { version = "2.2", features = ["sqlite"] }
+suncode-database = { path = "../database" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 uuid = { version = "1", features = ["v4"] }
-
-[dev-dependencies]
-tempfile = "3"

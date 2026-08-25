@@ -32,7 +32,7 @@ Approval requests and turn-submission idempotency are durable relational state. 
 
 Provider API keys are classified user secrets. The agent stores the plaintext value on `llm_model_provider.api_key`. The SQLite data directory and its backups must be treated as sensitive. The key never enters a protocol message, audit record, session content event, log, or client response. Updating a provider key replaces the current value in one row.
 
-`llm_model_provider` and `llm_model` are the durable source for provider endpoints, adapter compatibility, built-in and custom model identities, request model codes, context lengths, auto-compaction thresholds, output limits, capability flags including reasoning-effort support, enabled state, and ordering. Every provider row names a known `suncode-llm` adapter; currently `openai` is the supported OpenAI-compatible adapter and is the default for custom endpoints. `suncode-db` exposes these rows to agent core; `suncode-llm` remains database-free.
+`llm_model_provider` and `llm_model` are the durable source for provider endpoints, adapter compatibility, built-in and custom model identities, request model codes, context lengths, auto-compaction thresholds, output limits, capability flags including reasoning-effort support, enabled state, and ordering. Every provider row names a known `suncode-llm` adapter; currently `openai` is the supported OpenAI-compatible adapter and is the default for custom endpoints. `suncode-data` exposes these rows to agent core; `suncode-llm` and `suncode-database` remain database-driver independent.
 
 ## Retention and compaction
 

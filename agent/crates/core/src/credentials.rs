@@ -1,5 +1,5 @@
 use serde::Serialize;
-use suncode_db::{PersistenceError, Store};
+use suncode_data::{PersistenceError, Store};
 use suncode_llm::ApiKeyResolver;
 
 #[derive(Clone)]

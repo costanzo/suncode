@@ -1,5 +1,7 @@
 # Architecture
 
+> Superseded by `2026-08-25-data-database-split`: Diesel ORM/data code now lives in `suncode-data`, while SQL resources and SQLite setup live in `suncode-database::sqlite`.
+
 ## Current state
 
 `Store` owns one mutex-protected `rusqlite::Connection`, schema/data initialization, all table operations, projections, recovery, and tests in `store.rs`.

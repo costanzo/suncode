@@ -14,7 +14,7 @@ use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
-use suncode_db::{ApprovalInput, PersistenceError, Store};
+use suncode_data::{ApprovalInput, PersistenceError, Store};
 use suncode_llm::{CompletionRequest, ModelProviderRegistry, ModelRoute, ProviderError};
 use tokio::sync::{broadcast, mpsc, Mutex as AsyncMutex};
 use tokio_util::sync::CancellationToken;

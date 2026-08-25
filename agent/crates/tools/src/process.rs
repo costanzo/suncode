@@ -1,3 +1,4 @@
+use super::arguments::ProcessArguments;
 use super::{artifacts, journal_id, now_string, require_project, safe_relative_path, CoreFailure};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
@@ -20,16 +21,8 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const PREVIEW_BYTES: usize = 64 * 1024;
 static OUTPUT_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
-fn command_arguments(params: &Value) -> Result<(String, Vec<String>), CoreFailure> {
-    let program = params
-        .get("program")
-        .or_else(|| params.get("command"))
-        .and_then(Value::as_str)
-        .ok_or(CoreFailure {
-            code: "invalid_arguments",
-            message: "program is required",
-            retryable: false,
-        })?;
+fn command_arguments(args: &ProcessArguments) -> Result<(String, Vec<String>), CoreFailure> {
+    let program = args.program.as_str();
     if program.is_empty() || program.len() > 4096 {
         return Err(CoreFailure {
             code: "invalid_arguments",
@@ -37,35 +30,18 @@ fn command_arguments(params: &Value) -> Result<(String, Vec<String>), CoreFailur
             retryable: false,
         });
     }
-    let args = params
-        .get("args")
-        .and_then(Value::as_array)
-        .map(|values| {
-            values
-                .iter()
-                .map(|value| {
-                    value.as_str().map(str::to_string).ok_or(CoreFailure {
-                        code: "invalid_arguments",
-                        message: "process arguments must be strings",
-                        retryable: false,
-                    })
-                })
-                .collect::<Result<Vec<_>, _>>()
-        })
-        .transpose()?
-        .unwrap_or_default();
-    if args.len() > 256 {
+    if args.args.len() > 256 {
         return Err(CoreFailure {
             code: "resource_limit",
             message: "too many process arguments",
             retryable: false,
         });
     }
-    Ok((program.to_string(), args))
+    Ok((program.to_string(), args.args.clone()))
 }
 
-fn process_cwd(root: &Path, params: &Value) -> Result<std::path::PathBuf, CoreFailure> {
-    let relative = params.get("cwd").and_then(Value::as_str).unwrap_or(".");
+fn process_cwd(root: &Path, args: &ProcessArguments) -> Result<std::path::PathBuf, CoreFailure> {
+    let relative = args.cwd.as_deref().unwrap_or(".");
     let path = root
         .join(safe_relative_path(relative)?)
         .canonicalize()
@@ -84,7 +60,7 @@ fn process_cwd(root: &Path, params: &Value) -> Result<std::path::PathBuf, CoreFa
     Ok(path)
 }
 
-fn configure_command(mut command: Command, params: &Value) -> Command {
+fn configure_command(mut command: Command, args: &ProcessArguments) -> Command {
     #[cfg(target_os = "windows")]
     command.creation_flags(CREATE_NO_WINDOW);
     #[cfg(unix)]
@@ -105,17 +81,13 @@ fn configure_command(mut command: Command, params: &Value) -> Command {
             command.env(key, value);
         }
     }
-    if let Some(env) = params.get("env").and_then(Value::as_object) {
-        for (key, value) in env {
-            if key.len() <= 128
-                && key
-                    .chars()
-                    .all(|character| character.is_ascii_alphanumeric() || character == '_')
-            {
-                if let Some(value) = value.as_str() {
-                    command.env(key, value);
-                }
-            }
+    for (key, value) in &args.env {
+        if key.len() <= 128
+            && key
+                .chars()
+                .all(|character| character.is_ascii_alphanumeric() || character == '_')
+        {
+            command.env(key, value);
         }
     }
     command
@@ -371,21 +343,20 @@ impl Drop for TemporaryArtifact {
 pub(super) fn run(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
-    params: &Value,
+    args: &ProcessArguments,
     cancellation: Option<&AtomicBool>,
 ) -> Result<Value, CoreFailure> {
     let root = require_project(project_root)?;
-    let (command, args) = command_arguments(params)?;
-    let cwd = process_cwd(root, params)?;
-    let timeout_ms = params
-        .get("timeout_ms")
-        .and_then(Value::as_u64)
-        .unwrap_or(120_000)
-        .clamp(1, 600_000);
-    let operation_id = journal_id(params)
-        .unwrap_or_else(|| super::sha256_hex(format!("{}:{}", command, now_string()).as_bytes()));
-    let mut child = configure_command(Command::new(&command), params)
-        .args(&args)
+    let (command, command_args) = command_arguments(args)?;
+    let cwd = process_cwd(root, args)?;
+    let timeout_ms = args.timeout_ms.unwrap_or(120_000).clamp(1, 600_000);
+    let operation_id = journal_id(
+        args.idempotency_key.as_deref(),
+        args.operation_id.as_deref(),
+    )
+    .unwrap_or_else(|| super::sha256_hex(format!("{}:{}", command, now_string()).as_bytes()));
+    let mut child = configure_command(Command::new(&command), args)
+        .args(&command_args)
         .current_dir(cwd)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -473,7 +444,7 @@ pub(super) fn run(
     } else {
         "failed"
     };
-    let mut result = json!({"operation_id": operation_id, "status": status_name, "exit_code": status.code(), "success": success, "stdout_base64": STANDARD.encode(&out.preview), "stderr_base64": STANDARD.encode(&err.preview), "truncated": out.total_bytes + err.total_bytes > PREVIEW_BYTES, "sandbox": {"profile": params.get("sandbox_profile").and_then(Value::as_str).unwrap_or("project-default"), "network": "not_enforced", "environment": "filtered", "os_isolation": false}});
+    let mut result = json!({"operation_id": operation_id, "status": status_name, "exit_code": status.code(), "success": success, "stdout_base64": STANDARD.encode(&out.preview), "stderr_base64": STANDARD.encode(&err.preview), "truncated": out.total_bytes + err.total_bytes > PREVIEW_BYTES, "sandbox": {"profile": args.sandbox_profile.as_deref().unwrap_or("project-default"), "network": "not_enforced", "environment": "filtered", "os_isolation": false}});
     if let Some(id) = artifact_id {
         result["artifact_id"] = json!(id);
     }
@@ -483,27 +454,26 @@ pub(super) fn run(
 #[cfg(test)]
 mod tests {
     use super::{command_arguments, process_start_failure, run};
+    use crate::arguments::ProcessArguments;
     use base64::{engine::general_purpose::STANDARD, Engine};
-    use serde_json::json;
     use std::sync::atomic::AtomicBool;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn structured_process_arguments_remain_separate() {
-        let (program, args) = command_arguments(&json!({
-            "program": "git",
-            "args": ["status", "--short"]
-        }))
-        .unwrap();
+        let process_args = ProcessArguments {
+            program: "git".into(),
+            args: vec!["status".into(), "--short".into()],
+            cwd: None,
+            env: Default::default(),
+            timeout_ms: None,
+            sandbox_profile: None,
+            idempotency_key: None,
+            operation_id: None,
+        };
+        let (program, args) = command_arguments(&process_args).unwrap();
         assert_eq!(program, "git");
         assert_eq!(args, ["status", "--short"]);
-    }
-
-    #[test]
-    fn legacy_command_is_one_executable_not_shell_text() {
-        let (program, args) = command_arguments(&json!({"command": "git status"})).unwrap();
-        assert_eq!(program, "git status");
-        assert!(args.is_empty());
     }
 
     #[test]
@@ -526,12 +496,33 @@ mod tests {
         let checkpoint = root.join("checkpoints");
         std::fs::create_dir_all(&checkpoint).unwrap();
         #[cfg(target_os = "windows")]
-        let params = json!({
-            "program":"powershell.exe",
-            "args":["-NoLogo","-NoProfile","-NonInteractive","-Command","Write-Output suncode-ready"]
-        });
+        let params = ProcessArguments {
+            program: "powershell.exe".into(),
+            args: vec![
+                "-NoLogo".into(),
+                "-NoProfile".into(),
+                "-NonInteractive".into(),
+                "-Command".into(),
+                "Write-Output suncode-ready".into(),
+            ],
+            cwd: None,
+            env: Default::default(),
+            timeout_ms: None,
+            sandbox_profile: None,
+            idempotency_key: None,
+            operation_id: None,
+        };
         #[cfg(not(target_os = "windows"))]
-        let params = json!({"program":"/bin/sh","args":["-lc","printf suncode-ready"]});
+        let params = ProcessArguments {
+            program: "/bin/sh".into(),
+            args: vec!["-lc".into(), "printf suncode-ready".into()],
+            cwd: None,
+            env: Default::default(),
+            timeout_ms: None,
+            sandbox_profile: None,
+            idempotency_key: None,
+            operation_id: None,
+        };
         let result = run(Some(&root), Some(&checkpoint), &params, None).unwrap();
         assert_eq!(result["success"], true);
         let output = STANDARD
@@ -555,12 +546,27 @@ mod tests {
         let checkpoint = root.join("checkpoints");
         std::fs::create_dir_all(&checkpoint).unwrap();
         #[cfg(target_os = "windows")]
-        let params = json!({
-            "program":"cmd.exe",
-            "args":["/C", "exit", "7"]
-        });
+        let params = ProcessArguments {
+            program: "cmd.exe".into(),
+            args: vec!["/C".into(), "exit".into(), "7".into()],
+            cwd: None,
+            env: Default::default(),
+            timeout_ms: None,
+            sandbox_profile: None,
+            idempotency_key: None,
+            operation_id: None,
+        };
         #[cfg(not(target_os = "windows"))]
-        let params = json!({"program":"/bin/sh","args":["-lc","exit 7"]});
+        let params = ProcessArguments {
+            program: "/bin/sh".into(),
+            args: vec!["-lc".into(), "exit 7".into()],
+            cwd: None,
+            env: Default::default(),
+            timeout_ms: None,
+            sandbox_profile: None,
+            idempotency_key: None,
+            operation_id: None,
+        };
         let result = run(Some(&root), Some(&checkpoint), &params, None).unwrap();
         assert_eq!(result["status"], "failed");
         assert_eq!(result["success"], false);
@@ -582,12 +588,34 @@ mod tests {
         let checkpoint = root.join("checkpoints");
         std::fs::create_dir_all(&checkpoint).unwrap();
         #[cfg(target_os = "windows")]
-        let params = json!({
-            "program":"powershell.exe",
-            "args":["-NoLogo","-NoProfile","-NonInteractive","-Command","[Console]::OpenStandardOutput().Write((New-Object byte[] 1048576), 0, 1048576)"]
-        });
+        let params = ProcessArguments {
+            program: "powershell.exe".into(),
+            args: vec![
+                "-NoLogo".into(),
+                "-NoProfile".into(),
+                "-NonInteractive".into(),
+                "-Command".into(),
+                "[Console]::OpenStandardOutput().Write((New-Object byte[] 1048576), 0, 1048576)"
+                    .into(),
+            ],
+            cwd: None,
+            env: Default::default(),
+            timeout_ms: None,
+            sandbox_profile: None,
+            idempotency_key: None,
+            operation_id: None,
+        };
         #[cfg(not(target_os = "windows"))]
-        let params = json!({"program":"/bin/sh","args":["-lc","head -c 1048576 /dev/zero"]});
+        let params = ProcessArguments {
+            program: "/bin/sh".into(),
+            args: vec!["-lc".into(), "head -c 1048576 /dev/zero".into()],
+            cwd: None,
+            env: Default::default(),
+            timeout_ms: None,
+            sandbox_profile: None,
+            idempotency_key: None,
+            operation_id: None,
+        };
         let result = run(Some(&root), Some(&checkpoint), &params, None).unwrap();
         assert_eq!(result["success"], true);
         assert_eq!(result["truncated"], true);
@@ -614,12 +642,33 @@ mod tests {
         let checkpoint = root.join("checkpoints");
         std::fs::create_dir_all(&checkpoint).unwrap();
         #[cfg(target_os = "windows")]
-        let params = json!({
-            "program":"powershell.exe",
-            "args":["-NoLogo","-NoProfile","-NonInteractive","-Command","Start-Sleep -Seconds 30"]
-        });
+        let params = ProcessArguments {
+            program: "powershell.exe".into(),
+            args: vec![
+                "-NoLogo".into(),
+                "-NoProfile".into(),
+                "-NonInteractive".into(),
+                "-Command".into(),
+                "Start-Sleep -Seconds 30".into(),
+            ],
+            cwd: None,
+            env: Default::default(),
+            timeout_ms: None,
+            sandbox_profile: None,
+            idempotency_key: None,
+            operation_id: None,
+        };
         #[cfg(not(target_os = "windows"))]
-        let params = json!({"program":"/bin/sh","args":["-lc","sleep 30"]});
+        let params = ProcessArguments {
+            program: "/bin/sh".into(),
+            args: vec!["-lc".into(), "sleep 30".into()],
+            cwd: None,
+            env: Default::default(),
+            timeout_ms: None,
+            sandbox_profile: None,
+            idempotency_key: None,
+            operation_id: None,
+        };
         let cancellation = AtomicBool::new(true);
         let result = run(Some(&root), Some(&checkpoint), &params, Some(&cancellation)).unwrap();
         assert_eq!(result["status"], "cancelled");

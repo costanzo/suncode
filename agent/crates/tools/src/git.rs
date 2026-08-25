@@ -1,3 +1,4 @@
+use super::arguments::GitDiffArguments;
 use super::{require_project, safe_relative_path, CoreFailure};
 use git2::{
     Delta, Diff, DiffFindOptions, DiffLineType, DiffOptions, ErrorCode, Patch, Repository, Status,
@@ -24,7 +25,7 @@ struct FileStats {
     binary: bool,
 }
 
-pub(super) fn status(project_root: Option<&Path>, _params: &Value) -> Result<Value, CoreFailure> {
+pub(super) fn status(project_root: Option<&Path>) -> Result<Value, CoreFailure> {
     let root = require_project(project_root)?;
     let context = open_repository(root)?;
     let mut options = StatusOptions::new();
@@ -122,23 +123,19 @@ pub(super) fn status(project_root: Option<&Path>, _params: &Value) -> Result<Val
     }))
 }
 
-pub(super) fn diff_file(project_root: Option<&Path>, params: &Value) -> Result<Value, CoreFailure> {
+pub(super) fn diff_file(
+    project_root: Option<&Path>,
+    args: &GitDiffArguments,
+) -> Result<Value, CoreFailure> {
     let root = require_project(project_root)?;
-    let requested = params
-        .get("path")
-        .and_then(Value::as_str)
-        .ok_or(CoreFailure {
-            code: "invalid_arguments",
-            message: "path is required",
-            retryable: false,
-        })?;
+    let requested = args.path.as_str();
     let requested = safe_relative_path(requested)?;
     let requested = path_string(&requested).ok_or(CoreFailure {
         code: "unsupported_path_encoding",
         message: "path is not valid UTF-8",
         retryable: false,
     })?;
-    let scope = params.get("scope").and_then(Value::as_str).unwrap_or("all");
+    let scope = args.scope.as_str();
     if !matches!(scope, "all" | "staged" | "unstaged") {
         return Err(CoreFailure {
             code: "invalid_arguments",
@@ -512,8 +509,8 @@ fn git_read_failure(error: git2::Error) -> CoreFailure {
 #[cfg(test)]
 mod tests {
     use super::{diff_file, status};
+    use crate::arguments::GitDiffArguments;
     use git2::{Repository, Signature};
-    use serde_json::json;
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -529,7 +526,7 @@ mod tests {
         index.write().unwrap();
         fs::write(root.join("tracked.txt"), "changed again\n").unwrap();
 
-        let result = status(Some(&root), &json!({})).unwrap();
+        let result = status(Some(&root)).unwrap();
         assert_eq!(result["changed_files"], 2);
         assert_eq!(result["additions"], 2);
         let tracked = result["files"]
@@ -563,13 +560,22 @@ mod tests {
         index.write().unwrap();
         fs::write(root.join("tracked.txt"), "staged\nworktree\n").unwrap();
 
-        let staged =
-            diff_file(Some(&root), &json!({"path":"tracked.txt","scope":"staged"})).unwrap();
+        let staged = diff_file(
+            Some(&root),
+            &GitDiffArguments {
+                path: "tracked.txt".into(),
+                scope: "staged".into(),
+            },
+        )
+        .unwrap();
         assert_eq!(staged["scope"], "staged");
         assert!(staged["hunks"].as_array().unwrap().len() >= 1);
         let unstaged = diff_file(
             Some(&root),
-            &json!({"path":"tracked.txt","scope":"unstaged"}),
+            &GitDiffArguments {
+                path: "tracked.txt".into(),
+                scope: "unstaged".into(),
+            },
         )
         .unwrap();
         assert_eq!(unstaged["scope"], "unstaged");
@@ -585,7 +591,7 @@ mod tests {
         fs::create_dir_all(root.join("nested")).unwrap();
         fs::write(root.join("nested/new.txt"), "hello\n").unwrap();
         fs::write(root.join("outside.txt"), "outside\n").unwrap();
-        let result = status(Some(&root.join("nested")), &json!({})).unwrap();
+        let result = status(Some(&root.join("nested"))).unwrap();
         assert_eq!(result["branch"], "master");
         assert_eq!(result["changed_files"], 1);
         assert_eq!(result["files"][0]["path"], "new.txt");
@@ -596,14 +602,17 @@ mod tests {
     fn rejects_non_repositories_and_parent_paths() {
         let root = temporary_path("plain");
         fs::create_dir_all(&root).unwrap();
+        assert_eq!(status(Some(&root)).unwrap_err().code, "not_git_repository");
         assert_eq!(
-            status(Some(&root), &json!({})).unwrap_err().code,
-            "not_git_repository"
-        );
-        assert_eq!(
-            diff_file(Some(&root), &json!({"path":"../outside","scope":"all"}))
-                .unwrap_err()
-                .code,
+            diff_file(
+                Some(&root),
+                &GitDiffArguments {
+                    path: "../outside".into(),
+                    scope: "all".into(),
+                },
+            )
+            .unwrap_err()
+            .code,
             "scope_denied"
         );
         cleanup(root);

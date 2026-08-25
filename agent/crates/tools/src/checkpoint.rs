@@ -1,3 +1,4 @@
+use super::arguments::CheckpointRestoreArguments;
 use super::{safe_relative_path, sha256_hex, CoreFailure, CHECKPOINT_SEQUENCE};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::{Deserialize, Serialize};
@@ -72,21 +73,14 @@ pub(super) fn capture(
 pub(super) fn restore(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
-    params: &Value,
+    args: &CheckpointRestoreArguments,
 ) -> Result<Value, CoreFailure> {
     let root = project_root.ok_or(CoreFailure {
         code: "project_unconfigured",
         message: "project root is not configured",
         retryable: false,
     })?;
-    let checkpoint_id = params
-        .get("checkpoint_id")
-        .and_then(Value::as_str)
-        .ok_or(CoreFailure {
-            code: "invalid_arguments",
-            message: "checkpoint_id is required",
-            retryable: false,
-        })?;
+    let checkpoint_id = args.checkpoint_id.as_str();
     if checkpoint_id.len() != 64 || !checkpoint_id.chars().all(|value| value.is_ascii_hexdigit()) {
         return Err(CoreFailure {
             code: "invalid_arguments",

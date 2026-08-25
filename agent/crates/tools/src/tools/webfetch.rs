@@ -1,3 +1,4 @@
+use super::super::arguments::WebfetchArguments;
 use super::super::{artifacts, CoreFailure};
 use encoding_rs::{Encoding, UTF_8};
 use html2md_rs::{
@@ -33,12 +34,8 @@ enum OutputFormat {
 }
 
 impl OutputFormat {
-    fn parse(params: &Value) -> Result<Self, CoreFailure> {
-        match params
-            .get("format")
-            .and_then(Value::as_str)
-            .unwrap_or("markdown")
-        {
+    fn parse(value: Option<&str>) -> Result<Self, CoreFailure> {
+        match value.unwrap_or("markdown") {
             "text" => Ok(Self::Text),
             "markdown" => Ok(Self::Markdown),
             "html" => Ok(Self::Html),
@@ -71,17 +68,16 @@ impl OutputFormat {
 
 pub(super) fn execute(
     checkpoint_root: Option<&Path>,
-    params: &Value,
+    args: WebfetchArguments,
     cancellation: Option<&AtomicBool>,
 ) -> Result<Value, CoreFailure> {
-    let url = params
-        .get("url")
-        .and_then(Value::as_str)
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| invalid("url is required"))?;
+    let url = args.url.trim();
+    if url.is_empty() {
+        return Err(invalid("url is required"));
+    }
     let url = parse_http_url(url)?;
-    let format = OutputFormat::parse(params)?;
-    let timeout = timeout(params)?;
+    let format = OutputFormat::parse(args.format.as_deref())?;
+    let timeout = timeout(args.timeout)?;
     let deadline = Instant::now() + timeout;
     check_cancelled(cancellation)?;
 
@@ -363,17 +359,11 @@ fn decode_body(bytes: &[u8], content_type: &str) -> String {
     encoding.decode(bytes).0.into_owned()
 }
 
-fn timeout(params: &Value) -> Result<Duration, CoreFailure> {
-    let seconds = params
-        .get("timeout")
-        .map(|value| {
-            value
-                .as_f64()
-                .filter(|seconds| seconds.is_finite())
-                .ok_or_else(|| invalid("timeout must be a number of seconds"))
-        })
-        .transpose()?
-        .unwrap_or(DEFAULT_TIMEOUT_SECONDS);
+fn timeout(value: Option<f64>) -> Result<Duration, CoreFailure> {
+    let seconds = value.unwrap_or(DEFAULT_TIMEOUT_SECONDS);
+    if !seconds.is_finite() {
+        return Err(invalid("timeout must be a number of seconds"));
+    }
     if seconds <= 0.0 || seconds > MAX_TIMEOUT_SECONDS {
         return Err(invalid(
             "timeout must be greater than zero and no more than 120 seconds",
@@ -449,6 +439,7 @@ fn fetch_failure(message: &'static str, retryable: bool) -> CoreFailure {
 
 #[cfg(test)]
 mod tests {
+    use super::super::super::arguments::WebfetchArguments;
     use super::*;
     use std::{
         fs,
@@ -518,7 +509,16 @@ mod tests {
             "text/html; charset=utf-8",
             "<html><body><h1>Hello</h1><script>secret()</script><p>World</p></body></html>",
         );
-        let result = execute(None, &json!({"url":url}), None).unwrap();
+        let result = execute(
+            None,
+            WebfetchArguments {
+                url,
+                format: None,
+                timeout: None,
+            },
+            None,
+        )
+        .unwrap();
         server.join().unwrap();
         assert_eq!(result["format"], "markdown");
         assert!(result["content"].as_str().unwrap().contains("# Hello"));
@@ -543,9 +543,9 @@ mod tests {
     fn rejects_unsupported_urls_formats_and_timeouts() {
         assert!(parse_http_url("file:///tmp/example").is_err());
         assert!(parse_http_url("https://user:secret@example.com").is_err());
-        assert!(OutputFormat::parse(&json!({"format":"pdf"})).is_err());
-        assert!(timeout(&json!({"timeout":0})).is_err());
-        assert!(timeout(&json!({"timeout":121})).is_err());
+        assert!(OutputFormat::parse(Some("pdf")).is_err());
+        assert!(timeout(Some(0.0)).is_err());
+        assert!(timeout(Some(121.0)).is_err());
     }
 
     #[test]
@@ -562,7 +562,16 @@ mod tests {
     #[test]
     fn rejects_non_text_responses() {
         let (url, server) = serve_once("image/png", vec![0_u8, 1, 2, 3]);
-        let failure = execute(None, &json!({"url":url}), None).unwrap_err();
+        let failure = execute(
+            None,
+            WebfetchArguments {
+                url,
+                format: None,
+                timeout: None,
+            },
+            None,
+        )
+        .unwrap_err();
         server.join().unwrap();
         assert_eq!(failure.code, "webfetch_failed");
         assert_eq!(failure.message, "response content type is not textual");
@@ -573,7 +582,16 @@ mod tests {
         let target = TcpListener::bind("127.0.0.1:0").unwrap();
         let target_url = format!("http://{}/not-approved", target.local_addr().unwrap());
         let (url, redirect_server) = redirect_once(target_url);
-        let failure = execute(None, &json!({"url":url}), None).unwrap_err();
+        let failure = execute(
+            None,
+            WebfetchArguments {
+                url,
+                format: None,
+                timeout: None,
+            },
+            None,
+        )
+        .unwrap_err();
         redirect_server.join().unwrap();
         assert_eq!(failure.code, "webfetch_failed");
         assert_eq!(failure.message, "request could not be completed");
@@ -584,7 +602,16 @@ mod tests {
         let checkpoints = temporary_checkpoints("artifact");
         let body = "a".repeat(MAX_MODEL_BYTES + 1024);
         let (url, server) = serve_once("text/plain", body);
-        let result = execute(Some(&checkpoints), &json!({"url":url}), None).unwrap();
+        let result = execute(
+            Some(&checkpoints),
+            WebfetchArguments {
+                url,
+                format: None,
+                timeout: None,
+            },
+            None,
+        )
+        .unwrap();
         server.join().unwrap();
         assert_eq!(result["truncated"], true);
         assert_eq!(result["content"].as_str().unwrap().len(), MAX_MODEL_BYTES);

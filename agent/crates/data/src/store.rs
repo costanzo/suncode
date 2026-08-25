@@ -1,4 +1,4 @@
-use super::{data, operations, schema};
+use super::{operations, schema};
 use crate::domain::*;
 use chrono::{Duration, Utc};
 use diesel::connection::SimpleConnection;
@@ -10,6 +10,7 @@ use diesel::sqlite::SqliteConnection;
 use serde_json::{json, Value};
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
+use suncode_database::sqlite;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -330,10 +331,8 @@ struct RecoveryRow {
 
 impl Store {
     pub fn open(path: &Path) -> Result<Self, PersistenceError> {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| PersistenceError::Invalid(e.to_string()))?;
-        }
+        sqlite::ensure_database(path)
+            .map_err(|error| PersistenceError::Invalid(error.to_string()))?;
         let mut connection =
             SqliteConnection::establish(path.to_str().ok_or_else(|| {
                 PersistenceError::Invalid("database path is not valid UTF-8".into())
@@ -1264,9 +1263,11 @@ fn configure(connection: &mut SqliteConnection) -> Result<(), PersistenceError> 
 
 fn initialize(connection: &mut SqliteConnection) -> Result<(), PersistenceError> {
     connection.transaction(|connection| {
-        schema::apply(connection)?;
+        for script in sqlite::schema_scripts() {
+            connection.batch_execute(script)?;
+        }
         let actual = schema::table_names(connection)?;
-        if actual.iter().map(String::as_str).collect::<Vec<_>>() != schema::TABLE_NAMES {
+        if actual.iter().map(String::as_str).collect::<Vec<_>>() != sqlite::TABLE_NAMES {
             return Err(PersistenceError::Invalid(format!(
                 "database tables do not match the current schema: {actual:?}"
             )));
@@ -1286,7 +1287,9 @@ fn initialize(connection: &mut SqliteConnection) -> Result<(), PersistenceError>
                 "session_call schema is missing provider request/response identifiers".into(),
             ));
         }
-        data::apply(connection)?;
+        for script in sqlite::data_scripts() {
+            connection.batch_execute(script)?;
+        }
         Ok(())
     })?;
     Ok(())

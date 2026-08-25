@@ -1,13 +1,13 @@
+use super::super::arguments::ProcessArguments;
 use super::super::{process as runtime_process, CoreFailure};
-use serde_json::Value;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 
 pub(super) fn run(
     root: Option<&Path>,
     checkpoint: Option<&Path>,
-    params: &Value,
+    args: ProcessArguments,
     cancellation: Option<&AtomicBool>,
-) -> Result<Value, CoreFailure> {
-    runtime_process::run(root, checkpoint, params, cancellation)
+) -> Result<serde_json::Value, CoreFailure> {
+    runtime_process::run(root, checkpoint, &args, cancellation)
 }

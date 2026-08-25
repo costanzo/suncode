@@ -1,7 +1,10 @@
+use super::super::arguments::GrepArguments;
 use super::super::{search, CoreFailure};
-use serde_json::Value;
 use std::path::Path;
 
-pub(super) fn execute(root: Option<&Path>, params: &Value) -> Result<Value, CoreFailure> {
-    search::find(root, params)
+pub(super) fn execute(
+    root: Option<&Path>,
+    args: GrepArguments,
+) -> Result<serde_json::Value, CoreFailure> {
+    search::find(root, &args)
 }

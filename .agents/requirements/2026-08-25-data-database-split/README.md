@@ -1,11 +1,10 @@
-# Diesel Database Operations
+# Split Data And Database Packages
 
 - Date: 2026-08-25
 - Status: Complete
 - Related features: SQLite persistence
-- Related specifications: `contracts/sqlite-schema.md`, `.agents/specs/agent-phase-1.md`
+- Related specifications: `contracts/sqlite-schema.md`
 - Related decisions: ADR-20260819-current-schema-bootstrap
-- Superseded by: `2026-08-25-data-database-split`
 
 ## Documents
 

@@ -9,7 +9,12 @@ mod read;
 mod webfetch;
 mod write;
 
+use super::arguments::{
+    CheckpointRestoreArguments, EditArguments, GitDiffArguments, GlobArguments, GrepArguments,
+    ProcessArguments, ReadArguments, WebfetchArguments, WriteArguments,
+};
 use super::CoreFailure;
+use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
@@ -22,14 +27,59 @@ pub(super) fn dispatch(
     cancellation: Option<&AtomicBool>,
 ) -> Option<Result<Value, CoreFailure>> {
     Some(match method {
-        "tool/read" => read::execute(project_root, params),
-        "tool/glob" => glob::execute(project_root, params),
-        "tool/grep" => grep::execute(project_root, params),
-        "tool/webfetch" => webfetch::execute(checkpoint_root, params, cancellation),
-        "tool/write" => write::execute(project_root, checkpoint_root, params),
-        "tool/edit" => edit::execute(project_root, checkpoint_root, params),
-        "tool/bash" => process::run(project_root, checkpoint_root, params, cancellation),
-        "checkpoint/restore" => checkpoint_restore::execute(project_root, checkpoint_root, params),
+        "tool/read" => run_read_typed(params, project_root),
+        "tool/glob" => run_typed(params, |args: GlobArguments| {
+            glob::execute(project_root, args)
+        }),
+        "tool/grep" => run_typed(params, |args: GrepArguments| {
+            grep::execute(project_root, args)
+        }),
+        "tool/webfetch" => run_typed(params, |args: WebfetchArguments| {
+            webfetch::execute(checkpoint_root, args, cancellation)
+        }),
+        "tool/write" => run_typed(params, |args: WriteArguments| {
+            write::execute(project_root, checkpoint_root, args)
+        }),
+        "tool/edit" => run_typed(params, |args: EditArguments| {
+            edit::execute(project_root, checkpoint_root, args)
+        }),
+        "tool/bash" => run_typed(params, |args: ProcessArguments| {
+            process::run(project_root, checkpoint_root, args, cancellation)
+        }),
+        "checkpoint/restore" => run_typed(params, |args: CheckpointRestoreArguments| {
+            checkpoint_restore::execute(project_root, checkpoint_root, args)
+        }),
+        "git/status" => super::git::status(project_root),
+        "git/diff-file" => run_typed(params, |args: GitDiffArguments| {
+            super::git::diff_file(project_root, &args)
+        }),
         _ => return None,
+    })
+}
+
+fn run_typed<T, F>(params: &Value, execute: F) -> Result<Value, CoreFailure>
+where
+    T: DeserializeOwned,
+    F: FnOnce(T) -> Result<Value, CoreFailure>,
+{
+    let arguments = serde_json::from_value(params.clone()).map_err(|_| CoreFailure {
+        code: "invalid_arguments",
+        message: "tool arguments have an invalid shape",
+        retryable: false,
+    })?;
+    execute(arguments)
+}
+
+fn run_read_typed(params: &Value, project_root: Option<&Path>) -> Result<Value, CoreFailure> {
+    // Keep the established field-level error for malformed public read calls.
+    if params.get("path").and_then(Value::as_str).is_none() {
+        return Err(CoreFailure {
+            code: "invalid_arguments",
+            message: "path is required",
+            retryable: false,
+        });
+    }
+    run_typed(params, |args: ReadArguments| {
+        read::execute(project_root, args)
     })
 }

@@ -13,6 +13,7 @@ use std::sync::atomic::AtomicU64;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static CHECKPOINT_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+mod arguments;
 mod artifacts;
 mod checkpoint;
 mod filesystem;
@@ -53,15 +54,11 @@ fn execute_operation_with_cancellation(
     {
         return result;
     }
-    match method {
-        "git/status" => git::status(project_root, params),
-        "git/diff-file" => git::diff_file(project_root, params),
-        _ => Err(CoreFailure {
-            code: "method_unavailable",
-            message: "method unavailable",
-            retryable: false,
-        }),
-    }
+    Err(CoreFailure {
+        code: "method_unavailable",
+        message: "method unavailable",
+        retryable: false,
+    })
 }
 
 fn open_project(path: &Path) -> Result<(PathBuf, Value), CoreFailure> {
@@ -229,11 +226,9 @@ fn journal_directory(checkpoint_root: &Path) -> PathBuf {
         .join("journal")
 }
 
-fn journal_id(params: &Value) -> Option<String> {
-    params
-        .get("idempotency_key")
-        .or_else(|| params.get("operation_id"))
-        .and_then(Value::as_str)
+fn journal_id(idempotency_key: Option<&str>, operation_id: Option<&str>) -> Option<String> {
+    idempotency_key
+        .or(operation_id)
         .filter(|value| !value.is_empty())
         .map(|value| sha256_hex(value.as_bytes()))
 }
@@ -269,13 +264,14 @@ fn save_journal(checkpoint_root: &Path, record: &JournalRecord) -> Result<(), Co
 
 fn journal_intent(
     checkpoint_root: &Path,
-    params: &Value,
+    idempotency_key: Option<&str>,
+    operation_id: Option<&str>,
     operation: &str,
     path: Option<&str>,
     pre: Option<&[u8]>,
     post: Option<&[u8]>,
 ) -> Result<Option<String>, CoreFailure> {
-    let Some(id) = journal_id(params) else {
+    let Some(id) = journal_id(idempotency_key, operation_id) else {
         return Ok(None);
     };
     if let Some(existing) = load_journal(checkpoint_root, &id) {

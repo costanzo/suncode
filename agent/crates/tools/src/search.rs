@@ -1,3 +1,4 @@
+use super::arguments::{GlobArguments, GrepArguments};
 use super::{glob_matches, require_project, CoreFailure};
 use globset::GlobBuilder;
 use grep_matcher::Matcher;
@@ -9,16 +10,12 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-pub(super) fn glob(project_root: Option<&Path>, params: &Value) -> Result<Value, CoreFailure> {
+pub(super) fn glob(
+    project_root: Option<&Path>,
+    args: &GlobArguments,
+) -> Result<Value, CoreFailure> {
     let root = require_project(project_root)?;
-    let pattern = params
-        .get("pattern")
-        .and_then(Value::as_str)
-        .ok_or(CoreFailure {
-            code: "invalid_arguments",
-            message: "pattern is required",
-            retryable: false,
-        })?;
+    let pattern = args.pattern.as_str();
     if pattern.is_empty()
         || Path::new(pattern).is_absolute()
         || pattern.split('/').any(|part| part == "..")
@@ -29,11 +26,7 @@ pub(super) fn glob(project_root: Option<&Path>, params: &Value) -> Result<Value,
             retryable: false,
         });
     }
-    let max_results = params
-        .get("max_results")
-        .and_then(Value::as_u64)
-        .unwrap_or(100)
-        .clamp(1, 1000) as usize;
+    let max_results = args.max_results.unwrap_or(100).clamp(1, 1000);
     let mut paths = Vec::new();
     let walker = WalkBuilder::new(root)
         .standard_filters(true)
@@ -158,16 +151,12 @@ fn project_files(root: &Path, pattern: &str) -> Result<Vec<(String, PathBuf)>, C
     Ok(files)
 }
 
-pub(super) fn find(project_root: Option<&Path>, params: &Value) -> Result<Value, CoreFailure> {
+pub(super) fn find(
+    project_root: Option<&Path>,
+    args: &GrepArguments,
+) -> Result<Value, CoreFailure> {
     let root = require_project(project_root)?;
-    let query = params
-        .get("query")
-        .and_then(Value::as_str)
-        .ok_or(CoreFailure {
-            code: "invalid_arguments",
-            message: "query is required",
-            retryable: false,
-        })?;
+    let query = args.query.as_str();
     if query.is_empty() || query.len() > 256 {
         return Err(CoreFailure {
             code: "invalid_arguments",
@@ -175,10 +164,7 @@ pub(super) fn find(project_root: Option<&Path>, params: &Value) -> Result<Value,
             retryable: false,
         });
     }
-    let pattern = params
-        .get("pattern")
-        .and_then(Value::as_str)
-        .unwrap_or("**/*");
+    let pattern = args.pattern.as_str();
     if pattern.is_empty()
         || Path::new(pattern).is_absolute()
         || pattern.split('/').any(|part| part == "..")
@@ -189,11 +175,7 @@ pub(super) fn find(project_root: Option<&Path>, params: &Value) -> Result<Value,
             retryable: false,
         });
     }
-    let max_results = params
-        .get("max_results")
-        .and_then(Value::as_u64)
-        .unwrap_or(100)
-        .clamp(1, 500) as usize;
+    let max_results = args.max_results.unwrap_or(100).clamp(1, 500);
     let matcher = RegexMatcherBuilder::new()
         .build(query)
         .map_err(|_| CoreFailure {
