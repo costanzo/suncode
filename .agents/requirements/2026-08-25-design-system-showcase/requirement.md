@@ -20,6 +20,7 @@ The repository has a design document and Avalonia styles, but the complete theme
 ## Requirements
 
 - Add `design/dark.html` and `design/light.html`.
+- Add `design/index.html` as the desktop-first unified review entry point for shared foundations, shell anatomy, semantic roles, rules, assets, and theme navigation.
 - Show color tokens, typography, spacing, radius, controls, fields, cards, navigation, status, loading, data, and authority surfaces.
 - Add a shared token stylesheet used by both pages.
 - Add `design/assets/` and document its ownership rules.
@@ -35,6 +36,7 @@ The repository has a design document and Avalonia styles, but the complete theme
 ## Acceptance criteria
 
 - Both HTML pages render without external dependencies.
+- The unified entry page renders as a wide-window desktop review surface and links to both theme pages.
 - Both pages show the same component inventory with theme-specific token values.
 - Assets used by the pages are under `design/assets/`.
 - The design rules explicitly require semantic tokens for future Avalonia views.

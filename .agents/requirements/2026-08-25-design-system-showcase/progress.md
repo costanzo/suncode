@@ -6,7 +6,7 @@
 ## Completed
 
 - Added shared dark/light tokens and component primitives.
-- Added full static component review pages.
+- Added the desktop-first unified static entry page and full static component review pages.
 - Added central brand and icon assets.
 - Updated the design source documentation and requirement record.
 
@@ -23,3 +23,4 @@
 ### 2026-08-25
 
 - Implemented and verified the design review surface.
+- Added `design/index.html` as the shared review entry point for foundations, shell anatomy, rules, assets, and theme navigation.

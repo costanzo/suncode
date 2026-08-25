@@ -14,7 +14,9 @@ The review pages are static HTML and CSS only. They do not become a production w
 
 ## Data and control flow
 
-Reviewer -> `dark.html` or `light.html` -> `tokens.css` and `design/assets/`.
+Reviewer -> `index.html` -> `dark.html` or `light.html` -> `tokens.css` and `design/assets/`.
+
+`index.html` is the desktop-first shared entry point. It presents cross-theme foundations, semantic color roles, desktop shell anatomy, review rules, and links to the theme-specific component pages. It is a static review artifact, not a production web client.
 
 Runtime client -> Avalonia resource dictionaries and semantic view resources, kept aligned with the design review tokens.
 

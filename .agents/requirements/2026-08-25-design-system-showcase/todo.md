@@ -9,6 +9,7 @@
 
 - [x] Add shared theme tokens.
 - [x] Add dark and light review pages.
+- [x] Add desktop-first unified review entry page.
 - [x] Add the central asset catalog.
 
 ## Verification
@@ -20,4 +21,5 @@
 ## Closeout
 
 - [x] Update design documentation.
+- [x] Document the review flow from `index.html` to the theme pages.
 - [x] Record the delivery in `.agents/requirements/`.

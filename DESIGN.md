@@ -45,6 +45,7 @@ components:
 
 review:
   directory: "design/"
+  entry: "design/index.html"
   dark: "design/dark.html"
   light: "design/light.html"
   tokens: "design/tokens.css"
@@ -55,7 +56,7 @@ review:
 
 ## Review Surface
 
-The complete visual review surface lives in [`design/dark.html`](design/dark.html) and [`design/light.html`](design/light.html). Both pages use [`design/tokens.css`](design/tokens.css), and reusable product images and icons are cataloged in [`design/assets/`](design/assets/). Review these pages before introducing a new module or component. The HTML pages are static review artifacts, not a production web client.
+The visual review surface starts at [`design/index.html`](design/index.html), the desktop-first entry point for shared foundations, shell anatomy, semantic roles, rules, assets, and theme links. Continue to [`design/dark.html`](design/dark.html) or [`design/light.html`](design/light.html) for the complete component and state inventory. All pages use [`design/tokens.css`](design/tokens.css), and reusable product images and icons are cataloged in [`design/assets/`](design/assets/). Review these pages before introducing a new module or component. The HTML pages are static review artifacts, not a production web client.
 
 `design/tokens.css` is the compact token reference for the two themes. Avalonia resources in `apps/desktop-avalonia/App.axaml` are the runtime mapping and must retain the same semantic meanings. Feature views should consume named resources rather than add local raw colors, radii, shadows, or control heights.
 

@@ -14,13 +14,14 @@ Not applicable; no protocol or runtime contract changed.
 
 ## Regression checks
 
-- Confirm both HTML documents reference `tokens.css`.
+- Confirm all review HTML documents reference `tokens.css`.
 - Confirm every image reference resolves under `design/assets/`.
 - Confirm the pages contain the required component sections.
+- Confirm `index.html` exposes both theme links and has no horizontal overflow in a desktop viewport.
 
 ## Manual checks
 
-- Open both HTML files directly in a browser.
+- Open `index.html`, then both theme HTML files, directly in a browser or local static server.
 - Resize to desktop and compact widths.
 - Compare dark/light semantic contrast and focus behavior.
 
