@@ -9,7 +9,7 @@ colors:
   surface-active: "#242a31"
   text: "#edf0f3"
   text-secondary: "#a7afb9"
-  text-muted: "#838d98"
+  text-muted: "#727c87"
   window-border: "#1c2126"
   window-border-light: "#e5e9ec"
   border: "#292f36"
@@ -42,9 +42,22 @@ components:
     textColor: "{colors.text}"
     rounded: "{rounded.sm}"
     height: "36px"
+
+review:
+  directory: "design/"
+  dark: "design/dark.html"
+  light: "design/light.html"
+  tokens: "design/tokens.css"
+  assets: "design/assets/"
 ---
 
 # Design System: SunCode Desktop
+
+## Review Surface
+
+The complete visual review surface lives in [`design/dark.html`](design/dark.html) and [`design/light.html`](design/light.html). Both pages use [`design/tokens.css`](design/tokens.css), and reusable product images and icons are cataloged in [`design/assets/`](design/assets/). Review these pages before introducing a new module or component. The HTML pages are static review artifacts, not a production web client.
+
+`design/tokens.css` is the compact token reference for the two themes. Avalonia resources in `apps/desktop-avalonia/App.axaml` are the runtime mapping and must retain the same semantic meanings. Feature views should consume named resources rather than add local raw colors, radii, shadows, or control heights.
 
 ## Overview
 
@@ -85,7 +98,7 @@ The palette supports both a dark graphite mode and a lighter paper-and-slate mod
 - **Graphite Hover** (#1e2329): Hover state for neutral controls.
 - **Primary Text** (#edf0f3): Main copy and message content.
 - **Secondary Text** (#a7afb9): Supporting labels and status summaries.
-- **Muted Text** (#838d98): Empty-state guidance and metadata with accessible contrast on graphite surfaces.
+- **Muted Text** (#727c87): Empty-state guidance and metadata with accessible contrast on graphite surfaces.
 - **Window Chrome Hairline** (#1c2126 dark / #e5e9ec light): A 0.5-DIP low-contrast outer outline that lets the native window shadow carry elevation.
 - **Hairline Border** (#292f36): Panel boundaries and list separators.
 
@@ -162,6 +175,19 @@ The left bay is project and session navigation, with uppercase section labels, a
 
 The right bay contains approval, turn changes, touched files, and runtime health in that order. Approval is the only state allowed to interrupt the visual hierarchy; its amber surface and explicit “Approve once” / “Deny” actions keep authority decisions legible.
 
+### Component Coverage
+
+The review pages are required to show, at minimum:
+
+- color tokens for surfaces, text, action, borders, and semantic states
+- typography hierarchy, UI/data font split, spacing, radii, and control dimensions
+- primary, neutral, quiet, danger, compact, icon-only, focus, pressed, and disabled buttons
+- text fields, select fields, textareas, validation, checkbox, radio, and toggle controls
+- cards, project rows, activity rows, approval surfaces, navigation, tabs, and segmented controls
+- badges, alerts, progress, loading skeletons, empty states, code blocks, and data tables
+
+The same semantic inventory must be present in dark and light pages. Theme changes may alter contrast values, but must not change the meaning of a token or state.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -179,3 +205,7 @@ The right bay contains approval, turn changes, touched files, and runtime health
 - **Don't** use equal-weight cards as the page structure.
 - **Don't** introduce a second display font or decorative icon language.
 - **Don't** let side panels crowd the conversation at compact widths.
+
+## Asset Management
+
+All reusable design images, brand marks, and interface icons belong in `design/assets/`. The catalog has a stable `brand/` area and an `icons/` area with an inventory guide in `design/assets/README.md`. Client packaging may copy an approved asset into its own build boundary, but new visual material must first be reviewed and cataloged here.

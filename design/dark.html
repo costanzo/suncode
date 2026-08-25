@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="SunCode design system review page for the dark theme.">
+  <title>SunCode Design System - Dark</title>
+  <link rel="stylesheet" href="tokens.css">
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <img src="assets/brand/suncode-logo-small.svg" alt="SunCode logo">
+        <div><strong>SunCode</strong><small>Design system review</small></div>
+      </div>
+      <nav class="theme-nav" aria-label="Theme pages">
+        <a href="dark.html" aria-current="page">Dark</a>
+        <a href="light.html">Light</a>
+      </nav>
+      <a class="utility-link" href="../DESIGN.md">DESIGN.md</a>
+    </header>
+
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <div class="eyebrow">SunCode / Quiet control desk</div>
+          <h1>Calm surfaces for high-consequence coding work.</h1>
+          <p>The dark theme uses matte graphite layers, fine separators and restrained semantic color. Teal marks action and active work; green, amber and red communicate status only.</p>
+        </div>
+        <aside class="hero-note">
+          <strong>Review scope</strong>
+          This page is the visual source for client review. Every component should map to a token below before it enters Avalonia.<br><br>
+          <code>theme = dark / density = compact / radius = 6-14px</code>
+        </aside>
+      </section>
+
+      <section class="section" id="colors">
+        <div class="section-heading">
+          <div><div class="section-kicker">01 / Foundations</div><h2>Color system</h2></div>
+          <p>Surface colors create depth. Semantic colors have a job: what can the user do, or what changed?</p>
+        </div>
+        <div class="stack">
+          <div class="swatch-group"><h3>Surface and text</h3><div class="swatch-grid">
+            <div class="swatch"><div class="swatch-color" style="--swatch:#0d0f12"></div><div class="swatch-meta"><strong>Canvas</strong><code>#0d0f12</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#121519"></div><div class="swatch-meta"><strong>Surface</strong><code>#121519</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#181c21"></div><div class="swatch-meta"><strong>Raised</strong><code>#181c21</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#1e2329"></div><div class="swatch-meta"><strong>Hover</strong><code>#1e2329</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#242a31"></div><div class="swatch-meta"><strong>Active</strong><code>#242a31</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#edf0f3"></div><div class="swatch-meta"><strong>Text</strong><code>#edf0f3</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#a7afb9"></div><div class="swatch-meta"><strong>Secondary</strong><code>#a7afb9</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#727c87"></div><div class="swatch-meta"><strong>Muted</strong><code>#727c87</code></div></div>
+          </div></div>
+          <div class="swatch-group"><h3>Action and semantic</h3><div class="swatch-grid">
+            <div class="swatch"><div class="swatch-color" style="--swatch:#69c5b0"></div><div class="swatch-meta"><strong>Accent</strong><code>#69c5b0</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#7dd2be"></div><div class="swatch-meta"><strong>Accent hover</strong><code>#7dd2be</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#78c99b"></div><div class="swatch-meta"><strong>Success</strong><code>#78c99b</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#ddb16c"></div><div class="swatch-meta"><strong>Warning</strong><code>#ddb16c</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#e68a83"></div><div class="swatch-meta"><strong>Danger</strong><code>#e68a83</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#292f36"></div><div class="swatch-meta"><strong>Border</strong><code>#292f36</code></div></div>
+          </div></div>
+        </div>
+      </section>
+
+      <section class="section" id="type">
+        <div class="section-heading">
+          <div><div class="section-kicker">02 / Foundations</div><h2>Type, spacing and shape</h2></div>
+          <code>UI = Noto Sans / data = JetBrains Mono</code>
+        </div>
+        <div class="grid grid-2">
+          <div class="sample"><div class="sample-label">Typography scale</div><table class="type-table">
+            <tr><td>Display / 34px</td><td class="type-display">Coding workspace</td></tr>
+            <tr><td>Title / 22px</td><td class="type-title">Current session</td></tr>
+            <tr><td>Body / 14px</td><td class="type-body">Review the proposed changes before approval.</td></tr>
+            <tr><td>Label / 12px</td><td class="type-label">PROJECT SETTINGS</td></tr>
+            <tr><td>Caption / 11px</td><td class="type-caption">Updated 2 minutes ago</td></tr>
+            <tr><td>Mono / 12px</td><td class="mono">src/agent/context.rs:148</td></tr>
+          </table></div>
+          <div class="sample"><div class="sample-label">Spacing and radius</div><div class="token-list">
+            <div class="token-row"><code>space-1</code><span class="token-value">4px / icon inset</span><i class="token-chip" style="--swatch:var(--accent)"></i></div>
+            <div class="token-row"><code>space-2</code><span class="token-value">8px / control gap</span><i class="token-chip" style="--swatch:var(--accent)"></i></div>
+            <div class="token-row"><code>space-4</code><span class="token-value">16px / panel padding</span><i class="token-chip" style="--swatch:var(--accent)"></i></div>
+            <div class="token-row"><code>space-6</code><span class="token-value">24px / section rhythm</span><i class="token-chip" style="--swatch:var(--accent)"></i></div>
+            <div class="token-row"><code>radius-sm</code><span class="token-value">6px / controls</span><i class="token-chip" style="--swatch:var(--border)"></i></div>
+            <div class="token-row"><code>radius-md</code><span class="token-value">10px / utility cards</span><i class="token-chip" style="--swatch:var(--border)"></i></div>
+            <div class="token-row"><code>radius-lg</code><span class="token-value">14px / dialogs only</span><i class="token-chip" style="--swatch:var(--border)"></i></div>
+          </div></div>
+        </div>
+      </section>
+
+      <section class="section" id="buttons">
+        <div class="section-heading"><div><div class="section-kicker">03 / Components</div><h2>Buttons and actions</h2></div><p>One primary action advances the current turn. Neutral, quiet and danger actions stay visually subordinate.</p></div>
+        <div class="grid grid-2">
+          <div class="sample"><div class="sample-label">Variants</div><div class="row"><button class="btn btn-primary"><span class="icon icon-arrow"></span>Send turn</button><button class="btn">Cancel</button><button class="btn btn-danger">Delete project</button><button class="btn btn-quiet">Learn more</button></div><div class="sample-note">Regular control height: 36px. Radius: 6px.</div></div>
+          <div class="sample"><div class="sample-label">Sizes and icon actions</div><div class="row"><button class="btn btn-primary btn-lg">Open project</button><button class="btn btn-sm">Compact</button><button class="btn btn-icon" aria-label="Settings"><span class="icon icon-settings"></span></button><button class="btn btn-icon" aria-label="Refresh"><span class="icon icon-refresh"></span></button><button class="btn btn-icon" disabled aria-label="Disabled"><span class="icon icon-close"></span></button></div><div class="sample-note">Icon-only actions require a tooltip in the product UI.</div></div>
+          <div class="sample"><div class="sample-label">State reference</div><div class="state-strip"><div class="state-box">Rest</div><div class="state-box hover">Hover</div><div class="state-box active">Pressed</div><div class="state-box disabled">Disabled</div></div></div>
+          <div class="sample"><div class="sample-label">Action grouping</div><div class="split"><span class="type-label">Approve this operation?</span><div class="row"><button class="btn btn-sm">Deny</button><button class="btn btn-primary btn-sm">Approve once</button></div></div></div>
+        </div>
+      </section>
+
+      <section class="section" id="fields">
+        <div class="section-heading"><div><div class="section-kicker">04 / Components</div><h2>Fields and selection</h2></div><p>Fields are quiet, readable and keyboard-visible. Validation explains what to fix without shifting the layout.</p></div>
+        <div class="grid grid-3">
+          <div class="sample"><div class="sample-label">Text input</div><div class="stack"><label><span class="field-label">Session name</span><input class="field" value="Refactor provider cache"></label><label><span class="field-label">Project path</span><input class="field" placeholder="/Users/name/project"></label></div></div>
+          <div class="sample"><div class="sample-label">Select and textarea</div><div class="stack"><label><span class="field-label">Model</span><select class="field"><option>DeepSeek V4 Pro</option><option>Claude Sonnet 5</option></select></label><label><span class="field-label">Instruction</span><textarea class="field" placeholder="Describe the change..."></textarea></label></div></div>
+          <div class="sample"><div class="sample-label">Validation and controls</div><div class="stack"><label><span class="field-label">API endpoint</span><input class="field field-error" value="https://"><span class="field-help error">Enter a complete HTTPS endpoint.</span></label><label class="checkbox"><input type="checkbox" checked> Save as default</label><label class="radio"><input type="radio" name="scope" checked> Current project</label><label class="radio"><input type="radio" name="scope"> Current session</label><label class="toggle"><input type="checkbox" checked><span class="toggle-track"></span> Enable provider</label></div></div>
+        </div>
+      </section>
+
+      <section class="section" id="containers">
+        <div class="section-heading"><div><div class="section-kicker">05 / Components</div><h2>Cards and authority surfaces</h2></div><p>Cards frame repeated items or genuinely important tools. Page structure stays unframed and full-width.</p></div>
+        <div class="grid grid-3">
+          <div class="card project-card"><span class="project-mark">P</span><div><strong>suncode</strong><small>~/Projects/suncode</small></div><span class="badge success">Ready</span></div>
+          <div class="card"><div class="activity"><span class="icon icon-activity"></span><div><h3>Reading project files</h3><p>Scanning <span class="mono">src/</span> for provider usage.</p></div><small>12s</small></div></div>
+          <div class="card warning"><div class="approval"><span class="approval-mark">!</span><div><h3>Approval required</h3><p>Run <span class="mono">cargo test</span> in the current project.</p></div><div class="approval-actions"><button class="btn btn-sm">Deny</button><button class="btn btn-primary btn-sm">Approve once</button></div></div></div>
+        </div>
+        <div class="grid grid-3" style="margin-top:16px"><div class="card accent"><h3>Active work</h3><p>Accent surfaces indicate current work, selection or a focused tool bay.</p></div><div class="card inset"><h3>Inset data</h3><p>Use inset surfaces for paths, code, commands and machine-readable values.</p></div><div class="card danger"><h3>Destructive outcome</h3><p>Danger surfaces are reserved for errors, denial and irreversible actions.</p></div></div>
+      </section>
+
+      <section class="section" id="navigation">
+        <div class="section-heading"><div><div class="section-kicker">06 / Components</div><h2>Navigation and filters</h2></div><p>Navigation keeps the project and session context visible while leaving the conversation dominant.</p></div>
+        <div class="grid grid-3">
+          <div class="sample"><div class="sample-label">Project bay</div><div class="nav-demo"><div class="nav-item active"><span class="icon icon-files"></span>Explorer</div><div class="nav-item"><span class="icon icon-activity"></span>Sessions<small>3</small></div><div class="nav-item"><span class="icon icon-git"></span>Changes<small>8</small></div><div class="nav-item"><span class="icon icon-settings"></span>Settings</div></div></div>
+          <div class="sample"><div class="sample-label">Tabs</div><div class="tabs"><button class="tab active">Overview</button><button class="tab">Files</button><button class="tab">Provider trace</button></div><p class="sample-note">Active tabs use an accent underline instead of a filled pill.</p></div>
+          <div class="sample"><div class="sample-label">Segmented mode</div><div class="segmented"><button class="segment active">Changes</button><button class="segment">All files</button><button class="segment">History</button></div><p class="sample-note">Use for mutually exclusive views within one surface.</p></div>
+        </div>
+      </section>
+
+      <section class="section" id="feedback">
+        <div class="section-heading"><div><div class="section-kicker">07 / Feedback</div><h2>Status, alerts and progress</h2></div><p>Feedback is direct and persistent enough for authority decisions, errors and recovery states.</p></div>
+        <div class="grid grid-2">
+          <div class="sample stack"><div class="sample-label">Badges</div><div class="row"><span class="badge accent">Running</span><span class="badge success">Connected</span><span class="badge warning">Waiting approval</span><span class="badge danger">Failed</span></div><div class="sample-label" style="margin-top:10px">Alerts</div><div class="stack"><div class="alert success"><span class="icon icon-activity"></span><div><strong>Checkpoint created</strong><span>This turn can be undone from the review panel.</span></div></div><div class="alert warning"><span class="icon icon-activity"></span><div><strong>External side effect</strong><span>Process output cannot be reverted by filesystem undo.</span></div></div><div class="alert danger"><span class="icon icon-close"></span><div><strong>Provider unavailable</strong><span>Check credentials or choose another model.</span></div></div></div></div>
+          <div class="sample stack"><div class="sample-label">Loading and progress</div><div class="split"><span class="type-label">Analyzing repository</span><span class="mono type-caption">62%</span></div><div class="progress"><span></span></div><div class="skeleton" style="width:84%"></div><div class="skeleton short"></div><div class="empty"><div><span class="icon icon-files"></span><strong>No changes yet</strong><span>Files touched by this turn will appear here.</span></div></div></div>
+        </div>
+      </section>
+
+      <section class="section" id="data">
+        <div class="section-heading"><div><div class="section-kicker">08 / Data surfaces</div><h2>Code, tables and machine data</h2></div><p>Machine-readable content uses mono only where precision matters. It remains a supporting layer to the conversation.</p></div>
+        <div class="grid grid-2">
+          <div class="code"><span class="comment">// provider route</span><br><span class="keyword">const</span> model = <span class="string">"deepseek-v4-pro"</span>;<br><span class="keyword">const</span> path = <span class="string">"src/agent/context.rs"</span>;<br><span class="keyword">await</span> runTests({ cwd: projectRoot });</div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>File</th><th>Change</th><th>Status</th></tr></thead><tbody><tr><td><strong class="mono">agent.rs</strong></td><td>+42 / -8</td><td><span class="badge success">Ready</span></td></tr><tr><td><strong class="mono">App.axaml</strong></td><td>+16 / -4</td><td><span class="badge accent">Review</span></td></tr><tr><td><strong class="mono">DESIGN.md</strong></td><td>+30 / -2</td><td><span class="badge warning">Pending</span></td></tr></tbody></table></div>
+        </div>
+      </section>
+
+      <section class="section" id="rules">
+        <div class="section-heading"><div><div class="section-kicker">09 / Rules</div><h2>Non-negotiable visual rules</h2></div><p>Use these constraints when adding a new module or component.</p></div>
+        <div class="grid grid-3"><div class="card"><h3>Conversation first</h3><p>Keep the central work surface visually dominant. Supporting bays collapse before the conversation becomes cramped.</p></div><div class="card"><h3>Status lamp rule</h3><p>Color must explain an action, a state or a change. Do not add color as decoration.</p></div><div class="card"><h3>Visible focus</h3><p>Every keyboard target keeps a two-step accent focus ring. Never remove focus without replacing it.</p></div></div>
+      </section>
+
+      <footer class="footer">SunCode design system review page. Source tokens: <span class="mono">design/tokens.css</span>. Runtime mapping: <span class="mono">apps/desktop-avalonia/App.axaml</span>.</footer>
+    </main>
+  </div>
+  <script>
+    document.querySelectorAll('.segment, .tab').forEach((control) => {
+      control.addEventListener('click', () => {
+        control.parentElement.querySelectorAll('.segment, .tab').forEach((item) => item.classList.remove('active'));
+        control.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>
