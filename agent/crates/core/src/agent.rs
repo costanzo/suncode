@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     collections::{HashMap, VecDeque},
+    fs,
+    path::{Component, Path, PathBuf},
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -19,6 +21,9 @@ use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 const DEFAULT_TOOL_CALL_LIMIT: u32 = 64;
+const MAX_INSTRUCTION_FILE_BYTES: u64 = 32 * 1024;
+const MAX_NEARBY_INSTRUCTION_FILES: usize = 16;
+const MAX_NEARBY_INSTRUCTION_BYTES: usize = 64 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct TodoEntry {
@@ -125,6 +130,8 @@ struct Continuation {
     question_rejected: bool,
     #[serde(default)]
     todos: Vec<TodoEntry>,
+    #[serde(default)]
+    loaded_instruction_paths: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -277,6 +284,7 @@ impl Agent {
             question_answers: None,
             question_rejected: false,
             todos: Vec::new(),
+            loaded_instruction_paths: Vec::new(),
         };
         let result = self
             .run(continuation.clone(), Some(input), token, provider)
@@ -706,6 +714,9 @@ impl Agent {
             let exchange_id = Uuid::new_v4().to_string();
             context.active_call_id = Some(exchange_id.clone());
             let mut llm_messages = vec![host_environment_message(&context.session_started_at)];
+            if let Some(message) = project_instruction_message(&context.project_root) {
+                llm_messages.push(message);
+            }
             if let Some(message) = self.dependency_context_message(&context.project_id)? {
                 llm_messages.push(message);
             }
@@ -1313,7 +1324,8 @@ impl Agent {
             .and_then(Value::as_str)
             .and_then(dependency_path)
             .map(|(dependency_id, _)| dependency_id);
-        let normalized_result = normalize_result(&call.name, result.clone(), dependency_id);
+        let mut normalized_result = normalize_result(&call.name, result.clone(), dependency_id);
+        attach_nearby_instructions(context, call, &mut normalized_result);
         let process_failed = call.name == "bash"
             && normalized_result.get("success").and_then(Value::as_bool) == Some(false);
         self.tool_state(
@@ -2100,6 +2112,139 @@ fn shell_command(script: &str) -> (&'static str, Vec<String>) {
     ("/bin/sh", vec!["-lc".into(), script.into()])
 }
 
+#[derive(Debug, Serialize)]
+struct LoadedInstruction {
+    path: String,
+    content: String,
+}
+
+fn project_instruction_message(project_root: &str) -> Option<suncode_llm::Message> {
+    let root = Path::new(project_root).canonicalize().ok()?;
+    let content = read_instruction_file(&root, &root.join("AGENTS.md"))?;
+    Some(suncode_llm::Message::text(
+        "system",
+        format!(
+            "Repository instructions from AGENTS.md (scope: the entire opened project):\n{content}\nMore specific AGENTS.md files reported by the read tool override conflicting broader instructions for files in their directory tree."
+        ),
+    ))
+}
+
+fn attach_nearby_instructions(context: &mut Continuation, call: &ToolCall, result: &mut Value) {
+    if call.name != "read" {
+        return;
+    }
+    let Some(path) = call.arguments.get("path").and_then(Value::as_str) else {
+        return;
+    };
+    if dependency_path(path).is_some() || !is_safe_relative_path(path) {
+        return;
+    }
+    let instructions = nearby_instruction_files(
+        &context.project_root,
+        path,
+        &context.loaded_instruction_paths,
+    );
+    if instructions.is_empty() {
+        return;
+    }
+    let Some(object) = result.as_object_mut() else {
+        return;
+    };
+    context.loaded_instruction_paths.extend(
+        instructions
+            .iter()
+            .map(|instruction| instruction.path.clone()),
+    );
+    object.insert("repository_instructions".into(), json!(instructions));
+}
+
+fn nearby_instruction_files(
+    project_root: &str,
+    read_path: &str,
+    loaded_paths: &[String],
+) -> Vec<LoadedInstruction> {
+    let Ok(root) = Path::new(project_root).canonicalize() else {
+        return Vec::new();
+    };
+    let Ok(target) = root.join(read_path).canonicalize() else {
+        return Vec::new();
+    };
+    if !target.starts_with(&root)
+        || target.file_name().and_then(|name| name.to_str()) == Some("AGENTS.md")
+    {
+        return Vec::new();
+    }
+    let Some(mut current) = target.parent().map(Path::to_path_buf) else {
+        return Vec::new();
+    };
+    let mut instructions = Vec::new();
+    let mut total_bytes = 0usize;
+    while current.starts_with(&root)
+        && current != root
+        && instructions.len() < MAX_NEARBY_INSTRUCTION_FILES
+    {
+        let candidate = current.join("AGENTS.md");
+        let relative = candidate
+            .strip_prefix(&root)
+            .ok()
+            .map(slash_path)
+            .unwrap_or_default();
+        if !relative.is_empty() && !loaded_paths.iter().any(|path| path == &relative) {
+            if let Some(content) = read_instruction_file(&root, &candidate) {
+                let bytes = content.len();
+                if total_bytes + bytes > MAX_NEARBY_INSTRUCTION_BYTES {
+                    break;
+                }
+                total_bytes += bytes;
+                instructions.push(LoadedInstruction {
+                    path: relative,
+                    content: format!(
+                        "Instructions from {}/AGENTS.md (scope: this directory tree):\n{}",
+                        slash_path(current.strip_prefix(&root).unwrap_or(Path::new("."))),
+                        content
+                    ),
+                });
+            }
+        }
+        let Some(parent) = current.parent() else {
+            break;
+        };
+        current = parent.to_path_buf();
+    }
+    instructions
+}
+
+fn read_instruction_file(root: &Path, candidate: &Path) -> Option<String> {
+    let canonical = candidate.canonicalize().ok()?;
+    if !canonical.starts_with(root) {
+        return None;
+    }
+    let metadata = fs::metadata(&canonical).ok()?;
+    if !metadata.is_file() || metadata.len() > MAX_INSTRUCTION_FILE_BYTES {
+        return None;
+    }
+    let content = fs::read_to_string(canonical).ok()?;
+    (!content.trim().is_empty()).then_some(content)
+}
+
+fn is_safe_relative_path(value: &str) -> bool {
+    let path = PathBuf::from(value);
+    !path.as_os_str().is_empty()
+        && path
+            .components()
+            .all(|component| matches!(component, Component::Normal(_) | Component::CurDir))
+}
+
+fn slash_path(path: &Path) -> String {
+    path.components()
+        .filter_map(|component| match component {
+            Component::Normal(value) => value.to_str(),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
 fn host_environment_message(session_started_at: &str) -> suncode_llm::Message {
     let shell = if cfg!(target_os = "windows") {
         "Windows PowerShell"
@@ -2445,6 +2590,80 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn project_agents_file_is_loaded_as_repository_instructions() {
+        let directory = tempfile::tempdir().unwrap();
+        fs::write(
+            directory.path().join("AGENTS.md"),
+            "# Project rules\nRun focused tests.",
+        )
+        .unwrap();
+
+        let message = project_instruction_message(directory.path().to_str().unwrap()).unwrap();
+
+        assert_eq!(message.role, "system");
+        let text = message.text_content();
+        assert!(text.contains("Repository instructions from AGENTS.md"));
+        assert!(text.contains("Run focused tests."));
+        assert!(!text.contains(directory.path().to_str().unwrap()));
+    }
+
+    #[test]
+    fn nearby_agents_files_are_loaded_nearest_first_and_deduplicated() {
+        let directory = tempfile::tempdir().unwrap();
+        fs::create_dir_all(directory.path().join("src/nested")).unwrap();
+        fs::write(directory.path().join("AGENTS.md"), "root").unwrap();
+        fs::write(directory.path().join("src/AGENTS.md"), "src").unwrap();
+        fs::write(directory.path().join("src/nested/AGENTS.md"), "nested").unwrap();
+        fs::write(directory.path().join("src/nested/file.rs"), "fn main() {}").unwrap();
+
+        let instructions = nearby_instruction_files(
+            directory.path().to_str().unwrap(),
+            "src/nested/file.rs",
+            &[],
+        );
+
+        assert_eq!(instructions.len(), 2);
+        assert_eq!(instructions[0].path, "src/nested/AGENTS.md");
+        assert!(instructions[0].content.contains("nested"));
+        assert_eq!(instructions[1].path, "src/AGENTS.md");
+        assert!(instructions[1].content.contains("src"));
+        assert!(nearby_instruction_files(
+            directory.path().to_str().unwrap(),
+            "src/nested/file.rs",
+            &["src/nested/AGENTS.md".into(), "src/AGENTS.md".into()],
+        )
+        .is_empty());
+        assert!(nearby_instruction_files(
+            directory.path().to_str().unwrap(),
+            "src/nested/AGENTS.md",
+            &[],
+        )
+        .is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn instruction_symlinks_cannot_escape_the_project() {
+        use std::os::unix::fs::symlink;
+
+        let project = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        fs::create_dir_all(project.path().join("src")).unwrap();
+        fs::write(project.path().join("src/file.rs"), "fn main() {}").unwrap();
+        fs::write(outside.path().join("AGENTS.md"), "outside rules").unwrap();
+        symlink(
+            outside.path().join("AGENTS.md"),
+            project.path().join("src/AGENTS.md"),
+        )
+        .unwrap();
+
+        assert!(
+            nearby_instruction_files(project.path().to_str().unwrap(), "src/file.rs", &[],)
+                .is_empty()
+        );
+    }
+
     async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
         let messages = body
             .get("messages")
@@ -2506,6 +2725,10 @@ mod tests {
             let path = format!("{}/lib.rs", dependency_alias.unwrap());
             vec![
                 json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"dependency-write","function":{"name":"write","arguments":serde_json::to_string(&json!({"path":path,"content":"changed"})).unwrap()}}]},"finish_reason":"tool_calls"}]}),
+            ]
+        } else if user_text.contains("read nested") {
+            vec![
+                json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"nested-read","function":{"name":"read","arguments":"{\"path\":\"src/nested/file.rs\"}"}}]},"finish_reason":"tool_calls"}]}),
             ]
         } else if user_text.contains("read two") {
             vec![json!({"choices":[{"delta":{"tool_calls":[
@@ -2622,7 +2845,8 @@ mod tests {
 
     #[tokio::test]
     async fn read_tool_round_trip_completes() {
-        let (agent, store, _root, server, session_id) = fixture().await;
+        let (agent, store, root, server, session_id) = fixture().await;
+        fs::write(root.join("AGENTS.md"), "Always run focused tests.").unwrap();
         let response = agent
             .submit(&session_id, "read-1", "read the file", None)
             .await
@@ -2642,11 +2866,49 @@ mod tests {
             exchanges[0].input_messages[0],
             exchanges[1].input_messages[0]
         );
+        assert!(exchanges.iter().all(|exchange| exchange
+            .input_messages
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|message| message["role"] == "system"
+                && message["content"][0]["text"]
+                    .as_str()
+                    .is_some_and(|text| text.contains("Always run focused tests.")))));
         let usage = exchanges[0].usage.as_ref().unwrap();
         assert_eq!(usage["cache_read_tokens"], 6);
         assert_eq!(usage["cache_miss_tokens"], 2);
         assert_eq!(usage["cache_write_tokens"], serde_json::Value::Null);
         assert_eq!(usage["reasoning_tokens"], 1);
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn read_tool_attaches_nearby_agents_instructions_to_its_result() {
+        let (agent, store, root, server, session_id) = fixture().await;
+        fs::create_dir_all(root.join("src/nested")).unwrap();
+        fs::write(
+            root.join("src/AGENTS.md"),
+            "Use the src module conventions.",
+        )
+        .unwrap();
+        fs::write(root.join("src/nested/file.rs"), "pub fn nested() {}\n").unwrap();
+
+        agent
+            .submit(&session_id, "nested-read-1", "read nested", None)
+            .await
+            .unwrap();
+
+        let turns = store.session_conversation_turns(&session_id).unwrap();
+        let result = turns[0].tool_uses[0].result.as_ref().unwrap();
+        assert_eq!(
+            result["repository_instructions"][0]["path"],
+            "src/AGENTS.md"
+        );
+        assert!(result["repository_instructions"][0]["content"]
+            .as_str()
+            .unwrap()
+            .contains("Use the src module conventions."));
         server.abort();
     }
 
