@@ -166,6 +166,7 @@ public sealed class MessageItem : ObservableObject
         "glob" => "Find files",
         "grep" => "Search files",
         "question" => "Ask a question",
+        "todowrite" => "Update turn todos",
         "write" => "Write file",
         "edit" => "Edit file",
         _ => string.IsNullOrWhiteSpace(ToolName) ? "Run operation" : ToolName
@@ -211,6 +212,44 @@ public sealed class MessageItem : ObservableObject
 }
 
 public sealed record ActivityItem(string EventType, string Text, long ContentSequence, string State, string Operation);
+
+public sealed record TodoItem(string Content, string Status, string Priority)
+{
+    public string StatusMarker => Status switch
+    {
+        "in_progress" => ">",
+        "completed" => "x",
+        "cancelled" => "-",
+        _ => " "
+    };
+
+    public double Opacity => IsCompleted ? 0.58 : 1.0;
+
+    public string StatusText => Status switch
+    {
+        "in_progress" => "In progress",
+        "completed" => "Completed",
+        "cancelled" => "Cancelled",
+        _ => "Pending"
+    };
+
+    public string PriorityText => Priority switch
+    {
+        "high" => "High",
+        "low" => "Low",
+        _ => "Medium"
+    };
+
+    public bool IsCompleted => Status is "completed" or "cancelled";
+
+    public static TodoItem? FromPayload(JsonObject payload)
+    {
+        var content = payload.String("content");
+        return string.IsNullOrWhiteSpace(content)
+            ? null
+            : new TodoItem(content, payload.String("status"), payload.String("priority"));
+    }
+}
 
 public sealed record CheckpointItem(string ManifestId, string TurnId, string Status, IReadOnlyList<string> Paths)
 {

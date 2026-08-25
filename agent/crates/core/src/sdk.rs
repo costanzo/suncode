@@ -2332,6 +2332,14 @@ mod tests {
                 &json!({"message_id":"user-1","turn_id":"turn-1","message":Message::text("user","inspect")}),
             )
             .unwrap();
+        state
+            .store
+            .append_content(
+                &session.session_id,
+                "todo.updated",
+                &json!({"turn_id":"turn-1","todos":[{"content":"Persisted progress","status":"in_progress","priority":"high"}]}),
+            )
+            .unwrap();
         let sdk = AgentSdk::from_state_for_test(state);
 
         let snapshot =
@@ -2342,6 +2350,10 @@ mod tests {
         assert_eq!(
             snapshot["conversationTurns"][0]["messages"][0]["messageId"],
             "user-1"
+        );
+        assert_eq!(
+            snapshot["conversationTurns"][0]["todos"][0]["content"],
+            "Persisted progress"
         );
     }
 

@@ -203,12 +203,26 @@ pub struct SessionCallToolUse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SessionTurnTodo {
+    pub turn_id: String,
+    pub ordinal: i64,
+    pub content: String,
+    pub status: String,
+    pub priority: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub completed_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SessionConversationTurn {
     pub turn_id: String,
     pub state: String,
     pub created_at: String,
     pub messages: Vec<SessionCallMessage>,
     pub tool_uses: Vec<SessionCallToolUse>,
+    pub todos: Vec<SessionTurnTodo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

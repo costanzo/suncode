@@ -113,6 +113,8 @@ Provider exchange lifecycle events are durable: `provider.exchange.started`, `pr
 
 Question events are live notifications with normalized snapshot support: `question.asked` contains `request_id`, `turn_id`, `tool_call_id`, and ordered prompts; `question.replied` contains the same correlation plus ordered answer arrays; `question.rejected` contains the request correlation and an unanswered result. A session snapshot includes `pendingQuestion` while a request is waiting.
 
+Todo state is turn-scoped and stored in the Rust-owned `session_turn_todo` table. The model-facing `todowrite` tool replaces the complete list with at most 100 items, and each item has `content`, `status` (`pending`, `in_progress`, `completed`, or `cancelled`), and `priority` (`high`, `medium`, or `low`). Successful calls emit a live `todo.updated` event containing `turn_id`, `tool_call_id`, and the complete `todos` list. Clients restore the current list from `conversationTurns[*].todos`; the corresponding `todowrite` tool result remains call history and is not the progress source.
+
 Subscription establishment registers for live events. There is no SQLite replay phase. If a receiver lags, the subscription reports `resync.required`; the host must reload `session_snapshot`, then continue receiving live events.
 
 Callbacks run on an SDK-owned thread. Hosts must copy the callback payload and marshal delivery to their runtime thread: Avalonia uses `Dispatcher.UIThread`, Node.js uses a thread-safe function, and Python acquires the GIL and schedules on the target event loop. Callback payload memory is valid only for the duration of the callback unless copied by the host.

@@ -45,7 +45,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Status: Accepted
 - Context: Developers often need the agent and desktop Explorer to inspect related local repositories without opening them as the active project or granting them the active project's mutation and process authority.
 - Decision: Persist project-owned dependency folders in `project_dependency`, canonicalize them in Rust, and reject roots that equal, contain, are contained by, or overlap the active project or another dependency. Expose only opaque dependency IDs and display names to clients and the model. Add a lazy Avalonia Explorer for the project plus a `Dependencies` group. Route `dependency:<id>/...` only through bounded `read`, `glob`, and `grep`; preserve the alias in results and reject every other dependency operation. Add the missing table transactionally to an otherwise-current 13-table database as a narrow additive bootstrap extension, without introducing a general migration runner.
-- Consequences: Related source becomes inspectable without extending write, process, Git, checkpoint, or undo authority. Absolute dependency roots do not cross the SDK/model boundary. The current schema has 14 tables; unknown and structurally incompatible databases remain rejected.
+- Consequences: Related source becomes inspectable without extending write, process, Git, checkpoint, or undo authority. Absolute dependency roots do not cross the SDK/model boundary. The current schema has 15 tables; unknown and structurally incompatible databases remain rejected.
 - Details: `.agents/requirements/2026-08-22-project-dependencies/`, `contracts/agent-sdk/README.md`, `contracts/sqlite-schema.md`
 
 ## ADR-20260822-persisted-logging-and-project-table

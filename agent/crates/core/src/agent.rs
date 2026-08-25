@@ -20,6 +20,13 @@ use uuid::Uuid;
 
 const DEFAULT_TOOL_CALL_LIMIT: u32 = 64;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct TodoEntry {
+    content: String,
+    status: String,
+    priority: String,
+}
+
 fn default_tool_call_limit() -> u32 {
     DEFAULT_TOOL_CALL_LIMIT
 }
@@ -116,6 +123,8 @@ struct Continuation {
     question_answers: Option<Vec<Vec<String>>>,
     #[serde(default)]
     question_rejected: bool,
+    #[serde(default)]
+    todos: Vec<TodoEntry>,
 }
 
 #[derive(Debug, Clone)]
@@ -267,6 +276,7 @@ impl Agent {
             active_call_id: None,
             question_answers: None,
             question_rejected: false,
+            todos: Vec::new(),
         };
         let result = self
             .run(continuation.clone(), Some(input), token, provider)
@@ -1014,6 +1024,16 @@ impl Agent {
                 self.emit(&context.session_id, "question.asked", json!({"request_id":request_id,"turn_id":context.turn_id,"tool_call_id":call.call_id,"questions":call.arguments["questions"]}))?;
                 return Err(AgentError::new("question_required", "The user must answer the question tool").details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"request_id":request_id})));
             }
+            if call.name == "todowrite" {
+                self.execute_allowed_calls(
+                    context,
+                    std::mem::take(&mut allowed_calls),
+                    token.clone(),
+                )
+                .await?;
+                self.execute_todowrite(context, call)?;
+                continue;
+            }
             self.tool_state(context, call, "policy_check", None)?;
             let decision = evaluate(
                 tool_risk(&call.name),
@@ -1140,6 +1160,42 @@ impl Agent {
             };
             self.record_call_success(context, &call, result)?;
         }
+        Ok(())
+    }
+
+    fn execute_todowrite(
+        &self,
+        context: &mut Continuation,
+        call: &ToolCall,
+    ) -> Result<(), AgentError> {
+        let todos = parse_todos(&call.arguments)?;
+        self.tool_state(context, call, "policy_check", None)?;
+        self.tool_state(context, call, "authorized", None)?;
+        self.tool_state(context, call, "executing", None)?;
+        context.todos = todos.clone();
+        self.emit(
+            &context.session_id,
+            "todo.updated",
+            json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"todos":todos}),
+        )?;
+        self.tool_state(context, call, "succeeded", None)?;
+        let result = json!({"todos": context.todos});
+        self.emit(
+            &context.session_id,
+            "tool.result",
+            json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"result":result}),
+        )?;
+        let mut tool = Message::text(
+            "tool",
+            serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".into()),
+        );
+        tool.tool_call_id = Some(call.call_id.clone());
+        context.messages.push(tool.clone());
+        self.emit(
+            &context.session_id,
+            "message.tool",
+            json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"message":tool}),
+        )?;
         Ok(())
     }
 
@@ -1773,10 +1829,80 @@ fn validate_before_policy(name: &str, value: &Value) -> Result<(), AgentError> {
     if name == "question" {
         return validate_question_arguments(value);
     }
+    if name == "todowrite" {
+        return validate_todowrite_arguments(value);
+    }
     if name == "webfetch" {
         validate_webfetch_arguments(value)?;
     }
     Ok(())
+}
+
+fn validate_todowrite_arguments(value: &Value) -> Result<(), AgentError> {
+    let todos = value
+        .get("todos")
+        .and_then(Value::as_array)
+        .filter(|items| items.len() <= 100)
+        .ok_or_else(|| {
+            AgentError::new(
+                "invalid_arguments",
+                "todos must be an array of at most 100 items",
+            )
+        })?;
+    let mut in_progress = 0;
+    for todo in todos {
+        let object = todo
+            .as_object()
+            .ok_or_else(|| AgentError::new("invalid_arguments", "each todo must be an object"))?;
+        let content = object
+            .get("content")
+            .and_then(Value::as_str)
+            .filter(|content| !content.trim().is_empty())
+            .ok_or_else(|| AgentError::new("invalid_arguments", "todo content is required"))?;
+        if content.chars().count() > 500 {
+            return Err(AgentError::new(
+                "invalid_arguments",
+                "todo content must be at most 500 characters",
+            ));
+        }
+        match object.get("status").and_then(Value::as_str) {
+            Some("pending" | "completed" | "cancelled") => {}
+            Some("in_progress") => in_progress += 1,
+            _ => {
+                return Err(AgentError::new(
+                    "invalid_arguments",
+                    "todo status must be pending, in_progress, completed, or cancelled",
+                ))
+            }
+        }
+        if !matches!(
+            object.get("priority").and_then(Value::as_str),
+            Some("high" | "medium" | "low")
+        ) {
+            return Err(AgentError::new(
+                "invalid_arguments",
+                "todo priority must be high, medium, or low",
+            ));
+        }
+    }
+    if in_progress > 1 {
+        return Err(AgentError::new(
+            "invalid_arguments",
+            "only one todo may be in_progress",
+        ));
+    }
+    Ok(())
+}
+
+fn parse_todos(value: &Value) -> Result<Vec<TodoEntry>, AgentError> {
+    validate_todowrite_arguments(value)?;
+    serde_json::from_value(
+        value
+            .get("todos")
+            .cloned()
+            .ok_or_else(|| AgentError::new("invalid_arguments", "todos is required"))?,
+    )
+    .map_err(|_| AgentError::new("invalid_arguments", "todos contain invalid values"))
 }
 
 fn validate_question_arguments(value: &Value) -> Result<(), AgentError> {
@@ -2217,6 +2343,19 @@ mod tests {
         assert!(validate_question_answers(&arguments, &[vec!["Fast".into()]]).is_ok());
         assert!(validate_question_answers(&arguments, &[vec!["Other".into()]]).is_err());
         assert!(validate_question_answers(&arguments, &[]).is_err());
+    }
+
+    #[test]
+    fn todo_write_arguments_require_one_active_task_at_most() {
+        let valid = json!({"todos":[{"content":"Implement tool","status":"in_progress","priority":"high"},{"content":"Run tests","status":"pending","priority":"medium"}]});
+        assert!(validate_before_policy("todowrite", &valid).is_ok());
+        assert!(validate_before_policy("todowrite", &json!({"todos":[]})).is_ok());
+        assert!(validate_before_policy("todowrite", &json!({"todos":[{"content":"one","status":"in_progress","priority":"low"},{"content":"two","status":"in_progress","priority":"low"}]})).is_err());
+        assert!(validate_before_policy(
+            "todowrite",
+            &json!({"todos":[{"content":"one","status":"blocked","priority":"low"}]})
+        )
+        .is_err());
     }
 
     #[test]

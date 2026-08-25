@@ -2,11 +2,11 @@
 
 Status: Current Phase 1 contract.
 
-The Rust `suncode-db` package is the only database owner. There is one current table set, no version table, and no general migration runner. `agent/crates/db/src/schema/mod.rs` applies one table-owned SQL resource per manifest entry; `agent/crates/db/src/data/mod.rs` separately applies idempotent provider/model seed data. File names do not encode execution order. Opening a database with any unexpected application table fails without conversion. Initialization transactionally adds a missing `project_dependency` table to an otherwise-current 13-table database; this narrowly scoped additive bootstrap extension does not rename, rewrite, or convert incompatible schemas.
+The Rust `suncode-db` package is the only database owner. There is one current 15-table set, no version table, and no general migration runner. `agent/crates/db/src/schema/mod.rs` applies one table-owned SQL resource per manifest entry; `agent/crates/db/src/data/mod.rs` separately applies idempotent provider/model seed data. File names do not encode execution order. Opening a database with any unexpected application table fails without conversion. Initialization transactionally adds a missing `project_dependency` table to an otherwise-current 13-table database before validating the current 15-table manifest; this narrowly scoped additive bootstrap extension does not rename, rewrite, or convert incompatible schemas. `session_turn_todo` is the authoritative per-turn todo projection and is replaced transactionally by `todo.updated` events.
 
-There are 14 application tables:
+There are 15 application tables:
 
-`approval_request`, `audit_record`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `project`, `project_dependency`, `session`, `session_call`, `session_message`, `session_tool_use`, and `session_turn`.
+`approval_request`, `audit_record`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `project`, `project_dependency`, `session`, `session_call`, `session_message`, `session_tool_use`, `session_turn`, and `session_turn_todo`.
 
 ## Conventions
 
@@ -42,6 +42,10 @@ One conversation per row, linked to a project. It stores optional title/model, `
 ### `session_turn`
 
 The single source of truth for a turn. It combines turn lifecycle, submission idempotency, input/response/error JSON, model selection, cumulative provider usage, and approval continuation state. States are `admitted`, `queued`, `preparing`, `calling_model`, `resolving_calls`, `compacting`, `completed`, `failed`, `cancelled`, and `interrupted`.
+
+### `session_turn_todo`
+
+The authoritative current todo list for one turn. Each row is identified by `(turn_id, ordinal)` and stores bounded content, status, priority, creation/update timestamps, and completion time. A successful `todo.updated` event replaces the complete set for that turn transactionally; `session_tool_use.result_json` remains the result of the individual model call and is not used as the progress projection.
 
 A structured failure write can populate `error_json` and `error_code` after a failed lifecycle projection, but cannot replace completed, cancelled, or interrupted state.
 

@@ -36,6 +36,25 @@
             <TextBlock Text="No tool activity yet" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding !HasActivities}" />
           </StackPanel>
         </Border>
+        <Border Classes="process-card" Padding="13" IsVisible="{Binding HasCurrentTodos}">
+          <StackPanel Spacing="8">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="CURRENT TURN TODO" Classes="eyebrow" />
+              <TextBlock Grid.Column="1" Text="{Binding CurrentTodos.Count, StringFormat={}{0} items}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+            </Grid>
+            <ItemsControl ItemsSource="{Binding CurrentTodos}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:TodoItem">
+                  <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
+                    <TextBlock Text="{Binding StatusMarker}" Foreground="{DynamicResource AccentBrush}" Classes="mono" VerticalAlignment="Top" />
+                    <TextBlock Grid.Column="1" Text="{Binding Content}" FontSize="12" TextWrapping="Wrap" Opacity="{Binding Opacity}" />
+                    <TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="8,0,0,0" VerticalAlignment="Top" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
         <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
         <TextBlock Classes="section-label" Text="REVIEW QUEUE" />
         <Border Padding="13" CornerRadius="10" Background="{DynamicResource AccentSurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" IsVisible="{Binding HasPendingQuestion}">

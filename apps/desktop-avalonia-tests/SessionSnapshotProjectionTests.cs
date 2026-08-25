@@ -185,6 +185,120 @@ public sealed class SessionSnapshotProjectionTests
     }
 
     [Fact]
+    public void ProjectionRestoresCurrentTodosFromTheLatestTodoWrite()
+    {
+        var snapshot = JsonNode.Parse("""
+        {
+          "conversationTurns": [{
+            "turnId": "turn-1",
+            "state": "resolving_calls",
+            "todos": [
+              {"content":"Implement tool","status":"completed","priority":"high","ordinal":0},
+              {"content":"Run tests","status":"completed","priority":"medium","ordinal":1}
+            ],
+            "toolUses": [
+              {"toolCallId":"todo-1","name":"todowrite","state":"succeeded","ordinal":1,"result":{"todos":[]}}
+            ]
+          }, {
+            "turnId": "turn-2",
+            "state": "resolving_calls",
+            "todos": [
+              {"content":"Implement tool","status":"completed","priority":"high","ordinal":0},
+              {"content":"Run tests","status":"completed","priority":"medium","ordinal":1}
+            ],
+            "toolUses": [
+              {"toolCallId":"todo-3","name":"todowrite","state":"succeeded","ordinal":1,"result":{"todos":[]}}
+            ]
+          }]
+        }
+        """)!.AsObject();
+
+        var todos = DesktopViewModel.ProjectSnapshot(snapshot).CurrentTodos;
+
+        Assert.Collection(
+            todos,
+            item =>
+            {
+                Assert.Equal("Implement tool", item.Content);
+                Assert.Equal("x", item.StatusMarker);
+                Assert.Equal(0.58, item.Opacity);
+            },
+            item =>
+            {
+                Assert.Equal("Run tests", item.Content);
+                Assert.Equal("Completed", item.StatusText);
+            });
+    }
+
+    [Fact]
+    public void LiveTodoUpdatedEventsReplaceCurrentTurnTodos()
+    {
+        using var viewModel = new DesktopViewModel();
+
+        viewModel.ApplyEvent(JsonNode.Parse("""
+        {
+          "event_type":"todo.updated",
+          "payload":{"turn_id":"turn-0","todos":[
+            {"content":"Previous turn","status":"completed","priority":"low"}
+          ]}
+        }
+        """)!.AsObject(), true);
+        Assert.Single(viewModel.CurrentTodos);
+
+        viewModel.ApplyEvent(JsonNode.Parse("""
+        {
+          "event_type":"turn.state",
+          "payload":{"turn_id":"turn-1","state":"admitted"}
+        }
+        """)!.AsObject(), true);
+        Assert.Empty(viewModel.CurrentTodos);
+
+        viewModel.ApplyEvent(JsonNode.Parse("""
+        {
+          "event_type":"todo.updated",
+          "payload":{"turn_id":"turn-1","todos":[
+            {"content":"Inspect project","status":"in_progress","priority":"high"}
+          ]}
+        }
+        """)!.AsObject(), true);
+
+        var todo = Assert.Single(viewModel.CurrentTodos);
+        Assert.Equal("Inspect project", todo.Content);
+        Assert.Equal(">", todo.StatusMarker);
+        Assert.True(viewModel.HasCurrentTodos);
+
+        viewModel.ApplyEvent(JsonNode.Parse("""
+        {
+          "event_type":"todo.updated",
+          "payload":{"turn_id":"turn-1","todos":[]}
+        }
+        """)!.AsObject(), true);
+
+        Assert.Empty(viewModel.CurrentTodos);
+        Assert.False(viewModel.HasCurrentTodos);
+    }
+
+    [Fact]
+    public void SnapshotUsesPersistedTodosInsteadOfTodoToolResult()
+    {
+        var snapshot = JsonNode.Parse("""
+        {
+          "conversationTurns": [{
+            "turnId":"turn-1",
+            "state":"resolving_calls",
+            "todos":[{"content":"Persisted progress","status":"in_progress","priority":"high","ordinal":0}],
+            "toolUses":[{"name":"todowrite","state":"succeeded","result":{"todos":[{"content":"Stale result","status":"pending","priority":"low"}]}}]
+          }]
+        }
+        """)!.AsObject();
+
+        var todo = Assert.Single(DesktopViewModel.ProjectSnapshot(snapshot).CurrentTodos);
+
+        Assert.Equal("Persisted progress", todo.Content);
+        Assert.Equal("In progress", todo.StatusText);
+    }
+
+    [Fact]
     public void ProjectionPreservesNormalizedMessages()
     {
         var snapshot = JsonNode.Parse("""
@@ -669,6 +783,7 @@ public sealed class SessionSnapshotProjectionTests
         };
         var projection = new SessionSnapshotProjection(
             [new() { Role = "assistant", Text = "new session", ContentSequence = 1 }],
+            [],
             [],
             [],
             null,

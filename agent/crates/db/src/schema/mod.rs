@@ -7,6 +7,7 @@ pub(super) const SCRIPTS: &[&str] = &[
     include_str!("session.sql"),
     include_str!("configuration.sql"),
     include_str!("session_turn.sql"),
+    include_str!("session_turn_todo.sql"),
     include_str!("session_call.sql"),
     include_str!("session_tool_use.sql"),
     include_str!("approval_request.sql"),
@@ -32,6 +33,7 @@ pub(super) const TABLE_NAMES: &[&str] = &[
     "session_message",
     "session_tool_use",
     "session_turn",
+    "session_turn_todo",
 ];
 
 pub(super) fn apply(connection: &Connection) -> rusqlite::Result<()> {

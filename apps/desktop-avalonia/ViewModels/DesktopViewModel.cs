@@ -101,6 +101,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     }
     public BulkObservableCollection<ActivityItem> Activities { get; } = [];
+    public BulkObservableCollection<TodoItem> CurrentTodos { get; } = [];
     public BulkObservableCollection<string> ChangedPaths { get; } = [];
     public BulkObservableCollection<CheckpointItem> Checkpoints { get; } = [];
     public ObservableCollection<GitFileItem> GitFiles { get; } = [];
@@ -336,6 +337,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public bool HasSessions => Sessions.Count > 0;
     public bool HasMessages => Messages.Count > 0;
     public bool HasActivities => Activities.Count > 0;
+    public bool HasCurrentTodos => CurrentTodos.Count > 0;
     public bool HasCheckpoints => Checkpoints.Count > 0;
     public bool HasFilteredGitFiles => FilteredGitFiles.Count > 0;
     public bool HasProviderTraces => ProviderTraces.Count > 0;
@@ -1489,6 +1491,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     {
         var messages = new List<MessageItem>();
         var activities = new List<ActivityItem>();
+        IReadOnlyList<TodoItem> currentTodos = [];
         var changedPaths = new List<string>();
         var changedPathSet = new HashSet<string>(StringComparer.Ordinal);
         ApprovalItem? pendingApproval = null;
@@ -1498,6 +1501,14 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         var activeTurnId = string.Empty;
 
         var conversationTurns = snapshot.Array("conversationTurns").OfType<JsonObject>().ToArray();
+        var todoTurnId = conversationTurns
+            .Where(turn => !IsTerminalTurnState(turn.String("state")))
+            .Select(turn => turn.String("turnId", "turn_id"))
+            .LastOrDefault(id => id.Length > 0)
+            ?? conversationTurns
+                .Select(turn => turn.String("turnId", "turn_id"))
+                .LastOrDefault(id => id.Length > 0)
+            ?? string.Empty;
         if (conversationTurns.Length > 0)
         {
             foreach (var turn in conversationTurns)
@@ -1506,6 +1517,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                 var state = turn.String("state");
                 if (!IsTerminalTurnState(state)) activeTurnId = turnId;
                 var toolUses = turn.Array("toolUses").OfType<JsonObject>().ToArray();
+                if (turnId == todoTurnId)
+                    currentTodos = ParseTodos(turn["todos"]);
                 var toolsById = toolUses
                     .Where(item => item.String("toolCallId", "tool_call_id").Length > 0)
                     .ToDictionary(item => item.String("toolCallId", "tool_call_id"), StringComparer.Ordinal);
@@ -1595,7 +1608,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             }
         }
 
-        return new SessionSnapshotProjection(messages, activities, changedPaths, pendingApproval, pendingQuestion, activeTurnId);
+        return new SessionSnapshotProjection(messages, activities, changedPaths, currentTodos, pendingApproval, pendingQuestion, activeTurnId);
     }
 
     internal void ApplySnapshot(SessionSnapshotProjection projection)
@@ -1608,11 +1621,13 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         Messages = new BulkObservableCollection<MessageItem>(projection.Messages);
         Activities.ReplaceAll(projection.Activities);
         ChangedPaths.ReplaceAll(projection.ChangedPaths);
+        CurrentTodos.ReplaceAll(projection.CurrentTodos);
         PendingApproval = projection.PendingApproval;
         PendingQuestion = projection.PendingQuestion;
         ActiveTurnId = projection.ActiveTurnId;
         OnPropertyChanged(nameof(HasMessages));
         OnPropertyChanged(nameof(HasActivities));
+        OnPropertyChanged(nameof(HasCurrentTodos));
         OnPropertyChanged(nameof(LatestActivityText));
         ConversationChanged?.Invoke();
     }
@@ -1745,6 +1760,14 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(LatestActivityText));
             ConversationChanged?.Invoke();
         }
+        else if (type == "todo.updated")
+        {
+            CurrentTodos.ReplaceAll(ParseTodos(payload["todos"]));
+            OnPropertyChanged(nameof(HasCurrentTodos));
+            Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.String("state"), "todowrite"));
+            OnPropertyChanged(nameof(HasActivities));
+            OnPropertyChanged(nameof(LatestActivityText));
+        }
         else if (!type.StartsWith("provider.exchange.", StringComparison.Ordinal))
         {
             Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.String("state"), payload.String("operation")));
@@ -1773,6 +1796,11 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         {
             var state = payload.String("state");
             var turnId = payload.String("turn_id");
+            if (state == "admitted")
+            {
+                CurrentTodos.Clear();
+                OnPropertyChanged(nameof(HasCurrentTodos));
+            }
             ActiveTurnId = IsTerminalTurnState(state) ? string.Empty : turnId;
             ConfigureTurnPresentation(Messages, turnId, state, expanded: !IsTerminalTurnState(state));
             ConversationChanged?.Invoke();
@@ -1853,6 +1881,13 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         IsProcess = true
     };
 
+    private static IReadOnlyList<TodoItem> ParseTodos(JsonNode? value) =>
+        (value as JsonArray)?.OfType<JsonObject>()
+            .Select(TodoItem.FromPayload)
+            .Where(item => item is not null)
+            .Select(item => item!)
+            .ToArray() ?? [];
+
     private static void ConfigureTurnPresentation(
         IEnumerable<MessageItem> source,
         string turnId,
@@ -1917,6 +1952,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             "question.asked" => "Waiting for an answer",
             "question.replied" => "Question answered",
             "question.rejected" => "Question skipped",
+            "todo.updated" => "Todo list updated",
             "checkpoint.captured" => $"Checkpoint captured for {payload.String("path")}",
             "checkpoint.restore_failed" => "Undo stopped because a file changed outside SunCode",
             "turn.state" => $"Turn {payload.String("state")}",
@@ -2362,6 +2398,7 @@ internal sealed record SessionSnapshotProjection(
     IReadOnlyList<MessageItem> Messages,
     IReadOnlyList<ActivityItem> Activities,
     IReadOnlyList<string> ChangedPaths,
+    IReadOnlyList<TodoItem> CurrentTodos,
     ApprovalItem? PendingApproval,
     PendingQuestionItem? PendingQuestion,
     string ActiveTurnId);

@@ -382,12 +382,32 @@ impl Store {
                     })
                 })
                 .collect::<Result<Vec<_>, PersistenceError>>()?;
+            let mut todo_statement = connection.prepare(
+                "SELECT turn_id,ordinal,content,status,priority,created_at,updated_at,completed_at
+                 FROM session_turn_todo
+                 WHERE turn_id=?
+                 ORDER BY ordinal",
+            )?;
+            let todo_rows = todo_statement.query_map([&turn_id], |row| {
+                Ok(SessionTurnTodo {
+                    turn_id: row.get(0)?,
+                    ordinal: row.get(1)?,
+                    content: row.get(2)?,
+                    status: row.get(3)?,
+                    priority: row.get(4)?,
+                    created_at: row.get(5)?,
+                    updated_at: row.get(6)?,
+                    completed_at: row.get(7)?,
+                })
+            })?;
+            let todos = todo_rows.collect::<Result<Vec<_>, _>>()?;
             result.push(SessionConversationTurn {
                 turn_id,
                 state,
                 created_at,
                 messages,
                 tool_uses,
+                todos,
             });
         }
         Ok(result)
@@ -1809,6 +1829,74 @@ fn apply_projection(
             ],
         )?;
     }
+    if event_type == "todo.updated" {
+        let turn_id = payload
+            .get("turn_id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| PersistenceError::Invalid("todo event is missing turn_id".into()))?;
+        let todos = payload
+            .get("todos")
+            .and_then(Value::as_array)
+            .ok_or_else(|| PersistenceError::Invalid("todo event is missing todos".into()))?;
+        if todos.len() > 100 {
+            return Err(PersistenceError::Invalid(
+                "todo event contains more than 100 items".into(),
+            ));
+        }
+        let mut in_progress = 0;
+        transaction.execute("DELETE FROM session_turn_todo WHERE turn_id=?", [turn_id])?;
+        for (ordinal, todo) in todos.iter().enumerate() {
+            let object = todo.as_object().ok_or_else(|| {
+                PersistenceError::Invalid("todo event contains a non-object item".into())
+            })?;
+            let content = object
+                .get("content")
+                .and_then(Value::as_str)
+                .filter(|value| !value.trim().is_empty() && value.chars().count() <= 500)
+                .ok_or_else(|| PersistenceError::Invalid("todo content is required".into()))?;
+            let status = object
+                .get("status")
+                .and_then(Value::as_str)
+                .filter(|value| {
+                    matches!(
+                        *value,
+                        "pending" | "in_progress" | "completed" | "cancelled"
+                    )
+                })
+                .ok_or_else(|| PersistenceError::Invalid("todo status is invalid".into()))?;
+            if status == "in_progress" {
+                in_progress += 1;
+                if in_progress > 1 {
+                    return Err(PersistenceError::Invalid(
+                        "todo event contains multiple in_progress items".into(),
+                    ));
+                }
+            }
+            let priority = object
+                .get("priority")
+                .and_then(Value::as_str)
+                .filter(|value| matches!(*value, "high" | "medium" | "low"))
+                .ok_or_else(|| PersistenceError::Invalid("todo priority is invalid".into()))?;
+            transaction.execute(
+                "INSERT INTO session_turn_todo(turn_id,ordinal,content,status,priority,created_at,updated_at,completed_at)
+                 VALUES (?,?,?,?,?,?,?,?)",
+                params![
+                    turn_id,
+                    ordinal as i64,
+                    content,
+                    status,
+                    priority,
+                    occurred_at,
+                    occurred_at,
+                    if matches!(status, "completed" | "cancelled") {
+                        Some(occurred_at)
+                    } else {
+                        None
+                    },
+                ],
+            )?;
+        }
+    }
     if event_type == "tool.requested" {
         if let (Some(turn_id), Some(call_id), Some(name), Some(arguments)) = (
             payload.get("turn_id").and_then(Value::as_str),
@@ -2428,6 +2516,19 @@ mod tests {
         store
             .append_content(
                 &session_id,
+                "todo.updated",
+                &json!({
+                    "turn_id":"turn-1",
+                    "todos":[
+                        {"content":"Implement tool","status":"completed","priority":"high"},
+                        {"content":"Run tests","status":"in_progress","priority":"medium"}
+                    ]
+                }),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session_id,
                 "message.assistant",
                 &json!({"message_id":"assistant-2","turn_id":"turn-1","message":Message::text("assistant","done")}),
             )
@@ -2454,6 +2555,30 @@ mod tests {
             turn.tool_uses[0].result.as_ref().unwrap()["content"],
             "hello"
         );
+        assert_eq!(turn.todos.len(), 2);
+        assert_eq!(turn.todos[0].content, "Implement tool");
+        assert_eq!(turn.todos[0].status, "completed");
+        assert_eq!(turn.todos[1].status, "in_progress");
+
+        store
+            .append_content(
+                &session_id,
+                "todo.updated",
+                &json!({
+                    "turn_id":"turn-1",
+                    "todos":[
+                        {"content":"Run tests","status":"completed","priority":"medium"}
+                    ]
+                }),
+            )
+            .unwrap();
+        let updated_turn = store
+            .session_conversation_turns(&session_id)
+            .unwrap()
+            .remove(0);
+        assert_eq!(updated_turn.todos.len(), 1);
+        assert_eq!(updated_turn.todos[0].content, "Run tests");
+        assert_eq!(updated_turn.todos[0].status, "completed");
     }
 
     #[test]
@@ -3113,6 +3238,7 @@ mod tests {
                 "session_turn_recovery_idx",
                 "session_turn_resuming_idx",
                 "session_turn_session_created_idx",
+                "session_turn_todo_turn_status_idx",
             ]
         );
         assert_eq!(
@@ -3168,7 +3294,7 @@ mod tests {
         connection
             .execute_batch("DROP TABLE project_dependency;")
             .unwrap();
-        assert_eq!(schema::table_names(&connection).unwrap().len(), 13);
+        assert_eq!(schema::table_names(&connection).unwrap().len(), 14);
         drop(connection);
 
         let store = Store::open(&database).unwrap();

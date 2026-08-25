@@ -10,6 +10,7 @@ mod grep;
 mod question;
 mod read;
 mod shell;
+mod todowrite;
 mod webfetch;
 mod write;
 
@@ -21,6 +22,7 @@ pub fn definitions() -> Vec<ToolDefinition> {
         glob::definition(),
         grep::definition(),
         question::definition(),
+        todowrite::definition(),
         write::definition(),
         edit::definition(),
         shell::definition(),
@@ -50,7 +52,15 @@ mod tests {
         assert_eq!(
             names,
             BTreeSet::from([
-                "bash", "edit", "glob", "grep", "question", "read", "webfetch", "write",
+                "bash",
+                "edit",
+                "glob",
+                "grep",
+                "question",
+                "read",
+                "todowrite",
+                "webfetch",
+                "write",
             ])
         );
         assert_eq!(definitions.len(), names.len());
@@ -61,6 +71,18 @@ mod tests {
         assert_eq!(
             question.parameters["required"],
             serde_json::json!(["questions"])
+        );
+        let todowrite = definitions
+            .iter()
+            .find(|definition| definition.name == "todowrite")
+            .unwrap();
+        assert_eq!(
+            todowrite.parameters["required"],
+            serde_json::json!(["todos"])
+        );
+        assert_eq!(
+            todowrite.parameters["properties"]["todos"]["items"]["required"],
+            serde_json::json!(["content", "status", "priority"])
         );
         let bash = definitions
             .iter()
