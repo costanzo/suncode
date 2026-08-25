@@ -16,7 +16,7 @@ fs2 = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
-suncode-tool = { path = "../operations" }
+suncode-tool = { path = "../tools" }
 suncode-db = { path = "../db" }
 suncode-llm = { path = "../llm" }
 thiserror = "2"
