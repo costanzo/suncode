@@ -25,6 +25,18 @@ public sealed partial class AgentSidebar : UserControl
     private async void DenyApproval(object? sender, RoutedEventArgs e) =>
         await ViewModel.ResolveApprovalAsync("deny");
 
+    private void SelectQuestionOption(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is QuestionOptionItem option)
+            ViewModel.ToggleQuestionOption(option);
+    }
+
+    private async void ReplyQuestion(object? sender, RoutedEventArgs e) =>
+        await ViewModel.ReplyQuestionAsync();
+
+    private async void RejectQuestion(object? sender, RoutedEventArgs e) =>
+        await ViewModel.RejectQuestionAsync();
+
     private async void DisableFullControl(object? sender, RoutedEventArgs e) =>
         await ViewModel.DisableFullControlAsync();
 

@@ -137,6 +137,54 @@ public sealed class SessionSnapshotProjectionTests
     }
 
     [Fact]
+    public void ProjectionRestoresPendingQuestionFromSnapshot()
+    {
+        var snapshot = JsonNode.Parse("""
+        {
+          "pendingQuestion": {
+            "request_id": "que-1",
+            "turn_id": "turn-1",
+            "tool_call_id": "call-1",
+            "questions": [{
+              "header": "Mode",
+              "question": "Which mode should I use?",
+              "multiple": false,
+              "custom": true,
+              "options": [{"label":"Fast","description":"Minimize setup"}]
+            }]
+          },
+          "conversationTurns": [{"turnId":"turn-1","state":"resolving_calls","messages":[],"toolUses":[]}]
+        }
+        """)!.AsObject();
+
+        var projection = DesktopViewModel.ProjectSnapshot(snapshot);
+
+        Assert.Equal("que-1", projection.PendingQuestion?.RequestId);
+        var prompt = Assert.Single(projection.PendingQuestion!.Questions);
+        Assert.Equal("Which mode should I use?", prompt.Question);
+        Assert.True(prompt.AllowCustom);
+        Assert.Equal("Fast", Assert.Single(prompt.Options).Label);
+    }
+
+    [Fact]
+    public void LiveQuestionEventsSetAndClearPendingQuestion()
+    {
+        using var viewModel = new DesktopViewModel();
+        viewModel.ApplyEvent(JsonNode.Parse("""
+        {
+          "event_type":"question.asked",
+          "payload":{"request_id":"que-2","turn_id":"turn-2","tool_call_id":"call-2","questions":[{"header":"Scope","question":"Use project scope?","options":[{"label":"Yes","description":"Keep it local"}]}]}
+        }
+        """)!.AsObject(), true);
+
+        Assert.Equal("que-2", viewModel.PendingQuestion?.RequestId);
+        viewModel.ApplyEvent(JsonNode.Parse("""
+        {"event_type":"question.replied","payload":{"request_id":"que-2","turn_id":"turn-2","answers":[["Yes"]]}}
+        """)!.AsObject(), true);
+        Assert.Null(viewModel.PendingQuestion);
+    }
+
+    [Fact]
     public void ProjectionPreservesNormalizedMessages()
     {
         var snapshot = JsonNode.Parse("""
@@ -623,6 +671,7 @@ public sealed class SessionSnapshotProjectionTests
             [new() { Role = "assistant", Text = "new session", ContentSequence = 1 }],
             [],
             [],
+            null,
             null,
             string.Empty);
 

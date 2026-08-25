@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS session_tool_use (
     result_json TEXT CHECK(result_json IS NULL OR json_valid(result_json)),
     state TEXT NOT NULL CHECK(state IN (
         'requested', 'validating', 'policy_check', 'denied',
-        'awaiting_approval', 'authorized', 'executing', 'succeeded',
+        'awaiting_approval', 'awaiting_question', 'authorized', 'executing', 'succeeded',
         'failed', 'timed_out', 'unknown_completion', 'reconciling'
     )),
     ordinal INTEGER CHECK(ordinal IS NULL OR ordinal >= 0),

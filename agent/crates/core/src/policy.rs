@@ -25,7 +25,7 @@ pub fn evaluate(risk: Option<Risk>, non_interactive: bool, full_control: bool) -
 
 pub fn tool_risk(name: &str) -> Option<Risk> {
     match name {
-        "read" | "glob" | "grep" => Some(Risk::ReadOnly),
+        "read" | "glob" | "grep" | "question" => Some(Risk::ReadOnly),
         "webfetch" => Some(Risk::NetworkAccess),
         "write" | "edit" => Some(Risk::ProjectWrite),
         "bash" => Some(Risk::ProcessExecution),

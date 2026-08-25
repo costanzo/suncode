@@ -28,6 +28,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private readonly Dictionary<string, Task<ProviderTraceItem>> _providerTraceDetailLoads = new(StringComparer.Ordinal);
     private readonly HashSet<string> _appliedMessageIds = new(StringComparer.Ordinal);
     private ApprovalItem? _pendingApproval;
+    private PendingQuestionItem? _pendingQuestion;
     private string _connectionState = "disconnected";
     private string _statusText = "Starting local agent...";
     private string _composerText = string.Empty;
@@ -214,6 +215,15 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
+    public PendingQuestionItem? PendingQuestion
+    {
+        get => _pendingQuestion;
+        private set
+        {
+            if (SetProperty(ref _pendingQuestion, value)) OnPropertyChanged(nameof(HasPendingQuestion));
+        }
+    }
+
     public string ConnectionState
     {
         get => _connectionState;
@@ -338,6 +348,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public string ProviderTraceCountText => $"{FilteredProviderTraceTurns.Count} turns · {FilteredProviderTraceTurns.Sum(turn => turn.Calls.Count)} calls";
     public bool HasSelectedSession => SelectedSession is not null;
     public bool HasPendingApproval => PendingApproval is not null;
+    public bool HasPendingQuestion => PendingQuestion is not null;
     public bool IsTurnActive => !string.IsNullOrWhiteSpace(ActiveTurnId);
     public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && SelectedModel?.Configured == true && !HasSessionLoadError;
     public bool CanSubmit => SelectedSession is not null && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsTurnActive && !IsSessionLoading && !HasSessionLoadError;
@@ -811,6 +822,39 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             "allow_session" => "Full Control enabled for this session",
             _ => "Approval denied"
         });
+    }
+
+    public void ToggleQuestionOption(QuestionOptionItem option)
+    {
+        if (PendingQuestion is null) return;
+        var prompt = PendingQuestion.Questions.FirstOrDefault(item => item.Options.Contains(option));
+        prompt?.Select(option);
+    }
+
+    public async Task ReplyQuestionAsync()
+    {
+        if (!EnsureSdk() || PendingQuestion is null) return;
+        var question = PendingQuestion;
+        var answers = new JsonArray(question.Questions
+            .Select(item => (JsonNode)new JsonArray(item.Answers
+                .Select(value => (JsonNode?)JsonValue.Create(value)).ToArray()))
+            .ToArray());
+        await RunAsync(async () =>
+        {
+            await _sdk!.ReplyQuestionAsync(question.RequestId, answers);
+            PendingQuestion = null;
+        }, "Answers submitted");
+    }
+
+    public async Task RejectQuestionAsync()
+    {
+        if (!EnsureSdk() || PendingQuestion is null) return;
+        var requestId = PendingQuestion.RequestId;
+        await RunAsync(async () =>
+        {
+            await _sdk!.RejectQuestionAsync(requestId);
+            PendingQuestion = null;
+        }, "Question skipped");
     }
 
     public async Task DisableFullControlAsync()
@@ -1448,6 +1492,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         var changedPaths = new List<string>();
         var changedPathSet = new HashSet<string>(StringComparer.Ordinal);
         ApprovalItem? pendingApproval = null;
+        PendingQuestionItem? pendingQuestion = (snapshot["pendingQuestion"] as JsonObject ?? snapshot["pending_question"] as JsonObject) is { } pendingPayload
+            ? PendingQuestionItem.FromPayload(pendingPayload)
+            : null;
         var activeTurnId = string.Empty;
 
         var conversationTurns = snapshot.Array("conversationTurns").OfType<JsonObject>().ToArray();
@@ -1537,6 +1584,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
             if (type == "approval.requested") pendingApproval = ApprovalItem.FromPayload(payload);
             if (type == "approval.resolved") pendingApproval = null;
+            if (type == "question.asked") pendingQuestion = PendingQuestionItem.FromPayload(payload);
+            if (type is "question.replied" or "question.rejected") pendingQuestion = null;
             if (type == "turn.state")
             {
                 var state = payload.String("state");
@@ -1546,7 +1595,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             }
         }
 
-        return new SessionSnapshotProjection(messages, activities, changedPaths, pendingApproval, activeTurnId);
+        return new SessionSnapshotProjection(messages, activities, changedPaths, pendingApproval, pendingQuestion, activeTurnId);
     }
 
     internal void ApplySnapshot(SessionSnapshotProjection projection)
@@ -1560,6 +1609,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         Activities.ReplaceAll(projection.Activities);
         ChangedPaths.ReplaceAll(projection.ChangedPaths);
         PendingApproval = projection.PendingApproval;
+        PendingQuestion = projection.PendingQuestion;
         ActiveTurnId = projection.ActiveTurnId;
         OnPropertyChanged(nameof(HasMessages));
         OnPropertyChanged(nameof(HasActivities));
@@ -1717,6 +1767,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             if (payload.String("decision") == "allow_session") FullControlEnabled = true;
             PendingApproval = null;
         }
+        if (type == "question.asked") PendingQuestion = PendingQuestionItem.FromPayload(payload);
+        if (type is "question.replied" or "question.rejected") PendingQuestion = null;
         if (type == "turn.state")
         {
             var state = payload.String("state");
@@ -1862,6 +1914,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         return type switch
         {
             "approval.requested" => $"Approval required for {payload.String("operation")}",
+            "question.asked" => "Waiting for an answer",
+            "question.replied" => "Question answered",
+            "question.rejected" => "Question skipped",
             "checkpoint.captured" => $"Checkpoint captured for {payload.String("path")}",
             "checkpoint.restore_failed" => "Undo stopped because a file changed outside SunCode",
             "turn.state" => $"Turn {payload.String("state")}",
@@ -2308,4 +2363,5 @@ internal sealed record SessionSnapshotProjection(
     IReadOnlyList<ActivityItem> Activities,
     IReadOnlyList<string> ChangedPaths,
     ApprovalItem? PendingApproval,
+    PendingQuestionItem? PendingQuestion,
     string ActiveTurnId);

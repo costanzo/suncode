@@ -668,6 +668,116 @@ impl Store {
         approval_by_id(&connection, id)
     }
 
+    pub fn create_question(
+        &self,
+        request_id: &str,
+        turn_id: &str,
+        snapshot: &Value,
+    ) -> Result<(), PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let timestamp = now();
+        let changed = connection.execute(
+            "UPDATE session_turn SET recovery_approval_id=?,recovery_snapshot_json=?,recovery_status='pending',recovery_created_at=?,recovery_updated_at=? WHERE turn_id=? AND (recovery_status IS NULL OR recovery_status='resuming')",
+            params![request_id, serde_json::to_string(snapshot)?, timestamp, timestamp, turn_id],
+        )?;
+        if changed == 0 {
+            return Err(PersistenceError::Invalid(
+                "question recovery is already pending or turn is unavailable".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn pending_question(&self, session_id: &str) -> Result<Option<Value>, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let row: Option<(String, String)> = connection
+            .query_row(
+                "SELECT recovery_approval_id,recovery_snapshot_json FROM session_turn WHERE session_id=? AND recovery_status='pending'",
+                [session_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .optional()?;
+        let Some((request_id, snapshot)) = row else {
+            return Ok(None);
+        };
+        let snapshot: Value = serde_json::from_str(&snapshot)?;
+        let Some(call) = snapshot
+            .get("pending_call")
+            .filter(|call| call.get("name").and_then(Value::as_str) == Some("question"))
+        else {
+            return Ok(None);
+        };
+        Ok(Some(json!({
+            "request_id": request_id,
+            "session_id": session_id,
+            "turn_id": snapshot.get("turn_id"),
+            "tool_call_id": call.get("call_id"),
+            "questions": call.get("arguments").and_then(|value| value.get("questions")).cloned().unwrap_or_else(|| json!([])),
+        })))
+    }
+
+    pub fn question_snapshot(&self, request_id: &str) -> Result<Option<Value>, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        connection
+            .query_row(
+                "SELECT recovery_snapshot_json FROM session_turn WHERE recovery_approval_id=? AND recovery_status='pending'",
+                [request_id],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?
+            .map(|value| serde_json::from_str(&value))
+            .transpose()
+            .map_err(Into::into)
+    }
+
+    pub fn resolve_question(
+        &self,
+        id: &str,
+        answers: &[Vec<String>],
+        rejected: bool,
+    ) -> Result<Option<SuspendedTurn>, PersistenceError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
+        let transaction = connection.unchecked_transaction()?;
+        let row: Option<(String, String, String, String)> = transaction
+            .query_row(
+                "SELECT recovery_approval_id,session_id,turn_id,recovery_snapshot_json FROM session_turn WHERE recovery_approval_id=? AND recovery_status='pending'",
+                [id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .optional()?;
+        let Some(row) = row else {
+            transaction.rollback()?;
+            return Ok(None);
+        };
+        let mut snapshot: Value = serde_json::from_str(&row.3)?;
+        snapshot["question_answers"] = serde_json::to_value(answers)?;
+        snapshot["question_rejected"] = json!(rejected);
+        transaction.execute(
+            "UPDATE session_turn SET recovery_status='resuming',recovery_snapshot_json=?,recovery_updated_at=? WHERE recovery_approval_id=? AND recovery_status='pending'",
+            params![serde_json::to_string(&snapshot)?, now(), id],
+        )?;
+        transaction.commit()?;
+        Ok(Some(SuspendedTurn {
+            approval_id: row.0,
+            session_id: row.1,
+            turn_id: row.2,
+            snapshot,
+            status: "resuming".into(),
+        }))
+    }
+
     pub fn resolve_approval(
         &self,
         id: &str,
@@ -1448,7 +1558,11 @@ impl Store {
             .lock()
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         let status: String = connection
-            .query_row("SELECT status FROM session WHERE session_id=?", [id], |row| row.get(0))
+            .query_row(
+                "SELECT status FROM session WHERE session_id=?",
+                [id],
+                |row| row.get(0),
+            )
             .optional()?
             .ok_or_else(|| PersistenceError::Invalid("session not found".into()))?;
         if status != "active" && pinned {
@@ -2115,20 +2229,32 @@ mod tests {
         let store = Store::open_memory().unwrap();
         let project = store.project("/tmp/suncode-pinning", "Pinning").unwrap();
         let first = store
-            .create_session(&project.project_id, Some("First"), Some("deepseek-v4-flash"))
+            .create_session(
+                &project.project_id,
+                Some("First"),
+                Some("deepseek-v4-flash"),
+            )
             .unwrap();
         let second = store
-            .create_session(&project.project_id, Some("Second"), Some("deepseek-v4-flash"))
+            .create_session(
+                &project.project_id,
+                Some("Second"),
+                Some("deepseek-v4-flash"),
+            )
             .unwrap();
 
         assert!(first.pin_at.is_none());
         store.set_session_pinned(&second.session_id, true).unwrap();
-        let sessions = store.sessions_for_project(&project.project_id, true).unwrap();
+        let sessions = store
+            .sessions_for_project(&project.project_id, true)
+            .unwrap();
         assert_eq!(sessions[0].session_id, second.session_id);
         assert!(sessions[0].pin_at.is_some());
         assert!(sessions[1].pin_at.is_none());
 
-        store.set_session_archived(&second.session_id, true).unwrap();
+        store
+            .set_session_archived(&second.session_id, true)
+            .unwrap();
         let archived = store.session_by_id(&second.session_id).unwrap().unwrap();
         assert!(archived.pin_at.is_none());
         assert!(store.set_session_pinned(&second.session_id, true).is_err());
@@ -2197,6 +2323,60 @@ mod tests {
         assert_eq!(messages[2].role, "tool");
         assert_eq!(messages[2].tool_call_id.as_deref(), Some("call-1"));
         assert_eq!(messages[2].text_content(), "{\"content\":\"hello\"}");
+    }
+
+    #[test]
+    fn question_recovery_snapshot_is_pending_and_resumable() {
+        let store = Store::open_memory().unwrap();
+        let project = store.project("/tmp/suncode-question", "Question").unwrap();
+        let session = store
+            .create_session(&project.project_id, None, Some("deepseek-v4-flash"))
+            .unwrap();
+        let admission = store
+            .begin_turn(
+                &session.session_id,
+                "question-key",
+                "clarify",
+                "deepseek-v4-flash",
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session.session_id,
+                "tool.requested",
+                &json!({"turn_id":admission.turn_id,"tool_call_id":"question-call","name":"question","arguments":{"questions":[]}}),
+            )
+            .unwrap();
+        store
+            .append_content(
+                &session.session_id,
+                "tool.state",
+                &json!({"turn_id":admission.turn_id,"tool_call_id":"question-call","name":"question","state":"awaiting_question","reason":"user_input_required"}),
+            )
+            .unwrap();
+        let snapshot = json!({
+            "session_id": session.session_id,
+            "turn_id": admission.turn_id,
+            "pending_call": {"call_id":"question-call","name":"question","arguments":{"questions":[{"question":"Choose","header":"Mode","options":[{"label":"Fast","description":"Quick"}]}]}},
+        });
+        store
+            .create_question("que_test", &admission.turn_id, &snapshot)
+            .unwrap();
+        let pending = store
+            .pending_question(&session.session_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(pending["request_id"], "que_test");
+        let resumed = store
+            .resolve_question("que_test", &[vec!["Fast".into()]], false)
+            .unwrap()
+            .unwrap();
+        assert_eq!(resumed.status, "resuming");
+        assert_eq!(resumed.snapshot["question_answers"][0][0], "Fast");
+        assert!(store
+            .pending_question(&session.session_id)
+            .unwrap()
+            .is_none());
     }
 
     #[test]

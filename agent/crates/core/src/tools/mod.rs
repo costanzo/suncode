@@ -7,6 +7,7 @@
 mod edit;
 mod glob;
 mod grep;
+mod question;
 mod read;
 mod shell;
 mod webfetch;
@@ -19,6 +20,7 @@ pub fn definitions() -> Vec<ToolDefinition> {
         read::definition(),
         glob::definition(),
         grep::definition(),
+        question::definition(),
         write::definition(),
         edit::definition(),
         shell::definition(),
@@ -47,9 +49,19 @@ mod tests {
             .collect::<BTreeSet<_>>();
         assert_eq!(
             names,
-            BTreeSet::from(["bash", "edit", "glob", "grep", "read", "webfetch", "write",])
+            BTreeSet::from([
+                "bash", "edit", "glob", "grep", "question", "read", "webfetch", "write",
+            ])
         );
         assert_eq!(definitions.len(), names.len());
+        let question = definitions
+            .iter()
+            .find(|definition| definition.name == "question")
+            .unwrap();
+        assert_eq!(
+            question.parameters["required"],
+            serde_json::json!(["questions"])
+        );
         let bash = definitions
             .iter()
             .find(|definition| definition.name == "bash")

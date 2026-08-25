@@ -19,6 +19,7 @@ The Rust crate emits a `cdylib`; the desktop build invokes Cargo and copies the 
 - latest-selection-wins session loading that discards stale snapshots, projects replay data off the UI thread, atomically replaces the conversation message source, uses stable variable-height conversation layout, exposes loading and retryable error states, and starts only the selected session's live subscription
 - per-turn model selection, submission, queue status, and cancellation
 - approval deny, allow-once, and allow-for-session decisions with readable action summaries, focused command or target details, and expandable raw requests; session Full Control is persistently warning-styled above Agent Processes and can be turned off directly
+- structured question prompts with single-select, multi-select, custom-answer, submit, and skip controls; pending questions restore from snapshots and live events
 - conversation tool activity cards that show concise operation summaries and open selectable request/result/error details on demand
 - touched paths, turn checkpoints, conflict-aware undo, and diagnostics
 - runtime-owned Git status and structured per-file diff review

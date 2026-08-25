@@ -198,6 +198,8 @@ pub struct SessionSnapshot {
     pub messages: Vec<Message>,
     #[serde(rename = "conversationTurns")]
     pub conversation_turns: Vec<suncode_db::SessionConversationTurn>,
+    #[serde(rename = "pendingQuestion", skip_serializing_if = "Option::is_none")]
+    pub pending_question: Option<Value>,
 }
 
 #[derive(Debug, Serialize)]
@@ -315,6 +317,12 @@ pub struct CancellationOutcome {
 pub struct ApprovalOutcome {
     pub approval_id: String,
     pub decision: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct QuestionOutcome {
+    pub request_id: String,
+    pub status: String,
 }
 
 fn registry_from_store(
@@ -972,6 +980,7 @@ impl AgentSdk {
             .ok_or_else(|| SdkError::missing("session"))?;
         let messages = self.state.store.messages(session_id)?;
         let conversation_turns = self.state.store.session_conversation_turns(session_id)?;
+        let pending_question = self.state.store.pending_question(session_id)?;
         logging::write(
             Level::Debug,
             "session_snapshot",
@@ -981,6 +990,7 @@ impl AgentSdk {
             session,
             messages,
             conversation_turns,
+            pending_question,
         })
     }
 
@@ -1172,6 +1182,11 @@ impl AgentSdk {
                 tool_call_id: detail_string(&error, "tool_call_id")?,
                 approval_id: detail_string(&error, "approval_id")?,
             }),
+            Err(error) if error.code == "question_required" => Ok(TurnResponse::AwaitingQuestion {
+                turn_id: detail_string(&error, "turn_id")?,
+                tool_call_id: detail_string(&error, "tool_call_id")?,
+                request_id: detail_string(&error, "request_id")?,
+            }),
             Err(error) => Err(SdkError::from(error)),
         }
     }
@@ -1213,6 +1228,63 @@ impl AgentSdk {
         Ok(ApprovalOutcome {
             approval_id: approval_id.to_string(),
             decision: decision.to_string(),
+        })
+    }
+
+    pub fn reply_question(&self, request_id: &str, answers: &Value) -> SdkResult<QuestionOutcome> {
+        let answers = answers
+            .as_array()
+            .ok_or_else(|| SdkError::invalid("answers must be an array"))?;
+        let answers = answers
+            .iter()
+            .map(|answer| {
+                answer
+                    .as_array()
+                    .ok_or_else(|| SdkError::invalid("each answer must be an array"))
+                    .and_then(|values| {
+                        values
+                            .iter()
+                            .map(|value| {
+                                value.as_str().map(str::to_string).ok_or_else(|| {
+                                    SdkError::invalid("answers must contain strings")
+                                })
+                            })
+                            .collect()
+                    })
+            })
+            .collect::<SdkResult<Vec<Vec<String>>>>()?;
+        let resolved = self.runtime.block_on(
+            self.state
+                .agent
+                .resolve_question(request_id, answers, false),
+        )?;
+        if !resolved {
+            return Err(SdkError::new(
+                "conflict",
+                "question is missing or already resolved",
+            ));
+        }
+        Ok(QuestionOutcome {
+            request_id: request_id.to_string(),
+            status: "replied".into(),
+        })
+    }
+
+    pub fn reject_question(&self, request_id: &str) -> SdkResult<QuestionOutcome> {
+        let resolved = self.runtime.block_on(self.state.agent.resolve_question(
+            request_id,
+            Vec::new(),
+            true,
+        ))?;
+        if !resolved {
+            return Err(SdkError::new(
+                "conflict",
+                "question is missing or already resolved",
+            ));
+        }
+        Ok(QuestionOutcome {
+            request_id: request_id.to_string(),
+            status: "rejected".into(),
         })
     }
 
@@ -1775,6 +1847,26 @@ pub unsafe extern "C" fn suncode_agent_sdk_resolve_approval(
         )
     })
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_reply_question(
+    handle: *mut SunCodeAgentHandle,
+    request_id: *const c_char,
+    answers_json: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.reply_question(
+            &c_string(request_id, "request_id")?,
+            &json_from_c(answers_json, "answers_json")?,
+        )
+    })
+}
+
+ffi_one_string!(
+    suncode_agent_sdk_reject_question,
+    reject_question,
+    "request_id"
+);
 
 #[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_subscribe_session(

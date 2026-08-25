@@ -74,6 +74,11 @@ pub enum TurnResponse {
         tool_call_id: String,
         approval_id: String,
     },
+    AwaitingQuestion {
+        turn_id: String,
+        tool_call_id: String,
+        request_id: String,
+    },
     Queued {
         queued_id: String,
         active_turn_id: String,
@@ -107,6 +112,10 @@ struct Continuation {
     repeated_tool_stalls: u32,
     #[serde(default)]
     active_call_id: Option<String>,
+    #[serde(default)]
+    question_answers: Option<Vec<Vec<String>>>,
+    #[serde(default)]
+    question_rejected: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -256,6 +265,8 @@ impl Agent {
             last_tool_signature: None,
             repeated_tool_stalls: 0,
             active_call_id: None,
+            question_answers: None,
+            question_rejected: false,
         };
         let result = self
             .run(continuation.clone(), Some(input), token, provider)
@@ -269,7 +280,10 @@ impl Agent {
             .ok()
             .map(|mut values| values.remove(session_id));
         if let Err(error) = &result {
-            if error.code != "approval_required" {
+            if !matches!(
+                error.code.as_str(),
+                "approval_required" | "question_required"
+            ) {
                 self.clear_queued_messages(session_id);
                 let _ = self.turn_state(
                     &continuation,
@@ -443,6 +457,150 @@ impl Agent {
                 .map(|mut values| values.remove(&continuation.session_id));
         });
         Ok(true)
+    }
+
+    pub async fn resolve_question(
+        &self,
+        request_id: &str,
+        answers: Vec<Vec<String>>,
+        rejected: bool,
+    ) -> Result<bool, AgentError> {
+        let snapshot = self.store.question_snapshot(request_id)?.ok_or_else(|| {
+            AgentError::new("conflict", "question is missing or already resolved")
+        })?;
+        if !rejected {
+            let continuation: Continuation = serde_json::from_value(snapshot).map_err(|_| {
+                AgentError::new("agent_unavailable", "question continuation is invalid")
+            })?;
+            let call = continuation
+                .pending_call
+                .as_ref()
+                .ok_or_else(|| AgentError::new("agent_unavailable", "question call is missing"))?;
+            validate_question_answers(&call.arguments, &answers)?;
+        }
+        let Some(suspended) = self
+            .store
+            .resolve_question(request_id, &answers, rejected)?
+        else {
+            return Ok(false);
+        };
+        let mut continuation: Continuation =
+            serde_json::from_value(suspended.snapshot).map_err(|_| {
+                AgentError::new("agent_unavailable", "question continuation is invalid")
+            })?;
+        let call = continuation
+            .pending_call
+            .as_ref()
+            .ok_or_else(|| AgentError::new("agent_unavailable", "question call is missing"))?;
+        let event = if rejected {
+            "question.rejected"
+        } else {
+            "question.replied"
+        };
+        self.emit(
+            &continuation.session_id,
+            event,
+            json!({"request_id":request_id,"turn_id":continuation.turn_id,"tool_call_id":call.call_id,"answers":answers}),
+        )?;
+        let token = CancellationToken::new();
+        self.cancellations
+            .lock()
+            .map_err(|_| AgentError::new("agent_unavailable", "cancellation state unavailable"))?
+            .insert(continuation.turn_id.clone(), token.clone());
+        self.active_turns
+            .lock()
+            .map_err(|_| AgentError::new("agent_unavailable", "turn state unavailable"))?
+            .insert(
+                continuation.session_id.clone(),
+                continuation.turn_id.clone(),
+            );
+        let agent = self.clone();
+        let request_id = request_id.to_string();
+        tokio::spawn(async move {
+            let session_lock = agent.session_lock(&continuation.session_id).await;
+            let _guard = session_lock.lock().await;
+            let result = agent.continue_question(&mut continuation, token).await;
+            let suspended_again = result.as_ref().err().is_some_and(|error| {
+                matches!(
+                    error.code.as_str(),
+                    "approval_required" | "question_required"
+                )
+            });
+            let status = if result.is_ok() || suspended_again {
+                "completed"
+            } else {
+                "failed"
+            };
+            let _ = agent.store.finish_suspended(&request_id, status);
+            if let Err(error) = &result {
+                if !suspended_again {
+                    agent.clear_queued_messages(&continuation.session_id);
+                    let _ = agent.turn_state(
+                        &continuation,
+                        if error.code == "cancelled" {
+                            "cancelled"
+                        } else {
+                            "failed"
+                        },
+                        Some(&error.code),
+                    );
+                    let _ = agent.store.fail_turn(
+                        &continuation.session_id,
+                        &continuation.submission_key,
+                        &json!({"code":error.code,"message":error.message,"details":error.details}),
+                    );
+                }
+            }
+            agent
+                .cancellations
+                .lock()
+                .ok()
+                .map(|mut values| values.remove(&continuation.turn_id));
+            agent
+                .active_turns
+                .lock()
+                .ok()
+                .map(|mut values| values.remove(&continuation.session_id));
+        });
+        Ok(true)
+    }
+
+    async fn continue_question(
+        &self,
+        continuation: &mut Continuation,
+        token: CancellationToken,
+    ) -> Result<TurnResponse, AgentError> {
+        if let Some(call) = continuation.pending_call.take() {
+            let answers = continuation.question_answers.take().unwrap_or_default();
+            let result = json!({"answers": answers, "rejected": continuation.question_rejected});
+            self.tool_state(continuation, &call, "succeeded", None)?;
+            self.emit(&continuation.session_id, "tool.result", json!({"turn_id":continuation.turn_id,"call_id":continuation.active_call_id,"tool_call_id":call.call_id,"result":result}))?;
+            let mut tool = Message::text(
+                "tool",
+                serde_json::to_string(&result).unwrap_or_else(|_| "{}".into()),
+            );
+            tool.tool_call_id = Some(call.call_id.clone());
+            continuation.messages.push(tool.clone());
+            self.emit(&continuation.session_id, "message.tool", json!({"turn_id":continuation.turn_id,"call_id":continuation.active_call_id,"tool_call_id":call.call_id,"message":tool}))?;
+        }
+        let siblings = std::mem::take(&mut continuation.remaining_calls);
+        self.resolve_calls(continuation, siblings, token.clone())
+            .await?;
+        let provider = self
+            .providers
+            .route(&continuation.model)
+            .ok_or_else(|| AgentError::new("model_unavailable", "model is not advertised"))?;
+        let response = self
+            .run(continuation.clone(), None, token, provider)
+            .await?;
+        self.store.complete_turn(
+            &continuation.session_id,
+            &continuation.submission_key,
+            &serde_json::to_value(&response).map_err(|_| {
+                AgentError::new("agent_unavailable", "turn response could not be stored")
+            })?,
+        )?;
+        Ok(response)
     }
 
     async fn continue_approved(
@@ -831,6 +989,30 @@ impl Agent {
                     return Err(error);
                 }
                 continue;
+            }
+            if call.name == "question" {
+                self.execute_allowed_calls(
+                    context,
+                    std::mem::take(&mut allowed_calls),
+                    token.clone(),
+                )
+                .await?;
+                self.tool_state(
+                    context,
+                    call,
+                    "awaiting_question",
+                    Some("user_input_required"),
+                )?;
+                let request_id = format!("que_{}", Uuid::new_v4());
+                context.pending_call = Some(call.clone());
+                context.remaining_calls = calls[index + 1..].to_vec();
+                let snapshot = serde_json::to_value(&*context).map_err(|_| {
+                    AgentError::new("agent_unavailable", "turn continuation could not be stored")
+                })?;
+                self.store
+                    .create_question(&request_id, &context.turn_id, &snapshot)?;
+                self.emit(&context.session_id, "question.asked", json!({"request_id":request_id,"turn_id":context.turn_id,"tool_call_id":call.call_id,"questions":call.arguments["questions"]}))?;
+                return Err(AgentError::new("question_required", "The user must answer the question tool").details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"request_id":request_id})));
             }
             self.tool_state(context, call, "policy_check", None)?;
             let decision = evaluate(
@@ -1388,13 +1570,27 @@ impl Agent {
                 );
             let agent = self.clone();
             let approval_id = suspended.approval_id;
+            let is_question = continuation
+                .pending_call
+                .as_ref()
+                .is_some_and(|call| call.name == "question");
             tokio::spawn(async move {
                 let session_lock = agent.session_lock(&continuation.session_id).await;
                 let _guard = session_lock.lock().await;
-                let result = agent.continue_approved(&mut continuation, token).await;
+                let result = if is_question {
+                    agent.continue_question(&mut continuation, token).await
+                } else {
+                    agent.continue_approved(&mut continuation, token).await
+                };
+                let suspended_again = result.as_ref().err().is_some_and(|error| {
+                    matches!(
+                        error.code.as_str(),
+                        "approval_required" | "question_required"
+                    )
+                });
                 let _ = agent.store.finish_suspended(
                     &approval_id,
-                    if result.is_ok() {
+                    if result.is_ok() || suspended_again {
                         "completed"
                     } else {
                         "failed"
@@ -1574,8 +1770,125 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
 }
 
 fn validate_before_policy(name: &str, value: &Value) -> Result<(), AgentError> {
+    if name == "question" {
+        return validate_question_arguments(value);
+    }
     if name == "webfetch" {
         validate_webfetch_arguments(value)?;
+    }
+    Ok(())
+}
+
+fn validate_question_arguments(value: &Value) -> Result<(), AgentError> {
+    let questions = value
+        .get("questions")
+        .and_then(Value::as_array)
+        .filter(|items| !items.is_empty() && items.len() <= 8)
+        .ok_or_else(|| {
+            AgentError::new("invalid_arguments", "questions must contain 1 to 8 items")
+        })?;
+    for question in questions {
+        let object = question.as_object().ok_or_else(|| {
+            AgentError::new("invalid_arguments", "each question must be an object")
+        })?;
+        for field in ["question", "header"] {
+            if object
+                .get(field)
+                .and_then(Value::as_str)
+                .is_none_or(str::is_empty)
+            {
+                return Err(AgentError::new(
+                    "invalid_arguments",
+                    format!("{field} is required"),
+                ));
+            }
+        }
+        if object
+            .get("header")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value.chars().count() > 30)
+        {
+            return Err(AgentError::new(
+                "invalid_arguments",
+                "header must be at most 30 characters",
+            ));
+        }
+        let options = object
+            .get("options")
+            .and_then(Value::as_array)
+            .filter(|items| !items.is_empty() && items.len() <= 12)
+            .ok_or_else(|| {
+                AgentError::new("invalid_arguments", "options must contain 1 to 12 items")
+            })?;
+        let mut labels = std::collections::HashSet::new();
+        for option in options {
+            let option = option.as_object().ok_or_else(|| {
+                AgentError::new("invalid_arguments", "each option must be an object")
+            })?;
+            let label = option
+                .get("label")
+                .and_then(Value::as_str)
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| AgentError::new("invalid_arguments", "option label is required"))?;
+            if !labels.insert(label) {
+                return Err(AgentError::new(
+                    "invalid_arguments",
+                    "option labels must be unique",
+                ));
+            }
+            if option
+                .get("description")
+                .and_then(Value::as_str)
+                .is_none_or(str::is_empty)
+            {
+                return Err(AgentError::new(
+                    "invalid_arguments",
+                    "option description is required",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_question_answers(arguments: &Value, answers: &[Vec<String>]) -> Result<(), AgentError> {
+    let questions = arguments
+        .get("questions")
+        .and_then(Value::as_array)
+        .ok_or_else(|| AgentError::new("invalid_arguments", "questions are missing"))?;
+    if answers.len() != questions.len() {
+        return Err(AgentError::new(
+            "invalid_arguments",
+            "one answer list is required for each question",
+        ));
+    }
+    for (question, values) in questions.iter().zip(answers) {
+        let options = question
+            .get("options")
+            .and_then(Value::as_array)
+            .ok_or_else(|| AgentError::new("invalid_arguments", "question options are missing"))?;
+        let allowed = options
+            .iter()
+            .filter_map(|option| option.get("label").and_then(Value::as_str))
+            .collect::<std::collections::HashSet<_>>();
+        if question.get("multiple").and_then(Value::as_bool) != Some(true) && values.len() > 1 {
+            return Err(AgentError::new(
+                "invalid_arguments",
+                "this question accepts only one answer",
+            ));
+        }
+        let custom = question
+            .get("custom")
+            .and_then(Value::as_bool)
+            .unwrap_or(true);
+        for value in values {
+            if value.trim().is_empty() || (!custom && !allowed.contains(value.as_str())) {
+                return Err(AgentError::new(
+                    "invalid_arguments",
+                    "an answer is not allowed for this question",
+                ));
+            }
+        }
     }
     Ok(())
 }
@@ -1895,6 +2208,15 @@ mod tests {
             &json!({"url":"https://example.com","timeout":121})
         )
         .is_err());
+    }
+
+    #[test]
+    fn question_arguments_and_answers_are_validated() {
+        let arguments = json!({"questions":[{"question":"Choose","header":"Mode","options":[{"label":"Fast","description":"Quick"}],"custom":false}]});
+        assert!(validate_before_policy("question", &arguments).is_ok());
+        assert!(validate_question_answers(&arguments, &[vec!["Fast".into()]]).is_ok());
+        assert!(validate_question_answers(&arguments, &[vec!["Other".into()]]).is_err());
+        assert!(validate_question_answers(&arguments, &[]).is_err());
     }
 
     #[test]

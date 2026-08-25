@@ -165,6 +165,7 @@ public sealed class MessageItem : ObservableObject
         "read" => "Read file",
         "glob" => "Find files",
         "grep" => "Search files",
+        "question" => "Ask a question",
         "write" => "Write file",
         "edit" => "Edit file",
         _ => string.IsNullOrWhiteSpace(ToolName) ? "Run operation" : ToolName
@@ -177,6 +178,7 @@ public sealed class MessageItem : ObservableObject
         "requested" or "validating" or "policy_check" or "authorized" => "Preparing",
         "executing" => "Running",
         "awaiting_approval" => "Waiting for approval",
+        "awaiting_question" => "Waiting for an answer",
         "succeeded" => "Completed",
         "denied" => "Denied",
         "failed" => "Failed",
@@ -474,6 +476,97 @@ public sealed record ProviderTraceToolItem(
     public bool HasRequest => !string.IsNullOrWhiteSpace(Request);
     public bool HasResult => !string.IsNullOrWhiteSpace(Result);
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorCode);
+}
+
+public sealed class QuestionPromptItem : ObservableObject
+{
+    private string _customAnswer = string.Empty;
+
+    public QuestionPromptItem(string header, string question, bool multiple, bool allowCustom)
+    {
+        Header = header;
+        Question = question;
+        Multiple = multiple;
+        AllowCustom = allowCustom;
+    }
+
+    public string Header { get; }
+    public string Question { get; }
+    public bool Multiple { get; }
+    public bool AllowCustom { get; }
+    public ObservableCollection<QuestionOptionItem> Options { get; } = [];
+    public string CustomAnswer
+    {
+        get => _customAnswer;
+        set => SetProperty(ref _customAnswer, value);
+    }
+
+    public void Select(QuestionOptionItem option)
+    {
+        if (!Multiple)
+        {
+            var wasSelected = option.IsSelected;
+            foreach (var item in Options) item.IsSelected = !wasSelected && item == option;
+        }
+        else
+        {
+            option.IsSelected = !option.IsSelected;
+        }
+    }
+
+    public IReadOnlyList<string> Answers => Options.Where(option => option.IsSelected).Select(option => option.Label)
+        .Concat(string.IsNullOrWhiteSpace(CustomAnswer) ? [] : [CustomAnswer.Trim()]).ToArray();
+}
+
+public sealed class QuestionOptionItem : ObservableObject
+{
+    private bool _isSelected;
+
+    public QuestionOptionItem(string label, string description)
+    {
+        Label = label;
+        Description = description;
+    }
+
+    public string Label { get; }
+    public string Description { get; }
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
+    }
+}
+
+public sealed class PendingQuestionItem
+{
+    public PendingQuestionItem(string requestId, string turnId, string toolCallId)
+    {
+        RequestId = requestId;
+        TurnId = turnId;
+        ToolCallId = toolCallId;
+    }
+
+    public string RequestId { get; }
+    public string TurnId { get; }
+    public string ToolCallId { get; }
+    public ObservableCollection<QuestionPromptItem> Questions { get; } = [];
+
+    public static PendingQuestionItem? FromPayload(JsonObject payload)
+    {
+        var requestId = payload.String("request_id", "requestId");
+        if (string.IsNullOrWhiteSpace(requestId)) return null;
+        var result = new PendingQuestionItem(requestId, payload.String("turn_id", "turnId"), payload.String("tool_call_id", "toolCallId"));
+        foreach (var value in payload.Array("questions").OfType<JsonObject>())
+        {
+            var prompt = new QuestionPromptItem(
+                value.String("header"), value.String("question"), value.Bool("multiple"),
+                !value.TryGetPropertyValue("custom", out var custom) || custom?.GetValue<bool>() != false);
+            foreach (var option in value.Array("options").OfType<JsonObject>())
+                prompt.Options.Add(new QuestionOptionItem(option.String("label"), option.String("description")));
+            result.Questions.Add(prompt);
+        }
+        return result.Questions.Count == 0 ? null : result;
+    }
 }
 
 public sealed record ApprovalItem(string ApprovalId, string Operation, string Arguments)

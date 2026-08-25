@@ -145,6 +145,12 @@ public sealed class AgentSdk : IDisposable
     public Task<JsonObject> ResolveApprovalAsync(string approvalId, string decision) => WithUtf8Async(
         [approvalId, decision], values => NativeMethods.suncode_agent_sdk_resolve_approval(_handle, values[0], values[1]));
 
+    public Task<JsonObject> ReplyQuestionAsync(string requestId, JsonArray answers) => WithUtf8Async(
+        [requestId, answers.ToJsonString()], values => NativeMethods.suncode_agent_sdk_reply_question(_handle, values[0], values[1]));
+
+    public Task<JsonObject> RejectQuestionAsync(string requestId) => WithUtf8Async(
+        [requestId], values => NativeMethods.suncode_agent_sdk_reject_question(_handle, values[0]));
+
     public IDisposable Subscribe(string sessionId, long after, Action<string> onEvent)
     {
         ThrowIfDisposed();

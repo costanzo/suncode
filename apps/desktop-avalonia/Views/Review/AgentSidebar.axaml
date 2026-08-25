@@ -38,6 +38,50 @@
         </Border>
         <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
         <TextBlock Classes="section-label" Text="REVIEW QUEUE" />
+        <Border Padding="13" CornerRadius="10" Background="{DynamicResource AccentSurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" IsVisible="{Binding HasPendingQuestion}">
+          <StackPanel Spacing="11">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Clarification needed" Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="The agent is waiting for your answer" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+              </StackPanel>
+              <Border Grid.Column="1" Background="{DynamicResource AccentBrush}" CornerRadius="5" Padding="7,4" VerticalAlignment="Top">
+                <TextBlock Text="ANSWER" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource SurfaceBrush}" />
+              </Border>
+            </Grid>
+            <ItemsControl ItemsSource="{Binding PendingQuestion.Questions}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:QuestionPromptItem">
+                  <StackPanel Spacing="7">
+                    <TextBlock Text="{Binding Header}" Classes="eyebrow" />
+                    <TextBlock Text="{Binding Question}" FontSize="13" TextWrapping="Wrap" />
+                    <ItemsControl ItemsSource="{Binding Options}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:QuestionOptionItem">
+                          <Button Classes="compact" HorizontalContentAlignment="Left" Margin="0,0,0,4" Click="SelectQuestionOption">
+                            <StackPanel Spacing="2">
+                              <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Text="{Binding IsSelected, StringFormat={}{0:[x] }}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="1" Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Grid.Column="2" Text="Selected" IsVisible="{Binding IsSelected}" FontSize="10" Foreground="{DynamicResource AccentBrush}" />
+                              </Grid>
+                              <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                            </StackPanel>
+                          </Button>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBox Text="{Binding CustomAnswer, Mode=TwoWay}" PlaceholderText="Add a custom answer" IsVisible="{Binding AllowCustom}" TextWrapping="Wrap" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Grid ColumnDefinitions="*,8,*">
+              <Button Grid.Column="0" Classes="compact primary" Content="Submit answers" Click="ReplyQuestion" />
+              <Button Grid.Column="2" Classes="compact danger" Content="Skip" Click="RejectQuestion" />
+            </Grid>
+          </StackPanel>
+        </Border>
         <Border Padding="13" CornerRadius="10" Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="{Binding HasPendingApproval}">
           <StackPanel Spacing="11">
             <Grid ColumnDefinitions="*,Auto">
