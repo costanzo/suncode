@@ -62,9 +62,9 @@ The `suncode-llm` package owns provider-neutral messages, tool schemas, completi
 
 The registry accepts trusted in-process Rust implementations of `LlmProvider` with owned provider and model identifiers. Enterprise OpenAI-compatible gateways can use the built-in adapter with a custom endpoint; other trusted integrations can implement the trait. Rust hosts can extend the built-in registry during `AgentSdk` construction. This is library composition inside the host process, not dynamic plugin loading or an isolation boundary.
 
-### 3.4 Operations
+### 3.4 Tools
 
-Operations are narrow Rust modules in the `suncode-tool` package inside the agent. They own canonical path validation, bounded reads/searches, read-only Git repository inspection, mutations, process execution, checkpoint payloads, artifacts, and operation journal records. They do not own provider semantics, conversation state, UI DTOs, or policy grants.
+Tools are narrow Rust modules in the `suncode-tool` package inside the agent. The package owns the built-in model-facing tool catalog and canonical path validation, bounded reads/searches, read-only Git repository inspection, mutations, process execution, checkpoint payloads, artifacts, and operation journal records. It does not own provider semantics, conversation state, UI DTOs, or policy grants. Agent core converts the package's neutral tool definitions to provider request DTOs and remains responsible for policy, approval, orchestration, and conversation-only tool handling.
 
 This internal boundary is for auditability and testing. It is not a child-process security boundary.
 
@@ -124,7 +124,7 @@ contracts/                hand-written protocols and shared vectors
 agent/crates/core/      agent core and embedded Rust SDK facade
 agent/crates/db/        SQLite package, current schema, and persistence DTOs
 agent/crates/llm/       provider-neutral LLM contracts, catalog, registry, and adapters
-agent/crates/operations/ `suncode-tool` package for audited in-process machine operations
+agent/crates/tools/      `suncode-tool` package for built-in definitions and audited in-process machine operations
 sdks/                     native language binding packaging surfaces
 .agents/                  durable product and engineering knowledge
 ```
@@ -138,9 +138,9 @@ The old `typescript/` packages and retired `rust/` workspace were migration sour
 - Agent and provider modules call operations through the authorized dispatcher.
 - The database crate does not depend on the agent core, Avalonia, native bindings, operations, or provider wire types.
 - The agent core depends on the database crate for durable state and persistence DTOs.
-- The LLM crate does not depend on the database, agent core, SDK, desktop, or operations crates.
+- The LLM crate does not depend on the database, agent core, SDK, desktop, or tools crates.
 - The agent core supplies credentials and tool schemas to the LLM crate through provider-neutral interfaces and request DTOs.
-- Operations do not depend on agent, provider, persistence projections, or client DTOs.
+- Tools do not depend on agent, provider, persistence projections, or client DTOs.
 - No production TypeScript or Node.js process remains in Phase 1.
 
 ## 12. Deferred Scope

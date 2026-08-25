@@ -1,8 +1,4 @@
-//! Built-in tool declarations. Execution remains behind `suncode-tool`.
-//!
-//! The model-facing names follow OpenCode's built-in tool names. Internal
-//! operation methods stay narrower and are translated by the agent before
-//! execution.
+//! Model-facing declarations for the built-in tools.
 
 mod edit;
 mod glob;
@@ -14,9 +10,16 @@ mod todowrite;
 mod webfetch;
 mod write;
 
-use suncode_llm::ToolDefinition;
+use serde_json::Value;
 
-pub fn definitions() -> Vec<ToolDefinition> {
+#[derive(Debug, Clone)]
+pub struct ToolDefinition {
+    pub name: &'static str,
+    pub description: &'static str,
+    pub parameters: Value,
+}
+
+pub fn all() -> Vec<ToolDefinition> {
     [
         read::definition(),
         glob::definition(),
@@ -30,8 +33,8 @@ pub fn definitions() -> Vec<ToolDefinition> {
     ]
     .into_iter()
     .map(|(name, description, parameters)| ToolDefinition {
-        name: name.into(),
-        description: description.into(),
+        name,
+        description,
         parameters,
     })
     .collect()
@@ -39,15 +42,15 @@ pub fn definitions() -> Vec<ToolDefinition> {
 
 #[cfg(test)]
 mod tests {
-    use super::definitions;
+    use super::all;
     use std::collections::BTreeSet;
 
     #[test]
     fn built_in_tool_names_match_the_model_contract() {
-        let definitions = definitions();
+        let definitions = all();
         let names = definitions
             .iter()
-            .map(|definition| definition.name.as_str())
+            .map(|definition| definition.name)
             .collect::<BTreeSet<_>>();
         assert_eq!(
             names,

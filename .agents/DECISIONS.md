@@ -27,7 +27,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The model registry had seven current tools, but retired patch, process, shell, filesystem, capability, and recovery aliases remained executable in the agent and operations dispatcher without production callers.
 - Decision: Accept only the seven canonical model names (`read`, `glob`, `grep`, `write`, `edit`, `bash`, `webfetch`) at the agent boundary. Remove the patch implementation, retired filesystem and capability wrappers, asynchronous process/recovery dispatcher entries, and desktop aliases. Keep the private synchronous process runner required by `bash`, including bounded output, cancellation, checkpoints for writes, and managed artifacts.
 - Consequences: Unknown and retired operation names fail closed. Persisted historical rows remain inspectable as data but are not replayable. The typed SDK keeps Git and checkpoint restore methods.
-- Details: `.agents/requirements/2026-08-23-remove-unused-tools/`, `agent/crates/core/src/agent.rs`, `agent/crates/operations/src/tools/mod.rs`
+- Details: `.agents/requirements/2026-08-23-remove-unused-tools/`, `agent/crates/core/src/agent.rs`, `agent/crates/tools/src/tools/mod.rs`
 
 ## ADR-20260823-audited-webfetch-tool
 
@@ -37,7 +37,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: SunCode could inspect local project sources and use an approved shell, but it had no narrow model tool for retrieving public reference pages without delegating the request to a general process. OpenCode exposes a bounded `webfetch` contract with text, Markdown, and HTML output.
 - Decision: Advertise `webfetch(url, format?, timeout?)` and execute it only through the audited Rust operations dispatcher after network approval. Validate arguments before approval and again at execution. Limit redirects to the approved host/port or a standard HTTP-to-HTTPS upgrade, reject embedded credentials and non-text content, bound raw responses to 5 MiB, expose a 64 KiB model preview, and retain larger converted text in managed artifact storage. Use parser-backed HTML conversion and rustls-based HTTP.
 - Consequences: The model-facing registry has seven built-in tools. Web retrieval has visible authority and bounded context impact; invalid calls can be repaired in the same turn without presenting approval. Images and other binary responses remain unsupported until the provider-neutral tool-result contract gains attachments. Full Control can pre-authorize this known network risk but does not bypass URL, redirect, response, audit, or cancellation checks.
-- Details: `.agents/requirements/2026-08-23-webfetch-tool/`, `agent/crates/core/src/tools/webfetch.rs`, `agent/crates/operations/src/tools/webfetch.rs`
+- Details: `.agents/requirements/2026-08-23-webfetch-tool/`, `agent/crates/tools/src/definitions/webfetch.rs`, `agent/crates/tools/src/tools/webfetch.rs`
 
 ## ADR-20260822-read-only-project-dependencies
 
@@ -65,7 +65,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The model-facing `bash` tool converted every script to `/bin/sh -lc`, so approved process calls could not start on Windows. The same tool also obscured the important distinction between portable argv execution and platform-specific shell syntax.
 - Decision: Advertise separate `process` and `shell` tools. `process` passes a program and explicit argv without implicit shell parsing. `shell` selects Windows PowerShell on Windows and POSIX `/bin/sh` on macOS/Linux. Inject ephemeral host OS, architecture, shell dialect, path style, and local date/time into provider requests. Keep `bash` only as a persisted-call compatibility alias and preserve stable process-start failures through the tool and turn projections.
 - Consequences: Coding commands can use portable argv where possible, scripts use an explicit host dialect, and Windows no longer depends on `/bin/sh`, Git Bash, Cygwin, or WSL. Shell scripts are not portable unless authored for the reported dialect. Process execution remains approval-gated and does not gain OS or network isolation.
-- Details: `.agents/requirements/2026-08-21-cross-platform-process/`, `agent/crates/core/src/tools/`, `agent/crates/operations/src/process.rs`
+- Details: `.agents/requirements/2026-08-21-cross-platform-process/`, `agent/crates/tools/src/definitions/shell.rs`, `agent/crates/tools/src/process.rs`
 
 ## ADR-20260820-configuration-and-provider-adapters
 
@@ -221,7 +221,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Date: 2026-08-09
 - Status: Accepted
 - Context: The root `rust/` workspace name described the implementation language instead of the product role. Future TypeScript and Python SDK packages need a home without implying that they own runtime state or duplicate runtime behavior.
-- Decision: Rename the product runtime workspace to `agent/`, keep the Rust core at `agent/crates/core`, keep audited operations at `agent/crates/operations`, and introduce `sdks/` for future TypeScript and Python language bindings. Keep `contracts/` at the root as the shared protocol and storage contract source.
+- Decision: Rename the product runtime workspace to `agent/`, keep the Rust core at `agent/crates/core`, keep built-in tool definitions and audited operations in the `suncode-tool` package at `agent/crates/tools`, and introduce `sdks/` for future TypeScript and Python language bindings. Keep `contracts/` at the root as the shared protocol and storage contract source.
 - Consequences: Repository layout now names responsibilities rather than languages. Qt continues to link the Rust runtime static library through CMake. Future SDKs wrap the native runtime boundary instead of reading SQLite or calling providers directly.
 - Details: `ARCHITECTURE.md`
 
@@ -342,7 +342,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The built-in Rust content search was a literal in-process directory walk, while the grep tool contract described regular-expression search. Calling an `rg` executable would add an installation, PATH, and child-process dependency to the embedded runtime.
 - Decision: Embed ripgrep's reusable Rust crates (`ignore`, `globset`, `grep-regex`, and `grep-searcher`) in the audited operations crate. Use Rust regular expressions, standard ripgrep ignore/hidden-file traversal, bounded project-relative glob filtering, and the existing bounded JSON result contract. Do not invoke an external `rg` process and defer PCRE2.
 - Consequences: The desktop runtime has no ripgrep installation prerequisite and remains inside the Rust operation boundary. The search behavior now follows ripgrep standard filters and regex syntax; callers needing literal punctuation must escape it. Command-line-only features and output formats remain outside the operation contract.
-- Details: `.agents/requirements/2026-08-15-embedded-ripgrep/`, `agent/crates/operations/src/search.rs`
+- Details: `.agents/requirements/2026-08-15-embedded-ripgrep/`, `agent/crates/tools/src/search.rs`
 
 ## ADR-20260815-embedded-git2-review
 
@@ -351,4 +351,4 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The Qt project window needs the actual Git working-tree and index state, but invoking a Git executable would add an installation, PATH, and child-process dependency and allowing Qt to inspect `.git` would violate the SDK ownership boundary.
 - Decision: Embed `git2` with vendored libgit2 in the audited Rust operations crate. Expose bounded read-only status and per-file diff methods through the typed Rust SDK and C ABI. Repository discovery may locate a root above the opened project, but every result and requested path remains filtered to the opened project. Qt owns only transient drawer presentation state.
 - Consequences: The desktop can review all, staged, unstaged, untracked, renamed, deleted, binary, and conflicted local changes without an installed Git executable or system libgit2. Vendoring increases build time and binary size, and the Qt static-library link must include libgit2's native compression and character-conversion dependencies. Stage, discard, commit, refs, remotes, and credentials require separate policy and recovery designs.
-- Details: `.agents/requirements/2026-08-15-git-diff-drawer/`, `agent/crates/operations/src/git.rs`
+- Details: `.agents/requirements/2026-08-15-git-diff-drawer/`, `agent/crates/tools/src/git.rs`

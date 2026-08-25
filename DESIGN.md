@@ -175,6 +175,17 @@ The left bay is project and session navigation, with uppercase section labels, a
 
 The right bay contains approval, turn changes, touched files, and runtime health in that order. Approval is the only state allowed to interrupt the visual hierarchy; its amber surface and explicit “Approve once” / “Deny” actions keep authority decisions legible.
 
+### Markdown Content
+
+Assistant messages are rendered as Markdown and use the same semantic content tokens in both themes. The review pages must show the complete reading surface: heading hierarchy, paragraphs, bold/italic/deleted text, links, ordered and unordered lists, task lists, blockquotes, horizontal rules, inline code, fenced code blocks, and tables.
+
+- **Reading measure:** Keep rendered Markdown readable at roughly 680–760px maximum width. Do not force assistant content into a card when the conversation surface already provides the frame.
+- **Hierarchy:** Markdown headings are smaller than the application title scale. `h1` starts at 26px in a message, `h2` at 19px, and `h3` at 15px, with spacing that groups related content.
+- **Body:** Use the normal UI sans for prose at 14px and 1.6 line height. Links use accent teal with an underline; emphasis changes weight or tone rather than adding semantic colors.
+- **Machine content:** Inline code and fenced code use JetBrains Mono on the inset surface. Code blocks scroll horizontally instead of wrapping long identifiers or commands.
+- **Structure:** Blockquotes use a 3px accent rail and accent-tinted surface. Tables use compact headers, hairline row separators, and horizontal scrolling on narrow widths. Task-list controls are visual state indicators, not editable product settings.
+- **Safety:** Markdown content must not use status colors decoratively. Warning and danger colors remain reserved for actual authority, error, or destructive states around the content.
+
 ### Component Coverage
 
 The review pages are required to show, at minimum:
@@ -185,6 +196,7 @@ The review pages are required to show, at minimum:
 - text fields, select fields, textareas, validation, checkbox, radio, and toggle controls
 - cards, project rows, activity rows, approval surfaces, navigation, tabs, and segmented controls
 - badges, alerts, progress, loading skeletons, empty states, code blocks, and data tables
+- Markdown reading surfaces: heading hierarchy, prose, links, lists, task lists, blockquotes, inline code, fenced code, horizontal rules, and compact tables
 
 The same semantic inventory must be present in dark and light pages. Theme changes may alter contrast values, but must not change the meaning of a token or state.
 

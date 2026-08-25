@@ -758,7 +758,14 @@ impl Agent {
             )?;
             let result = {
                 let (delta_sender, mut delta_receiver) = mpsc::unbounded_channel();
-                let tool_definitions = crate::tools::definitions();
+                let tool_definitions = suncode_tool::definitions::all()
+                    .into_iter()
+                    .map(|definition| suncode_llm::ToolDefinition {
+                        name: definition.name.into(),
+                        description: definition.description.into(),
+                        parameters: definition.parameters,
+                    })
+                    .collect::<Vec<_>>();
                 let provider_call = provider.provider.complete(
                     CompletionRequest {
                         messages: &llm_messages,

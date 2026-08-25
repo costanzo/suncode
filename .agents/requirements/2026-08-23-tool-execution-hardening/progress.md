@@ -1,12 +1,13 @@
 # Progress
 
 - Status: Complete
-- Last updated: 2026-08-23
+- Last updated: 2026-08-25
 
 ## Completed
 
 - Compact model-facing schemas and legacy translation compatibility.
 - Read ranges, ignore-aware glob traversal, safe parent creation, normalized multi-edit replacement, and failed bash state projection.
+- Consolidated model-facing definitions and audited execution under `agent/crates/tools`.
 
 ## Verification
 

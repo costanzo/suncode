@@ -257,6 +257,42 @@ select.field { appearance: none; padding-right: 34px; background-image: linear-g
 .code .keyword { color: var(--accent); }
 .code .string { color: var(--success); }
 .code .comment { color: var(--text-muted); }
+.markdown-sample { background: var(--surface); }
+.markdown { max-width: 760px; color: var(--text); font-size: 14px; line-height: 1.6; }
+.markdown > :first-child { margin-top: 0; }
+.markdown > :last-child { margin-bottom: 0; }
+.markdown h1, .markdown h2, .markdown h3 { color: var(--text); }
+.markdown h1 { margin-bottom: 12px; font-size: 26px; line-height: 1.15; }
+.markdown h2 { margin-top: 24px; margin-bottom: 8px; font-size: 19px; line-height: 1.25; }
+.markdown h3 { margin-top: 18px; margin-bottom: 6px; font-size: 15px; line-height: 1.3; }
+.markdown p { margin-bottom: 14px; color: var(--text-secondary); }
+.markdown strong { color: var(--text); font-weight: 700; }
+.markdown em { color: var(--text); }
+.markdown del { color: var(--text-muted); }
+.markdown a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent-border); text-underline-offset: 3px; }
+.markdown a:hover { color: var(--accent-hover); }
+.markdown ul, .markdown ol { margin: 8px 0 16px; padding-left: 24px; color: var(--text-secondary); }
+.markdown li { padding-left: 4px; margin: 4px 0; }
+.markdown li::marker { color: var(--accent); }
+.markdown blockquote { margin: 16px 0; padding: 10px 14px; color: var(--text-secondary); background: var(--surface-accent); border-left: 3px solid var(--accent); }
+.markdown blockquote p { margin: 0; }
+.markdown code { padding: 2px 5px; color: var(--accent); background: var(--surface-inset); border: 1px solid var(--border); border-radius: 4px; font: 12px/1.4 var(--font-mono); }
+.markdown pre { overflow: auto; margin: 16px 0; padding: 14px 16px; color: var(--text-secondary); background: var(--surface-inset); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.markdown pre code { padding: 0; color: inherit; background: transparent; border: 0; border-radius: 0; font-size: 12px; line-height: 1.65; }
+.markdown hr { margin: 20px 0; border: 0; border-top: 1px solid var(--border); }
+.markdown-table-wrap { overflow: auto; margin: 16px 0; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.markdown-table { width: 100%; min-width: 420px; border-collapse: collapse; text-align: left; }
+.markdown-table th, .markdown-table td { padding: 9px 11px; border-bottom: 1px solid var(--border); }
+.markdown-table th { color: var(--text-muted); background: var(--surface-inset); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
+.markdown-table td { color: var(--text-secondary); font-size: 12px; }
+.markdown-table tr:last-child td { border-bottom: 0; }
+.markdown-table td strong { color: var(--text); }
+.markdown-task-list { padding-left: 0 !important; list-style: none; }
+.markdown-task { display: flex; align-items: flex-start; gap: 8px; }
+.markdown-task input { width: 15px; height: 15px; flex: 0 0 auto; margin: 4px 0 0; accent-color: var(--accent); }
+.markdown-task input:disabled { opacity: 1; }
+.markdown-kicker { margin-bottom: 8px; color: var(--text-muted); font: 11px var(--font-mono); text-transform: uppercase; }
+.markdown-footnote { color: var(--text-muted) !important; font-size: 12px; }
 .table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-md); }
 .data-table { width: 100%; min-width: 520px; border-collapse: collapse; text-align: left; }
 .data-table th, .data-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); }

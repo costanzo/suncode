@@ -142,8 +142,40 @@
         </div>
       </section>
 
+      <section class="section" id="markdown">
+        <div class="section-heading"><div><div class="section-kicker">09 / Content</div><h2>Markdown reading surface</h2></div><p>Assistant messages use a readable prose measure, clear hierarchy, and precise treatment for code and structured content.</p></div>
+        <div class="grid grid-2">
+          <div class="sample markdown-sample">
+            <div class="sample-label">Prose and hierarchy</div>
+            <article class="markdown">
+              <div class="markdown-kicker">Assistant response</div>
+              <h1>Provider cache review</h1>
+              <p>The cache path is now <strong>owned by the Rust agent</strong>, while the desktop remains a presentation client. See the <a href="#data">provider data surface</a> for the captured route.</p>
+              <h2>What changed</h2>
+              <ul><li>Moved cache ownership behind the agent boundary.</li><li>Kept <em>provider request IDs</em> separate from response IDs.</li><li>Removed the <del>legacy runtime path</del> from the active contract.</li></ul>
+              <blockquote><p>Reviewable authority means the user can see what changed before an operation runs.</p></blockquote>
+              <p class="markdown-footnote">Rendered content stays in the conversation surface; semantic status colors belong to the surrounding state UI.</p>
+            </article>
+          </div>
+          <div class="sample markdown-sample">
+            <div class="sample-label">Structure and machine content</div>
+            <article class="markdown">
+              <h2>Implementation checklist</h2>
+              <ol class="markdown-task-list"><li class="markdown-task"><input type="checkbox" checked disabled><span>Persist the provider request identifier.</span></li><li class="markdown-task"><input type="checkbox" checked disabled><span>Render the response as Markdown.</span></li><li class="markdown-task"><input type="checkbox" disabled><span>Verify the recovery path with a focused test.</span></li></ol>
+              <p>Use <code>cargo test -p suncode-agent</code> for the focused check.</p>
+              <pre><code><span class="comment">// provider route</span>
+<span class="keyword">let</span> model = <span class="string">"gpt-5.5"</span>;
+<span class="keyword">let</span> effort = <span class="string">"medium"</span>;</code></pre>
+              <div class="markdown-table-wrap"><table class="markdown-table"><thead><tr><th>Signal</th><th>Value</th><th>Meaning</th></tr></thead><tbody><tr><td><strong>Request</strong></td><td class="mono">req-184</td><td>Sent to provider</td></tr><tr><td><strong>Response</strong></td><td class="mono">res-184</td><td>Received and stored</td></tr></tbody></table></div>
+              <hr>
+              <p><a href="#rules">Content rules</a> keep prose, code, and status surfaces distinct.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <section class="section" id="rules">
-        <div class="section-heading"><div><div class="section-kicker">09 / Rules</div><h2>Non-negotiable visual rules</h2></div><p>Use these constraints when adding a new module or component.</p></div>
+        <div class="section-heading"><div><div class="section-kicker">10 / Rules</div><h2>Non-negotiable visual rules</h2></div><p>Use these constraints when adding a new module or component.</p></div>
         <div class="grid grid-3"><div class="card"><h3>Conversation first</h3><p>Keep the central work surface visually dominant. Supporting bays collapse before the conversation becomes cramped.</p></div><div class="card"><h3>Status lamp rule</h3><p>Color must explain an action, a state or a change. Do not add color as decoration.</p></div><div class="card"><h3>Visible focus</h3><p>Every keyboard target keeps a two-step accent focus ring. Never remove focus without replacing it.</p></div></div>
       </section>
 

@@ -4,6 +4,7 @@
 
 - Simplified the model schemas for read, glob, grep, write, and edit.
 - Implemented read offsets and limits, ignore-aware glob traversal, safe parent creation, multi-edit normalization, and failed bash state projection.
+- Consolidated model-facing tool definitions with audited execution in `agent/crates/tools`; removed the duplicate `agent/crates/core/src/tools` module.
 
 ## Contracts and generated artifacts
 

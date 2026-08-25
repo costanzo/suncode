@@ -23,6 +23,8 @@ mod search;
 mod tools;
 mod write;
 
+pub mod definitions;
+
 #[derive(Debug)]
 struct CoreFailure {
     code: &'static str,

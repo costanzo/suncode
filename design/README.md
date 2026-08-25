@@ -37,4 +37,5 @@ Feature views must consume semantic resources such as `AccentBrush`, `SurfaceRai
 - Is the primary action visually distinct without turning the whole surface into a dashboard?
 - Is keyboard focus visible and is icon-only UI labeled?
 - Does the component preserve the conversation-first hierarchy at compact widths?
+- Does rendered Markdown cover headings, prose, links, lists, quotes, code, tables, and task-list states in both themes?
 - Does the light theme maintain the same semantic meaning and contrast hierarchy as dark?

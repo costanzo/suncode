@@ -7,7 +7,6 @@ mod domain;
 mod logging;
 mod policy;
 mod sdk;
-mod tools;
 
 pub use sdk::{
     AgentSdk, ApprovalOutcome, CancellationOutcome, CheckpointDetails, CheckpointsResult,
