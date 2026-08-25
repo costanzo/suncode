@@ -1,0 +1,1 @@
+//! Operations for scoped `configuration`.

@@ -1,4 +1,9 @@
-use rusqlite::Connection;
+use diesel::connection::SimpleConnection;
+use diesel::prelude::*;
+use diesel::sql_query;
+use diesel::sqlite::SqliteConnection;
+
+pub(crate) mod tables;
 
 pub(super) const SCRIPTS: &[&str] = &[
     include_str!("audit_record.sql"),
@@ -36,62 +41,75 @@ pub(super) const TABLE_NAMES: &[&str] = &[
     "session_turn_todo",
 ];
 
-pub(super) fn apply(connection: &Connection) -> rusqlite::Result<()> {
+pub(super) fn apply(connection: &mut SqliteConnection) -> QueryResult<usize> {
+    let mut count = 0;
     for script in SCRIPTS {
-        connection.execute_batch(script)?;
+        connection.batch_execute(script)?;
+        count += 1;
     }
-    Ok(())
+    Ok(count)
 }
 
-pub(super) fn table_names(connection: &Connection) -> rusqlite::Result<Vec<String>> {
-    let mut statement = connection.prepare(
-        "SELECT name FROM sqlite_schema
-         WHERE type='table' AND name NOT LIKE 'sqlite_%'
-         ORDER BY name",
-    )?;
-    let names = statement
-        .query_map([], |row| row.get(0))?
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(names)
+#[derive(diesel::QueryableByName)]
+struct NameRow {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    name: String,
+}
+
+pub(super) fn table_names(connection: &mut SqliteConnection) -> QueryResult<Vec<String>> {
+    Ok(sql_query("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+        .load::<NameRow>(connection)?
+        .into_iter()
+        .map(|row| row.name)
+        .collect())
+}
+
+#[derive(diesel::QueryableByName)]
+struct SqlRow {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    sql: String,
 }
 
 pub(super) fn session_message_excludes_tool_role(
-    connection: &Connection,
-) -> rusqlite::Result<bool> {
-    let sql = connection.query_row(
-        "SELECT sql FROM sqlite_schema WHERE type='table' AND name='session_message'",
-        [],
-        |row| row.get::<_, String>(0),
-    )?;
+    connection: &mut SqliteConnection,
+) -> QueryResult<bool> {
+    let sql =
+        sql_query("SELECT sql FROM sqlite_schema WHERE type='table' AND name='session_message'")
+            .get_result::<SqlRow>(connection)?
+            .sql;
     Ok(!sql.contains("'tool'"))
 }
 
+#[derive(diesel::QueryableByName)]
+struct TableInfoRow {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    name: String,
+}
+
 pub(super) fn session_message_excludes_usage_column(
-    connection: &Connection,
-) -> rusqlite::Result<bool> {
-    let mut statement = connection.prepare("PRAGMA table_info(session_message)")?;
-    let columns = statement
-        .query_map([], |row| row.get::<_, String>(1))?
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(!columns.iter().any(|column| column == "usage_json"))
+    connection: &mut SqliteConnection,
+) -> QueryResult<bool> {
+    let columns =
+        sql_query("PRAGMA table_info(session_message)").load::<TableInfoRow>(connection)?;
+    Ok(!columns.iter().any(|column| column.name == "usage_json"))
 }
 
 pub(super) fn session_call_includes_provider_ids(
-    connection: &Connection,
-) -> rusqlite::Result<bool> {
-    let mut statement = connection.prepare("PRAGMA table_info(session_call)")?;
-    let columns = statement
-        .query_map([], |row| row.get::<_, String>(1))?
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(columns.iter().any(|column| column == "provider_request_id")
+    connection: &mut SqliteConnection,
+) -> QueryResult<bool> {
+    let columns = sql_query("PRAGMA table_info(session_call)").load::<TableInfoRow>(connection)?;
+    Ok(columns
+        .iter()
+        .any(|column| column.name == "provider_request_id")
         && columns
             .iter()
-            .any(|column| column == "provider_response_id"))
+            .any(|column| column.name == "provider_response_id"))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use diesel::Connection;
 
     #[test]
     fn manifest_contains_one_script_per_table() {
@@ -100,36 +118,37 @@ mod tests {
 
     #[test]
     fn session_message_schema_excludes_tool_role() {
-        let connection = Connection::open_in_memory().unwrap();
-        apply(&connection).unwrap();
-        assert!(session_message_excludes_tool_role(&connection).unwrap());
+        let mut connection = SqliteConnection::establish(":memory:").unwrap();
+        apply(&mut connection).unwrap();
+        assert!(session_message_excludes_tool_role(&mut connection).unwrap());
     }
 
     #[test]
     fn session_message_schema_excludes_usage_column() {
-        let connection = Connection::open_in_memory().unwrap();
-        apply(&connection).unwrap();
-        assert!(session_message_excludes_usage_column(&connection).unwrap());
+        let mut connection = SqliteConnection::establish(":memory:").unwrap();
+        apply(&mut connection).unwrap();
+        assert!(session_message_excludes_usage_column(&mut connection).unwrap());
     }
 
     #[test]
     fn session_call_schema_includes_provider_ids() {
-        let connection = Connection::open_in_memory().unwrap();
-        apply(&connection).unwrap();
-        assert!(session_call_includes_provider_ids(&connection).unwrap());
+        let mut connection = SqliteConnection::establish(":memory:").unwrap();
+        apply(&mut connection).unwrap();
+        assert!(session_call_includes_provider_ids(&mut connection).unwrap());
     }
 
     #[test]
     fn session_schema_includes_pin_at() {
-        let connection = Connection::open_in_memory().unwrap();
-        apply(&connection).unwrap();
-        let columns = connection
-            .prepare("PRAGMA table_info(session)")
-            .unwrap()
-            .query_map([], |row| row.get::<_, String>(1))
-            .unwrap()
-            .collect::<Result<Vec<_>, _>>()
+        let mut connection = SqliteConnection::establish(":memory:").unwrap();
+        apply(&mut connection).unwrap();
+        #[derive(diesel::QueryableByName)]
+        struct Column {
+            #[diesel(sql_type = diesel::sql_types::Text)]
+            name: String,
+        }
+        let columns = diesel::sql_query("PRAGMA table_info(session)")
+            .load::<Column>(&mut connection)
             .unwrap();
-        assert!(columns.iter().any(|column| column == "pin_at"));
+        assert!(columns.iter().any(|column| column.name == "pin_at"));
     }
 }

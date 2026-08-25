@@ -1,4 +1,6 @@
-use rusqlite::Connection;
+use diesel::connection::SimpleConnection;
+use diesel::prelude::*;
+use diesel::sqlite::SqliteConnection;
 
 pub(super) struct Script {
     pub(super) id: &'static str,
@@ -16,47 +18,56 @@ pub(super) const SCRIPTS: &[Script] = &[
     },
 ];
 
-pub(super) fn apply(connection: &Connection) -> rusqlite::Result<()> {
+pub(super) fn apply(connection: &mut SqliteConnection) -> QueryResult<usize> {
+    let mut count = 0;
     for script in SCRIPTS {
         let _ = script.id;
-        connection.execute_batch(script.sql)?;
+        connection.batch_execute(script.sql)?;
+        count += 1;
     }
-    Ok(())
+    Ok(count)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use diesel::sql_query;
+    use diesel::Connection;
+
+    #[derive(diesel::QueryableByName)]
+    struct CountRow {
+        #[diesel(sql_type = diesel::sql_types::BigInt)]
+        value: i64,
+    }
 
     #[test]
     fn built_in_llm_data_is_idempotent() {
-        let connection = Connection::open_in_memory().unwrap();
-        crate::schema::apply(&connection).unwrap();
-        apply(&connection).unwrap();
-        apply(&connection).unwrap();
+        let mut connection = SqliteConnection::establish(":memory:").unwrap();
+        crate::schema::apply(&mut connection).unwrap();
+        apply(&mut connection).unwrap();
+        apply(&mut connection).unwrap();
         assert_eq!(SCRIPTS.len(), 2);
         assert_eq!(
-            connection
-                .query_row("SELECT COUNT(*) FROM llm_model_provider", [], |row| row
-                    .get::<_, i64>(0))
-                .unwrap(),
+            sql_query("SELECT COUNT(*) AS value FROM llm_model_provider")
+                .get_result::<CountRow>(&mut connection)
+                .unwrap()
+                .value,
             6
         );
         assert_eq!(
-            connection
-                .query_row(
-                    "SELECT COUNT(*) FROM llm_model_provider WHERE adapter_type='openai'",
-                    [],
-                    |row| row.get::<_, i64>(0)
-                )
-                .unwrap(),
+            sql_query(
+                "SELECT COUNT(*) AS value FROM llm_model_provider WHERE adapter_type='openai'"
+            )
+            .get_result::<CountRow>(&mut connection)
+            .unwrap()
+            .value,
             6
         );
         assert_eq!(
-            connection
-                .query_row("SELECT COUNT(*) FROM llm_model", [], |row| row
-                    .get::<_, i64>(0))
-                .unwrap(),
+            sql_query("SELECT COUNT(*) AS value FROM llm_model")
+                .get_result::<CountRow>(&mut connection)
+                .unwrap()
+                .value,
             12
         );
     }

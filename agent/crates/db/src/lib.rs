@@ -1,5 +1,6 @@
 mod data;
 mod domain;
+mod operations;
 mod schema;
 mod store;
 
