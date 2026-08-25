@@ -96,6 +96,7 @@ pub struct ModelCapabilities {
     pub vision: bool,
     pub structured_output: bool,
     pub cancellation: bool,
+    pub reasoning_effort: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -121,6 +122,7 @@ pub struct CompletionRequest<'a> {
     pub messages: &'a [Message],
     pub wire_model: &'a str,
     pub tools: &'a [ToolDefinition],
+    pub reasoning_effort: Option<&'a str>,
 }
 
 pub type CompletionFuture<'a> =

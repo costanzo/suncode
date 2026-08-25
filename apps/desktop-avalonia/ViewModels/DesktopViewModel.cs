@@ -20,6 +20,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private ProjectItem? _selectedProject;
     private SessionItem? _selectedSession;
     private ModelItem? _selectedModel;
+    private string? _selectedReasoningEffort;
     private GitFileItem? _selectedGitFile;
     private ProviderTraceItem? _selectedProviderTrace;
     private ProviderTraceItem? _selectedProviderTraceDetails;
@@ -86,6 +87,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public ObservableCollection<ProjectItem> Projects { get; } = [];
     public ObservableCollection<SessionItem> Sessions { get; } = [];
     public ObservableCollection<ModelItem> Models { get; } = [];
+    public IReadOnlyList<string> ReasoningEffortOptions { get; } = ["low", "medium", "high"];
     public ObservableCollection<CredentialItem> Credentials { get; } = [];
     public ObservableCollection<ProjectDependencyItem> ProjectDependencies { get; } = [];
     public ObservableCollection<ExplorerNode> ExplorerRoots { get; } = [];
@@ -135,6 +137,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(SessionTitle));
             OnPropertyChanged(nameof(CanSubmit));
             OnPropertyChanged(nameof(CanCompose));
+            OnPropertyChanged(nameof(CanChooseReasoningEffort));
             OnPropertyChanged(nameof(HasSelectedSession));
             OnPropertyChanged(nameof(ComposerPlaceholder));
         }
@@ -147,11 +150,32 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         {
             if (SetProperty(ref _selectedModel, value))
             {
+                if (value?.SupportsReasoningEffort != true)
+                {
+                    SelectedReasoningEffort = null;
+                }
+                else if (SelectedReasoningEffort is null)
+                {
+                    SelectedReasoningEffort = "medium";
+                }
                 OnPropertyChanged(nameof(CanSubmit));
                 OnPropertyChanged(nameof(CanCompose));
                 OnPropertyChanged(nameof(SelectedModelName));
+                OnPropertyChanged(nameof(CanChooseReasoningEffort));
                 OnPropertyChanged(nameof(ComposerPlaceholder));
             }
+        }
+    }
+
+    public string? SelectedReasoningEffort
+    {
+        get => _selectedReasoningEffort;
+        set
+        {
+            var normalized = SelectedModel?.SupportsReasoningEffort == true && value is "low" or "medium" or "high"
+                ? value
+                : null;
+            if (SetProperty(ref _selectedReasoningEffort, normalized)) OnPropertyChanged(nameof(CanChooseReasoningEffort));
         }
     }
 
@@ -230,12 +254,16 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         get => _connectionState;
         private set
         {
-            if (SetProperty(ref _connectionState, value)) OnPropertyChanged(nameof(CanCompose));
+            if (SetProperty(ref _connectionState, value))
+            {
+                OnPropertyChanged(nameof(CanCompose));
+                OnPropertyChanged(nameof(CanChooseReasoningEffort));
+            }
         }
     }
     public string StatusText { get => _statusText; private set => SetProperty(ref _statusText, value); }
     public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) OnPropertyChanged(nameof(CanSubmit)); } }
-    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); } } }
+    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); } } }
     public string ThemeMode { get => _themeMode; private set => SetProperty(ref _themeMode, value); }
     public string LogLevel { get => _logLevel; private set => SetProperty(ref _logLevel, value); }
     public string LogDirectory { get => _logDirectory; private set => SetProperty(ref _logDirectory, value); }
@@ -293,6 +321,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(HasSessionLoadError));
             OnPropertyChanged(nameof(CanSubmit));
             OnPropertyChanged(nameof(CanCompose));
+            OnPropertyChanged(nameof(CanChooseReasoningEffort));
         }
     }
     public string GitBranch { get => _gitBranch; private set { if (SetProperty(ref _gitBranch, value)) { OnPropertyChanged(nameof(GitSummary)); OnPropertyChanged(nameof(GitFooterBranchText)); } } }
@@ -354,6 +383,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public bool IsTurnActive => !string.IsNullOrWhiteSpace(ActiveTurnId);
     public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && SelectedModel?.Configured == true && !HasSessionLoadError;
     public bool CanSubmit => SelectedSession is not null && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsTurnActive && !IsSessionLoading && !HasSessionLoadError;
+    public bool CanChooseReasoningEffort => CanCompose && SelectedModel?.SupportsReasoningEffort == true;
     public string ProjectTitle => SelectedProject?.DisplayName ?? "SunCode";
     public string SessionTitle => SelectedSession?.DisplayTitle ?? "No session selected";
     public string SessionTokenText => $"Session {CompactNumber(SessionTotalTokens)} tokens";
@@ -794,7 +824,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         ComposerText = string.Empty;
         await RunAsync(async () =>
         {
-            var result = await _sdk!.SubmitTurnAsync(SelectedSession.SessionId, text, SelectedModel.Id);
+            var result = await _sdk!.SubmitTurnAsync(SelectedSession.SessionId, text, SelectedModel.Id, SelectedReasoningEffort);
             StatusText = result.String("status") switch
             {
                 "queued" => "Message queued for this turn",
@@ -1390,7 +1420,11 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         Models.Clear();
         foreach (var item in result.Array("models").OfType<JsonObject>())
         {
-            Models.Add(new ModelItem(item.String("id"), item.String("provider"), item.String("availability")));
+            Models.Add(new ModelItem(
+                item.String("id"),
+                item.String("provider"),
+                item.String("availability"),
+                item.Object("capabilities").Bool("reasoning_effort")));
         }
         SelectedModel = Models.FirstOrDefault(item => item.Id == selectedId) ?? Models.FirstOrDefault();
     }

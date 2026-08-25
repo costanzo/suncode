@@ -12,7 +12,7 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 The agent handle owns the Tokio runtime and all agent services. Host wrappers may share one handle inside a process. Subscriptions must be closed before the final agent handle is released. Closing a subscription stops callback delivery before returning.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 3. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 4. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
 ## Methods
 
@@ -50,7 +50,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `list_checkpoints` | List turn-level checkpoint manifests for a session |
 | `checkpoint_manifest` | Inspect one manifest and its items |
 | `restore_checkpoint` | Restore a manifest with ownership and post-image conflict checks |
-| `submit_turn` | Idempotently submit input to a session and selected model |
+| `submit_turn` | Idempotently submit input to a session and selected model, with an optional `reasoning_effort` (`low`, `medium`, or `high`) accepted only for models advertising that capability |
 | `cancel_turn` | Cooperatively cancel a running turn |
 | `get_approval` | Read one approval state |
 | `resolve_approval` | Resolve one pending approval with `allow_once`, `allow_session`, or `deny` |
@@ -61,6 +61,8 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 Rust-generated project, session, turn, approval, checkpoint, event, and message identifiers remain authoritative. Hosts do not manufacture IDs except idempotency keys.
 
 `tool_call_limit` is a project-only integer setting from 1 through 256. A project without that row uses 64. Turn admission snapshots the resolved value, so changing Settings affects later turns but not an active or approval-suspended turn. If one provider response would cross the limit, all calls in that response are retained as failed with `tool_budget_exceeded`, and none enters policy or execution.
+
+Models advertise `capabilities.reasoning_effort`. Avalonia presents `low`, `medium`, and `high` beside the model selector; unsupported models disable that selector and omit the parameter. For OpenAI-compatible providers, a selected value is sent as the `reasoning_effort` request field and is retained in the in-memory turn continuation across approval or question suspension.
 
 Project dependency DTOs contain `dependencyId`, `projectId`, `displayName`, and `createdAt`, but never the canonical absolute root. `list_project_directory` selects the main project when `dependencyId` is null and a registered dependency otherwise. It returns at most 500 directories/files for one level, directories first, with root-relative slash-separated paths and a `truncated` flag. Symlinks and non-file entries are omitted. Adding a dependency rejects the project root, ancestors or descendants of the project, and roots that overlap another dependency.
 

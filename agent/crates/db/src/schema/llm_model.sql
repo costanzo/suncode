@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS llm_model (
     supports_vision INTEGER NOT NULL DEFAULT 0 CHECK(supports_vision IN (0, 1)),
     supports_structured_output INTEGER NOT NULL DEFAULT 0 CHECK(supports_structured_output IN (0, 1)),
     supports_cancellation INTEGER NOT NULL DEFAULT 1 CHECK(supports_cancellation IN (0, 1)),
+    supports_reasoning_effort INTEGER NOT NULL DEFAULT 0 CHECK(supports_reasoning_effort IN (0, 1)),
     enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),
     sort_order INTEGER NOT NULL DEFAULT 0 CHECK(sort_order >= 0),
     created_at TEXT NOT NULL,

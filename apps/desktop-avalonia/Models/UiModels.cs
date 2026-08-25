@@ -82,7 +82,7 @@ public sealed record SessionItem(string SessionId, string Title, string LastActi
     }
 }
 
-public sealed record ModelItem(string Id, string Provider, string Availability)
+public sealed record ModelItem(string Id, string Provider, string Availability, bool SupportsReasoningEffort)
 {
     public bool Configured => Availability == "configured";
     public string Display => Configured ? Id : $"{Id} (needs key)";

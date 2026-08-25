@@ -56,7 +56,7 @@ impl OpenAiCompatibleProvider {
                 retryable: false,
                 provider_request_id: None,
             })?;
-        let body = json!({
+        let mut body = json!({
             "model": request.wire_model,
             "messages": request.messages.iter().map(wire_message).collect::<Vec<_>>(),
             "tools": request.tools.iter().map(|tool| json!({
@@ -70,6 +70,9 @@ impl OpenAiCompatibleProvider {
             "stream": true,
             "stream_options": {"include_usage": true}
         });
+        if let Some(reasoning_effort) = request.reasoning_effort {
+            body["reasoning_effort"] = json!(reasoning_effort);
+        }
         let response = tokio::select! {
             _ = cancellation.cancelled() => return Err(cancelled()),
             value = self.client.post(format!("{}/chat/completions", self.endpoint)).bearer_auth(key).json(&body).send() => value.map_err(|error| ProviderError {
@@ -211,6 +214,7 @@ mod tests {
         );
         let body: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(body["model"], "company-model-v1");
+        assert_eq!(body["reasoning_effort"], "high");
         assert_eq!(body["tools"][0]["function"]["name"], "read");
         let response = concat!(
             "data: {\"id\":\"chatcmpl-response-1\",\"choices\":[{\"delta\":{\"content\":\"hello\"}}]}\n\n",
@@ -257,6 +261,7 @@ mod tests {
                     messages: &messages,
                     wire_model: "company-model-v1",
                     tools: &tools,
+                    reasoning_effort: Some("high"),
                 },
                 &CancellationToken::new(),
                 sender,

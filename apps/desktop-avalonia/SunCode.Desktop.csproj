@@ -26,6 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
     <AvaloniaResource Include="Assets/**" />
     <Content Include="Assets/logo/suncode-logo-1024.png" CopyToOutputDirectory="PreserveNewest" Link="suncode-logo-1024.png" />
   </ItemGroup>

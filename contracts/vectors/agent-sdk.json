@@ -1,7 +1,7 @@
 [
   {
     "id": "start-turn",
-    "call": {"method":"submit_turn","session_id":"session-1","idempotency_key":"turn-1","input":"Inspect package.json","model":"deepseek-v4-flash"},
+    "call": {"method":"submit_turn","session_id":"session-1","idempotency_key":"turn-1","input":"Inspect package.json","model":"deepseek-v4-flash","reasoning_effort":null},
     "expected_events":["turn.state","assistant.delta","turn.completed"]
   },
   {

@@ -7,7 +7,7 @@ namespace SunCode.Desktop.Agent;
 
 public sealed class AgentSdk : IDisposable
 {
-    private const uint AbiVersion = 3;
+    private const uint AbiVersion = 4;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -135,9 +135,9 @@ public sealed class AgentSdk : IDisposable
     public Task<JsonObject> RestoreCheckpointAsync(string manifestId, string sessionId) => WithUtf8Async(
         [manifestId, sessionId], values => NativeMethods.suncode_agent_sdk_restore_checkpoint(_handle, values[0], values[1]));
 
-    public Task<JsonObject> SubmitTurnAsync(string sessionId, string input, string model) => WithUtf8Async(
-        [sessionId, input, Guid.NewGuid().ToString("N"), model],
-        values => NativeMethods.suncode_agent_sdk_submit_turn(_handle, values[0], values[1], values[2], values[3]));
+    public Task<JsonObject> SubmitTurnAsync(string sessionId, string input, string model, string? reasoningEffort) => WithNullableUtf8Async(
+        [sessionId, input, Guid.NewGuid().ToString("N"), model, reasoningEffort],
+        values => NativeMethods.suncode_agent_sdk_submit_turn(_handle, values[0], values[1], values[2], values[3], values[4]));
 
     public Task<JsonObject> CancelTurnAsync(string sessionId, string turnId) => WithUtf8Async(
         [sessionId, turnId], values => NativeMethods.suncode_agent_sdk_cancel_turn(_handle, values[0], values[1]));

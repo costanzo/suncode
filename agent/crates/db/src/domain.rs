@@ -28,6 +28,7 @@ pub struct LlmModelRecord {
     pub supports_vision: bool,
     pub supports_structured_output: bool,
     pub supports_cancellation: bool,
+    pub supports_reasoning_effort: bool,
     pub enabled: bool,
     pub sort_order: i64,
     pub created_at: String,
@@ -58,6 +59,7 @@ pub struct LlmModelInput<'a> {
     pub supports_vision: bool,
     pub supports_structured_output: bool,
     pub supports_cancellation: bool,
+    pub supports_reasoning_effort: bool,
     pub enabled: bool,
     pub sort_order: i64,
 }

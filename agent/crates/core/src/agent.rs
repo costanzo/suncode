@@ -108,6 +108,8 @@ struct Continuation {
     turn_id: String,
     submission_key: String,
     model: String,
+    #[serde(default)]
+    reasoning_effort: Option<String>,
     messages: Vec<Message>,
     iterations: u32,
     tool_calls: u32,
@@ -184,7 +186,14 @@ impl Agent {
         key: &str,
         input: &str,
         model: Option<&str>,
+        reasoning_effort: Option<&str>,
     ) -> Result<TurnResponse, AgentError> {
+        if reasoning_effort.is_some_and(|value| !matches!(value, "low" | "medium" | "high")) {
+            return Err(AgentError::new(
+                "invalid_arguments",
+                "reasoning_effort must be low, medium, or high",
+            ));
+        }
         let session_lock = self.session_lock(session_id).await;
         let model = match model {
             Some(model) => model.to_string(),
@@ -207,6 +216,12 @@ impl Agent {
                 "model is not advertised",
             ));
         };
+        if reasoning_effort.is_some() && !self.providers.supports_reasoning_effort(&model) {
+            return Err(AgentError::new(
+                "invalid_arguments",
+                "selected model does not support reasoning effort",
+            ));
+        }
         let _guard = match session_lock.try_lock() {
             Ok(guard) => guard,
             Err(_) => {
@@ -270,6 +285,7 @@ impl Agent {
             turn_id: admission.turn_id.clone(),
             submission_key: key.into(),
             model,
+            reasoning_effort: reasoning_effort.map(str::to_owned),
             messages: self.store.context_messages(session_id)?,
             iterations: 0,
             tool_calls: 0,
@@ -748,6 +764,7 @@ impl Agent {
                         messages: &llm_messages,
                         wire_model: &provider.wire_model,
                         tools: &tool_definitions,
+                        reasoning_effort: context.reasoning_effort.as_deref(),
                     },
                     &token,
                     delta_sender,
@@ -2824,6 +2841,7 @@ mod tests {
                     vision: false,
                     structured_output: false,
                     cancellation: true,
+                    reasoning_effort: false,
                 },
                 limits: ModelLimits {
                     max_input_tokens: Some(64_000),
@@ -2848,7 +2866,7 @@ mod tests {
         let (agent, store, root, server, session_id) = fixture().await;
         fs::write(root.join("AGENTS.md"), "Always run focused tests.").unwrap();
         let response = agent
-            .submit(&session_id, "read-1", "read the file", None)
+            .submit(&session_id, "read-1", "read the file", None, None)
             .await
             .unwrap();
         assert!(matches!(
@@ -2895,7 +2913,7 @@ mod tests {
         fs::write(root.join("src/nested/file.rs"), "pub fn nested() {}\n").unwrap();
 
         agent
-            .submit(&session_id, "nested-read-1", "read nested", None)
+            .submit(&session_id, "nested-read-1", "read nested", None, None)
             .await
             .unwrap();
 
@@ -2921,6 +2939,7 @@ mod tests {
                 "invalid-arguments-1",
                 "invalid arguments",
                 None,
+                None,
             )
             .await
             .unwrap();
@@ -2944,10 +2963,50 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn reasoning_effort_rejects_invalid_values_and_unsupported_models() {
+        let (agent, _store, _root, server, session_id) = fixture().await;
+
+        let invalid = agent
+            .submit(
+                &session_id,
+                "invalid-reasoning-effort-1",
+                "reasoning effort",
+                None,
+                Some("xhigh"),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(invalid.code, "invalid_arguments");
+        assert!(invalid.message.contains("low, medium, or high"));
+
+        let unsupported = agent
+            .submit(
+                &session_id,
+                "invalid-reasoning-effort-2",
+                "reasoning effort",
+                None,
+                Some("high"),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(unsupported.code, "invalid_arguments");
+        assert!(unsupported
+            .message
+            .contains("does not support reasoning effort"));
+        server.abort();
+    }
+
+    #[tokio::test]
     async fn dependency_read_is_routed_and_write_is_rejected_before_approval() {
         let (agent, store, root, server, session_id) = fixture().await;
         let response = agent
-            .submit(&session_id, "dependency-read-1", "dependency read", None)
+            .submit(
+                &session_id,
+                "dependency-read-1",
+                "dependency read",
+                None,
+                None,
+            )
             .await
             .unwrap();
         assert!(matches!(
@@ -2965,7 +3024,13 @@ mod tests {
         assert!(!result.contains(root.to_str().unwrap()));
 
         let error = agent
-            .submit(&session_id, "dependency-write-1", "dependency write", None)
+            .submit(
+                &session_id,
+                "dependency-write-1",
+                "dependency write",
+                None,
+                None,
+            )
             .await
             .unwrap_err();
         assert_eq!(error.code, "scope_denied");
@@ -2984,14 +3049,20 @@ mod tests {
             let session_id = session_id.clone();
             tokio::spawn(async move {
                 agent
-                    .submit(&session_id, "slow-1", "slow initial request", None)
+                    .submit(&session_id, "slow-1", "slow initial request", None, None)
                     .await
             })
         };
         tokio::time::sleep(Duration::from_millis(30)).await;
 
         let queued = agent
-            .submit(&session_id, "queued-1", "follow up while running", None)
+            .submit(
+                &session_id,
+                "queued-1",
+                "follow up while running",
+                None,
+                None,
+            )
             .await
             .unwrap();
         assert!(matches!(queued, TurnResponse::Queued { position: 1, .. }));
@@ -3013,7 +3084,7 @@ mod tests {
     async fn read_only_tool_batch_is_preflighted_before_execution() {
         let (agent, store, _root, server, session_id) = fixture().await;
         let response = agent
-            .submit(&session_id, "read-two-1", "read two files", None)
+            .submit(&session_id, "read-two-1", "read two files", None, None)
             .await
             .unwrap();
         assert!(matches!(
@@ -3051,7 +3122,7 @@ mod tests {
             .unwrap();
 
         let error = agent
-            .submit(&session_id, "over-budget-1", "read two files", None)
+            .submit(&session_id, "over-budget-1", "read two files", None, None)
             .await
             .unwrap_err();
         assert_eq!(error.code, "tool_budget_exceeded");
@@ -3079,7 +3150,7 @@ mod tests {
     async fn write_waits_for_approval_and_captures_checkpoint() {
         let (agent, store, root, server, session_id) = fixture().await;
         let error = agent
-            .submit(&session_id, "write-1", "write the file", None)
+            .submit(&session_id, "write-1", "write the file", None, None)
             .await
             .unwrap_err();
         assert_eq!(error.code, "approval_required");
@@ -3123,7 +3194,7 @@ mod tests {
     async fn allow_session_skips_later_approvals_for_the_same_session() {
         let (agent, store, root, server, session_id) = fixture().await;
         let error = agent
-            .submit(&session_id, "write-session-1", "write the file", None)
+            .submit(&session_id, "write-session-1", "write the file", None, None)
             .await
             .unwrap_err();
         assert_eq!(error.code, "approval_required");
@@ -3153,7 +3224,7 @@ mod tests {
         assert!(store.session_full_control(&session_id).unwrap());
 
         let response = agent
-            .submit(&session_id, "write-session-2", "write again", None)
+            .submit(&session_id, "write-session-2", "write again", None, None)
             .await
             .unwrap();
         assert!(matches!(

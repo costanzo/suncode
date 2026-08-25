@@ -93,6 +93,13 @@ impl ModelProviderRegistry {
             .map(|model| model.limits)
     }
 
+    pub fn supports_reasoning_effort(&self, model_id: &str) -> bool {
+        self.models
+            .iter()
+            .find(|model| model.id == model_id)
+            .is_some_and(|model| model.capabilities.reasoning_effort)
+    }
+
     pub fn route(&self, model_id: &str) -> Option<ModelRoute> {
         let model = self.models.iter().find(|model| model.id == model_id)?;
         Some(ModelRoute {
@@ -149,6 +156,7 @@ mod tests {
                 vision: false,
                 structured_output: false,
                 cancellation: true,
+                reasoning_effort: false,
             },
             limits: ModelLimits {
                 max_input_tokens: Some(32_000),

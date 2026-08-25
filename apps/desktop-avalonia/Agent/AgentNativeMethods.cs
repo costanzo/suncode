@@ -40,7 +40,7 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_provider_exchange(IntPtr handle, IntPtr sessionId, IntPtr exchangeId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_checkpoints(IntPtr handle, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_restore_checkpoint(IntPtr handle, IntPtr manifestId, IntPtr sessionId);
-    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_submit_turn(IntPtr handle, IntPtr sessionId, IntPtr input, IntPtr idempotencyKey, IntPtr model);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_submit_turn(IntPtr handle, IntPtr sessionId, IntPtr input, IntPtr idempotencyKey, IntPtr model, IntPtr reasoningEffort);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_cancel_turn(IntPtr handle, IntPtr sessionId, IntPtr turnId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_resolve_approval(IntPtr handle, IntPtr approvalId, IntPtr decision);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_reply_question(IntPtr handle, IntPtr requestId, IntPtr answersJson);

@@ -29,7 +29,7 @@ use suncode_llm::{
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 3;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 4;
 
 #[derive(Clone)]
 struct AgentState {
@@ -348,6 +348,7 @@ fn registry_from_store(
                     vision: model.supports_vision,
                     structured_output: model.supports_structured_output,
                     cancellation: model.supports_cancellation,
+                    reasoning_effort: model.supports_reasoning_effort,
                 },
                 limits: ModelLimits {
                     max_input_tokens: Some(model.context_tokens),
@@ -1163,6 +1164,7 @@ impl AgentSdk {
         input: &str,
         idempotency_key: &str,
         model: Option<&str>,
+        reasoning_effort: Option<&str>,
     ) -> SdkResult<TurnResponse> {
         if input.is_empty() {
             return Err(SdkError::invalid("input is required"));
@@ -1175,6 +1177,7 @@ impl AgentSdk {
             idempotency_key,
             input,
             model,
+            reasoning_effort,
         )) {
             Ok(response) => Ok(response),
             Err(error) if error.code == "approval_required" => Ok(TurnResponse::AwaitingApproval {
@@ -1810,13 +1813,21 @@ pub unsafe extern "C" fn suncode_agent_sdk_submit_turn(
     input: *const c_char,
     idempotency_key: *const c_char,
     model: *const c_char,
+    reasoning_effort: *const c_char,
 ) -> *mut c_char {
     ffi_call(handle, |sdk| {
         let session_id = c_string(session_id, "session_id")?;
         let input = c_string(input, "input")?;
         let idempotency_key = c_string(idempotency_key, "idempotency_key")?;
         let model = optional_c_string(model, "model")?;
-        sdk.submit_turn(&session_id, &input, &idempotency_key, model.as_deref())
+        let reasoning_effort = optional_c_string(reasoning_effort, "reasoning_effort")?;
+        sdk.submit_turn(
+            &session_id,
+            &input,
+            &idempotency_key,
+            model.as_deref(),
+            reasoning_effort.as_deref(),
+        )
     })
 }
 
@@ -2263,7 +2274,7 @@ mod tests {
 
     #[test]
     fn ffi_exposes_a_versioned_method_oriented_boundary() {
-        assert_eq!(suncode_agent_sdk_abi_version(), 3);
+        assert_eq!(suncode_agent_sdk_abi_version(), 4);
         let directory = tempfile::tempdir().unwrap();
         let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
         let project_root = directory.path().join("project");

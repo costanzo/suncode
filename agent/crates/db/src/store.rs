@@ -1105,10 +1105,10 @@ impl Store {
             .lock()
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         let sql = if enabled_only {
-            "SELECT model_id,provider_id,display_name,request_model,context_tokens,auto_compact_tokens,max_output_tokens,supports_streaming,supports_tool_use,supports_vision,supports_structured_output,supports_cancellation,enabled,sort_order,created_at,updated_at
+            "SELECT model_id,provider_id,display_name,request_model,context_tokens,auto_compact_tokens,max_output_tokens,supports_streaming,supports_tool_use,supports_vision,supports_structured_output,supports_cancellation,supports_reasoning_effort,enabled,sort_order,created_at,updated_at
              FROM llm_model WHERE enabled=1 ORDER BY sort_order,model_id"
         } else {
-            "SELECT model_id,provider_id,display_name,request_model,context_tokens,auto_compact_tokens,max_output_tokens,supports_streaming,supports_tool_use,supports_vision,supports_structured_output,supports_cancellation,enabled,sort_order,created_at,updated_at
+            "SELECT model_id,provider_id,display_name,request_model,context_tokens,auto_compact_tokens,max_output_tokens,supports_streaming,supports_tool_use,supports_vision,supports_structured_output,supports_cancellation,supports_reasoning_effort,enabled,sort_order,created_at,updated_at
              FROM llm_model ORDER BY sort_order,model_id"
         };
         let mut statement = connection.prepare(sql)?;
@@ -1152,9 +1152,9 @@ impl Store {
             .map_err(|_| PersistenceError::Invalid("database lock poisoned".into()))?;
         let timestamp = now();
         connection.execute(
-            "INSERT INTO llm_model(model_id,provider_id,display_name,request_model,context_tokens,auto_compact_tokens,max_output_tokens,supports_streaming,supports_tool_use,supports_vision,supports_structured_output,supports_cancellation,enabled,sort_order,created_at,updated_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-             ON CONFLICT(model_id) DO UPDATE SET provider_id=excluded.provider_id,display_name=excluded.display_name,request_model=excluded.request_model,context_tokens=excluded.context_tokens,auto_compact_tokens=excluded.auto_compact_tokens,max_output_tokens=excluded.max_output_tokens,supports_streaming=excluded.supports_streaming,supports_tool_use=excluded.supports_tool_use,supports_vision=excluded.supports_vision,supports_structured_output=excluded.supports_structured_output,supports_cancellation=excluded.supports_cancellation,enabled=excluded.enabled,sort_order=excluded.sort_order,updated_at=excluded.updated_at",
+            "INSERT INTO llm_model(model_id,provider_id,display_name,request_model,context_tokens,auto_compact_tokens,max_output_tokens,supports_streaming,supports_tool_use,supports_vision,supports_structured_output,supports_cancellation,supports_reasoning_effort,enabled,sort_order,created_at,updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             ON CONFLICT(model_id) DO UPDATE SET provider_id=excluded.provider_id,display_name=excluded.display_name,request_model=excluded.request_model,context_tokens=excluded.context_tokens,auto_compact_tokens=excluded.auto_compact_tokens,max_output_tokens=excluded.max_output_tokens,supports_streaming=excluded.supports_streaming,supports_tool_use=excluded.supports_tool_use,supports_vision=excluded.supports_vision,supports_structured_output=excluded.supports_structured_output,supports_cancellation=excluded.supports_cancellation,supports_reasoning_effort=excluded.supports_reasoning_effort,enabled=excluded.enabled,sort_order=excluded.sort_order,updated_at=excluded.updated_at",
             params![
                 model_id,
                 provider_id,
@@ -1168,6 +1168,7 @@ impl Store {
                 input.supports_vision,
                 input.supports_structured_output,
                 input.supports_cancellation,
+                input.supports_reasoning_effort,
                 input.enabled,
                 input.sort_order,
                 timestamp,
@@ -2239,10 +2240,11 @@ fn llm_model_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<LlmModelRecor
         supports_vision: row.get(9)?,
         supports_structured_output: row.get(10)?,
         supports_cancellation: row.get(11)?,
-        enabled: row.get(12)?,
-        sort_order: row.get(13)?,
-        created_at: row.get(14)?,
-        updated_at: row.get(15)?,
+        supports_reasoning_effort: row.get(12)?,
+        enabled: row.get(13)?,
+        sort_order: row.get(14)?,
+        created_at: row.get(15)?,
+        updated_at: row.get(16)?,
     })
 }
 
@@ -2704,6 +2706,7 @@ mod tests {
                 supports_vision: false,
                 supports_structured_output: true,
                 supports_cancellation: true,
+                supports_reasoning_effort: true,
                 enabled: true,
                 sort_order: 1,
             })
@@ -2731,6 +2734,7 @@ mod tests {
         assert_eq!(model.context_tokens, 32_768);
         assert_eq!(model.auto_compact_tokens, 24_576);
         assert!(model.supports_structured_output);
+        assert!(model.supports_reasoning_effort);
     }
 
     #[test]
@@ -2760,6 +2764,7 @@ mod tests {
                 supports_vision: false,
                 supports_structured_output: false,
                 supports_cancellation: true,
+                supports_reasoning_effort: false,
                 enabled: false,
                 sort_order: 999,
             })
@@ -2814,6 +2819,7 @@ mod tests {
             supports_vision: false,
             supports_structured_output: false,
             supports_cancellation: true,
+            supports_reasoning_effort: false,
             enabled: true,
             sort_order: 0,
         };

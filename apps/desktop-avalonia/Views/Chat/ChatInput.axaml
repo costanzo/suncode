@@ -66,6 +66,24 @@
           </ComboBox.ItemTemplate>
         </ComboBox>
 
+        <ComboBox Width="76"
+                  Height="24"
+                  MinHeight="24"
+                  Padding="6,1"
+                  Classes="mono"
+                  ItemsSource="{Binding ReasoningEffortOptions}"
+                  SelectedItem="{Binding SelectedReasoningEffort}"
+                  IsEnabled="{Binding CanChooseReasoningEffort}"
+                  ToolTip.Tip="Reasoning effort">
+          <ComboBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Classes="mono"
+                         Text="{Binding}"
+                         FontSize="11" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
         <Button Width="24"
                 Height="24"
                 MinHeight="24"
