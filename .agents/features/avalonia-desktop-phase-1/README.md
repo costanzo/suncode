@@ -2,7 +2,7 @@
 
 **Status:** Implemented and focused-tested
 
-SunCode's Phase 1 production client is a .NET 10 Avalonia desktop application under `apps/desktop-avalonia/`. CLI, TUI, Web, mobile, and IDE clients remain deferred.
+SunCode's Phase 1 production client is a .NET 10 Avalonia desktop application under `apps/desktop-avalonia/`. Its focused .NET tests are colocated under `apps/desktop-avalonia/tests/`. CLI, TUI, Web, mobile, and IDE clients remain deferred.
 
 ## Boundary
 
@@ -34,3 +34,5 @@ The Rust crate emits a `cdylib`; the desktop build invokes Cargo and copies the 
 ## Verification
 
 The source build verifies the Rust `cdylib` integration and compiled Avalonia bindings. Focused startup checks exercise native runtime loading, project listing/selection, diagnostics, and Git projections. Release signing and installer production remain separate release-engineering work.
+
+Run the focused desktop test suite with `dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj`.

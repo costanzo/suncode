@@ -16,6 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../desktop-avalonia/SunCode.Desktop.csproj" />
+    <ProjectReference Include="../SunCode.Desktop.csproj" />
   </ItemGroup>
 </Project>

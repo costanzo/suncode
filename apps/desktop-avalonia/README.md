@@ -16,6 +16,12 @@ dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj
 dotnet run --project apps/desktop-avalonia/SunCode.Desktop.csproj
 ```
 
+Run the Avalonia test project from its colocated `tests/` directory:
+
+```bash
+dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj
+```
+
 Create the macOS app bundle with:
 
 ```sh
