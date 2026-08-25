@@ -1,5 +1,5 @@
 use super::arguments::{GlobArguments, GrepArguments};
-use super::{glob_matches, require_project, CoreFailure};
+use super::{glob_matches, require_project, BusinessError};
 use globset::GlobBuilder;
 use grep_matcher::Matcher;
 use grep_regex::{RegexMatcher, RegexMatcherBuilder};
@@ -13,18 +13,17 @@ use std::path::{Path, PathBuf};
 pub(super) fn glob(
     project_root: Option<&Path>,
     args: &GlobArguments,
-) -> Result<Value, CoreFailure> {
+) -> Result<Value, BusinessError> {
     let root = require_project(project_root)?;
     let pattern = args.pattern.as_str();
     if pattern.is_empty()
         || Path::new(pattern).is_absolute()
         || pattern.split('/').any(|part| part == "..")
     {
-        return Err(CoreFailure {
-            code: "scope_denied",
-            message: "pattern must remain inside the project",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("scope_denied", "pattern must remain inside the project")
+                .with_retryable(false),
+        );
     }
     let max_results = args.max_results.unwrap_or(100).clamp(1, 1000);
     let mut paths = Vec::new();
@@ -113,14 +112,13 @@ impl Sink for MatchSink<'_> {
     }
 }
 
-fn project_files(root: &Path, pattern: &str) -> Result<Vec<(String, PathBuf)>, CoreFailure> {
+fn project_files(root: &Path, pattern: &str) -> Result<Vec<(String, PathBuf)>, BusinessError> {
     let glob = GlobBuilder::new(pattern)
         .literal_separator(true)
         .build()
-        .map_err(|_| CoreFailure {
-            code: "invalid_arguments",
-            message: "include pattern is invalid",
-            retryable: false,
+        .map_err(|_| {
+            BusinessError::new("invalid_arguments", "include pattern is invalid")
+                .with_retryable(false)
         })?
         .compile_matcher();
     let mut files = Vec::new();
@@ -154,35 +152,33 @@ fn project_files(root: &Path, pattern: &str) -> Result<Vec<(String, PathBuf)>, C
 pub(super) fn find(
     project_root: Option<&Path>,
     args: &GrepArguments,
-) -> Result<Value, CoreFailure> {
+) -> Result<Value, BusinessError> {
     let root = require_project(project_root)?;
     let query = args.query.as_str();
     if query.is_empty() || query.len() > 256 {
-        return Err(CoreFailure {
-            code: "invalid_arguments",
-            message: "query must contain 1-256 bytes",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("invalid_arguments", "query must contain 1-256 bytes")
+                .with_retryable(false),
+        );
     }
     let pattern = args.pattern.as_str();
     if pattern.is_empty()
         || Path::new(pattern).is_absolute()
         || pattern.split('/').any(|part| part == "..")
     {
-        return Err(CoreFailure {
-            code: "scope_denied",
-            message: "pattern must remain inside the project",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("scope_denied", "pattern must remain inside the project")
+                .with_retryable(false),
+        );
     }
     let max_results = args.max_results.unwrap_or(100).clamp(1, 500);
-    let matcher = RegexMatcherBuilder::new()
-        .build(query)
-        .map_err(|_| CoreFailure {
-            code: "invalid_arguments",
-            message: "query is not a valid regular expression",
-            retryable: false,
-        })?;
+    let matcher = RegexMatcherBuilder::new().build(query).map_err(|_| {
+        BusinessError::new(
+            "invalid_arguments",
+            "query is not a valid regular expression",
+        )
+        .with_retryable(false)
+    })?;
     let files = project_files(root, pattern)?;
     let mut matches = Vec::new();
     let mut truncated = false;

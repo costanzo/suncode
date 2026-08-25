@@ -14,8 +14,9 @@ use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
-use suncode_data::{ApprovalInput, PersistenceError, Store};
-use suncode_llm::{CompletionRequest, ModelProviderRegistry, ModelRoute, ProviderError};
+use suncode_common::BusinessError;
+use suncode_data::{ApprovalInput, Store};
+use suncode_llm::{CompletionRequest, ModelProviderRegistry, ModelRoute};
 use tokio::sync::{broadcast, mpsc, Mutex as AsyncMutex};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
@@ -34,41 +35,6 @@ struct TodoEntry {
 
 fn default_tool_call_limit() -> u32 {
     DEFAULT_TOOL_CALL_LIMIT
-}
-
-#[derive(Debug)]
-pub struct AgentError {
-    pub code: String,
-    pub message: String,
-    pub details: Value,
-}
-
-impl AgentError {
-    fn new(code: &str, message: impl Into<String>) -> Self {
-        Self {
-            code: code.into(),
-            message: message.into(),
-            details: json!({}),
-        }
-    }
-    fn details(mut self, details: Value) -> Self {
-        self.details = details;
-        self
-    }
-}
-
-impl From<PersistenceError> for AgentError {
-    fn from(error: PersistenceError) -> Self {
-        Self::new("agent_unavailable", error.to_string())
-    }
-}
-impl From<ProviderError> for AgentError {
-    fn from(error: ProviderError) -> Self {
-        Self::new(&error.code, error.message).details(json!({
-            "retryable": error.retryable,
-            "provider_request_id": error.provider_request_id,
-        }))
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -187,9 +153,9 @@ impl Agent {
         input: &str,
         model: Option<&str>,
         reasoning_effort: Option<&str>,
-    ) -> Result<TurnResponse, AgentError> {
+    ) -> Result<TurnResponse, BusinessError> {
         if reasoning_effort.is_some_and(|value| !matches!(value, "low" | "medium" | "high")) {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "invalid_arguments",
                 "reasoning_effort must be low, medium, or high",
             ));
@@ -201,9 +167,9 @@ impl Agent {
                 let session = self
                     .store
                     .session_by_id(session_id)?
-                    .ok_or_else(|| AgentError::new("not_found", "session not found"))?;
+                    .ok_or_else(|| BusinessError::new("not_found", "session not found"))?;
                 let project_id = session.project_id.ok_or_else(|| {
-                    AgentError::new("conflict", "session is not bound to a project")
+                    BusinessError::new("conflict", "session is not bound to a project")
                 })?;
                 self.store
                     .project_default_model(&project_id)?
@@ -211,13 +177,13 @@ impl Agent {
             }
         };
         let Some(provider) = self.providers.route(&model) else {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "model_unavailable",
                 "model is not advertised",
             ));
         };
         if reasoning_effort.is_some() && !self.providers.supports_reasoning_effort(&model) {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "invalid_arguments",
                 "selected model does not support reasoning effort",
             ));
@@ -228,7 +194,7 @@ impl Agent {
                 let has_active_turn = self
                     .active_turns
                     .lock()
-                    .map_err(|_| AgentError::new("agent_unavailable", "turn state unavailable"))?
+                    .map_err(|_| BusinessError::new("agent_unavailable", "turn state unavailable"))?
                     .contains_key(session_id);
                 if has_active_turn {
                     return self.queue_message(session_id, key, input);
@@ -239,15 +205,15 @@ impl Agent {
         let session = self
             .store
             .session_by_id(session_id)?
-            .ok_or_else(|| AgentError::new("not_found", "session not found"))?;
+            .ok_or_else(|| BusinessError::new("not_found", "session not found"))?;
         let session_started_at = session.created_at.clone();
         let project_id = session
             .project_id
-            .ok_or_else(|| AgentError::new("conflict", "session is not bound to a project"))?;
+            .ok_or_else(|| BusinessError::new("conflict", "session is not bound to a project"))?;
         let project = self
             .store
             .project_by_id(&project_id)?
-            .ok_or_else(|| AgentError::new("not_found", "project not found"))?;
+            .ok_or_else(|| BusinessError::new("not_found", "project not found"))?;
         let tool_call_limit = self
             .store
             .project_tool_call_limit(&project_id)?
@@ -256,13 +222,13 @@ impl Agent {
         if !admission.created {
             if admission.status == "completed" {
                 let response = admission.response.ok_or_else(|| {
-                    AgentError::new("agent_unavailable", "completed turn has no response")
+                    BusinessError::new("agent_unavailable", "completed turn has no response")
                 })?;
                 return serde_json::from_value(response).map_err(|_| {
-                    AgentError::new("agent_unavailable", "stored turn response is invalid")
+                    BusinessError::new("agent_unavailable", "stored turn response is invalid")
                 });
             }
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "idempotency_conflict",
                 format!("turn submission is {}", admission.status),
             ));
@@ -271,11 +237,11 @@ impl Agent {
         let token = CancellationToken::new();
         self.cancellations
             .lock()
-            .map_err(|_| AgentError::new("agent_unavailable", "cancellation state unavailable"))?
+            .map_err(|_| BusinessError::new("agent_unavailable", "cancellation state unavailable"))?
             .insert(admission.turn_id.clone(), token.clone());
         self.active_turns
             .lock()
-            .map_err(|_| AgentError::new("agent_unavailable", "turn state unavailable"))?
+            .map_err(|_| BusinessError::new("agent_unavailable", "turn state unavailable"))?
             .insert(session_id.to_string(), admission.turn_id.clone());
         let continuation = Continuation {
             session_id: session_id.into(),
@@ -350,18 +316,18 @@ impl Agent {
         session_id: &str,
         key: &str,
         input: &str,
-    ) -> Result<TurnResponse, AgentError> {
+    ) -> Result<TurnResponse, BusinessError> {
         let active_turn_id = self
             .active_turns
             .lock()
-            .map_err(|_| AgentError::new("agent_unavailable", "turn state unavailable"))?
+            .map_err(|_| BusinessError::new("agent_unavailable", "turn state unavailable"))?
             .get(session_id)
             .cloned()
-            .ok_or_else(|| AgentError::new("conflict", "session is busy"))?;
+            .ok_or_else(|| BusinessError::new("conflict", "session is busy"))?;
         let mut queues = self
             .queued_messages
             .lock()
-            .map_err(|_| AgentError::new("agent_unavailable", "turn queue unavailable"))?;
+            .map_err(|_| BusinessError::new("agent_unavailable", "turn queue unavailable"))?;
         let queue = queues.entry(session_id.to_string()).or_default();
         if let Some((index, existing)) = queue
             .iter()
@@ -411,13 +377,13 @@ impl Agent {
         &self,
         approval_id: &str,
         decision: &str,
-    ) -> Result<bool, AgentError> {
+    ) -> Result<bool, BusinessError> {
         let Some(suspended) = self.store.resolve_approval(approval_id, decision)? else {
             return Ok(false);
         };
         let mut continuation: Continuation =
             serde_json::from_value(suspended.snapshot).map_err(|_| {
-                AgentError::new("agent_unavailable", "approval continuation is invalid")
+                BusinessError::new("agent_unavailable", "approval continuation is invalid")
             })?;
         self.emit(
             &continuation.session_id,
@@ -441,11 +407,11 @@ impl Agent {
         let token = CancellationToken::new();
         self.cancellations
             .lock()
-            .map_err(|_| AgentError::new("agent_unavailable", "cancellation state unavailable"))?
+            .map_err(|_| BusinessError::new("agent_unavailable", "cancellation state unavailable"))?
             .insert(continuation.turn_id.clone(), token.clone());
         self.active_turns
             .lock()
-            .map_err(|_| AgentError::new("agent_unavailable", "turn state unavailable"))?
+            .map_err(|_| BusinessError::new("agent_unavailable", "turn state unavailable"))?
             .insert(
                 continuation.session_id.clone(),
                 continuation.turn_id.clone(),
@@ -498,18 +464,17 @@ impl Agent {
         request_id: &str,
         answers: Vec<Vec<String>>,
         rejected: bool,
-    ) -> Result<bool, AgentError> {
+    ) -> Result<bool, BusinessError> {
         let snapshot = self.store.question_snapshot(request_id)?.ok_or_else(|| {
-            AgentError::new("conflict", "question is missing or already resolved")
+            BusinessError::new("conflict", "question is missing or already resolved")
         })?;
         if !rejected {
             let continuation: Continuation = serde_json::from_value(snapshot).map_err(|_| {
-                AgentError::new("agent_unavailable", "question continuation is invalid")
+                BusinessError::new("agent_unavailable", "question continuation is invalid")
             })?;
-            let call = continuation
-                .pending_call
-                .as_ref()
-                .ok_or_else(|| AgentError::new("agent_unavailable", "question call is missing"))?;
+            let call = continuation.pending_call.as_ref().ok_or_else(|| {
+                BusinessError::new("agent_unavailable", "question call is missing")
+            })?;
             validate_question_answers(&call.arguments, &answers)?;
         }
         let Some(suspended) = self
@@ -520,12 +485,12 @@ impl Agent {
         };
         let mut continuation: Continuation =
             serde_json::from_value(suspended.snapshot).map_err(|_| {
-                AgentError::new("agent_unavailable", "question continuation is invalid")
+                BusinessError::new("agent_unavailable", "question continuation is invalid")
             })?;
         let call = continuation
             .pending_call
             .as_ref()
-            .ok_or_else(|| AgentError::new("agent_unavailable", "question call is missing"))?;
+            .ok_or_else(|| BusinessError::new("agent_unavailable", "question call is missing"))?;
         let event = if rejected {
             "question.rejected"
         } else {
@@ -539,11 +504,11 @@ impl Agent {
         let token = CancellationToken::new();
         self.cancellations
             .lock()
-            .map_err(|_| AgentError::new("agent_unavailable", "cancellation state unavailable"))?
+            .map_err(|_| BusinessError::new("agent_unavailable", "cancellation state unavailable"))?
             .insert(continuation.turn_id.clone(), token.clone());
         self.active_turns
             .lock()
-            .map_err(|_| AgentError::new("agent_unavailable", "turn state unavailable"))?
+            .map_err(|_| BusinessError::new("agent_unavailable", "turn state unavailable"))?
             .insert(
                 continuation.session_id.clone(),
                 continuation.turn_id.clone(),
@@ -603,7 +568,7 @@ impl Agent {
         &self,
         continuation: &mut Continuation,
         token: CancellationToken,
-    ) -> Result<TurnResponse, AgentError> {
+    ) -> Result<TurnResponse, BusinessError> {
         if let Some(call) = continuation.pending_call.take() {
             let answers = continuation.question_answers.take().unwrap_or_default();
             let result = json!({"answers": answers, "rejected": continuation.question_rejected});
@@ -623,7 +588,7 @@ impl Agent {
         let provider = self
             .providers
             .route(&continuation.model)
-            .ok_or_else(|| AgentError::new("model_unavailable", "model is not advertised"))?;
+            .ok_or_else(|| BusinessError::new("model_unavailable", "model is not advertised"))?;
         let response = self
             .run(continuation.clone(), None, token, provider)
             .await?;
@@ -631,7 +596,7 @@ impl Agent {
             &continuation.session_id,
             &continuation.submission_key,
             &serde_json::to_value(&response).map_err(|_| {
-                AgentError::new("agent_unavailable", "turn response could not be stored")
+                BusinessError::new("agent_unavailable", "turn response could not be stored")
             })?,
         )?;
         Ok(response)
@@ -641,7 +606,7 @@ impl Agent {
         &self,
         continuation: &mut Continuation,
         token: CancellationToken,
-    ) -> Result<TurnResponse, AgentError> {
+    ) -> Result<TurnResponse, BusinessError> {
         if let Some(call) = continuation.pending_call.take() {
             self.execute_call(continuation, &call, token.clone())
                 .await?;
@@ -652,7 +617,7 @@ impl Agent {
         let provider = self
             .providers
             .route(&continuation.model)
-            .ok_or_else(|| AgentError::new("model_unavailable", "model is not advertised"))?;
+            .ok_or_else(|| BusinessError::new("model_unavailable", "model is not advertised"))?;
         let response = self
             .run(continuation.clone(), None, token, provider)
             .await?;
@@ -660,7 +625,7 @@ impl Agent {
             &continuation.session_id,
             &continuation.submission_key,
             &serde_json::to_value(&response).map_err(|_| {
-                AgentError::new("agent_unavailable", "turn response could not be stored")
+                BusinessError::new("agent_unavailable", "turn response could not be stored")
             })?,
         )?;
         Ok(response)
@@ -672,7 +637,7 @@ impl Agent {
         user_input: Option<&str>,
         token: CancellationToken,
         provider: ModelRoute,
-    ) -> Result<TurnResponse, AgentError> {
+    ) -> Result<TurnResponse, BusinessError> {
         let started = Instant::now();
         if let Some(input) = user_input {
             self.turn_state(&context, "admitted", None)?;
@@ -811,7 +776,7 @@ impl Agent {
                             "provider_request_id": error.provider_request_id,
                         }),
                     )?;
-                    return Err(error.into());
+                    return Err(error);
                 }
             };
             if result.text.len() > 8 * 1024 * 1024 {
@@ -911,7 +876,7 @@ impl Agent {
                     &context.session_id,
                     &context.submission_key,
                     &serde_json::to_value(&response).map_err(|_| {
-                        AgentError::new("agent_unavailable", "turn response could not be stored")
+                        BusinessError::new("agent_unavailable", "turn response could not be stored")
                     })?,
                 )?;
                 return Ok(response);
@@ -929,12 +894,12 @@ impl Agent {
         )
     }
 
-    fn drain_queued_messages(&self, context: &mut Continuation) -> Result<bool, AgentError> {
+    fn drain_queued_messages(&self, context: &mut Continuation) -> Result<bool, BusinessError> {
         let queued = {
             let mut queues = self
                 .queued_messages
                 .lock()
-                .map_err(|_| AgentError::new("agent_unavailable", "turn queue unavailable"))?;
+                .map_err(|_| BusinessError::new("agent_unavailable", "turn queue unavailable"))?;
             queues.remove(&context.session_id).unwrap_or_default()
         };
         if queued.is_empty() {
@@ -963,7 +928,7 @@ impl Agent {
         context: &mut Continuation,
         calls: Vec<ToolCall>,
         token: CancellationToken,
-    ) -> Result<(), AgentError> {
+    ) -> Result<(), BusinessError> {
         let batch_size = u32::try_from(calls.len()).unwrap_or(u32::MAX);
         let next_tool_calls = context.tool_calls.saturating_add(batch_size);
         if next_tool_calls > context.tool_call_limit {
@@ -984,7 +949,7 @@ impl Agent {
                 self.tool_state(context, call, "failed", Some("tool_budget_exceeded"))?;
             }
             self.turn_state(context, "failed", Some("tool_budget_exceeded"))?;
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "tool_budget_exceeded",
                 "Turn exceeded its tool-call budget",
             )
@@ -1017,7 +982,7 @@ impl Agent {
             self.tool_state(context, call, "validating", None)?;
             if !call.arguments.is_object() {
                 let error =
-                    AgentError::new("malformed_tool_call", "Tool arguments must be an object");
+                    BusinessError::new("malformed_tool_call", "Tool arguments must be an object");
                 if !self.record_recoverable_call_error(context, call, &error)? {
                     return Err(error);
                 }
@@ -1052,12 +1017,12 @@ impl Agent {
                 context.pending_call = Some(call.clone());
                 context.remaining_calls = calls[index + 1..].to_vec();
                 let snapshot = serde_json::to_value(&*context).map_err(|_| {
-                    AgentError::new("agent_unavailable", "turn continuation could not be stored")
+                    BusinessError::new("agent_unavailable", "turn continuation could not be stored")
                 })?;
                 self.store
                     .create_question(&request_id, &context.turn_id, &snapshot)?;
                 self.emit(&context.session_id, "question.asked", json!({"request_id":request_id,"turn_id":context.turn_id,"tool_call_id":call.call_id,"questions":call.arguments["questions"]}))?;
-                return Err(AgentError::new("question_required", "The user must answer the question tool").details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"request_id":request_id})));
+                return Err(BusinessError::new("question_required", "The user must answer the question tool").details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"request_id":request_id})));
             }
             if call.name == "todowrite" {
                 self.execute_allowed_calls(
@@ -1085,7 +1050,7 @@ impl Agent {
                     )
                     .await?;
                     self.tool_state(context, call, "denied", Some("authorization_denied"))?;
-                    return Err(AgentError::new(
+                    return Err(BusinessError::new(
                         "authorization_denied",
                         format!("Tool call denied: {}", call.name),
                     ));
@@ -1106,7 +1071,7 @@ impl Agent {
                     context.pending_call = Some(call.clone());
                     context.remaining_calls = calls[index + 1..].to_vec();
                     let snapshot = serde_json::to_value(&*context).map_err(|_| {
-                        AgentError::new(
+                        BusinessError::new(
                             "agent_unavailable",
                             "turn continuation could not be stored",
                         )
@@ -1121,7 +1086,7 @@ impl Agent {
                         snapshot: &snapshot,
                     })?;
                     self.emit(&context.session_id,"approval.requested",json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id,"operation":call.name,"arguments":call.arguments}))?;
-                    return Err(AgentError::new("approval_required",format!("Tool call requires approval: {}",call.name)).details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id})));
+                    return Err(BusinessError::new("approval_required",format!("Tool call requires approval: {}",call.name)).details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id})));
                 }
                 Decision::Allow => allowed_calls.push(call.clone()),
             }
@@ -1136,7 +1101,7 @@ impl Agent {
         context: &mut Continuation,
         calls: Vec<ToolCall>,
         token: CancellationToken,
-    ) -> Result<(), AgentError> {
+    ) -> Result<(), BusinessError> {
         if calls.is_empty() {
             return Ok(());
         }
@@ -1168,7 +1133,7 @@ impl Agent {
             let method = match method_name(&call.name) {
                 Some(method) => method.to_string(),
                 None => {
-                    let error = AgentError::new("authorization_denied", "Unknown tool");
+                    let error = BusinessError::new("authorization_denied", "Unknown tool");
                     self.tool_state(context, &call, "failed", Some(&error.code))?;
                     return Err(error);
                 }
@@ -1202,7 +1167,7 @@ impl Agent {
         &self,
         context: &mut Continuation,
         call: &ToolCall,
-    ) -> Result<(), AgentError> {
+    ) -> Result<(), BusinessError> {
         let todos = parse_todos(&call.arguments)?;
         self.tool_state(context, call, "policy_check", None)?;
         self.tool_state(context, call, "authorized", None)?;
@@ -1239,7 +1204,7 @@ impl Agent {
         context: &mut Continuation,
         call: &ToolCall,
         token: CancellationToken,
-    ) -> Result<(), AgentError> {
+    ) -> Result<(), BusinessError> {
         self.tool_state(context, call, "authorized", None)?;
         self.tool_state(context, call, "executing", None)?;
         let (project_root, mut params) = match self.prepare_call(context, call) {
@@ -1255,7 +1220,7 @@ impl Agent {
         let method = match method_name(&call.name) {
             Some(method) => method,
             None => {
-                let error = AgentError::new("authorization_denied", "Unknown tool");
+                let error = BusinessError::new("authorization_denied", "Unknown tool");
                 self.tool_state(context, call, "failed", Some(&error.code))?;
                 return Err(error);
             }
@@ -1279,8 +1244,8 @@ impl Agent {
         &self,
         context: &mut Continuation,
         call: &ToolCall,
-        error: &AgentError,
-    ) -> Result<bool, AgentError> {
+        error: &BusinessError,
+    ) -> Result<bool, BusinessError> {
         self.tool_state(context, call, "failed", Some(&error.code))?;
         if !matches!(
             error.code.as_str(),
@@ -1341,7 +1306,7 @@ impl Agent {
         context: &mut Continuation,
         call: &ToolCall,
         result: Value,
-    ) -> Result<(), AgentError> {
+    ) -> Result<(), BusinessError> {
         let dependency_id = call
             .arguments
             .get("path")
@@ -1429,7 +1394,7 @@ impl Agent {
         method: &str,
         params: Value,
         token: CancellationToken,
-    ) -> Result<Value, AgentError> {
+    ) -> Result<Value, BusinessError> {
         let operations = self.operations.clone();
         let root = std::path::PathBuf::from(project_root);
         let method = method.to_string();
@@ -1451,9 +1416,9 @@ impl Agent {
             }
         };
         join_result
-            .map_err(|_| AgentError::new("agent_unavailable", "operation task failed"))?
+            .map_err(|_| BusinessError::new("agent_unavailable", "operation task failed"))?
             .map_err(|error| {
-                let mut agent_error = AgentError::new(
+                let mut agent_error = BusinessError::new(
                     error
                         .get("code")
                         .and_then(Value::as_str)
@@ -1474,7 +1439,7 @@ impl Agent {
         &self,
         context: &Continuation,
         call: &ToolCall,
-    ) -> Result<(String, Value), AgentError> {
+    ) -> Result<(String, Value), BusinessError> {
         let mut arguments = call.arguments.clone();
         let Some(path) = arguments.get("path").and_then(Value::as_str) else {
             return Ok((
@@ -1483,7 +1448,7 @@ impl Agent {
             ));
         };
         if path.starts_with("dependency:") && dependency_path(path).is_none() {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "invalid_arguments",
                 "dependency path must include a dependency ID",
             ));
@@ -1495,7 +1460,7 @@ impl Agent {
             ));
         };
         if !dependency_tool_allowed(&call.name) {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "scope_denied",
                 "dependencies are read-only and support only read, glob, and grep",
             ));
@@ -1503,7 +1468,7 @@ impl Agent {
         let dependency = self
             .store
             .project_dependency_by_id(&context.project_id, dependency_id)?
-            .ok_or_else(|| AgentError::new("dependency_not_found", "dependency not found"))?;
+            .ok_or_else(|| BusinessError::new("dependency_not_found", "dependency not found"))?;
         arguments["path"] = json!(relative_path);
         Ok((
             dependency.canonical_root,
@@ -1515,12 +1480,12 @@ impl Agent {
         &self,
         context: &Continuation,
         call: &ToolCall,
-    ) -> Result<(), AgentError> {
+    ) -> Result<(), BusinessError> {
         let Some(path) = call.arguments.get("path").and_then(Value::as_str) else {
             return Ok(());
         };
         if path.starts_with("dependency:") && dependency_path(path).is_none() {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "invalid_arguments",
                 "dependency path must include a dependency ID",
             ));
@@ -1529,7 +1494,7 @@ impl Agent {
             return Ok(());
         };
         if !dependency_tool_allowed(&call.name) {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "scope_denied",
                 "dependencies are read-only and support only read, glob, and grep",
             ));
@@ -1539,7 +1504,7 @@ impl Agent {
             .project_dependency_by_id(&context.project_id, dependency_id)?
             .is_none()
         {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "dependency_not_found",
                 "dependency not found",
             ));
@@ -1550,7 +1515,7 @@ impl Agent {
     fn dependency_context_message(
         &self,
         project_id: &str,
-    ) -> Result<Option<suncode_llm::Message>, AgentError> {
+    ) -> Result<Option<suncode_llm::Message>, BusinessError> {
         let dependencies = self.store.project_dependencies(project_id)?;
         if dependencies.is_empty() {
             return Ok(None);
@@ -1577,7 +1542,12 @@ impl Agent {
             tool_call_id: None,
         }))
     }
-    fn emit(&self, session_id: &str, event_type: &str, payload: Value) -> Result<(), AgentError> {
+    fn emit(
+        &self,
+        session_id: &str,
+        event_type: &str,
+        payload: Value,
+    ) -> Result<(), BusinessError> {
         let event = self
             .store
             .append_content(session_id, event_type, &payload)?;
@@ -1599,7 +1569,7 @@ impl Agent {
         context: &Continuation,
         state: &str,
         reason: Option<&str>,
-    ) -> Result<(), AgentError> {
+    ) -> Result<(), BusinessError> {
         self.emit(&context.session_id,"turn.state",json!({"turn_id":context.turn_id,"state":state,"model_id":context.model,"submission_idempotency_key":context.submission_key,"reason":reason}))
     }
     fn tool_state(
@@ -1608,7 +1578,7 @@ impl Agent {
         call: &ToolCall,
         state: &str,
         reason: Option<&str>,
-    ) -> Result<(), AgentError> {
+    ) -> Result<(), BusinessError> {
         self.emit(&context.session_id,"tool.state",json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"name":call.name,"state":state,"reason":reason}))
     }
     fn fail_context<T>(
@@ -1616,7 +1586,7 @@ impl Agent {
         context: &Continuation,
         code: &str,
         message: &str,
-    ) -> Result<T, AgentError> {
+    ) -> Result<T, BusinessError> {
         self.turn_state(
             context,
             if code == "cancelled" {
@@ -1626,7 +1596,7 @@ impl Agent {
             },
             Some(code),
         )?;
-        Err(AgentError::new(code, message))
+        Err(BusinessError::new(code, message))
     }
 
     async fn session_lock(&self, session_id: &str) -> Arc<AsyncMutex<()>> {
@@ -1637,25 +1607,25 @@ impl Agent {
             .clone()
     }
 
-    pub async fn recover(&self) -> Result<(), AgentError> {
+    pub async fn recover(&self) -> Result<(), BusinessError> {
         for event in self.store.recover_startup()? {
             let _ = self.events.send(event);
         }
         for suspended in self.store.resuming_turns()? {
             let mut continuation: Continuation = serde_json::from_value(suspended.snapshot)
                 .map_err(|_| {
-                    AgentError::new("agent_unavailable", "approval continuation is invalid")
+                    BusinessError::new("agent_unavailable", "approval continuation is invalid")
                 })?;
             let token = CancellationToken::new();
             self.cancellations
                 .lock()
                 .map_err(|_| {
-                    AgentError::new("agent_unavailable", "cancellation state unavailable")
+                    BusinessError::new("agent_unavailable", "cancellation state unavailable")
                 })?
                 .insert(continuation.turn_id.clone(), token.clone());
             self.active_turns
                 .lock()
-                .map_err(|_| AgentError::new("agent_unavailable", "turn state unavailable"))?
+                .map_err(|_| BusinessError::new("agent_unavailable", "turn state unavailable"))?
                 .insert(
                     continuation.session_id.clone(),
                     continuation.turn_id.clone(),
@@ -1720,7 +1690,7 @@ fn tool_signature(call: &ToolCall) -> String {
     )
 }
 
-fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
+fn translate_arguments(name: &str, value: &Value) -> Result<Value, BusinessError> {
     let mut result = value.clone();
     if name == "webfetch" {
         validate_webfetch_arguments(&result)?;
@@ -1729,7 +1699,7 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
         let content = result
             .get("content")
             .and_then(Value::as_str)
-            .ok_or_else(|| AgentError::new("invalid_arguments", "content is required"))?;
+            .ok_or_else(|| BusinessError::new("invalid_arguments", "content is required"))?;
         result["content_base64"] = json!(STANDARD.encode(content));
         if let Some(object) = result.as_object_mut() {
             object.remove("content");
@@ -1738,7 +1708,7 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
     if name == "edit" {
         let replacements = if let Some(edits) = result.get("edits").and_then(Value::as_array) {
             if edits.is_empty() {
-                return Err(AgentError::new(
+                return Err(BusinessError::new(
                     "invalid_arguments",
                     "edits must not be empty",
                 ));
@@ -1747,32 +1717,32 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
                 .iter()
                 .map(|edit| {
                     let object = edit.as_object().ok_or_else(|| {
-                        AgentError::new("invalid_arguments", "each edit must be an object")
+                        BusinessError::new("invalid_arguments", "each edit must be an object")
                     })?;
                     let old = object
                         .get("oldText")
                         .and_then(Value::as_str)
                         .ok_or_else(|| {
-                            AgentError::new("invalid_arguments", "oldText is required")
+                            BusinessError::new("invalid_arguments", "oldText is required")
                         })?;
                     let new = object
                         .get("newText")
                         .and_then(Value::as_str)
                         .ok_or_else(|| {
-                            AgentError::new("invalid_arguments", "newText is required")
+                            BusinessError::new("invalid_arguments", "newText is required")
                         })?;
                     Ok(json!({"old": old, "new": new, "replace_all": false}))
                 })
-                .collect::<Result<Vec<_>, AgentError>>()?
+                .collect::<Result<Vec<_>, BusinessError>>()?
         } else {
             let old = result
                 .get("oldString")
                 .and_then(Value::as_str)
-                .ok_or_else(|| AgentError::new("invalid_arguments", "oldString is required"))?;
+                .ok_or_else(|| BusinessError::new("invalid_arguments", "oldString is required"))?;
             let new = result
                 .get("newString")
                 .and_then(Value::as_str)
-                .ok_or_else(|| AgentError::new("invalid_arguments", "newString is required"))?;
+                .ok_or_else(|| BusinessError::new("invalid_arguments", "newString is required"))?;
             let replace_all = result
                 .get("replaceAll")
                 .and_then(Value::as_bool)
@@ -1792,7 +1762,7 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
             let pattern = result
                 .get("pattern")
                 .and_then(Value::as_str)
-                .ok_or_else(|| AgentError::new("invalid_arguments", "pattern is required"))?;
+                .ok_or_else(|| BusinessError::new("invalid_arguments", "pattern is required"))?;
             result["pattern"] = json!(scoped_glob(path, pattern));
         }
         if let Some(limit) = result.get("limit").cloned() {
@@ -1808,7 +1778,7 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
             .get("pattern")
             .or_else(|| result.get("query"))
             .and_then(Value::as_str)
-            .ok_or_else(|| AgentError::new("invalid_arguments", "pattern is required"))?;
+            .ok_or_else(|| BusinessError::new("invalid_arguments", "pattern is required"))?;
         result["query"] = json!(query);
         if let Some(include) = result.get("include").cloned() {
             result["pattern"] = include;
@@ -1819,7 +1789,7 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
             let pattern = result
                 .get("pattern")
                 .and_then(Value::as_str)
-                .ok_or_else(|| AgentError::new("invalid_arguments", "pattern is required"))?;
+                .ok_or_else(|| BusinessError::new("invalid_arguments", "pattern is required"))?;
             result["pattern"] = json!(scoped_glob(path, pattern));
         }
         if let Some(limit) = result.get("limit").cloned() {
@@ -1838,7 +1808,7 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
             .filter(|command| !command.trim().is_empty())
             .map(str::to_string)
             .ok_or_else(|| {
-                AgentError::new(
+                BusinessError::new(
                     "invalid_arguments",
                     "bash command must be a non-empty string",
                 )
@@ -1861,7 +1831,7 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, AgentError> {
     Ok(result)
 }
 
-fn validate_before_policy(name: &str, value: &Value) -> Result<(), AgentError> {
+fn validate_before_policy(name: &str, value: &Value) -> Result<(), BusinessError> {
     if name == "question" {
         return validate_question_arguments(value);
     }
@@ -1874,29 +1844,29 @@ fn validate_before_policy(name: &str, value: &Value) -> Result<(), AgentError> {
     Ok(())
 }
 
-fn validate_todowrite_arguments(value: &Value) -> Result<(), AgentError> {
+fn validate_todowrite_arguments(value: &Value) -> Result<(), BusinessError> {
     let todos = value
         .get("todos")
         .and_then(Value::as_array)
         .filter(|items| items.len() <= 100)
         .ok_or_else(|| {
-            AgentError::new(
+            BusinessError::new(
                 "invalid_arguments",
                 "todos must be an array of at most 100 items",
             )
         })?;
     let mut in_progress = 0;
     for todo in todos {
-        let object = todo
-            .as_object()
-            .ok_or_else(|| AgentError::new("invalid_arguments", "each todo must be an object"))?;
+        let object = todo.as_object().ok_or_else(|| {
+            BusinessError::new("invalid_arguments", "each todo must be an object")
+        })?;
         let content = object
             .get("content")
             .and_then(Value::as_str)
             .filter(|content| !content.trim().is_empty())
-            .ok_or_else(|| AgentError::new("invalid_arguments", "todo content is required"))?;
+            .ok_or_else(|| BusinessError::new("invalid_arguments", "todo content is required"))?;
         if content.chars().count() > 500 {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "invalid_arguments",
                 "todo content must be at most 500 characters",
             ));
@@ -1905,7 +1875,7 @@ fn validate_todowrite_arguments(value: &Value) -> Result<(), AgentError> {
             Some("pending" | "completed" | "cancelled") => {}
             Some("in_progress") => in_progress += 1,
             _ => {
-                return Err(AgentError::new(
+                return Err(BusinessError::new(
                     "invalid_arguments",
                     "todo status must be pending, in_progress, completed, or cancelled",
                 ))
@@ -1915,14 +1885,14 @@ fn validate_todowrite_arguments(value: &Value) -> Result<(), AgentError> {
             object.get("priority").and_then(Value::as_str),
             Some("high" | "medium" | "low")
         ) {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "invalid_arguments",
                 "todo priority must be high, medium, or low",
             ));
         }
     }
     if in_progress > 1 {
-        return Err(AgentError::new(
+        return Err(BusinessError::new(
             "invalid_arguments",
             "only one todo may be in_progress",
         ));
@@ -1930,28 +1900,28 @@ fn validate_todowrite_arguments(value: &Value) -> Result<(), AgentError> {
     Ok(())
 }
 
-fn parse_todos(value: &Value) -> Result<Vec<TodoEntry>, AgentError> {
+fn parse_todos(value: &Value) -> Result<Vec<TodoEntry>, BusinessError> {
     validate_todowrite_arguments(value)?;
     serde_json::from_value(
         value
             .get("todos")
             .cloned()
-            .ok_or_else(|| AgentError::new("invalid_arguments", "todos is required"))?,
+            .ok_or_else(|| BusinessError::new("invalid_arguments", "todos is required"))?,
     )
-    .map_err(|_| AgentError::new("invalid_arguments", "todos contain invalid values"))
+    .map_err(|_| BusinessError::new("invalid_arguments", "todos contain invalid values"))
 }
 
-fn validate_question_arguments(value: &Value) -> Result<(), AgentError> {
+fn validate_question_arguments(value: &Value) -> Result<(), BusinessError> {
     let questions = value
         .get("questions")
         .and_then(Value::as_array)
         .filter(|items| !items.is_empty() && items.len() <= 8)
         .ok_or_else(|| {
-            AgentError::new("invalid_arguments", "questions must contain 1 to 8 items")
+            BusinessError::new("invalid_arguments", "questions must contain 1 to 8 items")
         })?;
     for question in questions {
         let object = question.as_object().ok_or_else(|| {
-            AgentError::new("invalid_arguments", "each question must be an object")
+            BusinessError::new("invalid_arguments", "each question must be an object")
         })?;
         for field in ["question", "header"] {
             if object
@@ -1959,7 +1929,7 @@ fn validate_question_arguments(value: &Value) -> Result<(), AgentError> {
                 .and_then(Value::as_str)
                 .is_none_or(str::is_empty)
             {
-                return Err(AgentError::new(
+                return Err(BusinessError::new(
                     "invalid_arguments",
                     format!("{field} is required"),
                 ));
@@ -1970,7 +1940,7 @@ fn validate_question_arguments(value: &Value) -> Result<(), AgentError> {
             .and_then(Value::as_str)
             .is_some_and(|value| value.chars().count() > 30)
         {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "invalid_arguments",
                 "header must be at most 30 characters",
             ));
@@ -1980,20 +1950,22 @@ fn validate_question_arguments(value: &Value) -> Result<(), AgentError> {
             .and_then(Value::as_array)
             .filter(|items| !items.is_empty() && items.len() <= 12)
             .ok_or_else(|| {
-                AgentError::new("invalid_arguments", "options must contain 1 to 12 items")
+                BusinessError::new("invalid_arguments", "options must contain 1 to 12 items")
             })?;
         let mut labels = std::collections::HashSet::new();
         for option in options {
             let option = option.as_object().ok_or_else(|| {
-                AgentError::new("invalid_arguments", "each option must be an object")
+                BusinessError::new("invalid_arguments", "each option must be an object")
             })?;
             let label = option
                 .get("label")
                 .and_then(Value::as_str)
                 .filter(|value| !value.is_empty())
-                .ok_or_else(|| AgentError::new("invalid_arguments", "option label is required"))?;
+                .ok_or_else(|| {
+                    BusinessError::new("invalid_arguments", "option label is required")
+                })?;
             if !labels.insert(label) {
-                return Err(AgentError::new(
+                return Err(BusinessError::new(
                     "invalid_arguments",
                     "option labels must be unique",
                 ));
@@ -2003,7 +1975,7 @@ fn validate_question_arguments(value: &Value) -> Result<(), AgentError> {
                 .and_then(Value::as_str)
                 .is_none_or(str::is_empty)
             {
-                return Err(AgentError::new(
+                return Err(BusinessError::new(
                     "invalid_arguments",
                     "option description is required",
                 ));
@@ -2013,13 +1985,16 @@ fn validate_question_arguments(value: &Value) -> Result<(), AgentError> {
     Ok(())
 }
 
-fn validate_question_answers(arguments: &Value, answers: &[Vec<String>]) -> Result<(), AgentError> {
+fn validate_question_answers(
+    arguments: &Value,
+    answers: &[Vec<String>],
+) -> Result<(), BusinessError> {
     let questions = arguments
         .get("questions")
         .and_then(Value::as_array)
-        .ok_or_else(|| AgentError::new("invalid_arguments", "questions are missing"))?;
+        .ok_or_else(|| BusinessError::new("invalid_arguments", "questions are missing"))?;
     if answers.len() != questions.len() {
-        return Err(AgentError::new(
+        return Err(BusinessError::new(
             "invalid_arguments",
             "one answer list is required for each question",
         ));
@@ -2028,13 +2003,15 @@ fn validate_question_answers(arguments: &Value, answers: &[Vec<String>]) -> Resu
         let options = question
             .get("options")
             .and_then(Value::as_array)
-            .ok_or_else(|| AgentError::new("invalid_arguments", "question options are missing"))?;
+            .ok_or_else(|| {
+                BusinessError::new("invalid_arguments", "question options are missing")
+            })?;
         let allowed = options
             .iter()
             .filter_map(|option| option.get("label").and_then(Value::as_str))
             .collect::<std::collections::HashSet<_>>();
         if question.get("multiple").and_then(Value::as_bool) != Some(true) && values.len() > 1 {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "invalid_arguments",
                 "this question accepts only one answer",
             ));
@@ -2045,7 +2022,7 @@ fn validate_question_answers(arguments: &Value, answers: &[Vec<String>]) -> Resu
             .unwrap_or(true);
         for value in values {
             if value.trim().is_empty() || (!custom && !allowed.contains(value.as_str())) {
-                return Err(AgentError::new(
+                return Err(BusinessError::new(
                     "invalid_arguments",
                     "an answer is not allowed for this question",
                 ));
@@ -2055,30 +2032,30 @@ fn validate_question_answers(arguments: &Value, answers: &[Vec<String>]) -> Resu
     Ok(())
 }
 
-fn validate_webfetch_arguments(value: &Value) -> Result<(), AgentError> {
+fn validate_webfetch_arguments(value: &Value) -> Result<(), BusinessError> {
     let raw_url = value
         .get("url")
         .and_then(Value::as_str)
         .filter(|url| !url.trim().is_empty())
-        .ok_or_else(|| AgentError::new("invalid_arguments", "url is required"))?;
+        .ok_or_else(|| BusinessError::new("invalid_arguments", "url is required"))?;
     let url = url::Url::parse(raw_url).map_err(|_| {
-        AgentError::new("invalid_arguments", "url must be a valid HTTP or HTTPS URL")
+        BusinessError::new("invalid_arguments", "url must be a valid HTTP or HTTPS URL")
     })?;
     if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
-        return Err(AgentError::new(
+        return Err(BusinessError::new(
             "invalid_arguments",
             "url must be a valid HTTP or HTTPS URL",
         ));
     }
     if !url.username().is_empty() || url.password().is_some() {
-        return Err(AgentError::new(
+        return Err(BusinessError::new(
             "invalid_arguments",
             "url must not contain embedded credentials",
         ));
     }
     if let Some(format) = value.get("format") {
         if !matches!(format.as_str(), Some("text" | "markdown" | "html")) {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "invalid_arguments",
                 "format must be text, markdown, or html",
             ));
@@ -2089,10 +2066,10 @@ fn validate_webfetch_arguments(value: &Value) -> Result<(), AgentError> {
             .as_f64()
             .filter(|value| value.is_finite())
             .ok_or_else(|| {
-                AgentError::new("invalid_arguments", "timeout must be a number of seconds")
+                BusinessError::new("invalid_arguments", "timeout must be a number of seconds")
             })?;
         if seconds <= 0.0 || seconds > 120.0 {
-            return Err(AgentError::new(
+            return Err(BusinessError::new(
                 "invalid_arguments",
                 "timeout must be greater than zero and no more than 120 seconds",
             ));
@@ -2101,15 +2078,15 @@ fn validate_webfetch_arguments(value: &Value) -> Result<(), AgentError> {
     Ok(())
 }
 
-fn timeout_millis(value: &Value) -> Result<u64, AgentError> {
+fn timeout_millis(value: &Value) -> Result<u64, BusinessError> {
     let milliseconds = value.as_u64().ok_or_else(|| {
-        AgentError::new(
+        BusinessError::new(
             "invalid_arguments",
             "timeout must be a positive integer number of milliseconds",
         )
     })?;
     if milliseconds == 0 || milliseconds > 600_000 {
-        return Err(AgentError::new(
+        return Err(BusinessError::new(
             "invalid_arguments",
             "timeout must be greater than zero and no more than 600000 milliseconds",
         ));

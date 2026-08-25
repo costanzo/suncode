@@ -13,7 +13,7 @@ use super::arguments::{
     CheckpointRestoreArguments, EditArguments, GitDiffArguments, GlobArguments, GrepArguments,
     ProcessArguments, ReadArguments, WebfetchArguments, WriteArguments,
 };
-use super::CoreFailure;
+use super::BusinessError;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::path::Path;
@@ -25,7 +25,7 @@ pub(super) fn dispatch(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
     cancellation: Option<&AtomicBool>,
-) -> Option<Result<Value, CoreFailure>> {
+) -> Option<Result<Value, BusinessError>> {
     Some(match method {
         "tool/read" => run_read_typed(params, project_root),
         "tool/glob" => run_typed(params, |args: GlobArguments| {
@@ -57,27 +57,24 @@ pub(super) fn dispatch(
     })
 }
 
-fn run_typed<T, F>(params: &Value, execute: F) -> Result<Value, CoreFailure>
+fn run_typed<T, F>(params: &Value, execute: F) -> Result<Value, BusinessError>
 where
     T: DeserializeOwned,
-    F: FnOnce(T) -> Result<Value, CoreFailure>,
+    F: FnOnce(T) -> Result<Value, BusinessError>,
 {
-    let arguments = serde_json::from_value(params.clone()).map_err(|_| CoreFailure {
-        code: "invalid_arguments",
-        message: "tool arguments have an invalid shape",
-        retryable: false,
+    let arguments = serde_json::from_value(params.clone()).map_err(|_| {
+        BusinessError::new("invalid_arguments", "tool arguments have an invalid shape")
+            .with_retryable(false)
     })?;
     execute(arguments)
 }
 
-fn run_read_typed(params: &Value, project_root: Option<&Path>) -> Result<Value, CoreFailure> {
+fn run_read_typed(params: &Value, project_root: Option<&Path>) -> Result<Value, BusinessError> {
     // Keep the established field-level error for malformed public read calls.
     if params.get("path").and_then(Value::as_str).is_none() {
-        return Err(CoreFailure {
-            code: "invalid_arguments",
-            message: "path is required",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("invalid_arguments", "path is required").with_retryable(false)
+        );
     }
     run_typed(params, |args: ReadArguments| {
         read::execute(project_root, args)

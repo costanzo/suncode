@@ -122,6 +122,7 @@ Startup marks non-recoverable in-memory turn execution interrupted, discovers ad
 apps/desktop-avalonia/    .NET 10 Avalonia desktop client
 contracts/                hand-written protocols and shared vectors
 agent/crates/core/      agent core and embedded Rust SDK facade
+agent/crates/common/    shared Rust business errors and cross-crate contracts
 agent/crates/database/  backend-specific SQL resources and database setup
 agent/crates/data/      Diesel ORM, persistence DTOs, and data operations
 agent/crates/llm/       provider-neutral LLM contracts, catalog, registry, and adapters
@@ -138,6 +139,7 @@ The old `typescript/` packages and retired `rust/` workspace were migration sour
 - Native binding functions call typed agent services, never SQLite or provider wire types directly.
 - Agent and provider modules call operations through the authorized dispatcher.
 - The database crate does not depend on the agent core, Avalonia, native bindings, operations, or provider wire types.
+- Cross-crate business failures use `suncode-common::BusinessError`; lower-level Diesel, HTTP, Git, and OS errors are converted before crossing their owning crate boundary.
 - The agent core depends on the database crate for durable state and persistence DTOs.
 - The LLM crate does not depend on the database, agent core, SDK, desktop, or tools crates.
 - The agent core supplies credentials and tool schemas to the LLM crate through provider-neutral interfaces and request DTOs.

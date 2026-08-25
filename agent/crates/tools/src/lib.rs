@@ -11,6 +11,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
 use std::time::{SystemTime, UNIX_EPOCH};
+use suncode_common::BusinessError;
 
 static CHECKPOINT_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 mod arguments;
@@ -26,19 +27,12 @@ mod write;
 
 pub mod definitions;
 
-#[derive(Debug)]
-struct CoreFailure {
-    code: &'static str,
-    message: &'static str,
-    retryable: bool,
-}
-
 fn execute_operation(
     method: &str,
     params: &Value,
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
-) -> Result<Value, CoreFailure> {
+) -> Result<Value, BusinessError> {
     execute_operation_with_cancellation(method, params, project_root, checkpoint_root, None)
 }
 
@@ -48,45 +42,37 @@ fn execute_operation_with_cancellation(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
     cancellation: Option<&AtomicBool>,
-) -> Result<Value, CoreFailure> {
+) -> Result<Value, BusinessError> {
     if let Some(result) =
         tools::dispatch(method, params, project_root, checkpoint_root, cancellation)
     {
         return result;
     }
-    Err(CoreFailure {
-        code: "method_unavailable",
-        message: "method unavailable",
-        retryable: false,
-    })
+    Err(BusinessError::new("method_unavailable", "method unavailable").with_retryable(false))
 }
 
-fn open_project(path: &Path) -> Result<(PathBuf, Value), CoreFailure> {
+fn open_project(path: &Path) -> Result<(PathBuf, Value), BusinessError> {
     let requested = path;
     if !requested.is_absolute() {
-        return Err(CoreFailure {
-            code: "invalid_arguments",
-            message: "project path must be absolute",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("invalid_arguments", "project path must be absolute")
+                .with_retryable(false),
+        );
     }
-    let root = requested.canonicalize().map_err(|_| CoreFailure {
-        code: "project_unavailable",
-        message: "project root is unavailable",
-        retryable: false,
+    let root = requested.canonicalize().map_err(|_| {
+        BusinessError::new("project_unavailable", "project root is unavailable")
+            .with_retryable(false)
     })?;
     if !root.is_dir() {
-        return Err(CoreFailure {
-            code: "project_unavailable",
-            message: "project root is not a directory",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("project_unavailable", "project root is not a directory")
+                .with_retryable(false),
+        );
     }
-    let canonical_path = root.to_str().ok_or(CoreFailure {
-        code: "project_unavailable",
-        message: "project path is not valid UTF-8",
-        retryable: false,
-    })?;
+    let canonical_path = root.to_str().ok_or(
+        BusinessError::new("project_unavailable", "project path is not valid UTF-8")
+            .with_retryable(false),
+    )?;
     let display_name = root
         .file_name()
         .and_then(|value| value.to_str())
@@ -95,64 +81,51 @@ fn open_project(path: &Path) -> Result<(PathBuf, Value), CoreFailure> {
     Ok((root, value))
 }
 
-fn failure_value(failure: CoreFailure) -> Value {
+fn failure_value(failure: BusinessError) -> Value {
     json!({"code":failure.code,"message":failure.message,"retryable":failure.retryable})
 }
 
-fn existing_file(root: &Path, path: &str) -> Result<(PathBuf, Vec<u8>), CoreFailure> {
+fn existing_file(root: &Path, path: &str) -> Result<(PathBuf, Vec<u8>), BusinessError> {
     let relative = safe_relative_path(path)?;
     let candidate = root.join(relative);
-    let metadata = fs::symlink_metadata(&candidate).map_err(|_| CoreFailure {
-        code: "path_unavailable",
-        message: "path is unavailable",
-        retryable: false,
+    let metadata = fs::symlink_metadata(&candidate).map_err(|_| {
+        BusinessError::new("path_unavailable", "path is unavailable").with_retryable(false)
     })?;
     if metadata.file_type().is_symlink() {
-        return Err(CoreFailure {
-            code: "scope_denied",
-            message: "symbolic links are not allowed",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("scope_denied", "symbolic links are not allowed")
+                .with_retryable(false),
+        );
     }
-    let canonical = candidate.canonicalize().map_err(|_| CoreFailure {
-        code: "path_unavailable",
-        message: "path is unavailable",
-        retryable: false,
+    let canonical = candidate.canonicalize().map_err(|_| {
+        BusinessError::new("path_unavailable", "path is unavailable").with_retryable(false)
     })?;
     if !canonical.starts_with(root) {
-        return Err(CoreFailure {
-            code: "scope_denied",
-            message: "path is outside the project",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("scope_denied", "path is outside the project").with_retryable(false),
+        );
     }
     if !metadata.is_file() {
-        return Err(CoreFailure {
-            code: "not_a_file",
-            message: "path is not a regular file",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("not_a_file", "path is not a regular file").with_retryable(false),
+        );
     }
-    let bytes = fs::read(&canonical).map_err(|_| CoreFailure {
-        code: "read_failed",
-        message: "file could not be read",
-        retryable: true,
+    let bytes = fs::read(&canonical).map_err(|_| {
+        BusinessError::new("read_failed", "file could not be read").with_retryable(true)
     })?;
     Ok((canonical, bytes))
 }
 
-fn require_project(project_root: Option<&Path>) -> Result<&Path, CoreFailure> {
-    let root = project_root.ok_or(CoreFailure {
-        code: "project_unconfigured",
-        message: "project root is not configured",
-        retryable: false,
-    })?;
+fn require_project(project_root: Option<&Path>) -> Result<&Path, BusinessError> {
+    let root = project_root.ok_or(
+        BusinessError::new("project_unconfigured", "project root is not configured")
+            .with_retryable(false),
+    )?;
     if !root.is_dir() {
-        return Err(CoreFailure {
-            code: "project_unavailable",
-            message: "project root is unavailable",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("project_unavailable", "project root is unavailable")
+                .with_retryable(false),
+        );
     }
     Ok(root)
 }
@@ -241,24 +214,21 @@ fn load_journal(checkpoint_root: &Path, id: &str) -> Option<JournalRecord> {
     serde_json::from_slice(&fs::read(journal_path(checkpoint_root, id)).ok()?).ok()
 }
 
-fn save_journal(checkpoint_root: &Path, record: &JournalRecord) -> Result<(), CoreFailure> {
-    fs::create_dir_all(journal_directory(checkpoint_root)).map_err(|_| CoreFailure {
-        code: "journal_failed",
-        message: "operation journal could not be created",
-        retryable: true,
+fn save_journal(checkpoint_root: &Path, record: &JournalRecord) -> Result<(), BusinessError> {
+    fs::create_dir_all(journal_directory(checkpoint_root)).map_err(|_| {
+        BusinessError::new("journal_failed", "operation journal could not be created")
+            .with_retryable(true)
     })?;
     fs::write(
         journal_path(checkpoint_root, &record.operation_id),
-        serde_json::to_vec(record).map_err(|_| CoreFailure {
-            code: "journal_failed",
-            message: "operation journal could not be encoded",
-            retryable: false,
+        serde_json::to_vec(record).map_err(|_| {
+            BusinessError::new("journal_failed", "operation journal could not be encoded")
+                .with_retryable(false)
         })?,
     )
-    .map_err(|_| CoreFailure {
-        code: "journal_failed",
-        message: "operation journal could not be written",
-        retryable: true,
+    .map_err(|_| {
+        BusinessError::new("journal_failed", "operation journal could not be written")
+            .with_retryable(true)
     })
 }
 
@@ -270,24 +240,24 @@ fn journal_intent(
     path: Option<&str>,
     pre: Option<&[u8]>,
     post: Option<&[u8]>,
-) -> Result<Option<String>, CoreFailure> {
+) -> Result<Option<String>, BusinessError> {
     let Some(id) = journal_id(idempotency_key, operation_id) else {
         return Ok(None);
     };
     if let Some(existing) = load_journal(checkpoint_root, &id) {
         if existing.status == "succeeded" {
-            return Err(CoreFailure {
-                code: "operation_already_completed",
-                message: "operation already completed",
-                retryable: false,
-            });
+            return Err(BusinessError::new(
+                "operation_already_completed",
+                "operation already completed",
+            )
+            .with_retryable(false));
         }
         if existing.status == "pending" {
-            return Err(CoreFailure {
-                code: "unknown_completion",
-                message: "operation completion is unknown and must be reconciled",
-                retryable: false,
-            });
+            return Err(BusinessError::new(
+                "unknown_completion",
+                "operation completion is unknown and must be reconciled",
+            )
+            .with_retryable(false));
         }
     }
     let now = now_string();
@@ -339,25 +309,23 @@ fn sha256_hex(bytes: &[u8]) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-fn safe_relative_path(path: &str) -> Result<PathBuf, CoreFailure> {
+fn safe_relative_path(path: &str) -> Result<PathBuf, BusinessError> {
     let value = Path::new(path);
     if value.as_os_str().is_empty() || value.is_absolute() {
-        return Err(CoreFailure {
-            code: "scope_denied",
-            message: "path must be relative to the project",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("scope_denied", "path must be relative to the project")
+                .with_retryable(false),
+        );
     }
     for component in value.components() {
         if matches!(
             component,
             Component::ParentDir | Component::RootDir | Component::Prefix(_)
         ) {
-            return Err(CoreFailure {
-                code: "scope_denied",
-                message: "path must remain inside the project",
-                retryable: false,
-            });
+            return Err(
+                BusinessError::new("scope_denied", "path must remain inside the project")
+                    .with_retryable(false),
+            );
         }
     }
     Ok(value.to_path_buf())

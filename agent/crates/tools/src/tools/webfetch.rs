@@ -1,5 +1,5 @@
 use super::super::arguments::WebfetchArguments;
-use super::super::{artifacts, CoreFailure};
+use super::super::{artifacts, BusinessError};
 use encoding_rs::{Encoding, UTF_8};
 use html2md_rs::{
     parser::safe_parse_html,
@@ -34,7 +34,7 @@ enum OutputFormat {
 }
 
 impl OutputFormat {
-    fn parse(value: Option<&str>) -> Result<Self, CoreFailure> {
+    fn parse(value: Option<&str>) -> Result<Self, BusinessError> {
         match value.unwrap_or("markdown") {
             "text" => Ok(Self::Text),
             "markdown" => Ok(Self::Markdown),
@@ -70,7 +70,7 @@ pub(super) fn execute(
     checkpoint_root: Option<&Path>,
     args: WebfetchArguments,
     cancellation: Option<&AtomicBool>,
-) -> Result<Value, CoreFailure> {
+) -> Result<Value, BusinessError> {
     let url = args.url.trim();
     if url.is_empty() {
         return Err(invalid("url is required"));
@@ -184,11 +184,10 @@ pub(super) fn execute(
         "truncated": truncated
     });
     if truncated {
-        let root = checkpoint_root.ok_or(CoreFailure {
-            code: "artifact_unavailable",
-            message: "artifact storage is not configured",
-            retryable: false,
-        })?;
+        let root = checkpoint_root.ok_or(
+            BusinessError::new("artifact_unavailable", "artifact storage is not configured")
+                .with_retryable(false),
+        )?;
         result["artifact_id"] = json!(artifacts::write_artifact(root, output.as_bytes())?);
     }
     Ok(result)
@@ -200,7 +199,7 @@ fn send(
     format: OutputFormat,
     user_agent: &str,
     timeout: Duration,
-) -> Result<Response, CoreFailure> {
+) -> Result<Response, BusinessError> {
     client
         .get(url)
         .header(USER_AGENT, user_agent)
@@ -214,7 +213,7 @@ fn send(
 fn read_bounded(
     response: &mut Response,
     cancellation: Option<&AtomicBool>,
-) -> Result<Vec<u8>, CoreFailure> {
+) -> Result<Vec<u8>, BusinessError> {
     let mut output = Vec::new();
     let mut chunk = [0_u8; 16 * 1024];
     loop {
@@ -233,7 +232,7 @@ fn read_bounded(
     Ok(output)
 }
 
-fn convert_html(input: &str, format: OutputFormat) -> Result<String, CoreFailure> {
+fn convert_html(input: &str, format: OutputFormat) -> Result<String, BusinessError> {
     if format == OutputFormat::Html {
         return Ok(input.to_string());
     }
@@ -332,7 +331,7 @@ fn append_break(output: &mut String) {
     }
 }
 
-fn parse_http_url(value: &str) -> Result<Url, CoreFailure> {
+fn parse_http_url(value: &str) -> Result<Url, BusinessError> {
     let url = Url::parse(value).map_err(|_| invalid("url must be a valid HTTP or HTTPS URL"))?;
     if !matches!(url.scheme(), "http" | "https") {
         return Err(invalid("url must use http or https"));
@@ -359,7 +358,7 @@ fn decode_body(bytes: &[u8], content_type: &str) -> String {
     encoding.decode(bytes).0.into_owned()
 }
 
-fn timeout(value: Option<f64>) -> Result<Duration, CoreFailure> {
+fn timeout(value: Option<f64>) -> Result<Duration, BusinessError> {
     let seconds = value.unwrap_or(DEFAULT_TIMEOUT_SECONDS);
     if !seconds.is_finite() {
         return Err(invalid("timeout must be a number of seconds"));
@@ -372,7 +371,7 @@ fn timeout(value: Option<f64>) -> Result<Duration, CoreFailure> {
     Ok(Duration::from_secs_f64(seconds))
 }
 
-fn remaining(deadline: Instant) -> Result<Duration, CoreFailure> {
+fn remaining(deadline: Instant) -> Result<Duration, BusinessError> {
     let timeout = deadline.saturating_duration_since(Instant::now());
     if timeout.is_zero() {
         return Err(fetch_failure("request timed out", true));
@@ -402,18 +401,16 @@ fn utf8_prefix(value: &str, max_bytes: usize) -> (&str, bool) {
     (&value[..boundary], true)
 }
 
-fn check_cancelled(cancellation: Option<&AtomicBool>) -> Result<(), CoreFailure> {
+fn check_cancelled(cancellation: Option<&AtomicBool>) -> Result<(), BusinessError> {
     if cancellation.is_some_and(|value| value.load(Ordering::Relaxed)) {
-        return Err(CoreFailure {
-            code: "cancelled",
-            message: "web fetch was cancelled",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("cancelled", "web fetch was cancelled").with_retryable(false)
+        );
     }
     Ok(())
 }
 
-fn map_request_error(error: reqwest::Error) -> CoreFailure {
+fn map_request_error(error: reqwest::Error) -> BusinessError {
     if error.is_timeout() {
         fetch_failure("request timed out", true)
     } else {
@@ -421,20 +418,12 @@ fn map_request_error(error: reqwest::Error) -> CoreFailure {
     }
 }
 
-fn invalid(message: &'static str) -> CoreFailure {
-    CoreFailure {
-        code: "invalid_arguments",
-        message,
-        retryable: false,
-    }
+fn invalid(message: &'static str) -> BusinessError {
+    BusinessError::invalid(message)
 }
 
-fn fetch_failure(message: &'static str, retryable: bool) -> CoreFailure {
-    CoreFailure {
-        code: "webfetch_failed",
-        message,
-        retryable,
-    }
+fn fetch_failure(message: &'static str, retryable: bool) -> BusinessError {
+    BusinessError::new("webfetch_failed", message).with_retryable(retryable)
 }
 
 #[cfg(test)]

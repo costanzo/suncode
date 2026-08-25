@@ -1,6 +1,6 @@
 use crate::logging::{self, Level};
 use crate::{
-    agent::{Agent, AgentError, TurnResponse},
+    agent::{Agent, TurnResponse},
     agent_lock::AgentLock,
     config::Config,
     credentials::{CredentialState, CredentialStore},
@@ -21,10 +21,11 @@ use std::{
     sync::{Arc, Mutex},
     thread::JoinHandle,
 };
-use suncode_data::{PersistenceError, Store};
+use suncode_common::BusinessError;
+use suncode_data::Store;
 use suncode_llm::{
     ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
-    OpenAiCompatibleProvider, RegistrationError,
+    OpenAiCompatibleProvider,
 };
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
@@ -42,60 +43,7 @@ struct AgentState {
     providers: Arc<ModelProviderRegistry>,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct SdkError {
-    pub code: String,
-    pub message: String,
-    pub details: Value,
-}
-
-impl SdkError {
-    fn new(code: &str, message: impl Into<String>) -> Self {
-        Self {
-            code: code.to_string(),
-            message: message.into(),
-            details: json!({}),
-        }
-    }
-
-    fn invalid(message: impl Into<String>) -> Self {
-        Self::new("invalid_arguments", message)
-    }
-
-    fn unavailable(message: impl Into<String>) -> Self {
-        Self::new("agent_unavailable", message)
-    }
-
-    fn missing(kind: &str) -> Self {
-        Self::new(&format!("{kind}_not_found"), format!("{kind} not found"))
-    }
-}
-
-impl std::fmt::Display for SdkError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(formatter, "{}: {}", self.code, self.message)
-    }
-}
-
-impl std::error::Error for SdkError {}
-
-impl From<PersistenceError> for SdkError {
-    fn from(error: PersistenceError) -> Self {
-        Self::unavailable(error.to_string())
-    }
-}
-
-impl From<AgentError> for SdkError {
-    fn from(error: AgentError) -> Self {
-        Self {
-            code: error.code,
-            message: error.message,
-            details: error.details,
-        }
-    }
-}
-
-pub type SdkResult<T> = Result<T, SdkError>;
+pub type SdkResult<T> = Result<T, BusinessError>;
 
 #[derive(Debug, Serialize)]
 pub struct HealthResult {
@@ -369,7 +317,7 @@ fn registry_from_store(
                 keys.clone(),
             )),
             adapter_type => {
-                return Err(SdkError::new(
+                return Err(BusinessError::new(
                     "provider_adapter_unsupported",
                     format!("provider adapter is not supported: {adapter_type}"),
                 ));
@@ -377,26 +325,28 @@ fn registry_from_store(
         };
         registry
             .register(provider.provider_id, adapter, provider_models)
-            .map_err(|error| SdkError::new("provider_registration_failed", error.to_string()))?;
+            .map_err(|error| {
+                BusinessError::new("provider_registration_failed", error.to_string())
+            })?;
     }
     Ok(registry)
 }
 
 async fn build_state<F>(config: &Config, configure_providers: F) -> SdkResult<AgentState>
 where
-    F: FnOnce(&mut ModelProviderRegistry) -> Result<(), RegistrationError>,
+    F: FnOnce(&mut ModelProviderRegistry) -> Result<(), BusinessError>,
 {
-    let store = Store::open(&config.database_path).map_err(SdkError::from)?;
+    let store = Store::open(&config.database_path)?;
     configure_logging(&store, &config.data_dir)?;
     let operations = Arc::new(
         suncode_tool::Operations::new(config.data_dir.join("operations"))
-            .map_err(|error| SdkError::unavailable(error.to_string()))?,
+            .map_err(|error| BusinessError::unavailable(error.to_string()))?,
     );
     let (events, _) = broadcast::channel(256);
     let credentials = CredentialStore::load(store.clone(), config.non_interactive);
     let mut providers = registry_from_store(&store, Arc::new(credentials.clone()))?;
     configure_providers(&mut providers)
-        .map_err(|error| SdkError::new("provider_registration_failed", error.to_string()))?;
+        .map_err(|error| BusinessError::new("provider_registration_failed", error.to_string()))?;
     let providers = Arc::new(providers);
     let agent = Agent::new(
         store.clone(),
@@ -414,7 +364,7 @@ where
         agent,
         providers,
     };
-    state.agent.recover().await.map_err(SdkError::from)?;
+    state.agent.recover().await?;
     Ok(state)
 }
 
@@ -450,7 +400,7 @@ fn configure_logging(store: &Store, data_dir: &Path) -> SdkResult<()> {
 fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
     if key == "tool_call_limit" {
         if scope != "project" {
-            return Err(SdkError::invalid(
+            return Err(BusinessError::invalid(
                 "tool_call_limit is a project-only setting",
             ));
         }
@@ -458,7 +408,7 @@ fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
             .as_u64()
             .is_none_or(|limit| !(1..=256).contains(&limit))
         {
-            return Err(SdkError::invalid(
+            return Err(BusinessError::invalid(
                 "tool_call_limit must be an integer between 1 and 256",
             ));
         }
@@ -466,10 +416,12 @@ fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
     }
     if key == "full_control" {
         if scope != "session" {
-            return Err(SdkError::invalid("full_control is a session-only setting"));
+            return Err(BusinessError::invalid(
+                "full_control is a session-only setting",
+            ));
         }
         if !value.is_boolean() {
-            return Err(SdkError::invalid("full_control must be a boolean"));
+            return Err(BusinessError::invalid("full_control must be a boolean"));
         }
         return Ok(());
     }
@@ -481,32 +433,34 @@ fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
         return Ok(());
     }
     if scope != "global" {
-        return Err(SdkError::invalid(format!("{key} is a global-only setting")));
+        return Err(BusinessError::invalid(format!(
+            "{key} is a global-only setting"
+        )));
     }
     match key {
         "log_level" => {
             let Some(level) = value.as_str() else {
-                return Err(SdkError::invalid("log_level must be a string"));
+                return Err(BusinessError::invalid("log_level must be a string"));
             };
             if !matches!(
                 level.trim().to_ascii_uppercase().as_str(),
                 "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR" | "OFF"
             ) {
-                return Err(SdkError::invalid(
+                return Err(BusinessError::invalid(
                     "log_level must be TRACE, DEBUG, INFO, WARN, ERROR, or OFF",
                 ));
             }
         }
         "log_directory" if !value.is_string() => {
-            return Err(SdkError::invalid("log_directory must be a string"));
+            return Err(BusinessError::invalid("log_directory must be a string"));
         }
         "log_max_bytes" if value.as_u64().is_none_or(|size| size < 1024) => {
-            return Err(SdkError::invalid(
+            return Err(BusinessError::invalid(
                 "log_max_bytes must be an integer greater than or equal to 1024",
             ));
         }
         "log_retention" if value.as_u64().is_none_or(|count| count > 100) => {
-            return Err(SdkError::invalid(
+            return Err(BusinessError::invalid(
                 "log_retention must be an integer between 0 and 100",
             ));
         }
@@ -530,14 +484,14 @@ impl AgentSdk {
     /// Opens the agent after extending the built-in registry with trusted providers.
     pub fn open_default_with_providers<F>(configure_providers: F) -> SdkResult<Self>
     where
-        F: FnOnce(&mut ModelProviderRegistry) -> Result<(), RegistrationError>,
+        F: FnOnce(&mut ModelProviderRegistry) -> Result<(), BusinessError>,
     {
-        let config = Config::load().map_err(SdkError::invalid)?;
+        let config = Config::load().map_err(BusinessError::invalid)?;
         let lock = AgentLock::acquire(&config.data_dir).map_err(|error| {
             if error.kind() == std::io::ErrorKind::AlreadyExists {
-                SdkError::new("agent_already_active", error.to_string())
+                BusinessError::new("agent_already_active", error.to_string())
             } else {
-                SdkError::unavailable(format!("agent lock unavailable: {error}"))
+                BusinessError::unavailable(format!("agent lock unavailable: {error}"))
             }
         })?;
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -545,7 +499,7 @@ impl AgentSdk {
             .thread_name("suncode-sdk")
             .build()
             .map_err(|error| {
-                SdkError::unavailable(format!("tokio runtime unavailable: {error}"))
+                BusinessError::unavailable(format!("tokio runtime unavailable: {error}"))
             })?;
         let state = runtime.block_on(build_state(&config, configure_providers))?;
         logging::write(Level::Info, "agent", "open completed");
@@ -608,13 +562,13 @@ impl AgentSdk {
             .iter()
             .any(|state| state.provider == provider)
         {
-            return Err(SdkError::invalid("provider is not supported"));
+            return Err(BusinessError::invalid("provider is not supported"));
         }
         let provider = provider.to_string();
         self.state
             .credentials
             .set(&provider, api_key)
-            .map_err(|error| SdkError::new("credential_unavailable", error))?;
+            .map_err(|error| BusinessError::new("credential_unavailable", error))?;
         Ok(CredentialUpdate {
             provider,
             configured: true,
@@ -629,13 +583,13 @@ impl AgentSdk {
             .iter()
             .any(|state| state.provider == provider)
         {
-            return Err(SdkError::invalid("provider is not supported"));
+            return Err(BusinessError::invalid("provider is not supported"));
         }
         let provider = provider.to_string();
         self.state
             .credentials
             .delete(&provider)
-            .map_err(|error| SdkError::new("credential_unavailable", error))?;
+            .map_err(|error| BusinessError::new("credential_unavailable", error))?;
         Ok(CredentialUpdate {
             provider,
             configured: false,
@@ -663,10 +617,14 @@ impl AgentSdk {
         validate_setting(scope, key, value)?;
         let scope_id = match scope {
             "global" => "global",
-            "project" => project_id.ok_or_else(|| SdkError::invalid("project_id is required"))?,
-            "session" => session_id.ok_or_else(|| SdkError::invalid("session_id is required"))?,
+            "project" => {
+                project_id.ok_or_else(|| BusinessError::invalid("project_id is required"))?
+            }
+            "session" => {
+                session_id.ok_or_else(|| BusinessError::invalid("session_id is required"))?
+            }
             _ => {
-                return Err(SdkError::invalid(
+                return Err(BusinessError::invalid(
                     "scope must be global, project, or session",
                 ))
             }
@@ -712,7 +670,9 @@ impl AgentSdk {
         let root = result
             .get("canonical_path")
             .and_then(Value::as_str)
-            .ok_or_else(|| SdkError::unavailable("project/open did not return a canonical path"))?;
+            .ok_or_else(|| {
+                BusinessError::unavailable("project/open did not return a canonical path")
+            })?;
         let display_name = display_name
             .or_else(|| result.get("display_name").and_then(Value::as_str))
             .unwrap_or("Project");
@@ -728,7 +688,7 @@ impl AgentSdk {
             .state
             .store
             .project_by_id(project_id)?
-            .ok_or_else(|| SdkError::missing("project"))?;
+            .ok_or_else(|| BusinessError::missing("project"))?;
         self.state
             .operations
             .open_project(std::path::Path::new(&project.canonical_root))
@@ -744,7 +704,7 @@ impl AgentSdk {
         project_id: &str,
     ) -> SdkResult<ProjectDependenciesResult> {
         if self.state.store.project_by_id(project_id)?.is_none() {
-            return Err(SdkError::missing("project"));
+            return Err(BusinessError::missing("project"));
         }
         Ok(ProjectDependenciesResult {
             project_id: project_id.to_string(),
@@ -767,7 +727,7 @@ impl AgentSdk {
             .state
             .store
             .project_by_id(project_id)?
-            .ok_or_else(|| SdkError::missing("project"))?;
+            .ok_or_else(|| BusinessError::missing("project"))?;
         let opened = self
             .state
             .operations
@@ -776,7 +736,7 @@ impl AgentSdk {
         let canonical_root = opened
             .get("canonical_path")
             .and_then(Value::as_str)
-            .ok_or_else(|| SdkError::unavailable("dependency root was not canonicalized"))?;
+            .ok_or_else(|| BusinessError::unavailable("dependency root was not canonicalized"))?;
         let display_name = opened
             .get("display_name")
             .and_then(Value::as_str)
@@ -784,7 +744,7 @@ impl AgentSdk {
         let dependency_root = Path::new(canonical_root);
         let project_root = Path::new(&project.canonical_root);
         if dependency_root.starts_with(project_root) || project_root.starts_with(dependency_root) {
-            return Err(SdkError::invalid(
+            return Err(BusinessError::invalid(
                 "dependency root must not equal, contain, or be contained by the project root",
             ));
         }
@@ -798,15 +758,14 @@ impl AgentSdk {
                 dependency_root.starts_with(existing) || existing.starts_with(dependency_root)
             })
         {
-            return Err(SdkError::invalid(
+            return Err(BusinessError::invalid(
                 "dependency roots must not equal, contain, or be contained by each other",
             ));
         }
         self.state
             .store
             .add_project_dependency(project_id, canonical_root, display_name)
-            .map(Into::into)
-            .map_err(SdkError::from)
+            .map(ProjectDependencyDto::from)
     }
 
     pub fn remove_project_dependency(
@@ -819,7 +778,7 @@ impl AgentSdk {
             .store
             .remove_project_dependency(project_id, dependency_id)?;
         if !removed {
-            return Err(SdkError::missing("dependency"));
+            return Err(BusinessError::missing("dependency"));
         }
         Ok(DependencyRemoval {
             dependency_id: dependency_id.to_string(),
@@ -837,13 +796,13 @@ impl AgentSdk {
             self.state
                 .store
                 .project_dependency_by_id(project_id, dependency_id)?
-                .ok_or_else(|| SdkError::missing("dependency"))?
+                .ok_or_else(|| BusinessError::missing("dependency"))?
                 .canonical_root
         } else {
             self.state
                 .store
                 .project_by_id(project_id)?
-                .ok_or_else(|| SdkError::missing("project"))?
+                .ok_or_else(|| BusinessError::missing("project"))?
                 .canonical_root
         };
         let mut value = self
@@ -858,7 +817,7 @@ impl AgentSdk {
 
     pub fn list_sessions(&self, project_id: &str) -> SdkResult<SessionsResult> {
         if self.state.store.project_by_id(project_id)?.is_none() {
-            return Err(SdkError::missing("project"));
+            return Err(BusinessError::missing("project"));
         }
         Ok(SessionsResult {
             project_id: project_id.to_string(),
@@ -871,7 +830,7 @@ impl AgentSdk {
             .state
             .store
             .project_by_id(project_id)?
-            .ok_or_else(|| SdkError::missing("project"))?;
+            .ok_or_else(|| BusinessError::missing("project"))?;
         let value = self
             .state
             .operations
@@ -891,16 +850,18 @@ impl AgentSdk {
         path: &str,
     ) -> SdkResult<GitDiffFileResult> {
         if !matches!(scope, "all" | "staged" | "unstaged") {
-            return Err(SdkError::invalid("scope must be all, staged, or unstaged"));
+            return Err(BusinessError::invalid(
+                "scope must be all, staged, or unstaged",
+            ));
         }
         if path.trim().is_empty() {
-            return Err(SdkError::invalid("path is required"));
+            return Err(BusinessError::invalid("path is required"));
         }
         let project = self
             .state
             .store
             .project_by_id(project_id)?
-            .ok_or_else(|| SdkError::missing("project"))?;
+            .ok_or_else(|| BusinessError::missing("project"))?;
         let value = self
             .state
             .operations
@@ -925,7 +886,7 @@ impl AgentSdk {
         };
         if let Some(model) = selected_model.as_deref() {
             if self.state.providers.route(model).is_none() {
-                return Err(SdkError::new(
+                return Err(BusinessError::new(
                     "model_unavailable",
                     "model is not advertised",
                 ));
@@ -934,38 +895,25 @@ impl AgentSdk {
         self.state
             .store
             .create_session(project_id, title, selected_model.as_deref())
-            .map_err(SdkError::from)
     }
 
     pub fn rename_session(&self, session_id: &str, title: &str) -> SdkResult<SessionRecord> {
         if title.trim().is_empty() {
-            return Err(SdkError::invalid("title is required"));
+            return Err(BusinessError::invalid("title is required"));
         }
-        self.state
-            .store
-            .rename_session(session_id, title.trim())
-            .map_err(SdkError::from)
+        self.state.store.rename_session(session_id, title.trim())
     }
 
     pub fn archive_session(&self, session_id: &str) -> SdkResult<SessionRecord> {
-        self.state
-            .store
-            .set_session_archived(session_id, true)
-            .map_err(SdkError::from)
+        self.state.store.set_session_archived(session_id, true)
     }
 
     pub fn set_session_pinned(&self, session_id: &str, pinned: bool) -> SdkResult<SessionRecord> {
-        self.state
-            .store
-            .set_session_pinned(session_id, pinned)
-            .map_err(SdkError::from)
+        self.state.store.set_session_pinned(session_id, pinned)
     }
 
     pub fn reopen_session(&self, session_id: &str) -> SdkResult<SessionRecord> {
-        self.state
-            .store
-            .set_session_archived(session_id, false)
-            .map_err(SdkError::from)
+        self.state.store.set_session_archived(session_id, false)
     }
 
     pub fn session_snapshot(&self, session_id: &str, _after: i64) -> SdkResult<SessionSnapshot> {
@@ -978,7 +926,7 @@ impl AgentSdk {
             .state
             .store
             .session_by_id(session_id)?
-            .ok_or_else(|| SdkError::missing("session"))?;
+            .ok_or_else(|| BusinessError::missing("session"))?;
         let messages = self.state.store.messages(session_id)?;
         let conversation_turns = self.state.store.session_conversation_turns(session_id)?;
         let pending_question = self.state.store.pending_question(session_id)?;
@@ -997,7 +945,7 @@ impl AgentSdk {
 
     pub fn session_usage(&self, session_id: &str) -> SdkResult<SessionUsageResult> {
         if self.state.store.session_by_id(session_id)?.is_none() {
-            return Err(SdkError::missing("session"));
+            return Err(BusinessError::missing("session"));
         }
         let usage = self.state.store.session_usage(session_id)?;
         Ok(SessionUsageResult {
@@ -1010,7 +958,7 @@ impl AgentSdk {
 
     pub fn list_provider_exchanges(&self, session_id: &str) -> SdkResult<ProviderExchangesResult> {
         if self.state.store.session_by_id(session_id)?.is_none() {
-            return Err(SdkError::missing("session"));
+            return Err(BusinessError::missing("session"));
         }
         Ok(ProviderExchangesResult {
             session_id: session_id.to_string(),
@@ -1025,13 +973,13 @@ impl AgentSdk {
         exchange_id: &str,
     ) -> SdkResult<ProviderExchangeDetails> {
         if exchange_id.trim().is_empty() {
-            return Err(SdkError::invalid("exchange_id is required"));
+            return Err(BusinessError::invalid("exchange_id is required"));
         }
         let exchange = self
             .state
             .store
             .provider_exchange(session_id, exchange_id)?
-            .ok_or_else(|| SdkError::missing("provider_exchange"))?;
+            .ok_or_else(|| BusinessError::missing("provider_exchange"))?;
         Ok(ProviderExchangeDetails {
             messages: self
                 .state
@@ -1054,7 +1002,7 @@ impl AgentSdk {
             .state
             .store
             .manifest(manifest_id)?
-            .ok_or_else(|| SdkError::missing("checkpoint"))?;
+            .ok_or_else(|| BusinessError::missing("checkpoint"))?;
         Ok(CheckpointDetails {
             manifest,
             items: self.state.store.checkpoint_items(manifest_id)?,
@@ -1070,15 +1018,15 @@ impl AgentSdk {
             .state
             .store
             .manifest(manifest_id)?
-            .ok_or_else(|| SdkError::missing("checkpoint"))?;
+            .ok_or_else(|| BusinessError::missing("checkpoint"))?;
         if manifest.session_id != session_id {
-            return Err(SdkError::new(
+            return Err(BusinessError::new(
                 "scope_denied",
                 "checkpoint does not belong to session",
             ));
         }
         if manifest.status != "available" {
-            return Err(SdkError::new(
+            return Err(BusinessError::new(
                 "checkpoint_unavailable",
                 "checkpoint is not available",
             ));
@@ -1087,12 +1035,12 @@ impl AgentSdk {
             .state
             .store
             .session_by_id(session_id)?
-            .ok_or_else(|| SdkError::missing("session"))?;
+            .ok_or_else(|| BusinessError::missing("session"))?;
         let project = self
             .state
             .store
             .project_by_id(session.project_id.as_deref().unwrap_or(""))?
-            .ok_or_else(|| SdkError::missing("project"))?;
+            .ok_or_else(|| BusinessError::missing("project"))?;
         self.state
             .store
             .set_manifest_status(manifest_id, "restoring")?;
@@ -1129,7 +1077,7 @@ impl AgentSdk {
                         "checkpoint.restore_failed",
                         json!({"manifest_id": manifest_id, "status": status, "code": error.get("code")}),
                     )?;
-                    return Err(SdkError::new(
+                    return Err(BusinessError::new(
                         error
                             .get("code")
                             .and_then(Value::as_str)
@@ -1167,10 +1115,10 @@ impl AgentSdk {
         reasoning_effort: Option<&str>,
     ) -> SdkResult<TurnResponse> {
         if input.is_empty() {
-            return Err(SdkError::invalid("input is required"));
+            return Err(BusinessError::invalid("input is required"));
         }
         if idempotency_key.is_empty() {
-            return Err(SdkError::invalid("idempotency_key is required"));
+            return Err(BusinessError::invalid("idempotency_key is required"));
         }
         match self.runtime.block_on(self.state.agent.submit(
             session_id,
@@ -1190,13 +1138,13 @@ impl AgentSdk {
                 tool_call_id: detail_string(&error, "tool_call_id")?,
                 request_id: detail_string(&error, "request_id")?,
             }),
-            Err(error) => Err(SdkError::from(error)),
+            Err(error) => Err(error),
         }
     }
 
     pub fn cancel_turn(&self, _session_id: &str, turn_id: &str) -> SdkResult<CancellationOutcome> {
         if !self.state.agent.cancel(turn_id) {
-            return Err(SdkError::new("conflict", "turn is not running"));
+            return Err(BusinessError::new("conflict", "turn is not running"));
         }
         Ok(CancellationOutcome {
             turn_id: turn_id.to_string(),
@@ -1208,7 +1156,7 @@ impl AgentSdk {
         self.state
             .store
             .approval(approval_id)?
-            .ok_or_else(|| SdkError::missing("approval"))
+            .ok_or_else(|| BusinessError::missing("approval"))
     }
 
     pub fn resolve_approval(
@@ -1217,13 +1165,13 @@ impl AgentSdk {
         decision: &str,
     ) -> SdkResult<ApprovalOutcome> {
         if !["deny", "allow_once", "allow_session"].contains(&decision) {
-            return Err(SdkError::invalid("invalid approval decision"));
+            return Err(BusinessError::invalid("invalid approval decision"));
         }
         let resolved = self
             .runtime
             .block_on(self.state.agent.resolve_approval(approval_id, decision))?;
         if !resolved {
-            return Err(SdkError::new(
+            return Err(BusinessError::new(
                 "conflict",
                 "approval is missing or already resolved",
             ));
@@ -1237,19 +1185,19 @@ impl AgentSdk {
     pub fn reply_question(&self, request_id: &str, answers: &Value) -> SdkResult<QuestionOutcome> {
         let answers = answers
             .as_array()
-            .ok_or_else(|| SdkError::invalid("answers must be an array"))?;
+            .ok_or_else(|| BusinessError::invalid("answers must be an array"))?;
         let answers = answers
             .iter()
             .map(|answer| {
                 answer
                     .as_array()
-                    .ok_or_else(|| SdkError::invalid("each answer must be an array"))
+                    .ok_or_else(|| BusinessError::invalid("each answer must be an array"))
                     .and_then(|values| {
                         values
                             .iter()
                             .map(|value| {
                                 value.as_str().map(str::to_string).ok_or_else(|| {
-                                    SdkError::invalid("answers must contain strings")
+                                    BusinessError::invalid("answers must contain strings")
                                 })
                             })
                             .collect()
@@ -1262,7 +1210,7 @@ impl AgentSdk {
                 .resolve_question(request_id, answers, false),
         )?;
         if !resolved {
-            return Err(SdkError::new(
+            return Err(BusinessError::new(
                 "conflict",
                 "question is missing or already resolved",
             ));
@@ -1280,7 +1228,7 @@ impl AgentSdk {
             true,
         ))?;
         if !resolved {
-            return Err(SdkError::new(
+            return Err(BusinessError::new(
                 "conflict",
                 "question is missing or already resolved",
             ));
@@ -1304,7 +1252,7 @@ impl AgentSdk {
             format!("begin session={session_id} after={_after}"),
         );
         if self.state.store.session_by_id(&session_id)?.is_none() {
-            return Err(SdkError::missing("session"));
+            return Err(BusinessError::missing("session"));
         }
 
         // Events are live-only. Hosts recover durable state by reading a fresh snapshot.
@@ -1388,8 +1336,8 @@ impl AgentSdk {
     }
 }
 
-fn operation_error(error: Value) -> SdkError {
-    SdkError::new(
+fn operation_error(error: Value) -> BusinessError {
+    BusinessError::new(
         error
             .get("code")
             .and_then(Value::as_str)
@@ -1403,17 +1351,17 @@ fn operation_error(error: Value) -> SdkError {
 
 fn decode_operation<T: DeserializeOwned>(value: Value, operation: &str) -> SdkResult<T> {
     serde_json::from_value(value).map_err(|error| {
-        SdkError::unavailable(format!("{operation} returned an invalid result: {error}"))
+        BusinessError::unavailable(format!("{operation} returned an invalid result: {error}"))
     })
 }
 
-fn detail_string(error: &AgentError, name: &str) -> SdkResult<String> {
+fn detail_string(error: &BusinessError, name: &str) -> SdkResult<String> {
     error
         .details
         .get(name)
         .and_then(Value::as_str)
         .map(str::to_string)
-        .ok_or_else(|| SdkError::unavailable(format!("approval outcome is missing {name}")))
+        .ok_or_else(|| BusinessError::unavailable(format!("approval outcome is missing {name}")))
 }
 
 fn emit_event(
@@ -1892,8 +1840,8 @@ pub unsafe extern "C" fn suncode_agent_sdk_subscribe_session(
     let result = catch_unwind(AssertUnwindSafe(|| -> SdkResult<_> {
         let handle = handle
             .as_ref()
-            .ok_or_else(|| SdkError::unavailable("agent handle is null"))?;
-        let callback = callback.ok_or_else(|| SdkError::invalid("callback is null"))?;
+            .ok_or_else(|| BusinessError::unavailable("agent handle is null"))?;
+        let callback = callback.ok_or_else(|| BusinessError::invalid("callback is null"))?;
         handle.sdk.subscribe_session_events(
             c_string(session_id, "session_id")?,
             after,
@@ -1943,12 +1891,12 @@ where
     let result = catch_unwind(AssertUnwindSafe(|| {
         let handle = handle
             .as_ref()
-            .ok_or_else(|| SdkError::unavailable("agent handle is null"))?;
+            .ok_or_else(|| BusinessError::unavailable("agent handle is null"))?;
         call(&handle.sdk)
     }));
     match result {
         Ok(result) => result_envelope(result),
-        Err(_) => result_envelope::<T>(Err(SdkError::unavailable("SDK call panicked"))),
+        Err(_) => result_envelope::<T>(Err(BusinessError::unavailable("SDK call panicked"))),
     }
 }
 
@@ -1958,7 +1906,7 @@ fn result_envelope<T: Serialize>(result: SdkResult<T>) -> *mut c_char {
             Ok(body) => json!({"ok": true, "body": body}),
             Err(error) => json!({
                 "ok": false,
-                "error": SdkError::unavailable(error.to_string())
+                "error": BusinessError::unavailable(error.to_string())
             }),
         },
         Err(error) => json!({"ok": false, "error": error}),
@@ -1978,13 +1926,13 @@ fn emit_sdk_event(callback: SunCodeEventCallback, user_data: usize, event: &Sess
 
 fn c_string(pointer: *const c_char, name: &str) -> SdkResult<String> {
     if pointer.is_null() {
-        return Err(SdkError::invalid(format!("{name} is null")));
+        return Err(BusinessError::invalid(format!("{name} is null")));
     }
     unsafe {
         CStr::from_ptr(pointer)
             .to_str()
             .map(str::to_string)
-            .map_err(|error| SdkError::invalid(format!("{name} is not UTF-8: {error}")))
+            .map_err(|error| BusinessError::invalid(format!("{name} is not UTF-8: {error}")))
     }
 }
 
@@ -1998,7 +1946,7 @@ fn optional_c_string(pointer: *const c_char, name: &str) -> SdkResult<Option<Str
 fn json_from_c(pointer: *const c_char, name: &str) -> SdkResult<Value> {
     let value = c_string(pointer, name)?;
     serde_json::from_str(&value)
-        .map_err(|error| SdkError::invalid(format!("{name} is invalid: {error}")))
+        .map_err(|error| BusinessError::invalid(format!("{name} is invalid: {error}")))
 }
 
 unsafe fn write_error_out(error_out: *mut *mut c_char, value: *mut c_char) {

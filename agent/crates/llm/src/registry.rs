@@ -1,32 +1,11 @@
-use crate::{LlmProvider, ModelDescriptor, ModelLimits};
+use crate::{BusinessError, LlmProvider, ModelDescriptor, ModelLimits};
 use std::{collections::HashMap, sync::Arc};
-use thiserror::Error;
 
 #[derive(Clone)]
 pub struct ModelRoute {
     pub provider: Arc<dyn LlmProvider>,
     pub provider_id: String,
     pub wire_model: String,
-}
-
-#[derive(Debug, Error, PartialEq, Eq)]
-pub enum RegistrationError {
-    #[error("provider ID cannot be empty")]
-    EmptyProviderId,
-    #[error("provider `{0}` is already registered")]
-    DuplicateProvider(String),
-    #[error("provider `{0}` must register at least one model")]
-    EmptyModels(String),
-    #[error("model ID cannot be empty")]
-    EmptyModelId,
-    #[error("model `{model_id}` belongs to `{actual_provider}`, not `{expected_provider}`")]
-    ProviderMismatch {
-        model_id: String,
-        expected_provider: String,
-        actual_provider: String,
-    },
-    #[error("model `{0}` is already registered")]
-    DuplicateModel(String),
 }
 
 #[derive(Default)]
@@ -46,34 +25,45 @@ impl ModelProviderRegistry {
         provider_id: impl Into<String>,
         provider: Arc<dyn LlmProvider>,
         models: Vec<ModelDescriptor>,
-    ) -> Result<(), RegistrationError> {
+    ) -> Result<(), BusinessError> {
         let provider_id = provider_id.into();
         if provider_id.trim().is_empty() {
-            return Err(RegistrationError::EmptyProviderId);
+            return Err(BusinessError::invalid("provider ID cannot be empty"));
         }
         if self.providers.contains_key(&provider_id) {
-            return Err(RegistrationError::DuplicateProvider(provider_id));
+            return Err(BusinessError::new(
+                "provider_registration_failed",
+                format!("provider `{provider_id}` is already registered"),
+            ));
         }
         if models.is_empty() {
-            return Err(RegistrationError::EmptyModels(provider_id));
+            return Err(BusinessError::new(
+                "provider_registration_failed",
+                format!("provider `{provider_id}` must register at least one model"),
+            ));
         }
 
         let mut pending_ids = std::collections::HashSet::new();
         for model in &models {
             if model.id.trim().is_empty() {
-                return Err(RegistrationError::EmptyModelId);
+                return Err(BusinessError::invalid("model ID cannot be empty"));
             }
             if model.provider != provider_id {
-                return Err(RegistrationError::ProviderMismatch {
-                    model_id: model.id.clone(),
-                    expected_provider: provider_id.clone(),
-                    actual_provider: model.provider.clone(),
-                });
+                return Err(BusinessError::new(
+                    "provider_registration_failed",
+                    format!(
+                        "model `{}` belongs to `{}`, not `{}`",
+                        model.id, model.provider, provider_id
+                    ),
+                ));
             }
             if self.models.iter().any(|current| current.id == model.id)
                 || !pending_ids.insert(model.id.clone())
             {
-                return Err(RegistrationError::DuplicateModel(model.id.clone()));
+                return Err(BusinessError::new(
+                    "provider_registration_failed",
+                    format!("model `{}` is already registered", model.id),
+                ));
             }
         }
 
@@ -112,7 +102,7 @@ impl ModelProviderRegistry {
 
 #[cfg(test)]
 mod tests {
-    use super::{ModelProviderRegistry, RegistrationError};
+    use super::ModelProviderRegistry;
     use crate::{
         Completion, CompletionFuture, CompletionRequest, LlmProvider, ModelCapabilities,
         ModelDescriptor, ModelLimits,
@@ -191,10 +181,7 @@ mod tests {
             Arc::new(CustomProvider),
             vec![custom_model("same"), custom_model("same")],
         );
-        assert_eq!(
-            result,
-            Err(RegistrationError::DuplicateModel("same".into()))
-        );
+        assert_eq!(result.unwrap_err().code, "provider_registration_failed");
         assert!(registry.models().is_empty());
         assert!(registry.route("same").is_none());
     }

@@ -1,5 +1,5 @@
 use super::arguments::GitDiffArguments;
-use super::{require_project, safe_relative_path, CoreFailure};
+use super::{require_project, safe_relative_path, BusinessError};
 use git2::{
     Delta, Diff, DiffFindOptions, DiffLineType, DiffOptions, ErrorCode, Patch, Repository, Status,
     StatusOptions, StatusShow, Tree,
@@ -25,7 +25,7 @@ struct FileStats {
     binary: bool,
 }
 
-pub(super) fn status(project_root: Option<&Path>) -> Result<Value, CoreFailure> {
+pub(super) fn status(project_root: Option<&Path>) -> Result<Value, BusinessError> {
     let root = require_project(project_root)?;
     let context = open_repository(root)?;
     let mut options = StatusOptions::new();
@@ -126,22 +126,21 @@ pub(super) fn status(project_root: Option<&Path>) -> Result<Value, CoreFailure> 
 pub(super) fn diff_file(
     project_root: Option<&Path>,
     args: &GitDiffArguments,
-) -> Result<Value, CoreFailure> {
+) -> Result<Value, BusinessError> {
     let root = require_project(project_root)?;
     let requested = args.path.as_str();
     let requested = safe_relative_path(requested)?;
-    let requested = path_string(&requested).ok_or(CoreFailure {
-        code: "unsupported_path_encoding",
-        message: "path is not valid UTF-8",
-        retryable: false,
-    })?;
+    let requested = path_string(&requested).ok_or(
+        BusinessError::new("unsupported_path_encoding", "path is not valid UTF-8")
+            .with_retryable(false),
+    )?;
     let scope = args.scope.as_str();
     if !matches!(scope, "all" | "staged" | "unstaged") {
-        return Err(CoreFailure {
-            code: "invalid_arguments",
-            message: "scope must be all, staged, or unstaged",
-            retryable: false,
-        });
+        return Err(BusinessError::new(
+            "invalid_arguments",
+            "scope must be all, staged, or unstaged",
+        )
+        .with_retryable(false));
     }
 
     let context = open_repository(root)?;
@@ -156,16 +155,20 @@ pub(super) fn diff_file(
             let new_matches = delta.new_file().path() == Some(repo_path.as_path());
             (old_matches || new_matches).then_some(index)
         })
-        .ok_or(CoreFailure {
-            code: "git_diff_not_found",
-            message: "the selected file has no diff in this scope",
-            retryable: false,
-        })?;
-    let delta = diff.get_delta(delta_index).ok_or(CoreFailure {
-        code: "git_diff_not_found",
-        message: "the selected file has no diff in this scope",
-        retryable: false,
-    })?;
+        .ok_or(
+            BusinessError::new(
+                "git_diff_not_found",
+                "the selected file has no diff in this scope",
+            )
+            .with_retryable(false),
+        )?;
+    let delta = diff.get_delta(delta_index).ok_or(
+        BusinessError::new(
+            "git_diff_not_found",
+            "the selected file has no diff in this scope",
+        )
+        .with_retryable(false),
+    )?;
     let path = delta
         .new_file()
         .path()
@@ -251,39 +254,41 @@ pub(super) fn diff_file(
     }))
 }
 
-fn open_repository(project_root: &Path) -> Result<RepositoryContext, CoreFailure> {
+fn open_repository(project_root: &Path) -> Result<RepositoryContext, BusinessError> {
     let repository = Repository::discover(project_root).map_err(|error| {
         if matches!(error.code(), ErrorCode::NotFound) {
-            CoreFailure {
-                code: "not_git_repository",
-                message: "project is not inside a Git repository",
-                retryable: false,
-            }
+            BusinessError::new(
+                "not_git_repository",
+                "project is not inside a Git repository",
+            )
+            .with_retryable(false)
         } else {
             git_read_failure(error)
         }
     })?;
-    let workdir = repository.workdir().ok_or(CoreFailure {
-        code: "unsupported_git_repository",
-        message: "bare Git repositories are not supported",
-        retryable: false,
+    let workdir = repository.workdir().ok_or(
+        BusinessError::new(
+            "unsupported_git_repository",
+            "bare Git repositories are not supported",
+        )
+        .with_retryable(false),
+    )?;
+    let workdir = workdir.canonicalize().map_err(|_| {
+        BusinessError::new("git_unavailable", "Git working directory is unavailable")
+            .with_retryable(true)
     })?;
-    let workdir = workdir.canonicalize().map_err(|_| CoreFailure {
-        code: "git_unavailable",
-        message: "Git working directory is unavailable",
-        retryable: true,
-    })?;
-    let canonical_project = project_root.canonicalize().map_err(|_| CoreFailure {
-        code: "project_unavailable",
-        message: "project root is unavailable",
-        retryable: false,
+    let canonical_project = project_root.canonicalize().map_err(|_| {
+        BusinessError::new("project_unavailable", "project root is unavailable")
+            .with_retryable(false)
     })?;
     let project_prefix = canonical_project
         .strip_prefix(&workdir)
-        .map_err(|_| CoreFailure {
-            code: "scope_denied",
-            message: "Git working directory does not contain the project",
-            retryable: false,
+        .map_err(|_| {
+            BusinessError::new(
+                "scope_denied",
+                "Git working directory does not contain the project",
+            )
+            .with_retryable(false)
         })?
         .to_path_buf();
     Ok(RepositoryContext {
@@ -295,7 +300,7 @@ fn open_repository(project_root: &Path) -> Result<RepositoryContext, CoreFailure
 fn build_diff<'repo>(
     repository: &'repo Repository,
     scope: &str,
-) -> Result<Diff<'repo>, CoreFailure> {
+) -> Result<Diff<'repo>, BusinessError> {
     let mut options = DiffOptions::new();
     options
         .include_typechange(true)
@@ -318,7 +323,7 @@ fn build_diff<'repo>(
     .map_err(git_read_failure)
 }
 
-fn head_tree(repository: &Repository) -> Result<Option<Tree<'_>>, CoreFailure> {
+fn head_tree(repository: &Repository) -> Result<Option<Tree<'_>>, BusinessError> {
     match repository.head().and_then(|head| head.peel_to_tree()) {
         Ok(tree) => Ok(Some(tree)),
         Err(error) if matches!(error.code(), ErrorCode::UnbornBranch | ErrorCode::NotFound) => {
@@ -328,7 +333,7 @@ fn head_tree(repository: &Repository) -> Result<Option<Tree<'_>>, CoreFailure> {
     }
 }
 
-fn detect_renames(diff: &mut Diff<'_>) -> Result<(), CoreFailure> {
+fn detect_renames(diff: &mut Diff<'_>) -> Result<(), BusinessError> {
     let mut options = DiffFindOptions::new();
     options.renames(true).renames_from_rewrites(true);
     diff.find_similar(Some(&mut options))
@@ -338,7 +343,7 @@ fn detect_renames(diff: &mut Diff<'_>) -> Result<(), CoreFailure> {
 fn collect_file_stats(
     diff: &Diff<'_>,
     project_prefix: &Path,
-) -> Result<BTreeMap<String, FileStats>, CoreFailure> {
+) -> Result<BTreeMap<String, FileStats>, BusinessError> {
     let mut result = BTreeMap::new();
     for (index, delta) in diff.deltas().enumerate() {
         let Some(repo_path) = delta.new_file().path().or_else(|| delta.old_file().path()) else {
@@ -497,13 +502,10 @@ fn head_summary(repository: &Repository) -> (Option<String>, bool, Option<String
     }
 }
 
-fn git_read_failure(error: git2::Error) -> CoreFailure {
+fn git_read_failure(error: git2::Error) -> BusinessError {
     let retryable = matches!(error.code(), ErrorCode::Locked | ErrorCode::Modified);
-    CoreFailure {
-        code: "git_read_failed",
-        message: "Git repository could not be read",
-        retryable,
-    }
+    BusinessError::new("git_read_failed", "Git repository could not be read")
+        .with_retryable(retryable)
 }
 
 #[cfg(test)]

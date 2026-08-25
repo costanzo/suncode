@@ -1,5 +1,5 @@
 use super::arguments::CheckpointRestoreArguments;
-use super::{safe_relative_path, sha256_hex, CoreFailure, CHECKPOINT_SEQUENCE};
+use super::{safe_relative_path, sha256_hex, BusinessError, CHECKPOINT_SEQUENCE};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -24,7 +24,7 @@ pub(super) fn capture(
     path: &str,
     pre_image: Option<&[u8]>,
     post_image: &[u8],
-) -> Result<String, CoreFailure> {
+) -> Result<String, BusinessError> {
     let mut hasher = Sha256::new();
     hasher.update(
         SystemTime::now()
@@ -42,10 +42,12 @@ pub(super) fn capture(
     hasher.update(project_root.to_string_lossy().as_bytes());
     hasher.update(path.as_bytes());
     let checkpoint_id = format!("{:x}", hasher.finalize());
-    fs::create_dir_all(checkpoint_root).map_err(|_| CoreFailure {
-        code: "checkpoint_failed",
-        message: "checkpoint directory could not be created",
-        retryable: true,
+    fs::create_dir_all(checkpoint_root).map_err(|_| {
+        BusinessError::new(
+            "checkpoint_failed",
+            "checkpoint directory could not be created",
+        )
+        .with_retryable(true)
     })?;
     let record = CheckpointRecord {
         project_root_sha256: sha256_hex(project_root.to_string_lossy().as_bytes()),
@@ -56,16 +58,14 @@ pub(super) fn capture(
     };
     fs::write(
         checkpoint_root.join(format!("{}.json", checkpoint_id)),
-        serde_json::to_vec(&record).map_err(|_| CoreFailure {
-            code: "checkpoint_failed",
-            message: "checkpoint could not be encoded",
-            retryable: false,
+        serde_json::to_vec(&record).map_err(|_| {
+            BusinessError::new("checkpoint_failed", "checkpoint could not be encoded")
+                .with_retryable(false)
         })?,
     )
-    .map_err(|_| CoreFailure {
-        code: "checkpoint_failed",
-        message: "checkpoint could not be written",
-        retryable: true,
+    .map_err(|_| {
+        BusinessError::new("checkpoint_failed", "checkpoint could not be written")
+            .with_retryable(true)
     })?;
     Ok(checkpoint_id)
 }
@@ -74,43 +74,39 @@ pub(super) fn restore(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
     args: &CheckpointRestoreArguments,
-) -> Result<Value, CoreFailure> {
-    let root = project_root.ok_or(CoreFailure {
-        code: "project_unconfigured",
-        message: "project root is not configured",
-        retryable: false,
-    })?;
+) -> Result<Value, BusinessError> {
+    let root = project_root.ok_or(
+        BusinessError::new("project_unconfigured", "project root is not configured")
+            .with_retryable(false),
+    )?;
     let checkpoint_id = args.checkpoint_id.as_str();
     if checkpoint_id.len() != 64 || !checkpoint_id.chars().all(|value| value.is_ascii_hexdigit()) {
-        return Err(CoreFailure {
-            code: "invalid_arguments",
-            message: "checkpoint_id is invalid",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("invalid_arguments", "checkpoint_id is invalid")
+                .with_retryable(false),
+        );
     }
-    let checkpoint_root = checkpoint_root.ok_or(CoreFailure {
-        code: "checkpoint_unavailable",
-        message: "checkpoint storage is not configured",
-        retryable: false,
-    })?;
+    let checkpoint_root = checkpoint_root.ok_or(
+        BusinessError::new(
+            "checkpoint_unavailable",
+            "checkpoint storage is not configured",
+        )
+        .with_retryable(false),
+    )?;
     let record_path = checkpoint_root.join(format!("{}.json", checkpoint_id));
     let record: CheckpointRecord =
-        serde_json::from_slice(&fs::read(&record_path).map_err(|_| CoreFailure {
-            code: "checkpoint_unavailable",
-            message: "checkpoint is unavailable",
-            retryable: false,
+        serde_json::from_slice(&fs::read(&record_path).map_err(|_| {
+            BusinessError::new("checkpoint_unavailable", "checkpoint is unavailable")
+                .with_retryable(false)
         })?)
-        .map_err(|_| CoreFailure {
-            code: "checkpoint_corrupt",
-            message: "checkpoint is corrupt",
-            retryable: false,
+        .map_err(|_| {
+            BusinessError::new("checkpoint_corrupt", "checkpoint is corrupt").with_retryable(false)
         })?;
     if record.project_root_sha256 != sha256_hex(root.to_string_lossy().as_bytes()) {
-        return Err(CoreFailure {
-            code: "scope_denied",
-            message: "checkpoint belongs to another project",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("scope_denied", "checkpoint belongs to another project")
+                .with_retryable(false),
+        );
     }
     let target = root.join(safe_relative_path(&record.path)?);
     let metadata = fs::symlink_metadata(&target).ok();
@@ -119,73 +115,73 @@ pub(super) fn restore(
         .as_ref()
         .is_some_and(|value| value.file_type().is_symlink() || !value.is_file())
     {
-        return Err(CoreFailure {
-            code: "restore_conflict",
-            message: "target type changed after checkpoint capture",
-            retryable: false,
-        });
+        return Err(BusinessError::new(
+            "restore_conflict",
+            "target type changed after checkpoint capture",
+        )
+        .with_retryable(false));
     }
     if metadata.is_none() && !target_was_deleted {
-        return Err(CoreFailure {
-            code: "restore_conflict",
-            message: "target changed or disappeared after checkpoint capture",
-            retryable: false,
-        });
+        return Err(BusinessError::new(
+            "restore_conflict",
+            "target changed or disappeared after checkpoint capture",
+        )
+        .with_retryable(false));
     }
     let current = if metadata.is_some() {
-        let canonical = target.canonicalize().map_err(|_| CoreFailure {
-            code: "restore_conflict",
-            message: "target changed or disappeared after checkpoint capture",
-            retryable: false,
+        let canonical = target.canonicalize().map_err(|_| {
+            BusinessError::new(
+                "restore_conflict",
+                "target changed or disappeared after checkpoint capture",
+            )
+            .with_retryable(false)
         })?;
         if !canonical.starts_with(root) {
-            return Err(CoreFailure {
-                code: "restore_conflict",
-                message: "target moved outside the project after checkpoint capture",
-                retryable: false,
-            });
+            return Err(BusinessError::new(
+                "restore_conflict",
+                "target moved outside the project after checkpoint capture",
+            )
+            .with_retryable(false));
         }
-        fs::read(&canonical).map_err(|_| CoreFailure {
-            code: "restore_conflict",
-            message: "target changed or disappeared after checkpoint capture",
-            retryable: false,
+        fs::read(&canonical).map_err(|_| {
+            BusinessError::new(
+                "restore_conflict",
+                "target changed or disappeared after checkpoint capture",
+            )
+            .with_retryable(false)
         })?
     } else {
         Vec::new()
     };
     if sha256_hex(&current) != record.post_image_sha256 {
-        return Err(CoreFailure {
-            code: "restore_conflict",
-            message: "target changed after checkpoint capture",
-            retryable: false,
-        });
+        return Err(BusinessError::new(
+            "restore_conflict",
+            "target changed after checkpoint capture",
+        )
+        .with_retryable(false));
     }
     let removed = record.pre_image_base64.is_none();
     if let Some(pre_image) = record.pre_image_base64 {
         fs::write(
             &target,
-            STANDARD.decode(pre_image).map_err(|_| CoreFailure {
-                code: "checkpoint_corrupt",
-                message: "checkpoint pre-image is corrupt",
-                retryable: false,
+            STANDARD.decode(pre_image).map_err(|_| {
+                BusinessError::new("checkpoint_corrupt", "checkpoint pre-image is corrupt")
+                    .with_retryable(false)
             })?,
         )
-        .map_err(|_| CoreFailure {
-            code: "restore_failed",
-            message: "checkpoint could not be restored",
-            retryable: true,
+        .map_err(|_| {
+            BusinessError::new("restore_failed", "checkpoint could not be restored")
+                .with_retryable(true)
         })?;
     } else if target.exists() {
-        fs::remove_file(&target).map_err(|_| CoreFailure {
-            code: "restore_failed",
-            message: "created file could not be removed",
-            retryable: true,
+        fs::remove_file(&target).map_err(|_| {
+            BusinessError::new("restore_failed", "created file could not be removed")
+                .with_retryable(true)
         })?;
     }
-    fs::remove_file(record_path).map_err(|_| CoreFailure {
-        code: "restore_failed",
-        message: "checkpoint could not be consumed",
-        retryable: true,
+    fs::remove_file(record_path).map_err(|_| {
+        BusinessError::new("restore_failed", "checkpoint could not be consumed")
+            .with_retryable(true)
     })?;
     Ok(json!({"path": record.path, "restored": true, "removed": removed}))
 }

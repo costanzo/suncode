@@ -1,5 +1,5 @@
 use super::super::arguments::ProcessArguments;
-use super::super::{process as runtime_process, CoreFailure};
+use super::super::{process as runtime_process, BusinessError};
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 
@@ -8,6 +8,6 @@ pub(super) fn run(
     checkpoint: Option<&Path>,
     args: ProcessArguments,
     cancellation: Option<&AtomicBool>,
-) -> Result<serde_json::Value, CoreFailure> {
+) -> Result<serde_json::Value, BusinessError> {
     runtime_process::run(root, checkpoint, &args, cancellation)
 }

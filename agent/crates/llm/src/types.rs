@@ -1,18 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{future::Future, pin::Pin, sync::Arc};
-use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
-
-#[derive(Debug, Error)]
-#[error("{message}")]
-pub struct ProviderError {
-    pub code: String,
-    pub message: String,
-    pub retryable: bool,
-    pub provider_request_id: Option<String>,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ContentPart {
@@ -126,7 +116,7 @@ pub struct CompletionRequest<'a> {
 }
 
 pub type CompletionFuture<'a> =
-    Pin<Box<dyn Future<Output = Result<Completion, ProviderError>> + Send + 'a>>;
+    Pin<Box<dyn Future<Output = Result<Completion, suncode_common::BusinessError>> + Send + 'a>>;
 
 /// Resolves credentials without coupling providers to persistence or environment handling.
 pub trait ApiKeyResolver: Send + Sync {

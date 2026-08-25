@@ -1,4 +1,4 @@
-use crate::{Completion, ProviderError, ToolCall, Usage};
+use crate::{BusinessError, Completion, ToolCall, Usage};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
@@ -25,7 +25,7 @@ impl SseParser {
         }
     }
 
-    pub fn push(&mut self, bytes: &[u8]) -> Result<Vec<String>, ProviderError> {
+    pub fn push(&mut self, bytes: &[u8]) -> Result<Vec<String>, BusinessError> {
         self.buffer.push_str(&String::from_utf8_lossy(bytes));
         let mut deltas = Vec::new();
         while let Some(index) = self.buffer.find('\n') {
@@ -38,7 +38,7 @@ impl SseParser {
         Ok(deltas)
     }
 
-    pub fn flush(&mut self) -> Result<Vec<String>, ProviderError> {
+    pub fn flush(&mut self) -> Result<Vec<String>, BusinessError> {
         let final_line = std::mem::take(&mut self.buffer);
         if final_line.trim().is_empty() {
             return Ok(Vec::new());
@@ -46,7 +46,7 @@ impl SseParser {
         Ok(self.line(final_line.trim())?.into_iter().collect())
     }
 
-    fn line(&mut self, line: &str) -> Result<Option<String>, ProviderError> {
+    fn line(&mut self, line: &str) -> Result<Option<String>, BusinessError> {
         let Some(data) = line.strip_prefix("data:") else {
             return Ok(None);
         };
@@ -54,11 +54,11 @@ impl SseParser {
         if data == "[DONE]" || data.is_empty() {
             return Ok(None);
         }
-        let chunk: Value = serde_json::from_str(data).map_err(|_| ProviderError {
-            code: "provider_protocol".into(),
-            message: format!("{} returned malformed stream JSON", self.provider_label),
-            retryable: false,
-            provider_request_id: None,
+        let chunk: Value = serde_json::from_str(data).map_err(|_| {
+            BusinessError::new(
+                "provider_protocol",
+                format!("{} returned malformed stream JSON", self.provider_label),
+            )
         })?;
         if self.response_id.is_none() {
             self.response_id = chunk
@@ -146,7 +146,7 @@ impl SseParser {
         Ok(None)
     }
 
-    pub fn finish(self) -> Result<Completion, ProviderError> {
+    pub fn finish(self) -> Result<Completion, BusinessError> {
         let tool_calls = self
             .calls
             .into_values()
@@ -154,15 +154,15 @@ impl SseParser {
                 Ok(ToolCall {
                     call_id: id,
                     name,
-                    arguments: serde_json::from_str(&args).map_err(|_| ProviderError {
-                        code: "malformed_tool_call".into(),
-                        message: "Provider returned invalid tool arguments".into(),
-                        retryable: false,
-                        provider_request_id: None,
+                    arguments: serde_json::from_str(&args).map_err(|_| {
+                        BusinessError::new(
+                            "malformed_tool_call",
+                            "Provider returned invalid tool arguments",
+                        )
                     })?,
                 })
             })
-            .collect::<Result<Vec<_>, ProviderError>>()?;
+            .collect::<Result<Vec<_>, BusinessError>>()?;
         Ok(Completion {
             text: self.text,
             tool_calls,

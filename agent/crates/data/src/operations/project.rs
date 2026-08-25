@@ -1,10 +1,10 @@
 //! Operations for `project`.
 
 use crate::domain::ProjectRecord;
-use crate::store::PersistenceError;
 use diesel::prelude::*;
 use diesel::sqlite::Sqlite;
 use diesel::sqlite::SqliteConnection;
+use suncode_common::BusinessError;
 
 use crate::schema::tables::project::dsl as projects;
 
@@ -24,17 +24,18 @@ struct Row {
 pub(crate) fn by_id(
     c: &mut SqliteConnection,
     id: &str,
-) -> Result<Option<ProjectRecord>, PersistenceError> {
+) -> Result<Option<ProjectRecord>, BusinessError> {
     projects::project
         .filter(projects::project_id.eq(id))
         .select(Row::as_select())
         .first::<Row>(c)
-        .optional()?
+        .optional()
+        .map_err(crate::database_error)?
         .map(to_record)
         .transpose()
 }
 
-fn to_record(row: Row) -> Result<ProjectRecord, PersistenceError> {
+fn to_record(row: Row) -> Result<ProjectRecord, BusinessError> {
     Ok(ProjectRecord {
         project_id: row.project_id,
         canonical_root: row.canonical_root,

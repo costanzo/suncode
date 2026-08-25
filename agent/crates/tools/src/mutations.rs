@@ -1,22 +1,18 @@
 use super::arguments::{EditArguments, WriteArguments};
-use super::{existing_file, require_project, write, CoreFailure};
+use super::{existing_file, require_project, write, BusinessError};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
 use std::path::Path;
 
-fn verify_expected(current: &[u8], args: &EditArguments) -> Result<(), CoreFailure> {
+fn verify_expected(current: &[u8], args: &EditArguments) -> Result<(), BusinessError> {
     let expected = args.expected_base64.as_str();
-    let bytes = STANDARD.decode(expected).map_err(|_| CoreFailure {
-        code: "invalid_arguments",
-        message: "expected_base64 is invalid",
-        retryable: false,
+    let bytes = STANDARD.decode(expected).map_err(|_| {
+        BusinessError::new("invalid_arguments", "expected_base64 is invalid").with_retryable(false)
     })?;
     if current != bytes {
-        return Err(CoreFailure {
-            code: "conflict",
-            message: "file changed since it was read",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("conflict", "file changed since it was read").with_retryable(false),
+        );
     }
     Ok(())
 }
@@ -25,15 +21,13 @@ pub(super) fn edit(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
     args: &EditArguments,
-) -> Result<Value, CoreFailure> {
+) -> Result<Value, BusinessError> {
     let root = require_project(project_root)?;
     let path = args.path.as_str();
     let (_, current) = existing_file(root, path)?;
     verify_expected(&current, args)?;
-    let raw_text = String::from_utf8(current.clone()).map_err(|_| CoreFailure {
-        code: "encoding_unsupported",
-        message: "edit requires UTF-8 text",
-        retryable: false,
+    let raw_text = String::from_utf8(current.clone()).map_err(|_| {
+        BusinessError::new("encoding_unsupported", "edit requires UTF-8 text").with_retryable(false)
     })?;
     let has_bom = raw_text.starts_with('\u{feff}');
     let text_without_bom = raw_text.strip_prefix('\u{feff}').unwrap_or(&raw_text);
@@ -45,22 +39,20 @@ pub(super) fn edit(
     let normalized = text_without_bom.replace("\r\n", "\n").replace('\r', "\n");
     let replacements = &args.replacements;
     if replacements.len() > 200 {
-        return Err(CoreFailure {
-            code: "resource_limit",
-            message: "too many replacements",
-            retryable: false,
-        });
+        return Err(
+            BusinessError::new("resource_limit", "too many replacements").with_retryable(false),
+        );
     }
     let mut requested = Vec::with_capacity(replacements.len());
     for replacement in replacements {
         let old = replacement.old.as_str();
         let new = replacement.new.as_str();
         if old.is_empty() {
-            return Err(CoreFailure {
-                code: "invalid_arguments",
-                message: "replacement old text cannot be empty",
-                retryable: false,
-            });
+            return Err(BusinessError::new(
+                "invalid_arguments",
+                "replacement old text cannot be empty",
+            )
+            .with_retryable(false));
         }
         let replace_all = replacement.replace_all;
         requested.push((
@@ -84,21 +76,19 @@ pub(super) fn edit(
             }
         }
         if found == 0 {
-            return Err(CoreFailure {
-                code: "edit_conflict",
-                message: "replacement text was not found",
-                retryable: false,
-            });
+            return Err(
+                BusinessError::new("edit_conflict", "replacement text was not found")
+                    .with_retryable(false),
+            );
         }
     }
     ranges.sort_by_key(|(start, _, _)| *start);
     for pair in ranges.windows(2) {
         if pair[0].1 > pair[1].0 {
-            return Err(CoreFailure {
-                code: "edit_conflict",
-                message: "replacement ranges overlap",
-                retryable: false,
-            });
+            return Err(
+                BusinessError::new("edit_conflict", "replacement ranges overlap")
+                    .with_retryable(false),
+            );
         }
     }
     let mut text = normalized;

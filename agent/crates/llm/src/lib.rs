@@ -7,9 +7,9 @@ mod stream;
 mod types;
 
 pub use openai_compatible::OpenAiCompatibleProvider;
-pub use registry::{ModelProviderRegistry, ModelRoute, RegistrationError};
+pub use registry::{ModelProviderRegistry, ModelRoute};
+pub use suncode_common::BusinessError;
 pub use types::{
     ApiKeyResolver, Completion, CompletionFuture, CompletionRequest, ContentPart, LlmProvider,
-    Message, ModelCapabilities, ModelDescriptor, ModelLimits, ProviderError, ToolCall,
-    ToolDefinition, Usage,
+    Message, ModelCapabilities, ModelDescriptor, ModelLimits, ToolCall, ToolDefinition, Usage,
 };

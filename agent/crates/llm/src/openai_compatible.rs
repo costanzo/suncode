@@ -1,7 +1,7 @@
 use crate::{
     normalize::{cancelled, wire_message},
     stream::SseParser,
-    ApiKeyResolver, Completion, CompletionFuture, CompletionRequest, LlmProvider, ProviderError,
+    ApiKeyResolver, BusinessError, Completion, CompletionFuture, CompletionRequest, LlmProvider,
 };
 use futures_util::StreamExt;
 use serde_json::{json, Value};
@@ -46,16 +46,13 @@ impl OpenAiCompatibleProvider {
         request: CompletionRequest<'_>,
         cancellation: &CancellationToken,
         deltas: mpsc::UnboundedSender<String>,
-    ) -> Result<Completion, ProviderError> {
-        let key = self
-            .keys
-            .api_key(&self.provider_id)
-            .ok_or_else(|| ProviderError {
-                code: "provider_unconfigured".into(),
-                message: format!("{} API key is not configured", self.provider_label),
-                retryable: false,
-                provider_request_id: None,
-            })?;
+    ) -> Result<Completion, BusinessError> {
+        let key = self.keys.api_key(&self.provider_id).ok_or_else(|| {
+            BusinessError::new(
+                "provider_unconfigured",
+                format!("{} API key is not configured", self.provider_label),
+            )
+        })?;
         let mut body = json!({
             "model": request.wire_model,
             "messages": request.messages.iter().map(wire_message).collect::<Vec<_>>(),
@@ -75,12 +72,12 @@ impl OpenAiCompatibleProvider {
         }
         let response = tokio::select! {
             _ = cancellation.cancelled() => return Err(cancelled()),
-            value = self.client.post(format!("{}/chat/completions", self.endpoint)).bearer_auth(key).json(&body).send() => value.map_err(|error| ProviderError {
-                code: "transient".into(),
-                message: format!("{} request failed: {error}", self.provider_label),
-                retryable: true,
-                provider_request_id: None,
-            })?,
+            value = self.client.post(format!("{}/chat/completions", self.endpoint)).bearer_auth(key).json(&body).send() => value.map_err(|error| BusinessError::provider(
+                "transient",
+                format!("{} request failed: {error}", self.provider_label),
+                true,
+                None,
+            ))?,
         };
         let provider_request_id = REQUEST_ID_HEADERS.iter().find_map(|name| {
             response
@@ -108,24 +105,19 @@ impl OpenAiCompatibleProvider {
                         self.provider_label
                     )
                 });
-            return Err(ProviderError {
-                code: if status.as_u16() == 401 {
-                    "authentication"
-                } else if status.as_u16() == 408
-                    || status.as_u16() == 429
-                    || status.is_server_error()
-                {
-                    "transient"
-                } else {
-                    "invalid_request"
-                }
-                .into(),
+            let code = if status.as_u16() == 401 {
+                "authentication"
+            } else if status.as_u16() == 408 || status.as_u16() == 429 || status.is_server_error() {
+                "transient"
+            } else {
+                "invalid_request"
+            };
+            return Err(BusinessError::provider(
+                code,
                 message,
-                retryable: status.as_u16() == 408
-                    || status.as_u16() == 429
-                    || status.is_server_error(),
+                status.as_u16() == 408 || status.as_u16() == 429 || status.is_server_error(),
                 provider_request_id,
-            });
+            ));
         }
         let mut parser = SseParser::new(self.provider_label.clone());
         let mut stream = response.bytes_stream();
@@ -133,15 +125,18 @@ impl OpenAiCompatibleProvider {
             _ = cancellation.cancelled() => {
                 let mut error = cancelled();
                 error.provider_request_id = provider_request_id.clone();
+                error.details["provider_request_id"] = serde_json::json!(error.provider_request_id);
                 return Err(error);
             },
             value = stream.next() => value
         } {
-            let chunk = chunk.map_err(|error| ProviderError {
-                code: "provider_protocol".into(),
-                message: format!("{} stream failed: {error}", self.provider_label),
-                retryable: true,
-                provider_request_id: provider_request_id.clone(),
+            let chunk = chunk.map_err(|error| {
+                BusinessError::provider(
+                    "provider_protocol",
+                    format!("{} stream failed: {error}", self.provider_label),
+                    true,
+                    provider_request_id.clone(),
+                )
             })?;
             let parsed = parser.push(&chunk).map_err(|mut error| {
                 error.provider_request_id = provider_request_id.clone();

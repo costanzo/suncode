@@ -1,4 +1,4 @@
-use crate::{Message, ProviderError};
+use crate::{BusinessError, Message};
 use serde_json::{json, Value};
 
 pub fn wire_message(message: &Message) -> Value {
@@ -12,11 +12,6 @@ pub fn wire_message(message: &Message) -> Value {
     value
 }
 
-pub fn cancelled() -> ProviderError {
-    ProviderError {
-        code: "cancelled".into(),
-        message: "Turn was cancelled".into(),
-        retryable: false,
-        provider_request_id: None,
-    }
+pub fn cancelled() -> BusinessError {
+    BusinessError::new("cancelled", "Turn was cancelled")
 }

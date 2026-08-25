@@ -1,5 +1,5 @@
 use serde::Serialize;
-use suncode_data::{PersistenceError, Store};
+use suncode_data::{BusinessError, Store};
 use suncode_llm::ApiKeyResolver;
 
 #[derive(Clone)]
@@ -151,7 +151,7 @@ impl ApiKeyResolver for CredentialStore {
     }
 }
 
-fn map_error(error: PersistenceError) -> String {
+fn map_error(error: BusinessError) -> String {
     error.to_string()
 }
 

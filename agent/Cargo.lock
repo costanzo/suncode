@@ -1472,15 +1472,23 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "suncode-common",
  "suncode-data",
  "suncode-llm",
  "suncode-tool",
  "tempfile",
- "thiserror",
  "tokio",
  "tokio-util",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "suncode-common"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1491,8 +1499,8 @@ dependencies = [
  "diesel",
  "serde",
  "serde_json",
+ "suncode-common",
  "suncode-database",
- "thiserror",
  "uuid",
 ]
 
@@ -1512,7 +1520,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "thiserror",
+ "suncode-common",
  "tokio",
  "tokio-util",
 ]
@@ -1536,6 +1544,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "suncode-common",
 ]
 
 [[package]]
