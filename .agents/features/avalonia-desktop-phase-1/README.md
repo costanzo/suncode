@@ -12,7 +12,7 @@ SunCode's only Phase 1 production client is the .NET 10 Avalonia application und
 - Approval deny, allow-once, and allow-for-session flows with readable scope/action details, raw request inspection, and persistent Full Control warning state.
 - Structured question prompts with single-select, multi-select, custom answers, submit/skip, snapshot restoration, and live events. Current-turn todos restore from normalized conversation snapshots and update live.
 - Tool activity details, touched paths, checkpoints, conflict-aware undo, runtime health/diagnostics, provider trace drawer, Git status/diff review, and read-only project dependency Explorer.
-- Responsive navigation and review bays, in-window dialogs, keyboard toggles, native macOS menu integration, and the shared design-system review pages under `design/`.
+- Responsive navigation and review bays, in-window dialogs, keyboard toggles, native macOS menu integration, and the shared design-system review pages under `design-system/`.
 
 ## Boundary and verification
 

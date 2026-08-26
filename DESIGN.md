@@ -13,9 +13,9 @@ colors:
   window-border: "#1c2126"
   window-border-light: "#e5e9ec"
   border: "#292f36"
-  accent: "#69c5b0"
-  accent-hover: "#7dd2be"
-  success: "#78c99b"
+  accent: "#d9e0e6"
+  accent-hover: "#f3f6f8"
+  success: "#9fb3c3"
   warning: "#ddb16c"
   danger: "#e68a83"
 rounded:
@@ -29,7 +29,7 @@ spacing:
 components:
   button-primary:
     backgroundColor: "{colors.accent}"
-    textColor: "#07120f"
+    textColor: "#101317"
     rounded: "{rounded.sm}"
     height: "36px"
   button-neutral:
@@ -44,21 +44,21 @@ components:
     height: "36px"
 
 review:
-  directory: "design/"
-  entry: "design/index.html"
-  dark: "design/dark.html"
-  light: "design/light.html"
-  tokens: "design/tokens.css"
-  assets: "design/assets/"
+  directory: "design-system/"
+  entry: "design-system/index.html"
+  dark: "design-system/components/universal/themes/dark.html"
+  light: "design-system/components/universal/themes/light.html"
+  tokens: "design-system/core/tokens/"
+  assets: "design-system/core/assets/"
 ---
 
 # Design System: SunCode Desktop
 
 ## Review Surface
 
-The visual review surface starts at [`design/index.html`](design/index.html), the desktop-first entry point for shared foundations, shell anatomy, semantic roles, rules, assets, and theme links. Continue to [`design/dark.html`](design/dark.html) or [`design/light.html`](design/light.html) for the complete component and state inventory. All pages use [`design/tokens.css`](design/tokens.css), and reusable product images and icons are cataloged in [`design/assets/`](design/assets/). Review these pages before introducing a new module or component. The HTML pages are static review artifacts, not a production web client.
+The visual review surface starts at [`design-system/index.html`](design-system/index.html), the layered entry point for shared foundations, shell anatomy, semantic roles, rules, assets, and theme links. Continue to [`components/universal/themes/dark.html`](design-system/components/universal/themes/dark.html) or [`components/universal/themes/light.html`](design-system/components/universal/themes/light.html) for the complete component and state inventory. Token sources live under [`design-system/core/tokens/`](design-system/core/tokens/), and reusable product images and icons are cataloged in [`design-system/core/assets/`](design-system/core/assets/). Review these pages before introducing a new module or component. The HTML pages are static review artifacts, not a production web client.
 
-`design/tokens.css` is the compact token reference for the two themes. Avalonia resources in `apps/desktop-avalonia/App.axaml` are the runtime mapping and must retain the same semantic meanings. Feature views should consume named resources rather than add local raw colors, radii, shadows, or control heights.
+`design-system/core/tokens/` is the source token reference for the two themes; `design-system/core/styles/review.css` is the compiled review stylesheet. Avalonia resources in `apps/desktop-avalonia/App.axaml` are the runtime mapping and must retain the same semantic meanings. Feature views should consume named resources rather than add local raw colors, radii, shadows, or control heights.
 
 ## Overview
 
@@ -66,7 +66,7 @@ The visual review surface starts at [`design/index.html`](design/index.html), th
 
 SunCode is designed as a calm professional console for high-consequence coding work. The conversation canvas is the primary surface; navigation, credentials, approvals, checkpoints, and diagnostics are supporting tool bays that can retreat when they are not needed. The system uses matte graphite layers and fine separators to create structure without visual noise.
 
-The interface is intentionally restrained. Teal is reserved for actions and active work, green confirms healthy local state, amber calls attention to authority decisions, and red is reserved for destructive or denied outcomes. There is no decorative glow, glass, gradient text, or dashboard theater.
+The interface is intentionally restrained. A cool silver/charcoal accent is reserved for actions and active work, steel blue confirms healthy local state, amber calls attention to authority decisions, and red is reserved for destructive or denied outcomes. There is no decorative glow, glass, gradient text, or dashboard theater.
 
 **Key Characteristics:**
 
@@ -82,12 +82,12 @@ The palette supports both a dark graphite mode and a lighter paper-and-slate mod
 
 ### Primary
 
-- **Muted Control Teal** (#69c5b0): Primary actions, active tabs, focus rings, and current work state.
-- **Teal Hover** (#7dd2be): Hover state for actionable controls.
+- **Control Silver** (#d9e0e6 dark / #2c3742 light): Primary actions, active tabs, focus rings, and current work state.
+- **Silver Hover** (#f3f6f8 dark / #1e2730 light): Hover state for actionable controls.
 
 ### Secondary
 
-- **Healthy Green** (#78c99b): Connected, configured, and ready states.
+- **Healthy Steel** (#9fb3c3 dark / #4f6d82 light): Connected, configured, and ready states.
 - **Approval Amber** (#ddb16c): Pending permission and caution states.
 - **Risk Red** (#e68a83): Errors, denied actions, and destructive affordances.
 
@@ -149,10 +149,10 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 ### Buttons
 
 - **Shape:** 6px radius, 30px compact height or 36px regular height.
-- **Primary:** Muted teal background with near-black ink; used for the one action that advances the current task.
+- **Primary:** High-contrast silver or charcoal background with inverse ink; used for the one action that advances the current task.
 - **Neutral:** Raised graphite background with a hairline border; hover lifts to the next tonal layer.
 - **Danger:** Transparent at rest, red text and a red-tinted hover surface.
-- **Focus:** Two-pixel teal border, never removed.
+- **Focus:** Two-pixel control-silver border, never removed.
 
 ### Cards / Containers
 
@@ -165,7 +165,7 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 ### Inputs / Fields
 
 - **Style:** Field graphite background, 6px radius, one-pixel border, 36px height.
-- **Focus:** Two-pixel teal border and slightly lifted field background.
+- **Focus:** Two-pixel control-silver border and slightly lifted field background.
 - **Disabled:** Muted text and canvas-level contrast; the control remains recognizable but clearly unavailable.
 
 ### Navigation
@@ -182,7 +182,7 @@ Assistant messages are rendered as Markdown and use the same semantic content to
 
 - **Reading measure:** Keep rendered Markdown readable at roughly 680–760px maximum width. Do not force assistant content into a card when the conversation surface already provides the frame.
 - **Hierarchy:** Markdown headings are smaller than the application title scale. `h1` starts at 26px in a message, `h2` at 19px, and `h3` at 15px, with spacing that groups related content.
-- **Body:** Use the normal UI sans for prose at 14px and 1.6 line height. Links use accent teal with an underline; emphasis changes weight or tone rather than adding semantic colors.
+- **Body:** Use the normal UI sans for prose at 14px and 1.6 line height. Links use the control-silver accent with an underline; emphasis changes weight or tone rather than adding semantic colors.
 - **Machine content:** Inline code and fenced code use JetBrains Mono on the inset surface. Code blocks scroll horizontally instead of wrapping long identifiers or commands.
 - **Structure:** Blockquotes use a 3px accent rail and accent-tinted surface. Tables use compact headers, hairline row separators, and horizontal scrolling on narrow widths. Task-list controls are visual state indicators, not editable product settings.
 - **Safety:** Markdown content must not use status colors decoratively. Warning and danger colors remain reserved for actual authority, error, or destructive states around the content.
@@ -206,7 +206,7 @@ The same semantic inventory must be present in dark and light pages. Theme chang
 ### Do:
 
 - **Do** keep the conversation and composer visually dominant.
-- **Do** use teal only for actions, focus, and active work.
+- **Do** use the control-silver accent only for actions, focus, and active work.
 - **Do** make approval scope and undo limitations explicit.
 - **Do** preserve native keyboard focus and familiar Avalonia control behavior.
 - **Do** collapse supporting panels when the user needs room to think.
@@ -221,4 +221,4 @@ The same semantic inventory must be present in dark and light pages. Theme chang
 
 ## Asset Management
 
-All reusable design images, brand marks, and interface icons belong in `design/assets/`. The catalog has a stable `brand/` area and an `icons/` area with an inventory guide in `design/assets/README.md`. Client packaging may copy an approved asset into its own build boundary, but new visual material must first be reviewed and cataloged here.
+All reusable design images, brand marks, and interface icons belong in `design-system/core/assets/`. The catalog has stable `logos/` and `icons/` areas with an inventory guide in `design-system/core/assets/README.md`. Client packaging may copy an approved asset into its own build boundary, but new visual material must first be reviewed and cataloged here.

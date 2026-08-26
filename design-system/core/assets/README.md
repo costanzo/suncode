@@ -1,12 +1,12 @@
 # Design Assets
 
-This is the central asset catalog for the SunCode design system and review pages.
+This is the central asset catalog for the SunCode design system and review pages. It is organized by reusable ownership rather than by consuming page.
 
 ## Brand
 
-- `brand/suncode-logo.svg` - full-size brand mark for vector-capable surfaces.
-- `brand/suncode-logo-small.svg` - compact brand mark used in headers and navigation.
-- `brand/suncode-logo-128.png` - raster brand mark for previews and platform surfaces.
+- `logos/suncode-logo.svg` - full-size brand mark for vector-capable surfaces.
+- `logos/suncode-logo-small.svg` - compact brand mark used in headers and navigation.
+- `logos/suncode-logo-128.png` - raster brand mark for previews and platform surfaces.
 
 ## Icons
 

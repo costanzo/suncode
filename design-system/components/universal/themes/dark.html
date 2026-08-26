@@ -5,28 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="SunCode design system review page for the dark theme.">
   <title>SunCode Design System - Dark</title>
-  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="../../../core/styles/review.css">
 </head>
 <body>
   <div class="page">
     <header class="topbar">
-      <div class="brand">
-        <img src="assets/brand/suncode-logo-small.svg" alt="SunCode logo">
-        <div><strong>SunCode</strong><small>Design system review</small></div>
-      </div>
+      <a class="brand" href="../../../index.html">
+        <img src="../../../core/assets/logos/suncode-logo-small.svg" alt="SunCode logo">
+        <strong>SunCode</strong>
+      </a>
+      <div class="topbar-context"><span>Design system</span><code>theme review / dark</code></div>
       <nav class="theme-nav" aria-label="Theme pages">
-        <a href="dark.html" aria-current="page">Dark</a>
-        <a href="light.html">Light</a>
+        <a href="dark.html" aria-current="page">Dark review</a>
+        <a href="light.html">Light review</a>
       </nav>
-      <a class="utility-link" href="../DESIGN.md">DESIGN.md</a>
     </header>
 
-    <main class="shell">
-      <section class="hero">
+    <div class="review-layout">
+      <aside class="review-rail">
+        <div class="review-rail-label">Dark review</div>
+        <nav aria-label="Dark theme review sections">
+          <a href="#overview" aria-current="location"><span>01</span>Overview</a>
+          <a href="#colors"><span>02</span>Colors</a>
+          <a href="#type"><span>03</span>Type &amp; space</a>
+          <a href="#buttons"><span>04</span>Buttons</a>
+          <a href="#fields"><span>05</span>Fields</a>
+          <a href="#containers"><span>06</span>Surfaces</a>
+          <a href="#navigation"><span>07</span>Navigation</a>
+          <a href="#feedback"><span>08</span>Feedback</a>
+          <a href="#data"><span>09</span>Data</a>
+          <a href="#markdown"><span>10</span>Markdown</a>
+          <a href="#rules"><span>11</span>Rules</a>
+        </nav>
+        <div class="review-rail-divider"></div>
+        <p class="review-rail-note">Complete component and state inventory for the graphite theme.</p>
+        <p class="review-rail-note"><a href="../../../index.html">Review index</a><br><a href="../../../../DESIGN.md">DESIGN.md</a></p>
+      </aside>
+
+      <main class="shell">
+      <section class="hero" id="overview">
         <div>
-          <div class="eyebrow">SunCode / Quiet control desk</div>
-          <h1>Calm surfaces for high-consequence coding work.</h1>
-          <p>The dark theme uses matte graphite layers, fine separators and restrained semantic color. Teal marks action and active work; green, amber and red communicate status only.</p>
+          <h1>Dark theme review</h1>
+          <p>The dark theme uses matte graphite layers, fine separators and restrained semantic color. Silver marks action and active work; steel, amber and red communicate status only.</p>
         </div>
         <aside class="hero-note">
           <strong>Review scope</strong>
@@ -52,10 +72,10 @@
             <div class="swatch"><div class="swatch-color" style="--swatch:#727c87"></div><div class="swatch-meta"><strong>Muted</strong><code>#727c87</code></div></div>
           </div></div>
           <div class="swatch-group"><h3>Action and semantic</h3><div class="swatch-grid">
-            <div class="swatch"><div class="swatch-color" style="--swatch:#69c5b0"></div><div class="swatch-meta"><strong>Accent</strong><code>#69c5b0</code></div></div>
-            <div class="swatch"><div class="swatch-color" style="--swatch:#7dd2be"></div><div class="swatch-meta"><strong>Accent hover</strong><code>#7dd2be</code></div></div>
-            <div class="swatch"><div class="swatch-color" style="--swatch:#78c99b"></div><div class="swatch-meta"><strong>Success</strong><code>#78c99b</code></div></div>
-            <div class="swatch"><div class="swatch-color" style="--swatch:#ddb16c"></div><div class="swatch-meta"><strong>Warning</strong><code>#ddb16c</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#d9e0e6"></div><div class="swatch-meta"><strong>Accent</strong><code>#d9e0e6</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#f3f6f8"></div><div class="swatch-meta"><strong>Accent hover</strong><code>#f3f6f8</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#9fb3c3"></div><div class="swatch-meta"><strong>Success</strong><code>#9fb3c3</code></div></div>
+            <div class="swatch"><div class="swatch-color" style="--swatch:#d5ad6f"></div><div class="swatch-meta"><strong>Warning</strong><code>#d5ad6f</code></div></div>
             <div class="swatch"><div class="swatch-color" style="--swatch:#e68a83"></div><div class="swatch-meta"><strong>Danger</strong><code>#e68a83</code></div></div>
             <div class="swatch"><div class="swatch-color" style="--swatch:#292f36"></div><div class="swatch-meta"><strong>Border</strong><code>#292f36</code></div></div>
           </div></div>
@@ -179,8 +199,9 @@
         <div class="grid grid-3"><div class="card"><h3>Conversation first</h3><p>Keep the central work surface visually dominant. Supporting bays collapse before the conversation becomes cramped.</p></div><div class="card"><h3>Status lamp rule</h3><p>Color must explain an action, a state or a change. Do not add color as decoration.</p></div><div class="card"><h3>Visible focus</h3><p>Every keyboard target keeps a two-step accent focus ring. Never remove focus without replacing it.</p></div></div>
       </section>
 
-      <footer class="footer">SunCode design system review page. Source tokens: <span class="mono">design/tokens.css</span>. Runtime mapping: <span class="mono">apps/desktop-avalonia/App.axaml</span>.</footer>
-    </main>
+      <footer class="footer">SunCode design system review page. Source tokens: <span class="mono">core/tokens/</span>. Runtime mapping: <span class="mono">apps/desktop-avalonia/App.axaml</span>.</footer>
+      </main>
+    </div>
   </div>
   <script>
     document.querySelectorAll('.segment, .tab').forEach((control) => {
