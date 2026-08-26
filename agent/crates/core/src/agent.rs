@@ -1456,7 +1456,11 @@ impl Agent {
         let Some((dependency_id, relative_path)) = dependency_path(path) else {
             return Ok((
                 context.project_root.clone(),
-                translate_arguments(&call.name, &arguments)?,
+                translate_arguments_with_root(
+                    &call.name,
+                    &arguments,
+                    Some(Path::new(&context.project_root)),
+                )?,
             ));
         };
         if !dependency_tool_allowed(&call.name) {
@@ -1470,9 +1474,14 @@ impl Agent {
             .project_dependency_by_id(&context.project_id, dependency_id)?
             .ok_or_else(|| BusinessError::new("dependency_not_found", "dependency not found"))?;
         arguments["path"] = json!(relative_path);
+        let dependency_root = dependency.canonical_root.clone();
         Ok((
-            dependency.canonical_root,
-            translate_arguments(&call.name, &arguments)?,
+            dependency_root.clone(),
+            translate_arguments_with_root(
+                &call.name,
+                &arguments,
+                Some(Path::new(&dependency_root)),
+            )?,
         ))
     }
 
@@ -1691,6 +1700,14 @@ fn tool_signature(call: &ToolCall) -> String {
 }
 
 fn translate_arguments(name: &str, value: &Value) -> Result<Value, BusinessError> {
+    translate_arguments_with_root(name, value, None)
+}
+
+fn translate_arguments_with_root(
+    name: &str,
+    value: &Value,
+    scope_root: Option<&Path>,
+) -> Result<Value, BusinessError> {
     let mut result = value.clone();
     if name == "webfetch" {
         validate_webfetch_arguments(&result)?;
@@ -1763,7 +1780,7 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, BusinessError
                 .get("pattern")
                 .and_then(Value::as_str)
                 .ok_or_else(|| BusinessError::new("invalid_arguments", "pattern is required"))?;
-            result["pattern"] = json!(scoped_glob(path, pattern));
+            result["pattern"] = json!(scoped_glob(scope_root, path, pattern));
         }
         if let Some(limit) = result.get("limit").cloned() {
             result["max_results"] = limit;
@@ -1790,7 +1807,7 @@ fn translate_arguments(name: &str, value: &Value) -> Result<Value, BusinessError
                 .get("pattern")
                 .and_then(Value::as_str)
                 .ok_or_else(|| BusinessError::new("invalid_arguments", "pattern is required"))?;
-            result["pattern"] = json!(scoped_glob(path, pattern));
+            result["pattern"] = json!(scoped_glob(scope_root, path, pattern));
         }
         if let Some(limit) = result.get("limit").cloned() {
             result["max_results"] = limit;
@@ -2280,12 +2297,23 @@ fn host_environment_message(session_started_at: &str) -> suncode_llm::Message {
     }
 }
 
-fn scoped_glob(path: &str, pattern: &str) -> String {
+fn scoped_glob(scope_root: Option<&Path>, path: &str, pattern: &str) -> String {
     let base = path.trim_matches('/');
     if base.is_empty() || base == "." {
         return pattern.to_string();
     }
-    format!("{base}/{}", pattern.trim_start_matches('/'))
+    let target_is_file = scope_root
+        .map(|root| root.join(base).is_file())
+        .unwrap_or(false);
+    if target_is_file {
+        return base.to_string();
+    }
+    let pattern = pattern.trim_start_matches('/');
+    if pattern == "**/*" || pattern.starts_with("**/") {
+        format!("{base}/{pattern}")
+    } else {
+        format!("{base}/**/{pattern}")
+    }
 }
 
 fn dependency_path(path: &str) -> Option<(&str, &str)> {
@@ -2437,6 +2465,35 @@ mod tests {
             translate_arguments("bash", &json!({"command":"echo hello","timeout":600_001}))
                 .is_err()
         );
+    }
+
+    #[test]
+    fn grep_translation_recurses_directories_and_preserves_files() {
+        let root = tempfile::tempdir().unwrap();
+        fs::create_dir_all(root.path().join("src/nested")).unwrap();
+        fs::write(root.path().join("src/nested/Main.java"), b"class Main {}").unwrap();
+
+        let directory = translate_arguments_with_root(
+            "grep",
+            &json!({
+                "pattern": "orderRefund",
+                "path": "src",
+                "include": "*.java"
+            }),
+            Some(root.path()),
+        )
+        .unwrap();
+        assert_eq!(directory["query"], "orderRefund");
+        assert_eq!(directory["pattern"], "src/**/*.java");
+
+        let file = translate_arguments_with_root(
+            "grep",
+            &json!({"pattern": "Main", "path": "src/nested/Main.java"}),
+            Some(root.path()),
+        )
+        .unwrap();
+        assert_eq!(file["query"], "Main");
+        assert_eq!(file["pattern"], "src/nested/Main.java");
     }
 
     #[test]
