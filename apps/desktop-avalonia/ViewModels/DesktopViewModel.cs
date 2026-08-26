@@ -14,7 +14,9 @@ namespace SunCode.Desktop.ViewModels;
 
 public sealed class DesktopViewModel : ObservableObject, IDisposable
 {
+    private readonly object _initializationGate = new();
     private AgentSdk? _sdk;
+    private Task? _initializationTask;
     private IDisposable? _subscription;
     private BulkObservableCollection<MessageItem> _messages = [];
     private ProjectItem? _selectedProject;
@@ -256,6 +258,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         {
             if (SetProperty(ref _connectionState, value))
             {
+                OnPropertyChanged(nameof(CanOpenProjects));
                 OnPropertyChanged(nameof(CanCompose));
                 OnPropertyChanged(nameof(CanChooseReasoningEffort));
             }
@@ -359,6 +362,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public bool IsSessionLoadingVisible { get => _isSessionLoadingVisible; private set => SetProperty(ref _isSessionLoadingVisible, value); }
 
     public bool IsProjectOpen => SelectedProject is not null;
+    public bool CanOpenProjects => ConnectionState == "connected";
     public bool HasProjects => Projects.Count > 0;
     public bool HasProjectDependencies => ProjectDependencies.Count > 0;
     public bool SessionSidebarVisible => NavigationVisible && !ExplorerVisible;
@@ -468,49 +472,38 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
     public async Task InitializeAsync()
     {
-        if (_sdk is not null || _disposed) return;
-        ConnectionState = "connecting";
-        StatusText = "Starting local agent...";
-        try
+        Task initialization;
+        lock (_initializationGate)
         {
-            _sdk = await AgentSdk.OpenAsync();
-            await _sdk.HealthAsync();
-            ConnectionState = "connected";
-            StatusText = "Connected to local agent";
-            await LoadModelsAsync();
-            await LoadSettingsAsync();
-            await LoadCredentialsAsync();
-            await LoadProjectsAsync();
-            await RefreshDiagnosticsAsync();
+            if (_sdk is not null || _disposed) return;
+            _initializationTask ??= InitializeCoreAsync();
+            initialization = _initializationTask;
         }
-        catch (Exception exception)
-        {
-            ReportError(exception);
-        }
+
+        await initialization;
     }
 
     public async Task OpenProjectAsync(string path)
     {
-        if (!EnsureSdk() || string.IsNullOrWhiteSpace(path)) return;
+        if (string.IsNullOrWhiteSpace(path) || !await EnsureSdkReadyAsync()) return;
         await RunAsync(async () =>
         {
             var opened = await _sdk!.OpenProjectAsync(path);
             await LoadProjectsAsync();
-            var projectId = opened.String("projectId");
-            var project = Projects.FirstOrDefault(item => item.ProjectId == projectId);
+            var project = MatchOrCreateProject(opened);
             if (project is not null) await SelectProjectAsync(project);
         }, "Project opened");
     }
 
     public async Task<ProjectItem?> RegisterProjectAsync(string path)
     {
-        if (!EnsureSdk() || string.IsNullOrWhiteSpace(path)) return null;
+        if (string.IsNullOrWhiteSpace(path) || !await EnsureSdkReadyAsync()) return null;
         IsBusy = true;
         try
         {
             var opened = await _sdk!.OpenProjectAsync(path);
             await LoadProjectsAsync();
-            var project = Projects.FirstOrDefault(item => item.ProjectId == opened.String("projectId"));
+            var project = MatchOrCreateProject(opened);
             StatusText = "Project opened";
             ConnectionState = "connected";
             return project;
@@ -528,7 +521,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
     public async Task SelectProjectAsync(ProjectItem project)
     {
-        if (!EnsureSdk() || SelectedProject?.ProjectId == project.ProjectId) return;
+        if (SelectedProject?.ProjectId == project.ProjectId || !await EnsureSdkReadyAsync()) return;
         CloseSubscription();
         ClearSession();
         await RunAsync(async () =>
@@ -1341,6 +1334,26 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasProjects));
     }
 
+    private ProjectItem? MatchOrCreateProject(JsonObject opened)
+    {
+        var projectId = opened.String("projectId");
+        if (projectId.Length == 0) return null;
+
+        var project = Projects.FirstOrDefault(item => item.ProjectId == projectId);
+        if (project is not null) return project;
+
+        var fallback = new ProjectItem(
+            projectId,
+            opened.String("displayName"),
+            opened.String("canonicalRoot"));
+
+        if (fallback.CanonicalRoot.Length == 0) return null;
+
+        Projects.Add(fallback);
+        OnPropertyChanged(nameof(HasProjects));
+        return fallback;
+    }
+
     private async Task LoadProjectDependenciesAsync()
     {
         ProjectDependencies.Clear();
@@ -2033,6 +2046,43 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         return false;
     }
 
+    private async Task InitializeCoreAsync()
+    {
+        ConnectionState = "connecting";
+        StatusText = "Starting local agent...";
+        try
+        {
+            var sdk = await AgentSdk.OpenAsync();
+            await sdk.HealthAsync();
+            _sdk = sdk;
+            ConnectionState = "connected";
+            StatusText = "Connected to local agent";
+            await LoadModelsAsync();
+            await LoadSettingsAsync();
+            await LoadCredentialsAsync();
+            await LoadProjectsAsync();
+            await RefreshDiagnosticsAsync();
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+        }
+        finally
+        {
+            lock (_initializationGate)
+            {
+                _initializationTask = null;
+            }
+        }
+    }
+
+    private async Task<bool> EnsureSdkReadyAsync()
+    {
+        if (_disposed) return false;
+        if (_sdk is null) await InitializeAsync();
+        return _sdk is not null && !_disposed;
+    }
+
     private void ReportError(Exception exception)
     {
         ConnectionState = "error";
@@ -2425,6 +2475,10 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         CloseSubscription();
         _sdk?.Dispose();
         _sdk = null;
+        lock (_initializationGate)
+        {
+            _initializationTask = null;
+        }
     }
 }
 

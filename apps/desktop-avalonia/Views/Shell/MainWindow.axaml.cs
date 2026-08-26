@@ -83,7 +83,12 @@ public sealed partial class MainWindow : Window
             Title = "Open a local project",
             AllowMultiple = false
         });
-        var path = folders.FirstOrDefault()?.TryGetLocalPath();
+        var folder = folders.FirstOrDefault();
+        var path = folder?.TryGetLocalPath();
+        if (string.IsNullOrWhiteSpace(path) && folder?.Path is { IsFile: true } uri)
+        {
+            path = uri.LocalPath;
+        }
         if (string.IsNullOrWhiteSpace(path)) return;
         if (Application.Current is App app) await app.OpenProjectPathAsync(path);
         else

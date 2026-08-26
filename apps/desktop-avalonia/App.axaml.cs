@@ -47,14 +47,32 @@ public sealed partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private void ApplyTheme(string mode) =>
-        RequestedThemeVariant = mode == "light" ? ThemeVariant.Light : ThemeVariant.Dark;
+    private void ApplyTheme(string mode)
+    {
+        var variant = mode == "light" ? ThemeVariant.Light : ThemeVariant.Dark;
+        RequestedThemeVariant = variant;
+        if (_hubWindow is not null) _hubWindow.RequestedThemeVariant = variant;
+        if (_settingsWindow is not null) _settingsWindow.RequestedThemeVariant = variant;
+        if (_aboutWindow is not null) _aboutWindow.RequestedThemeVariant = variant;
+        foreach (var window in _projectWindows.Values)
+        {
+            window.RequestedThemeVariant = variant;
+        }
+    }
 
     internal async Task OpenProjectPathAsync(string path)
     {
         if (_viewModel is null) return;
         var project = await _viewModel.RegisterProjectAsync(path);
-        if (project is not null) await OpenProjectWindowAsync(project);
+        if (project is not null)
+        {
+            await OpenProjectWindowAsync(project);
+        }
+        else if (_hubWindow is not null)
+        {
+            _hubWindow.Show();
+            _hubWindow.Activate();
+        }
     }
 
     internal async Task OpenProjectWindowAsync(ProjectItem project)

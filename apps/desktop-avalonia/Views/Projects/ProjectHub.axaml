@@ -39,11 +39,23 @@
       </Grid>
 
       <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-        <Grid Margin="22,0" ColumnDefinitions="Auto,12,Auto,*,Auto,12,Auto">
+        <Grid Margin="22,0" ColumnDefinitions="Auto,12,Auto,*,Auto,12,Auto" RowDefinitions="*,Auto">
           <Image Grid.Column="0" Width="30" Height="30" Source="/Assets/logo/suncode-logo-small-64.png" VerticalAlignment="Center" />
           <TextBlock Grid.Column="2" Text="SunCode" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" />
           <Button Grid.Column="4" Classes="compact" Content="Settings" Click="OpenSettings" VerticalAlignment="Center" />
-          <Button Grid.Column="6" Classes="compact primary" Content="Open project" Click="OpenProject" VerticalAlignment="Center" />
+          <Button Grid.Column="6"
+                  Classes="compact primary"
+                  Content="Open project"
+                  Click="OpenProject"
+                  VerticalAlignment="Center"
+                  IsEnabled="{Binding CanOpenProjects}" />
+          <TextBlock Grid.Row="1"
+                     Grid.ColumnSpan="7"
+                     Margin="0,0,0,4"
+                     FontSize="11"
+                     Foreground="{DynamicResource TextMutedBrush}"
+                     Text="{Binding StatusText}"
+                     IsVisible="{Binding !CanOpenProjects}" />
         </Grid>
       </Border>
 
@@ -55,7 +67,13 @@
               <ItemsControl ItemsSource="{Binding Projects}" IsVisible="{Binding HasProjects}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="models:ProjectItem">
-                    <Button Height="70" Margin="0,0,0,8" Padding="14,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="ProjectClicked">
+                    <Button Height="70"
+                            Margin="0,0,0,8"
+                            Padding="14,0"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            Click="ProjectClicked"
+                            IsEnabled="{Binding $parent[UserControl].DataContext.CanOpenProjects}">
                       <Grid ColumnDefinitions="34,12,*">
                         <Border Width="34" Height="34" CornerRadius="8" Background="{DynamicResource AccentSurfaceBrush}" VerticalAlignment="Center">
                           <TextBlock Text="P" Foreground="{DynamicResource AccentBrush}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
