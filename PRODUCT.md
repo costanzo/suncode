@@ -44,7 +44,7 @@ The user opens a project in the Avalonia desktop application, creates or resumes
 
 ## Evidence on Hand
 
-The repository contains an implemented Avalonia desktop vertical slice under `apps/desktop-avalonia/`, a Rust agent under `agent/`, hand-written protocol contracts and shared vectors under `contracts/`, and SDK documentation under `sdks/`. Existing product and architecture records are maintained under `.agents/`. No external testimonials, customer claims, benchmarks, pricing, or other proof assets are established; future work must not fabricate them.
+The repository contains an implemented Avalonia desktop vertical slice under `apps/desktop-avalonia/`, a Rust agent under `agent/`, hand-written protocol contracts under `contracts/`, and SDK documentation under `sdks/`. Existing product and architecture records are maintained under `.agents/`. No external testimonials, customer claims, benchmarks, pricing, or other proof assets are established; future work must not fabricate them.
 
 ## Accessibility & Inclusion
 

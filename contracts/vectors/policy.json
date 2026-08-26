@@ -1,7 +1,0 @@
-[
-  {"id":"read-only-default","input":{"toolName":"read","risk":"read_only"},"expected":{"kind":"allow","source":"built_in_read_only_default"}},
-  {"id":"unknown-tool","input":{"toolName":"unknown"},"expected":{"kind":"deny","reason":"unknown_tool"}},
-  {"id":"interactive-write-approval","input":{"toolName":"write","risk":"project_write"},"expected":{"kind":"approval_required","reason":"risk_requires_approval"}},
-  {"id":"non-interactive-write-denial","input":{"toolName":"write","risk":"project_write","mode":"non_interactive"},"expected":{"kind":"deny","reason":"non_interactive_unauthorized"}},
-  {"id":"profile-write-grant","input":{"toolName":"write","risk":"project_write","profile":{"id":"ci","allowRisks":["project_write"]}},"expected":{"kind":"allow","source":"profile"}}
-]

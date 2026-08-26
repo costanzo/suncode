@@ -1,11 +1,19 @@
-# Rust Core Phase 1
+# Rust Operations Phase 1
 
-The audited Rust operations module in the `suncode-tool` package handles canonical path checks, bounded reads and search, read-only Git status and file diffs, preconditioned writes and edits, checkpoint capture and restore, artifact handling, bounded process execution, and approval-gated bounded HTTP(S) text retrieval.
+**Status:** Implemented and focused-tested
 
-It is called in-process by the runtime and reports operation results through typed runtime DTOs.
+The `suncode-tool` crate is the agent's narrow audited operations boundary. It is an in-process auditability boundary, not an OS sandbox and not a second authority owner.
 
-Its content search uses embedded ripgrep libraries with bounded Rust-regex matching and ripgrep-compatible standard ignore filters; the desktop runtime does not depend on a system-installed `rg` binary.
+## Implemented operations
 
-Its Git inspection uses `git2` with vendored libgit2. It discovers repositories containing the opened project, filters all paths back to that project, and returns bounded structured status, hunks, lines, and patch text without requiring an installed Git executable. Git mutations, remotes, and credentials are not part of this read-only slice.
+- Canonical, project-scoped reads, writes, edits, glob traversal, and regular-expression grep with bounded output and repository ignore rules.
+- BOM- and line-ending-preserving edits with overlap and precondition checks; safe parent-directory creation; pre-image checkpoints and conflict-aware restore.
+- Read-only Git status and per-file diff inspection through vendored `git2`/libgit2. Results are project-relative and bounded; Git mutation, remotes, and credentials are out of scope.
+- Structured program-plus-argv execution and platform-native shell scripts. Output streams are continuously drained, previews are bounded, complete oversized output is retained as an artifact, and cancellation terminates the process group/tree.
+- Approval-gated HTTP(S) text retrieval with URL credential rejection, same-origin redirect checks, declared-charset decoding, parser-backed HTML conversion, 5 MiB raw-response bounds, 64 KiB model previews, and managed artifacts for the remainder.
 
-Its WebFetch operation uses a Rust HTTP client with rustls, validates the approved URL and redirects, bounds raw responses to 5 MiB, decodes declared text charsets, converts HTML through a parser-backed Markdown tree, and stores converted output beyond the 64 KiB model preview as a managed artifact. Binary and image responses are rejected until the model tool-result contract supports attachments.
+All operations return typed results and business errors. Retired operation names fail closed. The model tool definitions and their audited implementations are maintained together under `agent/crates/tools`.
+
+## Verification
+
+Focused tests cover path boundaries, ignore traversal, regex validation, edit preconditions, checkpoints, Git projections, process failure/cancellation, WebFetch bounds, and artifact handling. See [`contracts/agent-sdk/README.md`](../../../contracts/agent-sdk/README.md) for the client-visible method surface.

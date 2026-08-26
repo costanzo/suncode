@@ -2,37 +2,24 @@
 
 **Status:** Implemented and focused-tested
 
-SunCode's Phase 1 production client is a .NET 10 Avalonia desktop application under `apps/desktop-avalonia/`. Its focused .NET tests are colocated under `apps/desktop-avalonia/tests/`. CLI, TUI, Web, mobile, and IDE clients remain deferred.
-
-## Boundary
-
-Avalonia XAML owns layout and semantic styles. C# view models own navigation and transient presentation state. The client embeds the Rust runtime through a hand-written P/Invoke adapter over C ABI version 1. It does not open SQLite, contact model providers, invoke Git, or read project files directly.
-
-The Rust crate emits a `cdylib`; the desktop build invokes Cargo and copies the platform library beside the managed executable. Native calls run off the UI thread. All desktop windows share one reference-counted native runtime handle while keeping independent project/session state. SDK subscription callbacks are copied and marshalled through `Dispatcher.UIThread`; subscriptions close before the runtime handle.
+SunCode's only Phase 1 production client is the .NET 10 Avalonia application under `apps/desktop-avalonia/`. C# and XAML own presentation and transient interaction state; the client calls the Rust SDK through a hand-written P/Invoke adapter and never opens SQLite, contacts providers, reads project files, invokes Git, or executes operations directly.
 
 ## Implemented workflows
 
-- project hub, local folder opening, independent project windows, duplicate-window activation, and recent project selection
-- project-scoped session create, select, rename, and archive
-- normalized session snapshots and live conversation/activity events with snapshot resync after lag
-- Codex-style turn timelines: running turns show ordered assistant progress and tool activity without copy actions; terminal turns retain that process history collapsed above the final visible, copyable assistant response and can expand it on demand, including after snapshot reload
-- latest-selection-wins session loading that discards stale snapshots, projects replay data off the UI thread, atomically replaces the conversation message source, uses stable variable-height conversation layout, exposes loading and retryable error states, and starts only the selected session's live subscription
-- per-turn model selection, submission, queue status, and cancellation
-- approval deny, allow-once, and allow-for-session decisions with readable action summaries, focused command or target details, and expandable raw requests; session Full Control is persistently warning-styled above Agent Processes and can be turned off directly
-- structured question prompts with single-select, multi-select, custom-answer, submit, and skip controls; pending questions restore from snapshots and live events
-- current-turn todo list restored from normalized `conversationTurns[*].todos` snapshots and updated by live `todo.updated` events
-- conversation tool activity cards that show concise operation summaries and open selectable request/result/error details on demand
-- touched paths, turn checkpoints, conflict-aware undo, and diagnostics
-- runtime-owned Git status and structured per-file diff review
-- a resizable session trace drawer with an expandable turn/call/content tree; each call lazily exposes user, assistant, thinking, and tool-use entries alongside call-level request/response, timing, token, and cache diagnostics
-- provider credential status/store/remove, default model, project tool-call limit, and dark/light theme settings
-- responsive navigation and review bays with a stable conversation composer
-- in-window dialogs, application-modal settings, and the native macOS project menu
-- project-window keyboard toggles for navigation (`Command+1`) and Git review (`Command+9`), with Control equivalents
-- consistent colors, geometry, states, shortcuts, assets, and font fallback stacks
+- Project hub, recent/open projects, independent project windows, duplicate-window activation, and project-scoped session create/select/rename/archive/reopen/pin.
+- Conversation streaming with normalized snapshots, latest-selection-wins loading, lagged-subscription resync, stable variable-height layout, copyable final responses, expandable process history, cancellation, queued input, and retryable loading errors.
+- Model selection, credential status/store/remove, project default model, reasoning-effort control, tool-call budget, dark/light theme, and persisted diagnostics/logging settings.
+- Approval deny, allow-once, and allow-for-session flows with readable scope/action details, raw request inspection, and persistent Full Control warning state.
+- Structured question prompts with single-select, multi-select, custom answers, submit/skip, snapshot restoration, and live events. Current-turn todos restore from normalized conversation snapshots and update live.
+- Tool activity details, touched paths, checkpoints, conflict-aware undo, runtime health/diagnostics, provider trace drawer, Git status/diff review, and read-only project dependency Explorer.
+- Responsive navigation and review bays, in-window dialogs, keyboard toggles, native macOS menu integration, and the shared design-system review pages under `design/`.
 
-## Verification
+## Boundary and verification
 
-The source build verifies the Rust `cdylib` integration and compiled Avalonia bindings. Focused startup checks exercise native runtime loading, project listing/selection, diagnostics, and Git projections. Release signing and installer production remain separate release-engineering work.
+Native calls run off the UI thread, subscription payloads are copied and marshalled to `Dispatcher.UIThread`, and subscriptions close before the shared runtime handle. Focused tests are colocated under `apps/desktop-avalonia/tests/` and run with:
 
-Run the focused desktop test suite with `dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj`.
+```text
+dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj
+```
+
+CLI, TUI, Web, mobile, IDE-plugin, hosted, and Electron surfaces remain deferred.

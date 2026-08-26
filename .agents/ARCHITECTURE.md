@@ -76,7 +76,7 @@ The Avalonia client embeds and opens the agent, fetches a session snapshot, then
 
 ## 5. SDK Contract
 
-Phase 1 keeps the embedded SDK contract in `contracts/agent-sdk/`. C# calls named methods through the stable C ABI using P/Invoke. Future TypeScript and Python packages wrap the same Rust facade through native bindings. DTOs are hand-implemented in Rust and each host language and verified with shared vectors. Contract generation is prohibited.
+Phase 1 keeps the embedded SDK contract in `contracts/agent-sdk/`. C# calls named methods through the stable C ABI using P/Invoke. Future TypeScript and Python packages wrap the same Rust facade through native bindings. DTOs are hand-implemented in Rust and each host language and verified by focused contract tests. Contract generation is prohibited.
 
 Mutating calls carry idempotency keys where replay could duplicate work. Session snapshots read normalized tables directly. Subscriptions deliver live in-memory events only; if a subscriber lags, it receives `resync.required` and reloads a snapshot.
 
@@ -120,7 +120,7 @@ Startup marks non-recoverable in-memory turn execution interrupted, discovers ad
 
 ```text
 apps/desktop-avalonia/    .NET 10 Avalonia desktop client
-contracts/                hand-written protocols and shared vectors
+contracts/                hand-written protocols and contract documentation
 agent/crates/core/      agent core and embedded Rust SDK facade
 agent/crates/common/    shared Rust business errors and cross-crate contracts
 agent/crates/database/  backend-specific SQL resources and database setup

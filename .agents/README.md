@@ -8,7 +8,7 @@ This directory is the source of truth for project context used by contributors a
 2. `PRODUCT.md` — product purpose, users, and scope.
 3. `ARCHITECTURE.md` — approved system architecture and boundaries.
 4. `features/` — stable, implemented product capabilities.
-5. `requirements/` — dated delivery records and work in progress.
+5. `requirements/` — lightweight template and policy for a new delivery; historical packages are consolidated into `features/`.
 6. `specs/` — current technical contracts and implementation facts.
 7. `DECISIONS.md` — accepted decisions and superseded choices.
 
@@ -17,7 +17,7 @@ This directory is the source of truth for project context used by contributors a
 | Path | Purpose |
 | --- | --- |
 | `features/` | Durable behavior after it is implemented |
-| `requirements/` | Requirement, design, plan, progress, changes, and tests for one delivery |
+| `requirements/` | Template and policy for a new delivery; completed behavior belongs in `features/` |
 | `specs/` | Current API, protocol, storage, security, and operational contracts |
 | `DECISIONS.md` | Project-level architectural decisions and their consequences |
 

@@ -6,12 +6,12 @@ This directory contains durable project knowledge, not tool runtime state.
 
 1. Read `.agents/README.md`.
 2. Read `PRODUCT.md` and `ARCHITECTURE.md` for system-wide work.
-3. Read the relevant feature, requirement, specification, and decision records.
+3. Read the relevant feature, specification, and decision records. Use `requirements/` only for a new delivery that needs a durable work record.
 4. If documentation conflicts with code, record the discrepancy instead of guessing.
 
 ## New requirements
 
-Create `.agents/requirements/YYYY-MM-DD-short-topic/` from `_template/`. Keep `progress.md` and `todo.md` current while implementing. When work is complete, promote only stable behavior into `features/`, current technical facts into `specs/`, and important tradeoffs into `DECISIONS.md`.
+For a new substantial delivery, create `.agents/requirements/YYYY-MM-DD-short-topic/` from `_template/`. Keep `progress.md` and `todo.md` current while implementing. When work is complete, promote only stable behavior into `features/`, current technical facts into `specs/`, and important tradeoffs into `DECISIONS.md`; remove the delivery package when it no longer explains an active decision.
 
 ## Boundaries
 

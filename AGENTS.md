@@ -12,7 +12,7 @@ Before non-trivial work:
 
 1. Read `.agents/README.md` and `.agents/AGENTS.md`.
 2. Read `.agents/PRODUCT.md` and `.agents/ARCHITECTURE.md` for project-wide changes.
-3. Read the relevant dated requirement, feature, specification, and decision records.
+3. Read the relevant feature, specification, and decision records. Dated delivery packages are intentionally consolidated; create a new requirement package only for new substantial work.
 4. For a new substantial delivery, create `.agents/requirements/YYYY-MM-DD-short-topic/` from `.agents/requirements/_template/`.
 
 ## Architecture boundaries
@@ -21,7 +21,7 @@ Before non-trivial work:
 - TypeScript is migration-only and must not remain a Phase 1 production dependency.
 - Clients consume the client API or Rust SDK facade; they do not access SQLite or model providers directly. Phase 1 ships the Avalonia desktop client, and CLI/TUI/Web are deferred.
 - The production desktop application uses .NET 10 and Avalonia. Other desktop UI toolkits and Electron are not supported production dependencies.
-- Protocol contracts are written documents, hand-implemented per language and verified by shared test vectors. Nothing is generated.
+- Protocol contracts are written documents, hand-implemented per language, and verified by focused implementation tests. Nothing is generated.
 - The agent core is Rust. Node.js and Bun are prohibited as Phase 1 production runtime dependencies.
 - The Rust boundary is not an OS-enforced sandbox around the agent. Its value is containing third-party code and providing one auditable path. Do not write designs that assume it isolates a compromised agent.
 - Phase 1 uses an embedded desktop agent. Do not add tenancy, remote identity, or hosted-infrastructure assumptions without an approved requirement.
@@ -44,4 +44,4 @@ Note: an empty untracked `docs/` tree may exist from earlier tooling. It is not 
 
 ## Completion checks
 
-Before reporting completion, inspect the diff, run `git diff --check`, run applicable tests or validation commands, add or update shared test vectors when a contract changes, and state any checks that could not run.
+Before reporting completion, inspect the diff, run `git diff --check`, run applicable tests or validation commands, update focused contract tests when a contract changes, and state any checks that could not run.

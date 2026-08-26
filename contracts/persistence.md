@@ -1,6 +1,6 @@
 # Agent Persistence Contract
 
-Status: Draft for Phase 1 implementation.
+Status: Current Phase 1 contract.
 
 The Rust agent owns SQLite initialization, provider secrets, projections, and operation bookkeeping. Avalonia, providers, and future extensions never open the database directly.
 

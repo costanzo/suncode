@@ -1,16 +1,5 @@
 # Requirements
 
-Each delivery has one dated directory named `YYYY-MM-DD-short-topic`.
+Historical delivery packages were consolidated into [`../features/`](../features/) and the current specifications under [`../specs/`](../specs/). No dated requirement packages are retained in this repository.
 
-## Standard files
-
-- `README.md` — status and document index
-- `requirement.md` — goals, scope, rules, and acceptance criteria
-- `architecture.md` — technical design and boundaries
-- `changes.md` — affected files and components
-- `plan.md` — ordered implementation plan
-- `progress.md` — current state and work log
-- `todo.md` — checkable task list
-- `test-plan.md` — verification scope and results
-
-Copy `_template/` for new work. Keep only requirement records that still help explain current work or a decision trail. Once a delivery is stable, move durable facts into `features/`, `specs/`, or `DECISIONS.md` and trim the requirement record down to the essentials.
+Use the template for a new substantial delivery only when the work needs a durable requirement record. Once implemented, promote stable behavior to `features/` and current technical facts to `specs/` or `contracts/`, then remove delivery notes that no longer explain an active decision.
