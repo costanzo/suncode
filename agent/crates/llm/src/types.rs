@@ -118,7 +118,7 @@ pub struct CompletionRequest<'a> {
 pub type CompletionFuture<'a> =
     Pin<Box<dyn Future<Output = Result<Completion, suncode_common::BusinessError>> + Send + 'a>>;
 
-/// Resolves credentials without coupling providers to persistence or environment handling.
+/// Resolves credentials without coupling providers to persistence.
 pub trait ApiKeyResolver: Send + Sync {
     fn api_key(&self, provider_id: &str) -> Option<String>;
 }

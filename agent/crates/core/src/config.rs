@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use crate::credentials::ProviderKind;
-
 #[derive(Debug, Clone)]
 pub struct Config {
     pub data_dir: PathBuf,
@@ -18,17 +16,6 @@ impl Config {
             .map(PathBuf::from)
             .unwrap_or_else(|| data_dir.join("data/sqlite/agent.sqlite3"));
         let non_interactive = env_bool("SUNCODE_NON_INTERACTIVE", false)?;
-        if !non_interactive
-            && ProviderKind::ALL
-                .iter()
-                .flat_map(|provider| provider.api_key_envs())
-                .any(|name| std::env::var_os(name).is_some())
-        {
-            return Err(
-                "provider API key environment overrides require SUNCODE_NON_INTERACTIVE=true"
-                    .to_string(),
-            );
-        }
         Ok(Self {
             data_dir,
             database_path,

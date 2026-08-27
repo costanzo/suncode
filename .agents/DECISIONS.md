@@ -2,6 +2,16 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260827-sqlite-only-provider-credentials
+
+- Date: 2026-08-27
+- Status: Accepted
+- Supersedes: the provider credential environment-variable conclusions in ADR-20260815-built-in-provider-expansion, ADR-20260815-multi-model-provider-catalog, ADR-20260812-plaintext-provider-secrets, and ADR-20260807-runtime-phase-1-defaults
+- Context: Provider API keys already have one Rust-owned persistence location in `llm_model_provider.api_key`, but non-interactive startup could still take credentials from provider-specific environment variables. That made the effective credential depend on process state instead of the persisted catalog.
+- Decision: Resolve every built-in and custom provider API key exclusively from the SQLite `llm_model_provider.api_key` column. Do not inspect or validate provider API-key environment variables in interactive or non-interactive execution. Keep `SUNCODE_NON_INTERACTIVE` only for policy behavior.
+- Consequences: Credential updates and removals through the SDK determine the sole provider credential source. Scripts and CI must provision the SQLite credential through the SDK rather than injecting a provider environment variable. Data-directory and database-path environment variables remain bootstrap inputs because SQLite cannot locate itself.
+- Details: `ARCHITECTURE.md`, `features/agent-phase-1/`, `specs/agent-phase-1.md`, `agent/crates/core/src/credentials.rs`
+
 ## ADR-20260826-contract-fixture-cleanup
 
 - Date: 2026-08-26

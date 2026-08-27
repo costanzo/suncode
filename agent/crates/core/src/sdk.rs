@@ -343,7 +343,7 @@ where
             .map_err(|error| BusinessError::unavailable(error.to_string()))?,
     );
     let (events, _) = broadcast::channel(256);
-    let credentials = CredentialStore::load(store.clone(), config.non_interactive);
+    let credentials = CredentialStore::load(store.clone());
     let mut providers = registry_from_store(&store, Arc::new(credentials.clone()))?;
     configure_providers(&mut providers)
         .map_err(|error| BusinessError::new("provider_registration_failed", error.to_string()))?;
