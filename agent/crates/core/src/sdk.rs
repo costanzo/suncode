@@ -1348,9 +1348,9 @@ impl AgentSdk {
                 }
                 Some(Err(broadcast::error::RecvError::Closed)) => {
                     logging::write(
-                        Level::Debug,
+                        Level::Error,
                         "subscribe",
-                        format!("thread_exit session={log_session_id} reason=channel_closed"),
+                        format!("thread_exit session={log_session_id} reason=channel_closed unexpected=true"),
                     );
                     break;
                 }
@@ -1491,10 +1491,16 @@ pub unsafe extern "C" fn suncode_agent_sdk_open_default(
     match catch_unwind(AssertUnwindSafe(AgentSdk::open_default)) {
         Ok(Ok(sdk)) => Box::into_raw(Box::new(SunCodeAgentHandle { sdk })),
         Ok(Err(error)) => {
+            logging::write_business_error("sdk.open", "open_default", &error, "phase=initialize");
             write_error_out(error_out, into_c_string(error.to_string()));
             ptr::null_mut()
         }
         Err(_) => {
+            logging::write(
+                Level::Error,
+                "sdk.open",
+                "operation=open_default panic=true",
+            );
             write_error_out(
                 error_out,
                 into_c_string("agent_unavailable: agent initialization panicked".to_string()),
@@ -1507,7 +1513,9 @@ pub unsafe extern "C" fn suncode_agent_sdk_open_default(
 #[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_close(handle: *mut SunCodeAgentHandle) {
     if !handle.is_null() {
+        logging::write(Level::Info, "sdk.close", "handle_close begin");
         let _ = catch_unwind(AssertUnwindSafe(|| drop(Box::from_raw(handle))));
+        logging::write(Level::Info, "sdk.close", "handle_close end");
     }
 }
 
@@ -1902,10 +1910,21 @@ pub unsafe extern "C" fn suncode_agent_sdk_subscribe_session(
             _subscription: subscription,
         })),
         Ok(Err(error)) => {
+            logging::write_business_error(
+                "sdk.subscribe",
+                "subscribe_session",
+                &error,
+                "boundary=native",
+            );
             write_error_out(error_out, into_c_string(error.to_string()));
             ptr::null_mut()
         }
         Err(_) => {
+            logging::write(
+                Level::Error,
+                "sdk.subscribe",
+                "operation=subscribe_session panic=true",
+            );
             write_error_out(
                 error_out,
                 into_c_string("agent_unavailable: subscription panicked".to_string()),
@@ -1943,8 +1962,19 @@ where
         call(&handle.sdk)
     }));
     match result {
-        Ok(result) => result_envelope(result),
-        Err(_) => result_envelope::<T>(Err(BusinessError::unavailable("SDK call panicked"))),
+        Ok(Ok(value)) => result_envelope(Ok(value)),
+        Ok(Err(error)) => {
+            logging::write_business_error("sdk.ffi", "ffi_call", &error, "boundary=native");
+            result_envelope::<T>(Err(error))
+        }
+        Err(_) => {
+            logging::write(
+                Level::Error,
+                "sdk.ffi",
+                "operation=ffi_call panic=true boundary=native",
+            );
+            result_envelope::<T>(Err(BusinessError::unavailable("SDK call panicked")))
+        }
     }
 }
 
@@ -1952,10 +1982,20 @@ fn result_envelope<T: Serialize>(result: SdkResult<T>) -> *mut c_char {
     let value = match result {
         Ok(body) => match serde_json::to_value(body) {
             Ok(body) => json!({"ok": true, "body": body}),
-            Err(error) => json!({
-                "ok": false,
-                "error": BusinessError::unavailable(error.to_string())
-            }),
+            Err(error) => {
+                logging::write(
+                    Level::Error,
+                    "sdk.envelope",
+                    format!(
+                        "operation=serialize_response code=serialization_error error_type={}",
+                        std::any::type_name::<T>()
+                    ),
+                );
+                json!({
+                    "ok": false,
+                    "error": BusinessError::unavailable(error.to_string())
+                })
+            }
         },
         Err(error) => json!({"ok": false, "error": error}),
     };
@@ -1964,9 +2004,19 @@ fn result_envelope<T: Serialize>(result: SdkResult<T>) -> *mut c_char {
 
 fn emit_sdk_event(callback: SunCodeEventCallback, user_data: usize, event: &SessionEvent) {
     let Ok(value) = serde_json::to_string(event) else {
+        logging::write(
+            Level::Error,
+            "sdk.event",
+            "operation=serialize_event failed=true",
+        );
         return;
     };
     let Ok(value) = CString::new(value) else {
+        logging::write(
+            Level::Error,
+            "sdk.event",
+            "operation=marshal_event failed=true",
+        );
         return;
     };
     unsafe { callback(value.as_ptr(), user_data as *mut c_void) };

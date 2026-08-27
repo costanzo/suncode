@@ -2052,7 +2052,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             .Select(part => part.String("text")));
     }
 
-    private async Task RunAsync(Func<Task> operation, string? success = null)
+    private async Task RunAsync(Func<Task> operation, string? success = null, [System.Runtime.CompilerServices.CallerMemberName] string operationName = "unknown")
     {
         IsBusy = true;
         try
@@ -2063,6 +2063,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
         catch (Exception exception)
         {
+            DiagnosticLog.Error("viewmodel.operation", exception, $"operation={operationName}");
             ReportError(exception);
         }
         finally
@@ -2071,8 +2072,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
-    private async Task RunAsync(Func<Task<JsonObject>> operation, string? success = null) =>
-        await RunAsync(async () => { await operation(); }, success);
+    private async Task RunAsync(Func<Task<JsonObject>> operation, string? success = null, [System.Runtime.CompilerServices.CallerMemberName] string operationName = "unknown") =>
+        await RunAsync(async () => { await operation(); }, success, operationName);
 
     private bool EnsureSdk()
     {
@@ -2121,6 +2122,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
     private void ReportError(Exception exception)
     {
+        DiagnosticLog.Error("viewmodel", exception, $"session={SelectedSession?.SessionId ?? "none"}");
         ConnectionState = "error";
         StatusText = exception.Message;
     }

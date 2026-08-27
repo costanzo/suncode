@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SunCode.Desktop.Infrastructure;
@@ -18,25 +19,36 @@ public sealed class AgentSdk : IDisposable
 
     public static Task<AgentSdk> OpenAsync() => Task.Run(() =>
     {
-        lock (SharedHandleLock)
+        try
         {
-            if (_sharedHandle == IntPtr.Zero)
+            lock (SharedHandleLock)
             {
-                var version = NativeMethods.suncode_agent_sdk_abi_version();
-                if (version != AbiVersion)
-                {
-                    throw new SdkException("abi_mismatch", $"Agent ABI {version} is not supported; expected {AbiVersion}");
-                }
-
-                _sharedHandle = NativeMethods.suncode_agent_sdk_open_default(out var error);
                 if (_sharedHandle == IntPtr.Zero)
                 {
-                    throw new SdkException("agent_unavailable", TakeString(error, true) ?? "SunCode agent could not be started");
-                }
-            }
+                    var version = NativeMethods.suncode_agent_sdk_abi_version();
+                    if (version != AbiVersion)
+                    {
+                        DiagnosticLog.Error("sdk.open", $"operation=open abi={version} expected={AbiVersion}");
+                        throw new SdkException("abi_mismatch", $"Agent ABI {version} is not supported; expected {AbiVersion}");
+                    }
 
-            _sharedHandleReferences++;
-            return new AgentSdk(_sharedHandle);
+                    _sharedHandle = NativeMethods.suncode_agent_sdk_open_default(out var error);
+                    if (_sharedHandle == IntPtr.Zero)
+                    {
+                        DiagnosticLog.Error("sdk.open", "operation=open native_handle=null");
+                        throw new SdkException("agent_unavailable", TakeString(error, true) ?? "SunCode agent could not be started");
+                    }
+                }
+
+                _sharedHandleReferences++;
+                DiagnosticLog.Debug("sdk.open", $"operation=open references={_sharedHandleReferences}");
+                return new AgentSdk(_sharedHandle);
+            }
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("sdk.open", exception, "operation=open");
+            throw;
         }
     });
 
@@ -158,29 +170,45 @@ public sealed class AgentSdk : IDisposable
         return new Subscription(_handle, sessionId, after, onEvent);
     }
 
-    private Task<JsonObject> CallAsync(Func<IntPtr, IntPtr> call) => Task.Run(() =>
+    private Task<JsonObject> CallAsync(Func<IntPtr, IntPtr> call, [CallerMemberName] string operation = "unknown") => Task.Run(() =>
     {
-        ThrowIfDisposed();
-        return ParseEnvelope(call(_handle));
-    });
-
-    private Task<JsonObject> WithUtf8Async(string[] values, Func<IntPtr[], IntPtr> call) =>
-        WithNullableUtf8Async(values, call);
-
-    private Task<JsonObject> WithNullableUtf8Async(string?[] values, Func<IntPtr[], IntPtr> call) => Task.Run(() =>
-    {
-        ThrowIfDisposed();
-        var pointers = values.Select(value => value is null ? IntPtr.Zero : Marshal.StringToCoTaskMemUTF8(value)).ToArray();
         try
         {
-            return ParseEnvelope(call(pointers));
+            ThrowIfDisposed();
+            return ParseEnvelope(call(_handle));
         }
-        finally
+        catch (Exception exception)
         {
-            foreach (var pointer in pointers)
+            DiagnosticLog.Error("sdk.call", exception, $"operation={operation}");
+            throw;
+        }
+    });
+
+    private Task<JsonObject> WithUtf8Async(string[] values, Func<IntPtr[], IntPtr> call, [CallerMemberName] string operation = "unknown") =>
+        WithNullableUtf8Async(values, call, operation);
+
+    private Task<JsonObject> WithNullableUtf8Async(string?[] values, Func<IntPtr[], IntPtr> call, [CallerMemberName] string operation = "unknown") => Task.Run(() =>
+    {
+        try
+        {
+            ThrowIfDisposed();
+            var pointers = values.Select(value => value is null ? IntPtr.Zero : Marshal.StringToCoTaskMemUTF8(value)).ToArray();
+            try
             {
-                if (pointer != IntPtr.Zero) Marshal.FreeCoTaskMem(pointer);
+                return ParseEnvelope(call(pointers));
             }
+            finally
+            {
+                foreach (var pointer in pointers)
+                {
+                    if (pointer != IntPtr.Zero) Marshal.FreeCoTaskMem(pointer);
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("sdk.call", exception, $"operation={operation}");
+            throw;
         }
     });
 
@@ -223,6 +251,7 @@ public sealed class AgentSdk : IDisposable
                 if (_sharedHandleReferences == 0)
                 {
                     NativeMethods.suncode_agent_sdk_close(_sharedHandle);
+                    DiagnosticLog.Info("sdk.close", "native_handle closed");
                     _sharedHandle = IntPtr.Zero;
                 }
             }
@@ -268,7 +297,17 @@ public sealed class AgentSdk : IDisposable
             var json = Marshal.PtrToStringUTF8(eventJson);
             if (json is null) return;
             var handle = GCHandle.FromIntPtr(userData);
-            if (handle.Target is Action<string> callback) callback(json);
+            if (handle.Target is Action<string> callback)
+            {
+                try
+                {
+                    callback(json);
+                }
+                catch (Exception exception)
+                {
+                    DiagnosticLog.Error("sdk.subscription.callback", exception, "native_callback=true");
+                }
+            }
         }
 
         public void Dispose()

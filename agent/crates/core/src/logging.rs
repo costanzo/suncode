@@ -7,6 +7,7 @@ use std::{
     sync::{Arc, Mutex, OnceLock},
     thread,
 };
+use suncode_common::BusinessError;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) enum Level {
@@ -129,6 +130,50 @@ pub(crate) fn write(level: Level, component: &str, message: impl Display) {
     eprintln!("{line}");
 }
 
+pub(crate) fn write_business_error(
+    component: &str,
+    operation: &str,
+    error: &BusinessError,
+    context: impl Display,
+) {
+    let provider_request_id = error
+        .provider_request_id
+        .as_deref()
+        .map(safe_field)
+        .unwrap_or_else(|| "none".to_string());
+    write(
+        Level::Error,
+        component,
+        format!(
+            "operation={} code={} retryable={} provider_request_id={} {}",
+            safe_field(operation),
+            safe_field(&error.code),
+            error.retryable,
+            provider_request_id,
+            safe_field(&context.to_string())
+        ),
+    );
+}
+
+fn safe_field(value: &str) -> String {
+    const MAX_CHARS: usize = 256;
+    let mut result = value
+        .chars()
+        .take(MAX_CHARS)
+        .map(|character| {
+            if character.is_control() || character.is_whitespace() {
+                '_'
+            } else {
+                character
+            }
+        })
+        .collect::<String>();
+    if value.chars().count() > MAX_CHARS {
+        result.push_str("...");
+    }
+    result
+}
+
 fn rotate_log(path: &Path, file: &mut Option<File>, retention: usize) -> io::Result<()> {
     let _ = file.take();
     if retention == 0 {
@@ -214,5 +259,33 @@ mod tests {
             "older"
         );
         assert!(path.exists());
+    }
+
+    #[test]
+    fn business_error_fields_are_bounded_and_do_not_include_message_or_details() {
+        let secret = "secret-api-key-value";
+        let error = BusinessError::provider(
+            "provider\nfailed",
+            format!("response included {secret}"),
+            true,
+            Some("request\r123".into()),
+        )
+        .with_details(serde_json::json!({"payload": secret}));
+
+        let rendered = format!(
+            "operation={} code={} retryable={} provider_request_id={}",
+            safe_field("submit turn"),
+            safe_field(&error.code),
+            error.retryable,
+            safe_field(error.provider_request_id.as_deref().unwrap())
+        );
+
+        assert_eq!(
+            rendered,
+            "operation=submit_turn code=provider_failed retryable=true provider_request_id=request_123"
+        );
+        assert!(!rendered.contains(secret));
+        assert!(!rendered.contains('\n'));
+        assert!(!rendered.contains('\r'));
     }
 }

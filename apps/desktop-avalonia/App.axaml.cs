@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using SunCode.Desktop.Models;
+using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.ViewModels;
 using SunCode.Desktop.Views.About;
 using SunCode.Desktop.Views.Settings;
@@ -22,14 +23,17 @@ public sealed partial class App : Application
 
     public override void Initialize()
     {
+        DiagnosticLog.Info("app.initialize", "xaml_load begin");
         AvaloniaXamlLoader.Load(this);
         ConfigureNativeApplicationMenu();
+        DiagnosticLog.Info("app.initialize", "xaml_load end");
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            DiagnosticLog.Info("app.lifecycle", "framework_initialization begin");
             _viewModel = new DesktopViewModel();
             MacOSDockIcon.Apply();
             _viewModel.ThemeChanged += ApplyTheme;
@@ -37,10 +41,12 @@ public sealed partial class App : Application
             desktop.MainWindow = _hubWindow;
             desktop.Exit += (_, _) =>
             {
+                DiagnosticLog.Info("app.lifecycle", "exit begin");
                 _settingsWindow?.Close();
                 _aboutWindow?.Close();
                 foreach (var window in _projectWindows.Values.ToArray()) window.Close();
                 _viewModel.Dispose();
+                DiagnosticLog.Info("app.lifecycle", "exit end");
             };
         }
 
@@ -89,6 +95,7 @@ public sealed partial class App : Application
         viewModel.ThemeChanged += ApplyTheme;
         try
         {
+            DiagnosticLog.Info("project.window", $"open begin project={project.ProjectId}");
             await viewModel.InitializeAsync();
             await viewModel.SelectProjectAsync(project);
             if (!viewModel.IsProjectOpen)
@@ -103,6 +110,13 @@ public sealed partial class App : Application
             _hubWindow?.Hide();
             window.Show();
             window.Activate();
+            DiagnosticLog.Info("project.window", $"open end project={project.ProjectId}");
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("project.window", exception, $"project={project.ProjectId}");
+            viewModel.Dispose();
+            throw;
         }
         finally
         {

@@ -14,6 +14,8 @@ SunCode's only Phase 1 production client is the .NET 10 Avalonia application und
 - Tool activity details, touched paths, checkpoints, conflict-aware undo, runtime health/diagnostics, provider trace drawer, Git status/diff review, and read-only project dependency Explorer.
 - Responsive navigation and review bays, in-window dialogs, keyboard toggles, native macOS menu integration, and the shared design-system review pages under `design-system/`.
 
+The desktop logger opens its default rotating `desktop.log` during process startup, before persisted settings load. SDK operations and ViewModel actions record error-level failures with operation names; process, task, and Avalonia dispatcher unhandled exceptions are recorded with bounded, single-line exception chains. Diagnostics exclude credentials, prompts, model responses, tool inputs/results, file contents, and raw native envelopes.
+
 ## Boundary and verification
 
 Native calls run off the UI thread, subscription payloads are copied and marshalled to `Dispatcher.UIThread`, and subscriptions close before the shared runtime handle. Focused tests are colocated under `apps/desktop-avalonia/tests/` and run with:

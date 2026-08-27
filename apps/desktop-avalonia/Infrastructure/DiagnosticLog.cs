@@ -31,6 +31,17 @@ internal static class DiagnosticLog
         {
             if (_initialized) return;
             _initialized = true;
+            try
+            {
+                var logDirectory = DefaultLogDirectory();
+                Directory.CreateDirectory(logDirectory);
+                _filePath = Path.Combine(logDirectory, "desktop.log");
+                _file = OpenFile(_filePath);
+            }
+            catch (Exception exception)
+            {
+                Console.Error.WriteLine($"[suncode][logger][ERROR] startup_file_configure_failed type={exception.GetType().Name} message={Sanitize(exception.Message)}");
+            }
         }
     }
 
@@ -65,6 +76,13 @@ internal static class DiagnosticLog
     public static void Info(string area, string message) => Write(DiagnosticLogLevel.Info, area, message);
     public static void Warn(string area, string message) => Write(DiagnosticLogLevel.Warn, area, message);
     public static void Error(string area, string message) => Write(DiagnosticLogLevel.Error, area, message);
+
+    public static void Error(string area, Exception exception, string? context = null)
+    {
+        var suffix = string.IsNullOrWhiteSpace(context) ? string.Empty : $" context={Sanitize(context)}";
+        Write(DiagnosticLogLevel.Error, area,
+            $"exception_type={Sanitize(exception.GetType().FullName ?? exception.GetType().Name)}{suffix} {FormatException(exception)}");
+    }
 
     // Compatibility entry point for callers that do not need a more specific level.
     public static void Write(string area, string message)
@@ -158,4 +176,23 @@ internal static class DiagnosticLog
         DiagnosticLogLevel.Error => "ERROR",
         _ => "OFF"
     };
+
+    private static string FormatException(Exception exception)
+    {
+        var chain = new StringBuilder();
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (chain.Length > 0) chain.Append(" inner=");
+            chain.Append("message=").Append(Sanitize(current.Message));
+            if (current.StackTrace is not null) chain.Append(" stack=").Append(Sanitize(current.StackTrace, 4096));
+        }
+        return chain.ToString();
+    }
+
+    private static string Sanitize(string? value, int maxLength = 512)
+    {
+        if (string.IsNullOrEmpty(value)) return "(none)";
+        var normalized = value.Replace('\r', ' ').Replace('\n', ' ').Replace('\t', ' ');
+        return normalized.Length <= maxLength ? normalized : normalized[..maxLength] + "...";
+    }
 }

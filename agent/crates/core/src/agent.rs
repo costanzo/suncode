@@ -1,6 +1,7 @@
 use crate::{
     context,
     domain::{Message, SessionEvent, ToolCall, Usage},
+    logging,
     policy::{evaluate, tool_risk, Decision, Risk},
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -280,6 +281,15 @@ impl Agent {
             .ok()
             .map(|mut values| values.remove(session_id));
         if let Err(error) = &result {
+            logging::write_business_error(
+                "turn",
+                "submit",
+                error,
+                format!(
+                    "session={} turn={}",
+                    continuation.session_id, continuation.turn_id
+                ),
+            );
             if !matches!(
                 error.code.as_str(),
                 "approval_required" | "question_required"
@@ -429,6 +439,15 @@ impl Agent {
             };
             let _ = agent.store.finish_suspended(&approval_id, status);
             if let Err(error) = &result {
+                logging::write_business_error(
+                    "turn",
+                    "continue_approval",
+                    error,
+                    format!(
+                        "session={} turn={}",
+                        continuation.session_id, continuation.turn_id
+                    ),
+                );
                 agent.clear_queued_messages(&continuation.session_id);
                 let _ = agent.turn_state(
                     &continuation,
@@ -532,6 +551,15 @@ impl Agent {
             };
             let _ = agent.store.finish_suspended(&request_id, status);
             if let Err(error) = &result {
+                logging::write_business_error(
+                    "turn",
+                    "continue_question",
+                    error,
+                    format!(
+                        "session={} turn={}",
+                        continuation.session_id, continuation.turn_id
+                    ),
+                );
                 if !suspended_again {
                     agent.clear_queued_messages(&continuation.session_id);
                     let _ = agent.turn_state(
