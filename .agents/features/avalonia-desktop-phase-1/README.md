@@ -8,7 +8,7 @@ SunCode's only Phase 1 production client is the .NET 10 Avalonia application und
 
 - Project hub, recent/open projects, independent project windows, duplicate-window activation, and project-scoped session create/select/rename/archive/reopen/pin.
 - Conversation streaming with normalized snapshots, latest-selection-wins loading, lagged-subscription resync, stable variable-height layout, copyable final responses, expandable process history, cancellation, queued input, and retryable loading errors.
-- Model selection, credential status/store/remove, project default model, reasoning-effort control, tool-call budget, dark/light theme, and persisted diagnostics/logging settings.
+- Hierarchical provider-and-model selection through one chat-composer menu, credential status/store/remove, project default model, reasoning-effort control, tool-call budget, dark/light theme, and persisted diagnostics/logging settings.
 - Approval deny, allow-once, and allow-for-session flows with readable scope/action details, raw request inspection, and persistent Full Control warning state.
 - Structured question prompts with single-select, multi-select, custom answers, submit/skip, snapshot restoration, and live events. Current-turn todos restore from normalized conversation snapshots and update live.
 - Tool activity details, touched paths, checkpoints, conflict-aware undo, runtime health/diagnostics, provider trace drawer, Git status/diff review, and read-only project dependency Explorer.

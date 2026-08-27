@@ -89,6 +89,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<ProjectItem> Projects { get; } = [];
     public ObservableCollection<SessionItem> Sessions { get; } = [];
+    public ObservableCollection<ProviderItem> Providers { get; } = [];
     public ObservableCollection<ModelItem> Models { get; } = [];
     public IReadOnlyList<string> ReasoningEffortOptions { get; } = ["low", "medium", "high"];
     public ObservableCollection<CredentialItem> Credentials { get; } = [];
@@ -140,6 +141,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(SessionTitle));
             OnPropertyChanged(nameof(CanSubmit));
             OnPropertyChanged(nameof(CanCompose));
+            OnPropertyChanged(nameof(CanChooseModel));
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
             OnPropertyChanged(nameof(HasSelectedSession));
             OnPropertyChanged(nameof(ComposerPlaceholder));
@@ -261,6 +263,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             {
                 OnPropertyChanged(nameof(CanOpenProjects));
                 OnPropertyChanged(nameof(CanCompose));
+                OnPropertyChanged(nameof(CanChooseModel));
                 OnPropertyChanged(nameof(CanChooseReasoningEffort));
             }
         }
@@ -326,6 +329,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(HasSessionLoadError));
             OnPropertyChanged(nameof(CanSubmit));
             OnPropertyChanged(nameof(CanCompose));
+            OnPropertyChanged(nameof(CanChooseModel));
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
         }
     }
@@ -359,6 +363,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             if (!value) IsSessionLoadingVisible = false;
             OnPropertyChanged(nameof(CanSubmit));
             OnPropertyChanged(nameof(CanCompose));
+            OnPropertyChanged(nameof(CanChooseModel));
         }
     }
     public bool IsSessionLoadingVisible { get => _isSessionLoadingVisible; private set => SetProperty(ref _isSessionLoadingVisible, value); }
@@ -389,6 +394,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public bool IsTurnActive => !string.IsNullOrWhiteSpace(ActiveTurnId);
     public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && SelectedModel?.Configured == true && !HasSessionLoadError;
     public bool CanSubmit => SelectedSession is not null && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsTurnActive && !IsSessionLoading && !HasSessionLoadError;
+    public bool CanChooseModel => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !HasSessionLoadError;
     public bool CanChooseReasoningEffort => CanCompose && SelectedModel?.SupportsReasoningEffort == true;
     public string ProjectTitle => SelectedProject?.DisplayName ?? "SunCode";
     public string SessionTitle => SelectedSession?.DisplayTitle ?? "No session selected";
@@ -1458,17 +1464,41 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         if (_sdk is null) return;
         var selectedId = SelectedModel?.Id;
         var result = await _sdk.ListModelsAsync();
+        _selectedModel = null;
         Models.Clear();
+        Providers.Clear();
         foreach (var item in result.Array("models").OfType<JsonObject>())
         {
             Models.Add(new ModelItem(
                 item.String("id"),
                 item.String("provider"),
+                item.String("providerLabel", "provider_label"),
                 item.String("availability"),
                 item.Object("capabilities").Bool("reasoning_effort")));
         }
+        foreach (var group in Models.GroupBy(model => model.Provider, StringComparer.Ordinal))
+        {
+            var first = group.First();
+            Providers.Add(new ProviderItem(
+                group.Key,
+                string.IsNullOrWhiteSpace(first.ProviderLabel) ? group.Key : first.ProviderLabel,
+                group.Any(model => model.Configured)));
+        }
         SelectedModel = Models.FirstOrDefault(item => item.Id == selectedId) ?? Models.FirstOrDefault();
+        if (SelectedModel is null)
+        {
+            SelectedReasoningEffort = null;
+            OnPropertyChanged(nameof(SelectedModel));
+            OnPropertyChanged(nameof(SelectedModelName));
+            OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(CanCompose));
+            OnPropertyChanged(nameof(CanChooseReasoningEffort));
+            OnPropertyChanged(nameof(ComposerPlaceholder));
+        }
     }
+
+    public IEnumerable<ModelItem> ModelsForProvider(string providerId) =>
+        Models.Where(model => model.Provider == providerId);
 
     private async Task LoadCredentialsAsync()
     {

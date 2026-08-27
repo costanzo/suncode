@@ -7,6 +7,26 @@ namespace SunCode.Desktop.Tests;
 public sealed class SessionSnapshotProjectionTests
 {
     [Fact]
+    public void ProviderModelGroupsPreserveLabelsAvailabilityAndOrder()
+    {
+        using var viewModel = new DesktopViewModel();
+        var openAi = new ProviderItem("openai", "OpenAI", true);
+        var deepSeek = new ProviderItem("deepseek", "DeepSeek", false);
+        var gpt = new ModelItem("gpt-5.6-sol", "openai", "OpenAI", "configured", true);
+        var deepSeekFlash = new ModelItem("deepseek-v4-flash", "deepseek", "DeepSeek", "not_configured", false);
+        var deepSeekPro = new ModelItem("deepseek-v4-pro", "deepseek", "DeepSeek", "not_configured", false);
+        viewModel.Providers.Add(openAi);
+        viewModel.Providers.Add(deepSeek);
+        viewModel.Models.Add(gpt);
+        viewModel.Models.Add(deepSeekFlash);
+        viewModel.Models.Add(deepSeekPro);
+
+        Assert.Equal([deepSeekFlash, deepSeekPro], viewModel.ModelsForProvider(deepSeek.Id));
+        Assert.Equal("DeepSeek (needs key)", deepSeek.Display);
+        Assert.Equal([gpt], viewModel.ModelsForProvider(openAi.Id));
+    }
+
+    [Fact]
     public void ToolMessagesShowAnOperationSummaryAndKeepDetailsForTheDialog()
     {
         var message = new MessageItem

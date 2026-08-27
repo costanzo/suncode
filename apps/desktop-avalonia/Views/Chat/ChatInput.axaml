@@ -1,6 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:models="using:SunCode.Desktop.Models"
              xmlns:vm="using:SunCode.Desktop.ViewModels"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Views.Chat.ChatInput"
@@ -46,25 +45,30 @@
                   HorizontalAlignment="Right"
                   Orientation="Horizontal"
                   Spacing="6">
-        <ComboBox Width="112"
-                  Height="24"
-                  MinHeight="24"
-                  Padding="6,1"
-                  Classes="mono"
-                  ItemsSource="{Binding Models}"
-                  SelectedItem="{Binding SelectedModel}"
-                  IsEnabled="{Binding CanCompose}"
-                  ToolTip.Tip="Model for this turn">
-          <ComboBox.ItemTemplate>
-            <DataTemplate x:DataType="models:ModelItem">
-              <TextBlock Classes="mono"
-                         Text="{Binding Id}"
-                         FontSize="11"
-                         MaxWidth="68"
-                         TextTrimming="CharacterEllipsis" />
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
+        <Button x:Name="ModelMenuButton"
+                Width="136"
+                Height="24"
+                MinHeight="24"
+                Padding="7,1,5,1"
+                IsEnabled="{Binding CanChooseModel}"
+                Click="OpenModelMenu"
+                ToolTip.Tip="Choose model">
+          <Grid ColumnDefinitions="*,12" ColumnSpacing="5">
+            <TextBlock Grid.Column="0"
+                       Classes="mono"
+                       Text="{Binding SelectedModelName}"
+                       FontSize="11"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center" />
+            <svg:Svg Grid.Column="1"
+                     Width="9"
+                     Height="9"
+                     Path="/Assets/icons/chevron-right.svg"
+                     Css="{DynamicResource IconSvgCss}"
+                     RenderTransformOrigin="50%,50%"
+                     RenderTransform="rotate(90deg)" />
+          </Grid>
+        </Button>
 
         <ComboBox Width="76"
                   Height="24"
