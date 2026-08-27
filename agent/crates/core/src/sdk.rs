@@ -18,7 +18,10 @@ use std::{
     panic::{catch_unwind, AssertUnwindSafe},
     path::{Path, PathBuf},
     ptr,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
     thread::JoinHandle,
 };
 use suncode_common::BusinessError;
@@ -39,6 +42,7 @@ struct AgentState {
     active_project: Arc<Mutex<Option<String>>>,
     events: broadcast::Sender<SessionEvent>,
     credentials: CredentialStore,
+    verify_https_certificates: Arc<AtomicBool>,
     agent: Agent,
     providers: Arc<ModelProviderRegistry>,
 }
@@ -276,6 +280,7 @@ pub struct QuestionOutcome {
 fn registry_from_store(
     store: &Store,
     keys: Arc<dyn suncode_llm::ApiKeyResolver>,
+    verify_https_certificates: Arc<AtomicBool>,
 ) -> SdkResult<ModelProviderRegistry> {
     let providers = store.llm_model_providers(true)?;
     let models = store.llm_models(true)?;
@@ -310,12 +315,15 @@ fn registry_from_store(
             continue;
         }
         let adapter = match provider.adapter_type.as_str() {
-            "openai" => Arc::new(OpenAiCompatibleProvider::new(
-                provider.provider_id.clone(),
-                provider.display_name,
-                provider.endpoint,
-                keys.clone(),
-            )),
+            "openai" => Arc::new(
+                OpenAiCompatibleProvider::new_with_https_certificate_verification(
+                    provider.provider_id.clone(),
+                    provider.display_name,
+                    provider.endpoint,
+                    keys.clone(),
+                    verify_https_certificates.clone(),
+                ),
+            ),
             adapter_type => {
                 return Err(BusinessError::new(
                     "provider_adapter_unsupported",
@@ -338,13 +346,25 @@ where
 {
     let store = Store::open(&config.database_path)?;
     configure_logging(&store, &config.data_dir)?;
+    let verify_https_certificates = Arc::new(AtomicBool::new(global_bool_setting(
+        &store,
+        "verify_https_certificates",
+        true,
+    )?));
     let operations = Arc::new(
-        suncode_tool::Operations::new(config.data_dir.join("operations"))
-            .map_err(|error| BusinessError::unavailable(error.to_string()))?,
+        suncode_tool::Operations::new_with_https_certificate_verification(
+            config.data_dir.join("operations"),
+            verify_https_certificates.clone(),
+        )
+        .map_err(|error| BusinessError::unavailable(error.to_string()))?,
     );
     let (events, _) = broadcast::channel(256);
     let credentials = CredentialStore::load(store.clone());
-    let mut providers = registry_from_store(&store, Arc::new(credentials.clone()))?;
+    let mut providers = registry_from_store(
+        &store,
+        Arc::new(credentials.clone()),
+        verify_https_certificates.clone(),
+    )?;
     configure_providers(&mut providers)
         .map_err(|error| BusinessError::new("provider_registration_failed", error.to_string()))?;
     let providers = Arc::new(providers);
@@ -361,11 +381,21 @@ where
         active_project: Arc::new(Mutex::new(None)),
         events,
         credentials,
+        verify_https_certificates,
         agent,
         providers,
     };
     state.agent.recover().await?;
     Ok(state)
+}
+
+fn global_bool_setting(store: &Store, key: &str, fallback: bool) -> SdkResult<bool> {
+    Ok(store
+        .settings(None, None)?
+        .into_iter()
+        .find(|record| record.key == key)
+        .and_then(|record| record.value.as_bool())
+        .unwrap_or(fallback))
 }
 
 fn configure_logging(store: &Store, data_dir: &Path) -> SdkResult<()> {
@@ -398,6 +428,19 @@ fn configure_logging(store: &Store, data_dir: &Path) -> SdkResult<()> {
 }
 
 fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
+    if key == "verify_https_certificates" {
+        if scope != "global" {
+            return Err(BusinessError::invalid(
+                "verify_https_certificates is a global-only setting",
+            ));
+        }
+        if !value.is_boolean() {
+            return Err(BusinessError::invalid(
+                "verify_https_certificates must be a boolean",
+            ));
+        }
+        return Ok(());
+    }
     if key == "tool_call_limit" {
         if scope != "project" {
             return Err(BusinessError::invalid(
@@ -630,6 +673,11 @@ impl AgentSdk {
             }
         };
         self.state.store.set_setting(scope, scope_id, key, value)?;
+        if scope == "global" && key == "verify_https_certificates" {
+            self.state
+                .verify_https_certificates
+                .store(value.as_bool().unwrap_or(true), Ordering::SeqCst);
+        }
         if scope == "session" && key == "full_control" {
             self.state.store.append_audit(
                 None,
@@ -1967,12 +2015,24 @@ mod tests {
 
     fn test_state(directory: &std::path::Path) -> AgentState {
         let store = Store::open_memory().unwrap();
-        let operations =
-            Arc::new(suncode_tool::Operations::new(directory.join("operations")).unwrap());
+        let verify_https_certificates = Arc::new(AtomicBool::new(true));
+        let operations = Arc::new(
+            suncode_tool::Operations::new_with_https_certificate_verification(
+                directory.join("operations"),
+                verify_https_certificates.clone(),
+            )
+            .unwrap(),
+        );
         let credentials = CredentialStore::memory(Some("test-key"), None, None, None, None, None);
         let (events, _) = broadcast::channel(16);
-        let providers =
-            Arc::new(registry_from_store(&store, Arc::new(credentials.clone())).unwrap());
+        let providers = Arc::new(
+            registry_from_store(
+                &store,
+                Arc::new(credentials.clone()),
+                verify_https_certificates.clone(),
+            )
+            .unwrap(),
+        );
         let agent = Agent::new(
             store.clone(),
             providers.clone(),
@@ -1986,6 +2046,7 @@ mod tests {
             active_project: Arc::new(Mutex::new(None)),
             events,
             credentials,
+            verify_https_certificates,
             agent,
             providers,
         }
@@ -2154,6 +2215,7 @@ mod tests {
         assert!(validate_setting("global", "log_directory", &json!("")).is_ok());
         assert!(validate_setting("global", "log_max_bytes", &json!(1024)).is_ok());
         assert!(validate_setting("global", "log_retention", &json!(0)).is_ok());
+        assert!(validate_setting("global", "verify_https_certificates", &json!(true)).is_ok());
 
         assert!(validate_setting("project", "log_level", &json!("INFO")).is_err());
         assert!(validate_setting("global", "log_level", &json!("VERBOSE")).is_err());
@@ -2170,6 +2232,30 @@ mod tests {
         assert!(validate_setting("project", "tool_call_limit", &json!(0)).is_err());
         assert!(validate_setting("project", "tool_call_limit", &json!(257)).is_err());
         assert!(validate_setting("project", "tool_call_limit", &json!(64.0)).is_err());
+        assert!(validate_setting("project", "verify_https_certificates", &json!(true)).is_err());
+        assert!(validate_setting("global", "verify_https_certificates", &json!("yes")).is_err());
+    }
+
+    #[test]
+    fn https_certificate_verification_setting_updates_live_state() {
+        let directory = tempfile::tempdir().unwrap();
+        let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+
+        assert!(sdk.state.verify_https_certificates.load(Ordering::SeqCst));
+        sdk.set_setting(
+            "global",
+            None,
+            None,
+            "verify_https_certificates",
+            &json!(false),
+        )
+        .unwrap();
+
+        assert!(!sdk.state.verify_https_certificates.load(Ordering::SeqCst));
+        assert_eq!(
+            global_bool_setting(&sdk.state.store, "verify_https_certificates", true).unwrap(),
+            false
+        );
     }
 
     #[test]

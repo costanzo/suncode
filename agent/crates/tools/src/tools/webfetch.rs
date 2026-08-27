@@ -70,6 +70,7 @@ pub(super) fn execute(
     checkpoint_root: Option<&Path>,
     args: WebfetchArguments,
     cancellation: Option<&AtomicBool>,
+    verify_https_certificates: bool,
 ) -> Result<Value, BusinessError> {
     let url = args.url.trim();
     if url.is_empty() {
@@ -85,6 +86,8 @@ pub(super) fn execute(
     let allowed_scheme = url.scheme().to_string();
     let allowed_port = url.port_or_known_default().unwrap();
     let client = Client::builder()
+        .danger_accept_invalid_certs(!verify_https_certificates)
+        .danger_accept_invalid_hostnames(!verify_https_certificates)
         .redirect(Policy::custom(move |attempt| {
             if attempt.previous().len() >= 10 {
                 return attempt.error("too many redirects");
@@ -506,6 +509,7 @@ mod tests {
                 timeout: None,
             },
             None,
+            true,
         )
         .unwrap();
         server.join().unwrap();
@@ -559,6 +563,7 @@ mod tests {
                 timeout: None,
             },
             None,
+            true,
         )
         .unwrap_err();
         server.join().unwrap();
@@ -579,6 +584,7 @@ mod tests {
                 timeout: None,
             },
             None,
+            true,
         )
         .unwrap_err();
         redirect_server.join().unwrap();
@@ -599,6 +605,7 @@ mod tests {
                 timeout: None,
             },
             None,
+            true,
         )
         .unwrap();
         server.join().unwrap();

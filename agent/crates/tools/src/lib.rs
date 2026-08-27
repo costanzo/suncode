@@ -8,8 +8,8 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use suncode_common::BusinessError;
 
@@ -27,13 +27,14 @@ mod write;
 
 pub mod definitions;
 
+#[cfg(test)]
 fn execute_operation(
     method: &str,
     params: &Value,
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
 ) -> Result<Value, BusinessError> {
-    execute_operation_with_cancellation(method, params, project_root, checkpoint_root, None)
+    execute_operation_with_cancellation(method, params, project_root, checkpoint_root, None, true)
 }
 
 fn execute_operation_with_cancellation(
@@ -42,10 +43,16 @@ fn execute_operation_with_cancellation(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
     cancellation: Option<&AtomicBool>,
+    verify_https_certificates: bool,
 ) -> Result<Value, BusinessError> {
-    if let Some(result) =
-        tools::dispatch(method, params, project_root, checkpoint_root, cancellation)
-    {
+    if let Some(result) = tools::dispatch(
+        method,
+        params,
+        project_root,
+        checkpoint_root,
+        cancellation,
+        verify_https_certificates,
+    ) {
         return result;
     }
     Err(BusinessError::new("method_unavailable", "method unavailable").with_retryable(false))
@@ -333,13 +340,25 @@ fn safe_relative_path(path: &str) -> Result<PathBuf, BusinessError> {
 
 pub struct Operations {
     checkpoint_root: PathBuf,
+    verify_https_certificates: Arc<AtomicBool>,
 }
 
 impl Operations {
     pub fn new(checkpoint_root: PathBuf) -> io::Result<Self> {
+        Self::new_with_https_certificate_verification(
+            checkpoint_root,
+            Arc::new(AtomicBool::new(true)),
+        )
+    }
+
+    pub fn new_with_https_certificate_verification(
+        checkpoint_root: PathBuf,
+        verify_https_certificates: Arc<AtomicBool>,
+    ) -> io::Result<Self> {
         fs::create_dir_all(&checkpoint_root)?;
         Ok(Self {
             checkpoint_root: checkpoint_root.canonicalize()?,
+            verify_https_certificates,
         })
     }
 
@@ -425,11 +444,13 @@ impl Operations {
                 json!({"code":"project_unavailable","message":"project root is not a directory","retryable":false}),
             );
         }
-        execute_operation(
+        execute_operation_with_cancellation(
             method,
             &params,
             Some(&canonical),
             Some(&self.checkpoint_root),
+            None,
+            self.verify_https_certificates.load(Ordering::SeqCst),
         )
         .map_err(failure_value)
     }
@@ -453,6 +474,7 @@ impl Operations {
             Some(&canonical),
             Some(&self.checkpoint_root),
             cancellation,
+            self.verify_https_certificates.load(Ordering::SeqCst),
         )
         .map_err(failure_value)
     }

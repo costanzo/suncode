@@ -46,6 +46,7 @@
             <TextBlock Classes="section-label" Text="GENERAL" Margin="10,0,0,0" />
             <Button x:Name="DefaultsNavigation" Classes="navigation selected" Content="Defaults" Click="ShowDefaults" />
             <Button x:Name="AppearanceNavigation" Classes="navigation" Content="Appearance" Click="ShowAppearance" />
+            <Button x:Name="NetworkNavigation" Classes="navigation" Content="Network" Click="ShowNetwork" />
             <Button x:Name="LoggingNavigation" Classes="navigation" Content="Logging" Click="ShowLogging" />
             <Border Height="12" />
             <TextBlock Classes="section-label" Text="MODELS" Margin="10,0,0,0" />
@@ -163,6 +164,47 @@
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
               <Button Classes="compact primary" Content="Save logging settings" Click="SaveLogging" />
               <TextBlock x:Name="LoggingStatus" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="NetworkPage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="32,28" Spacing="18">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Network" FontSize="22" FontWeight="SemiBold" />
+              <TextBlock Text="Configure how Rust HTTPS clients establish secure connections." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <TextBlock Classes="section-label" Text="HTTPS SECURITY" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Verify server certificates" FontWeight="SemiBold" />
+                <TextBlock Text="Validate certificate chains and hostnames for model provider and WebFetch requests." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+              <ToggleSwitch x:Name="VerifyHttpsCertificatesToggle"
+                            Grid.Column="1"
+                            OnContent="On"
+                            OffContent="Off"
+                            VerticalAlignment="Center"
+                            Click="HttpsCertificateVerificationChanged" />
+            </Grid>
+
+            <Border x:Name="HttpsCertificateWarning"
+                    IsVisible="False"
+                    Background="{DynamicResource WarningSurfaceBrush}"
+                    BorderBrush="{DynamicResource WarningBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="12,10">
+              <StackPanel Spacing="4">
+                <TextBlock Text="Certificate verification is off" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" />
+                <TextBlock Text="SunCode will accept invalid certificates and hostnames, similar to curl -k. This can expose provider credentials and fetched content to man-in-the-middle attacks." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <Button Classes="compact primary" Content="Save HTTPS setting" Click="SaveHttpsCertificateVerification" />
+              <TextBlock x:Name="HttpsCertificateStatus" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
             </StackPanel>
           </StackPanel>
         </ScrollViewer>

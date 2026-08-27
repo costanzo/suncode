@@ -51,6 +51,8 @@ public sealed partial class SettingsWindow : Window
             LogDirectoryInput.Text = ViewModel.LogDirectory;
             LogMaxBytesInput.Text = ViewModel.LogMaxBytes.ToString(System.Globalization.CultureInfo.InvariantCulture);
             LogRetentionInput.Text = ViewModel.LogRetention.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            VerifyHttpsCertificatesToggle.IsChecked = ViewModel.VerifyHttpsCertificates;
+            RefreshHttpsCertificateWarning();
             ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
             _ready = true;
         };
@@ -112,6 +114,7 @@ public sealed partial class SettingsWindow : Window
     }
     private void ShowDefaults(object? sender, RoutedEventArgs e) => SelectPage("defaults", sender as Button);
     private void ShowAppearance(object? sender, RoutedEventArgs e) => SelectPage("appearance", sender as Button);
+    private void ShowNetwork(object? sender, RoutedEventArgs e) => SelectPage("network", sender as Button);
     private void ShowLogging(object? sender, RoutedEventArgs e) => SelectPage("logging", sender as Button);
 
     private void ToggleProviders(object? sender, RoutedEventArgs e)
@@ -137,12 +140,14 @@ public sealed partial class SettingsWindow : Window
     {
         DefaultsPage.IsVisible = page == "defaults";
         AppearancePage.IsVisible = page == "appearance";
+        NetworkPage.IsVisible = page == "network";
         LoggingPage.IsVisible = page == "logging";
         ProviderPage.IsVisible = page == "provider";
         foreach (var button in this.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("navigation")))
             button.Classes.Set("selected", button == selected);
         if (page == "defaults") DefaultsNavigation.Classes.Set("selected", true);
         if (page == "appearance") AppearanceNavigation.Classes.Set("selected", true);
+        if (page == "network") NetworkNavigation.Classes.Set("selected", true);
         if (page == "logging") LoggingNavigation.Classes.Set("selected", true);
     }
 
@@ -168,6 +173,25 @@ public sealed partial class SettingsWindow : Window
         LoggingStatus.Text = ViewModel.StatusText;
         LoggingStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
     }
+
+    private void HttpsCertificateVerificationChanged(object? sender, RoutedEventArgs e) =>
+        RefreshHttpsCertificateWarning();
+
+    private async void SaveHttpsCertificateVerification(object? sender, RoutedEventArgs e)
+    {
+        var enabled = VerifyHttpsCertificatesToggle.IsChecked == true;
+        var saved = await ViewModel.SaveHttpsCertificateVerificationAsync(enabled);
+        HttpsCertificateStatus.Text = ViewModel.StatusText;
+        HttpsCertificateStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
+        if (!saved)
+        {
+            VerifyHttpsCertificatesToggle.IsChecked = ViewModel.VerifyHttpsCertificates;
+        }
+        RefreshHttpsCertificateWarning();
+    }
+
+    private void RefreshHttpsCertificateWarning() =>
+        HttpsCertificateWarning.IsVisible = VerifyHttpsCertificatesToggle.IsChecked != true;
 
     private async void SaveToolCallLimit(object? sender, RoutedEventArgs e)
     {

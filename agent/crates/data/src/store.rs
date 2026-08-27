@@ -1722,6 +1722,15 @@ mod tests {
     #[test]
     fn diesel_store_round_trips_project_and_session() {
         let store = Store::open_memory().unwrap();
+        assert_eq!(
+            store
+                .settings(None, None)
+                .unwrap()
+                .into_iter()
+                .find(|setting| setting.key == "verify_https_certificates")
+                .map(|setting| setting.value),
+            Some(json!(true))
+        );
         let project = store.project("/tmp/suncode-diesel", "Diesel").unwrap();
         let session = store
             .create_session(&project.project_id, Some("Test"), None)

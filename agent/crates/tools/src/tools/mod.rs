@@ -25,6 +25,7 @@ pub(super) fn dispatch(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
     cancellation: Option<&AtomicBool>,
+    verify_https_certificates: bool,
 ) -> Option<Result<Value, BusinessError>> {
     Some(match method {
         "tool/read" => run_read_typed(params, project_root),
@@ -35,7 +36,12 @@ pub(super) fn dispatch(
             grep::execute(project_root, args)
         }),
         "tool/webfetch" => run_typed(params, |args: WebfetchArguments| {
-            webfetch::execute(checkpoint_root, args, cancellation)
+            webfetch::execute(
+                checkpoint_root,
+                args,
+                cancellation,
+                verify_https_certificates,
+            )
         }),
         "tool/write" => run_typed(params, |args: WriteArguments| {
             write::execute(project_root, checkpoint_root, args)

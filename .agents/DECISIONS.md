@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260827-global-https-certificate-verification
+
+- Date: 2026-08-27
+- Status: Accepted
+- Context: Developers may connect SunCode to trusted development providers or WebFetch targets whose HTTPS certificates are self-signed, expired, or do not match the hostname. Rust HTTPS clients previously always enforced normal certificate verification.
+- Decision: Add global SQLite boolean `verify_https_certificates`, seeded as `true`. Core shares its current value with the built-in OpenAI-compatible provider and WebFetch operation. A successful SDK update applies to subsequent requests without restart. `false` disables both certificate-chain and hostname verification, matching `curl -k`; custom provider implementations continue to own their transports.
+- Consequences: Secure verification remains the default and malformed values fail safe. Users can explicitly operate against invalid development certificates, but disabling verification permits machine-in-the-middle attacks and can expose provider credentials or fetched content. The setting does not bypass network approval, URL/redirect validation, auditing, or redaction.
+- Details: `ARCHITECTURE.md`, `features/agent-phase-1/`, `specs/agent-phase-1.md`, `contracts/persistence.md`, `contracts/agent-sdk/README.md`
+
 ## ADR-20260827-sqlite-only-provider-credentials
 
 - Date: 2026-08-27

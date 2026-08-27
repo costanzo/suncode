@@ -41,6 +41,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private string _logDirectory = string.Empty;
     private long _logMaxBytes = 10 * 1024 * 1024;
     private int _logRetention = 5;
+    private bool _verifyHttpsCertificates = true;
     private int _toolCallLimit = 64;
     private string _diagnosticsText = "Diagnostics unavailable";
     private string _gitState = "idle";
@@ -272,6 +273,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public string LogDirectory { get => _logDirectory; private set => SetProperty(ref _logDirectory, value); }
     public long LogMaxBytes { get => _logMaxBytes; private set => SetProperty(ref _logMaxBytes, value); }
     public int LogRetention { get => _logRetention; private set => SetProperty(ref _logRetention, value); }
+    public bool VerifyHttpsCertificates { get => _verifyHttpsCertificates; private set => SetProperty(ref _verifyHttpsCertificates, value); }
     public int ToolCallLimit { get => _toolCallLimit; private set => SetProperty(ref _toolCallLimit, value); }
     public string DiagnosticsText { get => _diagnosticsText; private set => SetProperty(ref _diagnosticsText, value); }
     public bool FullControlEnabled { get => _fullControlEnabled; private set => SetProperty(ref _fullControlEnabled, value); }
@@ -1255,6 +1257,32 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
+    public async Task<bool> SaveHttpsCertificateVerificationAsync(bool enabled)
+    {
+        if (!EnsureSdk()) return false;
+
+        IsBusy = true;
+        try
+        {
+            await _sdk!.SetSettingAsync("verify_https_certificates", enabled);
+            VerifyHttpsCertificates = enabled;
+            StatusText = enabled
+                ? "HTTPS certificate verification enabled"
+                : "HTTPS certificate verification disabled";
+            ConnectionState = "connected";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+            return false;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     public async Task LoadProjectToolCallLimitAsync()
     {
         ToolCallLimit = 64;
@@ -1472,6 +1500,13 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                 ? parsed
                 : fallback;
         }
+        bool BoolSetting(string key, bool fallback)
+        {
+            var node = settings.FirstOrDefault(item => item.String("key") == key)?["value"];
+            return node is JsonValue value && value.TryGetValue<bool>(out var parsed)
+                ? parsed
+                : fallback;
+        }
         var retention = LongSetting("log_retention", 5);
         var configuredLevel = StringSetting("log_level", "INFO").Trim().ToUpperInvariant();
         LogLevel = configuredLevel is "TRACE" or "DEBUG" or "INFO" or "WARN" or "ERROR" or "OFF"
@@ -1481,6 +1516,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         var maxBytes = LongSetting("log_max_bytes", 10 * 1024 * 1024);
         LogMaxBytes = maxBytes >= 1024 ? maxBytes : 10 * 1024 * 1024;
         LogRetention = retention is >= 0 and <= 100 ? (int)retention : 5;
+        VerifyHttpsCertificates = BoolSetting("verify_https_certificates", true);
         DiagnosticLog.Configure(
             LogLevel,
             LogDirectory,

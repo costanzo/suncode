@@ -5,7 +5,10 @@ use crate::{
 };
 use futures_util::StreamExt;
 use serde_json::{json, Value};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -18,11 +21,13 @@ const REQUEST_ID_HEADERS: &[&str] = &[
 
 #[derive(Clone)]
 pub struct OpenAiCompatibleProvider {
-    client: reqwest::Client,
+    verified_client: reqwest::Client,
+    insecure_client: Result<reqwest::Client, String>,
     provider_id: String,
     provider_label: String,
     endpoint: String,
     keys: Arc<dyn ApiKeyResolver>,
+    verify_https_certificates: Arc<AtomicBool>,
 }
 
 impl OpenAiCompatibleProvider {
@@ -32,13 +37,53 @@ impl OpenAiCompatibleProvider {
         endpoint: impl Into<String>,
         keys: Arc<dyn ApiKeyResolver>,
     ) -> Self {
+        Self::new_with_https_certificate_verification(
+            provider_id,
+            provider_label,
+            endpoint,
+            keys,
+            Arc::new(AtomicBool::new(true)),
+        )
+    }
+
+    pub fn new_with_https_certificate_verification(
+        provider_id: impl Into<String>,
+        provider_label: impl Into<String>,
+        endpoint: impl Into<String>,
+        keys: Arc<dyn ApiKeyResolver>,
+        verify_https_certificates: Arc<AtomicBool>,
+    ) -> Self {
+        let insecure_client = reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .danger_accept_invalid_hostnames(true)
+            .build()
+            .map_err(|error| error.to_string());
         Self {
-            client: reqwest::Client::new(),
+            verified_client: reqwest::Client::new(),
+            insecure_client,
             provider_id: provider_id.into(),
             provider_label: provider_label.into(),
             endpoint: endpoint.into().trim_end_matches('/').to_string(),
             keys,
+            verify_https_certificates,
         }
+    }
+
+    fn client(&self) -> Result<reqwest::Client, BusinessError> {
+        if self.verify_https_certificates.load(Ordering::SeqCst) {
+            return Ok(self.verified_client.clone());
+        }
+        self.insecure_client.clone().map_err(|error| {
+            BusinessError::provider(
+                "provider_client_unavailable",
+                format!(
+                    "{} HTTPS client could not be created: {error}",
+                    self.provider_label
+                ),
+                false,
+                None,
+            )
+        })
     }
 
     async fn complete_inner(
@@ -70,9 +115,10 @@ impl OpenAiCompatibleProvider {
         if let Some(reasoning_effort) = request.reasoning_effort {
             body["reasoning_effort"] = json!(reasoning_effort);
         }
+        let client = self.client()?;
         let response = tokio::select! {
             _ = cancellation.cancelled() => return Err(cancelled()),
-            value = self.client.post(format!("{}/chat/completions", self.endpoint)).bearer_auth(key).json(&body).send() => value.map_err(|error| BusinessError::provider(
+            value = client.post(format!("{}/chat/completions", self.endpoint)).bearer_auth(key).json(&body).send() => value.map_err(|error| BusinessError::provider(
                 "transient",
                 format!("{} request failed: {error}", self.provider_label),
                 true,
@@ -188,7 +234,10 @@ mod tests {
         Router,
     };
     use serde_json::{json, Value};
-    use std::sync::Arc;
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    };
     use tokio::sync::mpsc;
     use tokio_util::sync::CancellationToken;
 
@@ -277,5 +326,21 @@ mod tests {
         assert_eq!(usage.reasoning_tokens, None);
         assert_eq!(receiver.recv().await.as_deref(), Some("hello"));
         server.abort();
+    }
+
+    #[test]
+    fn selects_https_client_from_live_verification_policy() {
+        let verify = Arc::new(AtomicBool::new(true));
+        let provider = OpenAiCompatibleProvider::new_with_https_certificate_verification(
+            "enterprise",
+            "Enterprise Gateway",
+            "https://example.test",
+            Arc::new(TestKeys),
+            verify.clone(),
+        );
+
+        assert!(provider.client().is_ok());
+        verify.store(false, Ordering::SeqCst);
+        assert!(provider.client().is_ok());
     }
 }

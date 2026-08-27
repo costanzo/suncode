@@ -31,7 +31,7 @@ Unified key/value configuration for `global`, `project`, and `session` scopes. G
 
 The project-only `tool_call_limit` key is a JSON integer from 1 through 256. When the row is absent, core uses 64.
 
-Fresh databases also seed four global logging settings: `log_level` (`"INFO"`), `log_directory` (`""`), `log_max_bytes` (`10485760`), and `log_retention` (`5`). An empty log directory means `<data directory>/logs`. Logging settings are global-only. The SDK accepts `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `OFF`; a directory string; a maximum size of at least 1024 bytes; and a retention count from 0 through 100.
+Fresh and reopened current databases seed four global logging settings: `log_level` (`"INFO"`), `log_directory` (`""`), `log_max_bytes` (`10485760`), and `log_retention` (`5`), plus global `verify_https_certificates` (`true`). An empty log directory means `<data directory>/logs`. These settings are global-only. The SDK accepts `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `OFF`; a directory string; a maximum size of at least 1024 bytes; a retention count from 0 through 100; and a boolean HTTPS verification value. Disabling verification makes subsequent built-in provider and WebFetch HTTPS requests accept invalid certificate chains and hostnames.
 
 ## Sessions
 
