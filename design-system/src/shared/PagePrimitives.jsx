@@ -60,7 +60,7 @@ export function DeferredPage({ title, platform, icon, description }) {
         <div className="deferred-panel">
           <span className="deferred-icon"><Icon name={icon} size={28} /></span>
           <div>
-            <h3>No Phase 1 component surface</h3>
+            <h3>No component surface</h3>
             <p>This page records where future tokens, platform-only components, pages, and overrides belong. It does not turn a deferred client into a web mockup.</p>
           </div>
         </div>

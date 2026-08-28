@@ -1,7 +1,7 @@
 import { ModuleLink, PageHeader, Section } from "../shared/PagePrimitives.jsx";
 
 const modules = [
-  { path: "/platforms/desktop", icon: "platform", title: "Desktop", description: "Phase 1 Avalonia window anatomy and desktop-only adaptation rules." },
+  { path: "/platforms/desktop", icon: "platform", title: "Desktop", description: "Avalonia window anatomy and desktop-only adaptation rules." },
   { path: "/platforms/mobile", icon: "mobile", title: "Mobile", description: "Reserved adaptation boundary for a future mobile client." },
   { path: "/platforms/tui", icon: "terminal", title: "TUI", description: "Reserved adaptation boundary for a future terminal client." },
   { path: "/platforms/web", icon: "platform", title: "Web", description: "Reserved adaptation boundary for a future browser client." },

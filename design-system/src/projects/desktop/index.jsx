@@ -31,7 +31,7 @@ function ProjectHubWindow({ projects = [] }) {
 export function ProjectHubPage() {
   return (
     <>
-      <PageHeader title="ProjectHub" description="The project landing surface from the Avalonia desktop client: reconnect to a recent project or open a local folder." path="projects/desktop/project-hub/" status="Phase 1" tone="implemented" />
+      <PageHeader title="ProjectHub" description="The project landing surface from the Avalonia desktop client: reconnect to a recent project or open a local folder." path="projects/desktop/project-hub/" />
       <Section id="project-hub-recent" title="With recent projects" description="The hub lists local projects that can be reopened.">
         <ProjectHubWindow projects={recentProjects} />
       </Section>

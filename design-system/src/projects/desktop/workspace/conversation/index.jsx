@@ -2,5 +2,5 @@ import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { ConversationPanel } from "../WorkspacePrimitives.jsx";
 
 export function WorkspaceConversationPage() {
-  return <><PageHeader title="Conversation" description="User messages, agent work, tool activity, final responses, and the turn composer." status="Phase 1" tone="implemented" /><Section id="conversation-panel" title="Active conversation"><ConversationPanel standalone /></Section></>;
+  return <><PageHeader title="Conversation" description="User messages, agent work, tool activity, final responses, and the turn composer." /><Section id="conversation-panel" title="Active conversation"><div className="workspace-state-grid workspace-conversation-state-grid"><div><h3>No session selected</h3><ConversationPanel standalone state="no-session" /></div><div><h3>New session</h3><ConversationPanel standalone state="new-session" /></div><div><h3>Waiting for input</h3><ConversationPanel standalone state="content-waiting" /></div><div><h3>Session updating</h3><ConversationPanel standalone state="content-updating" /></div></div></Section></>;
 }
