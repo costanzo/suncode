@@ -3,7 +3,7 @@
 ## Source
 
 - Added Vite/React application scaffolding under `design-system/`.
-- Added the shared browser shell and route catalog under `core/react/`.
+- Added the shared browser shell and route catalog under `src/app/`; all React source now follows the conventional `src/` application tree.
 - Added layer-owned React pages under `components/`, `platforms/`, and `projects/`.
 - Replaced standalone review HTML pages with hash routes.
 

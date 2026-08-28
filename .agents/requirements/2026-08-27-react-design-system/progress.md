@@ -14,6 +14,13 @@
 - Closed the independent finish review findings: mobile search now has an explicit open/focus state, muted text meets normal-text contrast, dialogs manage focus and Escape, and tabs support keyboard navigation with a linked tabpanel.
 - Final production build, browser checks, detector, and repository whitespace validation passed.
 - The synchronized Avalonia muted-text resource change passed all 45 focused desktop tests.
+- Refined the catalog into two-level navigation: four upper-right primary modules and a contextual left sidebar scoped to the active module.
+- Expanded the contextual sidebar into a navigation tree: each submodule can reveal its page sections, the universal component section strip moved out of the page, and the upper-right module switcher now uses labels without descriptions.
+- Closed the finish-review findings: the mobile drawer is inert while off canvas and manages focus on open/close, section links expose `aria-current`, touch targets are 44px, and the mobile primary-module rows fill their menu.
+- Distributed universal React specimens into their owning component directories with stable `index.js` exports; the universal page now composes component modules instead of owning their markup and interaction state.
+- Consolidated all React source under a conventional `src/` tree (`app`, `core`, `components`, `platforms`, `projects`, `shared`, and `styles`) and removed technology-named `react/` directories.
+- Moved semantic tokens into `src/styles/tokens/`, source-imported assets into `src/assets/`, and the favicon into `public/assets/`; removed the obsolete root `core/` directory and migrated consumers to build-checked Vite imports.
+- Verified primary-module switching and contextual sidebar updates at desktop, tablet, and mobile widths without overflow or console errors.
 
 ## In progress
 

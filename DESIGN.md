@@ -47,18 +47,18 @@ review:
   directory: "design-system/"
   entry: "design-system/index.html"
   app: "design-system/src/main.jsx"
-  components: "design-system/components/universal/react/UniversalComponentsPage.jsx"
-  tokens: "design-system/core/tokens/"
-  assets: "design-system/core/assets/"
+  components: "design-system/src/components/universal/UniversalComponentsPage.jsx"
+  tokens: "design-system/src/styles/tokens/"
+  assets: "design-system/src/assets/"
 ---
 
 # Design System: SunCode Desktop
 
 ## Review Surface
 
-The visual review surface starts at [`design-system/index.html`](design-system/index.html), the single Vite/React entry for shared foundations, component states, platform boundaries, project mappings, rules, and assets. The complete cross-theme inventory is owned by [`components/universal/react/UniversalComponentsPage.jsx`](design-system/components/universal/react/UniversalComponentsPage.jsx). Token sources live under [`design-system/core/tokens/`](design-system/core/tokens/), and reusable product images and icons are cataloged in [`design-system/core/assets/`](design-system/core/assets/). Review the corresponding hash route before introducing a new module or component. React/Vite is design-review tooling only, not a production web client or Phase 1 runtime dependency.
+The visual review surface starts at [`design-system/index.html`](design-system/index.html), the single Vite/React entry for shared foundations, component states, platform boundaries, project mappings, rules, and assets. Its navigation has three levels: Core, Components, Platforms, and Projects switch the primary content domain from the upper-right; the left sidebar shows that domain's submodules and expands each submodule into its page sections. The top-level switcher uses names only, while detailed hierarchy remains in the sidebar. All React source now lives under [`design-system/src/`](design-system/src/), organized by application, core pages, components, platforms, projects, shared primitives, styles, and assets. Each folder under [`design-system/src/components/universal/`](design-system/src/components/universal/) owns its component specimen and stable export; [`design-system/src/components/universal/UniversalComponentsPage.jsx`](design-system/src/components/universal/UniversalComponentsPage.jsx) only composes those modules into the complete cross-theme inventory. Token sources live under [`design-system/src/styles/tokens/`](design-system/src/styles/tokens/), reusable product images and icons are cataloged in [`design-system/src/assets/`](design-system/src/assets/), and browser-direct files such as the favicon live under [`design-system/public/assets/`](design-system/public/assets/). Review the corresponding hash route before introducing a new module or component. React/Vite is design-review tooling only, not a production web client or Phase 1 runtime dependency.
 
-`design-system/core/tokens/` is the source token reference for the two themes; `design-system/core/styles/review.css` provides shared specimens and `design-system/core/styles/browser.css` provides the catalog shell. Avalonia resources in `apps/desktop-avalonia/App.axaml` are the runtime mapping and must retain the same semantic meanings. Feature views should consume named resources rather than add local raw colors, radii, shadows, or control heights.
+`design-system/src/styles/tokens/` is the source token reference for the two themes; `design-system/src/styles/review.css` provides shared specimens and `design-system/src/styles/browser.css` provides the catalog shell. Avalonia resources in `apps/desktop-avalonia/App.axaml` are the runtime mapping and must retain the same semantic meanings. Feature views should consume named resources rather than add local raw colors, radii, shadows, or control heights.
 
 ## Overview
 
@@ -221,4 +221,4 @@ The same semantic inventory must be present in dark and light pages. Theme chang
 
 ## Asset Management
 
-All reusable design images, brand marks, and interface icons belong in `design-system/core/assets/`. The catalog has stable `logos/` and `icons/` areas with an inventory guide in `design-system/core/assets/README.md`. Client packaging may copy an approved asset into its own build boundary, but new visual material must first be reviewed and cataloged here.
+All reusable source-imported design images, brand marks, and interface icons belong in `design-system/src/assets/`. The catalog has stable `logos/` and `icons/` areas with an inventory guide in `design-system/src/assets/README.md`. Browser-direct files such as the favicon belong in `design-system/public/assets/`. Client packaging may copy an approved asset into its own build boundary, but new visual material must first be reviewed and cataloged here.

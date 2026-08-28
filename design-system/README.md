@@ -7,10 +7,14 @@ React, Vite, and Node.js are used only to build this design-review tool. They ar
 ## Files
 
 - `index.html` and `src/main.jsx` - the single Vite/React entry.
-- `core/` - color, typography, spacing and approved visual assets.
-- `components/universal/react/` - cross-platform primitive inventory and interactive state reviews.
-- `platforms/` - mobile, desktop and TUI adaptation boundaries.
-- `projects/` - business-project mappings, beginning with Avalonia desktop.
+- `src/app/` - application shell, hash routing, and navigation metadata.
+- `src/core/pages/` - Core review pages.
+- `src/components/` - component-owned React specimens and platform-specific component pages.
+- `src/platforms/` and `src/projects/` - platform and business-project review pages.
+- `src/shared/` - shared React primitives.
+- `src/styles/tokens/` and `src/styles/` - semantic token sources and browser styles.
+- `src/assets/` - source-imported logos, icons, fonts, and platform assets.
+- `public/assets/` - browser-direct assets such as the favicon.
 
 Install and start the review browser from this directory:
 
@@ -29,14 +33,15 @@ The browser uses hash routes, so the generated `dist/index.html` can be hosted a
 
 ## Source Of Truth
 
-The React routes are the visual contract for review. The fixed navigation exposes all four layers, and the universal route shows the same complete component inventory in either theme. Token sources live under `core/tokens/`; `core/styles/review.css` and `core/styles/browser.css` carry shared review primitives and the catalog shell. Avalonia runtime resources in `apps/desktop-avalonia/App.axaml` must keep the same semantic names and values.
+The React routes are the visual contract for review. The upper-right navigation switches between the four primary layers—Core, Components, Platforms, and Projects—and intentionally shows only their names. The left sidebar then exposes the active layer as an expandable tree: submodules form the first level and their page sections form the second. For example, Components expands Universal into Actions, Fields, Selection, and the rest of the component inventory. All React source is organized under `src/`; each component folder owns its implementation and `index.js` export, while page files compose those modules. Token sources live under `src/styles/tokens/`; `src/styles/review.css` and `src/styles/browser.css` carry shared review primitives and the catalog shell. Avalonia runtime resources in `apps/desktop-avalonia/App.axaml` must keep the same semantic names and values.
 
 Feature views must consume semantic resources such as `AccentBrush`, `SurfaceRaisedBrush`, `TextSecondaryBrush`, `WarningSurfaceBrush`, and `DangerBorderBrush`. A view should not introduce a new raw color, shadow, radius, or control height without first adding it to the design tokens and both review pages.
 
 ## Asset Rules
 
-- Put new product images, logos, illustrations, and reusable icons in `core/assets/`.
-- Give each asset a descriptive, stable name and record its role in `core/assets/README.md`.
+- Put source-imported product images, logos, illustrations, and reusable icons in `src/assets/`.
+- Reserve `public/assets/` for files that must be addressed directly by the browser, such as the favicon.
+- Give each asset a descriptive, stable name and record its role in `src/assets/README.md`.
 - Prefer SVG for interface icons and PNG for raster brand marks or photos.
 - Do not add decorative gradients, glow effects, or unlicensed stock imagery.
 - When a runtime client needs an asset in its own packaging boundary, copy the approved asset into that client's build input and keep the design catalog as the review reference.

@@ -37,6 +37,12 @@ No dedicated unit framework is required for this isolated review application. Ro
 - Post-review interaction check — passed: mobile search opens and focuses, dialog focus/Escape works, and tabs respond to arrow keys with the correct tabpanel.
 - Theme contrast check — passed: muted text is 4.56:1 on the light canvas and 5.40:1 on the dark canvas.
 - `dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj --no-restore` — passed, 45/45 tests.
+- Two-level navigation check at 1440×1000, 1024×768, and 390×844 — passed: four primary modules, contextual sidebar contents, mobile module menu, route changes, zero horizontal overflow, and no console errors.
+- Three-level navigation check at 1440×1000 and 390×844 — passed: name-only primary modules, expandable submodules, section scrolling, active section styling, the same hierarchy in the mobile drawer, zero horizontal overflow, and no console errors.
+- Component-ownership refactor check at 1440×1000 — passed: nine sections and nineteen specimens render from component-owned modules; toggle state, modal focus/Escape/restore, tab keyboard navigation, zero horizontal overflow, and console output remain clean.
+- Conventional React source-tree check — passed: zero-warning production build, all nine routes, desktop/mobile navigation, component interactions, static asset URLs, zero `react/` source directories, zero horizontal overflow, and clean console output.
+- Conventional resource-boundary check — tokens load from `src/styles/tokens/`, source-imported assets are emitted from `src/assets/`, the favicon loads from `public/assets/`, and no root `core/` directory or stale source path remains.
+- Post-resource-migration browser check — passed all nine routes at 1440×1000 with successful images and favicon, zero failed requests or console errors, and zero horizontal overflow; the 390×844 Core Assets route also passed drawer, image, and overflow checks.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json ...` — passed with no findings.
 - `git diff --check` — passed.
 

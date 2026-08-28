@@ -24,6 +24,10 @@ The layered `design-system/` catalog is structurally clear, but separate static 
 - Use one Vite/React entry at `design-system/index.html`.
 - Use hash routes so a static build works without rewrite configuration.
 - Group navigation by the four design-system ownership layers.
+- Present Core, Components, Platforms, and Projects as the four primary modules in the upper-right navigation.
+- Keep the primary module switcher compact by showing module names without descriptions.
+- Show the active module's submodules and expandable page-section links in the left sidebar instead of a page-level horizontal section menu.
+- Keep the left sidebar contextual: it shows only the active primary module's submodules, leaving room for future module growth.
 - Expose foundations, assets, universal components, desktop adaptations, deferred platforms, and the Avalonia project mapping.
 - Keep semantic status labels honest: implemented, review reference, reserved, or deferred.
 - Use existing semantic CSS tokens and approved assets rather than adding an unrelated visual language.
@@ -40,7 +44,11 @@ The layered `design-system/` catalog is structurally clear, but separate static 
 ## Acceptance criteria
 
 - All catalog areas are reachable from the root navigation without opening separate HTML documents.
+- Switching a primary module updates the sidebar to that module's submodules on desktop and narrow screens.
 - Universal component samples cover foundations, controls, surfaces, navigation, feedback, data, and Markdown.
+- Each universal component directory owns its React specimen and stable export; the universal page composes those modules rather than centralizing their markup and interaction state.
+- Keep all React application source under `design-system/src/`, organized by product responsibility; do not introduce `react/` directories as an architectural layer.
+- Keep design token sources under `design-system/src/styles/tokens/`, source-imported visual assets under `design-system/src/assets/`, and browser-direct assets under `design-system/public/assets/`; do not retain a duplicate root `core/` source tree.
 - Light and dark themes apply to the same content and retain semantic meanings.
 - Desktop and narrow viewport layouts are usable.
 - `npm run build` succeeds inside `design-system/`.
