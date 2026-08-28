@@ -50,7 +50,7 @@ export const primaryModules = [
         children: [
           { path: "/components/universal/actions", label: "Actions", keywords: "button primary danger" },
           { path: "/components/universal/fields", label: "Fields", keywords: "input select textarea validation" },
-          { path: "/components/universal/selection", label: "Selection", keywords: "checkbox radio toggle" },
+          { path: "/components/universal/selection", label: "Selection", keywords: "checkbox radio toggle dropdown menu provider model nested" },
           { path: "/components/universal/surfaces", label: "Surfaces", keywords: "card authority" },
           { path: "/components/universal/overlays", label: "Overlays", keywords: "avatar modal tooltip" },
           { path: "/components/universal/navigation", label: "Navigation", keywords: "tabs segmented filters" },

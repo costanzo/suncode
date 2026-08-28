@@ -114,13 +114,8 @@ function SidebarTreeItem({ item, path, expandedItems, onToggle, onRouteNavigate,
   return (
     <div className={`sidebar-tree-item level-${level}`}>
       <div className={`sidebar-nav-row ${itemIsCurrent ? "is-current" : ""}`}>
-        {hasChildren ? (
-          <button className={`nav-disclosure ${expanded ? "is-expanded" : ""}`} type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${item.label}`} aria-expanded={expanded} aria-controls={controlId} onClick={() => onToggle(item)}>
-            <Icon name="chevron-right" />
-          </button>
-        ) : <span className="nav-disclosure-placeholder" aria-hidden="true" />}
-        <RouteLink to={item.path} className={`browser-nav-item browser-nav-link ${path === item.path ? "active" : ""}`} aria-current={path === item.path ? "page" : undefined} onClick={onRouteNavigate}>
-          <Icon name={item.icon} />
+        <RouteLink to={item.path} className={`browser-nav-item browser-nav-link ${path === item.path ? "active" : ""}`} aria-current={path === item.path ? "page" : undefined} aria-expanded={hasChildren ? expanded : undefined} aria-controls={hasChildren ? controlId : undefined} onClick={() => { if (hasChildren) onToggle(item); onRouteNavigate(); }}>
+          {level === 0 && <Icon name={item.icon} />}
           <span>{item.label}</span>
         </RouteLink>
       </div>
