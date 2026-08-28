@@ -20,6 +20,8 @@
 - Distributed universal React specimens into their owning component directories with stable `index.js` exports; the universal page now composes component modules instead of owning their markup and interaction state.
 - Consolidated all React source under a conventional `src/` tree (`app`, `core`, `components`, `platforms`, `projects`, `shared`, and `styles`) and removed technology-named `react/` directories.
 - Moved semantic tokens into `src/styles/tokens/`, source-imported assets into `src/assets/`, and the favicon into `public/assets/`; removed the obsolete root `core/` directory and migrated consumers to build-checked Vite imports.
+- Replaced the combined Universal component inventory with an index plus nine independently routed category pages, and changed the expanded sidebar children from scroll actions to direct route links.
+- Refined the Universal index into a responsive card grid and removed its redundant Ownership metadata while retaining ownership paths on detail pages.
 - Verified primary-module switching and contextual sidebar updates at desktop, tablet, and mobile widths without overflow or console errors.
 
 ## In progress

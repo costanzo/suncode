@@ -48,15 +48,15 @@ export const primaryModules = [
         icon: "components",
         keywords: "button input checkbox radio toggle badge avatar card modal tooltip markdown",
         children: [
-          { id: "actions", label: "Actions", keywords: "button primary danger" },
-          { id: "fields", label: "Fields", keywords: "input select textarea validation" },
-          { id: "selection", label: "Selection", keywords: "checkbox radio toggle" },
-          { id: "surfaces", label: "Surfaces", keywords: "card authority" },
-          { id: "overlays", label: "Overlays", keywords: "avatar modal tooltip" },
-          { id: "navigation", label: "Navigation", keywords: "tabs segmented filters" },
-          { id: "feedback", label: "Feedback", keywords: "status alert progress loading empty" },
-          { id: "data", label: "Data", keywords: "code table mono" },
-          { id: "markdown", label: "Markdown", keywords: "heading prose lists quote code" },
+          { path: "/components/universal/actions", label: "Actions", keywords: "button primary danger" },
+          { path: "/components/universal/fields", label: "Fields", keywords: "input select textarea validation" },
+          { path: "/components/universal/selection", label: "Selection", keywords: "checkbox radio toggle" },
+          { path: "/components/universal/surfaces", label: "Surfaces", keywords: "card authority" },
+          { path: "/components/universal/overlays", label: "Overlays", keywords: "avatar modal tooltip" },
+          { path: "/components/universal/navigation", label: "Navigation", keywords: "tabs segmented filters" },
+          { path: "/components/universal/feedback", label: "Feedback", keywords: "status alert progress loading empty" },
+          { path: "/components/universal/data", label: "Data", keywords: "code table mono" },
+          { path: "/components/universal/markdown", label: "Markdown", keywords: "heading prose lists quote code" },
         ],
       },
       {
@@ -134,6 +134,9 @@ export function getModuleForPath(path) {
 export const allNavigationItems = [
   { ...overviewItem, group: "Overview", moduleId: "overview" },
   ...primaryModules.flatMap((module) =>
-    module.items.map((item) => ({ ...item, group: module.label, moduleId: module.id })),
+    module.items.flatMap((item) => [
+      { ...item, group: module.label, moduleId: module.id },
+      ...(item.children ?? []).filter((child) => child.path).map((child) => ({ ...child, group: `${module.label} · ${item.label}`, moduleId: module.id })),
+    ]),
   ),
 ];

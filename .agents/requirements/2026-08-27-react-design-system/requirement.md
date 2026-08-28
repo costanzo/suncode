@@ -27,6 +27,7 @@ The layered `design-system/` catalog is structurally clear, but separate static 
 - Present Core, Components, Platforms, and Projects as the four primary modules in the upper-right navigation.
 - Keep the primary module switcher compact by showing module names without descriptions.
 - Show the active module's submodules and expandable page-section links in the left sidebar instead of a page-level horizontal section menu.
+- Give every Universal component category its own stable route and page module; keep `/components/universal` as an index rather than a combined scrolling inventory.
 - Keep the left sidebar contextual: it shows only the active primary module's submodules, leaving room for future module growth.
 - Expose foundations, assets, universal components, desktop adaptations, deferred platforms, and the Avalonia project mapping.
 - Keep semantic status labels honest: implemented, review reference, reserved, or deferred.
@@ -47,6 +48,7 @@ The layered `design-system/` catalog is structurally clear, but separate static 
 - Switching a primary module updates the sidebar to that module's submodules on desktop and narrow screens.
 - Universal component samples cover foundations, controls, surfaces, navigation, feedback, data, and Markdown.
 - Each universal component directory owns its React specimen and stable export; the universal page composes those modules rather than centralizing their markup and interaction state.
+- Actions, Fields, Selection, Surfaces, Overlays, Navigation, Feedback, Data, and Markdown are directly reachable as separate Universal routes from the sidebar.
 - Keep all React application source under `design-system/src/`, organized by product responsibility; do not introduce `react/` directories as an architectural layer.
 - Keep design token sources under `design-system/src/styles/tokens/`, source-imported visual assets under `design-system/src/assets/`, and browser-direct assets under `design-system/public/assets/`; do not retain a duplicate root `core/` source tree.
 - Light and dark themes apply to the same content and retain semantic meanings.

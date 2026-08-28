@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { UniversalComponentsPage } from "../components/universal/UniversalComponentsPage.jsx";
+import { ActionsPage } from "../components/universal/modules/actions/index.js";
+import { DataPage } from "../components/universal/modules/data/index.js";
+import { FeedbackPage } from "../components/universal/modules/feedback/index.js";
+import { FieldsPage } from "../components/universal/modules/fields/index.js";
+import { MarkdownPage } from "../components/universal/modules/markdown/index.js";
+import { NavigationPage } from "../components/universal/modules/navigation/index.js";
+import { OverlaysPage } from "../components/universal/modules/overlays/index.js";
+import { SelectionPage } from "../components/universal/modules/selection/index.js";
+import { SurfacesPage } from "../components/universal/modules/surfaces/index.js";
 import { PlatformSpecificPage } from "../components/platform-specific/PlatformSpecificPage.jsx";
 import { AssetsPage } from "../core/pages/AssetsPage.jsx";
 import { NotFoundPage } from "../core/pages/NotFoundPage.jsx";
@@ -20,6 +29,15 @@ const routes = {
   "/core/tokens": TokensPage,
   "/core/assets": AssetsPage,
   "/components/universal": UniversalComponentsPage,
+  "/components/universal/actions": ActionsPage,
+  "/components/universal/fields": FieldsPage,
+  "/components/universal/selection": SelectionPage,
+  "/components/universal/surfaces": SurfacesPage,
+  "/components/universal/overlays": OverlaysPage,
+  "/components/universal/navigation": NavigationPage,
+  "/components/universal/feedback": FeedbackPage,
+  "/components/universal/data": DataPage,
+  "/components/universal/markdown": MarkdownPage,
   "/components/platform-specific": PlatformSpecificPage,
   "/platforms/desktop": DesktopPlatformPage,
   "/platforms/mobile": MobilePlatformPage,
@@ -36,27 +54,32 @@ function readCompactLayout() {
   return window.matchMedia("(max-width: 820px)").matches;
 }
 
-function SidebarTreeItem({ item, path, activeSection, expandedItems, onToggle, onSectionNavigate, level = 0 }) {
+function SidebarTreeItem({ item, path, activeSection, expandedItems, onToggle, onSectionNavigate, onRouteNavigate, level = 0 }) {
   const hasChildren = item.children?.length > 0;
-  const expanded = hasChildren && (expandedItems[item.path] ?? path === item.path);
+  const itemIsCurrent = path === item.path || path.startsWith(`${item.path}/`);
+  const expanded = hasChildren && (expandedItems[item.path] ?? itemIsCurrent);
   const controlId = `nav-children-${item.path.replace(/[^a-z0-9]+/gi, "-")}`;
 
   return (
     <div className={`sidebar-tree-item level-${level}`}>
-      <div className={`sidebar-nav-row ${path === item.path ? "is-current" : ""}`}>
+      <div className={`sidebar-nav-row ${itemIsCurrent ? "is-current" : ""}`}>
         {hasChildren ? (
           <button className={`nav-disclosure ${expanded ? "is-expanded" : ""}`} type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${item.label}`} aria-expanded={expanded} aria-controls={controlId} onClick={() => onToggle(item)}>
             <Icon name="chevron-right" />
           </button>
         ) : <span className="nav-disclosure-placeholder" aria-hidden="true" />}
-        <RouteLink to={item.path} className={`browser-nav-item browser-nav-link ${path === item.path ? "active" : ""}`} aria-current={path === item.path ? "page" : undefined}>
+        <RouteLink to={item.path} className={`browser-nav-item browser-nav-link ${path === item.path ? "active" : ""}`} aria-current={path === item.path ? "page" : undefined} onClick={onRouteNavigate}>
           <Icon name={item.icon} />
           <span>{item.label}</span>
         </RouteLink>
       </div>
       {hasChildren && expanded && (
         <div className="sidebar-nav-children" id={controlId}>
-          {item.children.map((child) => (
+          {item.children.map((child) => child.path ? (
+            <RouteLink key={child.path} to={child.path} className={`browser-nav-item browser-nav-section ${path === child.path ? "active" : ""}`} aria-current={path === child.path ? "page" : undefined} onClick={onRouteNavigate}>
+              <span>{child.label}</span>
+            </RouteLink>
+          ) : (
             <button key={child.id} className={`browser-nav-item browser-nav-section ${activeSection === child.id ? "active" : ""}`} type="button" aria-current={activeSection === child.id ? "location" : undefined} onClick={() => onSectionNavigate({ ...child, path: item.path })}>
               <span>{child.label}</span>
             </button>
@@ -161,8 +184,11 @@ export function DesignSystemApp() {
   };
 
   const toggleSidebarItem = (item) => {
-    setExpandedItems((current) => ({ ...current, [item.path]: !(current[item.path] ?? path === item.path) }));
+    const itemIsCurrent = path === item.path || path.startsWith(`${item.path}/`);
+    setExpandedItems((current) => ({ ...current, [item.path]: !(current[item.path] ?? itemIsCurrent) }));
   };
+
+  const handleRouteNavigate = () => setMenuOpen(false);
 
   return (
     <div className="design-browser">
@@ -186,7 +212,7 @@ export function DesignSystemApp() {
             <div><strong>{activeModule?.label ?? "Overview"}</strong><span>{activeModule ? "Browse this layer" : "Start with the catalog"}</span></div>
           </div>
           <nav aria-label={`${activeModule?.label ?? "Overview"} submodules`}>
-            <div className="nav-group"><span className="nav-group-label">{activeModule ? "Submodules" : "Start here"}</span>{sidebarItems.map((item) => <SidebarTreeItem key={item.path} item={item} path={path} activeSection={activeSection} expandedItems={expandedItems} onToggle={toggleSidebarItem} onSectionNavigate={handleSectionNavigate} />)}</div>
+            <div className="nav-group"><span className="nav-group-label">{activeModule ? "Submodules" : "Start here"}</span>{sidebarItems.map((item) => <SidebarTreeItem key={item.path} item={item} path={path} activeSection={activeSection} expandedItems={expandedItems} onToggle={toggleSidebarItem} onSectionNavigate={handleSectionNavigate} onRouteNavigate={handleRouteNavigate} />)}</div>
           </nav>
           <footer><span>Review tooling only</span><code>React · Vite · Hash routes</code></footer>
         </aside>

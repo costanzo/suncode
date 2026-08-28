@@ -43,6 +43,8 @@ No dedicated unit framework is required for this isolated review application. Ro
 - Conventional React source-tree check — passed: zero-warning production build, all nine routes, desktop/mobile navigation, component interactions, static asset URLs, zero `react/` source directories, zero horizontal overflow, and clean console output.
 - Conventional resource-boundary check — tokens load from `src/styles/tokens/`, source-imported assets are emitted from `src/assets/`, the favicon loads from `public/assets/`, and no root `core/` directory or stale source path remains.
 - Post-resource-migration browser check — passed all nine routes at 1440×1000 with successful images and favicon, zero failed requests or console errors, and zero horizontal overflow; the 390×844 Core Assets route also passed drawer, image, and overflow checks.
+- Universal route split check — passed: the index and all nine category paths render one module each with the correct heading and sidebar route state; direct mobile navigation closes the drawer and reaches the selected page; toggle, modal focus/Escape, and tab keyboard behavior remain intact; no console errors or horizontal overflow were observed.
+- Universal index card check — passed with nine cards in three desktop columns, two tablet columns, and one mobile column; the index has no Ownership block, detail pages retain it, card navigation works, and all checked viewports remain free of console errors and horizontal overflow.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json ...` — passed with no findings.
 - `git diff --check` — passed.
 
