@@ -65,14 +65,14 @@ body { min-width: 320px; }
 .nav-disclosure.is-expanded .ds-icon { transform: rotate(90deg); }
 .browser-nav-item { display: flex; align-items: center; gap: 9px; min-height: 34px; padding: 0 9px; color: var(--text-secondary); border-radius: var(--radius-sm); text-decoration: none; font-size: 12px; }
 .browser-nav-item:hover { color: var(--text); background: var(--surface-hover); }
-.browser-nav-item.active { color: var(--text); background: var(--surface-accent); box-shadow: inset 2px 0 var(--accent); font-weight: 700; }
+.browser-nav-item.active { color: var(--text); background: var(--surface-accent); font-weight: 700; }
 .browser-nav-item .ds-icon { width: 16px; color: var(--text-muted); }
 .browser-nav-item.active .ds-icon { color: var(--accent); }
 .browser-nav-link { min-width: 0; }
 .browser-nav-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-nav-children { display: grid; gap: 2px; margin: 1px 0 5px 22px; padding-left: 11px; border-left: 1px solid var(--border); }
 .browser-nav-section { min-height: 29px; padding: 0 8px; background: transparent; border: 0; text-align: left; font-size: 11px; }
-.browser-nav-section.active { box-shadow: inset 2px 0 var(--accent); }
+.browser-nav-section.active { background: var(--surface-accent); }
 .browser-nav-section span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .browser-sidebar footer { display: grid; gap: 3px; margin-top: auto; padding: 16px 9px 2px; border-top: 1px solid var(--border); }
 .browser-sidebar footer span { color: var(--text-secondary); font-size: 10px; }
@@ -209,7 +209,7 @@ body { min-width: 320px; }
 .desktop-nav > strong { display: block; margin-bottom: 18px; font-size: 13px; }
 .desktop-nav nav { display: grid; gap: 4px; }
 .desktop-nav nav span { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 8px; color: #a7afb9; border-radius: 5px; font-size: 10px; }
-.desktop-nav nav span.active { color: #edf0f3; background: #242a31; box-shadow: inset 2px 0 #d9e0e6; }
+.desktop-nav nav span.active { color: #edf0f3; background: #242a31; }
 .desktop-nav .ds-icon { width: 14px; }
 .desktop-conversation { position: relative; display: grid; grid-template-rows: auto 1fr auto; min-width: 0; padding: 0 22px 18px; }
 .desktop-conversation > header { display: flex; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid #292f36; }
@@ -320,6 +320,10 @@ body { min-width: 320px; }
   .desktop-layout { grid-template-columns: 1fr; min-height: 420px; }
   .desktop-nav { display: none; }
   .desktop-conversation { padding-left: 14px; padding-right: 14px; }
+  .project-hub-toolbar { align-items: flex-start; flex-direction: column; padding: 18px; }
+  .project-hub-actions { width: 100%; }
+  .project-hub-actions .btn { flex: 1; }
+  .project-hub-content { margin: 14px; padding: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

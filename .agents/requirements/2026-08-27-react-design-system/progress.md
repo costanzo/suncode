@@ -1,7 +1,7 @@
 # Progress
 
 - Status: Complete
-- Last updated: 2026-08-27
+- Last updated: 2026-08-28
 
 ## Completed
 
@@ -25,7 +25,11 @@
 - Added matching card-based index routes for Core, Platforms, and Projects, and changed the primary switcher to land on those indexes before their detail pages.
 - Split every Core, Platforms, and Projects sidebar child into a directly addressable page, replacing the remaining in-page scroll navigation with the same parent-index/detail-route model used by Components.
 - Added Web as a deferred platform with card-index navigation and independently routable boundary and ownership pages.
+- Added `Projects → Desktop → ProjectHub` as a dedicated review surface aligned with Avalonia `ProjectHub.axaml`, using component-owned Button, ProjectCard, and EmptyState modules; removed the previous Avalonia project mapping entries from the Projects sidebar.
 - Verified primary-module switching and contextual sidebar updates at desktop, tablet, and mobile widths without overflow or console errors.
+- Added `Projects → Desktop → Settings` as a dedicated route aligned with the Avalonia `SettingsWindow.axaml` structure, including General and Model provider navigation, Defaults, Appearance, Network, Logging, and provider credential/model panels.
+- Closed the Settings finish review findings: Done/close return to ProjectHub, provider keys require non-empty input and begin unconfigured, Appearance updates the shared theme preference, all seeded models are listed, HTTPS risk copy names credential/content exposure, and navigation/window controls expose accessible state and actions.
+- Split ProjectHub's recent-project and no-project states into two complete window specimens and removed the in-product `Recent / Empty` review switch and synthetic click-status copy.
 
 ## In progress
 

@@ -30,11 +30,10 @@ import { PlatformsPage } from "../platforms/PlatformsPage.jsx";
 import { MobilePlatformPage } from "../platforms/mobile/index.jsx";
 import { TuiPlatformPage } from "../platforms/tui/index.jsx";
 import { WebPlatformPage } from "../platforms/web/index.jsx";
-import { AvaloniaProjectPage } from "../projects/avalonia-desktop/index.jsx";
-import { DesignToRuntimePage } from "../projects/avalonia-desktop/DesignToRuntimePage.jsx";
-import { ReviewPathsPage } from "../projects/avalonia-desktop/ReviewPathsPage.jsx";
-import { RuntimeBoundaryPage } from "../projects/avalonia-desktop/RuntimeBoundaryPage.jsx";
 import { ProjectsPage } from "../projects/ProjectsPage.jsx";
+import { ProjectHubPage } from "../projects/desktop/index.jsx";
+import { DesktopProjectPage } from "../projects/desktop/DesktopProjectPage.jsx";
+import { SettingsPage } from "../projects/desktop/settings/index.jsx";
 import { Icon } from "../shared/Icon.jsx";
 import { RouteLink } from "../shared/PagePrimitives.jsx";
 import compactLogoUrl from "../assets/logos/suncode-logo-small.svg";
@@ -78,10 +77,9 @@ const routes = {
   "/platforms/web/boundary": () => <DeferredBoundaryPage platform="web" title="Web" icon="platform" />,
   "/platforms/web/ownership": () => <DeferredOwnershipPage platform="web" title="Web" />,
   "/projects": ProjectsPage,
-  "/projects/avalonia-desktop": AvaloniaProjectPage,
-  "/projects/avalonia-desktop/design-to-runtime": DesignToRuntimePage,
-  "/projects/avalonia-desktop/review-paths": ReviewPathsPage,
-  "/projects/avalonia-desktop/runtime-boundary": RuntimeBoundaryPage,
+  "/projects/desktop": DesktopProjectPage,
+  "/projects/desktop/project-hub": ProjectHubPage,
+  "/projects/desktop/settings": SettingsPage,
 };
 
 function readTheme() {

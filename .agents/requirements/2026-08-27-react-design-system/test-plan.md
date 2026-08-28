@@ -48,8 +48,11 @@ No dedicated unit framework is required for this isolated review application. Ro
 - Primary index consistency check — passed for Core, Components, Platforms, and Projects: the top switcher lands on each index, index cards omit Ownership/path/action noise, the grids adapt from three to two to one column, and checked routes have no console errors or horizontal overflow.
 - Cross-module child-route check — passed for 21 Core, Platform, and Project index/detail routes: parent pages render only card indexes, every sidebar child opens its own path with correct active state, and checked pages have one focused content section with no console errors or horizontal overflow.
 - Web platform check — passed: Platforms index exposes Web, `/platforms/web`, `/platforms/web/boundary`, and `/platforms/web/ownership` render with Deferred status, sidebar active state, zero console errors, and zero horizontal overflow.
+- ProjectHub review check — passed: `/projects/desktop` is a card index and `/projects/desktop/project-hub` renders separate Avalonia-aligned windows for the recent-project and no-project states, without placing design-review state controls inside either product window; direct sidebar active state, desktop layout, zero console errors, and zero horizontal overflow verified.
+- Settings review check — passed: `/projects/desktop/settings` builds and renders the Avalonia-aligned window chrome, General and Model provider sidebar groups, independently switchable settings panels, all 12 seeded model IDs, credential validation states, persisted light/dark theme switching, HTTPS warning state, and responsive navigation; the route has no static build, detector, or whitespace findings.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json ...` — passed with no findings.
 - `git diff --check` — passed.
+- Settings surface production build — passed with Vite 7.3.6; 136 modules transformed and no warnings. `detect.mjs --json` returned no findings.
 
 ## Residual risks
 

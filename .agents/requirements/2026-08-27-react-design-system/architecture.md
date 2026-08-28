@@ -17,7 +17,7 @@ Use a conventional Vite/React application with `index.html` and `src/main.jsx` a
 - `src/components/universal/UniversalComponentsPage.jsx` — universal module index.
 - `src/components/platform-specific/` — platform-only component boundary index.
 - `src/platforms/*/index.jsx` — platform adaptation pages.
-- `src/projects/avalonia-desktop/index.jsx` — business-project mapping.
+- `src/projects/desktop/` — Desktop project index and ProjectHub review page aligned with the Avalonia desktop entry surface.
 
 ## Boundaries and dependencies
 

@@ -123,14 +123,13 @@ export const primaryModules = [
     icon: "project",
     items: [
       {
-        path: "/projects/avalonia-desktop",
-        label: "Avalonia Desktop",
+        path: "/projects/desktop",
+        label: "Desktop",
         icon: "project",
-        keywords: "phase 1 runtime mapping resources",
+        keywords: "project hub avalonia phase 1 runtime mapping resources",
         children: [
-          { path: "/projects/avalonia-desktop/design-to-runtime", label: "Design-to-runtime", keywords: "tokens components mapping" },
-          { path: "/projects/avalonia-desktop/review-paths", label: "Review paths", keywords: "universal desktop tokens" },
-          { path: "/projects/avalonia-desktop/runtime-boundary", label: "Runtime boundary", keywords: "avalonia rust react" },
+          { path: "/projects/desktop/project-hub", label: "ProjectHub", keywords: "welcome recent projects open project settings" },
+          { path: "/projects/desktop/settings", label: "Settings", keywords: "defaults appearance network logging model providers credentials" },
         ],
       },
     ],
