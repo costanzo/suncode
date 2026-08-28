@@ -1,31 +1,35 @@
 # SunCode Design System
 
-This directory is the review surface and resource catalog for the SunCode visual language. It is intentionally static: no Node.js, package manager, bundler, or development server is required.
+This directory is the React review browser and resource catalog for the SunCode visual language. It provides one navigable entry for foundations, components, platform adaptations, and project mappings.
+
+React, Vite, and Node.js are used only to build this design-review tool. They are not dependencies of the Phase 1 Avalonia desktop application or embedded Rust agent.
 
 ## Files
 
-- `index.html` - top-level entry point for the layered design system.
+- `index.html` and `src/main.jsx` - the single Vite/React entry.
 - `core/` - color, typography, spacing and approved visual assets.
-- `components/universal/` - cross-platform primitive inventory and theme reviews.
+- `components/universal/react/` - cross-platform primitive inventory and interactive state reviews.
 - `platforms/` - mobile, desktop and TUI adaptation boundaries.
 - `projects/` - business-project mappings, beginning with Avalonia desktop.
 
-Start with the unified entry point:
+Install and start the review browser from this directory:
 
-```text
-design-system/index.html
+```sh
+npm install
+npm run dev
 ```
 
-From there, open either complete theme review page:
+Create a static build with:
 
-```text
-design-system/components/universal/themes/dark.html
-design-system/components/universal/themes/light.html
+```sh
+npm run build
 ```
+
+The browser uses hash routes, so the generated `dist/index.html` can be hosted at a static subpath without server rewrite rules. The first visit uses the light theme; the global switch persists the selected light or dark appearance locally.
 
 ## Source Of Truth
 
-The HTML pages are the visual contract for review. `index.html` is the shared entry: it shows foundations, theme paths, desktop shell anatomy, and review rules. The universal theme pages show the complete component inventory for each theme. Token sources live under `core/tokens/`; `core/styles/review.css` imports them and carries the shared review and component primitives. Avalonia runtime resources in `apps/desktop-avalonia/App.axaml` must keep the same semantic names and values.
+The React routes are the visual contract for review. The fixed navigation exposes all four layers, and the universal route shows the same complete component inventory in either theme. Token sources live under `core/tokens/`; `core/styles/review.css` and `core/styles/browser.css` carry shared review primitives and the catalog shell. Avalonia runtime resources in `apps/desktop-avalonia/App.axaml` must keep the same semantic names and values.
 
 Feature views must consume semantic resources such as `AccentBrush`, `SurfaceRaisedBrush`, `TextSecondaryBrush`, `WarningSurfaceBrush`, and `DangerBorderBrush`. A view should not introduce a new raw color, shadow, radius, or control height without first adding it to the design tokens and both review pages.
 

@@ -10,7 +10,7 @@ This is the central asset catalog for the SunCode design system and review pages
 
 ## Icons
 
-The `icons/` directory contains the approved interface icon set used by the Avalonia client and the static review pages. Icons are monochrome source assets; the consuming surface applies the semantic foreground token.
+The `icons/` directory contains the approved interface icon set used by the Avalonia client and React review browser. Icons are monochrome source assets; the consuming surface applies the semantic foreground token.
 
 New icons should remain simple, 24px viewBox SVGs with a consistent stroke language. Add the icon to this catalog before using it in a client view.
 

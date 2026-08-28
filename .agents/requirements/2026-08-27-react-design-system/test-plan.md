@@ -1,0 +1,46 @@
+# Test Plan
+
+## Scope
+
+The isolated React design browser, its route catalog, global theme state, responsive shell, and local asset references.
+
+## Unit tests
+
+No dedicated unit framework is required for this isolated review application. Route resolution and theme fallback are exercised through browser checks.
+
+## Integration and conformance tests
+
+- Build the Vite application in production mode.
+- Open representative hash routes from the built site.
+- Confirm route changes do not reload the document.
+- Confirm theme choice applies globally and persists across reload.
+
+## Regression checks
+
+- Confirm existing token CSS and approved assets load.
+- Confirm all four ownership layers appear in navigation.
+- Confirm mobile and TUI are labeled deferred.
+- Confirm component samples retain the established semantic categories and states.
+
+## Manual checks
+
+- Desktop viewport: navigation, content hierarchy, hover, focus, and theme switch.
+- Narrow viewport: navigation drawer, content flow, tables, and controls.
+- Unknown route: useful recovery state.
+
+## Commands and results
+
+- `npm run build` — passed with Vite 7.3.6; 44 modules transformed.
+- Playwright desktop check at 1440×1000 — passed: nine navigation entries, module search, theme persistence, no console errors, and zero horizontal overflow.
+- Playwright mobile check at 390×844 — passed: drawer opens, dialog renders, no console errors, and zero horizontal overflow.
+- Unknown hash check — passed with a recoverable `Module not found` page.
+- Post-review interaction check — passed: mobile search opens and focuses, dialog focus/Escape works, and tabs respond to arrow keys with the correct tabpanel.
+- Theme contrast check — passed: muted text is 4.56:1 on the light canvas and 5.40:1 on the dark canvas.
+- `dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj --no-restore` — passed, 45/45 tests.
+- `node .agents/skills/impeccable/scripts/detect.mjs --json ...` — passed with no findings.
+- `git diff --check` — passed.
+
+## Residual risks
+
+- Browser screenshots validate the review surface, not Avalonia runtime rendering.
+- Automated checks do not replace manual screen-reader verification.

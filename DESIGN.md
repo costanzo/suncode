@@ -9,7 +9,7 @@ colors:
   surface-active: "#242a31"
   text: "#edf0f3"
   text-secondary: "#a7afb9"
-  text-muted: "#727c87"
+  text-muted: "#7f8994"
   window-border: "#1c2126"
   window-border-light: "#e5e9ec"
   border: "#292f36"
@@ -46,8 +46,8 @@ components:
 review:
   directory: "design-system/"
   entry: "design-system/index.html"
-  dark: "design-system/components/universal/themes/dark.html"
-  light: "design-system/components/universal/themes/light.html"
+  app: "design-system/src/main.jsx"
+  components: "design-system/components/universal/react/UniversalComponentsPage.jsx"
   tokens: "design-system/core/tokens/"
   assets: "design-system/core/assets/"
 ---
@@ -56,9 +56,9 @@ review:
 
 ## Review Surface
 
-The visual review surface starts at [`design-system/index.html`](design-system/index.html), the layered entry point for shared foundations, shell anatomy, semantic roles, rules, assets, and theme links. Continue to [`components/universal/themes/dark.html`](design-system/components/universal/themes/dark.html) or [`components/universal/themes/light.html`](design-system/components/universal/themes/light.html) for the complete component and state inventory. Token sources live under [`design-system/core/tokens/`](design-system/core/tokens/), and reusable product images and icons are cataloged in [`design-system/core/assets/`](design-system/core/assets/). Review these pages before introducing a new module or component. The HTML pages are static review artifacts, not a production web client.
+The visual review surface starts at [`design-system/index.html`](design-system/index.html), the single Vite/React entry for shared foundations, component states, platform boundaries, project mappings, rules, and assets. The complete cross-theme inventory is owned by [`components/universal/react/UniversalComponentsPage.jsx`](design-system/components/universal/react/UniversalComponentsPage.jsx). Token sources live under [`design-system/core/tokens/`](design-system/core/tokens/), and reusable product images and icons are cataloged in [`design-system/core/assets/`](design-system/core/assets/). Review the corresponding hash route before introducing a new module or component. React/Vite is design-review tooling only, not a production web client or Phase 1 runtime dependency.
 
-`design-system/core/tokens/` is the source token reference for the two themes; `design-system/core/styles/review.css` is the compiled review stylesheet. Avalonia resources in `apps/desktop-avalonia/App.axaml` are the runtime mapping and must retain the same semantic meanings. Feature views should consume named resources rather than add local raw colors, radii, shadows, or control heights.
+`design-system/core/tokens/` is the source token reference for the two themes; `design-system/core/styles/review.css` provides shared specimens and `design-system/core/styles/browser.css` provides the catalog shell. Avalonia resources in `apps/desktop-avalonia/App.axaml` are the runtime mapping and must retain the same semantic meanings. Feature views should consume named resources rather than add local raw colors, radii, shadows, or control heights.
 
 ## Overview
 
@@ -99,7 +99,7 @@ The palette supports both a dark graphite mode and a lighter paper-and-slate mod
 - **Graphite Hover** (#1e2329): Hover state for neutral controls.
 - **Primary Text** (#edf0f3): Main copy and message content.
 - **Secondary Text** (#a7afb9): Supporting labels and status summaries.
-- **Muted Text** (#727c87): Empty-state guidance and metadata with accessible contrast on graphite surfaces.
+- **Muted Text** (#7f8994 dark / #65717d light): Empty-state guidance, placeholders, and metadata with accessible normal-text contrast.
 - **Window Chrome Hairline** (#1c2126 dark / #e5e9ec light): A 0.5-DIP low-contrast outer outline that lets the native window shadow carry elevation.
 - **Hairline Border** (#292f36): Panel boundaries and list separators.
 

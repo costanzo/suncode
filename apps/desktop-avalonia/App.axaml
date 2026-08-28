@@ -341,7 +341,7 @@
           <SolidColorBrush x:Key="FieldFocusBrush" Color="#191f24" />
           <SolidColorBrush x:Key="TextBrush" Color="#edf0f3" />
           <SolidColorBrush x:Key="TextSecondaryBrush" Color="#a7afb9" />
-          <SolidColorBrush x:Key="TextMutedBrush" Color="#727c87" />
+          <SolidColorBrush x:Key="TextMutedBrush" Color="#7f8994" />
           <SolidColorBrush x:Key="TextDisabledBrush" Color="#525a64" />
           <SolidColorBrush x:Key="WindowChromeBorderBrush" Color="#1c2126" />
           <SolidColorBrush x:Key="BorderBrush" Color="#292f36" />
@@ -404,7 +404,7 @@
           <SolidColorBrush x:Key="FieldFocusBrush" Color="#ffffff" />
           <SolidColorBrush x:Key="TextBrush" Color="#17202a" />
           <SolidColorBrush x:Key="TextSecondaryBrush" Color="#44515e" />
-          <SolidColorBrush x:Key="TextMutedBrush" Color="#778491" />
+          <SolidColorBrush x:Key="TextMutedBrush" Color="#65717d" />
           <SolidColorBrush x:Key="TextDisabledBrush" Color="#a6b0ba" />
           <SolidColorBrush x:Key="WindowChromeBorderBrush" Color="#e5e9ec" />
           <SolidColorBrush x:Key="BorderBrush" Color="#d5dde4" />
