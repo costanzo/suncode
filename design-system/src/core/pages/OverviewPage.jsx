@@ -33,10 +33,10 @@ export function OverviewPage() {
 
       <Section title="Four layers, one browsing model" description="Each module renders from the directory that owns it.">
         <div className="layer-list">
-          <ModuleLink to="/core/tokens" icon="foundation" title="Core" description="Semantic color, typography, spacing, icons, logos, and fonts." path="core/" status="Source" tone="review" />
+          <ModuleLink to="/core" icon="foundation" title="Core" description="Semantic color, typography, spacing, icons, logos, and fonts." path="core/" status="Source" tone="review" />
           <ModuleLink to="/components/universal" icon="components" title="Components" description="Cross-platform primitives plus explicit platform-only boundaries." path="components/" status="Review" tone="review" />
-          <ModuleLink to="/platforms/desktop" icon="platform" title="Platforms" description="Desktop adaptations now; mobile and TUI boundaries remain deferred." path="platforms/" status="Mixed" tone="reserved" />
-          <ModuleLink to="/projects/avalonia-desktop" icon="project" title="Projects" description="Map approved design semantics into the Phase 1 Avalonia client." path="projects/" status="Mapped" tone="implemented" />
+          <ModuleLink to="/platforms" icon="platform" title="Platforms" description="Desktop adaptations now; mobile and TUI boundaries remain deferred." path="platforms/" status="Mixed" tone="reserved" />
+          <ModuleLink to="/projects" icon="project" title="Projects" description="Map approved design semantics into the Phase 1 Avalonia client." path="projects/" status="Mapped" tone="implemented" />
         </div>
       </Section>
 

@@ -10,14 +10,31 @@ import { OverlaysPage } from "../components/universal/modules/overlays/index.js"
 import { SelectionPage } from "../components/universal/modules/selection/index.js";
 import { SurfacesPage } from "../components/universal/modules/surfaces/index.js";
 import { PlatformSpecificPage } from "../components/platform-specific/PlatformSpecificPage.jsx";
+import { PlatformIndexesPage } from "../components/platform-specific/PlatformIndexesPage.jsx";
 import { AssetsPage } from "../core/pages/AssetsPage.jsx";
+import { CorePage } from "../core/pages/CorePage.jsx";
+import { BrandPage } from "../core/pages/assets/BrandPage.jsx";
+import { FontsPage } from "../core/pages/assets/FontsPage.jsx";
+import { IconsPage } from "../core/pages/assets/IconsPage.jsx";
 import { NotFoundPage } from "../core/pages/NotFoundPage.jsx";
 import { OverviewPage } from "../core/pages/OverviewPage.jsx";
 import { TokensPage } from "../core/pages/TokensPage.jsx";
+import { ColorsPage } from "../core/pages/tokens/ColorsPage.jsx";
+import { SpacingPage } from "../core/pages/tokens/SpacingPage.jsx";
+import { TypographyPage } from "../core/pages/tokens/TypographyPage.jsx";
 import { DesktopPlatformPage } from "../platforms/desktop/index.jsx";
+import { DesktopAnatomyPage } from "../platforms/desktop/AnatomyPage.jsx";
+import { DesktopOwnershipPage } from "../platforms/desktop/OwnershipPage.jsx";
+import { DeferredBoundaryPage, DeferredOwnershipPage } from "../platforms/DeferredPages.jsx";
+import { PlatformsPage } from "../platforms/PlatformsPage.jsx";
 import { MobilePlatformPage } from "../platforms/mobile/index.jsx";
 import { TuiPlatformPage } from "../platforms/tui/index.jsx";
+import { WebPlatformPage } from "../platforms/web/index.jsx";
 import { AvaloniaProjectPage } from "../projects/avalonia-desktop/index.jsx";
+import { DesignToRuntimePage } from "../projects/avalonia-desktop/DesignToRuntimePage.jsx";
+import { ReviewPathsPage } from "../projects/avalonia-desktop/ReviewPathsPage.jsx";
+import { RuntimeBoundaryPage } from "../projects/avalonia-desktop/RuntimeBoundaryPage.jsx";
+import { ProjectsPage } from "../projects/ProjectsPage.jsx";
 import { Icon } from "../shared/Icon.jsx";
 import { RouteLink } from "../shared/PagePrimitives.jsx";
 import compactLogoUrl from "../assets/logos/suncode-logo-small.svg";
@@ -26,8 +43,15 @@ import { useHashRoute } from "./useHashRoute.js";
 
 const routes = {
   "/": OverviewPage,
+  "/core": CorePage,
   "/core/tokens": TokensPage,
+  "/core/tokens/colors": ColorsPage,
+  "/core/tokens/typography": TypographyPage,
+  "/core/tokens/spacing": SpacingPage,
   "/core/assets": AssetsPage,
+  "/core/assets/brand": BrandPage,
+  "/core/assets/icons": IconsPage,
+  "/core/assets/fonts": FontsPage,
   "/components/universal": UniversalComponentsPage,
   "/components/universal/actions": ActionsPage,
   "/components/universal/fields": FieldsPage,
@@ -39,10 +63,25 @@ const routes = {
   "/components/universal/data": DataPage,
   "/components/universal/markdown": MarkdownPage,
   "/components/platform-specific": PlatformSpecificPage,
+  "/components/platform-specific/platform-indexes": PlatformIndexesPage,
+  "/platforms": PlatformsPage,
   "/platforms/desktop": DesktopPlatformPage,
+  "/platforms/desktop/anatomy": DesktopAnatomyPage,
+  "/platforms/desktop/ownership": DesktopOwnershipPage,
   "/platforms/mobile": MobilePlatformPage,
+  "/platforms/mobile/boundary": () => <DeferredBoundaryPage platform="mobile" title="Mobile" icon="mobile" />,
+  "/platforms/mobile/ownership": () => <DeferredOwnershipPage platform="mobile" title="Mobile" />,
   "/platforms/tui": TuiPlatformPage,
+  "/platforms/tui/boundary": () => <DeferredBoundaryPage platform="tui" title="TUI" icon="terminal" />,
+  "/platforms/tui/ownership": () => <DeferredOwnershipPage platform="tui" title="TUI" />,
+  "/platforms/web": () => <WebPlatformPage />,
+  "/platforms/web/boundary": () => <DeferredBoundaryPage platform="web" title="Web" icon="platform" />,
+  "/platforms/web/ownership": () => <DeferredOwnershipPage platform="web" title="Web" />,
+  "/projects": ProjectsPage,
   "/projects/avalonia-desktop": AvaloniaProjectPage,
+  "/projects/avalonia-desktop/design-to-runtime": DesignToRuntimePage,
+  "/projects/avalonia-desktop/review-paths": ReviewPathsPage,
+  "/projects/avalonia-desktop/runtime-boundary": RuntimeBoundaryPage,
 };
 
 function readTheme() {
@@ -54,7 +93,7 @@ function readCompactLayout() {
   return window.matchMedia("(max-width: 820px)").matches;
 }
 
-function SidebarTreeItem({ item, path, activeSection, expandedItems, onToggle, onSectionNavigate, onRouteNavigate, level = 0 }) {
+function SidebarTreeItem({ item, path, expandedItems, onToggle, onRouteNavigate, level = 0 }) {
   const hasChildren = item.children?.length > 0;
   const itemIsCurrent = path === item.path || path.startsWith(`${item.path}/`);
   const expanded = hasChildren && (expandedItems[item.path] ?? itemIsCurrent);
@@ -75,14 +114,10 @@ function SidebarTreeItem({ item, path, activeSection, expandedItems, onToggle, o
       </div>
       {hasChildren && expanded && (
         <div className="sidebar-nav-children" id={controlId}>
-          {item.children.map((child) => child.path ? (
+          {item.children.map((child) => (
             <RouteLink key={child.path} to={child.path} className={`browser-nav-item browser-nav-section ${path === child.path ? "active" : ""}`} aria-current={path === child.path ? "page" : undefined} onClick={onRouteNavigate}>
               <span>{child.label}</span>
             </RouteLink>
-          ) : (
-            <button key={child.id} className={`browser-nav-item browser-nav-section ${activeSection === child.id ? "active" : ""}`} type="button" aria-current={activeSection === child.id ? "location" : undefined} onClick={() => onSectionNavigate({ ...child, path: item.path })}>
-              <span>{child.label}</span>
-            </button>
           ))}
         </div>
       )}
@@ -98,13 +133,11 @@ export function DesignSystemApp() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [moduleMenuOpen, setModuleMenuOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState({});
-  const [activeSection, setActiveSection] = useState("");
   const [compactLayout, setCompactLayout] = useState(readCompactLayout);
   const searchRef = useRef(null);
   const sidebarRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const priorMenuOpenRef = useRef(false);
-  const pendingSectionRef = useRef(null);
   const Page = routes[path];
   const activeModule = getModuleForPath(path);
   const sidebarItems = activeModule?.items ?? [overviewItem];
@@ -140,18 +173,6 @@ export function DesignSystemApp() {
     setQuery("");
     setSearchOpen(false);
     setModuleMenuOpen(false);
-    setActiveSection("");
-  }, [path]);
-
-  useEffect(() => {
-    const pending = pendingSectionRef.current;
-    if (!pending || pending.path !== path) return undefined;
-    const frame = window.requestAnimationFrame(() => {
-      document.getElementById(pending.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-      setActiveSection(pending.id);
-      pendingSectionRef.current = null;
-    });
-    return () => window.cancelAnimationFrame(frame);
   }, [path]);
 
   useEffect(() => {
@@ -169,19 +190,6 @@ export function DesignSystemApp() {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
-
-  const handleSectionNavigate = (item) => {
-    if (!item.id) return;
-    pendingSectionRef.current = { path: item.path, id: item.id };
-    setMenuOpen(false);
-    if (path === item.path) {
-      document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-      setActiveSection(item.id);
-      pendingSectionRef.current = null;
-    } else {
-      window.location.hash = item.path;
-    }
-  };
 
   const toggleSidebarItem = (item) => {
     const itemIsCurrent = path === item.path || path.startsWith(`${item.path}/`);
@@ -212,7 +220,7 @@ export function DesignSystemApp() {
             <div><strong>{activeModule?.label ?? "Overview"}</strong><span>{activeModule ? "Browse this layer" : "Start with the catalog"}</span></div>
           </div>
           <nav aria-label={`${activeModule?.label ?? "Overview"} submodules`}>
-            <div className="nav-group"><span className="nav-group-label">{activeModule ? "Submodules" : "Start here"}</span>{sidebarItems.map((item) => <SidebarTreeItem key={item.path} item={item} path={path} activeSection={activeSection} expandedItems={expandedItems} onToggle={toggleSidebarItem} onSectionNavigate={handleSectionNavigate} onRouteNavigate={handleRouteNavigate} />)}</div>
+            <div className="nav-group"><span className="nav-group-label">{activeModule ? "Submodules" : "Start here"}</span>{sidebarItems.map((item) => <SidebarTreeItem key={item.path} item={item} path={path} expandedItems={expandedItems} onToggle={toggleSidebarItem} onRouteNavigate={handleRouteNavigate} />)}</div>
           </nav>
           <footer><span>Review tooling only</span><code>React · Vite · Hash routes</code></footer>
         </aside>

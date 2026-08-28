@@ -116,15 +116,15 @@ body { min-width: 320px; }
 .module-link-copy code { color: var(--text-muted); font: 10px var(--font-mono); }
 .module-link-arrow { color: var(--text-muted); transition: transform .18s ease-out; }
 .module-link:hover .module-link-arrow { color: var(--text); transform: translateX(3px); }
-.component-module-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.component-module-grid .module-link { grid-template-columns: 42px minmax(0, 1fr) 18px; grid-template-rows: auto 1fr; align-items: start; min-height: 172px; padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); }
-.component-module-grid .module-link:hover { background: var(--surface-raised); border-color: var(--border-strong); box-shadow: var(--shadow-popover); transform: translateY(-2px); }
-.component-module-grid .module-link-icon { grid-row: 1; width: 42px; height: 42px; }
-.component-module-grid .module-link-copy { grid-column: 1 / -1; grid-row: 2; align-self: end; gap: 7px; padding-top: 18px; }
-.component-module-grid .module-link-title strong { font-size: 15px; }
-.component-module-grid .module-link-copy > span:not(.module-link-title) { font-size: 12px; }
-.component-module-grid .module-link-copy code { overflow-wrap: anywhere; }
-.component-module-grid .module-link-arrow { grid-column: 3; grid-row: 1; align-self: center; justify-self: end; }
+.module-card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.module-card-grid .module-link { grid-template-columns: 42px minmax(0, 1fr) 18px; grid-template-rows: auto 1fr; align-items: start; min-height: 172px; padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.module-card-grid .module-link:hover { background: var(--surface-raised); border-color: var(--border-strong); box-shadow: var(--shadow-popover); transform: translateY(-2px); }
+.module-card-grid .module-link-icon { grid-row: 1; width: 42px; height: 42px; }
+.module-card-grid .module-link-copy { grid-column: 1 / -1; grid-row: 2; align-self: end; gap: 7px; padding-top: 18px; }
+.module-card-grid .module-link-title strong { font-size: 15px; }
+.module-card-grid .module-link-copy > span:not(.module-link-title) { font-size: 12px; }
+.module-card-grid .module-link-copy code { overflow-wrap: anywhere; }
+.module-card-grid .module-link-arrow { grid-column: 3; grid-row: 1; align-self: center; justify-self: end; }
 .start-actions .module-link { grid-template-columns: 32px minmax(0, 1fr); padding: 12px; background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .start-actions .module-link-icon { width: 32px; height: 32px; }
 .start-actions .module-link-arrow { display: none; }
@@ -255,7 +255,7 @@ body { min-width: 320px; }
   .browser-content { width: calc(100% - 40px); }
   .page-header { gap: 32px; }
   .token-swatches, .asset-icons { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .component-module-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .module-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .desktop-layout { grid-template-columns: 160px minmax(280px, 1fr); }
   .desktop-review { display: none; }
 }
@@ -310,8 +310,8 @@ body { min-width: 320px; }
   .catalog-section-heading { display: block; }
   .catalog-section-heading p { margin-top: 7px; text-align: left; }
   .start-panel { padding: 18px; }
-  .start-actions, .specimen-grid-2, .specimen-grid-3, .logo-specimens, .component-module-grid { grid-template-columns: 1fr; }
-  .component-module-grid .module-link { min-height: 156px; padding: 16px; }
+  .start-actions, .specimen-grid-2, .specimen-grid-3, .logo-specimens, .module-card-grid { grid-template-columns: 1fr; }
+  .module-card-grid .module-link { min-height: 156px; padding: 16px; }
   .module-link { padding-left: 5px; padding-right: 5px; }
   .module-link-copy code { overflow-wrap: anywhere; }
   .token-swatches, .asset-icons { grid-template-columns: repeat(2, minmax(0, 1fr)); }

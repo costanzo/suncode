@@ -17,7 +17,7 @@ export function UniversalComponentsPage() {
     <>
       <PageHeader title="Universal components" description="Cross-platform primitives are organized into independently addressable modules so each inventory can grow without turning this page into one continuous document." status="Module index" tone="implemented" showOwnership={false} />
       <Section id="module-index" title="Component modules">
-        <div className="component-module-grid">
+        <div className="module-card-grid">
           {modules.map((module) => <ModuleLink key={module.path} to={`/components/universal/${module.path}`} title={module.title} description={module.description} />)}
         </div>
       </Section>

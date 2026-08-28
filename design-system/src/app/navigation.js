@@ -9,7 +9,7 @@ export const primaryModules = [
   {
     id: "core",
     label: "Core",
-    path: "/core/tokens",
+    path: "/core",
     icon: "foundation",
     items: [
       {
@@ -18,9 +18,9 @@ export const primaryModules = [
         icon: "foundation",
         keywords: "colors typography spacing theme",
         children: [
-          { id: "colors", label: "Colors", keywords: "color roles semantic theme" },
-          { id: "typography", label: "Typography", keywords: "font type hierarchy" },
-          { id: "spacing", label: "Spacing & shape", keywords: "spacing radius controls dimensions" },
+          { path: "/core/tokens/colors", label: "Colors", keywords: "color roles semantic theme" },
+          { path: "/core/tokens/typography", label: "Typography", keywords: "font type hierarchy" },
+          { path: "/core/tokens/spacing", label: "Spacing & shape", keywords: "spacing radius controls dimensions" },
         ],
       },
       {
@@ -29,9 +29,9 @@ export const primaryModules = [
         icon: "assets",
         keywords: "icons logos fonts",
         children: [
-          { id: "brand", label: "Brand marks", keywords: "logo brand" },
-          { id: "icons", label: "Interface icons", keywords: "icons svg symbols" },
-          { id: "fonts", label: "Fonts", keywords: "font typeface" },
+          { path: "/core/assets/brand", label: "Brand marks", keywords: "logo brand" },
+          { path: "/core/assets/icons", label: "Interface icons", keywords: "icons svg symbols" },
+          { path: "/core/assets/fonts", label: "Fonts", keywords: "font typeface" },
         ],
       },
     ],
@@ -64,14 +64,14 @@ export const primaryModules = [
         label: "Platform-specific",
         icon: "platform",
         keywords: "desktop mobile tui only",
-        children: [{ id: "platform-indexes", label: "Platform indexes", keywords: "desktop mobile tui" }],
+        children: [{ path: "/components/platform-specific/platform-indexes", label: "Platform indexes", keywords: "desktop mobile tui" }],
       },
     ],
   },
   {
     id: "platforms",
     label: "Platforms",
-    path: "/platforms/desktop",
+    path: "/platforms",
     icon: "platform",
     items: [
       {
@@ -80,8 +80,8 @@ export const primaryModules = [
         icon: "platform",
         keywords: "avalonia shell sidebar inspector",
         children: [
-          { id: "anatomy", label: "Window anatomy", keywords: "conversation sidebar review" },
-          { id: "ownership", label: "Desktop ownership", keywords: "desktop-only components" },
+          { path: "/platforms/desktop/anatomy", label: "Window anatomy", keywords: "conversation sidebar review" },
+          { path: "/platforms/desktop/ownership", label: "Desktop ownership", keywords: "desktop-only components" },
         ],
       },
       {
@@ -90,8 +90,8 @@ export const primaryModules = [
         icon: "mobile",
         keywords: "deferred bottom nav tab swipe",
         children: [
-          { id: "boundary", label: "Adaptation boundary", keywords: "deferred future" },
-          { id: "ownership", label: "Ownership contract", keywords: "tokens components pages" },
+          { path: "/platforms/mobile/boundary", label: "Adaptation boundary", keywords: "deferred future" },
+          { path: "/platforms/mobile/ownership", label: "Ownership contract", keywords: "tokens components pages" },
         ],
       },
       {
@@ -100,8 +100,18 @@ export const primaryModules = [
         icon: "terminal",
         keywords: "deferred terminal command palette tree",
         children: [
-          { id: "boundary", label: "Adaptation boundary", keywords: "deferred future" },
-          { id: "ownership", label: "Ownership contract", keywords: "tokens components" },
+          { path: "/platforms/tui/boundary", label: "Adaptation boundary", keywords: "deferred future" },
+          { path: "/platforms/tui/ownership", label: "Ownership contract", keywords: "tokens components" },
+        ],
+      },
+      {
+        path: "/platforms/web",
+        label: "Web",
+        icon: "platform",
+        keywords: "deferred browser web client",
+        children: [
+          { path: "/platforms/web/boundary", label: "Adaptation boundary", keywords: "deferred future browser" },
+          { path: "/platforms/web/ownership", label: "Ownership contract", keywords: "tokens components pages" },
         ],
       },
     ],
@@ -109,7 +119,7 @@ export const primaryModules = [
   {
     id: "projects",
     label: "Projects",
-    path: "/projects/avalonia-desktop",
+    path: "/projects",
     icon: "project",
     items: [
       {
@@ -118,9 +128,9 @@ export const primaryModules = [
         icon: "project",
         keywords: "phase 1 runtime mapping resources",
         children: [
-          { id: "runtime-path", label: "Design-to-runtime", keywords: "tokens components mapping" },
-          { id: "review-paths", label: "Review paths", keywords: "universal desktop tokens" },
-          { id: "runtime-boundary", label: "Runtime boundary", keywords: "avalonia rust react" },
+          { path: "/projects/avalonia-desktop/design-to-runtime", label: "Design-to-runtime", keywords: "tokens components mapping" },
+          { path: "/projects/avalonia-desktop/review-paths", label: "Review paths", keywords: "universal desktop tokens" },
+          { path: "/projects/avalonia-desktop/runtime-boundary", label: "Runtime boundary", keywords: "avalonia rust react" },
         ],
       },
     ],
@@ -128,7 +138,7 @@ export const primaryModules = [
 ];
 
 export function getModuleForPath(path) {
-  return primaryModules.find((module) => path.startsWith(`/${module.id}/`));
+  return primaryModules.find((module) => path === `/${module.id}` || path.startsWith(`/${module.id}/`));
 }
 
 export const allNavigationItems = [

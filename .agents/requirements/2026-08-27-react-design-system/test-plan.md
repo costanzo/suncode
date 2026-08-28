@@ -45,6 +45,9 @@ No dedicated unit framework is required for this isolated review application. Ro
 - Post-resource-migration browser check — passed all nine routes at 1440×1000 with successful images and favicon, zero failed requests or console errors, and zero horizontal overflow; the 390×844 Core Assets route also passed drawer, image, and overflow checks.
 - Universal route split check — passed: the index and all nine category paths render one module each with the correct heading and sidebar route state; direct mobile navigation closes the drawer and reaches the selected page; toggle, modal focus/Escape, and tab keyboard behavior remain intact; no console errors or horizontal overflow were observed.
 - Universal index card check — passed with nine cards in three desktop columns, two tablet columns, and one mobile column; the index has no Ownership block, detail pages retain it, card navigation works, and all checked viewports remain free of console errors and horizontal overflow.
+- Primary index consistency check — passed for Core, Components, Platforms, and Projects: the top switcher lands on each index, index cards omit Ownership/path/action noise, the grids adapt from three to two to one column, and checked routes have no console errors or horizontal overflow.
+- Cross-module child-route check — passed for 21 Core, Platform, and Project index/detail routes: parent pages render only card indexes, every sidebar child opens its own path with correct active state, and checked pages have one focused content section with no console errors or horizontal overflow.
+- Web platform check — passed: Platforms index exposes Web, `/platforms/web`, `/platforms/web/boundary`, and `/platforms/web/ownership` render with Deferred status, sidebar active state, zero console errors, and zero horizontal overflow.
 - `node .agents/skills/impeccable/scripts/detect.mjs --json ...` — passed with no findings.
 - `git diff --check` — passed.
 

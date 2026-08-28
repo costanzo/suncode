@@ -3,12 +3,10 @@ import { ModuleLink, PageHeader, Section } from "../../shared/PagePrimitives.jsx
 export function PlatformSpecificPage() {
   return (
     <>
-      <PageHeader title="Platform-specific components" description="An explicit index for components that cannot remain universal. A platform-only label is an ownership constraint, not a shortcut around reusable semantics." path="components/platform-specific/" status="Boundary" tone="reserved" />
-      <Section id="platform-indexes" title="Platform indexes" description="Only Desktop has an implemented Phase 1 product surface.">
-        <div className="layer-list">
-          <ModuleLink to="/platforms/desktop" icon="platform" title="Desktop-only" description="Sidebar, review inspector, desktop chrome, dropdown menu, and dense data table." path="components/platform-specific/desktop-only/" status="Review" tone="implemented" />
-          <ModuleLink to="/platforms/mobile" icon="mobile" title="Mobile-only" description="Bottom navigation, swipe cell, and floating action patterns remain unapproved." path="components/platform-specific/mobile-only/" status="Deferred" tone="deferred" />
-          <ModuleLink to="/platforms/tui" icon="terminal" title="TUI-only" description="Command palette, status bar, and tree view remain unapproved." path="components/platform-specific/tui-only/" status="Deferred" tone="deferred" />
+      <PageHeader title="Platform-specific components" description="Components that cannot remain universal are grouped behind explicit platform ownership boundaries." status="Module index" tone="reserved" showOwnership={false} />
+      <Section id="module-index" title="Platform-specific modules">
+        <div className="module-card-grid">
+          <ModuleLink to="/components/platform-specific/platform-indexes" icon="platform" title="Platform indexes" description="Desktop, mobile, and terminal ownership boundaries." />
         </div>
       </Section>
     </>

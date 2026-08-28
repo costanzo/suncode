@@ -22,6 +22,9 @@
 - Moved semantic tokens into `src/styles/tokens/`, source-imported assets into `src/assets/`, and the favicon into `public/assets/`; removed the obsolete root `core/` directory and migrated consumers to build-checked Vite imports.
 - Replaced the combined Universal component inventory with an index plus nine independently routed category pages, and changed the expanded sidebar children from scroll actions to direct route links.
 - Refined the Universal index into a responsive card grid and removed its redundant Ownership metadata while retaining ownership paths on detail pages.
+- Added matching card-based index routes for Core, Platforms, and Projects, and changed the primary switcher to land on those indexes before their detail pages.
+- Split every Core, Platforms, and Projects sidebar child into a directly addressable page, replacing the remaining in-page scroll navigation with the same parent-index/detail-route model used by Components.
+- Added Web as a deferred platform with card-index navigation and independently routable boundary and ownership pages.
 - Verified primary-module switching and contextual sidebar updates at desktop, tablet, and mobile widths without overflow or console errors.
 
 ## In progress

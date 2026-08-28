@@ -25,11 +25,15 @@ The layered `design-system/` catalog is structurally clear, but separate static 
 - Use hash routes so a static build works without rewrite configuration.
 - Group navigation by the four design-system ownership layers.
 - Present Core, Components, Platforms, and Projects as the four primary modules in the upper-right navigation.
+- Open each primary module on a concise card-based index before navigating into its detailed child pages.
 - Keep the primary module switcher compact by showing module names without descriptions.
+- Keep module-index cards concise: show the module identity and description without redundant ownership paths or generic action labels.
 - Show the active module's submodules and expandable page-section links in the left sidebar instead of a page-level horizontal section menu.
 - Give every Universal component category its own stable route and page module; keep `/components/universal` as an index rather than a combined scrolling inventory.
+- Give every expanded Core, Platforms, and Projects child entry its own stable route and page; parent routes are indexes rather than combined scrolling documents.
 - Keep the left sidebar contextual: it shows only the active primary module's submodules, leaving room for future module growth.
 - Expose foundations, assets, universal components, desktop adaptations, deferred platforms, and the Avalonia project mapping.
+- Include Web as a deferred platform with its own index, adaptation-boundary page, and ownership-contract page.
 - Keep semantic status labels honest: implemented, review reference, reserved, or deferred.
 - Use existing semantic CSS tokens and approved assets rather than adding an unrelated visual language.
 - Persist the selected theme locally without forcing dark appearance on the index.
