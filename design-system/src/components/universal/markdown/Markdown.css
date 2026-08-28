@@ -1,8 +1,31 @@
 .markdown-sample {
+  --syntax-comment: #7f8994;
+  --syntax-keyword: #9eb9d0;
+  --syntax-function: #d6c18d;
+  --syntax-string: #a9c7a5;
+  --syntax-number: #c7a5c7;
+  --syntax-property: #9fc4c8;
+  --syntax-variable: #c7b4d8;
+  --syntax-type: #c4d3a3;
+  --syntax-annotation: #d9ac8c;
+  --syntax-punctuation: #a7afb9;
   padding: 24px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+}
+
+[data-theme="light"] .markdown-sample {
+  --syntax-comment: #65717d;
+  --syntax-keyword: #315f86;
+  --syntax-function: #7b5b16;
+  --syntax-string: #35683c;
+  --syntax-number: #764b7d;
+  --syntax-property: #21636a;
+  --syntax-variable: #664b83;
+  --syntax-type: #4c681e;
+  --syntax-annotation: #8a4b25;
+  --syntax-punctuation: #44515e;
 }
 
 .markdown {
@@ -53,8 +76,24 @@
 .markdown blockquote p:last-child, .markdown blockquote ul:last-child, .markdown blockquote ol:last-child, .markdown blockquote pre:last-child { margin-bottom: 0; }
 
 .markdown code { padding: 2px 5px; color: var(--accent); background: var(--surface-inset); border: 1px solid var(--border); border-radius: 4px; font: 12px/1.45 var(--font-mono); overflow-wrap: normal; }
-.markdown pre { max-width: 100%; margin: 16px 0; padding: 14px 16px; overflow: auto; color: var(--text-secondary); background: var(--surface-inset); border: 1px solid var(--border); border-radius: var(--radius-sm); tab-size: 2; }
+.markdown-code-block { position: relative; max-width: 100%; margin: 16px 0; }
+.markdown pre { max-width: 100%; margin: 0; padding: 14px 48px 14px 16px; overflow: auto; color: var(--text-secondary); background: var(--surface-inset); border: 1px solid var(--border); border-radius: var(--radius-sm); tab-size: 2; }
 .markdown pre code { display: block; min-width: max-content; padding: 0; color: inherit; background: transparent; border: 0; border-radius: 0; font-size: 12px; line-height: 1.65; white-space: pre; }
+.markdown-copy-button { position: absolute; z-index: 1; top: 8px; right: 8px; display: grid; width: 30px; height: 30px; place-items: center; padding: 0; color: var(--text-muted); background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: color .16s ease-out, background .16s ease-out, border-color .16s ease-out; }
+.markdown-copy-button:hover { color: var(--text); background: var(--surface-hover); border-color: var(--border-strong); }
+.markdown-copy-button:focus-visible { border-color: var(--accent); box-shadow: var(--focus-ring); outline: 0; }
+.markdown-copy-button.is-copied { color: var(--success); border-color: var(--success); }
+.markdown .token-comment { color: var(--syntax-comment); font-style: italic; }
+.markdown .token-keyword { color: var(--syntax-keyword); }
+.markdown .token-function, .markdown .token-selector { color: var(--syntax-function); }
+.markdown .token-string, .markdown .token-attribute { color: var(--syntax-string); }
+.markdown .token-number, .markdown .token-boolean { color: var(--syntax-number); }
+.markdown .token-property, .markdown .token-tag { color: var(--syntax-property); }
+.markdown .token-parameter, .markdown .token-variable, .markdown .token-lifetime, .markdown .token-placeholder { color: var(--syntax-variable); }
+.markdown .token-type { color: var(--syntax-type); }
+.markdown .token-annotation { color: var(--syntax-annotation); }
+.markdown .token-macro { color: var(--syntax-function); }
+.markdown .token-operator, .markdown .token-punctuation { color: var(--syntax-punctuation); }
 .markdown hr { margin: 26px 0; border: 0; border-top: 1px solid var(--border); }
 .markdown img { display: block; max-width: 100%; height: auto; margin: 16px 0; background: var(--surface-inset); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 
@@ -80,6 +119,7 @@
   .markdown { font-size: 13px; }
   .markdown h1 { font-size: 23px; }
   .markdown h2 { font-size: 18px; }
-  .markdown pre { margin-right: -6px; margin-left: -6px; padding: 12px; }
+  .markdown-code-block { margin-right: -6px; margin-left: -6px; }
+  .markdown pre { padding: 12px 44px 12px 12px; }
   .markdown-table { min-width: 440px; }
 }

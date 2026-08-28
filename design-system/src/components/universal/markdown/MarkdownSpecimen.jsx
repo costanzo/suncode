@@ -1,15 +1,55 @@
+import { useEffect, useRef, useState } from "react";
 import specimenImage from "../../../assets/logos/suncode-logo.svg";
+import { Icon } from "../../../shared/Icon.jsx";
 import "./Markdown.css";
 
-const javascriptExample = `function createSession(projectId) {
-  return client.sessions.create({
-    projectId,
-    model: "gpt-5.6-sol",
-  });
-}`;
+function CodeBlock({ language, children }) {
+  const codeRef = useRef(null);
+  const resetTimerRef = useRef(null);
+  const [copied, setCopied] = useState(false);
 
-const shellExample = `suncode project open ./sample-project
-suncode session create --model gpt-5.6-sol`;
+  useEffect(() => () => window.clearTimeout(resetTimerRef.current), []);
+
+  async function copyCode() {
+    const code = codeRef.current;
+    if (!code) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(code.textContent ?? "");
+      } else {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(code);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        document.execCommand("copy");
+        selection?.removeAllRanges();
+      }
+
+      setCopied(true);
+      window.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div className="markdown-code-block">
+      <button
+        type="button"
+        className={`markdown-copy-button${copied ? " is-copied" : ""}`}
+        aria-label={copied ? `${language} code copied` : `Copy ${language} code`}
+        title={copied ? "Copied" : "Copy code"}
+        onClick={copyCode}
+      >
+        <Icon name={copied ? "check" : "copy"} size={14} />
+      </button>
+      <pre><code ref={codeRef} className={`language-${language}`}>{children}</code></pre>
+    </div>
+  );
+}
 
 export function MarkdownSpecimen() {
   return (
@@ -114,8 +154,104 @@ export function MarkdownSpecimen() {
 
         <h2>Code</h2>
         <p>Inline code such as <code>session.create</code> sits naturally within prose.</p>
-        <pre><code>{javascriptExample}</code></pre>
-        <pre><code>{shellExample}</code></pre>
+
+        <h3>JavaScript</h3>
+        <CodeBlock language="javascript">
+          <span className="token-comment">// Create a session for the active project</span>{"\n"}
+          <span className="token-keyword">async function</span>{" "}<span className="token-function">createSession</span>(<span className="token-parameter">projectId</span>) {"{"}{"\n"}
+          {"  "}<span className="token-keyword">const</span> session = <span className="token-keyword">await</span> client.sessions.<span className="token-function">create</span>({"{"}{"\n"}
+          {"    "}projectId,{"\n"}
+          {"    "}model: <span className="token-string">"gpt-5.6-sol"</span>,{"\n"}
+          {"    "}stream: <span className="token-boolean">true</span>,{"\n"}
+          {"  "}{"}"});{"\n"}
+          {"  "}<span className="token-keyword">return</span> session.id;{"\n"}
+          {"}"}
+        </CodeBlock>
+
+        <h3>Java</h3>
+        <CodeBlock language="java">
+          <span className="token-annotation">@Service</span>{"\n"}
+          <span className="token-keyword">public final class</span>{" "}<span className="token-type">SessionService</span>{" "}{"{"}{"\n"}
+          {"  "}<span className="token-keyword">public</span>{" "}<span className="token-type">Session</span>{" "}<span className="token-function">create</span>(<span className="token-type">String</span> projectId) {"{"}{"\n"}
+          {"    "}<span className="token-keyword">var</span> model = <span className="token-string">"gpt-5.6-sol"</span>;{"\n"}
+          {"    "}<span className="token-keyword">return new</span>{" "}<span className="token-type">Session</span>(projectId, model, <span className="token-boolean">true</span>);{"\n"}
+          {"  "}{"}"}{"\n"}
+          {"}"}
+        </CodeBlock>
+
+        <h3>Go</h3>
+        <CodeBlock language="go">
+          <span className="token-keyword">package</span> sessions{"\n\n"}
+          <span className="token-keyword">import</span>{" "}<span className="token-string">"context"</span>{"\n\n"}
+          <span className="token-keyword">func</span>{" "}<span className="token-function">Create</span>(ctx <span className="token-type">context.Context</span>, projectID <span className="token-type">string</span>) (<span className="token-type">Session</span>, <span className="token-type">error</span>) {"{"}{"\n"}
+          {"  "}session, err <span className="token-operator">:=</span> store.<span className="token-function">Create</span>(ctx, projectID){"\n"}
+          {"  "}<span className="token-keyword">if</span> err <span className="token-operator">!=</span>{" "}<span className="token-boolean">nil</span>{" "}{"{"}{"\n"}
+          {"    "}<span className="token-keyword">return</span>{" "}<span className="token-type">Session</span>{"{}"}, err{"\n"}
+          {"  "}{"}"}{"\n"}
+          {"  "}<span className="token-keyword">return</span> session, <span className="token-boolean">nil</span>{"\n"}
+          {"}"}
+        </CodeBlock>
+
+        <h3>Rust</h3>
+        <CodeBlock language="rust">
+          <span className="token-annotation">#[derive(Debug, Clone)]</span>{"\n"}
+          <span className="token-keyword">struct</span>{" "}<span className="token-type">Session</span>&lt;<span className="token-lifetime">'a</span>&gt; {"{"}{"\n"}
+          {"  "}project_id: <span className="token-operator">&amp;</span><span className="token-lifetime">'a</span>{" "}<span className="token-type">str</span>,{"\n"}
+          {"  "}ready: <span className="token-type">bool</span>,{"\n"}
+          {"}"}{"\n\n"}
+          <span className="token-keyword">fn</span>{" "}<span className="token-function">create_session</span>(project_id: <span className="token-operator">&amp;</span><span className="token-type">str</span>) -&gt; <span className="token-type">Result</span>&lt;<span className="token-type">Session</span>&lt;<span className="token-placeholder">'_</span>&gt;, <span className="token-type">Error</span>&gt; {"{"}{"\n"}
+          {"  "}<span className="token-macro">tracing::info!</span>(<span className="token-string">"creating session"</span>);{"\n"}
+          {"  "}<span className="token-type">Ok</span>(<span className="token-type">Session</span>{" "}{"{"} project_id, ready: <span className="token-boolean">true</span>{" "}{"}"}){"\n"}
+          {"}"}
+        </CodeBlock>
+
+        <h3>Python</h3>
+        <CodeBlock language="python">
+          <span className="token-comment"># Keep only sessions that are ready</span>{"\n"}
+          <span className="token-keyword">def</span>{" "}<span className="token-function">ready_sessions</span>(sessions):{"\n"}
+          {"    "}<span className="token-keyword">return</span> [{"\n"}
+          {"        "}session.id{"\n"}
+          {"        "}<span className="token-keyword">for</span> session <span className="token-keyword">in</span> sessions{"\n"}
+          {"        "}<span className="token-keyword">if</span> session.status == <span className="token-string">"ready"</span>{"\n"}
+          {"    "}] {"\n"}
+          {"\n"}
+          <span className="token-function">print</span>(<span className="token-function">ready_sessions</span>(sessions))
+        </CodeBlock>
+
+        <h3>Bash</h3>
+        <CodeBlock language="bash">
+          <span className="token-comment"># Open a project and create a session</span>{"\n"}
+          <span className="token-function">suncode</span> project open <span className="token-string">"./sample-project"</span>{"\n"}
+          <span className="token-keyword">if</span> <span className="token-function">suncode</span> session create --model <span className="token-string">"gpt-5.6-sol"</span>; <span className="token-keyword">then</span>{"\n"}
+          {"  "}<span className="token-function">echo</span>{" "}<span className="token-string">"Session ready"</span>{"\n"}
+          <span className="token-keyword">fi</span>
+        </CodeBlock>
+
+        <h3>HTML</h3>
+        <CodeBlock language="html">
+          <span className="token-comment">&lt;!-- Session status --&gt;</span>{"\n"}
+          <span className="token-punctuation">&lt;</span><span className="token-tag">section</span>{" "}<span className="token-attribute">aria-label</span><span className="token-operator">=</span><span className="token-string">"Session status"</span><span className="token-punctuation">&gt;</span>{"\n"}
+          {"  "}<span className="token-punctuation">&lt;</span><span className="token-tag">strong</span><span className="token-punctuation">&gt;</span>Ready<span className="token-punctuation">&lt;/</span><span className="token-tag">strong</span><span className="token-punctuation">&gt;</span>{"\n"}
+          <span className="token-punctuation">&lt;/</span><span className="token-tag">section</span><span className="token-punctuation">&gt;</span>
+        </CodeBlock>
+
+        <h3>CSS</h3>
+        <CodeBlock language="css">
+          <span className="token-selector">.session-status</span>{" "}{"{"}{"\n"}
+          {"  "}<span className="token-property">display</span><span className="token-punctuation">:</span> grid<span className="token-punctuation">;</span>{"\n"}
+          {"  "}<span className="token-property">gap</span><span className="token-punctuation">:</span>{" "}<span className="token-number">8px</span><span className="token-punctuation">;</span>{"\n"}
+          {"  "}<span className="token-property">color</span><span className="token-punctuation">:</span>{" "}<span className="token-function">var</span>(<span className="token-variable">--text</span>)<span className="token-punctuation">;</span>{"\n"}
+          {"}"}
+        </CodeBlock>
+
+        <h3>JSON</h3>
+        <CodeBlock language="json">
+          {"{"}{"\n"}
+          {"  "}<span className="token-property">"project"</span>: <span className="token-string">"suncode"</span>,{"\n"}
+          {"  "}<span className="token-property">"sessionCount"</span>: <span className="token-number">3</span>,{"\n"}
+          {"  "}<span className="token-property">"ready"</span>: <span className="token-boolean">true</span>{"\n"}
+          {"}"}
+        </CodeBlock>
 
         <h2>Image</h2>
         <p>Images respect the reading measure and never overflow their container.</p>
