@@ -13,12 +13,9 @@ export function OverviewPage() {
       <PageHeader
         title="One entry. Every design decision."
         description="Browse SunCode foundations, reusable components, platform adaptations, and production mappings without leaving the catalog. The structure stays layered; the experience is now continuous."
-        path="design-system/"
         status="Review tool"
         tone="review"
-      >
-        <span className="runtime-note">React/Vite is isolated from the Phase 1 runtime.</span>
-      </PageHeader>
+      />
 
       <section className="start-panel">
         <div className="start-copy">

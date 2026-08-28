@@ -15,6 +15,18 @@ const paths = {
   "chevron-right": <path d="m9 5 7 7-7 7" />,
   arrow: <><path d="M5 12h14M14 7l5 5-5 5"/></>,
   check: <path d="m5 12 4 4L19 6"/>,
+  workspace: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M8 9h13M13 9v11"/></>,
+  files: <><path d="M4 5h6l2 2h8v12H4z"/><path d="M8 11h8M8 15h6"/></>,
+  git: <><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M8 7c2 0 2 2 4 2h4"/></>,
+  activity: <><path d="M3 12h4l2-6 4 12 2-6h6"/></>,
+  settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></>,
+  "panel-left": <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></>,
+  "panel-right": <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></>,
+  plus: <path d="M12 5v14M5 12h14"/>,
+  copy: <><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>,
+  pin: <><path d="m9 3 6 6M10 8l-4 4 6 6 4-4M9 15l-6 6"/></>,
+  more: <><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></>,
+  refresh: <><path d="M20 11a8 8 0 0 0-14.7-4L3 10"/><path d="M3 4v6h6M4 13a8 8 0 0 0 14.7 4l2.3-3"/><path d="M21 20v-6h-6"/></>,
 };
 
 export function Icon({ name, size = 18, className = "", ...props }) {

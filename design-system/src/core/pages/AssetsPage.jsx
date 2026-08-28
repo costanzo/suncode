@@ -9,7 +9,7 @@ const modules = [
 export function AssetsPage() {
   return (
     <>
-      <PageHeader title="Core assets" description="Approved brand marks and interface symbols live in one stable catalog before runtime packaging copies them." status="Module index" tone="review" showOwnership={false} />
+      <PageHeader title="Core assets" description="Approved brand marks and interface symbols live in one stable catalog before runtime packaging copies them." status="Module index" tone="review" />
       <Section id="module-index" title="Asset modules">
         <div className="module-card-grid">
           {modules.map((module) => <ModuleLink key={module.path} to={module.path} title={module.title} description={module.description} />)}

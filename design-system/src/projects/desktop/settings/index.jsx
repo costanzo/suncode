@@ -4,12 +4,12 @@ import { Icon } from "../../../shared/Icon.jsx";
 import { PageHeader, Section } from "../../../shared/PagePrimitives.jsx";
 
 const providerCatalog = {
-  deepseek: { label: "DeepSeek", description: "Configure the credential used by the local DeepSeek provider.", placeholder: "Paste DeepSeek API key", models: ["deepseek-v4-flash", "deepseek-v4-pro"] },
-  zhipu: { label: "Zhipu GLM", description: "Configure the credential used by the local Zhipu GLM provider.", placeholder: "Paste Zhipu API key", models: ["glm-5.2", "glm-5.3"] },
-  openai: { label: "OpenAI", description: "Configure the credential used by the local OpenAI provider.", placeholder: "Paste OpenAI API key", models: ["gpt-5.5", "gpt-5.6-sol"] },
-  kimi: { label: "Kimi", description: "Configure the credential used by the local Kimi provider.", placeholder: "Paste Kimi API key", models: ["kimi-k2.7-code", "kimi-k3"] },
-  claude: { label: "Claude", description: "Configure the credential used by the local Claude provider.", placeholder: "Paste Anthropic API key", models: ["claude-sonnet-5", "claude-opus-5"] },
-  gemini: { label: "Gemini", description: "Configure the credential used by the local Gemini provider.", placeholder: "Paste Gemini API key", models: ["gemini-3.5", "gemini-3.6-flash"] },
+  deepseek: { label: "DeepSeek", placeholder: "Paste DeepSeek API key", keyPreview: "sk-d••••••••7K2m", models: ["deepseek-v4-flash", "deepseek-v4-pro"] },
+  zhipu: { label: "Zhipu GLM", placeholder: "Paste Zhipu API key", keyPreview: "zhip••••••••M8qR", models: ["glm-5.2", "glm-5.3"] },
+  openai: { label: "OpenAI", placeholder: "Paste OpenAI API key", keyPreview: "sk-p••••••••9Xc4", models: ["gpt-5.5", "gpt-5.6-sol"] },
+  kimi: { label: "Kimi", placeholder: "Paste Kimi API key", keyPreview: "sk-k••••••••3FvP", models: ["kimi-k2.7-code", "kimi-k3"] },
+  claude: { label: "Claude", placeholder: "Paste Anthropic API key", keyPreview: "sk-a••••••••6NwQ", models: ["claude-sonnet-5", "claude-opus-5"] },
+  gemini: { label: "Gemini", placeholder: "Paste Gemini API key", keyPreview: "AIza••••••••2Lm8", models: ["gemini-3.5", "gemini-3.6-flash"] },
 };
 
 const navGroups = [
@@ -51,11 +51,20 @@ function LoggingPanel({ onSave }) {
   return <div className="settings-panel-content"><div className="settings-panel-heading"><h2>Logging</h2><p>Control diagnostic detail and how long local log files are kept.</p></div><div className="settings-panel-section"><span className="settings-section-label">Diagnostic output</span><SettingRow label="Minimum level" hint="Lower levels include more diagnostic detail."><select className="field settings-select" defaultValue="INFO" aria-label="Minimum log level"><option>TRACE</option><option>DEBUG</option><option>INFO</option><option>WARN</option><option>ERROR</option><option>OFF</option></select></SettingRow><SettingRow label="Log directory" hint="Leave empty to use the data directory's logs folder."><input className="field settings-text" placeholder="Default logs folder" aria-label="Log directory" /></SettingRow><SettingRow label="Maximum file size" hint="Rotate each file after it reaches this many bytes. Minimum 1024."><input className="field settings-text mono" defaultValue="10485760" aria-label="Maximum file size" /></SettingRow><SettingRow label="Retained backups" hint="Number of rotated backups to keep, from 0 to 100."><input className="field settings-number" type="number" min="0" max="100" defaultValue="5" aria-label="Retained backups" /></SettingRow></div><div className="settings-actions"><Button variant="primary" size="sm" onClick={onSave}>Save logging settings</Button><span className="settings-save-status" role="status">Local settings</span></div></div>;
 }
 
+function maskApiKey(value) {
+  const key = value.trim();
+  if (key.length <= 8) return `${key.slice(0, 2)}••••${key.slice(-2)}`;
+  return `${key.slice(0, 4)}••••••••${key.slice(-4)}`;
+}
+
 function ProviderPanel({ providerId, onSave }) {
   const provider = providerCatalog[providerId];
-  const [configured, setConfigured] = useState(false);
+  const [maskedKey, setMaskedKey] = useState(provider.keyPreview);
   const [apiKey, setApiKey] = useState("");
-  return <div className="settings-panel-content"><div className="settings-panel-heading"><h2>{provider.label}</h2><p>{provider.description}</p></div><div className="settings-panel-section"><span className="settings-section-label">Credential</span><div className={`settings-credential-status ${configured ? "is-configured" : ""}`}><span className="settings-status-dot" />{configured ? "API key configured in the local agent credential store." : "No API key configured."}</div><input className="field settings-key mono" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={provider.placeholder} aria-label={`${provider.label} API key`} /><div className="settings-actions"><Button variant="primary" size="sm" disabled={!apiKey.trim()} onClick={() => { setConfigured(true); setApiKey(""); onSave(); }}>Save key</Button><Button variant="danger" size="sm" onClick={() => { setConfigured(false); setApiKey(""); onSave(); }} disabled={!configured}>Remove key</Button></div></div><div className="settings-divider" /><div className="settings-panel-section"><span className="settings-section-label">Available models</span><div className="settings-model-list">{provider.models.map((model) => <code key={model}>{model}</code>)}</div><span className="settings-help">The agent owns provider availability and model registration.</span></div></div>;
+  const configured = Boolean(maskedKey);
+  const saveKey = () => { setMaskedKey(maskApiKey(apiKey)); setApiKey(""); onSave(); };
+  const removeKey = () => { setMaskedKey(""); setApiKey(""); onSave(); };
+  return <div className="settings-panel-content"><div className="settings-panel-heading"><h2>{provider.label}</h2></div><div className="settings-panel-section"><span className="settings-section-label">Credential</span><div className={`settings-credential-status ${configured ? "is-configured" : ""}`}><span className="settings-status-dot" /><div>{configured ? <><strong>API key configured</strong><code aria-label={`API key starts with ${maskedKey.slice(0, 4)} and ends with ${maskedKey.slice(-4)}`}>{maskedKey}</code></> : <><strong>No API key configured</strong><small>Add a key to enable this provider.</small></>}</div></div><input className="field settings-key mono" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={configured ? "Paste a new key to replace it" : provider.placeholder} aria-label={`${provider.label} API key`} autoComplete="new-password" /><div className="settings-actions"><Button variant="primary" size="sm" disabled={!apiKey.trim()} onClick={saveKey}>{configured ? "Replace key" : "Save key"}</Button><Button variant="danger" size="sm" onClick={removeKey} disabled={!configured}>Remove key</Button></div></div><div className="settings-divider" /><div className="settings-panel-section"><span className="settings-section-label">Available models</span><div className="settings-model-list">{provider.models.map((model) => <code key={model}>{model}</code>)}</div></div></div>;
 }
 
 export function SettingsPage() {
@@ -68,7 +77,7 @@ export function SettingsPage() {
     if (page === "appearance") return <AppearancePanel onSave={save} />;
     if (page === "network") return <NetworkPanel onSave={save} />;
     if (page === "logging") return <LoggingPanel onSave={save} />;
-    if (page.startsWith("provider:")) return <ProviderPanel providerId={page.split(":")[1]} onSave={save} />;
+    if (page.startsWith("provider:")) return <ProviderPanel key={page} providerId={page.split(":")[1]} onSave={save} />;
     return <DefaultsPanel onSave={save} />;
   };
   return <><PageHeader title="Settings" description="The Avalonia desktop settings window for local defaults, security, diagnostics, and provider credentials." status="Phase 1" tone="implemented" path="projects/desktop/settings/" /><Section id="settings-window" title="Desktop settings" description="A focused settings window with stable pages for each configuration area."><div className="settings-window"><div className="settings-titlebar"><TrafficLights onClose={navigateBack} onAction={setStatus} /><strong>Settings</strong></div><div className="settings-toolbar"><strong>Settings</strong><Button variant="primary" size="sm" onClick={navigateBack}>Done</Button></div><div className="settings-body"><SettingsNav page={page} setPage={(nextPage) => { setPage(nextPage); setStatus(""); }} providersExpanded={providersExpanded} setProvidersExpanded={setProvidersExpanded} /><main className="settings-panel">{renderPanel()}{status && <div className="settings-global-status" role="status">{status}</div>}</main></div></div></Section></>;

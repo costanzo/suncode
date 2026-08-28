@@ -34,6 +34,13 @@ import { ProjectsPage } from "../projects/ProjectsPage.jsx";
 import { ProjectHubPage } from "../projects/desktop/index.jsx";
 import { DesktopProjectPage } from "../projects/desktop/DesktopProjectPage.jsx";
 import { SettingsPage } from "../projects/desktop/settings/index.jsx";
+import { WorkspacePage } from "../projects/desktop/workspace/index.jsx";
+import { WorkspaceSessionsPage } from "../projects/desktop/workspace/sessions/index.jsx";
+import { WorkspaceExplorerPage } from "../projects/desktop/workspace/explorer/index.jsx";
+import { WorkspaceConversationPage } from "../projects/desktop/workspace/conversation/index.jsx";
+import { WorkspaceReviewPage } from "../projects/desktop/workspace/review/index.jsx";
+import { WorkspaceSourceControlPage } from "../projects/desktop/workspace/source-control/index.jsx";
+import { WorkspaceProviderTracePage } from "../projects/desktop/workspace/provider-trace/index.jsx";
 import { Icon } from "../shared/Icon.jsx";
 import { RouteLink } from "../shared/PagePrimitives.jsx";
 import compactLogoUrl from "../assets/logos/suncode-logo-small.svg";
@@ -80,6 +87,13 @@ const routes = {
   "/projects/desktop": DesktopProjectPage,
   "/projects/desktop/project-hub": ProjectHubPage,
   "/projects/desktop/settings": SettingsPage,
+  "/projects/desktop/workspace": WorkspacePage,
+  "/projects/desktop/workspace/sessions": WorkspaceSessionsPage,
+  "/projects/desktop/workspace/explorer": WorkspaceExplorerPage,
+  "/projects/desktop/workspace/conversation": WorkspaceConversationPage,
+  "/projects/desktop/workspace/review": WorkspaceReviewPage,
+  "/projects/desktop/workspace/source-control": WorkspaceSourceControlPage,
+  "/projects/desktop/workspace/provider-trace": WorkspaceProviderTracePage,
 };
 
 function readTheme() {
@@ -112,8 +126,10 @@ function SidebarTreeItem({ item, path, expandedItems, onToggle, onRouteNavigate,
       </div>
       {hasChildren && expanded && (
         <div className="sidebar-nav-children" id={controlId}>
-          {item.children.map((child) => (
-            <RouteLink key={child.path} to={child.path} className={`browser-nav-item browser-nav-section ${path === child.path ? "active" : ""}`} aria-current={path === child.path ? "page" : undefined} onClick={onRouteNavigate}>
+          {item.children.map((child) => child.children?.length ? (
+            <SidebarTreeItem key={child.path} item={child} path={path} expandedItems={expandedItems} onToggle={onToggle} onRouteNavigate={onRouteNavigate} level={level + 1} />
+          ) : (
+            <RouteLink key={child.path} to={child.path} className={`browser-nav-item browser-nav-section level-${level + 1} ${path === child.path ? "active" : ""}`} aria-current={path === child.path ? "page" : undefined} onClick={onRouteNavigate}>
               <span>{child.label}</span>
             </RouteLink>
           ))}

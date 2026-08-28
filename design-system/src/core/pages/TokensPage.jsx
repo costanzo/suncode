@@ -9,7 +9,7 @@ const modules = [
 export function TokensPage() {
   return (
     <>
-      <PageHeader title="Core tokens" description="The semantic foundation shared by every review route and mapped into the Avalonia runtime." status="Module index" tone="review" showOwnership={false} />
+      <PageHeader title="Core tokens" description="The semantic foundation shared by every review route and mapped into the Avalonia runtime." status="Module index" tone="review" />
       <Section id="module-index" title="Token modules">
         <div className="module-card-grid">
           {modules.map((module) => <ModuleLink key={module.path} to={module.path} title={module.title} description={module.description} />)}

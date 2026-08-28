@@ -17,7 +17,8 @@ Use a conventional Vite/React application with `index.html` and `src/main.jsx` a
 - `src/components/universal/UniversalComponentsPage.jsx` — universal module index.
 - `src/components/platform-specific/` — platform-only component boundary index.
 - `src/platforms/*/index.jsx` — platform adaptation pages.
-- `src/projects/desktop/` — Desktop project index and ProjectHub review page aligned with the Avalonia desktop entry surface.
+- `src/projects/desktop/` — Desktop project index plus ProjectHub, Settings, and Workspace review surfaces aligned with the Avalonia desktop client.
+- `src/projects/desktop/workspace/` — one complete project-window composition and independently routable Sessions, Explorer, Conversation, Review, Source control, and Provider trace modules.
 
 ## Boundaries and dependencies
 
@@ -27,7 +28,7 @@ Universal component markup and interaction state stay co-located with their docu
 
 ## Data and control flow
 
-The root shell reads `window.location.hash`, resolves a route from a static catalog, derives the active primary module, and renders the owning layer's page component. Primary navigation writes the default child route for a module; first-level sidebar links write routes within that active module; Universal second-level links write distinct category routes, while compact catalogs may still use stable section IDs. Theme state updates the root `data-theme` attribute and is stored in local storage when available.
+The root shell reads `window.location.hash`, resolves a route from a static catalog, derives the active primary module, and renders the owning layer's page component. Primary navigation writes the default child route for a module; the sidebar recursively renders nested route groups so large surfaces such as Desktop Workspace can retain a concise parent overview and independently addressable child modules. Theme state updates the root `data-theme` attribute and is stored in local storage when available.
 
 ## Security and failure handling
 

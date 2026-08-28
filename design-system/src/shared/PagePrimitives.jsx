@@ -8,9 +8,9 @@ export function Status({ tone = "neutral", children }) {
   return <span className={`module-status status-${tone}`}>{children}</span>;
 }
 
-export function PageHeader({ title, description, path, status, tone = "neutral", showOwnership = true, children }) {
+export function PageHeader({ title, description, status, tone = "neutral" }) {
   return (
-    <header className={`page-header ${showOwnership ? "" : "page-header-without-meta"}`}>
+    <header className="page-header">
       <div className="page-header-copy">
         <div className="page-title-line">
           <h1>{title}</h1>
@@ -18,13 +18,6 @@ export function PageHeader({ title, description, path, status, tone = "neutral",
         </div>
         <p>{description}</p>
       </div>
-      {showOwnership && (
-        <div className="page-header-meta">
-          <span>Ownership</span>
-          <code>{path}</code>
-          {children}
-        </div>
-      )}
     </header>
   );
 }

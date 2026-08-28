@@ -130,6 +130,20 @@ export const primaryModules = [
         children: [
           { path: "/projects/desktop/project-hub", label: "ProjectHub", keywords: "welcome recent projects open project settings" },
           { path: "/projects/desktop/settings", label: "Settings", keywords: "defaults appearance network logging model providers credentials" },
+          {
+            path: "/projects/desktop/workspace",
+            label: "Workspace",
+            icon: "workspace",
+            keywords: "project workspace sessions explorer conversation review source control provider trace",
+            children: [
+              { path: "/projects/desktop/workspace/sessions", label: "Sessions", keywords: "session list pin rename archive" },
+              { path: "/projects/desktop/workspace/explorer", label: "Explorer", keywords: "project files dependencies tree" },
+              { path: "/projects/desktop/workspace/conversation", label: "Conversation", keywords: "messages tools composer model reasoning" },
+              { path: "/projects/desktop/workspace/review", label: "Review", keywords: "agent process approvals questions checkpoints undo" },
+              { path: "/projects/desktop/workspace/source-control", label: "Source control", keywords: "git changed files diff additions deletions" },
+              { path: "/projects/desktop/workspace/provider-trace", label: "Provider trace", keywords: "model calls tokens cache duration request response" },
+            ],
+          },
         ],
       },
     ],
@@ -140,12 +154,14 @@ export function getModuleForPath(path) {
   return primaryModules.find((module) => path === `/${module.id}` || path.startsWith(`/${module.id}/`));
 }
 
+function flattenItems(items, module, parentLabel = module.label) {
+  return items.flatMap((item) => [
+    { ...item, group: parentLabel, moduleId: module.id },
+    ...flattenItems(item.children ?? [], module, `${parentLabel} · ${item.label}`),
+  ]);
+}
+
 export const allNavigationItems = [
   { ...overviewItem, group: "Overview", moduleId: "overview" },
-  ...primaryModules.flatMap((module) =>
-    module.items.flatMap((item) => [
-      { ...item, group: module.label, moduleId: module.id },
-      ...(item.children ?? []).filter((child) => child.path).map((child) => ({ ...child, group: `${module.label} · ${item.label}`, moduleId: module.id })),
-    ]),
-  ),
+  ...primaryModules.flatMap((module) => flattenItems(module.items, module)),
 ];

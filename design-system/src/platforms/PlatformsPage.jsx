@@ -10,7 +10,7 @@ const modules = [
 export function PlatformsPage() {
   return (
     <>
-      <PageHeader title="Platforms" description="Adaptation layers translate shared semantics into the constraints of each client surface." status="Module index" tone="implemented" showOwnership={false} />
+      <PageHeader title="Platforms" description="Adaptation layers translate shared semantics into the constraints of each client surface." status="Module index" tone="implemented" />
       <Section id="module-index" title="Platform modules">
         <div className="module-card-grid">
           {modules.map((module) => <ModuleLink key={module.path} to={module.path} icon={module.icon} title={module.title} description={module.description} />)}
