@@ -1,14 +1,29 @@
+import { useState } from "react";
 import { Button } from "../../components/universal/button/index.js";
 import { ProjectCard } from "../../components/universal/card/index.js";
 import { EmptyState } from "../../components/universal/feedback/index.js";
 import { Icon } from "../../shared/Icon.jsx";
 import { PageHeader, Section } from "../../shared/PagePrimitives.jsx";
 import { TrafficLights } from "../../shared/TrafficLights.jsx";
+import { WorkspaceGuideState } from "./workspace/WorkspaceGuide.jsx";
 
 const recentProjects = [
   { name: "suncode", path: "~/Projects/suncode" },
   { name: "Avalonia desktop", path: "~/Projects/suncode/apps/desktop-avalonia" },
 ];
+
+const projectHubGuides = {
+  recent: { tabs: {
+    actions: ["Select a recent project card to reopen its local project window.", "Use Open project to choose a different local folder.", "Open Settings when defaults, providers, or logging need attention."],
+    style: ["The title bar is 36px high with 14px side padding and Avalonia-style traffic lights.", "The toolbar is 62px high with 22px horizontal padding and an 18px brand title.", "Project cards are 70px minimum height with 14px horizontal padding and an 8px list gap."],
+    logic: ["Recent projects are local paths that can be reopened without provisioning a remote project.", "Selecting a card transitions to the active desktop project window.", "The list is a convenience index; the opened folder remains the project boundary."],
+  } },
+  empty: { tabs: {
+    actions: ["Use Open project to select the first local folder.", "After opening a folder, return to ProjectHub to see it in Recents.", "Use Settings before opening a project when provider setup is required."],
+    style: ["The empty content area uses a 130px minimum height and 18px inset padding.", "Empty state copy is centered with a compact icon, 12px title, and 10px supporting text.", "The surrounding frame keeps the same 36px title bar and 62px toolbar geometry."],
+    logic: ["No local project has been opened in the current recent-project projection.", "Open project creates the first project entry and navigates to its workspace.", "An empty state does not imply an error or missing provider configuration."],
+  } },
+};
 
 function ProjectHubWindow({ projects = [] }) {
   const hasProjects = projects.length > 0;
@@ -30,15 +45,15 @@ function ProjectHubWindow({ projects = [] }) {
 }
 
 export function ProjectHubPage() {
+  const [openGuide, setOpenGuide] = useState(null);
+  const states = [
+    { id: "recent", title: "With recent projects", description: "The hub lists local projects that can be reopened.", side: "right", projects: recentProjects },
+    { id: "empty", title: "Without recent projects", description: "The first-run state appears automatically when no project has been opened.", side: "left", projects: [] },
+  ];
   return (
     <>
       <PageHeader title="ProjectHub" description="The project landing surface from the Avalonia desktop client: reconnect to a recent project or open a local folder." path="projects/desktop/project-hub/" />
-      <Section id="project-hub-recent" title="With recent projects" description="The hub lists local projects that can be reopened.">
-        <ProjectHubWindow projects={recentProjects} />
-      </Section>
-      <Section id="project-hub-empty" title="Without recent projects" description="The first-run state appears automatically when no project has been opened.">
-        <ProjectHubWindow />
-      </Section>
+      {states.map((state) => <Section key={state.id} id={`project-hub-${state.id}`} title={state.id === "recent" ? "Recent project flow" : "First project flow"}><WorkspaceGuideState className="project-hub-guide-state" title={state.title} description={state.description} guide={projectHubGuides[state.id]} side={state.side} open={openGuide === state.id} onToggle={() => setOpenGuide(openGuide === state.id ? null : state.id)} onClose={() => setOpenGuide(null)}><ProjectHubWindow projects={state.projects} /></WorkspaceGuideState></Section>)}
     </>
   );
 }
