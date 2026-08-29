@@ -74,8 +74,28 @@ const conversationToolCalls = [
   { icon: "files", title: "Updated workspace routes and modules", state: "Succeeded", request: "workspace route modules", result: "8 modules updated", error: "" },
 ];
 
+const completedTurnChanges = { added: 3, deleted: 1, edited: 5 };
+const completedTurnChangeSet = [
+  { status: "A", kind: "added", path: "design-system/src/projects/desktop/workspace/source-control/index.jsx", additions: 38, deletions: 0, staged: false, unstaged: true },
+  { status: "A", kind: "added", path: "design-system/src/projects/desktop/workspace/provider-trace/index.jsx", additions: 32, deletions: 0, staged: false, unstaged: true },
+  { status: "A", kind: "added", path: "design-system/src/components/universal/radio/index.js", additions: 12, deletions: 0, staged: false, unstaged: true },
+  { status: "D", kind: "deleted", path: "design-system/src/projects/desktop/workspace/legacy-drawer.jsx", additions: 0, deletions: 74, staged: false, unstaged: true },
+  { status: "M", kind: "modified", path: "design-system/src/projects/desktop/workspace/WorkspacePrimitives.jsx", additions: 45, deletions: 8, staged: false, unstaged: true },
+  { status: "M", kind: "modified", path: "design-system/src/styles/review.css", additions: 62, deletions: 24, staged: false, unstaged: true },
+  { status: "M", kind: "modified", path: "design-system/src/app/navigation.js", additions: 18, deletions: 6, staged: false, unstaged: true },
+  { status: "M", kind: "modified", path: "design-system/src/shared/Icon.jsx", additions: 9, deletions: 2, staged: false, unstaged: true },
+  { status: "M", kind: "modified", path: "design-system/src/projects/desktop/workspace/conversation/index.jsx", additions: 7, deletions: 3, staged: false, unstaged: true },
+];
+
 function IconButton({ icon, label, active = false, onClick, disabled = false }) {
   return <button type="button" className={`workspace-icon-button ${active ? "is-active" : ""}`} aria-label={label} aria-pressed={active} onClick={onClick} disabled={disabled}><Icon name={icon} size={15} /></button>;
+}
+
+function TurnChangeSummary({ added, deleted, edited, onViewChanges }) {
+  const stats = [["added", added, "is-added"], ["deleted", deleted, "is-deleted"], ["edited", edited, "is-edited"]];
+  const content = <><span className="workspace-turn-summary-heading"><Icon name="check" size={12} /><strong>Changes</strong></span><span className="workspace-turn-summary-stats">{stats.map(([label, count, tone]) => <span key={label} className={`workspace-turn-summary-stat ${tone}`}><b>{count}</b><small>{label}</small></span>)}</span>{onViewChanges && <span className="workspace-turn-summary-action">View changes</span>}</>;
+  if (!onViewChanges) return <div className="workspace-turn-summary" role="status" aria-label={`Turn complete: ${added} files added, ${deleted} files deleted, ${edited} files edited`}>{content}</div>;
+  return <button type="button" className="workspace-turn-summary is-actionable" aria-label={`View changes from this turn: ${added} files added, ${deleted} files deleted, ${edited} files edited`} title="View turn changes" onClick={onViewChanges}>{content}</button>;
 }
 
 export function SessionPanel({ compact = false, standalone = false, initialSessions = sessions }) {
@@ -176,7 +196,7 @@ export const sampleConversationAttachments = [
   createSampleAttachment("settings-reference.svg", "Settings", "8a919b"),
 ];
 
-export function ConversationPanel({ compact = false, standalone = false, state = "content-waiting", initialAttachments = [] }) {
+export function ConversationPanel({ compact = false, standalone = false, state = "content-waiting", initialAttachments = [], onViewChanges }) {
   const [message, setMessage] = useState("");
   const [processOpen, setProcessOpen] = useState(true);
   const [toolPreview, setToolPreview] = useState(null);
@@ -224,7 +244,7 @@ export function ConversationPanel({ compact = false, standalone = false, state =
     </div>
     <div className="workspace-message workspace-message-assistant">
       <p>I split Workspace into a complete composition and focused pages for sessions, explorer, conversation, review, source control, and provider trace.</p>
-      <button type="button" className="workspace-copy" aria-label="Copy response"><Icon name="copy" size={13} /></button>
+      <div className="workspace-message-footer"><button type="button" className="workspace-copy" aria-label="Copy response"><Icon name="copy" size={13} /></button>{!updating && <TurnChangeSummary {...completedTurnChanges} onViewChanges={onViewChanges} />}</div>
     </div>
     {updating && <div className="workspace-running-indicator" role="status" aria-label="Agent is working"><i /><i /><i /></div>}
     </>}
@@ -251,11 +271,13 @@ export function ConversationPanel({ compact = false, standalone = false, state =
 }
 
 export function ReviewPanel({ compact = false, standalone = false, state = "approval" }) {
-  const running = state === "running";
+  const running = state === "running" || state === "running-no-changes";
   const waiting = state === "approval" || state === "question";
   const idle = state === "idle";
+  const noChanges = state === "running-no-changes";
+  const inactive = idle;
   const statusTone = idle ? "idle" : running ? "running" : state === "approval" ? "approval" : "question";
-  const statusLabel = idle ? "Agent idle" : running ? "Agent running" : state === "approval" ? "Waiting for approval" : "Waiting for answer";
+  const statusLabel = idle ? "Agent idle" : running ? (noChanges ? "Agent running, no file changes" : "Agent running") : state === "approval" ? "Waiting for approval" : "Waiting for answer";
   const [questionOption, setQuestionOption] = useState(null);
   const [customAnswer, setCustomAnswer] = useState("");
   const questionOptions = [
@@ -263,22 +285,26 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
     { id: "b", label: "B · Keep a narrow split view", description: "Preserve side-by-side context when the viewport allows it." },
     { id: "c", label: "C · Custom answer", description: "Provide a different behavior in your own words." },
   ];
+  const showTurnChanges = !inactive && !noChanges;
+  const turnChangeRows = completedTurnChangeSet;
+  const [turnChangesOpen, setTurnChangesOpen] = useState(false);
   return <aside className={`workspace-panel workspace-review ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""}`}>
     <div className={`workspace-review-heading is-${statusTone}`}><span>AGENT PROCESSES</span><i role="status" aria-label={statusLabel} title={statusLabel} /></div>
     <h3>{idle ? "No active process" : running ? "1 active process" : "Awaiting input"}</h3>
-    {idle && <div className="workspace-review-empty"><Icon name="activity" size={22} /><strong>Agent is idle</strong><span>Start a turn from the conversation composer.</span></div>}
-    {running && <><div className="workspace-process-card"><div><i /><strong>Agent loop</strong><small>Running</small></div><code>Turn turn_01JY7F3K9M</code><span>Model&nbsp; gpt-5.6-sol</span><span>Latest&nbsp; Editing workspace modules</span></div><div className="workspace-todo-card"><div><span>CURRENT TURN TODO</span><small>3 items</small></div><p><Icon name="check" size={11} />Inspect Avalonia workspace</p><p><Icon name="activity" size={11} />Build focused modules</p><p><Icon name="more" size={11} />Verify responsive routes</p></div></>}
+    {inactive && <div className="workspace-review-empty"><Icon name="activity" size={22} /><strong>Agent is idle</strong><span>Start a turn from the conversation composer.</span></div>}
+    {running && <><div className="workspace-process-card"><div><i /><strong>Agent loop</strong><small>Running</small></div><code>Turn turn_01JY7F3K9M</code><span>Model&nbsp; gpt-5.6-sol</span><span>Latest&nbsp; {noChanges ? "Inspecting project, no file changes yet" : "Editing workspace modules"}</span></div><div className="workspace-todo-card"><div><span>CURRENT TURN TODO</span><small>3 items</small></div><p><Icon name="check" size={11} />Inspect Avalonia workspace</p><p><Icon name="activity" size={11} />Build focused modules</p><p><Icon name="more" size={11} />Verify responsive routes</p></div></>}
+    {showTurnChanges && <div className="workspace-turn-changes"><button type="button" className="workspace-turn-changes-summary" aria-expanded={turnChangesOpen} onClick={() => setTurnChangesOpen((open) => !open)}><span className="workspace-turn-changes-summary-title"><strong>CHANGES</strong><small>{turnChangeRows.length} files</small></span><span className="workspace-turn-changes-summary-meta"><small className="is-added">{completedTurnChanges.added} added</small><small className="is-deleted">{completedTurnChanges.deleted} deleted</small><small className="is-edited">{completedTurnChanges.edited} edited</small>{running && <small className="is-live">LIVE</small>}</span></button>{turnChangesOpen && <div className="workspace-turn-changes-list">{turnChangeRows.map((change) => <div className="workspace-turn-change" key={change.path}><b className={`workspace-change-status is-${change.kind}`}>{change.status}</b><code title={change.path}>{change.path}</code><small>+{change.additions} &nbsp;−{change.deletions}</small></div>)}</div>}</div>}
     <div className="workspace-review-divider" />
     {waiting && <><span className="workspace-label">REVIEW QUEUE</span>{state === "approval" ? <div className="workspace-approval-card"><div><span>Approval required</span><b>REVIEW</b></div><strong>Run the production design build</strong><code>vite build</code><div className="workspace-approval-actions"><Button variant="primary" size="sm">Allow once</Button><Button variant="danger" size="sm">Deny</Button></div><Button size="sm">Allow for session</Button></div> : <div className="workspace-question-card"><div><span>Clarification needed</span><b>ANSWER</b></div><div className="workspace-question-prompt"><span>Scope</span><strong>Which responsive behavior should the focused trace use?</strong></div><div className="workspace-question-options">{questionOptions.map((option) => <label key={option.id} className={`workspace-question-option ${questionOption === option.id ? "is-selected" : ""}`}><Radio className="workspace-question-radio" name="trace-layout" value={option.id} checked={questionOption === option.id} onChange={() => setQuestionOption(option.id)} /><span><strong>{option.label}</strong><small>{option.description}</small></span></label>)}</div><input className="workspace-question-custom" value={customAnswer} onChange={(event) => setCustomAnswer(event.target.value)} placeholder="Add a custom answer" aria-label="Custom answer" /><div className="workspace-question-actions"><Button variant="primary" size="sm" disabled={!questionOption && !customAnswer.trim()}>Submit answers</Button><Button variant="danger" size="sm">Skip</Button></div></div>}</>}
-    {!compact && running && <div className="workspace-checkpoint-card"><div><span>CHECKPOINT</span><small>3 files</small></div><strong>Workspace route implementation</strong><code>navigation.js{"\n"}WorkspacePrimitives.jsx{"\n"}review.css</code><Button size="sm">Undo</Button></div>}
+    {!compact && running && !noChanges && <div className="workspace-checkpoint-card"><div><span>CHECKPOINT</span><small>3 files</small></div><strong>Workspace route implementation</strong><code>navigation.js{"\n"}WorkspacePrimitives.jsx{"\n"}review.css</code><Button size="sm">Undo</Button></div>}
   </aside>;
 }
 
-export function SourceControlPanel({ onClose, standalone = false, clean = false }) {
+export function SourceControlPanel({ onClose, standalone = false, clean = false, changeSet = changes }) {
   const [scope, setScope] = useState("all");
-  const [selectedPath, setSelectedPath] = useState(changes[1].path);
+  const [selectedPath, setSelectedPath] = useState(() => changeSet[1]?.path ?? changeSet[0]?.path ?? "");
   const [filter, setFilter] = useState("");
-  const filtered = (clean ? [] : changes).filter((change) => {
+  const filtered = (clean ? [] : changeSet).filter((change) => {
     const matchesScope = scope === "all" || (scope === "staged" ? change.staged : change.unstaged);
     return matchesScope && change.path.toLowerCase().includes(filter.toLowerCase());
   });
@@ -315,17 +341,20 @@ export function SourceControlPanel({ onClose, standalone = false, clean = false 
 
 export function ProviderTracePanel({ onClose, standalone = false, state = "expanded" }) {
   const [selected, setSelected] = useState(0);
+  const [selectedContent, setSelectedContent] = useState(0);
   const [expandedTurn, setExpandedTurn] = useState(state !== "turn-collapsed");
   const [expandedCall, setExpandedCall] = useState(state === "expanded");
   const traces = [
-    { title: "Response · gpt-5.6-sol", time: "14:32:18", status: "Completed", tokens: "18,420 → 1,284" },
-    { title: "Tool continuation", time: "14:31:46", status: "Completed", tokens: "12,918 → 826" },
-    { title: "Initial request", time: "14:30:09", status: "Completed", tokens: "8,204 → 612" },
+    { title: "Response · gpt-5.6-sol", time: "14:32:18", status: "Completed", tokens: "18,420 → 1,284", contents: [{ kind: "user", label: "USER", title: "User message", summary: "Add the Workspace surface to the design system.", time: "14:32:18" }, { kind: "assistant", label: "ASSISTANT", title: "Assistant message", summary: "I’ll inspect the current Avalonia composition first.", time: "14:32:19" }, { kind: "tool", label: "TOOL CALL", title: "Read ProjectWorkspace.axaml", summary: "Read 218 lines from the project workspace view.", time: "14:32:24" }] },
+    { title: "Tool continuation", time: "14:31:46", status: "Completed", tokens: "12,918 → 826", contents: [{ kind: "user", label: "USER", title: "Tool result", summary: "The workspace view and its review drawer are available.", time: "14:31:46" }, { kind: "assistant", label: "ASSISTANT", title: "Assistant message", summary: "I’ll split each workspace area into a focused route.", time: "14:31:48" }, { kind: "tool", label: "TOOL CALL", title: "Update workspace routes", summary: "Updated 8 route modules and navigation entries.", time: "14:31:55" }] },
+    { title: "Initial request", time: "14:30:09", status: "Completed", tokens: "8,204 → 612", contents: [{ kind: "user", label: "USER", title: "User message", summary: "Keep the major areas independently reachable from the sidebar.", time: "14:30:09" }, { kind: "assistant", label: "ASSISTANT", title: "Assistant message", summary: "I’ll preserve the desktop composition and add stable child routes.", time: "14:30:12" }, { kind: "tool", label: "TOOL CALL", title: "List design-system files", summary: "Found the desktop workspace modules and shared primitives.", time: "14:30:18" }] },
   ];
   const noTurns = state === "no-turns";
+  const activeTrace = traces[selected] ?? traces[0];
+  const activeContent = activeTrace.contents[selectedContent] ?? activeTrace.contents[0];
   return <section className={`workspace-drawer workspace-trace ${standalone ? "is-standalone" : ""}`}>
     <header><Icon name="activity" size={16} /><strong>Provider trace</strong><span>{noTurns ? "0 turns" : "1 turn · 3 exchanges"}</span><div /><IconButton icon="refresh" label="Refresh provider trace" disabled /><IconButton icon="copy" label="Copy trace" onClick={() => navigator.clipboard?.writeText("Provider trace preview")} /><IconButton icon="close" label="Close provider trace" onClick={onClose} disabled={!onClose} /></header>
-    {noTurns ? <div className="workspace-trace-empty"><Icon name="activity" size={24} /><strong>No turns yet</strong><span>Provider requests will appear here after the agent starts a turn.</span></div> : <div className="workspace-trace-body"><div className="workspace-trace-list"><div className="workspace-drawer-label">CURRENT SESSION</div><button type="button" className={`workspace-trace-turn ${expandedTurn ? "is-expanded" : ""}`} onClick={() => setExpandedTurn(!expandedTurn)}><Icon name="chevron-right" className={expandedTurn ? "is-open" : ""} size={11} /><span><strong>Turn 0198e82c</strong><small>Completed · 1.84 s</small></span><b>3 calls</b></button>{expandedTurn && <div className="workspace-trace-children">{traces.map((trace, index) => <div key={trace.title}><button type="button" className={`workspace-trace-call ${selected === index ? "is-selected" : ""}`} onClick={() => { setSelected(index); setExpandedCall(state === "expanded"); }}><Icon name="chevron-right" className={selected === index && expandedCall ? "is-open" : ""} size={11} /><span><strong>{trace.title}</strong><small>{trace.time}</small></span><span><b>{trace.status}</b><small>{trace.tokens}</small></span></button>{selected === index && expandedCall && <div className="workspace-trace-content-row"><span>USER</span><code>Add the Workspace surface to the design system.</code></div>}</div>)}</div>}</div><div className="workspace-trace-detail"><div className="workspace-trace-title"><code>{traces[selected].title}</code><span>1.84 s&nbsp;&nbsp; gpt-5.6-sol</span></div><div className="workspace-trace-metrics">{[["INPUT", "18,420"], ["OUTPUT", "1,284"], ["CACHE READ", "12,160"], ["CACHE WRITE", "0"], ["CACHE HIT", "66%"], ["DURATION", "1.84 s"]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div><div className="workspace-trace-content"><div><code>TURN 0198e82c · COMPLETED</code><span>exchange&nbsp; exch_01JY7F6P8S</span></div><h4>Messages</h4><p><b>USER</b><span>Add the Workspace surface to the design system.</span></p><p><b>ASSISTANT</b><span>I’ll inspect the current Avalonia composition and preserve its product boundaries.</span></p><h4>Model response</h4><pre>&#123;"status":"completed","finish_reason":"tool_calls"&#125;</pre></div></div></div>}
+    {noTurns ? <div className="workspace-trace-empty"><Icon name="activity" size={24} /><strong>No turns yet</strong><span>Provider requests will appear here after the agent starts a turn.</span></div> : <div className="workspace-trace-body"><div className="workspace-trace-list"><div className="workspace-drawer-label">CURRENT SESSION</div><button type="button" className={`workspace-trace-turn ${expandedTurn ? "is-expanded" : ""}`} onClick={() => setExpandedTurn(!expandedTurn)}><Icon name="chevron-right" className={expandedTurn ? "is-open" : ""} size={11} /><span><strong>Turn 0198e82c</strong><small>Completed · 1.84 s</small></span><b>3 calls</b></button>{expandedTurn && <div className="workspace-trace-children">{traces.map((trace, index) => <div key={trace.title}><button type="button" className={`workspace-trace-call ${selected === index ? "is-selected" : ""}`} aria-expanded={selected === index && expandedCall} onClick={() => { setSelected(index); setSelectedContent(0); setExpandedCall(selected === index ? !expandedCall : state === "expanded"); }}><Icon name="chevron-right" className={selected === index && expandedCall ? "is-open" : ""} size={11} /><span><strong>{trace.title}</strong><small>{trace.time}</small></span><span><b>{trace.status}</b><small>{trace.tokens}</small></span></button>{selected === index && expandedCall && <div className="workspace-trace-call-contents">{trace.contents.map((content, contentIndex) => <button type="button" className={`workspace-trace-content-row is-${content.kind} ${selectedContent === contentIndex ? "is-selected" : ""}`} key={`${trace.title}-${content.title}`} onClick={() => setSelectedContent(contentIndex)}><span>{content.label}</span><span><strong>{content.title}</strong><small>{content.summary}</small></span><time>{content.time}</time></button>)}</div>}</div>)}</div>}</div><div className="workspace-trace-detail"><div className="workspace-trace-title"><code>{activeTrace.title} · {activeContent.label}</code><span>1.84 s&nbsp;&nbsp; gpt-5.6-sol</span></div><div className="workspace-trace-metrics">{[["INPUT", "18,420"], ["OUTPUT", "1,284"], ["CACHE READ", "12,160"], ["CACHE WRITE", "0"], ["CACHE HIT", "66%"], ["DURATION", "1.84 s"]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div><div className="workspace-trace-content"><div><code>TURN 0198e82c · COMPLETED</code><span>exchange&nbsp; exch_01JY7F6P8S</span></div><h4>{activeContent.label}</h4><p><b>{activeContent.label}</b><span>{activeContent.summary}</span></p><h4>Model response</h4><pre>{activeContent.kind === "tool" ? `{"status":"completed","tool":"${activeContent.title}"}` : `{"status":"completed","role":"${activeContent.kind}"}`}</pre></div></div></div>}
   </section>;
 }
 
@@ -338,7 +367,7 @@ export function WorkspaceWindow() {
     <div className="workspace-titlebar"><TrafficLights /><strong className="workspace-project-title">suncode</strong><span>Workspace information architecture</span><IconButton icon="settings" label="Open settings" onClick={() => { window.location.hash = "/projects/desktop/settings"; }} /></div>
     <div className="workspace-window-body">
       <aside className="workspace-gutter"><div><IconButton icon="panel-left" label="Show sessions" active={navigation === "sessions"} onClick={() => setNavigation(navigation === "sessions" ? null : "sessions")} /><IconButton icon="files" label="Show explorer" active={navigation === "explorer"} onClick={() => setNavigation(navigation === "explorer" ? null : "explorer")} /></div><div><IconButton icon="git" label="Show source control" active={drawer === "git"} onClick={() => toggleDrawer("git")} /><IconButton icon="activity" label="Show provider trace" active={drawer === "trace"} onClick={() => toggleDrawer("trace")} /></div></aside>
-      <div className="workspace-main-stack"><div className="workspace-main-row">{navigation === "sessions" && <SessionPanel compact />}{navigation === "explorer" && <ExplorerPanel compact />}<ConversationPanel compact />{reviewVisible && <ReviewPanel compact />}</div>{drawer === "git" && <SourceControlPanel onClose={() => setDrawer(null)} />}{drawer === "trace" && <ProviderTracePanel onClose={() => setDrawer(null)} />}</div>
+      <div className="workspace-main-stack"><div className="workspace-main-row">{navigation === "sessions" && <SessionPanel compact />}{navigation === "explorer" && <ExplorerPanel compact />}<ConversationPanel compact onViewChanges={() => setDrawer("git")} />{reviewVisible && <ReviewPanel compact />}</div>{drawer === "git" && <SourceControlPanel onClose={() => setDrawer(null)} changeSet={completedTurnChangeSet} />}{drawer === "trace" && <ProviderTracePanel onClose={() => setDrawer(null)} />}</div>
       <aside className="workspace-gutter workspace-gutter-right"><IconButton icon="panel-right" label="Show review" active={reviewVisible} onClick={() => setReviewVisible(!reviewVisible)} /></aside>
     </div>
     <footer className="workspace-statusbar"><div><code>codex/workspace-design</code><b>3 changes</b><span>+308</span><i>−8</i></div><div><code>gpt-5.6-sol</code><span>19.7k tokens</span><span>3 calls · 4.2s</span></div></footer>
