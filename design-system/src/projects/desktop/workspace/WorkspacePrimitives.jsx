@@ -73,6 +73,10 @@ const conversationToolCalls = [
   { icon: "activity", title: "Read ProjectWorkspace.axaml", state: "Succeeded", request: "apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml", result: "218 lines read", error: "" },
   { icon: "files", title: "Updated workspace routes and modules", state: "Succeeded", request: "workspace route modules", result: "8 modules updated", error: "" },
 ];
+const longConversationToolCalls = [
+  { icon: "activity", title: "Read apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml and inspect workspace layout constraints", state: "Succeeded", request: "apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml", result: "218 lines read", error: "" },
+  { icon: "files", title: "Updated workspace routes and modules", state: "Succeeded", request: "workspace route modules", result: "8 modules updated", error: "" },
+];
 
 const completedTurnChanges = { added: 3, deleted: 1, edited: 5 };
 const completedTurnChangeSet = [
@@ -86,6 +90,12 @@ const completedTurnChangeSet = [
   { status: "M", kind: "modified", path: "design-system/src/shared/Icon.jsx", additions: 9, deletions: 2, staged: false, unstaged: true },
   { status: "M", kind: "modified", path: "design-system/src/projects/desktop/workspace/conversation/index.jsx", additions: 7, deletions: 3, staged: false, unstaged: true },
 ];
+const currentTurnTodos = [
+  { content: "Inspect Avalonia workspace", status: "completed", icon: "check" },
+  { content: "Build focused modules", status: "in-progress", icon: "activity" },
+  { content: "Verify responsive routes", status: "pending", icon: "more" },
+  { content: "Remove stale checkpoint", status: "cancelled", icon: "close" },
+];
 
 function IconButton({ icon, label, active = false, onClick, disabled = false }) {
   return <button type="button" className={`workspace-icon-button ${active ? "is-active" : ""}`} aria-label={label} aria-pressed={active} onClick={onClick} disabled={disabled}><Icon name={icon} size={15} /></button>;
@@ -93,7 +103,7 @@ function IconButton({ icon, label, active = false, onClick, disabled = false }) 
 
 function TurnChangeSummary({ added, deleted, edited, onViewChanges }) {
   const stats = [["added", added, "is-added"], ["deleted", deleted, "is-deleted"], ["edited", edited, "is-edited"]];
-  const content = <><span className="workspace-turn-summary-heading"><Icon name="check" size={12} /><strong>Changes</strong></span><span className="workspace-turn-summary-stats">{stats.map(([label, count, tone]) => <span key={label} className={`workspace-turn-summary-stat ${tone}`}><b>{count}</b><small>{label}</small></span>)}</span>{onViewChanges && <span className="workspace-turn-summary-action">View changes</span>}</>;
+  const content = <><span className="workspace-turn-summary-heading"><Icon name="check" size={12} /><strong>Changes</strong></span><span className="workspace-turn-summary-stats">{stats.map(([label, count, tone]) => <span key={label} className={`workspace-turn-summary-stat ${tone}`}><b>{count}</b><small>{label}</small></span>)}</span></>;
   if (!onViewChanges) return <div className="workspace-turn-summary" role="status" aria-label={`Turn complete: ${added} files added, ${deleted} files deleted, ${edited} files edited`}>{content}</div>;
   return <button type="button" className="workspace-turn-summary is-actionable" aria-label={`View changes from this turn: ${added} files added, ${deleted} files deleted, ${edited} files edited`} title="View turn changes" onClick={onViewChanges}>{content}</button>;
 }
@@ -196,17 +206,19 @@ export const sampleConversationAttachments = [
   createSampleAttachment("settings-reference.svg", "Settings", "8a919b"),
 ];
 
-export function ConversationPanel({ compact = false, standalone = false, state = "content-waiting", initialAttachments = [], onViewChanges }) {
+export function ConversationPanel({ compact = false, standalone = false, state = "content-waiting", initialAttachments = [], initialSentAttachments = [], onViewChanges }) {
   const [message, setMessage] = useState("");
   const [processOpen, setProcessOpen] = useState(true);
   const [toolPreview, setToolPreview] = useState(null);
   const [attachments, setAttachments] = useState(initialAttachments);
+  const [sentAttachments, setSentAttachments] = useState(initialSentAttachments);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const attachmentInputRef = useRef(null);
   const localAttachmentUrls = useRef(new Set());
   const hasSession = state !== "no-session";
   const hasContent = state !== "new-session" && hasSession;
   const updating = state === "content-updating";
+  const toolCalls = state === "long-tool-call" ? longConversationToolCalls : conversationToolCalls;
   const handleAttachmentChange = (event) => {
     const selectedImages = Array.from(event.target.files ?? []).filter((file) => file.type.startsWith("image/"));
     if (selectedImages.length) setAttachments((current) => {
@@ -233,14 +245,23 @@ export function ConversationPanel({ compact = false, standalone = false, state =
     });
   };
   useEffect(() => () => localAttachmentUrls.current.forEach((url) => URL.revokeObjectURL(url)), []);
+  const sendMessage = () => {
+    if (!message.trim() && !attachments.length) return;
+    if (attachments.length) setSentAttachments((current) => [...current, ...attachments]);
+    setAttachments([]);
+    setMessage("");
+  };
   return <section className={`workspace-conversation ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""} workspace-conversation-${state}`}>
     {!hasSession && <div className="workspace-conversation-empty"><Icon name="workspace" size={24} /><strong>No session selected</strong><span>Create or select a session to start a conversation.</span></div>}
     {hasSession && !hasContent && <div className="workspace-conversation-empty"><Icon name="plus" size={24} /><strong>New session</strong><span>Send a message to start this conversation.</span></div>}
     {hasContent && <>
-    <div className="workspace-message workspace-message-user">Add the Workspace surface to the design system, but keep each major area independently reachable.</div>
+    <div className="workspace-message workspace-message-user">
+      {sentAttachments.length > 0 && <div className="workspace-message-attachments" aria-label="Images sent with this message">{sentAttachments.map((attachment) => <button type="button" className="workspace-message-attachment" key={attachment.id} onClick={() => setPreviewAttachment(attachment)} aria-label={`View ${attachment.name}`} title="View image"><img src={attachment.url} alt={attachment.name} /></button>)}</div>}
+      <span>Add the Workspace surface to the design system, but keep each major area independently reachable.</span>
+    </div>
     <div className="workspace-process">
       <button type="button" className="workspace-process-toggle" aria-expanded={processOpen} onClick={() => setProcessOpen(!processOpen)}><Icon name="chevron-right" className={processOpen ? "is-open" : ""} size={12} /> Worked for 42s</button>
-      {processOpen && conversationToolCalls.map((tool, index) => <button key={tool.title} type="button" className="workspace-tool-row" aria-haspopup="dialog" onClick={() => setToolPreview(index)}><Icon name={tool.icon} size={14} /><span>{tool.title}</span><small>{tool.state}</small><Icon name="chevron-right" size={12} /></button>)}
+      {processOpen && toolCalls.map((tool, index) => <button key={tool.title} type="button" className="workspace-tool-row" aria-haspopup="dialog" onClick={() => setToolPreview(index)}><Icon name={tool.icon} size={14} /><span>{tool.title}</span><small>{tool.state}</small><Icon name="chevron-right" size={12} /></button>)}
     </div>
     <div className="workspace-message workspace-message-assistant">
       <p>I split Workspace into a complete composition and focused pages for sessions, explorer, conversation, review, source control, and provider trace.</p>
@@ -256,14 +277,14 @@ export function ConversationPanel({ compact = false, standalone = false, state =
         </div>)}
       </div>}
       <textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ask SunCode to work on this project" aria-label="Message SunCode" />
-      <div className="workspace-composer-footer"><button type="button" className="workspace-attach" aria-label="Add attachment" title={attachments.length >= 3 ? "Maximum 3 images" : "Add image"} disabled={attachments.length >= 3} onClick={() => attachmentInputRef.current?.click()}><Icon name="plus" size={14} /></button><input ref={attachmentInputRef} className="workspace-attachment-input" type="file" accept="image/*" multiple tabIndex={-1} onChange={handleAttachmentChange} /><div className="workspace-composer-options"><ModelDropdown groups={workspaceModelGroups} initialValue="gpt-5.6-sol" className="workspace-model-dropdown" /><SingleDropdown options={["Medium", "High"]} initialValue="High" ariaLabel="Reasoning effort" className="workspace-reasoning-dropdown" /><Button variant="primary" className="workspace-send" icon="arrow-up" aria-label="Send message" disabled={!message.trim()} onClick={() => setMessage("")} /></div></div>
+      <div className="workspace-composer-footer"><button type="button" className="workspace-attach" aria-label="Add attachment" title={attachments.length >= 3 ? "Maximum 3 images" : "Add image"} disabled={attachments.length >= 3} onClick={() => attachmentInputRef.current?.click()}><Icon name="plus" size={14} /></button><input ref={attachmentInputRef} className="workspace-attachment-input" type="file" accept="image/*" multiple tabIndex={-1} onChange={handleAttachmentChange} /><div className="workspace-composer-options"><ModelDropdown groups={workspaceModelGroups} initialValue="gpt-5.6-sol" className="workspace-model-dropdown" /><SingleDropdown options={["Medium", "High"]} initialValue="High" ariaLabel="Reasoning effort" className="workspace-reasoning-dropdown" /><Button variant="primary" className="workspace-send" icon="arrow-up" aria-label="Send message" disabled={!message.trim() && !attachments.length} onClick={sendMessage} /></div></div>
     </div>}
     <Modal open={toolPreview !== null} title="Operation details" onClose={() => setToolPreview(null)} className="workspace-tool-modal" actions={<button type="button" className="btn btn-sm" onClick={() => setToolPreview(null)}>Close</button>}>
       {toolPreview !== null && <div className="workspace-tool-modal-content">
-        <div className="workspace-tool-modal-heading"><strong>{conversationToolCalls[toolPreview].title}</strong><span>{conversationToolCalls[toolPreview].state}</span></div>
-        <div className="workspace-tool-modal-section"><span>Request</span><code>{conversationToolCalls[toolPreview].request}</code></div>
-        <div className="workspace-tool-modal-section"><span>Result</span><code>{conversationToolCalls[toolPreview].result}</code></div>
-        {conversationToolCalls[toolPreview].error && <div className="workspace-tool-modal-section is-error"><span>Error</span><code>{conversationToolCalls[toolPreview].error}</code></div>}
+        <div className="workspace-tool-modal-heading"><strong>{toolCalls[toolPreview].title}</strong><span>{toolCalls[toolPreview].state}</span></div>
+        <div className="workspace-tool-modal-section"><span>Request</span><code>{toolCalls[toolPreview].request}</code></div>
+        <div className="workspace-tool-modal-section"><span>Result</span><code>{toolCalls[toolPreview].result}</code></div>
+        {toolCalls[toolPreview].error && <div className="workspace-tool-modal-section is-error"><span>Error</span><code>{toolCalls[toolPreview].error}</code></div>}
       </div>}
     </Modal>
     <Modal open={Boolean(previewAttachment)} title={previewAttachment?.name ?? "Image preview"} onClose={() => setPreviewAttachment(null)} className="workspace-image-modal"><div className="workspace-image-preview">{previewAttachment && <img src={previewAttachment.url} alt={previewAttachment.name} />}</div></Modal>
@@ -274,10 +295,11 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
   const running = state === "running" || state === "running-no-changes";
   const waiting = state === "approval" || state === "question";
   const idle = state === "idle";
+  const failed = state === "failed";
   const noChanges = state === "running-no-changes";
   const inactive = idle;
-  const statusTone = idle ? "idle" : running ? "running" : state === "approval" ? "approval" : "question";
-  const statusLabel = idle ? "Agent idle" : running ? (noChanges ? "Agent running, no file changes" : "Agent running") : state === "approval" ? "Waiting for approval" : "Waiting for answer";
+  const statusTone = idle ? "idle" : failed ? "failed" : running ? "running" : state === "approval" ? "approval" : "question";
+  const statusLabel = idle ? "Agent idle" : failed ? "Turn failed" : running ? (noChanges ? "Agent running, no file changes" : "Agent running") : state === "approval" ? "Waiting for approval" : "Waiting for answer";
   const [questionOption, setQuestionOption] = useState(null);
   const [customAnswer, setCustomAnswer] = useState("");
   const questionOptions = [
@@ -285,14 +307,14 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
     { id: "b", label: "B · Keep a narrow split view", description: "Preserve side-by-side context when the viewport allows it." },
     { id: "c", label: "C · Custom answer", description: "Provide a different behavior in your own words." },
   ];
-  const showTurnChanges = !inactive && !noChanges;
+  const showTurnChanges = !inactive && !noChanges && !failed;
   const turnChangeRows = completedTurnChangeSet;
   const [turnChangesOpen, setTurnChangesOpen] = useState(false);
   return <aside className={`workspace-panel workspace-review ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""}`}>
-    <div className={`workspace-review-heading is-${statusTone}`}><span>AGENT PROCESSES</span><i role="status" aria-label={statusLabel} title={statusLabel} /></div>
-    <h3>{idle ? "No active process" : running ? "1 active process" : "Awaiting input"}</h3>
+    <div className={`workspace-review-heading is-${statusTone}`}><h3>{idle ? "No active process" : failed ? "Turn stopped" : running ? "1 active process" : "Awaiting input"}</h3><i role="status" aria-label={statusLabel} title={statusLabel} /></div>
     {inactive && <div className="workspace-review-empty"><Icon name="activity" size={22} /><strong>Agent is idle</strong><span>Start a turn from the conversation composer.</span></div>}
-    {running && <><div className="workspace-process-card"><div><i /><strong>Agent loop</strong><small>Running</small></div><code>Turn turn_01JY7F3K9M</code><span>Model&nbsp; gpt-5.6-sol</span><span>Latest&nbsp; {noChanges ? "Inspecting project, no file changes yet" : "Editing workspace modules"}</span></div><div className="workspace-todo-card"><div><span>CURRENT TURN TODO</span><small>3 items</small></div><p><Icon name="check" size={11} />Inspect Avalonia workspace</p><p><Icon name="activity" size={11} />Build focused modules</p><p><Icon name="more" size={11} />Verify responsive routes</p></div></>}
+    {failed && <div className="workspace-failure-card"><div><span>TURN STOPPED</span><b>FAILED</b></div><strong>Provider request failed</strong><p>The turn ended before completion. No further tool calls will run.</p><dl><div><dt>Reason</dt><dd>Network unavailable</dd></div><div><dt>Turn</dt><dd><code>turn_01JY7F3K9M</code></dd></div></dl><Button variant="primary" size="sm">Retry turn</Button></div>}
+    {running && <><div className="workspace-process-card"><div><i /><strong>Agent loop</strong><small>Running</small></div><code>Turn turn_01JY7F3K9M</code><span>Model&nbsp; gpt-5.6-sol</span><span>Latest&nbsp; {noChanges ? "Inspecting project, no file changes yet" : "Editing workspace modules"}</span></div><div className="workspace-todo-card"><div><span>TODO</span><small>{currentTurnTodos.length} items</small></div>{currentTurnTodos.map((todo) => <p key={todo.content} className={`workspace-todo-item is-${todo.status}`}><span className="workspace-todo-marker"><Icon name={todo.icon} size={11} /></span><span>{todo.content}</span></p>)}</div></>}
     {showTurnChanges && <div className="workspace-turn-changes"><button type="button" className="workspace-turn-changes-summary" aria-expanded={turnChangesOpen} onClick={() => setTurnChangesOpen((open) => !open)}><span className="workspace-turn-changes-summary-title"><strong>CHANGES</strong><small>{turnChangeRows.length} files</small></span><span className="workspace-turn-changes-summary-meta"><small className="is-added">{completedTurnChanges.added} added</small><small className="is-deleted">{completedTurnChanges.deleted} deleted</small><small className="is-edited">{completedTurnChanges.edited} edited</small>{running && <small className="is-live">LIVE</small>}</span></button>{turnChangesOpen && <div className="workspace-turn-changes-list">{turnChangeRows.map((change) => <div className="workspace-turn-change" key={change.path}><b className={`workspace-change-status is-${change.kind}`}>{change.status}</b><code title={change.path}>{change.path}</code><small>+{change.additions} &nbsp;−{change.deletions}</small></div>)}</div>}</div>}
     <div className="workspace-review-divider" />
     {waiting && <><span className="workspace-label">REVIEW QUEUE</span>{state === "approval" ? <div className="workspace-approval-card"><div><span>Approval required</span><b>REVIEW</b></div><strong>Run the production design build</strong><code>vite build</code><div className="workspace-approval-actions"><Button variant="primary" size="sm">Allow once</Button><Button variant="danger" size="sm">Deny</Button></div><Button size="sm">Allow for session</Button></div> : <div className="workspace-question-card"><div><span>Clarification needed</span><b>ANSWER</b></div><div className="workspace-question-prompt"><span>Scope</span><strong>Which responsive behavior should the focused trace use?</strong></div><div className="workspace-question-options">{questionOptions.map((option) => <label key={option.id} className={`workspace-question-option ${questionOption === option.id ? "is-selected" : ""}`}><Radio className="workspace-question-radio" name="trace-layout" value={option.id} checked={questionOption === option.id} onChange={() => setQuestionOption(option.id)} /><span><strong>{option.label}</strong><small>{option.description}</small></span></label>)}</div><input className="workspace-question-custom" value={customAnswer} onChange={(event) => setCustomAnswer(event.target.value)} placeholder="Add a custom answer" aria-label="Custom answer" /><div className="workspace-question-actions"><Button variant="primary" size="sm" disabled={!questionOption && !customAnswer.trim()}>Submit answers</Button><Button variant="danger" size="sm">Skip</Button></div></div>}</>}
