@@ -11,17 +11,21 @@
     <Style Selector="Window">
       <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-      <Setter Property="FontFamily" Value="Noto Sans, Helvetica Neue, Arial, Verdana, Noto Sans CJK SC, Noto Sans SC, PingFang SC, Heiti SC, sans-serif" />
+      <Setter Property="FontFamily" Value="Noto Sans, Noto Sans CJK SC, Noto Sans SC, PingFang SC, Helvetica Neue, Arial, sans-serif" />
       <Setter Property="FontSize" Value="14" />
     </Style>
     <Style Selector="TextBlock.section-label">
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+      <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="LetterSpacing" Value="0.8" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
     </Style>
     <Style Selector="TextBlock.eyebrow">
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="FontSize" Value="9" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="LetterSpacing" Value="0.6" />
       <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
     </Style>
     <Style Selector="TextBlock.mono">
@@ -45,6 +49,10 @@
     </Style>
     <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    </Style>
+    <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
     </Style>
     <Style Selector="Button.compact">
       <Setter Property="MinHeight" Value="30" />
@@ -56,6 +64,13 @@
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}" />
+    </Style>
     <Style Selector="Button.danger">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
@@ -65,6 +80,15 @@
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
       <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.quiet:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button:disabled">
+      <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
+      <Setter Property="Opacity" Value="0.72" />
     </Style>
     <Style Selector="Button:focus /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
@@ -86,6 +110,10 @@
       <Setter Property="Padding" Value="5" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.titlebar:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <Style Selector="Button.navigation">
       <Setter Property="MinHeight" Value="34" />
@@ -125,6 +153,27 @@
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="10" />
+    </Style>
+    <Style Selector="Border.window-frame">
+      <Setter Property="Margin" Value="16" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="14" />
+    </Style>
+    <Style Selector="Border.window-content">
+      <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
+      <Setter Property="CornerRadius" Value="13" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Grid.window-titlebar">
+      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
+    </Style>
+    <Style Selector="TextBlock.window-title">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="Border.raised">
       <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
@@ -239,7 +288,7 @@
     </Style>
     <Style Selector="md|MarkdownTextBlock">
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-      <Setter Property="FontFamily" Value="Noto Sans, Helvetica Neue, Arial, Verdana, Noto Sans CJK SC, Noto Sans SC, PingFang SC, Heiti SC, sans-serif" />
+      <Setter Property="FontFamily" Value="Noto Sans, Noto Sans CJK SC, Noto Sans SC, PingFang SC, Helvetica Neue, Arial, sans-serif" />
       <Setter Property="FontSize" Value="14" />
     </Style>
     <Style Selector="md|MarkdownTextBlock.H1">
@@ -303,31 +352,31 @@
           <Color x:Key="ForegroundColor">#edf0f3</Color>
           <Color x:Key="CardBackgroundColor">#121519</Color>
           <Color x:Key="SecondaryCardBackgroundColor">#15191e</Color>
-          <Color x:Key="CodeInlineColor">#69c5b0</Color>
-          <Color x:Key="QuoteBorderColor">#69c5b0</Color>
+          <Color x:Key="CodeInlineColor">#d9e0e6</Color>
+          <Color x:Key="QuoteBorderColor">#65717d</Color>
           <x:Double x:Key="FontSizeS">12</x:Double>
           <x:Double x:Key="FontSizeM">14</x:Double>
           <x:Double x:Key="FontSizeL">14</x:Double>
           <x:Double x:Key="FontSizeXl">15</x:Double>
           <x:Double x:Key="FontSize2Xl">19</x:Double>
           <x:Double x:Key="FontSize3Xl">26</x:Double>
-          <Color x:Key="SystemAccentColor">#69c5b0</Color>
-          <Color x:Key="SystemAccentColorDark1">#55ae9a</Color>
-          <Color x:Key="SystemAccentColorDark2">#468f7f</Color>
-          <Color x:Key="SystemAccentColorDark3">#386f63</Color>
-          <Color x:Key="SystemAccentColorLight1">#7dd2be</Color>
-          <Color x:Key="SystemAccentColorLight2">#96decd</Color>
-          <Color x:Key="SystemAccentColorLight3">#b2e8dc</Color>
+          <Color x:Key="SystemAccentColor">#d9e0e6</Color>
+          <Color x:Key="SystemAccentColorDark1">#b9c3cc</Color>
+          <Color x:Key="SystemAccentColorDark2">#929faa</Color>
+          <Color x:Key="SystemAccentColorDark3">#65717d</Color>
+          <Color x:Key="SystemAccentColorLight1">#e5eaee</Color>
+          <Color x:Key="SystemAccentColorLight2">#edf1f4</Color>
+          <Color x:Key="SystemAccentColorLight3">#f3f6f8</Color>
           <Color x:Key="IconColor">#a7afb9</Color>
-          <Color x:Key="AccentColor">#69c5b0</Color>
-          <Color x:Key="AccentInkColor">#07120f</Color>
-          <Color x:Key="TextControlSelectionHighlightColor">#69c5b0</Color>
-          <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#69c5b0" />
-          <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#69c5b0" />
+          <Color x:Key="AccentColor">#d9e0e6</Color>
+          <Color x:Key="AccentInkColor">#101317</Color>
+          <Color x:Key="TextControlSelectionHighlightColor">#65717d</Color>
+          <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#d9e0e6" />
+          <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#d9e0e6" />
           <x:String x:Key="IconSvgCss">[stroke='#000'] { stroke: #a7afb9; } [fill='#000'] { fill: #a7afb9; } [stroke='currentColor'] { stroke: #a7afb9; }</x:String>
-          <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #69c5b0; } [fill='#000'] { fill: #69c5b0; } [stroke='currentColor'] { stroke: #69c5b0; }</x:String>
-          <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #07120f; } [fill='#000'] { fill: #07120f; } [stroke='currentColor'] { stroke: #07120f; }</x:String>
-          <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #78c99b; } [fill='#000'] { fill: #78c99b; } [stroke='currentColor'] { stroke: #78c99b; }</x:String>
+          <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #d9e0e6; } [fill='#000'] { fill: #d9e0e6; } [stroke='currentColor'] { stroke: #d9e0e6; }</x:String>
+          <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #101317; } [fill='#000'] { fill: #101317; } [stroke='currentColor'] { stroke: #101317; }</x:String>
+          <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #9fb3c3; } [fill='#000'] { fill: #9fb3c3; } [stroke='currentColor'] { stroke: #9fb3c3; }</x:String>
           <SolidColorBrush x:Key="CanvasBrush" Color="#0d0f12" />
           <SolidColorBrush x:Key="SurfaceBrush" Color="#121519" />
           <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#181c21" />
@@ -346,15 +395,15 @@
           <SolidColorBrush x:Key="WindowChromeBorderBrush" Color="#1c2126" />
           <SolidColorBrush x:Key="BorderBrush" Color="#292f36" />
           <SolidColorBrush x:Key="BorderStrongBrush" Color="#46505b" />
-          <SolidColorBrush x:Key="AccentBrush" Color="#69c5b0" />
-          <SolidColorBrush x:Key="AccentHoverBrush" Color="#7dd2be" />
-          <SolidColorBrush x:Key="AccentPressedBrush" Color="#55ae9a" />
-          <SolidColorBrush x:Key="AccentInkBrush" Color="#07120f" />
-          <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#172824" />
-          <SolidColorBrush x:Key="AccentBorderBrush" Color="#315e54" />
-          <SolidColorBrush x:Key="SuccessBrush" Color="#78c99b" />
-          <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="#17251e" />
-          <SolidColorBrush x:Key="WarningBrush" Color="#ddb16c" />
+          <SolidColorBrush x:Key="AccentBrush" Color="#d9e0e6" />
+          <SolidColorBrush x:Key="AccentHoverBrush" Color="#f3f6f8" />
+          <SolidColorBrush x:Key="AccentPressedBrush" Color="#b9c3cc" />
+          <SolidColorBrush x:Key="AccentInkBrush" Color="#101317" />
+          <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#20262d" />
+          <SolidColorBrush x:Key="AccentBorderBrush" Color="#65717d" />
+          <SolidColorBrush x:Key="SuccessBrush" Color="#9fb3c3" />
+          <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="#1e2730" />
+          <SolidColorBrush x:Key="WarningBrush" Color="#d5ad6f" />
           <SolidColorBrush x:Key="WarningSurfaceBrush" Color="#2a2115" />
           <SolidColorBrush x:Key="WarningBorderBrush" Color="#5d492d" />
           <SolidColorBrush x:Key="DangerBrush" Color="#e68a83" />
@@ -366,31 +415,31 @@
           <Color x:Key="ForegroundColor">#17202a</Color>
           <Color x:Key="CardBackgroundColor">#ffffff</Color>
           <Color x:Key="SecondaryCardBackgroundColor">#f4f7f9</Color>
-          <Color x:Key="CodeInlineColor">#2f8f7d</Color>
-          <Color x:Key="QuoteBorderColor">#2f8f7d</Color>
+          <Color x:Key="CodeInlineColor">#2c3742</Color>
+          <Color x:Key="QuoteBorderColor">#aab8c4</Color>
           <x:Double x:Key="FontSizeS">12</x:Double>
           <x:Double x:Key="FontSizeM">14</x:Double>
           <x:Double x:Key="FontSizeL">14</x:Double>
           <x:Double x:Key="FontSizeXl">15</x:Double>
           <x:Double x:Key="FontSize2Xl">19</x:Double>
           <x:Double x:Key="FontSize3Xl">26</x:Double>
-          <Color x:Key="SystemAccentColor">#2f8f7d</Color>
-          <Color x:Key="SystemAccentColorDark1">#277f6f</Color>
-          <Color x:Key="SystemAccentColorDark2">#226f61</Color>
-          <Color x:Key="SystemAccentColorDark3">#1b5a4f</Color>
-          <Color x:Key="SystemAccentColorLight1">#48a493</Color>
-          <Color x:Key="SystemAccentColorLight2">#6cb9aa</Color>
-          <Color x:Key="SystemAccentColorLight3">#93cfc2</Color>
+          <Color x:Key="SystemAccentColor">#2c3742</Color>
+          <Color x:Key="SystemAccentColorDark1">#1e2730</Color>
+          <Color x:Key="SystemAccentColorDark2">#161d24</Color>
+          <Color x:Key="SystemAccentColorDark3">#10161b</Color>
+          <Color x:Key="SystemAccentColorLight1">#3b4854</Color>
+          <Color x:Key="SystemAccentColorLight2">#65717d</Color>
+          <Color x:Key="SystemAccentColorLight3">#aab8c4</Color>
           <Color x:Key="IconColor">#44515e</Color>
-          <Color x:Key="AccentColor">#2f8f7d</Color>
+          <Color x:Key="AccentColor">#2c3742</Color>
           <Color x:Key="AccentInkColor">#ffffff</Color>
-          <Color x:Key="TextControlSelectionHighlightColor">#2f8f7d</Color>
-          <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#2f8f7d" />
-          <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#2f8f7d" />
+          <Color x:Key="TextControlSelectionHighlightColor">#aab8c4</Color>
+          <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#2c3742" />
+          <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#2c3742" />
           <x:String x:Key="IconSvgCss">[stroke='#000'] { stroke: #44515e; } [fill='#000'] { fill: #44515e; } [stroke='currentColor'] { stroke: #44515e; }</x:String>
-          <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #2f8f7d; } [fill='#000'] { fill: #2f8f7d; } [stroke='currentColor'] { stroke: #2f8f7d; }</x:String>
+          <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #2c3742; } [fill='#000'] { fill: #2c3742; } [stroke='currentColor'] { stroke: #2c3742; }</x:String>
           <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #ffffff; } [fill='#000'] { fill: #ffffff; } [stroke='currentColor'] { stroke: #ffffff; }</x:String>
-          <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #27845b; } [fill='#000'] { fill: #27845b; } [stroke='currentColor'] { stroke: #27845b; }</x:String>
+          <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #4f6d82; } [fill='#000'] { fill: #4f6d82; } [stroke='currentColor'] { stroke: #4f6d82; }</x:String>
           <SolidColorBrush x:Key="CanvasBrush" Color="#f3f5f7" />
           <SolidColorBrush x:Key="SurfaceBrush" Color="#ffffff" />
           <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#f8fafc" />
@@ -409,15 +458,15 @@
           <SolidColorBrush x:Key="WindowChromeBorderBrush" Color="#e5e9ec" />
           <SolidColorBrush x:Key="BorderBrush" Color="#d5dde4" />
           <SolidColorBrush x:Key="BorderStrongBrush" Color="#bac6d0" />
-          <SolidColorBrush x:Key="AccentBrush" Color="#2f8f7d" />
-          <SolidColorBrush x:Key="AccentHoverBrush" Color="#277f6f" />
-          <SolidColorBrush x:Key="AccentPressedBrush" Color="#226f61" />
+          <SolidColorBrush x:Key="AccentBrush" Color="#2c3742" />
+          <SolidColorBrush x:Key="AccentHoverBrush" Color="#1e2730" />
+          <SolidColorBrush x:Key="AccentPressedBrush" Color="#3b4854" />
           <SolidColorBrush x:Key="AccentInkBrush" Color="#ffffff" />
-          <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#e0f2ee" />
-          <SolidColorBrush x:Key="AccentBorderBrush" Color="#93cfc2" />
-          <SolidColorBrush x:Key="SuccessBrush" Color="#27845b" />
-          <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="#e4f3ea" />
-          <SolidColorBrush x:Key="WarningBrush" Color="#9a6a20" />
+          <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#e7edf1" />
+          <SolidColorBrush x:Key="AccentBorderBrush" Color="#aab8c4" />
+          <SolidColorBrush x:Key="SuccessBrush" Color="#4f6d82" />
+          <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="#e8eef2" />
+          <SolidColorBrush x:Key="WarningBrush" Color="#966a25" />
           <SolidColorBrush x:Key="WarningSurfaceBrush" Color="#fff2dc" />
           <SolidColorBrush x:Key="WarningBorderBrush" Color="#dfbe83" />
           <SolidColorBrush x:Key="DangerBrush" Color="#b6463f" />

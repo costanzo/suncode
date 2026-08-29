@@ -12,29 +12,49 @@
         WindowDecorations="None"
         TransparencyLevelHint="Transparent"
         WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="Button.navigation">
+      <Setter Property="MinHeight" Value="34" />
+      <Setter Property="Padding" Value="10,5" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="CornerRadius" Value="5" />
+    </Style>
+    <Style Selector="Button.navigation:selected">
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.settings-hint">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Border.settings-warning">
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="11,10" />
+    </Style>
+    <Style Selector="Border.settings-provider-status">
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="8,7" />
+    </Style>
+  </Window.Styles>
   <Border x:Name="SettingsChrome"
-          Margin="16"
-          Background="{DynamicResource CanvasBrush}"
-          BorderBrush="{DynamicResource WindowChromeBorderBrush}"
-          BorderThickness="0.5"
-          CornerRadius="12"
-          Padding="1.5">
-  <Border Background="{DynamicResource CanvasBrush}"
-          CornerRadius="11"
-          ClipToBounds="True">
-  <Grid RowDefinitions="32,*">
-    <Grid Grid.Row="0" Background="{DynamicResource CanvasBrush}" ColumnDefinitions="Auto,*" PointerPressed="SettingsTitleBarPressed" DoubleTapped="SettingsTitleBarDoubleTapped">
+          Classes="window-frame">
+  <Border Classes="window-content">
+  <Grid RowDefinitions="36,*">
+    <Grid Grid.Row="0" Classes="window-titlebar" ColumnDefinitions="*,Auto,*" PointerPressed="SettingsTitleBarPressed" DoubleTapped="SettingsTitleBarDoubleTapped">
       <StackPanel Orientation="Horizontal" Spacing="6" Margin="5,0,0,0" VerticalAlignment="Center">
         <Button x:Name="SettingsCloseLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="CloseSettings" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Close window"><svg:Svg Path="/Assets/traffic-lights/1-close-1-normal.svg" /></Button>
         <Button x:Name="SettingsMinimizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="MinimizeSettings" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Minimize window"><svg:Svg Path="/Assets/traffic-lights/2-minimize-1-normal.svg" /></Button>
         <Button x:Name="SettingsMaximizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="ToggleSettingsMaximized" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Maximize window"><svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" /></Button>
       </StackPanel>
-      <TextBlock Grid.Column="1" Text="Settings" FontSize="13" FontWeight="SemiBold" Margin="4,0,0,0" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="1" Classes="window-title" Text="Settings" VerticalAlignment="Center" />
     </Grid>
   <Grid Grid.Row="1" RowDefinitions="58,*">
     <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
       <Grid Margin="22,0" ColumnDefinitions="*,Auto">
-        <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <TextBlock Text="Settings" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
         <Button Grid.Column="1" Classes="compact primary" Content="Done" Click="CloseSettings" VerticalAlignment="Center" />
       </Grid>
     </Border>
@@ -42,7 +62,7 @@
     <Grid Grid.Row="1" ColumnDefinitions="238,*">
       <Border Grid.Column="0" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
         <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="16,20" Spacing="4">
+          <StackPanel Margin="16,18" Spacing="4">
             <TextBlock Classes="section-label" Text="GENERAL" Margin="10,0,0,0" />
             <Button x:Name="DefaultsNavigation" Classes="navigation selected" Content="Defaults" Click="ShowDefaults" />
             <Button x:Name="AppearanceNavigation" Classes="navigation" Content="Appearance" Click="ShowAppearance" />
@@ -70,16 +90,16 @@
 
       <Grid Grid.Column="1">
         <ScrollViewer x:Name="DefaultsPage" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="32,28" Spacing="18">
+          <StackPanel Margin="32,28,32,34" Spacing="16" MaxWidth="720">
             <StackPanel Spacing="4">
               <TextBlock Text="Defaults" FontSize="22" FontWeight="SemiBold" />
-              <TextBlock Text="Configure model and turn defaults." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+              <TextBlock Classes="settings-hint" Text="Configure model and turn defaults." />
             </StackPanel>
             <TextBlock Classes="section-label" Text="DEFAULT MODEL" />
             <ComboBox x:Name="DefaultModelSelector" HorizontalAlignment="Stretch" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}" SelectionChanged="DefaultModelChanged">
               <ComboBox.ItemTemplate><DataTemplate x:DataType="models:ModelItem"><TextBlock Classes="mono" Text="{Binding Id}" /></DataTemplate></ComboBox.ItemTemplate>
             </ComboBox>
-            <TextBlock Text="Only models registered by the local agent appear here." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+            <TextBlock Classes="settings-hint" Text="Only models registered by the local agent appear here." />
             <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
             <TextBlock Classes="section-label" Text="TURN EXECUTION" />
             <Grid ColumnDefinitions="*,140">
@@ -103,10 +123,10 @@
         </ScrollViewer>
 
         <ScrollViewer x:Name="AppearancePage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="32,28" Spacing="18">
+          <StackPanel Margin="32,28,32,34" Spacing="16" MaxWidth="720">
             <StackPanel Spacing="4">
               <TextBlock Text="Appearance" FontSize="22" FontWeight="SemiBold" />
-              <TextBlock Text="Adjust how SunCode looks across every open window." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+              <TextBlock Classes="settings-hint" Text="Adjust how SunCode looks across every open window." />
             </StackPanel>
             <TextBlock Classes="section-label" Text="THEME" />
             <Grid ColumnDefinitions="*,160">
@@ -116,22 +136,22 @@
                 <ComboBoxItem Content="Light" Tag="light" />
               </ComboBox>
             </Grid>
-            <TextBlock Text="Changes apply immediately." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" />
+            <TextBlock Classes="settings-hint" Text="Changes apply immediately." />
           </StackPanel>
         </ScrollViewer>
 
         <ScrollViewer x:Name="LoggingPage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="32,28" Spacing="18">
+          <StackPanel Margin="32,28,32,34" Spacing="16" MaxWidth="720">
             <StackPanel Spacing="4">
               <TextBlock Text="Logging" FontSize="22" FontWeight="SemiBold" />
-              <TextBlock Text="Control diagnostic detail and how long local log files are kept." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+              <TextBlock Classes="settings-hint" Text="Control diagnostic detail and how long local log files are kept." />
             </StackPanel>
 
             <TextBlock Classes="section-label" Text="DIAGNOSTIC OUTPUT" />
             <Grid ColumnDefinitions="*,180" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="14">
               <StackPanel Spacing="3">
                 <TextBlock Text="Minimum level" FontWeight="SemiBold" />
-                <TextBlock Text="Lower levels include more diagnostic detail." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+                <TextBlock Classes="settings-hint" Text="Lower levels include more diagnostic detail." />
               </StackPanel>
               <ComboBox x:Name="LogLevelSelector" Grid.Column="1" HorizontalAlignment="Stretch">
                 <ComboBoxItem Content="TRACE" Tag="TRACE" />
@@ -144,19 +164,19 @@
 
               <StackPanel Grid.Row="1" Spacing="3">
                 <TextBlock Text="Log directory" FontWeight="SemiBold" />
-                <TextBlock Text="Leave empty to use the data directory's logs folder." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+                <TextBlock Classes="settings-hint" Text="Leave empty to use the data directory's logs folder." />
               </StackPanel>
               <TextBox x:Name="LogDirectoryInput" Grid.Row="1" Grid.Column="1" Classes="mono" PlaceholderText="Default logs folder" />
 
               <StackPanel Grid.Row="2" Spacing="3">
                 <TextBlock Text="Maximum file size" FontWeight="SemiBold" />
-                <TextBlock Text="Rotate each file after it reaches this many bytes. Minimum 1024." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+                <TextBlock Classes="settings-hint" Text="Rotate each file after it reaches this many bytes. Minimum 1024." />
               </StackPanel>
               <TextBox x:Name="LogMaxBytesInput" Grid.Row="2" Grid.Column="1" Classes="mono" PlaceholderText="10485760" />
 
               <StackPanel Grid.Row="3" Spacing="3">
                 <TextBlock Text="Retained backups" FontWeight="SemiBold" />
-                <TextBlock Text="Number of rotated backups to keep, from 0 to 100." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+                <TextBlock Classes="settings-hint" Text="Number of rotated backups to keep, from 0 to 100." />
               </StackPanel>
               <TextBox x:Name="LogRetentionInput" Grid.Row="3" Grid.Column="1" Classes="mono" PlaceholderText="5" />
             </Grid>
@@ -169,17 +189,17 @@
         </ScrollViewer>
 
         <ScrollViewer x:Name="NetworkPage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="32,28" Spacing="18">
+          <StackPanel Margin="32,28,32,34" Spacing="16" MaxWidth="720">
             <StackPanel Spacing="4">
               <TextBlock Text="Network" FontSize="22" FontWeight="SemiBold" />
-              <TextBlock Text="Configure how Rust HTTPS clients establish secure connections." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+              <TextBlock Classes="settings-hint" Text="Configure how Rust HTTPS clients establish secure connections." />
             </StackPanel>
 
             <TextBlock Classes="section-label" Text="HTTPS SECURITY" />
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
               <StackPanel Spacing="3">
                 <TextBlock Text="Verify server certificates" FontWeight="SemiBold" />
-                <TextBlock Text="Validate certificate chains and hostnames for model provider and WebFetch requests." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+                <TextBlock Classes="settings-hint" Text="Validate certificate chains and hostnames for model provider and WebFetch requests." />
               </StackPanel>
               <ToggleSwitch x:Name="VerifyHttpsCertificatesToggle"
                             Grid.Column="1"
@@ -194,11 +214,12 @@
                     Background="{DynamicResource WarningSurfaceBrush}"
                     BorderBrush="{DynamicResource WarningBorderBrush}"
                     BorderThickness="1"
-                    CornerRadius="10"
+                    Classes="settings-warning"
+                    CornerRadius="6"
                     Padding="12,10">
               <StackPanel Spacing="4">
                 <TextBlock Text="Certificate verification is off" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" />
-                <TextBlock Text="SunCode will accept invalid certificates and hostnames, similar to curl -k. This can expose provider credentials and fetched content to man-in-the-middle attacks." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                <TextBlock Classes="settings-hint" Text="SunCode will accept invalid certificates and hostnames, similar to curl -k. This can expose provider credentials and fetched content to man-in-the-middle attacks." />
               </StackPanel>
             </Border>
 
@@ -210,22 +231,24 @@
         </ScrollViewer>
 
         <ScrollViewer x:Name="ProviderPage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="32,28" Spacing="18">
+          <StackPanel Margin="32,28,32,34" Spacing="16" MaxWidth="720">
             <StackPanel Spacing="4">
               <TextBlock x:Name="ProviderTitle" FontSize="22" FontWeight="SemiBold" />
-              <TextBlock x:Name="ProviderDescription" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+              <TextBlock x:Name="ProviderDescription" Classes="settings-hint" />
             </StackPanel>
             <TextBlock Classes="section-label" Text="CREDENTIAL" />
-            <TextBlock x:Name="CredentialStatus" TextWrapping="Wrap" />
+            <Border Classes="settings-provider-status" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+              <TextBlock x:Name="CredentialStatus" TextWrapping="Wrap" FontSize="11" />
+            </Border>
             <TextBox x:Name="ProviderApiKey" PlaceholderText="Paste API key" PasswordChar="●" Classes="mono" TextChanged="ProviderApiKeyChanged" />
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <Button x:Name="SaveCredentialButton" Classes="primary" Content="Save key" Click="SaveCredential" IsEnabled="False" />
-              <Button x:Name="RemoveCredentialButton" Classes="danger" Content="Remove key" Click="RemoveCredential" />
+              <Button x:Name="SaveCredentialButton" Classes="compact primary" Content="Save key" Click="SaveCredential" IsEnabled="False" />
+              <Button x:Name="RemoveCredentialButton" Classes="compact danger" Content="Remove key" Click="RemoveCredential" />
             </StackPanel>
             <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
             <TextBlock Classes="section-label" Text="AVAILABLE MODELS" />
             <TextBlock x:Name="ProviderModelsText" Classes="mono" TextWrapping="Wrap" />
-            <TextBlock Text="The agent owns provider availability and model registration." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+            <TextBlock Classes="settings-hint" Text="The agent owns provider availability and model registration." />
           </StackPanel>
         </ScrollViewer>
       </Grid>

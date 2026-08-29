@@ -14,6 +14,10 @@ namespace SunCode.Desktop.ViewModels;
 
 public sealed class DesktopViewModel : ObservableObject, IDisposable
 {
+    private const double ReviewPaneBreakpoint = 1100;
+    private const double NavigationPaneBreakpoint = 860;
+    private const double CompactWorkspaceBreakpoint = 620;
+
     private readonly object _initializationGate = new();
     private AgentSdk? _sdk;
     private Task? _initializationTask;
@@ -269,6 +273,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     }
     public string StatusText { get => _statusText; private set => SetProperty(ref _statusText, value); }
+    public void ReportPresentationError(string message) => StatusText = message;
     public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) OnPropertyChanged(nameof(CanSubmit)); } }
     public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); } } }
     public string ThemeMode { get => _themeMode; private set => SetProperty(ref _themeMode, value); }
@@ -344,12 +349,12 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public int GitDiffAdditions { get => _gitDiffAdditions; private set => SetProperty(ref _gitDiffAdditions, value); }
     public int GitDiffDeletions { get => _gitDiffDeletions; private set => SetProperty(ref _gitDiffDeletions, value); }
     public long SessionTotalTokens { get => _sessionTotalTokens; private set { if (SetProperty(ref _sessionTotalTokens, value)) OnPropertyChanged(nameof(SessionTokenText)); } }
-    public bool NavigationVisible { get => _navigationVisible; set { if (SetProperty(ref _navigationVisible, value)) { OnPropertyChanged(nameof(NavigationWidth)); OnPropertyChanged(nameof(SessionSidebarVisible)); OnPropertyChanged(nameof(ExplorerSidebarVisible)); } } }
-    public bool ExplorerVisible { get => _explorerVisible; set { if (SetProperty(ref _explorerVisible, value)) { OnPropertyChanged(nameof(SessionSidebarVisible)); OnPropertyChanged(nameof(ExplorerSidebarVisible)); } } }
-    public bool ReviewVisible { get => _reviewVisible; set { if (SetProperty(ref _reviewVisible, value)) OnPropertyChanged(nameof(ReviewWidth)); } }
+    public bool NavigationVisible { get => _navigationVisible; set { if (SetProperty(ref _navigationVisible, value)) NotifyNavigationLayoutChanged(); } }
+    public bool ExplorerVisible { get => _explorerVisible; set { if (SetProperty(ref _explorerVisible, value)) NotifyNavigationLayoutChanged(); } }
+    public bool ReviewVisible { get => _reviewVisible; set { if (SetProperty(ref _reviewVisible, value)) NotifyReviewLayoutChanged(); } }
     public bool NavigationPinned { get => _navigationPinned; set => SetProperty(ref _navigationPinned, value); }
-    public bool GitVisible { get => _gitVisible; set => SetProperty(ref _gitVisible, value); }
-    public bool ProviderTraceVisible { get => _providerTraceVisible; set => SetProperty(ref _providerTraceVisible, value); }
+    public bool GitVisible { get => _gitVisible; set { if (SetProperty(ref _gitVisible, value)) NotifyDrawerLayoutChanged(nameof(EffectiveGitVisible)); } }
+    public bool ProviderTraceVisible { get => _providerTraceVisible; set { if (SetProperty(ref _providerTraceVisible, value)) NotifyDrawerLayoutChanged(nameof(EffectiveProviderTraceVisible)); } }
     public double NavigationPaneWidth { get => _navigationPaneWidth; set { if (SetProperty(ref _navigationPaneWidth, value)) OnPropertyChanged(nameof(NavigationWidth)); } }
     public double ReviewPaneWidth { get => _reviewPaneWidth; set { if (SetProperty(ref _reviewPaneWidth, value)) OnPropertyChanged(nameof(ReviewWidth)); } }
     public double BottomDrawerHeight { get => _bottomDrawerHeight; set => SetProperty(ref _bottomDrawerHeight, value); }
@@ -374,6 +379,19 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public bool HasProjectDependencies => ProjectDependencies.Count > 0;
     public bool SessionSidebarVisible => NavigationVisible && !ExplorerVisible;
     public bool ExplorerSidebarVisible => NavigationVisible && ExplorerVisible;
+    public bool EffectiveNavigationVisible => NavigationVisible && _layoutWidth > NavigationPaneBreakpoint;
+    public bool EffectiveSessionSidebarVisible => EffectiveNavigationVisible && !ExplorerVisible;
+    public bool EffectiveExplorerSidebarVisible => EffectiveNavigationVisible && ExplorerVisible;
+    public bool EffectiveReviewVisible => ReviewVisible && _layoutWidth > ReviewPaneBreakpoint;
+    public bool EffectiveGitVisible => GitVisible && _layoutWidth > CompactWorkspaceBreakpoint;
+    public bool EffectiveProviderTraceVisible => ProviderTraceVisible && _layoutWidth > CompactWorkspaceBreakpoint;
+    public bool WorkspaceGuttersVisible => _layoutWidth > CompactWorkspaceBreakpoint;
+    public GridLength WorkspaceGutterWidth => WorkspaceGuttersVisible ? new GridLength(26) : new GridLength(0);
+    public GridLength WorkspaceGutterGap => WorkspaceGuttersVisible ? new GridLength(4) : new GridLength(0);
+    public GridLength NavigationGap => EffectiveNavigationVisible ? new GridLength(4) : new GridLength(0);
+    public GridLength ReviewGap => EffectiveReviewVisible ? new GridLength(4) : new GridLength(0);
+    public GridLength BottomDrawerGap => EffectiveGitVisible || EffectiveProviderTraceVisible ? new GridLength(4) : new GridLength(0);
+    public bool WorkspaceStatusDetailsVisible => _layoutWidth > CompactWorkspaceBreakpoint;
     public bool HasSessions => Sessions.Count > 0;
     public bool HasMessages => Messages.Count > 0;
     public bool HasActivities => Activities.Count > 0;
@@ -409,8 +427,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public string GitSummary => GitState == "not_repository"
         ? "Not a Git repository"
         : string.IsNullOrWhiteSpace(GitBranch) ? "Git status unavailable" : $"{GitBranch}  ·  {GitChangedFiles} changed";
-    public GridLength NavigationWidth => NavigationVisible ? new GridLength(NavigationPaneWidth) : new GridLength(0);
-    public GridLength ReviewWidth => ReviewVisible ? new GridLength(ReviewPaneWidth) : new GridLength(0);
+    public GridLength NavigationWidth => EffectiveNavigationVisible ? new GridLength(NavigationPaneWidth) : new GridLength(0);
+    public GridLength ReviewWidth => EffectiveReviewVisible ? new GridLength(ReviewPaneWidth) : new GridLength(0);
     public GridLength GitFileListWidth => new(Math.Min(300, Math.Max(228, (_layoutWidth - 80) * 0.28)));
     public bool IsGitReady => GitState == "ready";
     public bool IsGitClean => IsGitReady && GitChangedFiles == 0;
@@ -471,11 +489,49 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public void UpdateLayoutWidth(double width)
     {
         _layoutWidth = width;
-        NavigationPaneWidth = Math.Clamp(NavigationPaneWidth, 180, Math.Min(420, Math.Max(180, _layoutWidth - 560)));
-        ReviewPaneWidth = Math.Clamp(ReviewPaneWidth, 220, Math.Min(460, Math.Max(220, _layoutWidth - 560)));
-        OnPropertyChanged(nameof(NavigationWidth));
-        OnPropertyChanged(nameof(ReviewWidth));
+        if (EffectiveNavigationVisible)
+            NavigationPaneWidth = Math.Clamp(NavigationPaneWidth, 180, Math.Min(420, Math.Max(180, _layoutWidth - 560)));
+        if (EffectiveReviewVisible)
+            ReviewPaneWidth = Math.Clamp(ReviewPaneWidth, 220, Math.Min(460, Math.Max(220, _layoutWidth - 560)));
+        NotifyResponsiveLayoutChanged();
         OnPropertyChanged(nameof(GitFileListWidth));
+    }
+
+    private void NotifyNavigationLayoutChanged()
+    {
+        OnPropertyChanged(nameof(SessionSidebarVisible));
+        OnPropertyChanged(nameof(ExplorerSidebarVisible));
+        OnPropertyChanged(nameof(EffectiveNavigationVisible));
+        OnPropertyChanged(nameof(EffectiveSessionSidebarVisible));
+        OnPropertyChanged(nameof(EffectiveExplorerSidebarVisible));
+        OnPropertyChanged(nameof(NavigationWidth));
+        OnPropertyChanged(nameof(NavigationGap));
+    }
+
+    private void NotifyReviewLayoutChanged()
+    {
+        OnPropertyChanged(nameof(EffectiveReviewVisible));
+        OnPropertyChanged(nameof(ReviewWidth));
+        OnPropertyChanged(nameof(ReviewGap));
+    }
+
+    private void NotifyResponsiveLayoutChanged()
+    {
+        NotifyNavigationLayoutChanged();
+        NotifyReviewLayoutChanged();
+        OnPropertyChanged(nameof(EffectiveGitVisible));
+        OnPropertyChanged(nameof(EffectiveProviderTraceVisible));
+        OnPropertyChanged(nameof(BottomDrawerGap));
+        OnPropertyChanged(nameof(WorkspaceGuttersVisible));
+        OnPropertyChanged(nameof(WorkspaceGutterWidth));
+        OnPropertyChanged(nameof(WorkspaceGutterGap));
+        OnPropertyChanged(nameof(WorkspaceStatusDetailsVisible));
+    }
+
+    private void NotifyDrawerLayoutChanged(string effectivePropertyName)
+    {
+        OnPropertyChanged(effectivePropertyName);
+        OnPropertyChanged(nameof(BottomDrawerGap));
     }
 
     public async Task InitializeAsync()

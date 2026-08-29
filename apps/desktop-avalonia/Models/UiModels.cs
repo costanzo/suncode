@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Avalonia.Media.Imaging;
 using SunCode.Desktop.Infrastructure;
 
 namespace SunCode.Desktop.Models;
@@ -56,9 +57,20 @@ public sealed class ExplorerNode : ObservableObject
     public bool IsDirectory => Kind == "directory" || IsGroup;
     public bool IsFile => Kind == "file";
     public bool CanRemove => IsRoot && IsDependency;
+    public bool IsDependencyRoot => IsRoot && IsDependency;
+    public bool HasPathSubtitle => !string.IsNullOrWhiteSpace(Path) && Path != ".";
+    public double ExpansionRotation => IsExpanded ? 90 : 0;
     public bool IsLoading { get => _isLoading; set => SetProperty(ref _isLoading, value); }
     public bool IsLoaded { get => _isLoaded; set => SetProperty(ref _isLoaded, value); }
-    public bool IsExpanded { get => _isExpanded; set => SetProperty(ref _isExpanded, value); }
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set
+        {
+            if (!SetProperty(ref _isExpanded, value)) return;
+            OnPropertyChanged(nameof(ExpansionRotation));
+        }
+    }
     public ObservableCollection<ExplorerNode> Children { get; } = [];
 
     private static ExplorerNode Placeholder() => new();
@@ -94,6 +106,20 @@ public sealed record ModelItem(string Id, string Provider, string ProviderLabel,
 }
 
 public sealed record CredentialItem(string Provider, bool Configured);
+
+public sealed class ComposerAttachment : IDisposable
+{
+    public ComposerAttachment(string name, Bitmap preview)
+    {
+        Name = name;
+        Preview = preview;
+    }
+
+    public string Name { get; }
+    public Bitmap Preview { get; }
+
+    public void Dispose() => Preview.Dispose();
+}
 
 public sealed class MessageItem : ObservableObject
 {

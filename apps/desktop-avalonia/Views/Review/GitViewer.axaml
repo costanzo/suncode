@@ -16,6 +16,14 @@
       <Setter Property="CornerRadius" Value="0" />
       <Setter Property="VerticalContentAlignment" Value="Stretch" />
     </Style>
+    <Style Selector="ListBox.git-files">
+      <Setter Property="Padding" Value="0,0,4,8" />
+    </Style>
+    <Style Selector="ListBox.git-files ListBoxItem:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource AccentSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
   </UserControl.Styles>
 
   <Grid>
@@ -61,7 +69,7 @@
           <ListBox Grid.Row="1" Classes="git-files" ItemsSource="{Binding FilteredGitFiles}" SelectedItem="{Binding SelectedGitFile}" SelectionChanged="GitFileSelected" Background="Transparent" BorderThickness="0">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="models:GitFileItem">
-                <Grid Height="12" ColumnDefinitions="18,8,*,Auto">
+                <Grid Height="28" ColumnDefinitions="18,8,*,Auto" Margin="0,0,4,0">
                   <Grid>
                     <TextBlock Text="{Binding StatusLetter}" Classes="mono" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsSuccess}" />
                     <TextBlock Text="{Binding StatusLetter}" Classes="mono" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsDanger}" />
@@ -79,7 +87,7 @@
         </Grid>
         <Border Grid.Column="1" Background="{DynamicResource BorderBrush}" />
         <Grid Grid.Column="2" Background="{DynamicResource WorkspaceBrush}" RowDefinitions="30,1,*">
-          <Grid Grid.Row="0" Margin="10,10" ColumnDefinitions="*,Auto,10,Auto">
+          <Grid Grid.Row="0" Margin="10,0" ColumnDefinitions="*,Auto,10,Auto">
             <TextBlock Text="{Binding SelectedGitPath}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
             <TextBlock Grid.Column="1" Text="{Binding GitDiffAdditions, StringFormat=+{0}}" Classes="mono" FontSize="11" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding ShowGitDiffStats}" />
             <TextBlock Grid.Column="3" Text="{Binding GitDiffDeletions, StringFormat=-{0}}" Classes="mono" FontSize="11" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" IsVisible="{Binding ShowGitDiffStats}" />

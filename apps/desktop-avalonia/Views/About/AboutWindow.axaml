@@ -9,19 +9,12 @@
         WindowDecorations="None"
         TransparencyLevelHint="Transparent"
         WindowStartupLocation="CenterOwner">
-  <Border Margin="16"
-          Background="{DynamicResource CanvasBrush}"
-          BorderBrush="{DynamicResource WindowChromeBorderBrush}"
-          BorderThickness="0.5"
-          CornerRadius="12"
-          Padding="1.5">
-    <Border Background="{DynamicResource CanvasBrush}"
-            CornerRadius="11"
-            ClipToBounds="True">
-      <Grid RowDefinitions="32,*">
+  <Border Classes="window-frame">
+    <Border Classes="window-content">
+      <Grid RowDefinitions="36,*">
         <Grid Grid.Row="0"
-              Background="{DynamicResource CanvasBrush}"
-              ColumnDefinitions="Auto,*"
+              Classes="window-titlebar"
+              ColumnDefinitions="*,Auto,*"
               PointerPressed="TitleBarPressed"
               DoubleTapped="TitleBarDoubleTapped">
           <StackPanel Orientation="Horizontal" Spacing="6" Margin="5,0,0,0" VerticalAlignment="Center">
@@ -35,7 +28,7 @@
               <svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" />
             </Button>
           </StackPanel>
-          <TextBlock Grid.Column="1" Text="About SunCode" FontSize="13" FontWeight="SemiBold" Margin="4,0,0,0" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Classes="window-title" Text="About SunCode" VerticalAlignment="Center" />
         </Grid>
 
         <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">

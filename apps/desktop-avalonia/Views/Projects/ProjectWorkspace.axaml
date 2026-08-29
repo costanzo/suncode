@@ -20,19 +20,12 @@
 
   <Grid>
     <Border x:Name="ProjectChrome"
-            Background="{DynamicResource CanvasBrush}"
-            BorderBrush="{DynamicResource WindowChromeBorderBrush}"
-            BorderThickness="0.5"
-            CornerRadius="12"
-            Margin="16"
-            Padding="1.5">
+            Classes="window-frame">
       <Border x:Name="ProjectChromeContent"
-              Background="{DynamicResource CanvasBrush}"
-              CornerRadius="11"
-              ClipToBounds="True"
-              Padding="4,6,4,6">
-      <Grid RowDefinitions="36,4,*,4,14">
+              Classes="window-content">
+      <Grid RowDefinitions="36,*,20">
         <Grid Grid.Row="0"
+              Classes="window-titlebar"
               Background="#01000000"
               ColumnDefinitions="*,280,*"
               ZIndex="110"
@@ -50,52 +43,60 @@
             <Button x:Name="ProjectMaximizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="ToggleMaximized" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Enter full screen">
               <svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" />
             </Button>
-            <TextBlock Text="{Binding ProjectTitle}"
-                       FontSize="13"
-                       FontWeight="Medium"
-                       Foreground="{DynamicResource TextSecondaryBrush}"
-                       MaxWidth="220"
-                       TextTrimming="CharacterEllipsis"
-                       VerticalAlignment="Center"
-                       Margin="4,0,0,0" />
           </StackPanel>
+          <TextBlock Grid.Column="0"
+                     Text="{Binding ProjectTitle}"
+                     FontSize="12"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     MaxWidth="180"
+                     TextTrimming="CharacterEllipsis"
+                     HorizontalAlignment="Left"
+                     VerticalAlignment="Center"
+                     Margin="90,0,0,0" />
           <TextBlock Grid.Column="1"
+                     Classes="window-title"
                      Text="{Binding SessionTitle}"
-                     FontSize="13"
-                     FontWeight="Medium"
                      TextTrimming="CharacterEllipsis"
                      HorizontalAlignment="Center"
                      VerticalAlignment="Center"
                      MaxWidth="260"
                      IsVisible="{Binding HasSelectedSession}" />
-          <Button Grid.Column="2" Classes="titlebar" HorizontalAlignment="Right" Click="OpenSettings" ToolTip.Tip="Open settings" Margin="0,0,1,0">
+          <Button Grid.Column="2" Classes="titlebar" Width="26" Height="28" HorizontalAlignment="Right" Click="OpenSettings" ToolTip.Tip="Open settings" Margin="0,0,6,0">
             <svg:Svg Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />
           </Button>
         </Grid>
 
-        <Grid Grid.Row="2" ColumnDefinitions="26,4,*,4,26">
+        <Grid Grid.Row="1" Margin="4">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="{Binding WorkspaceGutterWidth}" />
+            <ColumnDefinition Width="{Binding WorkspaceGutterGap}" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="{Binding WorkspaceGutterGap}" />
+            <ColumnDefinition Width="{Binding WorkspaceGutterWidth}" />
+          </Grid.ColumnDefinitions>
           <Border Grid.Column="0" Background="#01000000" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
           <Border Grid.Column="4" Background="#01000000" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
-          <Grid Grid.Column="0" RowDefinitions="Auto,6,Auto,*,Auto,6,Auto" Margin="1,10,1,10">
-            <Button Grid.Row="0" Classes="icon gutter" Classes.active="{Binding SessionSidebarVisible}" Width="24" Height="28" Padding="3.5" Click="ToggleNavigation" ToolTip.Tip="Show sessions">
+          <Grid Grid.Column="0" RowDefinitions="Auto,6,Auto,*,Auto,6,Auto" Margin="0,7" IsVisible="{Binding WorkspaceGuttersVisible}">
+            <Button Grid.Row="0" Classes="icon gutter" Classes.active="{Binding SessionSidebarVisible}" Width="26" Height="28" Padding="4" Click="ToggleNavigation" ToolTip.Tip="Show sessions">
               <Grid>
                 <svg:Svg Path="/Assets/icons/panel-left.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !SessionSidebarVisible}" />
                 <svg:Svg Path="/Assets/icons/panel-left.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding SessionSidebarVisible}" />
               </Grid>
             </Button>
-            <Button Grid.Row="2" Classes="icon gutter" Classes.active="{Binding ExplorerSidebarVisible}" Width="24" Height="28" Padding="3.5" Click="ToggleExplorer" ToolTip.Tip="Show explorer">
+            <Button Grid.Row="2" Classes="icon gutter" Classes.active="{Binding ExplorerSidebarVisible}" Width="26" Height="28" Padding="4" Click="ToggleExplorer" ToolTip.Tip="Show explorer">
               <Grid>
                 <svg:Svg Path="/Assets/icons/files.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !ExplorerSidebarVisible}" />
                 <svg:Svg Path="/Assets/icons/files.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding ExplorerSidebarVisible}" />
               </Grid>
             </Button>
-            <Button Grid.Row="4" Classes="icon gutter" Classes.active="{Binding GitVisible}" Width="24" Height="28" Padding="3.5" Click="ToggleGit" ToolTip.Tip="Show or hide source control">
+            <Button Grid.Row="4" Classes="icon gutter" Classes.active="{Binding GitVisible}" Width="26" Height="28" Padding="4" Click="ToggleGit" ToolTip.Tip="Show or hide source control">
               <Grid>
                 <svg:Svg Path="/Assets/icons/git-branch.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !GitVisible}" />
                 <svg:Svg Path="/Assets/icons/git-branch.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding GitVisible}" />
               </Grid>
             </Button>
-            <Button Grid.Row="6" Classes="icon gutter" Classes.active="{Binding ProviderTraceVisible}" Width="24" Height="28" Padding="3.5" Click="ToggleProviderTrace" ToolTip.Tip="Show or hide provider trace">
+            <Button Grid.Row="6" Classes="icon gutter" Classes.active="{Binding ProviderTraceVisible}" Width="26" Height="28" Padding="4" Click="ToggleProviderTrace" ToolTip.Tip="Show or hide provider trace">
               <Grid>
                 <svg:Svg Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !ProviderTraceVisible}" />
                 <svg:Svg Path="/Assets/icons/activity.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding ProviderTraceVisible}" />
@@ -103,41 +104,46 @@
             </Button>
           </Grid>
 
-          <Grid Grid.Column="2" RowDefinitions="*,4,Auto">
+          <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*" />
+              <RowDefinition Height="{Binding BottomDrawerGap}" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
             <Grid Grid.Row="0">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="{Binding NavigationWidth}" />
-                <ColumnDefinition Width="4" />
+                <ColumnDefinition Width="{Binding NavigationGap}" />
                 <ColumnDefinition Width="*" MinWidth="300" />
-                <ColumnDefinition Width="4" />
+                <ColumnDefinition Width="{Binding ReviewGap}" />
                 <ColumnDefinition Width="{Binding ReviewWidth}" />
               </Grid.ColumnDefinitions>
 
-              <Grid Grid.Column="0" IsVisible="{Binding NavigationVisible}">
-                <projects:ProjectSidebar IsVisible="{Binding SessionSidebarVisible}" />
-                <projects:ProjectExplorer IsVisible="{Binding ExplorerSidebarVisible}" />
+              <Grid Grid.Column="0" IsVisible="{Binding EffectiveNavigationVisible}">
+                <projects:ProjectSidebar IsVisible="{Binding EffectiveSessionSidebarVisible}" />
+                <projects:ProjectExplorer IsVisible="{Binding EffectiveExplorerSidebarVisible}" />
               </Grid>
 
-              <Border Grid.Column="1" Background="#01000000" Cursor="SizeWestEast" Tag="Navigation" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding NavigationVisible}" />
+              <Border Grid.Column="1" Background="#01000000" Cursor="SizeWestEast" Tag="Navigation" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveNavigationVisible}" />
 
               <chat:ChatArea x:Name="ChatArea" Grid.Column="2" />
 
-              <Border Grid.Column="3" Background="#01000000" Cursor="SizeWestEast" Tag="Review" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding ReviewVisible}" />
+              <Border Grid.Column="3" Background="#01000000" Cursor="SizeWestEast" Tag="Review" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveReviewVisible}" />
 
-              <review:AgentSidebar Grid.Column="4" IsVisible="{Binding ReviewVisible}" />
+              <review:AgentSidebar Grid.Column="4" IsVisible="{Binding EffectiveReviewVisible}" />
             </Grid>
 
-            <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding GitVisible}" />
-            <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding ProviderTraceVisible}" />
+            <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveGitVisible}" />
+            <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveProviderTraceVisible}" />
 
             <Grid Grid.Row="2">
-              <review:GitViewer x:Name="GitViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding GitVisible}" />
-              <review:ProviderTraceViewer x:Name="ProviderTraceViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding ProviderTraceVisible}" />
+              <review:GitViewer x:Name="GitViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding EffectiveGitVisible}" />
+              <review:ProviderTraceViewer x:Name="ProviderTraceViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding EffectiveProviderTraceVisible}" />
             </Grid>
           </Grid>
 
-          <StackPanel Grid.Column="4" Margin="1,10,1,0">
-            <Button Classes="icon gutter" Classes.active="{Binding ReviewVisible}" Width="24" Height="28" Padding="3.5" Click="ToggleReview" ToolTip.Tip="Show or hide agent sidebar">
+          <StackPanel Grid.Column="4" Margin="0,7,0,0" IsVisible="{Binding WorkspaceGuttersVisible}">
+            <Button Classes="icon gutter" Classes.active="{Binding ReviewVisible}" Width="26" Height="28" Padding="4" Click="ToggleReview" ToolTip.Tip="Show or hide agent sidebar">
               <Grid>
                 <svg:Svg Path="/Assets/icons/panel-right.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !ReviewVisible}" />
                 <svg:Svg Path="/Assets/icons/panel-right.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding ReviewVisible}" />
@@ -146,20 +152,24 @@
           </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="30,0,10,0">
-          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="5,0" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding IsProjectOpen}">
-            <TextBlock Text="{Binding GitFooterBranchText}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" MaxWidth="160" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding GitChangeSummary}" Classes="mono" FontSize="11" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsGitClean}" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding GitChangeSummary}" Classes="mono" FontSize="11" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsGitDirty}" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding GitAdditions, StringFormat=+{0}}" Classes="mono" FontSize="11" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsGitReady}" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding GitDeletions, StringFormat=-{0}}" Classes="mono" FontSize="11" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsGitReady}" VerticalAlignment="Center" />
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="36,0,12,0">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding IsProjectOpen}">
+            <TextBlock Text="{Binding GitFooterBranchText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" MaxWidth="180" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding WorkspaceStatusDetailsVisible}">
+              <TextBlock Text="{Binding GitChangeSummary}" Classes="mono" FontSize="9" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsGitClean}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding GitChangeSummary}" Classes="mono" FontSize="9" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsGitDirty}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding GitAdditions, StringFormat=+{0}}" Classes="mono" FontSize="9" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsGitReady}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding GitDeletions, StringFormat=-{0}}" Classes="mono" FontSize="9" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsGitReady}" VerticalAlignment="Center" />
+            </StackPanel>
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasSelectedSession}" VerticalAlignment="Center">
-            <TextBlock Text="{Binding SelectedModelName}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
-            <Border Width="1" Height="10" Background="{DynamicResource BorderBrush}" />
-            <TextBlock Text="{Binding SessionTokenText}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-            <Border Width="1" Height="10" Background="{DynamicResource BorderBrush}" />
-            <TextBlock Text="{Binding ProviderTraceSummary}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+            <TextBlock Text="{Binding SelectedModelName}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" MaxWidth="180" TextTrimming="CharacterEllipsis" />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding WorkspaceStatusDetailsVisible}">
+              <Border Width="1" Height="10" Background="{DynamicResource BorderBrush}" />
+              <TextBlock Text="{Binding SessionTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+              <Border Width="1" Height="10" Background="{DynamicResource BorderBrush}" />
+              <TextBlock Text="{Binding ProviderTraceSummary}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+            </StackPanel>
           </StackPanel>
         </Grid>
       </Grid>

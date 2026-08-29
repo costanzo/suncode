@@ -26,7 +26,7 @@
                    Padding="0">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="models:SessionItem">
-                <Grid Height="48" ColumnDefinitions="18,*,28">
+                <Grid Height="48" ColumnDefinitions="18,*,16,28">
                   <svg:Svg Grid.Column="0" Width="13" Height="13" HorizontalAlignment="Center" VerticalAlignment="Center" Path="/Assets/icons/pin.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding IsPinned}" />
                   <Button Grid.Column="1" Classes="quiet" Padding="4,4,10,4" HorizontalContentAlignment="Stretch">
                     <StackPanel Spacing="2">
@@ -34,7 +34,8 @@
                       <TextBlock Text="{Binding RelativeActivity}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
                     </StackPanel>
                   </Button>
-                  <Button Grid.Column="2" Classes="quiet" Width="28" Padding="6" ToolTip.Tip="Session actions">
+                  <!-- Session status is reserved for future derived agent state; do not invent it from session metadata. -->
+                  <Button Grid.Column="3" Classes="quiet" Width="28" Padding="6" ToolTip.Tip="Session actions">
                     <Button.Flyout>
                       <MenuFlyout>
                         <MenuItem Header="Pin" CommandParameter="{Binding}" Click="PinSessionItem" IsVisible="{Binding !IsPinned}" />
@@ -50,9 +51,10 @@
             </ListBox.ItemTemplate>
           </ListBox>
         </ScrollViewer>
-        <StackPanel IsVisible="{Binding !HasSessions}" Margin="0,36,0,0" Spacing="6">
-          <TextBlock Text="No sessions yet" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" HorizontalAlignment="Center" />
-          <TextBlock Text="Use + to create one." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+        <StackPanel IsVisible="{Binding !HasSessions}" Margin="0,44,0,32" Spacing="6" HorizontalAlignment="Center">
+          <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
+          <TextBlock Text="No sessions yet" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <TextBlock Text="Use + to create one." FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
         </StackPanel>
       </Grid>
     </Grid>

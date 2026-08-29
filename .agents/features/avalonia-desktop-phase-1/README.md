@@ -18,6 +18,16 @@ The desktop logger opens its default rotating `desktop.log` during process start
 
 ## Boundary and verification
 
+### Visual implementation notes
+
+- Shared Avalonia theme resources use the design-system's neutral graphite/silver primary action palette with separate success, warning, and danger semantics in both dark and light themes.
+- Production windows use a shared 36 px title bar, 14 px outer frame radius, compact traffic lights, and the existing native drag, resize, minimize, maximize, and close behavior.
+- ProjectHub uses a 62 px toolbar, 70 px recent-project rows, 24 px content insets, and a compact first-run empty state. The project workspace uses 4 px shell gaps, 26 px gutters, 272/312 px default side panes, mutually exclusive bottom drawers, and a 20 px status bar.
+- Sessions use 48 px rows with fixed pin/status/action columns and a compact empty state. Explorer uses 30 px tree rows, 12 px depth increments, explicit chevrons, root/dependency semantic styling, monospace path subtitles, and horizontal scrolling for deep paths.
+- Conversation uses 12 px message typography with compact process/tool rows, a 24 px no-session empty treatment, and an active-turn work indicator. Composer image attachments are local-only UI state: up to three images can be previewed, removed, and opened in a larger preview window; the current text-only SDK submit-turn contract intentionally ignores them and clears them when a text turn is submitted.
+- Review, Git, and provider trace surfaces use compact semantic cards, 30/22 px Git file/diff rows, and 54/48/40 px trace hierarchy rows. Settings uses a 238 px navigation column, 58 px toolbar, 720 px content cap, 11 px hints, and compact warning/credential surfaces.
+- Responsive workspace presentation hides review below 1100 px, navigation below 860 px, and gutters, drawers, and status details at 620 px or below while preserving user visibility preferences for restoration.
+
 Native calls run off the UI thread, subscription payloads are copied and marshalled to `Dispatcher.UIThread`, and subscriptions close before the shared runtime handle. Focused tests are colocated under `apps/desktop-avalonia/tests/` and run with:
 
 ```text

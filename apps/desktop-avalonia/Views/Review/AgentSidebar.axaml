@@ -7,8 +7,8 @@
              x:DataType="vm:DesktopViewModel">
   <Border Classes="inspector-card">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-      <StackPanel Margin="16" Spacing="12">
-        <Border Padding="10" CornerRadius="8" Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="{Binding FullControlEnabled}">
+      <StackPanel Margin="12,14" Spacing="12">
+        <Border Padding="10" CornerRadius="6" Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="{Binding FullControlEnabled}">
           <Grid ColumnDefinitions="Auto,8,*,Auto">
             <svg:Svg Width="16" Height="16" Path="/Assets/icons/unlock.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
             <TextBlock Grid.Column="2" Text="Full Control enabled" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
@@ -19,9 +19,9 @@
           <TextBlock Classes="eyebrow" Text="AGENT PROCESSES" />
           <Ellipse Grid.Column="1" Width="7" Height="7" Classes="process-dot" Classes.active="{Binding IsTurnActive}" />
         </Grid>
-        <TextBlock Text="1 active process" FontSize="16" FontWeight="SemiBold" IsVisible="{Binding IsTurnActive}" />
-        <TextBlock Text="No active process" FontSize="16" FontWeight="SemiBold" IsVisible="{Binding !IsTurnActive}" />
-        <Border Classes="process-card" Classes.active="{Binding IsTurnActive}" Padding="13">
+        <TextBlock Text="1 active process" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding IsTurnActive}" />
+        <TextBlock Text="No active process" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding !IsTurnActive}" />
+        <Border Classes="process-card" Classes.active="{Binding IsTurnActive}" Padding="11" CornerRadius="6">
           <StackPanel Spacing="8">
             <Grid ColumnDefinitions="Auto,8,*,Auto">
               <Ellipse Width="7" Height="7" Classes="process-dot" Classes.active="{Binding IsTurnActive}" VerticalAlignment="Center" />
@@ -29,14 +29,14 @@
               <TextBlock Grid.Column="3" Text="Running" FontSize="11" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsTurnActive}" />
               <TextBlock Grid.Column="3" Text="Idle" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding !IsTurnActive}" />
             </Grid>
-            <TextBlock Text="{Binding ActiveTurnId, StringFormat=Turn {0}}" Classes="mono" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsTurnActive}" />
-            <TextBlock Text="Waiting for a new turn" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding !IsTurnActive}" />
+            <TextBlock Text="{Binding ActiveTurnId, StringFormat=Turn {0}}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsTurnActive}" />
+            <TextBlock Text="Waiting for a new turn" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding !IsTurnActive}" />
             <TextBlock Text="{Binding SelectedModelName, StringFormat=Model  {0}}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="{Binding LatestActivityText, StringFormat=Latest  {0}}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="3" IsVisible="{Binding HasActivities}" />
-            <TextBlock Text="No tool activity yet" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding !HasActivities}" />
+            <TextBlock Text="{Binding LatestActivityText, StringFormat=Latest  {0}}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="3" IsVisible="{Binding HasActivities}" />
+            <TextBlock Text="No tool activity yet" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding !HasActivities}" />
           </StackPanel>
         </Border>
-        <Border Classes="process-card" Padding="13" IsVisible="{Binding HasCurrentTodos}">
+        <Border Classes="process-card" Padding="11" CornerRadius="6" IsVisible="{Binding HasCurrentTodos}">
           <StackPanel Spacing="8">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Text="CURRENT TURN TODO" Classes="eyebrow" />
@@ -47,7 +47,7 @@
                 <DataTemplate x:DataType="models:TodoItem">
                   <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
                     <TextBlock Text="{Binding StatusMarker}" Foreground="{DynamicResource AccentBrush}" Classes="mono" VerticalAlignment="Top" />
-                    <TextBlock Grid.Column="1" Text="{Binding Content}" FontSize="12" TextWrapping="Wrap" Opacity="{Binding Opacity}" />
+                    <TextBlock Grid.Column="1" Text="{Binding Content}" FontSize="10" TextWrapping="Wrap" Opacity="{Binding Opacity}" />
                     <TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="8,0,0,0" VerticalAlignment="Top" />
                   </Grid>
                 </DataTemplate>
@@ -57,12 +57,12 @@
         </Border>
         <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
         <TextBlock Classes="section-label" Text="REVIEW QUEUE" />
-        <Border Padding="13" CornerRadius="10" Background="{DynamicResource AccentSurfaceBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" IsVisible="{Binding HasPendingQuestion}">
+        <Border Padding="11" CornerRadius="6" Background="{DynamicResource AccentSurfaceBrush}" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1" IsVisible="{Binding HasPendingQuestion}">
           <StackPanel Spacing="11">
             <Grid ColumnDefinitions="*,Auto">
               <StackPanel Spacing="3">
                 <TextBlock Text="Clarification needed" Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold" />
-                <TextBlock Text="The agent is waiting for your answer" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="The agent is waiting for your answer" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" />
               </StackPanel>
               <Border Grid.Column="1" Background="{DynamicResource AccentBrush}" CornerRadius="5" Padding="7,4" VerticalAlignment="Top">
                 <TextBlock Text="ANSWER" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource SurfaceBrush}" />
@@ -73,7 +73,7 @@
                 <DataTemplate x:DataType="models:QuestionPromptItem">
                   <StackPanel Spacing="7">
                     <TextBlock Text="{Binding Header}" Classes="eyebrow" />
-                    <TextBlock Text="{Binding Question}" FontSize="13" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Question}" FontSize="11" TextWrapping="Wrap" />
                     <ItemsControl ItemsSource="{Binding Options}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="models:QuestionOptionItem">
@@ -101,12 +101,12 @@
             </Grid>
           </StackPanel>
         </Border>
-        <Border Padding="13" CornerRadius="10" Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="{Binding HasPendingApproval}">
+        <Border Padding="11" CornerRadius="6" Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="{Binding HasPendingApproval}">
           <StackPanel Spacing="11">
             <Grid ColumnDefinitions="*,Auto">
               <StackPanel Spacing="3">
                 <TextBlock Text="Approval required" Foreground="{DynamicResource WarningBrush}" FontSize="12" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding PendingApproval.ActionText}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding PendingApproval.ActionText}" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" />
               </StackPanel>
               <Border Grid.Column="1" Background="{DynamicResource WarningBrush}" CornerRadius="5" Padding="7,4" VerticalAlignment="Top">
                 <TextBlock Text="REVIEW" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource WarningSurfaceBrush}" />
@@ -138,11 +138,11 @@
             <Button Classes="compact" Content="Allow for session" Foreground="{DynamicResource WarningBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" Click="ApproveForSession" />
           </StackPanel>
         </Border>
-        <TextBlock Text="No pending approvals" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding !HasPendingApproval}" />
+        <TextBlock Text="No pending approvals" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding !HasPendingApproval}" />
         <ItemsControl ItemsSource="{Binding Checkpoints}" IsVisible="{Binding HasCheckpoints}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="models:CheckpointItem">
-              <Border Classes="raised" Padding="9" Margin="0,0,0,6">
+              <Border Classes="raised" Padding="9" Margin="0,0,0,6" CornerRadius="6">
                 <StackPanel Spacing="5">
                   <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="{Binding FileCount}" FontSize="12" />

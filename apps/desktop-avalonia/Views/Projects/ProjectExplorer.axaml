@@ -14,7 +14,7 @@
     <Style Selector="TreeView.explorer-tree TreeViewItem">
       <Setter Property="Padding" Value="0" />
       <Setter Property="Margin" Value="0" />
-      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="MinHeight" Value="30" />
       <Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded, Mode=TwoWay}" />
     </Style>
     <Style Selector="TreeView.explorer-tree TreeViewItem /template/ Border#PART_LayoutRoot">
@@ -22,6 +22,33 @@
     </Style>
     <Style Selector="TreeView.explorer-tree TreeViewItem:selected /template/ Border#PART_LayoutRoot">
       <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Grid.explorer-row">
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Margin" Value="6,3" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Grid.explorer-row.dependency">
+      <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    </Style>
+    <Style Selector="TextBlock.explorer-name">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.root TextBlock.explorer-name">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.dependency-root TextBlock.explorer-name">
+      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+    </Style>
+    <Style Selector="TextBlock.explorer-path">
+      <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="FontSize" Value="9" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
     </Style>
   </UserControl.Styles>
 
@@ -44,13 +71,19 @@
                 ScrollViewer.HorizontalScrollBarVisibility="Auto">
         <TreeView.DataTemplates>
           <TreeDataTemplate DataType="models:ExplorerNode" ItemsSource="{Binding Children}">
-            <Grid Height="28" ColumnDefinitions="18,*,24" Margin="1,0,2,0">
-              <Grid Grid.Column="0" VerticalAlignment="Center">
-                <svg:Svg Width="14" Height="14" Path="/Assets/icons/files.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsFile}" />
-                <svg:Svg Width="14" Height="14" Path="/Assets/icons/sidebar-project.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsDirectory}" />
-              </Grid>
-              <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-              <Button Grid.Column="2" Classes="quiet" Width="24" Height="24" Padding="5" IsVisible="{Binding CanRemove}" ToolTip.Tip="Dependency actions">
+            <Grid Classes="explorer-row" Classes.dependency="{Binding IsDependency}" Classes.root="{Binding IsRoot}" Classes.dependency-root="{Binding IsDependencyRoot}" ColumnDefinitions="13,16,Auto,24" ColumnSpacing="5" HorizontalAlignment="Left">
+              <svg:Svg Grid.Column="0" Width="12" Height="12" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsDirectory}" RenderTransformOrigin="50%,50%">
+                <svg:Svg.RenderTransform>
+                  <RotateTransform Angle="{Binding ExpansionRotation}" />
+                </svg:Svg.RenderTransform>
+              </svg:Svg>
+              <svg:Svg Grid.Column="1" Width="14" Height="14" Path="/Assets/icons/files.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsFile}" />
+              <svg:Svg Grid.Column="1" Width="14" Height="14" Path="/Assets/icons/sidebar-project.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsDirectory}" />
+              <StackPanel Grid.Column="2" Spacing="1" VerticalAlignment="Center">
+                <TextBlock Classes="explorer-name" Text="{Binding Name}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                <TextBlock Classes="explorer-path" Text="{Binding Path}" IsVisible="{Binding HasPathSubtitle}" TextWrapping="NoWrap" />
+              </StackPanel>
+              <Button Grid.Column="3" Classes="quiet" Width="24" Height="24" Padding="5" IsVisible="{Binding CanRemove}" ToolTip.Tip="Dependency actions">
                 <Button.Flyout>
                   <MenuFlyout>
                     <MenuItem Header="Delete" CommandParameter="{Binding}" Click="DeleteDependency" />

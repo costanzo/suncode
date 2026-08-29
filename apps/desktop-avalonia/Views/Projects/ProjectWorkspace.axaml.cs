@@ -39,10 +39,10 @@ public sealed partial class ProjectWorkspace : UserControl
     internal void SetFullScreenChrome(bool fullScreen)
     {
         ProjectChrome.Margin = fullScreen ? new Thickness(0) : new Thickness(16);
-        ProjectChrome.Padding = fullScreen ? new Thickness(0) : new Thickness(1.5);
-        ProjectChrome.BorderThickness = fullScreen ? new Thickness(0) : new Thickness(0.5);
-        ProjectChrome.CornerRadius = fullScreen ? new CornerRadius(0) : new CornerRadius(12);
-        ProjectChromeContent.CornerRadius = fullScreen ? new CornerRadius(0) : new CornerRadius(11);
+        ProjectChrome.Padding = new Thickness(0);
+        ProjectChrome.BorderThickness = fullScreen ? new Thickness(0) : new Thickness(1);
+        ProjectChrome.CornerRadius = fullScreen ? new CornerRadius(0) : new CornerRadius(14);
+        ProjectChromeContent.CornerRadius = fullScreen ? new CornerRadius(0) : new CornerRadius(13);
     }
 
     internal bool HandleEscape()

@@ -23,6 +23,11 @@
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
     </Style>
+    <Style Selector="Ellipse.running-dot">
+      <Setter Property="Width" Value="5" />
+      <Setter Property="Height" Value="5" />
+      <Setter Property="Fill" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
   </UserControl.Styles>
 
   <Border Classes="workspace-card" ClipToBounds="True">
@@ -45,11 +50,11 @@
           <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="models:MessageItem">
             <Grid MaxWidth="780" Margin="12,8" HorizontalAlignment="Stretch" IsVisible="{Binding IsVisible}">
-              <Border IsVisible="{Binding IsUser}" HorizontalAlignment="Right" MaxWidth="620" Padding="14" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" LineHeight="21" />
+              <Border IsVisible="{Binding IsUser}" HorizontalAlignment="Right" MaxWidth="480" Padding="12,10" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <SelectableTextBlock Text="{Binding Text}" FontSize="12" TextWrapping="Wrap" LineHeight="19" />
               </Border>
 
-              <StackPanel IsVisible="{Binding IsProcess}" MaxWidth="720" HorizontalAlignment="Left" Spacing="5">
+              <StackPanel IsVisible="{Binding IsProcess}" MaxWidth="620" HorizontalAlignment="Left" Spacing="5">
                 <Button Classes="quiet"
                         MinHeight="26"
                         Padding="4,3"
@@ -80,7 +85,7 @@
 
                 <StackPanel IsVisible="{Binding ProcessContentVisible}" Spacing="5">
                   <Grid IsVisible="{Binding IsAssistant}">
-                    <controls:MarkdownText Markdown="{Binding Text}" HorizontalAlignment="Stretch" />
+                    <controls:MarkdownText Markdown="{Binding Text}" FontSize="12" HorizontalAlignment="Stretch" />
                   </Grid>
 
                   <Button Classes="tool-card"
@@ -99,9 +104,9 @@
                 </StackPanel>
               </StackPanel>
 
-              <StackPanel IsVisible="{Binding IsFinalAssistant}" MaxWidth="720" HorizontalAlignment="Left" Spacing="4">
+              <StackPanel IsVisible="{Binding IsFinalAssistant}" MaxWidth="610" HorizontalAlignment="Left" Spacing="4">
                 <Grid>
-                  <controls:MarkdownText Markdown="{Binding Text}" HorizontalAlignment="Stretch" />
+                  <controls:MarkdownText Markdown="{Binding Text}" FontSize="12" HorizontalAlignment="Stretch" />
                 </Grid>
                 <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Margin="-7,0,0,0" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response" IsVisible="{Binding ShowCopy}">
                   <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
@@ -112,6 +117,12 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </ScrollViewer>
+
+      <StackPanel ZIndex="1" Margin="36,0,0,112" HorizontalAlignment="Left" VerticalAlignment="Bottom" Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsTurnActive}">
+        <Ellipse Classes="running-dot" />
+        <Ellipse Classes="running-dot" />
+        <Ellipse Classes="running-dot" />
+      </StackPanel>
 
       <StackPanel ZIndex="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding IsSessionLoadingVisible}">
         <ProgressBar Width="160" Height="3" IsIndeterminate="True" />
@@ -129,9 +140,10 @@
         </Button>
       </StackPanel>
 
-      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6" IsVisible="{Binding !HasSelectedSession}">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="7" IsVisible="{Binding !HasSelectedSession}">
+        <svg:Svg Width="24" Height="24" Path="/Assets/icons/panel-left.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
         <TextBlock Text="No session selected" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
-        <TextBlock Text="Create a session to start a conversation." FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+        <TextBlock Text="Create or select a session to start a conversation." FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
       </StackPanel>
 
       <Border x:Name="ToolDetailOverlay"

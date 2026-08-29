@@ -5,19 +5,28 @@
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Views.Projects.ProjectHub"
              x:DataType="vm:DesktopViewModel">
-  <Border Margin="16"
-          Background="{DynamicResource CanvasBrush}"
-          BorderBrush="{DynamicResource WindowChromeBorderBrush}"
-          BorderThickness="0.5"
-          CornerRadius="12"
-          Padding="1.5">
-    <Border Background="{DynamicResource CanvasBrush}"
-            CornerRadius="11"
-            ClipToBounds="True">
-    <Grid RowDefinitions="32,62,*">
+  <UserControl.Styles>
+    <Style Selector="Button.project-row">
+      <Setter Property="Height" Value="70" />
+      <Setter Property="Padding" Value="14,0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.project-row:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="window-frame">
+    <Border Classes="window-content">
+    <Grid RowDefinitions="36,62,*">
       <Grid Grid.Row="0"
-            Background="{DynamicResource CanvasBrush}"
-            ColumnDefinitions="Auto,*,Auto"
+            Classes="window-titlebar"
+            ColumnDefinitions="*,Auto,*"
             ZIndex="110"
             PointerPressed="TitleBarPressed"
             PointerMoved="TitleBarMoved"
@@ -34,21 +43,24 @@
             <svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" />
           </Button>
         </StackPanel>
-        <TextBlock Grid.Column="1" Text="Welcome to SunCode" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" 
-                   Margin="12, 0, 0, 0" />
+        <TextBlock Grid.Column="1" Classes="window-title" Text="Welcome to SunCode" VerticalAlignment="Center" />
       </Grid>
 
       <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
         <Grid Margin="22,0" ColumnDefinitions="Auto,12,Auto,*,Auto,12,Auto" RowDefinitions="*,Auto">
           <Image Grid.Column="0" Width="30" Height="30" Source="/Assets/logo/suncode-logo-small-64.png" VerticalAlignment="Center" />
-          <TextBlock Grid.Column="2" Text="SunCode" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <Button Grid.Column="4" Classes="compact" Content="Settings" Click="OpenSettings" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="2" Text="SunCode" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <Button Grid.Column="4" Classes="compact quiet" Content="Settings" Click="OpenSettings" VerticalAlignment="Center" />
           <Button Grid.Column="6"
                   Classes="compact primary"
-                  Content="Open project"
                   Click="OpenProject"
                   VerticalAlignment="Center"
-                  IsEnabled="{Binding CanOpenProjects}" />
+                  IsEnabled="{Binding CanOpenProjects}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <svg:Svg Width="13" Height="13" Path="/Assets/icons/plus.svg" Css="{DynamicResource AccentInkSvgCss}" />
+              <TextBlock Text="Open project" />
+            </StackPanel>
+          </Button>
           <TextBlock Grid.Row="1"
                      Grid.ColumnSpan="7"
                      Margin="0,0,0,4"
@@ -59,38 +71,52 @@
         </Grid>
       </Border>
 
-      <Border Grid.Row="2" Margin="28" Classes="card" Padding="18">
-        <Grid RowDefinitions="Auto,12,*">
-          <TextBlock Grid.Row="0" Classes="section-label" Text="RECENT PROJECTS" Margin="14,0" />
-          <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+      <Border Grid.Row="2" Margin="24" Classes="raised" Padding="18">
+        <Grid RowDefinitions="Auto,14,*">
+          <Border Grid.Row="0" Padding="2,0,2,12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+            <TextBlock Classes="section-label" Text="RECENT PROJECTS" />
+          </Border>
+          <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <Grid>
               <ItemsControl ItemsSource="{Binding Projects}" IsVisible="{Binding HasProjects}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="models:ProjectItem">
-                    <Button Height="70"
+                    <Button Classes="project-row"
                             Margin="0,0,0,8"
-                            Padding="14,0"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Stretch"
                             Click="ProjectClicked"
                             IsEnabled="{Binding $parent[UserControl].DataContext.CanOpenProjects}">
-                      <Grid ColumnDefinitions="34,12,*">
-                        <Border Width="34" Height="34" CornerRadius="8" Background="{DynamicResource AccentSurfaceBrush}" VerticalAlignment="Center">
-                          <TextBlock Text="P" Foreground="{DynamicResource AccentBrush}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      <Grid ColumnDefinitions="36,12,*,18">
+                        <Border Width="36" Height="36" CornerRadius="8" Background="{DynamicResource AccentSurfaceBrush}" VerticalAlignment="Center">
+                          <TextBlock Text="P" Foreground="{DynamicResource AccentBrush}" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="3">
-                          <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                           <TextBlock Classes="mono" Text="{Binding CanonicalRoot}" FontSize="11" FontWeight="Normal" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
+                        <svg:Svg Grid.Column="3" Width="14" Height="14" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
                       </Grid>
                     </Button>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <StackPanel IsVisible="{Binding !HasProjects}" Margin="0,48,0,0" Spacing="10">
-                <TextBlock Text="No projects yet" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                <TextBlock Text="Open a local folder to create your first project window." Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
-              </StackPanel>
+              <Border MinHeight="130"
+                      Padding="18"
+                      IsVisible="{Binding !HasProjects}"
+                      Background="{DynamicResource SurfaceBrush}"
+                      BorderBrush="{DynamicResource BorderBrush}"
+                      BorderThickness="1"
+                      CornerRadius="6">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="7">
+                  <svg:Svg Width="28" Height="28" Path="/Assets/icons/sidebar-project.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
+                  <TextBlock Text="No projects yet" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                  <TextBlock Text="Open a local folder to create your first project window."
+                             FontSize="10"
+                             Foreground="{DynamicResource TextMutedBrush}"
+                             TextAlignment="Center"
+                             TextWrapping="Wrap"
+                             HorizontalAlignment="Center" />
+                </StackPanel>
+              </Border>
             </Grid>
           </ScrollViewer>
         </Grid>

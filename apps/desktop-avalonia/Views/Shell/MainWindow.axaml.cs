@@ -387,7 +387,7 @@ public sealed partial class MainWindow : Window
     {
         ExtendClientAreaToDecorationsHint = true;
         Title = ViewModel.ProjectTitle;
-        MinWidth = 900;
+        MinWidth = 620;
         MinHeight = 620;
         ResizeAndCenter(1440, 900);
         ViewModel.UpdateLayoutWidth(1440);
