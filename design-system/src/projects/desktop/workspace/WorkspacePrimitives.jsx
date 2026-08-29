@@ -9,10 +9,18 @@ import { TrafficLights } from "../../../shared/TrafficLights.jsx";
 export { TrafficLights } from "../../../shared/TrafficLights.jsx";
 
 const sessions = [
-  { title: "Workspace information architecture", time: "2 min ago", pinned: true },
-  { title: "Provider migration review", time: "Yesterday" },
-  { title: "Desktop navigation polish", time: "Aug 26" },
+  { title: "Workspace information architecture", time: "2 min ago", pinned: true, status: "running" },
+  { title: "Provider migration review", time: "Yesterday", status: "approval" },
+  { title: "Desktop navigation polish", time: "Aug 26", status: "idle" },
 ];
+
+const sessionStatusLabels = {
+  running: "Agent running",
+  approval: "Waiting for approval",
+  question: "Waiting for answer",
+  failed: "Turn failed",
+  idle: "Agent idle",
+};
 
 const explorerNodes = [
   { id: "agents", parent: "project-root", name: ".agents", path: "/Users/shuyi/Projects/suncode/.agents", kind: "folder", depth: 1 },
@@ -142,6 +150,7 @@ export function SessionPanel({ compact = false, standalone = false, initialSessi
           <span className="workspace-session-pin">{session.pinned && <Icon name="pin" size={12} />}</span>
           <span><strong>{session.title}</strong><small>{session.time}</small></span>
         </button>
+        <span className={`workspace-session-status is-${session.status ?? "idle"}`} role="img" aria-label={sessionStatusLabels[session.status] ?? sessionStatusLabels.idle} title={sessionStatusLabels[session.status] ?? sessionStatusLabels.idle} aria-hidden={session.status === "idle" || !session.status} />
         <button type="button" className="workspace-session-more" aria-label={`Actions for ${session.title}`} aria-expanded={menu === index} onClick={() => setMenu(menu === index ? null : index)}><Icon name="more" size={14} /></button>
         {menu === index && <div className="workspace-session-menu"><button type="button" onClick={() => togglePin(index)}>{session.pinned ? "Unpin" : "Pin"}</button><button type="button" onClick={() => archive(index)}>Archive</button></div>}
       </div>)}
