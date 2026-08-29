@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UniversalComponentsPage } from "../components/universal/UniversalComponentsPage.jsx";
 import { ActionsPage } from "../components/universal/modules/actions/index.js";
 import { DataPage } from "../components/universal/modules/data/index.js";
@@ -44,7 +44,7 @@ import { WorkspaceProviderTracePage } from "../projects/desktop/workspace/provid
 import { Icon } from "../shared/Icon.jsx";
 import { RouteLink } from "../shared/PagePrimitives.jsx";
 import compactLogoUrl from "../assets/logos/suncode-logo-small.svg";
-import { allNavigationItems, getModuleForPath, overviewItem, primaryModules } from "./navigation.js";
+import { getModuleForPath, overviewItem, primaryModules } from "./navigation.js";
 import { useHashRoute } from "./useHashRoute.js";
 
 const routes = {
@@ -144,20 +144,16 @@ export function DesignSystemApp() {
   const path = useHashRoute();
   const [theme, setTheme] = useState(readTheme);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
   const [moduleMenuOpen, setModuleMenuOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState({});
   const [compactLayout, setCompactLayout] = useState(readCompactLayout);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
-  const searchRef = useRef(null);
   const sidebarRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const priorMenuOpenRef = useRef(false);
   const Page = routes[path];
   const activeModule = getModuleForPath(path);
   const sidebarItems = activeModule?.items ?? [overviewItem];
-  const results = useMemo(() => query.trim() ? allNavigationItems.filter((item) => `${item.label} ${item.group} ${item.keywords}`.toLowerCase().includes(query.trim().toLowerCase())) : [], [query]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -190,22 +186,12 @@ export function DesignSystemApp() {
 
   useEffect(() => {
     setMenuOpen(false);
-    setQuery("");
-    setSearchOpen(false);
     setModuleMenuOpen(false);
   }, [path]);
 
   useEffect(() => {
-    if (searchOpen) searchRef.current?.focus();
-  }, [searchOpen]);
-
-  useEffect(() => {
     const handleKey = (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setSearchOpen(true);
-      }
-      if (event.key === "Escape") { setQuery(""); setMenuOpen(false); setSearchOpen(false); setModuleMenuOpen(false); }
+      if (event.key === "Escape") { setMenuOpen(false); setModuleMenuOpen(false); }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
@@ -224,7 +210,6 @@ export function DesignSystemApp() {
         <button ref={mobileMenuRef} className="mobile-menu" aria-label={menuOpen ? "Close submodule navigation" : "Open submodule navigation"} aria-expanded={menuOpen} onClick={() => { setMenuOpen(!menuOpen); setModuleMenuOpen(false); }}><Icon name={menuOpen ? "close" : "menu"} /></button>
         <RouteLink to="/" className="browser-brand"><img src={compactLogoUrl} alt="SunCode" /><strong>SunCode</strong><span>Design System</span></RouteLink>
         <div className="browser-tools">
-          <div className={`search-control ${searchOpen ? "is-open" : ""}`}><button className="search-trigger" onClick={() => setSearchOpen(true)} aria-label="Open module search"><Icon name="search" /></button><input ref={searchRef} value={query} onFocus={() => setSearchOpen(true)} onChange={(event) => setQuery(event.target.value)} placeholder="Find a module" aria-label="Find a design system module" /><kbd>⌘K</kbd>{searchOpen && query && <div className="search-results">{results.length ? results.map((item) => <RouteLink to={item.path} key={item.path}><span>{item.group}</span><strong>{item.label}</strong></RouteLink>) : <p>No matching modules</p>}</div>}</div>
           <button className="theme-toggle" onClick={() => setTheme(theme === "light" ? "dark" : "light")} aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}><Icon name={theme === "light" ? "moon" : "sun"} /><span>{theme === "light" ? "Dark" : "Light"}</span></button>
         </div>
         <nav className={`primary-module-nav ${moduleMenuOpen ? "is-open" : ""}`} aria-label="Primary design system modules">
@@ -244,7 +229,6 @@ export function DesignSystemApp() {
               {sidebarItems.map((item) => <SidebarTreeItem key={item.path} item={item} path={path} expandedItems={expandedItems} onToggle={toggleSidebarItem} onRouteNavigate={handleRouteNavigate} collapsed={sidebarCollapsed && !compactLayout} />)}
             </div>
           </nav>
-          <footer><span>Review tooling only</span><code>React · Vite · Hash routes</code></footer>
         </aside>
         {menuOpen && <button className="nav-scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}
         <main className="browser-main"><div className="browser-content">{Page ? <Page /> : <NotFoundPage path={path} />}</div></main>

@@ -153,15 +153,3 @@ export const primaryModules = [
 export function getModuleForPath(path) {
   return primaryModules.find((module) => path === `/${module.id}` || path.startsWith(`/${module.id}/`));
 }
-
-function flattenItems(items, module, parentLabel = module.label) {
-  return items.flatMap((item) => [
-    { ...item, group: parentLabel, moduleId: module.id },
-    ...flattenItems(item.children ?? [], module, `${parentLabel} · ${item.label}`),
-  ]);
-}
-
-export const allNavigationItems = [
-  { ...overviewItem, group: "Overview", moduleId: "overview" },
-  ...primaryModules.flatMap((module) => flattenItems(module.items, module)),
-];

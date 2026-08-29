@@ -122,6 +122,9 @@ export function SessionPanel({ compact = false, standalone = false, initialSessi
   const [menu, setMenu] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameIndex, setRenameIndex] = useState(null);
+  const [renameTitle, setRenameTitle] = useState("");
   const createSession = () => {
     setNewTitle("");
     setCreateOpen(true);
@@ -132,6 +135,19 @@ export function SessionPanel({ compact = false, standalone = false, initialSessi
     setItems((current) => [{ title, time: "Just now" }, ...current]);
     setSelected(0);
     setCreateOpen(false);
+  };
+  const openRename = (index) => {
+    setRenameIndex(index);
+    setRenameTitle(items[index]?.title ?? "");
+    setMenu(null);
+    setRenameOpen(true);
+  };
+  const confirmRename = () => {
+    const title = renameTitle.trim();
+    if (!title || renameIndex === null) return;
+    setItems((current) => current.map((item, itemIndex) => itemIndex === renameIndex ? { ...item, title } : item));
+    setRenameOpen(false);
+    setRenameIndex(null);
   };
   const togglePin = (index) => {
     setItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, pinned: !item.pinned } : item));
@@ -152,11 +168,12 @@ export function SessionPanel({ compact = false, standalone = false, initialSessi
         </button>
         <span className={`workspace-session-status is-${session.status ?? "idle"}`} role="img" aria-label={sessionStatusLabels[session.status] ?? sessionStatusLabels.idle} title={sessionStatusLabels[session.status] ?? sessionStatusLabels.idle} aria-hidden={session.status === "idle" || !session.status} />
         <button type="button" className="workspace-session-more" aria-label={`Actions for ${session.title}`} aria-expanded={menu === index} onClick={() => setMenu(menu === index ? null : index)}><Icon name="more" size={14} /></button>
-        {menu === index && <div className="workspace-session-menu"><button type="button" onClick={() => togglePin(index)}>{session.pinned ? "Unpin" : "Pin"}</button><button type="button" onClick={() => archive(index)}>Archive</button></div>}
+        {menu === index && <div className="workspace-session-menu"><button type="button" onClick={() => openRename(index)}>Rename</button><button type="button" onClick={() => togglePin(index)}>{session.pinned ? "Unpin" : "Pin"}</button><button type="button" onClick={() => archive(index)}>Archive</button></div>}
       </div>)}
       {!items.length && <div className="workspace-session-empty"><Icon name="components" size={22} /><strong>No sessions yet</strong><span>Use + to create one.</span></div>}
     </div>
     <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New session" description="Give this conversation a name before you begin." className="workspace-session-modal" actions={<><button className="btn" onClick={() => setCreateOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={confirmCreate} disabled={!newTitle.trim()}>Create session</button></>}><input id="new-session-name" className="field" aria-label="Session name" value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="e.g. Provider migration review" onKeyDown={(event) => { if (event.key === "Enter") confirmCreate(); }} /></Modal>
+    <Modal open={renameOpen} onClose={() => { setRenameOpen(false); setRenameIndex(null); }} title="Rename session" description="Choose a new name for this conversation." className="workspace-session-modal" actions={<><button className="btn" onClick={() => { setRenameOpen(false); setRenameIndex(null); }}>Cancel</button><button className="btn btn-primary" onClick={confirmRename} disabled={!renameTitle.trim()}>Save name</button></>}><input id="rename-session-name" className="field" aria-label="Session name" value={renameTitle} onChange={(event) => setRenameTitle(event.target.value)} placeholder="e.g. Provider migration review" onKeyDown={(event) => { if (event.key === "Enter") confirmRename(); }} /></Modal>
   </aside>;
 }
 
