@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Icon } from "../../../shared/Icon.jsx";
 
-export function Modal({ open, title, description, onClose, children, actions }) {
+export function Modal({ open, title, description, onClose, children, actions, className = "" }) {
   const dialogRef = useRef(null);
   useEffect(() => {
     if (!open) return undefined;
@@ -22,7 +22,7 @@ export function Modal({ open, title, description, onClose, children, actions }) 
   }, [open, onClose]);
   if (!open) return null;
   return <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
-    <div ref={dialogRef} className="review-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby={description ? "modal-description" : undefined} onMouseDown={(event) => event.stopPropagation()}>
+    <div ref={dialogRef} className={`review-dialog ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby={description ? "modal-description" : undefined} onMouseDown={(event) => event.stopPropagation()}>
       <div className="dialog-title"><div><h3 id="modal-title">{title}</h3>{description && <p id="modal-description">{description}</p>}</div><button className="btn btn-icon btn-quiet" onClick={onClose} aria-label="Close dialog"><Icon name="close" /></button></div>
       {children}
       {actions && <div className="dialog-actions">{actions}</div>}
