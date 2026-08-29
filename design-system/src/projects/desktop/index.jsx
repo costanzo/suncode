@@ -3,6 +3,7 @@ import { ProjectCard } from "../../components/universal/card/index.js";
 import { EmptyState } from "../../components/universal/feedback/index.js";
 import { Icon } from "../../shared/Icon.jsx";
 import { PageHeader, Section } from "../../shared/PagePrimitives.jsx";
+import { TrafficLights } from "../../shared/TrafficLights.jsx";
 
 const recentProjects = [
   { name: "suncode", path: "~/Projects/suncode" },
@@ -14,7 +15,7 @@ function ProjectHubWindow({ projects = [] }) {
 
   return <div className="project-hub-frame">
     <div className="project-hub-titlebar">
-      <div className="traffic-lights" aria-label="Window controls"><span className="traffic-light close" /><span className="traffic-light minimize" /><span className="traffic-light maximize" /></div>
+      <TrafficLights />
       <strong>Welcome to SunCode</strong>
     </div>
     <div className="project-hub-toolbar">

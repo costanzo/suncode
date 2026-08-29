@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "../../../components/universal/button/index.js";
 import { SingleDropdown } from "../../../components/universal/dropdown/index.js";
 import { Icon } from "../../../shared/Icon.jsx";
 import { PageHeader, Section } from "../../../shared/PagePrimitives.jsx";
+import { TrafficLights } from "../../../shared/TrafficLights.jsx";
 
 const providerCatalog = {
-  deepseek: { label: "DeepSeek", placeholder: "Paste DeepSeek API key", keyPreview: "sk-d••••••••7K2m", models: ["deepseek-v4-flash", "deepseek-v4-pro"] },
-  zhipu: { label: "Zhipu GLM", placeholder: "Paste Zhipu API key", keyPreview: "zhip••••••••M8qR", models: ["glm-5.2", "glm-5.3"] },
-  openai: { label: "OpenAI", placeholder: "Paste OpenAI API key", keyPreview: "sk-p••••••••9Xc4", models: ["gpt-5.5", "gpt-5.6-sol"] },
-  kimi: { label: "Kimi", placeholder: "Paste Kimi API key", keyPreview: "sk-k••••••••3FvP", models: ["kimi-k2.7-code", "kimi-k3"] },
-  claude: { label: "Claude", placeholder: "Paste Anthropic API key", keyPreview: "sk-a••••••••6NwQ", models: ["claude-sonnet-5", "claude-opus-5"] },
-  gemini: { label: "Gemini", placeholder: "Paste Gemini API key", keyPreview: "AIza••••••••2Lm8", models: ["gemini-3.5", "gemini-3.6-flash"] },
+  deepseek: { label: "DeepSeek", endpoint: "https://api.deepseek.com", placeholder: "Paste DeepSeek API key", keyPreview: "sk-d••••••••7K2m", models: ["deepseek-v4-flash", "deepseek-v4-pro"] },
+  zhipu: { label: "Zhipu GLM", endpoint: "https://open.bigmodel.cn/api/paas/v4", placeholder: "Paste Zhipu API key", keyPreview: "zhip••••••••M8qR", models: ["glm-5.2", "glm-5.3"] },
+  openai: { label: "OpenAI", endpoint: "https://api.openai.com/v1", placeholder: "Paste OpenAI API key", keyPreview: "sk-p••••••••9Xc4", models: ["gpt-5.5", "gpt-5.6-sol"] },
+  kimi: { label: "Kimi", endpoint: "https://api.moonshot.ai/v1", placeholder: "Paste Kimi API key", keyPreview: "sk-k••••••••3FvP", models: ["kimi-k2.7-code", "kimi-k3"] },
+  claude: { label: "Claude", endpoint: "https://api.anthropic.com/v1", placeholder: "Paste Anthropic API key", keyPreview: "sk-a••••••••6NwQ", models: ["claude-sonnet-5", "claude-opus-5"] },
+  gemini: { label: "Gemini", endpoint: "https://generativelanguage.googleapis.com/v1beta/openai", placeholder: "Paste Gemini API key", keyPreview: "AIza••••••••2Lm8", models: ["gemini-3.5", "gemini-3.6-flash"] },
 };
 
 const navItems = [
@@ -20,17 +21,13 @@ const navItems = [
   { id: "logging", label: "Logging", icon: "assets" },
 ];
 
-function TrafficLights({ onClose, onAction }) {
-  return <div className="settings-traffic-lights" aria-label="Window controls"><button type="button" className="traffic-light close" aria-label="Close settings" title="Close settings" onClick={onClose} /><button type="button" className="traffic-light minimize" aria-label="Minimize settings" title="Minimize settings" onClick={() => onAction("Minimize is available in the desktop window.")} /><button type="button" className="traffic-light maximize" aria-label="Maximize settings" title="Maximize settings" onClick={() => onAction("Maximize is available in the desktop window.")} /></div>;
-}
-
 function SettingRow({ label, hint, children, className = "" }) {
   return <div className={`settings-row ${className}`}><div className="settings-row-copy"><strong>{label}</strong>{hint && <span>{hint}</span>}</div><div className="settings-row-control">{children}</div></div>;
 }
 
 function SettingsNav({ page, setPage, providersExpanded, setProvidersExpanded }) {
   return <aside className="settings-nav"><nav aria-label="Settings sections">
-    <div className="settings-nav-list">{navItems.map((item) => <button key={item.id} type="button" aria-current={page === item.id ? "page" : undefined} className={`settings-nav-item ${page === item.id ? "is-selected" : ""}`} onClick={() => setPage(item.id)}><Icon name={item.icon} size={15} /><span>{item.label}</span></button>)}<div className="settings-nav-models"><button type="button" className={`settings-nav-item settings-nav-parent ${page.startsWith("provider:") ? "is-selected" : ""}`} aria-expanded={providersExpanded} aria-controls="settings-provider-list" onClick={() => setProvidersExpanded((open) => !open)}><Icon name="foundation" size={15} /><span>Model providers</span></button>{providersExpanded && <div className="settings-provider-list" id="settings-provider-list">{Object.entries(providerCatalog).map(([id, provider]) => <button key={id} type="button" aria-current={page === `provider:${id}` ? "page" : undefined} className={`settings-nav-item settings-nav-provider ${page === `provider:${id}` ? "is-selected" : ""}`} onClick={() => setPage(`provider:${id}`)}><span>{provider.label}</span></button>)}</div>}</div></div>
+    <div className="settings-nav-list">{navItems.map((item) => <button key={item.id} type="button" aria-current={page === item.id ? "page" : undefined} className={`settings-nav-item ${page === item.id ? "is-selected" : ""}`} onClick={() => setPage(item.id)}><Icon name={item.icon} size={15} /><span>{item.label}</span></button>)}<div className="settings-nav-models"><button type="button" className={`settings-nav-item settings-nav-parent ${page === "providers" ? "is-selected" : ""}`} aria-current={page === "providers" ? "page" : undefined} aria-expanded={providersExpanded} aria-controls="settings-provider-list" onClick={() => { setProvidersExpanded(true); setPage("providers"); }}><Icon name="foundation" size={15} /><span>Model providers</span></button>{providersExpanded && <div className="settings-provider-list" id="settings-provider-list">{Object.entries(providerCatalog).map(([id, provider]) => <button key={id} type="button" aria-current={page === `provider:${id}` ? "page" : undefined} className={`settings-nav-item settings-nav-provider ${page === `provider:${id}` ? "is-selected" : ""}`} onClick={() => setPage(`provider:${id}`)}><span>{provider.label}</span></button>)}</div>}</div></div>
   </nav></aside>;
 }
 
@@ -42,7 +39,7 @@ function DefaultsPanel({ onSave }) {
 function AppearancePanel({ onSave }) {
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || "light");
   const applyTheme = (nextTheme) => { setTheme(nextTheme); document.documentElement.dataset.theme = nextTheme; try { window.localStorage.setItem("suncode-design-theme", nextTheme); } catch { /* non-fatal */ } onSave(); };
-  return <div className="settings-panel-content"><div className="settings-panel-heading"><h2>Appearance</h2><p>Adjust how SunCode looks across every open window.</p></div><div className="settings-panel-section"><span className="settings-section-label">Theme</span><SettingRow label="Color theme" hint="Changes apply immediately."><SingleDropdown options={[{ value: "dark", label: "Dark" }, { value: "light", label: "Light" }]} value={theme} onChange={applyTheme} ariaLabel="Color theme" className="settings-dropdown" /></SettingRow></div><div className="settings-actions"><span className="settings-save-status" role="status">{theme === "light" ? "Light" : "Dark"} theme active</span></div></div>;
+  return <div className="settings-panel-content"><div className="settings-panel-heading"><h2>Appearance</h2><p>Adjust how SunCode looks across every open window.</p></div><div className="settings-panel-section"><span className="settings-section-label">Theme</span><SettingRow label="Color theme" hint="Changes apply immediately."><SingleDropdown options={[{ value: "dark", label: "Dark" }, { value: "light", label: "Light" }]} value={theme} onChange={applyTheme} ariaLabel="Color theme" className="settings-dropdown" /></SettingRow></div></div>;
 }
 
 function NetworkPanel({ onSave }) {
@@ -51,7 +48,31 @@ function NetworkPanel({ onSave }) {
 }
 
 function LoggingPanel({ onSave }) {
-  return <div className="settings-panel-content"><div className="settings-panel-heading"><h2>Logging</h2><p>Control diagnostic detail and how long local log files are kept.</p></div><div className="settings-panel-section"><span className="settings-section-label">Diagnostic output</span><SettingRow label="Minimum level" hint="Lower levels include more diagnostic detail."><SingleDropdown options={["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "OFF"]} initialValue="INFO" ariaLabel="Minimum log level" className="settings-dropdown" /></SettingRow><SettingRow label="Log directory" hint="Leave empty to use the data directory's logs folder."><input className="field settings-text" placeholder="Default logs folder" aria-label="Log directory" /></SettingRow><SettingRow label="Maximum file size" hint="Rotate each file after it reaches this many bytes. Minimum 1024."><input className="field settings-text mono" defaultValue="10485760" aria-label="Maximum file size" /></SettingRow><SettingRow label="Retained backups" hint="Number of rotated backups to keep, from 0 to 100."><input className="field settings-number" type="number" min="0" max="100" defaultValue="5" aria-label="Retained backups" /></SettingRow></div><div className="settings-actions"><Button variant="primary" size="sm" onClick={onSave}>Save logging settings</Button><span className="settings-save-status" role="status">Local settings</span></div></div>;
+  const [directory, setDirectory] = useState("~/.suncode/logs");
+  const directoryInputRef = useRef(null);
+  const chooseDirectory = async () => {
+    if (!("showDirectoryPicker" in window)) {
+      directoryInputRef.current?.click();
+      return;
+    }
+    try {
+      const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+      setDirectory(`~/${handle.name}`);
+    } catch (error) {
+      if (error?.name !== "AbortError") directoryInputRef.current?.click();
+    }
+  };
+  const chooseFallbackDirectory = (event) => {
+    const relativePath = event.target.files?.[0]?.webkitRelativePath;
+    const folderName = relativePath?.split("/")[0];
+    if (folderName) setDirectory(`~/${folderName}`);
+    event.target.value = "";
+  };
+  return <div className="settings-panel-content"><div className="settings-panel-heading"><h2>Logging</h2><p>Control diagnostic detail and how long local log files are kept.</p></div><div className="settings-panel-section"><span className="settings-section-label">Diagnostic output</span><SettingRow label="Minimum level" hint="Lower levels include more diagnostic detail."><SingleDropdown options={["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "OFF"]} initialValue="INFO" ariaLabel="Minimum log level" className="settings-dropdown" /></SettingRow><SettingRow label="Log directory" hint="Agent and desktop log files are written to this folder."><div className="settings-directory-field"><input className="field mono" value={directory} onChange={(event) => setDirectory(event.target.value)} aria-label="Log directory" spellCheck="false" /><button type="button" aria-label="Choose log directory" title="Choose folder" onClick={chooseDirectory}><Icon name="project" size={16} /></button><input ref={directoryInputRef} type="file" webkitdirectory="" aria-hidden="true" tabIndex="-1" onChange={chooseFallbackDirectory} /></div></SettingRow><SettingRow label="Maximum file size" hint="Rotate each log file when it reaches this size."><label className="settings-unit-field"><input className="field mono" type="number" min="1" max="1000" step="1" defaultValue="10" aria-label="Maximum file size in megabytes" /><span>MB</span></label></SettingRow><SettingRow label="Retained backups" hint="Number of rotated backups to keep, from 0 to 100."><input className="field settings-number" type="number" min="0" max="100" defaultValue="5" aria-label="Retained backups" /></SettingRow></div><div className="settings-actions"><Button variant="primary" size="sm" onClick={onSave}>Save logging settings</Button><span className="settings-save-status" role="status">Local settings</span></div></div>;
+}
+
+function ProvidersPanel({ onSelect }) {
+  return <div className="settings-panel-content"><div className="settings-panel-heading"><h2>Model providers</h2><p>Built-in providers available to the local agent.</p></div><div className="settings-provider-overview">{Object.entries(providerCatalog).map(([id, provider]) => <button key={id} type="button" onClick={() => onSelect(id)}><span className={`settings-status-dot ${provider.keyPreview ? "is-configured" : ""}`} /><span><strong>{provider.label}</strong><code>{provider.endpoint}</code></span><Icon name="arrow" size={14} /></button>)}</div></div>;
 }
 
 function maskApiKey(value) {
@@ -67,7 +88,7 @@ function ProviderPanel({ providerId, onSave }) {
   const configured = Boolean(maskedKey);
   const saveKey = () => { setMaskedKey(maskApiKey(apiKey)); setApiKey(""); onSave(); };
   const removeKey = () => { setMaskedKey(""); setApiKey(""); onSave(); };
-  return <div className="settings-panel-content"><div className="settings-panel-heading"><h2>{provider.label}</h2></div><div className="settings-panel-section"><span className="settings-section-label">Credential</span><div className={`settings-credential-status ${configured ? "is-configured" : ""}`}><span className="settings-status-dot" /><div>{configured ? <><strong>API key configured</strong><code aria-label={`API key starts with ${maskedKey.slice(0, 4)} and ends with ${maskedKey.slice(-4)}`}>{maskedKey}</code></> : <><strong>No API key configured</strong><small>Add a key to enable this provider.</small></>}</div></div><input className="field settings-key mono" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={configured ? "Paste a new key to replace it" : provider.placeholder} aria-label={`${provider.label} API key`} autoComplete="new-password" /><div className="settings-actions"><Button variant="primary" size="sm" disabled={!apiKey.trim()} onClick={saveKey}>{configured ? "Replace key" : "Save key"}</Button><Button variant="danger" size="sm" onClick={removeKey} disabled={!configured}>Remove key</Button></div></div><div className="settings-divider" /><div className="settings-panel-section"><span className="settings-section-label">Available models</span><div className="settings-model-list">{provider.models.map((model) => <code key={model}>{model}</code>)}</div></div></div>;
+  return <div className="settings-panel-content"><div className="settings-panel-heading"><h2>{provider.label}</h2><code className="settings-provider-endpoint">{provider.endpoint}</code></div><div className="settings-panel-section"><span className="settings-section-label">Credential</span><div className={`settings-credential-status ${configured ? "is-configured" : ""}`}><span className="settings-status-dot" /><div>{configured ? <><strong>API key configured</strong><code aria-label={`API key starts with ${maskedKey.slice(0, 4)} and ends with ${maskedKey.slice(-4)}`}>{maskedKey}</code></> : <><strong>No API key configured</strong><small>Add a key to enable this provider.</small></>}</div></div><input className="field settings-key mono" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={configured ? "Paste a new key to replace it" : provider.placeholder} aria-label={`${provider.label} API key`} autoComplete="new-password" /><div className="settings-actions"><Button variant="primary" size="sm" disabled={!apiKey.trim()} onClick={saveKey}>{configured ? "Replace key" : "Save key"}</Button><Button variant="danger" size="sm" onClick={removeKey} disabled={!configured}>Remove key</Button></div></div><div className="settings-divider" /><div className="settings-panel-section"><span className="settings-section-label">Available models</span><div className="settings-model-list">{provider.models.map((model) => <code key={model}>{model}</code>)}</div></div></div>;
 }
 
 export function SettingsPage() {
@@ -80,8 +101,9 @@ export function SettingsPage() {
     if (page === "appearance") return <AppearancePanel onSave={save} />;
     if (page === "network") return <NetworkPanel onSave={save} />;
     if (page === "logging") return <LoggingPanel onSave={save} />;
+    if (page === "providers") return <ProvidersPanel onSelect={(providerId) => { setPage(`provider:${providerId}`); setStatus(""); }} />;
     if (page.startsWith("provider:")) return <ProviderPanel key={page} providerId={page.split(":")[1]} onSave={save} />;
     return <DefaultsPanel onSave={save} />;
   };
-  return <><PageHeader title="Settings" description="The Avalonia desktop settings window for local defaults, security, diagnostics, and provider credentials." path="projects/desktop/settings/" /><Section id="settings-window" title="Desktop settings" description="A focused settings window with stable pages for each configuration area."><div className="settings-window"><div className="settings-titlebar"><TrafficLights onClose={navigateBack} onAction={setStatus} /><strong>Settings</strong></div><div className="settings-toolbar"><strong>Settings</strong><Button variant="primary" size="sm" onClick={navigateBack}>Done</Button></div><div className="settings-body"><SettingsNav page={page} setPage={(nextPage) => { setPage(nextPage); setStatus(""); }} providersExpanded={providersExpanded} setProvidersExpanded={setProvidersExpanded} /><main className="settings-panel">{renderPanel()}{status && <div className="settings-global-status" role="status">{status}</div>}</main></div></div></Section></>;
+  return <><PageHeader title="Settings" description="The Avalonia desktop settings window for local defaults, security, diagnostics, and provider credentials." path="projects/desktop/settings/" /><Section id="settings-window" title="Desktop settings" description="A focused settings window with stable pages for each configuration area."><div className="settings-window"><div className="settings-titlebar"><TrafficLights onClose={navigateBack} onMinimize={() => setStatus("Minimize is available in the desktop window.")} onMaximize={() => setStatus("Maximize is available in the desktop window.")} /><strong>Settings</strong></div><div className="settings-toolbar"><strong>Settings</strong><Button variant="primary" size="sm" onClick={navigateBack}>Done</Button></div><div className="settings-body"><SettingsNav page={page} setPage={(nextPage) => { setPage(nextPage); setStatus(""); }} providersExpanded={providersExpanded} setProvidersExpanded={setProvidersExpanded} /><main className="settings-panel">{renderPanel()}{status && <div className="settings-global-status" role="status">{status}</div>}</main></div></div></Section></>;
 }

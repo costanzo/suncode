@@ -3,6 +3,9 @@ import { Button } from "../../../components/universal/button/index.js";
 import { ModelDropdown, SingleDropdown } from "../../../components/universal/dropdown/index.js";
 import { Modal } from "../../../components/universal/modal/index.js";
 import { Icon } from "../../../shared/Icon.jsx";
+import { TrafficLights } from "../../../shared/TrafficLights.jsx";
+
+export { TrafficLights } from "../../../shared/TrafficLights.jsx";
 
 const sessions = [
   { title: "Workspace information architecture", time: "2 min ago", pinned: true },
@@ -50,10 +53,6 @@ const workspaceModelGroups = [
 
 function IconButton({ icon, label, active = false, onClick, disabled = false }) {
   return <button type="button" className={`workspace-icon-button ${active ? "is-active" : ""}`} aria-label={label} aria-pressed={active} onClick={onClick} disabled={disabled}><Icon name={icon} size={15} /></button>;
-}
-
-export function TrafficLights() {
-  return <div className="traffic-lights" aria-label="Window controls"><span className="traffic-light close" /><span className="traffic-light minimize" /><span className="traffic-light maximize" /></div>;
 }
 
 export function SessionPanel({ compact = false, standalone = false, initialSessions = sessions }) {
@@ -242,7 +241,7 @@ export function WorkspaceWindow() {
       <div className="workspace-main-stack"><div className="workspace-main-row">{navigation === "sessions" && <SessionPanel compact />}{navigation === "explorer" && <ExplorerPanel compact />}<ConversationPanel compact />{reviewVisible && <ReviewPanel compact />}</div>{drawer === "git" && <SourceControlPanel onClose={() => setDrawer(null)} />}{drawer === "trace" && <ProviderTracePanel onClose={() => setDrawer(null)} />}</div>
       <aside className="workspace-gutter workspace-gutter-right"><IconButton icon="panel-right" label="Show review" active={reviewVisible} onClick={() => setReviewVisible(!reviewVisible)} /></aside>
     </div>
-    <footer className="workspace-statusbar"><div><Icon name="git" size={11} /><code>codex/workspace-design</code><b>3 changes</b><span>+308</span><i>−8</i></div><div><code>gpt-5.6-sol</code><span>19.7k tokens</span><span>3 calls · 4.2s</span></div></footer>
+    <footer className="workspace-statusbar"><div><code>codex/workspace-design</code><b>3 changes</b><span>+308</span><i>−8</i></div><div><code>gpt-5.6-sol</code><span>19.7k tokens</span><span>3 calls · 4.2s</span></div></footer>
   </div>;
 }
 
