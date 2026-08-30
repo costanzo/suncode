@@ -129,6 +129,15 @@ public sealed class AgentSdk : IDisposable
     public Task<JsonObject> SetSessionPinnedAsync(string sessionId, bool pinned) => WithUtf8Async(
         [sessionId], values => NativeMethods.suncode_agent_sdk_set_session_pinned(_handle, values[0], pinned ? (byte)1 : (byte)0));
 
+    public Task<JsonObject> ListSessionImagesAsync(string sessionId) => WithUtf8Async(
+        [sessionId], values => NativeMethods.suncode_agent_sdk_list_session_images(_handle, values[0]));
+
+    public Task<JsonObject> AddSessionImageAsync(string sessionId, JsonObject image) => WithUtf8Async(
+        [sessionId, image.ToJsonString()], values => NativeMethods.suncode_agent_sdk_add_session_image(_handle, values[0], values[1]));
+
+    public Task<JsonObject> RemoveSessionImageAsync(string sessionId, string imageId) => WithUtf8Async(
+        [sessionId, imageId], values => NativeMethods.suncode_agent_sdk_remove_session_image(_handle, values[0], values[1]));
+
     public Task<JsonObject> SessionSnapshotAsync(string sessionId) => WithUtf8Async(
         [sessionId], values => NativeMethods.suncode_agent_sdk_session_snapshot(_handle, values[0], 0));
 

@@ -227,6 +227,19 @@ pub struct SessionConversationTurn {
     pub todos: Vec<SessionTurnTodo>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionImageRecord {
+    pub image_id: String,
+    pub session_id: String,
+    pub display_name: String,
+    pub source_kind: String,
+    pub original_path: Option<String>,
+    pub storage_path: String,
+    pub thumbnail_base64: String,
+    pub created_at: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectRecord {

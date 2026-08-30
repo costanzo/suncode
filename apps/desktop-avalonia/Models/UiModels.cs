@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -109,16 +110,44 @@ public sealed record CredentialItem(string Provider, bool Configured);
 
 public sealed class ComposerAttachment : IDisposable
 {
-    public ComposerAttachment(string name, Bitmap preview)
+    public ComposerAttachment(
+        string imageId,
+        string name,
+        Bitmap preview,
+        string storagePath,
+        string sourceKind,
+        string? originalPath)
     {
+        ImageId = imageId;
         Name = name;
         Preview = preview;
+        StoragePath = storagePath;
+        SourceKind = sourceKind;
+        OriginalPath = originalPath;
     }
 
+    public string ImageId { get; }
     public string Name { get; }
     public Bitmap Preview { get; }
+    public string StoragePath { get; }
+    public string SourceKind { get; }
+    public string? OriginalPath { get; }
 
     public void Dispose() => Preview.Dispose();
+
+    public static ComposerAttachment FromPayload(JsonObject value)
+    {
+        var thumbnail = value.String("thumbnailBase64", "thumbnail_base64");
+        var bytes = Convert.FromBase64String(thumbnail);
+        using var stream = new MemoryStream(bytes, writable: false);
+        return new ComposerAttachment(
+            value.String("imageId", "image_id"),
+            value.String("displayName", "display_name"),
+            new Bitmap(stream),
+            value.String("storagePath", "storage_path"),
+            value.String("sourceKind", "source_kind"),
+            value["originalPath"]?.GetValue<string>());
+    }
 }
 
 public sealed class MessageItem : ObservableObject
