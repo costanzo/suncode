@@ -50,7 +50,8 @@ public sealed partial class SettingsWindow : Window
                 .FirstOrDefault(item => item.Tag as string == ViewModel.LogLevel);
             LogDirectoryInput.Text = ViewModel.LogDirectory;
             ImageDirectoryInput.Text = ViewModel.ImageDirectory;
-            LogMaxBytesInput.Text = ViewModel.LogMaxBytes.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            LogMaxMegabytesInput.Text = Math.Max(1, ViewModel.LogMaxBytes / (1024 * 1024))
+                .ToString(System.Globalization.CultureInfo.InvariantCulture);
             LogRetentionInput.Text = ViewModel.LogRetention.ToString(System.Globalization.CultureInfo.InvariantCulture);
             VerifyHttpsCertificatesToggle.IsChecked = ViewModel.VerifyHttpsCertificates;
             RefreshHttpsCertificateWarning();
@@ -118,11 +119,12 @@ public sealed partial class SettingsWindow : Window
     private void ShowNetwork(object? sender, RoutedEventArgs e) => SelectPage("network", sender as Button);
     private void ShowLogging(object? sender, RoutedEventArgs e) => SelectPage("logging", sender as Button);
 
-    private void ToggleProviders(object? sender, RoutedEventArgs e)
+    private void ShowProviders(object? sender, RoutedEventArgs e)
     {
-        _providersExpanded = !_providersExpanded;
+        _providersExpanded = true;
         ProviderNavigation.IsVisible = _providersExpanded;
         ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
+        SelectPage("providers", sender as Button);
     }
 
     private void ShowProvider(object? sender, RoutedEventArgs e)
@@ -143,6 +145,7 @@ public sealed partial class SettingsWindow : Window
         AppearancePage.IsVisible = page == "appearance";
         NetworkPage.IsVisible = page == "network";
         LoggingPage.IsVisible = page == "logging";
+        ProvidersPage.IsVisible = page == "providers";
         ProviderPage.IsVisible = page == "provider";
         foreach (var button in this.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("navigation")))
             button.Classes.Set("selected", button == selected);
@@ -150,6 +153,7 @@ public sealed partial class SettingsWindow : Window
         if (page == "appearance") AppearanceNavigation.Classes.Set("selected", true);
         if (page == "network") NetworkNavigation.Classes.Set("selected", true);
         if (page == "logging") LoggingNavigation.Classes.Set("selected", true);
+        if (page == "providers") ProvidersNavigation.Classes.Set("selected", true);
     }
 
     private async void DefaultModelChanged(object? sender, SelectionChangedEventArgs e)
@@ -166,10 +170,17 @@ public sealed partial class SettingsWindow : Window
     private async void SaveLogging(object? sender, RoutedEventArgs e)
     {
         var level = (LogLevelSelector.SelectedItem as ComboBoxItem)?.Tag as string ?? ViewModel.LogLevel;
+        if (!long.TryParse(LogMaxMegabytesInput.Text?.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var megabytes)
+            || megabytes is < 1 or > 1000)
+        {
+            LoggingStatus.Text = "Maximum log size must be between 1 and 1000 MB";
+            LoggingStatus.Foreground = this.FindResource("DangerBrush") as Avalonia.Media.IBrush;
+            return;
+        }
         var saved = await ViewModel.SaveLoggingSettingsAsync(
             level,
             LogDirectoryInput.Text,
-            LogMaxBytesInput.Text ?? string.Empty,
+            checked(megabytes * 1024 * 1024).ToString(System.Globalization.CultureInfo.InvariantCulture),
             LogRetentionInput.Text ?? string.Empty);
         LoggingStatus.Text = ViewModel.StatusText;
         LoggingStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;

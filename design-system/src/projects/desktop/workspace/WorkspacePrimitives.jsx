@@ -232,7 +232,7 @@ export const sampleConversationAttachments = [
   createSampleAttachment("settings-reference.svg", "Settings", "8a919b"),
 ];
 
-export function ConversationPanel({ compact = false, standalone = false, state = "content-waiting", initialAttachments = [], initialSentAttachments = [], onViewChanges }) {
+export function ConversationPanel({ compact = false, standalone = false, state = "content-waiting", initialAttachments = [], initialSentAttachments = [], imageInputEnabled = false, onViewChanges }) {
   const [message, setMessage] = useState("");
   const [processOpen, setProcessOpen] = useState(true);
   const [toolPreview, setToolPreview] = useState(null);
@@ -248,6 +248,7 @@ export function ConversationPanel({ compact = false, standalone = false, state =
   const turnActive = updating;
   const toolCalls = state === "long-tool-call" ? longConversationToolCalls : conversationToolCalls;
   const handleAttachmentChange = (event) => {
+    if (!imageInputEnabled) return;
     const selectedImages = Array.from(event.target.files ?? []).filter((file) => file.type.startsWith("image/"));
     if (selectedImages.length) setAttachments((current) => {
       const newAttachments = selectedImages.slice(0, Math.max(0, 3 - current.length)).map((file, index) => ({
@@ -306,7 +307,7 @@ export function ConversationPanel({ compact = false, standalone = false, state =
         </div>)}
       </div>}
       <textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ask SunCode to work on this project" aria-label="Message SunCode" />
-      <div className="workspace-composer-footer"><button type="button" className="workspace-attach" aria-label="Add attachment" title={attachments.length >= 3 ? "Maximum 3 images" : "Add image"} disabled={attachments.length >= 3} onClick={() => attachmentInputRef.current?.click()}><Icon name="plus" size={14} /></button><input ref={attachmentInputRef} className="workspace-attachment-input" type="file" accept="image/*" multiple tabIndex={-1} onChange={handleAttachmentChange} /><div className="workspace-composer-options"><ModelDropdown groups={workspaceModelGroups} initialValue="gpt-5.6-sol" className="workspace-model-dropdown" /><SingleDropdown options={["Medium", "High"]} initialValue="High" ariaLabel="Reasoning effort" className="workspace-reasoning-dropdown" /><Button variant="primary" className="workspace-send" icon="arrow-up" aria-label="Send message" disabled={!message.trim() && !attachments.length} onClick={sendMessage} /></div></div>
+      <div className="workspace-composer-footer"><button type="button" className="workspace-attach" aria-label="Add attachment" title={!imageInputEnabled ? "Selected model does not support image input" : attachments.length >= 3 ? "Maximum 3 images" : "Add image"} disabled={!imageInputEnabled || attachments.length >= 3} onClick={() => attachmentInputRef.current?.click()}><Icon name="plus" size={14} /></button><input ref={attachmentInputRef} className="workspace-attachment-input" type="file" accept="image/*" multiple tabIndex={-1} onChange={handleAttachmentChange} /><div className="workspace-composer-options"><ModelDropdown groups={imageInputEnabled ? [{ id: "specimen", label: "Specimen", models: ["vision-input specimen"] }] : workspaceModelGroups} initialValue={imageInputEnabled ? "vision-input specimen" : "gpt-5.6-sol"} className="workspace-model-dropdown" /><SingleDropdown options={["Medium", "High"]} initialValue="High" ariaLabel="Reasoning effort" className="workspace-reasoning-dropdown" /><Button variant="primary" className="workspace-send" icon="arrow-up" aria-label="Send message" disabled={!message.trim() && !attachments.length} onClick={sendMessage} /></div></div>
     </div>}
     <Modal open={toolPreview !== null} title="Operation details" onClose={() => setToolPreview(null)} className="workspace-tool-modal" actions={<button type="button" className="btn btn-sm" onClick={() => setToolPreview(null)}>Close</button>}>
       {toolPreview !== null && <div className="workspace-tool-modal-content">
@@ -416,9 +417,10 @@ export function WorkspaceWindow() {
   const [navigation, setNavigation] = useState("sessions");
   const [reviewVisible, setReviewVisible] = useState(true);
   const [drawer, setDrawer] = useState(null);
+  const [surfaceMenuOpen, setSurfaceMenuOpen] = useState(false);
   const toggleDrawer = (next) => setDrawer((current) => current === next ? null : next);
   return <div className="workspace-window">
-    <div className="workspace-titlebar"><TrafficLights /><strong className="workspace-project-title">suncode</strong><span>Workspace information architecture</span><IconButton icon="settings" label="Open settings" onClick={() => { window.location.hash = "/projects/desktop/settings"; }} /></div>
+    <div className="workspace-titlebar"><TrafficLights /><strong className="workspace-project-title">suncode</strong><span>Workspace information architecture</span><div className="workspace-titlebar-actions"><div className="workspace-surface-menu-anchor"><IconButton icon="more" label="Open workspace panel menu" onClick={() => setSurfaceMenuOpen((open) => !open)} />{surfaceMenuOpen && <div className="workspace-surface-menu" role="menu" aria-label="Workspace panels">{[["Sessions", () => setNavigation("sessions")], ["Explorer", () => setNavigation("explorer")], ["Review", () => setReviewVisible(true)], ["Source control", () => setDrawer("git")], ["Provider trace", () => setDrawer("trace")]].map(([label, action]) => <button key={label} type="button" role="menuitem" onClick={() => { action(); setSurfaceMenuOpen(false); }}>{label}</button>)}</div>}</div><IconButton icon="settings" label="Open settings" onClick={() => { window.location.hash = "/projects/desktop/settings"; }} /></div></div>
     <div className="workspace-window-body">
       <aside className="workspace-gutter"><div><IconButton icon="panel-left" label="Show sessions" active={navigation === "sessions"} onClick={() => setNavigation(navigation === "sessions" ? null : "sessions")} /><IconButton icon="files" label="Show explorer" active={navigation === "explorer"} onClick={() => setNavigation(navigation === "explorer" ? null : "explorer")} /></div><div><IconButton icon="git" label="Show source control" active={drawer === "git"} onClick={() => toggleDrawer("git")} /><IconButton icon="activity" label="Show provider trace" active={drawer === "trace"} onClick={() => toggleDrawer("trace")} /></div></aside>
       <div className="workspace-main-stack"><div className="workspace-main-row">{navigation === "sessions" && <SessionPanel compact />}{navigation === "explorer" && <ExplorerPanel compact />}<ConversationPanel compact onViewChanges={() => setDrawer("git")} />{reviewVisible && <ReviewPanel compact />}</div>{drawer === "git" && <SourceControlPanel onClose={() => setDrawer(null)} changeSet={completedTurnChangeSet} />}{drawer === "trace" && <ProviderTracePanel onClose={() => setDrawer(null)} />}</div>

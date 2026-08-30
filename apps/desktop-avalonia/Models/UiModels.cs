@@ -77,7 +77,7 @@ public sealed class ExplorerNode : ObservableObject
     private static ExplorerNode Placeholder() => new();
 }
 
-public sealed record SessionItem(string SessionId, string Title, string LastActivityAt, bool IsPinned)
+public sealed record SessionItem(string SessionId, string Title, string LastActivityAt, bool IsPinned, string AgentState = "idle")
 {
     public string DisplayTitle => string.IsNullOrWhiteSpace(Title) ? "Untitled session" : Title;
     public string RelativeActivity
@@ -93,14 +93,27 @@ public sealed record SessionItem(string SessionId, string Title, string LastActi
             return timestamp.ToString("d");
         }
     }
+    public bool IsRunning => AgentState == "running";
+    public bool IsWaitingForApproval => AgentState == "approval";
+    public bool IsWaitingForAnswer => AgentState == "question";
+    public bool IsFailed => AgentState == "failed";
+    public bool HasAgentState => AgentState != "idle";
+    public string AgentStateLabel => AgentState switch
+    {
+        "running" => "Agent running",
+        "approval" => "Waiting for approval",
+        "question" => "Waiting for answer",
+        "failed" => "Turn failed",
+        _ => "Agent idle"
+    };
 }
 
-public sealed record ProviderItem(string Id, string DisplayName, bool Configured)
+public sealed record ProviderItem(string Id, string DisplayName, bool Configured, string ApiBase = "")
 {
     public string Display => Configured ? DisplayName : $"{DisplayName} (needs key)";
 }
 
-public sealed record ModelItem(string Id, string Provider, string ProviderLabel, string Availability, bool SupportsReasoningEffort)
+public sealed record ModelItem(string Id, string Provider, string ProviderLabel, string Availability, bool SupportsReasoningEffort, bool SupportsVision = false, string ApiBase = "")
 {
     public bool Configured => Availability == "configured";
     public string Display => Configured ? Id : $"{Id} (needs key)";
@@ -150,7 +163,7 @@ public sealed class ComposerAttachment : IDisposable
     }
 }
 
-public sealed class MessageItem : ObservableObject
+public sealed class MessageItem : ObservableObject, IDisposable
 {
     private string _messageId = string.Empty;
     private string _text = string.Empty;
@@ -177,6 +190,8 @@ public sealed class MessageItem : ObservableObject
     public string ToolRequest { get; init; } = string.Empty;
     public string ToolResult { get; init; } = string.Empty;
     public string ToolError { get; init; } = string.Empty;
+    public IReadOnlyList<ComposerAttachment> Attachments { get; init; } = [];
+    public bool HasAttachments => Attachments.Count > 0;
     public bool CanBeFinalAssistant { get => _canBeFinalAssistant; set => SetProperty(ref _canBeFinalAssistant, value); }
     public bool Streaming { get => _streaming; set => SetProperty(ref _streaming, value); }
     public bool IsUser => Role == "user";
@@ -218,6 +233,11 @@ public sealed class MessageItem : ObservableObject
     public string ProcessToggleText => ProcessExpanded
         ? "Hide work"
         : $"Show work ({ProcessItemCount})";
+
+    public void Dispose()
+    {
+        foreach (var attachment in Attachments) attachment.Dispose();
+    }
     public string ToolSummaryText => ToolName switch
     {
         "bash" => "Run shell command",

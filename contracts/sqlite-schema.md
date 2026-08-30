@@ -57,7 +57,7 @@ One row per LLM request within a turn. `call_id` is the SunCode-owned physical p
 
 ### `session_image`
 
-One persisted placeholder image per row, linked to `session`. The row stores opaque `image_id`, display name, source kind (`file` or `clipboard`), nullable `original_path` for file uploads, durable `storage_path` pointing to the saved image file, Base64 thumbnail payload, and `created_at`. Original full image bytes are not stored in session messages, calls, or tool uses.
+One persisted image per row, linked to `session`. The row stores opaque `image_id`, display name, source kind (`file` or `clipboard`), nullable `original_path` for file uploads, durable `storage_path` pointing to the bounded saved image file, Base64 thumbnail payload, and `created_at`. A `session_message.message_json` content part with type `image_ref` and the image ID establishes message ownership without duplicating original bytes in SQLite. Unreferenced rows are pending composer images; referenced rows cannot be independently removed. Provider-call projections use resolved image data only for execution and redact it from durable trace input.
 
 ### `session_tool_use`
 

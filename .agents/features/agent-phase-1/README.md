@@ -4,6 +4,8 @@
 
 The Phase 1 agent is an embedded Rust SDK. It owns provider access, turn orchestration, policy, approvals, durable state, credentials, recovery, undo, and the native SDK surface. It runs in-process with the .NET 10 Avalonia client; there is no client-facing server, loopback transport, or production TypeScript runtime.
 
+Turn submission supports a compatibility text-only method and an attachment-aware method accepting up to three persisted same-session image IDs. Core validates ownership, uniqueness, file bounds, format, and the selected model's vision capability; user messages persist `image_ref` parts, provider calls receive transient data URLs, and provider traces retain redacted attachment markers. Image-bearing submissions are not queued behind an active turn.
+
 ## Agent workflow
 
 - Sessions are scoped to a project. Turns support idempotent admission, queued follow-up input, cancellation, model selection, optional `low`/`medium`/`high` reasoning effort, context-window-aware compaction, and cumulative provider-reported usage.

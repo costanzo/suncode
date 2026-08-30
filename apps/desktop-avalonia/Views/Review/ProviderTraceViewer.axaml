@@ -43,13 +43,13 @@
           <Border Grid.Column="4" Width="1" Height="18" Background="{DynamicResource BorderBrush}" />
           <TextBlock Grid.Column="6" Text="{Binding ProviderTraceSummary}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
           <TextBox Grid.Column="7" Width="240" Height="28" MinHeight="28" Padding="10,3" PlaceholderText="Filter turns, calls, models, or tools" TextChanged="TraceFilterChanged" />
-          <Button Grid.Column="9" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="RefreshTrace" ToolTip.Tip="Refresh session trace">
+          <Button Grid.Column="9" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="RefreshTrace" ToolTip.Tip="Refresh session trace" AutomationProperties.Name="Refresh session trace">
             <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
           </Button>
-          <Button Grid.Column="11" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CopyTrace" IsEnabled="{Binding HasSelectedProviderTrace}" ToolTip.Tip="Copy selected call details">
+          <Button Grid.Column="11" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CopyTrace" IsEnabled="{Binding HasSelectedProviderTrace}" ToolTip.Tip="Copy selected call details" AutomationProperties.Name="Copy selected provider call details">
             <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
           </Button>
-          <Button Grid.Column="13" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CloseTrace" ToolTip.Tip="Close session trace">
+          <Button Grid.Column="13" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CloseTrace" ToolTip.Tip="Close session trace" AutomationProperties.Name="Close provider trace">
             <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
           </Button>
         </Grid>

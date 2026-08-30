@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 using SunCode.Desktop.Views.Shell;
@@ -13,6 +14,7 @@ public sealed partial class ProjectWorkspace : UserControl
     private SessionItem? _sessionDialogTarget;
     private CheckpointItem? _pendingCheckpoint;
     private ExplorerNode? _pendingDependencyDeletion;
+    private Control? _dialogReturnFocus;
     private string _layoutResizeTarget = string.Empty;
     private Point _layoutResizeStart;
     private double _layoutResizeStartNavigationWidth;
@@ -40,7 +42,7 @@ public sealed partial class ProjectWorkspace : UserControl
     {
         ProjectChrome.Margin = fullScreen ? new Thickness(0) : new Thickness(16);
         ProjectChrome.Padding = new Thickness(0);
-        ProjectChrome.BorderThickness = fullScreen ? new Thickness(0) : new Thickness(1);
+        ProjectChrome.BorderThickness = fullScreen ? new Thickness(0) : new Thickness(0.5);
         ProjectChrome.CornerRadius = fullScreen ? new CornerRadius(0) : new CornerRadius(14);
         ProjectChromeContent.CornerRadius = fullScreen ? new CornerRadius(0) : new CornerRadius(13);
     }
@@ -70,6 +72,7 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal void ShowSessionDialog(string title, string value, string acceptText, SessionItem? target)
     {
+        CaptureDialogFocus();
         _sessionDialogTarget = target;
         SessionDialogTitle.Text = title;
         SessionDialogSubmitButton.Content = acceptText;
@@ -82,16 +85,20 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal void ShowUndoDialog(CheckpointItem checkpoint)
     {
+        CaptureDialogFocus();
         _pendingCheckpoint = checkpoint;
         UndoPathsText.Text = checkpoint.PathsText;
         UndoDialogOverlay.IsVisible = true;
+        Dispatcher.UIThread.Post(() => UndoCancelButton.Focus(), DispatcherPriority.Input);
     }
 
     internal void ShowDependencyDeleteDialog(ExplorerNode node)
     {
+        CaptureDialogFocus();
         _pendingDependencyDeletion = node;
         DependencyDeleteName.Text = node.Name;
         DependencyDeleteDialogOverlay.IsVisible = true;
+        Dispatcher.UIThread.Post(() => DependencyDeleteCancelButton.Focus(), DispatcherPriority.Input);
     }
 
     private void ToggleNavigation(object? sender, RoutedEventArgs e)
@@ -119,6 +126,11 @@ public sealed partial class ProjectWorkspace : UserControl
 
     private void ToggleReview(object? sender, RoutedEventArgs e) =>
         ViewModel.ReviewVisible = !ViewModel.ReviewVisible;
+
+    private void OpenSurfaceMenu(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Flyout: { } flyout } button) flyout.ShowAt(button);
+    }
 
     internal void ToggleGitViewer()
     {
@@ -165,10 +177,10 @@ public sealed partial class ProjectWorkspace : UserControl
         switch (_layoutResizeTarget)
         {
             case "Navigation":
-                ViewModel.NavigationPaneWidth = ClampPaneWidth(_layoutResizeStartNavigationWidth + deltaX, window.Bounds.Width, 180, 420);
+                ViewModel.NavigationPaneWidth = ClampPaneWidth(_layoutResizeStartNavigationWidth + deltaX, window.Bounds.Width, 236, 300);
                 break;
             case "Review":
-                ViewModel.ReviewPaneWidth = ClampPaneWidth(_layoutResizeStartReviewWidth - deltaX, window.Bounds.Width, 220, 460);
+                ViewModel.ReviewPaneWidth = ClampPaneWidth(_layoutResizeStartReviewWidth - deltaX, window.Bounds.Width, 276, 352);
                 break;
             case "BottomDrawer":
                 ViewModel.BottomDrawerHeight = Math.Clamp(_layoutResizeStartBottomHeight - deltaY, 240, Math.Max(240, window.Bounds.Height - 300));
@@ -222,6 +234,7 @@ public sealed partial class ProjectWorkspace : UserControl
     {
         SessionDialogOverlay.IsVisible = false;
         _sessionDialogTarget = null;
+        RestoreDialogFocus();
     }
 
     private void CloseUndoDialog(object? sender, RoutedEventArgs e) => HideUndoDialog();
@@ -237,6 +250,7 @@ public sealed partial class ProjectWorkspace : UserControl
     {
         UndoDialogOverlay.IsVisible = false;
         _pendingCheckpoint = null;
+        RestoreDialogFocus();
     }
 
     private void CloseDependencyDeleteDialog(object? sender, RoutedEventArgs e) => HideDependencyDeleteDialog();
@@ -257,6 +271,17 @@ public sealed partial class ProjectWorkspace : UserControl
     {
         DependencyDeleteDialogOverlay.IsVisible = false;
         _pendingDependencyDeletion = null;
+        RestoreDialogFocus();
+    }
+
+    private void CaptureDialogFocus() =>
+        _dialogReturnFocus = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control;
+
+    private void RestoreDialogFocus()
+    {
+        var target = _dialogReturnFocus;
+        _dialogReturnFocus = null;
+        if (target is not null) Dispatcher.UIThread.Post(() => target.Focus(), DispatcherPriority.Input);
     }
 
     private void OpenSettings(object? sender, RoutedEventArgs e) => Owner?.ShowSettings();

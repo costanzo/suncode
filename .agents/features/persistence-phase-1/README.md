@@ -12,7 +12,7 @@ The normalized tables are:
 
 `project`, `project_dependency`, `configuration`, `session`, `session_turn`, `session_turn_todo`, `session_call`, `session_tool_use`, `session_message`, `session_image`, `audit_record`, `approval_request`, `checkpoint_manifest`, `checkpoint`, `llm_model_provider`, and `llm_model`.
 
-Session messages, calls, tool uses, approvals, checkpoints, settings, credentials, recovery snapshots, and session-owned image placeholders are durable source data. Streaming events are live-only. `session_turn` owns admission, lifecycle, cumulative usage, and approval recovery; `session_turn_todo` owns the current todo projection; `session_call` owns provider diagnostics and normalized usage; `session_tool_use` owns tool lifecycle; `session_message` stores timestamp-ordered user, assistant, and thinking content; and `session_image` stores persisted placeholder image metadata plus thumbnails while full image bytes remain on disk.
+Session messages, calls, tool uses, approvals, checkpoints, settings, credentials, recovery snapshots, and session-owned images are durable source data. Streaming events are live-only. `session_turn` owns admission, lifecycle, cumulative usage, and approval recovery; `session_turn_todo` owns the current todo projection; `session_call` owns provider diagnostics and normalized usage; `session_tool_use` owns tool lifecycle; `session_message` stores timestamp-ordered user, assistant, and thinking content plus message-owned `image_ref` parts; and `session_image` stores image metadata plus thumbnails while bounded full image bytes remain on disk. Unreferenced image rows are pending composer state; referenced rows remain attached to their user message.
 
 ## SDK contract
 

@@ -18,6 +18,8 @@ public sealed partial class ChatInput : UserControl
 {
     private const int MaxAttachments = 3;
     private const int ThumbnailEdge = 96;
+    private const int MaxImageBytes = 20 * 1024 * 1024;
+    private const long MaxImagePixels = 50_000_000;
 
     public ChatInput()
     {
@@ -30,7 +32,7 @@ public sealed partial class ChatInput : UserControl
 
     private async void AddAttachment(object? sender, RoutedEventArgs e)
     {
-        if (ViewModel.ComposerAttachments.Count >= MaxAttachments) return;
+        if (!ViewModel.CanAttachImages || ViewModel.ComposerAttachments.Count >= MaxAttachments) return;
 
         var topLevel = TopLevel.GetTopLevel(this);
         if (topLevel?.StorageProvider is null) return;
@@ -55,11 +57,8 @@ public sealed partial class ChatInput : UserControl
             {
                 var localPath = file.TryGetLocalPath();
                 await using var stream = await file.OpenReadAsync();
-                using var memory = new MemoryStream();
-                await stream.CopyToAsync(memory);
-                var bytes = memory.ToArray();
-                using var original = new Bitmap(new MemoryStream(bytes, writable: false));
-                var thumbnail = CreateThumbnailBytes(original);
+                var bytes = await ReadImageBytesAsync(stream);
+                var thumbnail = await Task.Run(() => CreateThumbnailBytes(bytes));
                 var extension = ExtensionFromName(file.Name);
                 await ViewModel.AddSessionImageAsync(
                     file.Name,
@@ -188,6 +187,7 @@ public sealed partial class ChatInput : UserControl
     {
         if (sender is not TextBox
             || TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard
+            || !ViewModel.CanAttachImages
             || ViewModel.ComposerAttachments.Count >= MaxAttachments)
         {
             return;
@@ -201,7 +201,9 @@ public sealed partial class ChatInput : UserControl
                 using var originalStream = new MemoryStream();
                 bitmap.Save(originalStream, PngBitmapEncoderOptions.Default);
                 var bytes = originalStream.ToArray();
-                var thumbnail = CreateThumbnailBytes(bitmap);
+                if (bytes.Length > MaxImageBytes) throw new InvalidDataException("Image exceeds the 20 MB limit.");
+                ValidatePixelCount(bitmap);
+                var thumbnail = await Task.Run(() => CreateThumbnailBytes(bytes));
                 await ViewModel.AddSessionImageAsync(
                     $"clipboard-{DateTimeOffset.Now:yyyyMMdd-HHmmss}.png",
                     "clipboard",
@@ -218,8 +220,29 @@ public sealed partial class ChatInput : UserControl
         }
     }
 
-    private static byte[] CreateThumbnailBytes(Bitmap original)
+    private static async Task<byte[]> ReadImageBytesAsync(Stream stream)
     {
+        if (stream.CanSeek && stream.Length > MaxImageBytes)
+            throw new InvalidDataException("Image exceeds the 20 MB limit.");
+
+        using var memory = new MemoryStream(stream.CanSeek ? (int)Math.Min(stream.Length, MaxImageBytes) : 0);
+        var buffer = new byte[64 * 1024];
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer);
+            if (read == 0) break;
+            if (memory.Length + read > MaxImageBytes)
+                throw new InvalidDataException("Image exceeds the 20 MB limit.");
+            await memory.WriteAsync(buffer.AsMemory(0, read));
+        }
+        if (memory.Length == 0) throw new InvalidDataException("Image is empty.");
+        return memory.ToArray();
+    }
+
+    private static byte[] CreateThumbnailBytes(byte[] bytes)
+    {
+        using var original = new Bitmap(new MemoryStream(bytes, writable: false));
+        ValidatePixelCount(original);
         var scale = Math.Min(1d, ThumbnailEdge / (double)Math.Max(original.PixelSize.Width, original.PixelSize.Height));
         var width = Math.Max(1, (int)Math.Round(original.PixelSize.Width * scale));
         var height = Math.Max(1, (int)Math.Round(original.PixelSize.Height * scale));
@@ -227,6 +250,13 @@ public sealed partial class ChatInput : UserControl
         using var stream = new MemoryStream();
         thumbnail.Save(stream, PngBitmapEncoderOptions.Default);
         return stream.ToArray();
+    }
+
+    private static void ValidatePixelCount(Bitmap bitmap)
+    {
+        var pixels = (long)bitmap.PixelSize.Width * bitmap.PixelSize.Height;
+        if (pixels <= 0 || pixels > MaxImagePixels)
+            throw new InvalidDataException("Image dimensions are too large.");
     }
 
     private static string ExtensionFromName(string name)

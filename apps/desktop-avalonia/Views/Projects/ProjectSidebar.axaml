@@ -9,7 +9,7 @@
     <Grid Margin="16,14,16,12" RowDefinitions="34,10,*">
       <Grid Grid.Row="0" ColumnDefinitions="*,30">
         <TextBlock Classes="section-label" Text="SESSIONS" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Classes="icon" Click="CreateSession" ToolTip.Tip="New session" IsEnabled="{Binding IsProjectOpen}">
+        <Button Grid.Column="1" Classes="icon" Click="CreateSession" ToolTip.Tip="New session" AutomationProperties.Name="Create session" IsEnabled="{Binding IsProjectOpen}">
           <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
       </Grid>
@@ -34,8 +34,13 @@
                       <TextBlock Text="{Binding RelativeActivity}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
                     </StackPanel>
                   </Button>
-                  <!-- Session status is reserved for future derived agent state; do not invent it from session metadata. -->
-                  <Button Grid.Column="3" Classes="quiet" Width="28" Padding="6" ToolTip.Tip="Session actions">
+                  <Grid Grid.Column="2" ToolTip.Tip="{Binding AgentStateLabel}" AutomationProperties.Name="{Binding AgentStateLabel}" IsVisible="{Binding HasAgentState}">
+                    <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsRunning}" />
+                    <Ellipse Width="7" Height="7" Fill="{DynamicResource WarningBrush}" IsVisible="{Binding IsWaitingForApproval}" />
+                    <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsWaitingForAnswer}" />
+                    <Ellipse Width="7" Height="7" Fill="{DynamicResource DangerBrush}" IsVisible="{Binding IsFailed}" />
+                  </Grid>
+                  <Button Grid.Column="3" Classes="quiet" Width="28" Padding="6" ToolTip.Tip="Session actions" AutomationProperties.Name="{Binding DisplayTitle, StringFormat=Actions for {0}}">
                     <Button.Flyout>
                       <MenuFlyout>
                         <MenuItem Header="Pin" CommandParameter="{Binding}" Click="PinSessionItem" IsVisible="{Binding !IsPinned}" />

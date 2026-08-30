@@ -81,7 +81,8 @@ open apps/desktop-avalonia/bin/Release/net10.0/osx-arm64/publish/SunCode.app
 | `apps/desktop-avalonia/` | .NET 10 Avalonia desktop client and colocated tests |
 | `agent/` | Rust workspace for the embedded agent and its crates |
 | `contracts/` | Hand-written SDK, persistence, and SQLite contracts |
-| `design-system/` | Layered React design-review browser and resource catalog (tooling only) |
+| `DESIGN.md` | Repository-wide design authority |
+| `design-system/` | Executable React design-review surface and resource catalog (tooling only) |
 | `sdks/` | Planned native TypeScript and Python binding surfaces |
 | `.agents/` | Product, architecture, decisions, features, and current specifications |
 
@@ -93,6 +94,7 @@ open apps/desktop-avalonia/bin/Release/net10.0/osx-arm64/publish/SunCode.app
 - [SDK contract](contracts/agent-sdk/README.md)
 - [Persistence contract](contracts/persistence.md)
 - [SQLite schema](contracts/sqlite-schema.md)
+- [Design authority](DESIGN.md)
 - [Design-system review](design-system/README.md)
 
 ## Current Scope

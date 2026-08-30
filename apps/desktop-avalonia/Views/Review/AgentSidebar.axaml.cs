@@ -45,4 +45,7 @@ public sealed partial class AgentSidebar : UserControl
         if ((sender as Control)?.DataContext is CheckpointItem checkpoint)
             this.FindAncestorOfType<ProjectWorkspace>()?.ShowUndoDialog(checkpoint);
     }
+
+    private void ViewTurnChanges(object? sender, RoutedEventArgs e) =>
+        this.FindAncestorOfType<ProjectWorkspace>()?.ToggleGitViewer();
 }

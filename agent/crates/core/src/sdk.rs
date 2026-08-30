@@ -1,5 +1,4 @@
 use crate::logging::{self, Level};
-use base64::{engine::general_purpose::STANDARD, Engine as _};
 use crate::{
     agent::{Agent, TurnResponse},
     agent_lock::AgentLock,
@@ -11,6 +10,7 @@ use crate::{
         SessionImageRecord, SessionRecord, SessionTraceTurn, SettingRecord,
     },
 };
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
@@ -143,6 +143,8 @@ pub struct DependencyRemoval {
 pub struct SessionsResult {
     pub project_id: String,
     pub sessions: Vec<SessionRecord>,
+    #[serde(rename = "sessionStates")]
+    pub session_states: std::collections::HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -164,6 +166,7 @@ pub struct SessionSnapshot {
     pub messages: Vec<Message>,
     #[serde(rename = "conversationTurns")]
     pub conversation_turns: Vec<suncode_data::SessionConversationTurn>,
+    pub images: Vec<SessionImageRecord>,
     #[serde(rename = "pendingQuestion", skip_serializing_if = "Option::is_none")]
     pub pending_question: Option<Value>,
 }
@@ -911,9 +914,20 @@ impl AgentSdk {
         if self.state.store.project_by_id(project_id)?.is_none() {
             return Err(BusinessError::missing("project"));
         }
+        let sessions = self.state.store.sessions_for_project(project_id, true)?;
+        let session_states = sessions
+            .iter()
+            .map(|session| {
+                self.state
+                    .store
+                    .session_ui_state(&session.session_id)
+                    .map(|state| (session.session_id.clone(), state))
+            })
+            .collect::<Result<std::collections::HashMap<_, _>, _>>()?;
         Ok(SessionsResult {
             project_id: project_id.to_string(),
-            sessions: self.state.store.sessions_for_project(project_id, true)?,
+            sessions,
+            session_states,
         })
     }
 
@@ -1012,9 +1026,24 @@ impl AgentSdk {
         if self.state.store.session_by_id(session_id)?.is_none() {
             return Err(BusinessError::missing("session"));
         }
+        let referenced = self
+            .state
+            .store
+            .messages(session_id)?
+            .into_iter()
+            .flat_map(|message| message.content)
+            .filter(|part| part.kind == "image_ref")
+            .map(|part| part.text)
+            .collect::<std::collections::HashSet<_>>();
         Ok(SessionImagesResult {
             session_id: session_id.to_string(),
-            images: self.state.store.session_images(session_id)?,
+            images: self
+                .state
+                .store
+                .session_images(session_id)?
+                .into_iter()
+                .filter(|image| !referenced.contains(&image.image_id))
+                .collect(),
         })
     }
 
@@ -1054,9 +1083,22 @@ impl AgentSdk {
         if image_bytes.is_empty() {
             return Err(BusinessError::invalid("image bytes are required"));
         }
+        if image_bytes.len() > 20 * 1024 * 1024 {
+            return Err(BusinessError::invalid(
+                "image bytes exceed the 20 MiB limit",
+            ));
+        }
         let thumbnail_base64 = request.thumbnail_base64.trim();
         if thumbnail_base64.is_empty() {
             return Err(BusinessError::invalid("thumbnail_base64 is required"));
+        }
+        let thumbnail_bytes = STANDARD
+            .decode(thumbnail_base64)
+            .map_err(|_| BusinessError::invalid("thumbnail_base64 is not valid Base64"))?;
+        if thumbnail_bytes.is_empty() || thumbnail_bytes.len() > 1024 * 1024 {
+            return Err(BusinessError::invalid(
+                "thumbnail must be between 1 byte and 1 MiB",
+            ));
         }
         let image_id = uuid::Uuid::new_v4().to_string();
         let directory = self.resolved_image_directory()?.join(session_id);
@@ -1088,6 +1130,19 @@ impl AgentSdk {
         session_id: &str,
         image_id: &str,
     ) -> SdkResult<SessionImageRemoval> {
+        let referenced = self
+            .state
+            .store
+            .messages(session_id)?
+            .into_iter()
+            .flat_map(|message| message.content)
+            .any(|part| part.kind == "image_ref" && part.text == image_id);
+        if referenced {
+            return Err(BusinessError::new(
+                "conflict",
+                "an image attached to a submitted message cannot be removed",
+            ));
+        }
         let removed = self
             .state
             .store
@@ -1128,6 +1183,7 @@ impl AgentSdk {
             .session_by_id(session_id)?
             .ok_or_else(|| BusinessError::missing("session"))?;
         let messages = self.state.store.messages(session_id)?;
+        let images = self.state.store.session_images(session_id)?;
         let conversation_turns = self.state.store.session_conversation_turns(session_id)?;
         let pending_question = self.state.store.pending_question(session_id)?;
         logging::write(
@@ -1139,6 +1195,7 @@ impl AgentSdk {
             session,
             messages,
             conversation_turns,
+            images,
             pending_question,
         })
     }
@@ -1314,19 +1371,41 @@ impl AgentSdk {
         model: Option<&str>,
         reasoning_effort: Option<&str>,
     ) -> SdkResult<TurnResponse> {
+        self.submit_turn_with_attachments(
+            session_id,
+            input,
+            idempotency_key,
+            model,
+            reasoning_effort,
+            &[],
+        )
+    }
+
+    pub fn submit_turn_with_attachments(
+        &self,
+        session_id: &str,
+        input: &str,
+        idempotency_key: &str,
+        model: Option<&str>,
+        reasoning_effort: Option<&str>,
+        image_ids: &[String],
+    ) -> SdkResult<TurnResponse> {
         if input.is_empty() {
             return Err(BusinessError::invalid("input is required"));
         }
         if idempotency_key.is_empty() {
             return Err(BusinessError::invalid("idempotency_key is required"));
         }
-        match self.runtime.block_on(self.state.agent.submit(
-            session_id,
-            idempotency_key,
-            input,
-            model,
-            reasoning_effort,
-        )) {
+        match self
+            .runtime
+            .block_on(self.state.agent.submit_with_attachments(
+                session_id,
+                idempotency_key,
+                input,
+                model,
+                reasoning_effort,
+                image_ids,
+            )) {
             Ok(response) => Ok(response),
             Err(error) if error.code == "approval_required" => Ok(TurnResponse::AwaitingApproval {
                 turn_id: detail_string(&error, "turn_id")?,
@@ -1521,8 +1600,8 @@ impl AgentSdk {
     }
 
     fn resolved_image_directory(&self) -> SdkResult<PathBuf> {
-        let configured = global_string_setting(&self.state.store, "image_directory")?
-            .unwrap_or_default();
+        let configured =
+            global_string_setting(&self.state.store, "image_directory")?.unwrap_or_default();
         let configured = configured.trim();
         if configured.is_empty() {
             Ok(self.data_dir.join("data/images"))
@@ -2037,6 +2116,36 @@ pub unsafe extern "C" fn suncode_agent_sdk_submit_turn(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_submit_turn_with_attachments(
+    handle: *mut SunCodeAgentHandle,
+    session_id: *const c_char,
+    input: *const c_char,
+    idempotency_key: *const c_char,
+    model: *const c_char,
+    reasoning_effort: *const c_char,
+    image_ids_json: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let session_id = c_string(session_id, "session_id")?;
+        let input = c_string(input, "input")?;
+        let idempotency_key = c_string(idempotency_key, "idempotency_key")?;
+        let model = optional_c_string(model, "model")?;
+        let reasoning_effort = optional_c_string(reasoning_effort, "reasoning_effort")?;
+        let image_ids_json = c_string(image_ids_json, "image_ids_json")?;
+        let image_ids: Vec<String> = serde_json::from_str(&image_ids_json)
+            .map_err(|_| BusinessError::invalid("image_ids_json must be an array of strings"))?;
+        sdk.submit_turn_with_attachments(
+            &session_id,
+            &input,
+            &idempotency_key,
+            model.as_deref(),
+            reasoning_effort.as_deref(),
+            &image_ids,
+        )
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_cancel_turn(
     handle: *mut SunCodeAgentHandle,
     session_id: *const c_char,
@@ -2265,7 +2374,10 @@ fn sanitize_image_extension(value: &str) -> SdkResult<String> {
     if value.is_empty() || value.len() > 16 {
         return Err(BusinessError::invalid("image extension is invalid"));
     }
-    if !value.chars().all(|character| character.is_ascii_alphanumeric()) {
+    if !value
+        .chars()
+        .all(|character| character.is_ascii_alphanumeric())
+    {
         return Err(BusinessError::invalid("image extension is invalid"));
     }
     Ok(value)
@@ -2559,7 +2671,9 @@ mod tests {
             "bytesBase64": STANDARD.encode(b"png-bytes"),
             "thumbnailBase64": STANDARD.encode(b"thumb")
         });
-        let image = sdk.add_session_image(&session.session_id, &payload).unwrap();
+        let image = sdk
+            .add_session_image(&session.session_id, &payload)
+            .unwrap();
         assert_eq!(image.source_kind, "file");
         assert!(std::path::Path::new(&image.storage_path).is_file());
         assert_eq!(
@@ -2568,6 +2682,32 @@ mod tests {
                 .images
                 .len(),
             1
+        );
+        assert_eq!(
+            sdk.submit_turn_with_attachments(
+                &session.session_id,
+                "inspect",
+                "image-unsupported",
+                Some("gpt-5.5"),
+                None,
+                std::slice::from_ref(&image.image_id),
+            )
+            .unwrap_err()
+            .code,
+            "unsupported_capability"
+        );
+        assert_eq!(
+            sdk.submit_turn_with_attachments(
+                &session.session_id,
+                "inspect",
+                "image-count",
+                Some("gpt-5.5"),
+                None,
+                &["1".into(), "2".into(), "3".into(), "4".into()],
+            )
+            .unwrap_err()
+            .code,
+            "invalid_arguments"
         );
         assert!(
             sdk.remove_session_image(&session.session_id, &image.image_id)
@@ -2580,6 +2720,99 @@ mod tests {
                 .images
                 .len(),
             0
+        );
+    }
+
+    #[test]
+    fn session_snapshot_associates_images_with_messages_and_protects_them() {
+        let directory = tempfile::tempdir().unwrap();
+        let project_root = directory.path().join("project-with-image");
+        std::fs::create_dir_all(&project_root).unwrap();
+        let sdk = test_sdk(directory.path());
+        let project = sdk
+            .open_project(project_root.to_str().unwrap(), None)
+            .unwrap();
+        let session = sdk
+            .create_session(&project.project_id, Some("Attached"), Some("gpt-5.5"))
+            .unwrap();
+        let image = sdk
+            .add_session_image(
+                &session.session_id,
+                &json!({
+                    "displayName": "diagram.png",
+                    "sourceKind": "file",
+                    "originalPath": project_root.join("diagram.png").to_str().unwrap(),
+                    "extension": "png",
+                    "bytesBase64": STANDARD.encode(b"png-bytes"),
+                    "thumbnailBase64": STANDARD.encode(b"thumb")
+                }),
+            )
+            .unwrap();
+        let turn = sdk
+            .state
+            .store
+            .begin_turn_with_images(
+                &session.session_id,
+                "image-turn",
+                "inspect",
+                "gpt-5.5",
+                std::slice::from_ref(&image.image_id),
+            )
+            .unwrap();
+        sdk.state.store.append_content(&session.session_id, "message.user", &json!({
+            "message_id":"message-image",
+            "turn_id":turn.turn_id,
+            "message":Message {
+                role:"user".into(),
+                content:vec![
+                    crate::domain::ContentPart { kind:"text".into(), text:"inspect".into() },
+                    crate::domain::ContentPart { kind:"image_ref".into(), text:image.image_id.clone() }
+                ],
+                tool_calls:vec![],
+                tool_call_id:None
+            }
+        })).unwrap();
+
+        let snapshot = sdk.session_snapshot(&session.session_id, 0).unwrap();
+        assert_eq!(snapshot.images.len(), 1);
+        assert_eq!(snapshot.messages[0].content[1].kind, "image_ref");
+        assert_eq!(snapshot.messages[0].content[1].text, image.image_id);
+        assert!(sdk
+            .list_session_images(&session.session_id)
+            .unwrap()
+            .images
+            .is_empty());
+        assert_eq!(
+            sdk.remove_session_image(&session.session_id, &image.image_id)
+                .unwrap_err()
+                .code,
+            "conflict"
+        );
+    }
+
+    #[test]
+    fn session_image_upload_enforces_payload_bounds() {
+        let directory = tempfile::tempdir().unwrap();
+        let project_root = directory.path().join("project-image-bounds");
+        std::fs::create_dir_all(&project_root).unwrap();
+        let sdk = test_sdk(directory.path());
+        let project = sdk
+            .open_project(project_root.to_str().unwrap(), None)
+            .unwrap();
+        let session = sdk.create_session(&project.project_id, None, None).unwrap();
+        let payload = json!({
+            "displayName":"large.png",
+            "sourceKind":"file",
+            "originalPath":project_root.join("large.png").to_str().unwrap(),
+            "extension":"png",
+            "bytesBase64":STANDARD.encode(vec![0_u8; 20 * 1024 * 1024 + 1]),
+            "thumbnailBase64":STANDARD.encode(b"thumb")
+        });
+        assert_eq!(
+            sdk.add_session_image(&session.session_id, &payload)
+                .unwrap_err()
+                .code,
+            "invalid_arguments"
         );
     }
 

@@ -54,6 +54,8 @@ review:
 
 # Design System: SunCode Desktop
 
+This file is the sole repository-wide authority for durable visual and interaction design decisions. The `design-system/` application is its executable review surface; production clients must follow both.
+
 ## Review Surface
 
 The visual review surface starts at [`design-system/index.html`](design-system/index.html), the single Vite/React entry for shared foundations, component states, platform boundaries, project mappings, rules, and assets. Its navigation has three levels: Core, Components, Platforms, and Projects switch the primary content domain from the upper-right; each switch first opens a concise card-based module index without redundant ownership or path labels; and the left sidebar exposes the detailed hierarchy. Every expandable child entry in Core, Components, Platforms, and Projects is a stable route rather than a scroll target: parent pages remain concise card indexes, while the final child page owns its content. The tree can recurse for large surfaces: Desktop Workspace has one complete project-window composition plus stable child routes for Sessions, Explorer, Conversation, Review, Source control, and Provider trace. The top-level switcher uses names only, while detailed hierarchy remains in the sidebar. All React source lives under [`design-system/src/`](design-system/src/), organized by application, core pages, components, platforms, projects, shared primitives, styles, and assets. Each component folder under [`design-system/src/components/universal/`](design-system/src/components/universal/) owns its specimen and stable export; [`design-system/src/components/universal/modules/`](design-system/src/components/universal/modules/) owns the category pages; and [`design-system/src/components/universal/UniversalComponentsPage.jsx`](design-system/src/components/universal/UniversalComponentsPage.jsx) is only the module index. Token sources live under [`design-system/src/styles/tokens/`](design-system/src/styles/tokens/), reusable product images and icons are cataloged in [`design-system/src/assets/`](design-system/src/assets/), and browser-direct files such as the favicon live under [`design-system/public/assets/`](design-system/public/assets/). Review the corresponding hash route before introducing a new module or component. React/Vite is design-review tooling only, not a production web client or Phase 1 runtime dependency.
@@ -132,9 +134,9 @@ The palette supports both a dark graphite mode and a lighter paper-and-slate mod
 
 The app opens to a standalone project hub when no project window is active. The hub is a focused list window: recent projects, settings, and the open-project action. It does not auto-select a project. Each opened project appears in its own project window, following the IntelliJ-style mental model of one local project per frame.
 
-The default project window frame is a 54px custom title bar above a three-region row, with no horizontal separator beneath the title bar. The conversation region is fluid and receives the remaining width. Navigation is constrained to roughly 24% of the window (236–300px); review is constrained to roughly 27% (276–352px). Both side regions can collapse independently, leaving the conversation full width. Source control and provider trace occupy one mutually exclusive bottom drawer beneath those regions; their gutter controls communicate active state and closing the drawer restores the full conversation height. In the review browser, each Workspace child route renders its panel as a standalone card without repeating the project-window chrome.
+The default project window frame is a 36px custom title bar above a three-region row, with no horizontal separator beneath the title bar. The conversation region is fluid and receives the remaining width. Navigation is constrained to roughly 24% of the window (236–300px); review is constrained to roughly 27% (276–352px). Both side regions can collapse independently, leaving the conversation full width. Source control and provider trace occupy one mutually exclusive bottom drawer beneath those regions; their gutter controls communicate active state and closing the drawer restores the full conversation height. In the review browser, each Workspace child route renders its panel as a standalone card without repeating the project-window chrome.
 
-Panel content uses 16px horizontal padding, 10–12px control gaps, and 24px separation around conversation content. The composer is a stable 148px footer of the conversation region. At the 900px minimum width, labels elide and the center remains usable rather than allowing side panels to consume the work surface.
+Panel content uses 16px horizontal padding, 10–12px control gaps, and 24px separation around conversation content. The composer occupies a stable 126px footer of the conversation region. The project window supports a 620px compact minimum: supporting panels and drawers retreat, the title-bar panel menu remains available, labels elide, and the conversation stays usable.
 
 ## Elevation & Depth
 
@@ -170,7 +172,7 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 
 ### Navigation
 
-The left bay is project and session navigation, with uppercase section labels, a strong project identity line, and clear session actions. It is hidden or restored using a top-bar control, preserving the central conversation rather than replacing it with a drawer overlay.
+The left bay is project and session navigation, with uppercase section labels, a strong project identity line, and clear session actions. Expanded windows use the side gutter; the title-bar panel menu remains available at every width so hidden supporting surfaces can always be restored without replacing the conversation with a drawer overlay.
 
 ### Review Inspector
 

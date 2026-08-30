@@ -90,6 +90,13 @@ impl ModelProviderRegistry {
             .is_some_and(|model| model.capabilities.reasoning_effort)
     }
 
+    pub fn supports_vision(&self, model_id: &str) -> bool {
+        self.models
+            .iter()
+            .find(|model| model.id == model_id)
+            .is_some_and(|model| model.capabilities.vision)
+    }
+
     pub fn route(&self, model_id: &str) -> Option<ModelRoute> {
         let model = self.models.iter().find(|model| model.id == model_id)?;
         Some(ModelRoute {

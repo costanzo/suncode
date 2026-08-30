@@ -7,6 +7,23 @@ namespace SunCode.Desktop.Tests;
 public sealed class SessionSnapshotProjectionTests
 {
     [Fact]
+    public void ProjectionExtractsMessageOwnedImageReferences()
+    {
+        var message = JsonNode.Parse("""
+        {
+          "role":"user",
+          "content":[
+            {"type":"text","text":"inspect"},
+            {"type":"image_ref","text":"image-1"},
+            {"type":"image_ref","text":"image-2"}
+          ]
+        }
+        """)!.AsObject();
+
+        Assert.Equal(["image-1", "image-2"], DesktopViewModel.MessageImageIds(message));
+    }
+
+    [Fact]
     public void ProviderModelGroupsPreserveLabelsAvailabilityAndOrder()
     {
         using var viewModel = new DesktopViewModel();

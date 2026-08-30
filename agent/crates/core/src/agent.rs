@@ -108,6 +108,7 @@ struct QueuedMessage {
     queued_id: String,
     idempotency_key: String,
     input: String,
+    image_ids: Vec<String>,
 }
 
 #[derive(Clone)]
@@ -147,6 +148,7 @@ impl Agent {
         }
     }
 
+    #[cfg(test)]
     pub async fn submit(
         &self,
         session_id: &str,
@@ -154,6 +156,19 @@ impl Agent {
         input: &str,
         model: Option<&str>,
         reasoning_effort: Option<&str>,
+    ) -> Result<TurnResponse, BusinessError> {
+        self.submit_with_attachments(session_id, key, input, model, reasoning_effort, &[])
+            .await
+    }
+
+    pub async fn submit_with_attachments(
+        &self,
+        session_id: &str,
+        key: &str,
+        input: &str,
+        model: Option<&str>,
+        reasoning_effort: Option<&str>,
+        image_ids: &[String],
     ) -> Result<TurnResponse, BusinessError> {
         if reasoning_effort.is_some_and(|value| !matches!(value, "low" | "medium" | "high")) {
             return Err(BusinessError::new(
@@ -189,6 +204,8 @@ impl Agent {
                 "selected model does not support reasoning effort",
             ));
         }
+        let images = self.validate_message_images(session_id, &model, image_ids)?;
+        let user_message = message_with_image_refs(input, &images);
         let _guard = match session_lock.try_lock() {
             Ok(guard) => guard,
             Err(_) => {
@@ -198,7 +215,13 @@ impl Agent {
                     .map_err(|_| BusinessError::new("agent_unavailable", "turn state unavailable"))?
                     .contains_key(session_id);
                 if has_active_turn {
-                    return self.queue_message(session_id, key, input);
+                    if !image_ids.is_empty() {
+                        return Err(BusinessError::new(
+                            "conflict",
+                            "image attachments cannot be queued while a turn is active",
+                        ));
+                    }
+                    return self.queue_message(session_id, key, input, image_ids);
                 }
                 session_lock.lock().await
             }
@@ -219,7 +242,9 @@ impl Agent {
             .store
             .project_tool_call_limit(&project_id)?
             .unwrap_or(DEFAULT_TOOL_CALL_LIMIT);
-        let admission = self.store.begin_turn(session_id, key, input, &model)?;
+        let admission = self
+            .store
+            .begin_turn_with_images(session_id, key, input, &model, image_ids)?;
         if !admission.created {
             if admission.status == "completed" {
                 let response = admission.response.ok_or_else(|| {
@@ -270,7 +295,7 @@ impl Agent {
             loaded_instruction_paths: Vec::new(),
         };
         let result = self
-            .run(continuation.clone(), Some(input), token, provider)
+            .run(continuation.clone(), Some(user_message), token, provider)
             .await;
         self.cancellations
             .lock()
@@ -326,6 +351,7 @@ impl Agent {
         session_id: &str,
         key: &str,
         input: &str,
+        image_ids: &[String],
     ) -> Result<TurnResponse, BusinessError> {
         let active_turn_id = self
             .active_turns
@@ -355,6 +381,7 @@ impl Agent {
             queued_id: queued_id.clone(),
             idempotency_key: key.to_string(),
             input: input.to_string(),
+            image_ids: image_ids.to_vec(),
         });
         let position = queue.len();
         drop(queues);
@@ -662,14 +689,13 @@ impl Agent {
     async fn run(
         &self,
         mut context: Continuation,
-        user_input: Option<&str>,
+        user_input: Option<Message>,
         token: CancellationToken,
         provider: ModelRoute,
     ) -> Result<TurnResponse, BusinessError> {
         let started = Instant::now();
-        if let Some(input) = user_input {
+        if let Some(message) = user_input {
             self.turn_state(&context, "admitted", None)?;
-            let message = Message::text("user", input);
             context.messages.push(message.clone());
             self.emit(
                 &context.session_id,
@@ -733,9 +759,13 @@ impl Agent {
                 context
                     .messages
                     .iter()
-                    .map(to_llm_message)
-                    .collect::<Vec<_>>(),
+                    .map(|message| self.to_llm_message_with_images(&context.session_id, message))
+                    .collect::<Result<Vec<_>, _>>()?,
             );
+            let trace_messages = llm_messages
+                .iter()
+                .map(redacted_trace_message)
+                .collect::<Vec<_>>();
             self.emit(
                 &context.session_id,
                 "provider.exchange.started",
@@ -746,7 +776,7 @@ impl Agent {
                     "model_id": context.model,
                     "wire_model": provider.wire_model,
                     "iteration": context.iterations,
-                    "input_messages": llm_messages,
+                    "input_messages": trace_messages,
                 }),
             )?;
             let result = {
@@ -934,7 +964,9 @@ impl Agent {
             return Ok(false);
         }
         for item in queued {
-            let message = Message::text("user", item.input);
+            let images =
+                self.validate_message_images(&context.session_id, &context.model, &item.image_ids)?;
+            let message = message_with_image_refs(&item.input, &images);
             context.messages.push(message.clone());
             self.emit(
                 &context.session_id,
@@ -949,6 +981,82 @@ impl Agent {
             )?;
         }
         Ok(true)
+    }
+
+    fn validate_message_images(
+        &self,
+        session_id: &str,
+        model: &str,
+        image_ids: &[String],
+    ) -> Result<Vec<suncode_data::SessionImageRecord>, BusinessError> {
+        if image_ids.len() > 3 {
+            return Err(BusinessError::invalid(
+                "a message can include at most three images",
+            ));
+        }
+        if !image_ids.is_empty() && !self.providers.supports_vision(model) {
+            return Err(BusinessError::new(
+                "unsupported_capability",
+                "selected model does not support image input",
+            ));
+        }
+        let mut seen = std::collections::HashSet::new();
+        let mut images = Vec::with_capacity(image_ids.len());
+        for image_id in image_ids {
+            if image_id.trim().is_empty() || !seen.insert(image_id.as_str()) {
+                return Err(BusinessError::invalid(
+                    "image IDs must be non-empty and unique",
+                ));
+            }
+            let image = self
+                .store
+                .session_image_by_id(session_id, image_id)?
+                .ok_or_else(|| {
+                    BusinessError::new("not_found", "message image was not found in this session")
+                })?;
+            let size = fs::metadata(&image.storage_path)
+                .map_err(|_| BusinessError::new("not_found", "message image file is unavailable"))?
+                .len();
+            if size == 0 || size > 20 * 1024 * 1024 {
+                return Err(BusinessError::invalid(
+                    "message image must be between 1 byte and 20 MiB",
+                ));
+            }
+            images.push(image);
+        }
+        Ok(images)
+    }
+
+    fn to_llm_message_with_images(
+        &self,
+        session_id: &str,
+        message: &Message,
+    ) -> Result<suncode_llm::Message, BusinessError> {
+        let mut converted = to_llm_message(message);
+        for part in &mut converted.content {
+            if part.kind != "image_ref" {
+                continue;
+            }
+            let image = self
+                .store
+                .session_image_by_id(session_id, &part.text)?
+                .ok_or_else(|| BusinessError::new("not_found", "message image is unavailable"))?;
+            let bytes = fs::read(&image.storage_path).map_err(|_| {
+                BusinessError::new("not_found", "message image file is unavailable")
+            })?;
+            if bytes.is_empty() || bytes.len() > 20 * 1024 * 1024 {
+                return Err(BusinessError::invalid(
+                    "message image must be between 1 byte and 20 MiB",
+                ));
+            }
+            part.kind = "image_url".into();
+            part.text = format!(
+                "data:{};base64,{}",
+                image_mime_type(&image.storage_path)?,
+                STANDARD.encode(bytes)
+            );
+        }
+        Ok(converted)
     }
 
     async fn resolve_calls(
@@ -2379,6 +2487,47 @@ fn to_llm_message(message: &Message) -> suncode_llm::Message {
             .collect(),
         tool_call_id: message.tool_call_id.clone(),
     }
+}
+
+fn message_with_image_refs(input: &str, images: &[suncode_data::SessionImageRecord]) -> Message {
+    let mut message = Message::text("user", input);
+    message
+        .content
+        .extend(images.iter().map(|image| crate::domain::ContentPart {
+            kind: "image_ref".into(),
+            text: image.image_id.clone(),
+        }));
+    message
+}
+
+fn image_mime_type(storage_path: &str) -> Result<&'static str, BusinessError> {
+    let extension = Path::new(storage_path)
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    match extension.as_str() {
+        "png" => Ok("image/png"),
+        "jpg" | "jpeg" => Ok("image/jpeg"),
+        "gif" => Ok("image/gif"),
+        "webp" => Ok("image/webp"),
+        "bmp" => Ok("image/bmp"),
+        "avif" => Ok("image/avif"),
+        _ => Err(BusinessError::invalid(
+            "message image format is unsupported",
+        )),
+    }
+}
+
+fn redacted_trace_message(message: &suncode_llm::Message) -> suncode_llm::Message {
+    let mut redacted = message.clone();
+    for part in &mut redacted.content {
+        if part.kind == "image_url" {
+            part.kind = "image_ref".into();
+            part.text = "[image attachment]".into();
+        }
+    }
+    redacted
 }
 
 fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -> Value {

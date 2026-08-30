@@ -29,7 +29,7 @@ Before non-trivial work:
 
 ## UI and interaction design system
 
-The `design-system/` project is the repository-wide source of truth for UI appearance, component behavior, interaction patterns, states, and layout specifications.
+Root `DESIGN.md` is the repository-wide design authority. The `design-system/` project is its executable review surface and resource catalog for UI appearance, component behavior, interaction patterns, states, and layout specifications. If prose, specimens, tokens, or production UI disagree, resolve the discrepancy in `DESIGN.md` and the corresponding `design-system/` specimen before treating production work as complete.
 
 - Before changing any user interface or interaction, inspect the relevant page in `design-system/`, its shared component implementation, and the applicable tokens under `design-system/src/styles/tokens/`.
 - Implement production UI, including Avalonia views, consistently with the corresponding design-system specification. Reuse established tokens, dimensions, typography, spacing, colors, states, and interaction behavior instead of introducing local alternatives.

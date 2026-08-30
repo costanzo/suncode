@@ -160,6 +160,10 @@ public sealed class AgentSdk : IDisposable
         [sessionId, input, Guid.NewGuid().ToString("N"), model, reasoningEffort],
         values => NativeMethods.suncode_agent_sdk_submit_turn(_handle, values[0], values[1], values[2], values[3], values[4]));
 
+    public Task<JsonObject> SubmitTurnAsync(string sessionId, string input, string model, string? reasoningEffort, IReadOnlyList<string> imageIds) => WithNullableUtf8Async(
+        [sessionId, input, Guid.NewGuid().ToString("N"), model, reasoningEffort, JsonSerializer.Serialize(imageIds)],
+        values => NativeMethods.suncode_agent_sdk_submit_turn_with_attachments(_handle, values[0], values[1], values[2], values[3], values[4], values[5]));
+
     public Task<JsonObject> CancelTurnAsync(string sessionId, string turnId) => WithUtf8Async(
         [sessionId, turnId], values => NativeMethods.suncode_agent_sdk_cancel_turn(_handle, values[0], values[1]));
 

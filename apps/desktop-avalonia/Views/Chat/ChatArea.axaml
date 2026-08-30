@@ -8,9 +8,6 @@
              x:Class="SunCode.Desktop.Views.Chat.ChatArea"
              x:DataType="vm:DesktopViewModel">
   <UserControl.Styles>
-    <Style Selector="ItemsControl.conversation ContentPresenter">
-      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    </Style>
     <Style Selector="Button.tool-card">
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
@@ -23,6 +20,15 @@
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
     </Style>
+    <Style Selector="ListBox.conversation">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="ListBox.conversation ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
     <Style Selector="Ellipse.running-dot">
       <Setter Property="Width" Value="5" />
       <Setter Property="Height" Value="5" />
@@ -32,26 +38,37 @@
 
   <Border Classes="workspace-card" ClipToBounds="True">
     <Grid>
-      <ScrollViewer x:Name="ConversationScroller"
-                    HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto"
-                    ScrollChanged="ConversationScrollChanged"
-                    IsVisible="{Binding HasSelectedSession}">
-        <ItemsControl x:Name="ConversationList"
+      <ListBox x:Name="ConversationList"
                       Classes="conversation"
                       Margin="24,18,24,128"
                       ItemsSource="{Binding Messages}"
+                      HorizontalAlignment="Stretch"
+                      SelectionMode="Single"
+                      SelectionChanged="ConversationSelectionChanged"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                      IsVisible="{Binding HasSelectedSession}"
                       Focusable="False">
-          <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate>
-              <StackPanel />
-          </ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
           <DataTemplate x:DataType="models:MessageItem">
             <Grid MaxWidth="780" Margin="12,8" HorizontalAlignment="Stretch" IsVisible="{Binding IsVisible}">
               <Border IsVisible="{Binding IsUser}" HorizontalAlignment="Right" MaxWidth="480" Padding="12,10" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                <SelectableTextBlock Text="{Binding Text}" FontSize="12" TextWrapping="Wrap" LineHeight="19" />
+                <StackPanel Spacing="8">
+                  <ItemsControl ItemsSource="{Binding Attachments}" IsVisible="{Binding HasAttachments}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="7" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="models:ComposerAttachment">
+                        <Button Width="72" Height="56" Padding="0" Classes="quiet" Click="PreviewMessageAttachment" AutomationProperties.Name="{Binding Name, StringFormat=View attached image {0}}">
+                          <Image Source="{Binding Preview}" Stretch="UniformToFill" />
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <SelectableTextBlock Text="{Binding Text}" FontSize="12" TextWrapping="Wrap" LineHeight="19" />
+                </StackPanel>
               </Border>
 
               <StackPanel IsVisible="{Binding IsProcess}" MaxWidth="620" HorizontalAlignment="Left" Spacing="5">
@@ -62,7 +79,8 @@
                         HorizontalAlignment="Left"
                         Click="ToggleTurnProcess"
                         IsVisible="{Binding ShowProcessToggle}"
-                        ToolTip.Tip="Show or hide this turn's work">
+                        ToolTip.Tip="Show or hide this turn's work"
+                        AutomationProperties.Name="{Binding ProcessToggleText}">
                   <StackPanel Orientation="Horizontal" Spacing="5">
                     <svg:Svg Width="12"
                              Height="12"
@@ -85,13 +103,14 @@
 
                 <StackPanel IsVisible="{Binding ProcessContentVisible}" Spacing="5">
                   <Grid IsVisible="{Binding IsAssistant}">
-                    <controls:MarkdownText Markdown="{Binding Text}" FontSize="12" HorizontalAlignment="Stretch" />
+                    <controls:MarkdownText Markdown="{Binding Text}" FontSize="14" HorizontalAlignment="Stretch" />
                   </Grid>
 
                   <Button Classes="tool-card"
                           IsVisible="{Binding IsTool}"
                           Click="OpenToolDetail"
-                          ToolTip.Tip="View operation details">
+                          ToolTip.Tip="View operation details"
+                          AutomationProperties.Name="{Binding ToolSummaryText, StringFormat=View operation details for {0}}">
                     <Grid ColumnDefinitions="18,*,Auto,16">
                       <svg:Svg Grid.Row="0" Grid.Column="0" Width="13" Height="13" Margin="0,1,0,0" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" />
                       <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ToolSummaryText}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
@@ -106,23 +125,23 @@
 
               <StackPanel IsVisible="{Binding IsFinalAssistant}" MaxWidth="610" HorizontalAlignment="Left" Spacing="4">
                 <Grid>
-                  <controls:MarkdownText Markdown="{Binding Text}" FontSize="12" HorizontalAlignment="Stretch" />
+                  <controls:MarkdownText Markdown="{Binding Text}" FontSize="14" HorizontalAlignment="Stretch" />
                 </Grid>
-                <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Margin="-7,0,0,0" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response" IsVisible="{Binding ShowCopy}">
+                <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Margin="-7,0,0,0" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response" AutomationProperties.Name="Copy response" IsVisible="{Binding ShowCopy}">
                   <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
                 </Button>
               </StackPanel>
             </Grid>
           </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </ScrollViewer>
+          </ListBox.ItemTemplate>
+        </ListBox>
 
       <StackPanel ZIndex="1" Margin="36,0,0,112" HorizontalAlignment="Left" VerticalAlignment="Bottom" Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsTurnActive}">
         <Ellipse Classes="running-dot" />
         <Ellipse Classes="running-dot" />
         <Ellipse Classes="running-dot" />
       </StackPanel>
+      <TextBlock x:Name="ConversationAnnouncement" IsVisible="False" AutomationProperties.LiveSetting="Polite" />
 
       <StackPanel ZIndex="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding IsSessionLoadingVisible}">
         <ProgressBar Width="160" Height="3" IsIndeterminate="True" />
@@ -194,7 +213,7 @@
             </ScrollViewer>
 
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,16,0,0">
-              <Button Classes="compact" Content="Close" Click="CloseToolDetail" />
+              <Button x:Name="ToolDetailCloseButton" Classes="compact" Content="Close" Click="CloseToolDetail" />
             </StackPanel>
           </Grid>
         </Border>

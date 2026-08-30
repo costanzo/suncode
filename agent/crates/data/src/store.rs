@@ -518,7 +518,10 @@ impl Store {
         }
         Ok(out)
     }
-    pub fn session_images(&self, session_id: &str) -> Result<Vec<SessionImageRecord>, BusinessError> {
+    pub fn session_images(
+        &self,
+        session_id: &str,
+    ) -> Result<Vec<SessionImageRecord>, BusinessError> {
         let mut c = lock(&self.connection)?;
         sql_query("SELECT image_id,session_id,display_name,source_kind,original_path,storage_path,thumbnail_base64,created_at FROM session_image WHERE session_id=? ORDER BY created_at,image_id")
             .bind::<Text, _>(session_id)
@@ -592,6 +595,7 @@ impl Store {
             }
             Ok(())
         })?;
+        drop(c);
         self.session_image_by_id(session_id, image_id)?
             .ok_or_else(|| BusinessError::invalid("session image insertion failed"))
     }
@@ -634,10 +638,21 @@ impl Store {
         input: &str,
         model: &str,
     ) -> Result<TurnAdmission, BusinessError> {
+        self.begin_turn_with_images(session_id, key, input, model, &[])
+    }
+
+    pub fn begin_turn_with_images(
+        &self,
+        session_id: &str,
+        key: &str,
+        input: &str,
+        model: &str,
+        image_ids: &[String],
+    ) -> Result<TurnAdmission, BusinessError> {
         let mut c = lock(&self.connection)?;
         let old=sql_query("SELECT state,turn_id,input_json,model_id,response_json FROM session_turn WHERE session_id=? AND submission_idempotency_key=?").bind::<Text,_>(session_id).bind::<Text,_>(key).get_result::<SubmissionRow>(&mut *c).optional().map_err(crate::database_error)?;
         if let Some(r) = old {
-            let requested = serde_json::to_string(&json!({"input":input}))?;
+            let requested = serde_json::to_string(&json!({"input":input,"image_ids":image_ids}))?;
             if r.input_json.as_deref() != Some(&requested) || r.model_id.as_deref() != Some(model) {
                 return Err(BusinessError::invalid(
                     "idempotency key was reused with different turn input",
@@ -660,7 +675,7 @@ impl Store {
         }
         let id = Uuid::new_v4().to_string();
         let t = now();
-        let input_json = serde_json::to_string(&json!({"input":input}))?;
+        let input_json = serde_json::to_string(&json!({"input":input,"image_ids":image_ids}))?;
         sql_query("INSERT INTO session_turn(session_id,submission_idempotency_key,state,created_at,updated_at,turn_id,input_json,model_id,admitted_at) VALUES (?,?, 'admitted',?,?,?,?,?,?)").bind::<Text,_>(session_id).bind::<Text,_>(key).bind::<Text,_>(&t).bind::<Text,_>(&t).bind::<Text,_>(&id).bind::<Text,_>(&input_json).bind::<Text,_>(model).bind::<Text,_>(&t).execute(&mut *c).map_err(crate::database_error)?;
         Ok(TurnAdmission {
             created: true,
@@ -1312,6 +1327,27 @@ impl Store {
         let mut c = lock(&self.connection)?;
         session_by_id_conn(&mut c, id)
     }
+    pub fn session_ui_state(&self, session_id: &str) -> Result<String, BusinessError> {
+        let mut c = lock(&self.connection)?;
+        let pending_approval = sql_query("SELECT approval_id AS value FROM approval_request WHERE session_id=? AND status='pending' LIMIT 1")
+            .bind::<Text, _>(session_id).get_result::<StringRow>(&mut *c).optional().map_err(crate::database_error)?.is_some();
+        if pending_approval {
+            return Ok("approval".into());
+        }
+        let pending_question = sql_query("SELECT turn_id AS value FROM session_turn WHERE session_id=? AND recovery_status='pending' AND json_extract(recovery_snapshot_json,'$.pending_call.name')='question' LIMIT 1")
+            .bind::<Text, _>(session_id).get_result::<StringRow>(&mut *c).optional().map_err(crate::database_error)?.is_some();
+        if pending_question {
+            return Ok("question".into());
+        }
+        let latest = sql_query("SELECT state AS value FROM session_turn WHERE session_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1")
+            .bind::<Text, _>(session_id).get_result::<StringRow>(&mut *c).optional().map_err(crate::database_error)?.map(|row| row.value);
+        Ok(match latest.as_deref() {
+            Some("failed" | "cancelled" | "interrupted") => "failed",
+            Some("completed") | None => "idle",
+            Some(_) => "running",
+        }
+        .into())
+    }
     pub fn sessions_for_project(
         &self,
         project_id: &str,
@@ -1905,5 +1941,43 @@ mod tests {
             serde_json::to_value(Message::text("user", "hello")).unwrap()
         );
         assert_eq!(conversation[0].todos[0].status, "completed");
+    }
+
+    #[test]
+    fn session_ui_state_tracks_running_failure_and_idle_turns() {
+        let store = Store::open_memory().unwrap();
+        let project = store
+            .project("/tmp/suncode-session-state", "State")
+            .unwrap();
+        let session = store
+            .create_session(&project.project_id, None, None)
+            .unwrap();
+
+        assert_eq!(store.session_ui_state(&session.session_id).unwrap(), "idle");
+        store
+            .begin_turn(&session.session_id, "state-1", "run", "gpt-5.5")
+            .unwrap();
+        assert_eq!(
+            store.session_ui_state(&session.session_id).unwrap(),
+            "running"
+        );
+        store
+            .fail_turn(&session.session_id, "state-1", &json!({"code":"test"}))
+            .unwrap();
+        assert_eq!(
+            store.session_ui_state(&session.session_id).unwrap(),
+            "failed"
+        );
+        store
+            .begin_turn(&session.session_id, "state-2", "finish", "gpt-5.5")
+            .unwrap();
+        store
+            .complete_turn(
+                &session.session_id,
+                "state-2",
+                &json!({"status":"completed"}),
+            )
+            .unwrap();
+        assert_eq!(store.session_ui_state(&session.session_id).unwrap(), "idle");
     }
 }

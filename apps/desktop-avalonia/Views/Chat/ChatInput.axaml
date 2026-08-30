@@ -121,8 +121,9 @@
               Padding="5"
               Classes="quiet"
               Click="AddAttachment"
-              IsEnabled="{Binding CanCompose}"
-              ToolTip.Tip="Add image">
+              IsEnabled="{Binding CanAttachImages}"
+              ToolTip.Tip="Add image (requires a model with image input)"
+              AutomationProperties.Name="Add image attachment">
         <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
       </Button>
 

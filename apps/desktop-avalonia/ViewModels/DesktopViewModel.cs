@@ -26,6 +26,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private ProjectItem? _selectedProject;
     private SessionItem? _selectedSession;
     private ModelItem? _selectedModel;
+    private IReadOnlyList<ComposerAttachment> _submittedAttachments = [];
     private string? _selectedReasoningEffort;
     private GitFileItem? _selectedGitFile;
     private ProviderTraceItem? _selectedProviderTrace;
@@ -173,6 +174,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(CanCompose));
                 OnPropertyChanged(nameof(SelectedModelName));
                 OnPropertyChanged(nameof(CanChooseReasoningEffort));
+                OnPropertyChanged(nameof(CanAttachImages));
                 OnPropertyChanged(nameof(ComposerPlaceholder));
             }
         }
@@ -412,11 +414,17 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public bool HasSelectedSession => SelectedSession is not null;
     public bool HasPendingApproval => PendingApproval is not null;
     public bool HasPendingQuestion => PendingQuestion is not null;
+    public bool HasChangedPaths => ChangedPaths.Count > 0;
+    public string TurnChangeSummary => ChangedPaths.Count == 0
+        ? "No files changed in this turn"
+        : $"{ChangedPaths.Count} {(ChangedPaths.Count == 1 ? "file" : "files")} touched";
+    public string RuntimeHealthSummary => IsAgentHealthy ? "Agent and database ready" : "Runtime needs attention";
     public bool IsTurnActive => !string.IsNullOrWhiteSpace(ActiveTurnId);
     public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && SelectedModel?.Configured == true && !HasSessionLoadError;
     public bool CanSubmit => SelectedSession is not null && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsTurnActive && !IsSessionLoading && !HasSessionLoadError;
     public bool CanChooseModel => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !HasSessionLoadError;
     public bool CanChooseReasoningEffort => CanCompose && SelectedModel?.SupportsReasoningEffort == true;
+    public bool CanAttachImages => CanCompose && SelectedModel?.SupportsVision == true && !IsTurnActive;
     public string ProjectTitle => SelectedProject?.DisplayName ?? "SunCode";
     public string SessionTitle => SelectedSession?.DisplayTitle ?? "No session selected";
     public string SessionTokenText => $"Session {CompactNumber(SessionTotalTokens)} tokens";
@@ -493,9 +501,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     {
         _layoutWidth = width;
         if (EffectiveNavigationVisible)
-            NavigationPaneWidth = Math.Clamp(NavigationPaneWidth, 180, Math.Min(420, Math.Max(180, _layoutWidth - 560)));
+            NavigationPaneWidth = Math.Clamp(NavigationPaneWidth, 236, Math.Min(300, Math.Max(236, _layoutWidth - 560)));
         if (EffectiveReviewVisible)
-            ReviewPaneWidth = Math.Clamp(ReviewPaneWidth, 220, Math.Min(460, Math.Max(220, _layoutWidth - 560)));
+            ReviewPaneWidth = Math.Clamp(ReviewPaneWidth, 276, Math.Min(352, Math.Max(276, _layoutWidth - 560)));
         NotifyResponsiveLayoutChanged();
         OnPropertyChanged(nameof(GitFileListWidth));
     }
@@ -887,17 +895,39 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     {
         var text = ComposerText.Trim();
         if (!EnsureSdk() || SelectedSession is null || SelectedModel?.Configured != true || text.Length == 0 || IsTurnActive) return;
-        ComposerText = string.Empty;
-        await RunAsync(async () =>
+        var attachments = ComposerAttachments.ToArray();
+        DisposeSubmittedAttachments();
+        _submittedAttachments = attachments;
+        IsBusy = true;
+        try
         {
-            var result = await _sdk!.SubmitTurnAsync(SelectedSession.SessionId, text, SelectedModel.Id, SelectedReasoningEffort);
+            var result = await _sdk!.SubmitTurnAsync(
+                SelectedSession.SessionId,
+                text,
+                SelectedModel.Id,
+                SelectedReasoningEffort,
+                attachments.Select(attachment => attachment.ImageId).ToArray());
+            ComposerText = string.Empty;
+            ComposerAttachments.Clear();
             StatusText = result.String("status") switch
             {
                 "queued" => "Message queued for this turn",
                 "awaiting_approval" => "Turn is awaiting approval",
                 _ => "Turn submitted"
             };
-        });
+            ConnectionState = "connected";
+        }
+        catch (Exception exception)
+        {
+            // ComposerAttachments still owns any images that were not consumed by a live
+            // message.user event, so do not dispose them here.
+            _submittedAttachments = [];
+            ReportError(exception);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     public async Task LoadSessionImagesAsync(string? requestedSessionId = null, long? loadVersion = null)
@@ -1594,10 +1624,12 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     {
         if (_sdk is null || SelectedProject is null) return;
         var result = await _sdk.ListSessionsAsync(SelectedProject.ProjectId);
+        var sessionStates = result.Object("sessionStates");
         Sessions.Clear();
         foreach (var item in result.Array("sessions").OfType<JsonObject>())
         {
-            Sessions.Add(new SessionItem(item.String("sessionId"), item.String("title"), item.String("lastActivityAt"), !string.IsNullOrWhiteSpace(item.String("pinAt", "pin_at"))));
+            var sessionId = item.String("sessionId");
+            Sessions.Add(new SessionItem(sessionId, item.String("title"), item.String("lastActivityAt"), !string.IsNullOrWhiteSpace(item.String("pinAt", "pin_at")), sessionStates.String(sessionId)));
         }
         OnPropertyChanged(nameof(HasSessions));
         var session = Sessions.FirstOrDefault(item => item.SessionId == preferredSessionId)
@@ -1629,7 +1661,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                 item.String("provider"),
                 item.String("providerLabel", "provider_label"),
                 item.String("availability"),
-                item.Object("capabilities").Bool("reasoning_effort")));
+                item.Object("capabilities").Bool("reasoning_effort"),
+                item.Object("capabilities").Bool("vision"),
+                item.String("apiBase", "api_base")));
         }
         foreach (var group in Models.GroupBy(model => model.Provider, StringComparer.Ordinal))
         {
@@ -1637,7 +1671,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             Providers.Add(new ProviderItem(
                 group.Key,
                 string.IsNullOrWhiteSpace(first.ProviderLabel) ? group.Key : first.ProviderLabel,
-                group.Any(model => model.Configured)));
+                group.Any(model => model.Configured),
+                first.ApiBase));
         }
         SelectedModel = Models.FirstOrDefault(item => item.Id == selectedId) ?? Models.FirstOrDefault();
         if (SelectedModel is null)
@@ -1768,6 +1803,10 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             ? PendingQuestionItem.FromPayload(pendingPayload)
             : null;
         var activeTurnId = string.Empty;
+        var imagePayloads = snapshot.Array("images")
+            .OfType<JsonObject>()
+            .Where(image => image.String("imageId", "image_id").Length > 0)
+            .ToDictionary(image => image.String("imageId", "image_id"), StringComparer.Ordinal);
 
         var conversationTurns = snapshot.Array("conversationTurns").OfType<JsonObject>().ToArray();
         var todoTurnId = conversationTurns
@@ -1807,6 +1846,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                             Text = text,
                             ContentSequence = messages.Count + 1,
                             TurnId = turnId,
+                            Attachments = MessageAttachments(message, imagePayloads),
                             IsProcess = role == "assistant",
                             CanBeFinalAssistant = role == "assistant" && message.Array("tool_calls").Count == 0
                         });
@@ -1843,6 +1883,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                     Role = role,
                     Text = text,
                     ContentSequence = messages.Count + 1,
+                    Attachments = MessageAttachments(item, imagePayloads),
                     IsFinalAssistant = role == "assistant",
                     CanBeFinalAssistant = role == "assistant"
                 });
@@ -1887,9 +1928,12 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         {
             if (message.MessageId.Length > 0) _appliedMessageIds.Add(message.MessageId);
         }
+        DisposeMessages();
         Messages = new BulkObservableCollection<MessageItem>(projection.Messages);
         Activities.ReplaceAll(projection.Activities);
         ChangedPaths.ReplaceAll(projection.ChangedPaths);
+        OnPropertyChanged(nameof(HasChangedPaths));
+        OnPropertyChanged(nameof(TurnChangeSummary));
         CurrentTodos.ReplaceAll(projection.CurrentTodos);
         PendingApproval = projection.PendingApproval;
         PendingQuestion = projection.PendingQuestion;
@@ -2002,6 +2046,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                         Text = text,
                         ContentSequence = Messages.Count + 1,
                         TurnId = turnId,
+                        Attachments = type == "message.user" ? PendingMessageAttachments(message) : [],
                         IsProcess = type == "message.assistant",
                         CanBeFinalAssistant = canBeFinalAssistant
                     });
@@ -2050,6 +2095,8 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             if (path.Length > 0 && !ChangedPaths.Contains(path))
             {
                 ChangedPaths.Add(path);
+                OnPropertyChanged(nameof(HasChangedPaths));
+                OnPropertyChanged(nameof(TurnChangeSummary));
                 pathAdded = true;
             }
         }
@@ -2238,6 +2285,46 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             .Select(part => part.String("text")));
     }
 
+    private static IReadOnlyList<ComposerAttachment> MessageAttachments(
+        JsonObject message,
+        IReadOnlyDictionary<string, JsonObject> images)
+    {
+        var attachments = new List<ComposerAttachment>();
+        foreach (var imageId in MessageImageIds(message))
+        {
+            if (images.TryGetValue(imageId, out var payload))
+                attachments.Add(ComposerAttachment.FromPayload(payload));
+        }
+        return attachments;
+    }
+
+    internal static IReadOnlyList<string> MessageImageIds(JsonObject message) =>
+        message.Array("content")
+            .OfType<JsonObject>()
+            .Where(part => part.String("type") == "image_ref")
+            .Select(part => part.String("text"))
+            .Where(imageId => imageId.Length > 0)
+            .ToArray();
+
+    private IReadOnlyList<ComposerAttachment> PendingMessageAttachments(JsonObject message)
+    {
+        var imageIds = message.Array("content")
+            .OfType<JsonObject>()
+            .Where(part => part.String("type") == "image_ref")
+            .Select(part => part.String("text"))
+            .ToHashSet(StringComparer.Ordinal);
+        if (imageIds.Count == 0) return [];
+        var attachments = _submittedAttachments.Where(item => imageIds.Contains(item.ImageId)).ToArray();
+        _submittedAttachments = _submittedAttachments.Where(item => !imageIds.Contains(item.ImageId)).ToArray();
+        foreach (var attachment in attachments)
+        {
+            // Transfer ownership from the composer to the live user message without
+            // disposing the shared preview bitmap.
+            ComposerAttachments.Remove(attachment);
+        }
+        return attachments;
+    }
+
     private async Task RunAsync(Func<Task> operation, string? success = null, [System.Runtime.CompilerServices.CallerMemberName] string operationName = "unknown")
     {
         IsBusy = true;
@@ -2334,12 +2421,14 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         _loadedSessionId = null;
         IsSessionLoading = false;
         SessionLoadError = string.Empty;
+        DisposeMessages();
         Messages = [];
         _appliedMessageIds.Clear();
         Activities.Clear();
         ChangedPaths.Clear();
         Checkpoints.Clear();
         DiffLines.Clear();
+        DisposeSubmittedAttachments();
         ReplaceComposerAttachments([]);
         ClearProviderTraces();
         PendingApproval = null;
@@ -2705,12 +2794,26 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void DisposeMessages()
+    {
+        foreach (var message in Messages) message.Dispose();
+    }
+
+    private void DisposeSubmittedAttachments()
+    {
+        foreach (var attachment in _submittedAttachments.Where(attachment => !ComposerAttachments.Contains(attachment)))
+            attachment.Dispose();
+        _submittedAttachments = [];
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
         Interlocked.Increment(ref _sessionLoadVersion);
         CloseSubscription();
+        DisposeMessages();
+        DisposeSubmittedAttachments();
         ReplaceComposerAttachments([]);
         _sdk?.Dispose();
         _sdk = null;

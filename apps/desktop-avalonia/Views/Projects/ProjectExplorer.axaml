@@ -56,10 +56,10 @@
     <Grid Margin="12,12,10,10" RowDefinitions="34,8,*">
       <Grid Grid.Row="0" ColumnDefinitions="*,28,28">
         <TextBlock Classes="section-label" Text="EXPLORER" Margin="4,0,0,0" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Classes="icon" Width="28" Height="28" Padding="6" Click="RefreshExplorer" ToolTip.Tip="Refresh explorer">
+        <Button Grid.Column="1" Classes="icon" Width="28" Height="28" Padding="6" Click="RefreshExplorer" ToolTip.Tip="Refresh explorer" AutomationProperties.Name="Refresh explorer">
           <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
-        <Button Grid.Column="2" Classes="icon" Width="28" Height="28" Padding="6" Click="AddDependency" ToolTip.Tip="Add dependency folder">
+        <Button Grid.Column="2" Classes="icon" Width="28" Height="28" Padding="6" Click="AddDependency" ToolTip.Tip="Add dependency folder" AutomationProperties.Name="Add dependency folder">
           <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
       </Grid>
@@ -83,7 +83,7 @@
                 <TextBlock Classes="explorer-name" Text="{Binding Name}" TextWrapping="NoWrap" VerticalAlignment="Center" />
                 <TextBlock Classes="explorer-path" Text="{Binding Path}" IsVisible="{Binding HasPathSubtitle}" TextWrapping="NoWrap" />
               </StackPanel>
-              <Button Grid.Column="3" Classes="quiet" Width="24" Height="24" Padding="5" IsVisible="{Binding CanRemove}" ToolTip.Tip="Dependency actions">
+              <Button Grid.Column="3" Classes="quiet" Width="24" Height="24" Padding="5" IsVisible="{Binding CanRemove}" ToolTip.Tip="Dependency actions" AutomationProperties.Name="{Binding Name, StringFormat=Actions for dependency {0}}">
                 <Button.Flyout>
                   <MenuFlyout>
                     <MenuItem Header="Delete" CommandParameter="{Binding}" Click="DeleteDependency" />

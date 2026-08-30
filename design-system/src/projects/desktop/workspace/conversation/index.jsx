@@ -16,7 +16,7 @@ const conversationGuides = {
   } },
   waiting: { tabs: {
     actions: ["Read the user and assistant messages in chronological order.", "Expand a tool operation to inspect its request and result modal.", "Click the changes summary to open Source Control for the turn diff."],
-    style: ["User messages use a raised surface, 1px border, and 14px corner radius.", "Message text is 12px with a 1.62 line-height for comfortable reading.", "Tool rows are compact 34px controls with ellipsized operation names."],
+    style: ["User messages use a raised surface, 1px border, and 14px corner radius.", "Assistant Markdown uses 14px type with a 1.6 line-height for comfortable reading.", "Tool rows are compact 34px controls with ellipsized operation names."],
     logic: ["The session has content and is waiting for the next user submission.", "Completed tool calls remain visible as auditable turn activity.", "Turn changes summarize added, deleted, and edited files and link to the diff."],
   } },
   updating: { tabs: {
@@ -32,7 +32,7 @@ const conversationGuides = {
   attachments: { tabs: {
     actions: ["Use the plus control to select image files, up to three at a time.", "Click a thumbnail to open the larger preview modal.", "Hover a thumbnail and use its close control to remove it before sending."],
     style: ["Attachment thumbnails are 96px by 64px with a 7px radius and 6px gap.", "Thumbnails use cover cropping and a strong border on hover.", "Sent images appear above the user message with a 10px bottom margin."],
-    logic: ["Only image MIME types are accepted by the attachment input.", "Pending attachments stay local to the composer until send.", "Sent attachments become part of the user message and can be previewed again."],
+    logic: ["Only models that advertise image input enable the attachment control; the illustrative specimen model is not a seeded runtime model.", "Pending attachments stay local to the composer until send.", "Sent attachments become part of the user message and can be previewed again."],
   } },
   longTool: { tabs: {
     actions: ["Read the truncated operation title to identify the active tool.", "Open the operation modal for the complete request and result.", "Use the status text to distinguish a long call from a failed call."],
@@ -50,7 +50,7 @@ export function WorkspaceConversationPage() {
     { id: "waiting", title: "Waiting for input", description: "A completed turn is waiting for the next instruction.", side: "right", content: <ConversationPanel standalone state="content-waiting" onViewChanges={viewChanges} /> },
     { id: "updating", title: "Session updating", description: "The active turn is streaming work and tool activity.", side: "left", content: <ConversationPanel standalone state="content-updating" /> },
     { id: "compacted", title: "Context compacted", description: "A completed context compaction is recorded in the conversation timeline.", side: "left", content: <ConversationPanel standalone state="context-compacted" /> },
-    { id: "attachments", title: "Two images attached", description: "Two image thumbnails are held in the composer before sending.", side: "right", content: <ConversationPanel standalone state="content-waiting" initialAttachments={sampleConversationAttachments} onViewChanges={viewChanges} /> },
+    { id: "attachments", title: "Two images attached", description: "A specimen-only image-capable model holds two thumbnails before sending.", side: "right", content: <ConversationPanel standalone state="content-waiting" initialAttachments={sampleConversationAttachments} imageInputEnabled onViewChanges={viewChanges} /> },
     { id: "attachments", title: "Two images sent", description: "The user message includes two sent image thumbnails.", side: "left", content: <ConversationPanel standalone state="content-waiting" initialSentAttachments={sampleConversationAttachments} onViewChanges={viewChanges} /> },
     { id: "longTool", title: "Long tool call", description: "A long operation title is compacted while its details remain available.", side: "right", content: <ConversationPanel standalone state="long-tool-call" onViewChanges={viewChanges} /> },
   ];

@@ -54,7 +54,7 @@
   <Grid Grid.Row="1" RowDefinitions="58,*">
     <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
       <Grid Margin="22,0" ColumnDefinitions="*,Auto">
-        <TextBlock Text="Settings" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
         <Button Grid.Column="1" Classes="compact primary" Content="Done" Click="CloseSettings" VerticalAlignment="Center" />
       </Grid>
     </Border>
@@ -70,7 +70,7 @@
             <Button x:Name="LoggingNavigation" Classes="navigation" Content="Logging" Click="ShowLogging" />
             <Border Height="12" />
             <TextBlock Classes="section-label" Text="MODELS" Margin="10,0,0,0" />
-            <Button x:Name="ProvidersNavigation" Classes="navigation" Click="ToggleProviders">
+            <Button x:Name="ProvidersNavigation" Classes="navigation" Click="ShowProviders">
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <svg:Svg x:Name="ProvidersChevron" Width="10" Height="10" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Text="Model providers" FontWeight="SemiBold" />
@@ -170,9 +170,12 @@
 
               <StackPanel Grid.Row="2" Spacing="3">
                 <TextBlock Text="Maximum file size" FontWeight="SemiBold" />
-                <TextBlock Classes="settings-hint" Text="Rotate each file after it reaches this many bytes. Minimum 1024." />
+                <TextBlock Classes="settings-hint" Text="Rotate each log file when it reaches this size." />
               </StackPanel>
-              <TextBox x:Name="LogMaxBytesInput" Grid.Row="2" Grid.Column="1" Classes="mono" PlaceholderText="10485760" />
+              <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto">
+                <TextBox x:Name="LogMaxMegabytesInput" Grid.ColumnSpan="2" Classes="mono" Padding="12,7,42,7" PlaceholderText="10" AutomationProperties.Name="Maximum file size in megabytes" />
+                <TextBlock Grid.Column="1" Text="MB" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,10,0" VerticalAlignment="Center" IsHitTestVisible="False" />
+              </Grid>
 
               <StackPanel Grid.Row="3" Spacing="3">
                 <TextBlock Text="Retained backups" FontWeight="SemiBold" />
@@ -199,6 +202,32 @@
               <Button Classes="compact primary" Content="Save image location" Click="SaveImageDirectory" />
               <TextBlock x:Name="ImageDirectoryStatus" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
             </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="ProvidersPage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="32,28,32,34" Spacing="20" MaxWidth="720">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Model providers" FontSize="22" FontWeight="SemiBold" />
+              <TextBlock Classes="settings-hint" Text="Built-in providers available to the local agent." />
+            </StackPanel>
+            <ItemsControl ItemsSource="{Binding Providers}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:ProviderItem">
+                  <Button Classes="navigation" Tag="{Binding Id}" Click="ShowProvider" Padding="4,10" MinHeight="58" HorizontalContentAlignment="Stretch" AutomationProperties.Name="{Binding DisplayName, StringFormat=Open {0} provider settings}">
+                    <Grid ColumnDefinitions="8,*,16" ColumnSpacing="11">
+                      <Ellipse Width="7" Height="7" Fill="{DynamicResource WarningBrush}" VerticalAlignment="Center" IsVisible="{Binding !Configured}" />
+                      <Ellipse Width="7" Height="7" Fill="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding Configured}" />
+                      <StackPanel Grid.Column="1" Spacing="3">
+                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding ApiBase}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <svg:Svg Grid.Column="2" Width="12" Height="12" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </StackPanel>
         </ScrollViewer>
 

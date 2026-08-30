@@ -43,9 +43,9 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `archive_session` | Recoverably archive a session |
 | `set_session_pinned` | Persist or clear a session's project-local pinned state in `session.pin_at` |
 | `reopen_session` | Reopen an archived session |
-| `list_session_images` | List persisted placeholder images for one session |
+| `list_session_images` | List persisted images that are still pending in one session composer |
 | `add_session_image` | Save one uploaded image file plus thumbnail metadata for a session |
-| `remove_session_image` | Remove one persisted placeholder image from a session |
+| `remove_session_image` | Remove one pending persisted image; submitted message attachments cannot be removed |
 | `session_snapshot` | Read the normalized session projection; the cursor argument is ignored for compatibility |
 | `session_usage` | Read cumulative provider-reported token usage for a session |
 | `list_provider_exchanges` | List session turns and normalized provider call summaries for a trace tree |
@@ -53,7 +53,8 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `list_checkpoints` | List turn-level checkpoint manifests for a session |
 | `checkpoint_manifest` | Inspect one manifest and its items |
 | `restore_checkpoint` | Restore a manifest with ownership and post-image conflict checks |
-| `submit_turn` | Idempotently submit input to a session and selected model, with an optional `reasoning_effort` (`low`, `medium`, or `high`) accepted only for models advertising that capability |
+| `submit_turn` | Idempotently submit text-only input to a session and selected model, with an optional `reasoning_effort` (`low`, `medium`, or `high`) accepted only for models advertising that capability |
+| `submit_turn_with_attachments` | Submit text plus up to three same-session image IDs to a model advertising image input |
 | `cancel_turn` | Cooperatively cancel a running turn |
 | `get_approval` | Read one approval state |
 | `resolve_approval` | Resolve one pending approval with `allow_once`, `allow_session`, or `deny` |
@@ -69,6 +70,8 @@ Rust-generated project, session, turn, approval, checkpoint, event, and message 
 
 `image_directory` is a global-only string setting that defaults to the empty string. Empty means `<data directory>/data/images`. Each persisted session image is written under `{resolved_image_directory}/{sessionId}/{imageId}.{ext}`. The `session_image` row also stores the exact saved file path so older images remain readable after the global directory changes.
 
+Image upload accepts PNG, JPEG, GIF, WebP, BMP, and AVIF file extensions. Original files are bounded to 20 MiB and thumbnail payloads to 1 MiB. `submit_turn_with_attachments` accepts at most three unique IDs, verifies same-session ownership and file availability, and rejects models that do not advertise `capabilities.vision`. Accepted user messages persist `image_ref` content parts; provider requests resolve those references to data URLs only at call time, while provider trace input stores a redacted `[image attachment]` marker. Image-bearing submissions are rejected rather than queued behind an active turn so their files cannot be removed before admission. The original text-only ABI remains a compatibility wrapper with an empty image list.
+
 Models advertise `capabilities.reasoning_effort`. Avalonia presents `low`, `medium`, and `high` beside the model selector; unsupported models disable that selector and omit the parameter. For OpenAI-compatible providers, a selected value is sent as the `reasoning_effort` request field and is retained in the in-memory turn continuation across approval or question suspension.
 
 Project dependency DTOs contain `dependencyId`, `projectId`, `displayName`, and `createdAt`, but never the canonical absolute root. `list_project_directory` selects the main project when `dependencyId` is null and a registered dependency otherwise. It returns at most 500 directories/files for one level, directories first, with root-relative slash-separated paths and a `truncated` flag. Symlinks and non-file entries are omitted. Adding a dependency rejects the project root, ancestors or descendants of the project, and roots that overlap another dependency.
@@ -79,7 +82,7 @@ Git DTOs contain only opened-project-relative paths. `git_status` returns branch
 
 `session_usage` returns `input_tokens`, `output_tokens`, and `total_tokens` summed from the latest cumulative usage projection for every turn in the session. Providers that omit usage metadata contribute zero; the agent does not estimate missing usage.
 
-`session_snapshot` retains its flat `messages` compatibility projection and also returns `conversationTurns`. Each conversation turn contains `turnId`, terminal or active `state`, `createdAt`, correlated normalized `messages`, and correlated `toolUses`. Message rows retain `messageId`, role, message body, optional call correlation, and creation time. Tool rows retain their stable tool-call ID, name, request/result, state, ordering, timestamps, and redacted error code. Clients use this normalized turn projection to render live process activity and restore it after resync without opening SQLite. Persisted session-image placeholders are returned by `list_session_images`, not embedded into turn or message DTOs.
+`session_snapshot` retains its flat `messages` compatibility projection and also returns `conversationTurns`. Each conversation turn contains `turnId`, terminal or active `state`, `createdAt`, correlated normalized `messages`, and correlated `toolUses`. Message rows retain `messageId`, role, message body, optional call correlation, and creation time. A user message may contain durable `image_ref` parts whose text is the owning `session_image.image_id`; the snapshot's `images` array supplies client-local thumbnail and storage metadata for rendering those references. Tool rows retain their stable tool-call ID, name, request/result, state, ordering, timestamps, and redacted error code. Clients use this normalized turn projection to render live process activity and restore it after resync without opening SQLite. `list_session_images` excludes images already referenced by submitted messages so only pending composer images are returned.
 
 Provider exchange DTOs are local session diagnostics. The list result contains every session turn, including turns without calls, plus normalized call summaries. Each call retains its SunCode `exchangeId` and nullable `providerRequestId` and `providerResponseId`; the latter two are independent because providers may use different HTTP request and response-object identifiers or omit either one. One exchange detail contains normalized input messages, assistant output, correlated `session_message` rows, correlated `session_tool_use` rows, tool calls, finish reason, redacted provider errors, and provider-reported call usage. Correlated message DTOs do not duplicate usage. Call usage includes nullable `cache_read_tokens`, `cache_miss_tokens`, `cache_write_tokens`, and `reasoning_tokens` when available; clients may derive cache hit rate as `cache_read_tokens / input_tokens` only when both values are present and input is nonzero. Provider wire aliases such as `cached_tokens` and `prompt_cache_hit_tokens` are normalized rather than retained as duplicate fields. These DTOs never include provider API keys, HTTP authorization headers, or provider-private raw wire payloads.
 
