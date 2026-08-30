@@ -80,6 +80,7 @@ export const primaryModules = [
         icon: "platform",
         keywords: "avalonia shell sidebar inspector",
         children: [
+          { path: "/platforms/desktop/titlebar", label: "Titlebar", keywords: "macos windows native window frame traffic lights minimize maximize close" },
           { path: "/platforms/desktop/anatomy", label: "Window anatomy", keywords: "conversation sidebar review" },
           { path: "/platforms/desktop/ownership", label: "Desktop ownership", keywords: "desktop-only components" },
         ],

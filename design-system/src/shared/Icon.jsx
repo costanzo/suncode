@@ -19,6 +19,8 @@ const paths = {
   moon: <path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5 9 9 0 1 0 20.5 15.2Z"/>,
   menu: <><path d="M4 7h16M4 12h16M4 17h16"/></>,
   close: <><path d="m6 6 12 12M18 6 6 18"/></>,
+  "window-minimize": <path d="M5 12h14" />,
+  "window-maximize": <rect x="5" y="5" width="14" height="14" />,
   "chevron-right": <path d="m9 5 7 7-7 7" />,
   arrow: <><path d="M5 12h14M14 7l5 5-5 5"/></>,
   "arrow-up": <><path d="M12 19V5M6 11l6-6 6 6"/></>,

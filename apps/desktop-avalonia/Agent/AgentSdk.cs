@@ -90,6 +90,9 @@ public sealed class AgentSdk : IDisposable
     public Task<JsonObject> RemoveCredentialAsync(string provider) => WithUtf8Async(
         [provider], values => NativeMethods.suncode_agent_sdk_remove_credential(_handle, values[0]));
 
+    public Task<JsonObject> SetProviderEndpointAsync(string provider, string endpoint) => WithUtf8Async(
+        [provider, endpoint], values => NativeMethods.suncode_agent_sdk_set_provider_endpoint(_handle, values[0], values[1]));
+
     public Task<JsonObject> OpenProjectAsync(string path) => WithUtf8Async(
         [path], values => NativeMethods.suncode_agent_sdk_open_project(_handle, values[0], IntPtr.Zero));
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PageHeader, Section } from "../../../shared/PagePrimitives.jsx";
+import { NativeWindowFrame } from "../../../platforms/desktop/components/titlebar/index.js";
 import logoUrl from "../../../assets/logos/suncode-logo-64.png";
 import { WorkspaceGuideState } from "../workspace/WorkspaceGuide.jsx";
 
@@ -11,5 +12,5 @@ const aboutGuide = { tabs: {
 
 export function AboutPage() {
   const [guideOpen, setGuideOpen] = useState(false);
-  return <><PageHeader title="About" description="The native-decorated Avalonia window for product identity and installed version." path="projects/desktop/about/" /><Section id="about-window" title="About SunCode" description="The operating system supplies the title bar and window controls; the specimen begins at the client area."><WorkspaceGuideState className="about-guide-state" title="About window" description="Review the product identity, installed version, native window treatment, and modal behavior." guide={aboutGuide} side="right" open={guideOpen} onToggle={() => setGuideOpen((open) => !open)} onClose={() => setGuideOpen(false)}><div className="about-window"><img src={logoUrl} alt="" /><strong>SunCode</strong><code>Version 0.0.1</code><span>General-purpose coding agent</span></div></WorkspaceGuideState></Section></>;
+  return <><PageHeader title="About" description="The native-decorated Avalonia window for product identity and installed version." path="projects/desktop/about/" /><Section id="about-window" title="About SunCode" description="The operating system supplies the title bar and window controls; the specimen represents the 420 × 320 client area."><WorkspaceGuideState className="about-guide-state" title="About window" description="Review the product identity, installed version, native window treatment, and modal behavior." guide={aboutGuide} side="right" open={guideOpen} onToggle={() => setGuideOpen((open) => !open)} onClose={() => setGuideOpen(false)}><NativeWindowFrame platform="macos" title="About SunCode" width="420px" height="348px" className="about-native-window"><div className="about-window"><img src={logoUrl} alt="" /><strong>SunCode</strong><code>v0.0.1</code><span>General-purpose coding agent</span></div></NativeWindowFrame></WorkspaceGuideState></Section></>;
 }

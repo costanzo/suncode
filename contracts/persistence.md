@@ -38,6 +38,8 @@ Provider API keys are classified user secrets. The agent stores and resolves the
 
 `llm_model_provider` and `llm_model` are the durable source for provider endpoints, adapter compatibility, built-in and custom model identities, request model codes, context lengths, auto-compaction thresholds, output limits, capability flags including reasoning-effort support, enabled state, and ordering. Every provider row names a known `suncode-llm` adapter; currently `openai` is the supported OpenAI-compatible adapter and is the default for custom endpoints. `suncode-data` exposes these rows to agent core; `suncode-llm` and `suncode-database` remain database-driver independent.
 
+The named SDK provider-endpoint update modifies only the endpoint of an existing provider row. It validates an absolute HTTP or HTTPS URL with a host and rejects embedded credentials, queries, and fragments. The update preserves the provider's API key and all other provider/model fields, then changes the live Rust route for subsequent calls without requiring a process restart.
+
 ## Retention and compaction
 
 Phase 1 audit retention defaults to 365 days. Normalized session rows are bounded through future per-table retention; there is no duplicate session event stream to compact. Audit data is excluded from session cleanup.

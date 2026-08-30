@@ -28,6 +28,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `list_credentials` | Read redacted provider credential status |
 | `set_credential` | Store or replace one provider API key |
 | `remove_credential` | Remove one provider API key |
+| `set_provider_endpoint` | Validate, persist, and apply one provider API base URL |
 | `list_projects` | List known active projects |
 | `open_project` | Canonicalize and open a project |
 | `select_project` | Select a known project and reopen its canonical root |
@@ -67,6 +68,8 @@ Rust-generated project, session, turn, approval, checkpoint, event, and message 
 `tool_call_limit` is a project-only integer setting from 1 through 256. A project without that row uses 64. Turn admission snapshots the resolved value, so changing Settings affects later turns but not an active or approval-suspended turn. If one provider response would cross the limit, all calls in that response are retained as failed with `tool_budget_exceeded`, and none enters policy or execution.
 
 `verify_https_certificates` is a global-only boolean setting that defaults to `true`. A successful update applies immediately to subsequent built-in OpenAI-compatible provider and WebFetch requests. Setting it to `false` accepts invalid server certificate chains and hostnames, equivalent to the TLS verification behavior of `curl -k`; an already-running request keeps the policy it started with. Trusted custom provider implementations remain responsible for their own transport behavior.
+
+`set_provider_endpoint` updates the existing URL for one registered provider without changing its provider identity, adapter, credential, models, enabled state, or ordering. The endpoint must be an absolute HTTP or HTTPS URL with a host and without embedded credentials, query parameters, or a fragment; whitespace and trailing slashes are removed. A successful update is durable and atomically replaces the in-memory route used by subsequent provider calls. A provider request that already captured its route continues with the previous endpoint.
 
 `image_directory` is a global-only string setting that defaults to the empty string. Empty means `<data directory>/data/images`. Each persisted session image is written under `{resolved_image_directory}/{sessionId}/{imageId}.{ext}`. The `session_image` row also stores the exact saved file path so older images remain readable after the global directory changes.
 

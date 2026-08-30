@@ -4,6 +4,7 @@ import { ProjectCard } from "../../components/universal/card/index.js";
 import { EmptyState } from "../../components/universal/feedback/index.js";
 import { Icon } from "../../shared/Icon.jsx";
 import { PageHeader, Section } from "../../shared/PagePrimitives.jsx";
+import { NativeWindowFrame } from "../../platforms/desktop/components/titlebar/index.js";
 import { WorkspaceGuideState } from "./workspace/WorkspaceGuide.jsx";
 
 const recentProjects = [
@@ -27,7 +28,7 @@ const projectHubGuides = {
 function ProjectHubWindow({ projects = [] }) {
   const hasProjects = projects.length > 0;
 
-  return <div className="project-hub-frame">
+  return <NativeWindowFrame platform="macos" title="Welcome to SunCode" className="project-hub-frame">
     <div className="project-hub-toolbar">
       <div className="project-hub-brand"><span className="project-hub-logo"><Icon name="components" size={20} /></span><strong>SunCode</strong></div>
       <div className="project-hub-actions"><Button variant="quiet" onClick={() => { window.location.hash = "/projects/desktop/settings"; }}>Settings</Button><Button variant="primary" icon="plus">Open project</Button></div>
@@ -36,7 +37,7 @@ function ProjectHubWindow({ projects = [] }) {
       <div className="project-hub-heading"><span className="type-label">RECENT PROJECTS</span></div>
       {hasProjects ? <div className="project-hub-list">{projects.map((project) => <ProjectCard key={project.path} {...project} />)}</div> : <EmptyState title="No projects yet" description="Open a local folder to create your first project window." />}
     </div>
-  </div>;
+  </NativeWindowFrame>;
 }
 
 export function ProjectHubPage() {

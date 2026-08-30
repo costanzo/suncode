@@ -57,12 +57,12 @@
             <Button x:Name="LoggingNavigation" Classes="navigation" Content="Logging" Click="ShowLogging" />
             <Border Height="12" />
             <TextBlock Classes="section-label" Text="MODELS" Margin="10,0,0,0" />
-            <Button x:Name="ProvidersNavigation" Classes="navigation" Click="ShowProviders">
-              <StackPanel Orientation="Horizontal" Spacing="8">
+            <Grid ColumnDefinitions="*,28">
+              <Button x:Name="ProvidersNavigation" Grid.Column="0" Classes="navigation" Content="Model providers" Click="ShowProviders" />
+              <Button Grid.Column="1" Classes="navigation" Width="28" MinHeight="28" Padding="8" HorizontalContentAlignment="Center" Click="ToggleProviders" AutomationProperties.Name="Expand or collapse model providers">
                 <svg:Svg x:Name="ProvidersChevron" Width="10" Height="10" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Text="Model providers" FontWeight="SemiBold" />
-              </StackPanel>
-            </Button>
+              </Button>
+            </Grid>
             <StackPanel x:Name="ProviderNavigation" Spacing="4">
               <Button Classes="navigation" Content="DeepSeek" Tag="deepseek" Margin="18,0,0,0" Click="ShowProvider" />
               <Button Classes="navigation" Content="Zhipu GLM" Tag="zhipu" Margin="18,0,0,0" Click="ShowProvider" />
@@ -153,7 +153,12 @@
                 <TextBlock Text="Log directory" FontWeight="SemiBold" />
                 <TextBlock Classes="settings-hint" Text="Leave empty to use the data directory's logs folder." />
               </StackPanel>
-              <TextBox x:Name="LogDirectoryInput" Grid.Row="1" Grid.Column="1" Classes="mono" PlaceholderText="Default logs folder" />
+              <Grid Grid.Row="1" Grid.Column="1">
+                <TextBox x:Name="LogDirectoryInput" Classes="mono" Padding="12,7,38,7" PlaceholderText="Default logs folder" />
+                <Button Classes="quiet" Width="28" Height="28" MinHeight="28" Padding="6" Margin="0,0,4,0" HorizontalAlignment="Right" VerticalAlignment="Center" Click="ChooseLogDirectory" AutomationProperties.Name="Choose log directory" ToolTip.Tip="Choose folder">
+                  <svg:Svg Width="16" Height="16" Path="/Assets/icons/folder.svg" Css="{DynamicResource IconSvgCss}" />
+                </Button>
+              </Grid>
 
               <StackPanel Grid.Row="2" Spacing="3">
                 <TextBlock Text="Maximum file size" FontWeight="SemiBold" />
@@ -181,9 +186,14 @@
             <Grid ColumnDefinitions="*,180" ColumnSpacing="14">
               <StackPanel Spacing="3">
                 <TextBlock Text="Image directory" FontWeight="SemiBold" />
-                <TextBlock Classes="settings-hint" Text="Leave empty to use the data directory's images folder." />
+                <TextBlock Classes="settings-hint" Text="Directory for saving images." />
               </StackPanel>
-              <TextBox x:Name="ImageDirectoryInput" Grid.Column="1" Classes="mono" PlaceholderText="Default images folder" />
+              <Grid Grid.Column="1">
+                <TextBox x:Name="ImageDirectoryInput" Classes="mono" Padding="12,7,38,7" PlaceholderText="Default images folder" />
+                <Button Classes="quiet" Width="28" Height="28" MinHeight="28" Padding="6" Margin="0,0,4,0" HorizontalAlignment="Right" VerticalAlignment="Center" Click="ChooseImageDirectory" AutomationProperties.Name="Choose image directory" ToolTip.Tip="Choose folder">
+                  <svg:Svg Width="16" Height="16" Path="/Assets/icons/folder.svg" Css="{DynamicResource IconSvgCss}" />
+                </Button>
+              </Grid>
             </Grid>
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
               <Button Classes="compact primary" Content="Save image location" Click="SaveImageDirectory" />
@@ -266,6 +276,14 @@
               <TextBlock x:Name="ProviderTitle" FontSize="22" FontWeight="SemiBold" />
               <TextBlock x:Name="ProviderDescription" Classes="settings-hint" />
             </StackPanel>
+            <TextBlock Classes="section-label" Text="PROVIDER URL" />
+            <TextBlock Classes="settings-hint" Text="OpenAI-compatible API base URL used for subsequent requests." />
+            <TextBox x:Name="ProviderEndpointInput" Classes="mono" PlaceholderText="https://api.example.com/v1" TextChanged="ProviderEndpointChanged" AutomationProperties.Name="Provider URL" />
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Button x:Name="SaveProviderEndpointButton" Classes="compact primary" Content="Save URL" Click="SaveProviderEndpoint" IsEnabled="False" />
+              <TextBlock x:Name="ProviderEndpointStatus" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
             <TextBlock Classes="section-label" Text="CREDENTIAL" />
             <Border Classes="settings-provider-status" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
               <TextBlock x:Name="CredentialStatus" TextWrapping="Wrap" FontSize="11" />

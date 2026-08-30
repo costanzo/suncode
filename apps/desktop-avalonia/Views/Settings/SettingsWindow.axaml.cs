@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
@@ -12,12 +13,12 @@ public sealed partial class SettingsWindow : Window
     private static readonly IReadOnlyDictionary<string, (string Title, string Description, string Placeholder)> Providers =
         new Dictionary<string, (string, string, string)>
         {
-            ["deepseek"] = ("DeepSeek", "Configure the credential used by the local DeepSeek provider.", "Paste DeepSeek API key"),
-            ["zhipu"] = ("Zhipu GLM", "Configure the credential used by the local Zhipu GLM provider.", "Paste Zhipu API key"),
-            ["openai"] = ("OpenAI", "Configure the credential used by the local OpenAI provider.", "Paste OpenAI API key"),
-            ["kimi"] = ("Kimi", "Configure the credential used by the local Kimi provider.", "Paste Kimi API key"),
-            ["claude"] = ("Claude", "Configure the credential used by the local Claude provider.", "Paste Anthropic API key"),
-            ["gemini"] = ("Gemini", "Configure the credential used by the local Gemini provider.", "Paste Gemini API key")
+            ["deepseek"] = ("DeepSeek", "Configure the URL and credential used by the local DeepSeek provider.", "Paste DeepSeek API key"),
+            ["zhipu"] = ("Zhipu GLM", "Configure the URL and credential used by the local Zhipu GLM provider.", "Paste Zhipu API key"),
+            ["openai"] = ("OpenAI", "Configure the URL and credential used by the local OpenAI provider.", "Paste OpenAI API key"),
+            ["kimi"] = ("Kimi", "Configure the URL and credential used by the local Kimi provider.", "Paste Kimi API key"),
+            ["claude"] = ("Claude", "Configure the URL and credential used by the local Claude provider.", "Paste Anthropic API key"),
+            ["gemini"] = ("Gemini", "Configure the URL and credential used by the local Gemini provider.", "Paste Gemini API key")
         };
 
     private bool _ready;
@@ -73,10 +74,14 @@ public sealed partial class SettingsWindow : Window
 
     private void ShowProviders(object? sender, RoutedEventArgs e)
     {
-        _providersExpanded = true;
+        SelectPage("providers", sender as Button);
+    }
+
+    private void ToggleProviders(object? sender, RoutedEventArgs e)
+    {
+        _providersExpanded = !_providersExpanded;
         ProviderNavigation.IsVisible = _providersExpanded;
         ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
-        SelectPage("providers", sender as Button);
     }
 
     private void ShowProvider(object? sender, RoutedEventArgs e)
@@ -85,6 +90,8 @@ public sealed partial class SettingsWindow : Window
         _provider = provider;
         ProviderTitle.Text = copy.Title;
         ProviderDescription.Text = copy.Description;
+        ProviderEndpointInput.Text = ViewModel.ProviderEndpoint(provider);
+        ProviderEndpointStatus.Text = string.Empty;
         ProviderApiKey.PlaceholderText = copy.Placeholder;
         ProviderApiKey.Text = string.Empty;
         RefreshProvider();
@@ -138,6 +145,28 @@ public sealed partial class SettingsWindow : Window
         LoggingStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
     }
 
+    private async void ChooseLogDirectory(object? sender, RoutedEventArgs e) =>
+        await ChooseDirectoryAsync(LogDirectoryInput, "Choose log directory");
+
+    private async void ChooseImageDirectory(object? sender, RoutedEventArgs e) =>
+        await ChooseDirectoryAsync(ImageDirectoryInput, "Choose image directory");
+
+    private async Task ChooseDirectoryAsync(TextBox target, string title)
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = title,
+            AllowMultiple = false
+        });
+        var folder = folders.FirstOrDefault();
+        var path = folder?.TryGetLocalPath();
+        if (string.IsNullOrWhiteSpace(path) && folder?.Path is { IsFile: true } uri)
+        {
+            path = uri.LocalPath;
+        }
+        if (!string.IsNullOrWhiteSpace(path)) target.Text = path;
+    }
+
     private async void SaveImageDirectory(object? sender, RoutedEventArgs e)
     {
         var saved = await ViewModel.SaveImageDirectoryAsync(ImageDirectoryInput.Text);
@@ -184,6 +213,19 @@ public sealed partial class SettingsWindow : Window
     private void ProviderApiKeyChanged(object? sender, TextChangedEventArgs e) =>
         SaveCredentialButton.IsEnabled = !string.IsNullOrWhiteSpace(ProviderApiKey.Text);
 
+    private void ProviderEndpointChanged(object? sender, TextChangedEventArgs e) =>
+        SaveProviderEndpointButton.IsEnabled = !string.IsNullOrWhiteSpace(ProviderEndpointInput.Text)
+            && !string.Equals(ProviderEndpointInput.Text?.Trim(), ViewModel.ProviderEndpoint(_provider), StringComparison.Ordinal);
+
+    private async void SaveProviderEndpoint(object? sender, RoutedEventArgs e)
+    {
+        var saved = await ViewModel.SaveProviderEndpointAsync(_provider, ProviderEndpointInput.Text);
+        ProviderEndpointStatus.Text = ViewModel.StatusText;
+        ProviderEndpointStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
+        if (saved) ProviderEndpointInput.Text = ViewModel.ProviderEndpoint(_provider);
+        SaveProviderEndpointButton.IsEnabled = !saved;
+    }
+
     private async void RemoveCredential(object? sender, RoutedEventArgs e)
     {
         await ViewModel.RemoveCredentialAsync(_provider);
@@ -199,6 +241,8 @@ public sealed partial class SettingsWindow : Window
         CredentialStatus.Foreground = this.FindResource(configured ? "SuccessBrush" : "WarningBrush") as Avalonia.Media.IBrush;
         RemoveCredentialButton.IsEnabled = configured;
         SaveCredentialButton.IsEnabled = !string.IsNullOrWhiteSpace(ProviderApiKey.Text);
+        SaveProviderEndpointButton.IsEnabled = !string.IsNullOrWhiteSpace(ProviderEndpointInput.Text)
+            && !string.Equals(ProviderEndpointInput.Text?.Trim(), ViewModel.ProviderEndpoint(_provider), StringComparison.Ordinal);
         ProviderModelsText.Text = ViewModel.ProviderModels(_provider);
     }
 }

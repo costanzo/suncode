@@ -174,6 +174,10 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 
 The left bay is project and session navigation, with uppercase section labels, a strong project identity line, and clear session actions. Expanded windows use the side gutter; the title-bar panel menu remains available at every width so hidden supporting surfaces can always be restored without replacing the conversation with a drawer overlay.
 
+### Native Window Frames
+
+Reusable top-level desktop window templates live under `design-system/src/platforms/desktop/components/titlebar/` and are reviewed at Platforms → Desktop → Titlebar. Native-decorated Desktop project specimens such as ProjectHub, Settings, and About compose through this shared frame rather than drawing local window chrome. Workspace is the explicit exception: it owns application-drawn chrome and does not use `NativeWindowFrame`. The native frame owns only the platform chrome and a client-area slot. macOS uses a 28-DIP native title bar with 12-DIP close, minimize, and maximize traffic lights at the leading edge while keeping a 13-DIP window title optically centered; Retina screenshots render these dimensions at twice their logical pixel size. Windows uses a 32-DIP native title bar with application identity at the leading edge and 46-DIP-wide minimize, maximize, and close targets at the trailing edge; close alone receives the native red hover treatment. Product toolbars, navigation, and content begin below this platform-owned title bar. The standard review specimen is 760 × 440px and adapts without changing control order at narrower widths.
+
 ### Review Inspector
 
 The right bay contains approval, turn changes, touched files, and runtime health in that order. Approval is the only state allowed to interrupt the visual hierarchy; its amber surface and explicit “Approve once” / “Deny” actions keep authority decisions legible.

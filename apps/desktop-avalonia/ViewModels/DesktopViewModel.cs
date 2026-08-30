@@ -1348,6 +1348,36 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }, "Credential removed");
     }
 
+    public async Task<bool> SaveProviderEndpointAsync(string provider, string? endpoint)
+    {
+        if (!EnsureSdk()) return false;
+        provider = provider.Trim();
+        endpoint = endpoint?.Trim() ?? string.Empty;
+        if (provider.Length == 0 || endpoint.Length == 0)
+        {
+            StatusText = "Provider URL is required";
+            return false;
+        }
+        IsBusy = true;
+        try
+        {
+            await _sdk!.SetProviderEndpointAsync(provider, endpoint);
+            await LoadModelsAsync();
+            StatusText = "Provider URL saved";
+            ConnectionState = "connected";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+            return false;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     public async Task SaveDefaultModelAsync(ModelItem model)
     {
         if (!EnsureSdk()) return;
@@ -1540,6 +1570,9 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         var models = Models.Where(item => item.Provider == provider).Select(item => item.Display).ToArray();
         return models.Length == 0 ? "No models available" : string.Join(Environment.NewLine, models);
     }
+
+    public string ProviderEndpoint(string provider) =>
+        Providers.FirstOrDefault(item => item.Id == provider)?.ApiBase ?? string.Empty;
 
     private async Task LoadProjectsAsync()
     {

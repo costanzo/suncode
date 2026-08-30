@@ -23,6 +23,7 @@ import { ColorsPage } from "../core/pages/tokens/ColorsPage.jsx";
 import { SpacingPage } from "../core/pages/tokens/SpacingPage.jsx";
 import { TypographyPage } from "../core/pages/tokens/TypographyPage.jsx";
 import { DesktopPlatformPage } from "../platforms/desktop/index.jsx";
+import { DesktopTitlebarPage } from "../platforms/desktop/TitlebarPage.jsx";
 import { DesktopAnatomyPage } from "../platforms/desktop/AnatomyPage.jsx";
 import { DesktopOwnershipPage } from "../platforms/desktop/OwnershipPage.jsx";
 import { DeferredBoundaryPage, DeferredOwnershipPage } from "../platforms/DeferredPages.jsx";
@@ -73,6 +74,7 @@ const routes = {
   "/components/platform-specific/platform-indexes": PlatformIndexesPage,
   "/platforms": PlatformsPage,
   "/platforms/desktop": DesktopPlatformPage,
+  "/platforms/desktop/titlebar": DesktopTitlebarPage,
   "/platforms/desktop/anatomy": DesktopAnatomyPage,
   "/platforms/desktop/ownership": DesktopOwnershipPage,
   "/platforms/mobile": MobilePlatformPage,

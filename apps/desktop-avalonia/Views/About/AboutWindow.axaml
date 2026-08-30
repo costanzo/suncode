@@ -8,9 +8,9 @@
         WindowDecorations="Full"
         WindowStartupLocation="CenterOwner">
   <StackPanel Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
-    <Image Width="64" Height="64" Source="/Assets/logo/suncode-logo-64.png" />
-    <TextBlock Text="SunCode" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" />
-    <TextBlock x:Name="VersionText" Classes="mono" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
-    <TextBlock Text="General-purpose coding agent" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+    <Image Width="64" Height="64" Source="/Assets/logo/suncode-logo-64.png" Stretch="Uniform" />
+    <TextBlock Text="SunCode" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" TextAlignment="Center" />
+    <TextBlock x:Name="VersionText" Classes="mono" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" TextAlignment="Center" />
+    <TextBlock Text="General-purpose coding agent" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
   </StackPanel>
 </Window>

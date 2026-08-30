@@ -26,7 +26,7 @@ use std::{
     thread::JoinHandle,
 };
 use suncode_common::BusinessError;
-use suncode_data::Store;
+use suncode_data::{LlmModelProviderInput, LlmModelProviderRecord, Store};
 use suncode_llm::{
     ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
     OpenAiCompatibleProvider,
@@ -85,6 +85,13 @@ pub struct CredentialsResult {
 pub struct CredentialUpdate {
     pub provider: String,
     pub configured: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderEndpointUpdate {
+    pub provider_id: String,
+    pub endpoint: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -305,6 +312,60 @@ pub struct QuestionOutcome {
     pub status: String,
 }
 
+fn provider_models(
+    store: &Store,
+    provider: &LlmModelProviderRecord,
+) -> SdkResult<Vec<ModelDescriptor>> {
+    Ok(store
+        .llm_models(true)?
+        .into_iter()
+        .filter(|model| model.provider_id == provider.provider_id)
+        .map(|model| ModelDescriptor {
+            provider: provider.provider_id.clone(),
+            provider_label: provider.display_name.clone(),
+            id: model.model_id,
+            wire_model: model.request_model,
+            api_base: provider.endpoint.clone(),
+            capabilities: ModelCapabilities {
+                streaming: model.supports_streaming,
+                tool_use: model.supports_tool_use,
+                vision: model.supports_vision,
+                structured_output: model.supports_structured_output,
+                cancellation: model.supports_cancellation,
+                reasoning_effort: model.supports_reasoning_effort,
+            },
+            limits: ModelLimits {
+                max_input_tokens: Some(model.context_tokens),
+                auto_compact_tokens: Some(model.auto_compact_tokens),
+                max_output_tokens: model.max_output_tokens,
+            },
+            availability: "configured".into(),
+        })
+        .collect())
+}
+
+fn openai_provider(
+    provider: &LlmModelProviderRecord,
+    keys: Arc<dyn suncode_llm::ApiKeyResolver>,
+    verify_https_certificates: Arc<AtomicBool>,
+) -> SdkResult<Arc<dyn suncode_llm::LlmProvider>> {
+    match provider.adapter_type.as_str() {
+        "openai" => Ok(Arc::new(
+            OpenAiCompatibleProvider::new_with_https_certificate_verification(
+                provider.provider_id.clone(),
+                provider.display_name.clone(),
+                provider.endpoint.clone(),
+                keys,
+                verify_https_certificates,
+            ),
+        )),
+        adapter_type => Err(BusinessError::new(
+            "provider_adapter_unsupported",
+            format!("provider adapter is not supported: {adapter_type}"),
+        )),
+    }
+}
+
 fn registry_from_store(
     store: &Store,
     keys: Arc<dyn suncode_llm::ApiKeyResolver>,
@@ -342,23 +403,7 @@ fn registry_from_store(
         if provider_models.is_empty() {
             continue;
         }
-        let adapter = match provider.adapter_type.as_str() {
-            "openai" => Arc::new(
-                OpenAiCompatibleProvider::new_with_https_certificate_verification(
-                    provider.provider_id.clone(),
-                    provider.display_name,
-                    provider.endpoint,
-                    keys.clone(),
-                    verify_https_certificates.clone(),
-                ),
-            ),
-            adapter_type => {
-                return Err(BusinessError::new(
-                    "provider_adapter_unsupported",
-                    format!("provider adapter is not supported: {adapter_type}"),
-                ));
-            }
-        };
+        let adapter = openai_provider(&provider, keys.clone(), verify_https_certificates.clone())?;
         registry
             .register(provider.provider_id, adapter, provider_models)
             .map_err(|error| {
@@ -432,6 +477,28 @@ fn global_string_setting(store: &Store, key: &str) -> SdkResult<Option<String>> 
         .into_iter()
         .find(|record| record.key == key)
         .and_then(|record| record.value.as_str().map(str::to_string)))
+}
+
+fn normalize_provider_endpoint(value: &str) -> SdkResult<String> {
+    let value = value.trim();
+    let url = url::Url::parse(value)
+        .map_err(|_| BusinessError::invalid("provider URL must be a valid HTTP or HTTPS URL"))?;
+    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+        return Err(BusinessError::invalid(
+            "provider URL must be a valid HTTP or HTTPS URL",
+        ));
+    }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err(BusinessError::invalid(
+            "provider URL must not contain embedded credentials",
+        ));
+    }
+    if url.query().is_some() || url.fragment().is_some() {
+        return Err(BusinessError::invalid(
+            "provider URL must not contain a query or fragment",
+        ));
+    }
+    Ok(value.trim_end_matches('/').to_string())
 }
 
 fn configure_logging(store: &Store, data_dir: &Path) -> SdkResult<()> {
@@ -683,6 +750,52 @@ impl AgentSdk {
         Ok(CredentialUpdate {
             provider,
             configured: false,
+        })
+    }
+
+    pub fn set_provider_endpoint(
+        &self,
+        provider_id: &str,
+        endpoint: &str,
+    ) -> SdkResult<ProviderEndpointUpdate> {
+        let provider_id = provider_id.trim();
+        let endpoint = normalize_provider_endpoint(endpoint)?;
+        let mut provider = self
+            .state
+            .store
+            .llm_model_providers(false)?
+            .into_iter()
+            .find(|provider| provider.provider_id == provider_id)
+            .ok_or_else(|| BusinessError::new("provider_not_found", "provider is not supported"))?;
+        provider.endpoint = endpoint.clone();
+        let models = provider_models(&self.state.store, &provider)?;
+        if models.is_empty() {
+            return Err(BusinessError::new(
+                "provider_registration_failed",
+                "provider has no enabled models",
+            ));
+        }
+        let adapter = openai_provider(
+            &provider,
+            Arc::new(self.state.credentials.clone()),
+            self.state.verify_https_certificates.clone(),
+        )?;
+        self.state
+            .store
+            .upsert_llm_model_provider(LlmModelProviderInput {
+                provider_id: &provider.provider_id,
+                display_name: &provider.display_name,
+                endpoint: &provider.endpoint,
+                adapter_type: &provider.adapter_type,
+                enabled: provider.enabled,
+                sort_order: provider.sort_order,
+            })?;
+        self.state
+            .providers
+            .replace(provider.provider_id.clone(), adapter, models)?;
+        Ok(ProviderEndpointUpdate {
+            provider_id: provider.provider_id,
+            endpoint,
         })
     }
 
@@ -1898,6 +2011,20 @@ pub unsafe extern "C" fn suncode_agent_sdk_remove_credential(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_set_provider_endpoint(
+    handle: *mut SunCodeAgentHandle,
+    provider: *const c_char,
+    endpoint: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.set_provider_endpoint(
+            &c_string(provider, "provider")?,
+            &c_string(endpoint, "endpoint")?,
+        )
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_open_project(
     handle: *mut SunCodeAgentHandle,
     path: *const c_char,
@@ -2865,6 +2992,47 @@ mod tests {
     }
 
     #[test]
+    fn provider_endpoint_updates_are_validated_persisted_and_live() {
+        let directory = tempfile::tempdir().unwrap();
+        let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+        let update = sdk
+            .set_provider_endpoint("openai", " https://gateway.example.test/v1/ ")
+            .unwrap();
+        assert_eq!(update.provider_id, "openai");
+        assert_eq!(update.endpoint, "https://gateway.example.test/v1");
+        assert!(sdk.list_models().unwrap().models.iter().any(|model| {
+            model.provider == "openai" && model.api_base == "https://gateway.example.test/v1"
+        }));
+        let stored = sdk
+            .state
+            .store
+            .llm_model_providers(false)
+            .unwrap()
+            .into_iter()
+            .find(|provider| provider.provider_id == "openai")
+            .unwrap();
+        assert_eq!(stored.endpoint, "https://gateway.example.test/v1");
+        assert_eq!(
+            sdk.set_provider_endpoint("openai", "file:///tmp/provider")
+                .unwrap_err()
+                .code,
+            "invalid_arguments"
+        );
+        assert_eq!(
+            sdk.set_provider_endpoint("openai", "https://user:secret@example.test/v1")
+                .unwrap_err()
+                .code,
+            "invalid_arguments"
+        );
+        assert_eq!(
+            sdk.set_provider_endpoint("missing", "https://example.test/v1")
+                .unwrap_err()
+                .code,
+            "provider_not_found"
+        );
+    }
+
+    #[test]
     fn ffi_exposes_a_versioned_method_oriented_boundary() {
         assert_eq!(suncode_agent_sdk_abi_version(), 4);
         let directory = tempfile::tempdir().unwrap();
@@ -2884,6 +3052,21 @@ mod tests {
             unsafe { serde_json::from_str(CStr::from_ptr(response).to_str().unwrap()).unwrap() };
         assert_eq!(envelope["ok"], true);
         unsafe {
+            suncode_agent_sdk_string_free(response);
+            let provider = CString::new("openai").unwrap();
+            let endpoint = CString::new("https://gateway.example.test/v1/").unwrap();
+            let response = suncode_agent_sdk_set_provider_endpoint(
+                handle,
+                provider.as_ptr(),
+                endpoint.as_ptr(),
+            );
+            let envelope: Value =
+                serde_json::from_str(CStr::from_ptr(response).to_str().unwrap()).unwrap();
+            assert_eq!(envelope["ok"], true);
+            assert_eq!(
+                envelope["body"]["endpoint"],
+                "https://gateway.example.test/v1"
+            );
             suncode_agent_sdk_string_free(response);
             let session_id = CString::new(session.session_id).unwrap();
             let response = suncode_agent_sdk_session_usage(handle, session_id.as_ptr());
