@@ -19,6 +19,11 @@ const reviewGuides = {
     style: ["Running uses the accent status point and a 1.4s pulse animation.", "TODO rows are 16px tall with a 13px marker column and 6px content gap.", "The live changes summary uses a 40px minimum row with compact monospace counts."],
     logic: ["The agent owns an active turn and is still producing work.", "Changes are summarized separately from the process card and update in place.", "A completed turn removes the live marker and keeps the summary actionable."],
   } },
+  compacting: { tabs: {
+    actions: ["Keep the session open while earlier context is summarized.", "Wait for compaction to finish before expecting the next model response.", "Continue in Conversation when the active turn resumes automatically."],
+    style: ["Compaction uses the same 7px status point as other active states, with a steel tone and 1.6s pulse.", "The process card uses 11px padding, 7px gaps, and a 6px corner radius.", "Turn and progress metadata use 9px monospace text; TODO and changes are hidden."],
+    logic: ["The current turn remains active while earlier messages are reduced to fit the model context budget.", "Compaction does not request approval and does not represent file activity.", "After the compact summary is prepared, orchestration resumes with the next model call."],
+  } },
   approval: { tabs: {
     actions: ["Read the operation scope before selecting Allow once, Deny, or Allow for session.", "Use Allow once for a single execution with narrow authority.", "Deny stops the pending continuation without running the operation."],
     style: ["Approval uses the warning token and a 1.6s pulsing status point.", "The approval card uses 11px padding, 9px gaps, and a warning-tinted surface.", "Primary and danger actions are full-width or grouped with equal 30px control height."],
@@ -42,6 +47,7 @@ export function WorkspaceReviewPage() {
     { id: "idle", title: "Idle", description: "No turn is active and the agent is ready for a new instruction.", side: "right", content: <ReviewPanel standalone state="idle" /> },
     { id: "runningNoChanges", title: "Running · no changes", description: "The agent is working but has not changed a file yet.", side: "left", content: <ReviewPanel standalone state="running-no-changes" /> },
     { id: "running", title: "Running", description: "The active turn has process activity and file changes.", side: "right", content: <ReviewPanel standalone state="running" /> },
+    { id: "compacting", title: "Compacting context", description: "Earlier conversation context is being summarized before the next model call.", side: "left", content: <ReviewPanel standalone state="compacting" /> },
     { id: "approval", title: "Waiting for approval", description: "A sensitive operation is paused for an explicit decision.", side: "left", content: <ReviewPanel standalone state="approval" /> },
     { id: "question", title: "Waiting for answer", description: "The agent needs a choice or custom input to continue.", side: "right", content: <ReviewPanel standalone state="question" /> },
     { id: "failed", title: "Turn failed", description: "The current turn stopped before completion.", side: "left", content: <ReviewPanel standalone state="failed" /> },

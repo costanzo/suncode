@@ -24,6 +24,11 @@ const conversationGuides = {
     style: ["The running indicator uses three 5px dots with staggered .12s delays.", "The process area stays compact and uses muted monospace metadata.", "The composer remains visually present while send is disabled during the active state."],
     logic: ["The current session has content and an active turn is updating it.", "Live tool activity is shown in sequence and may add turn changes.", "The final assistant message arrives when the turn completes."],
   } },
+  compacted: { tabs: {
+    actions: ["Use the event marker to confirm that the conversation has been compacted.", "Continue reading the current turn normally after the summary is applied.", "Open Provider trace when the exact model-call sequence needs inspection."],
+    style: ["The completed event uses a static 7px steel point with no pulse or outer aura.", "The row uses the same 8px vertical and 10px horizontal rhythm as active compaction.", "A muted secondary line explains the result without adding another card or tool row."],
+    logic: ["A previous context.compacted event has been received for this session.", "Earlier messages were summarized and the resulting context is now being used.", "This marker is historical feedback; it does not mean the agent is currently running."],
+  } },
   attachments: { tabs: {
     actions: ["Use the plus control to select image files, up to three at a time.", "Click a thumbnail to open the larger preview modal.", "Hover a thumbnail and use its close control to remove it before sending."],
     style: ["Attachment thumbnails are 96px by 64px with a 7px radius and 6px gap.", "Thumbnails use cover cropping and a strong border on hover.", "Sent images appear above the user message with a 10px bottom margin."],
@@ -44,6 +49,7 @@ export function WorkspaceConversationPage() {
     { id: "newSession", title: "New session", description: "A session is ready for its first message.", side: "left", content: <ConversationPanel standalone state="new-session" /> },
     { id: "waiting", title: "Waiting for input", description: "A completed turn is waiting for the next instruction.", side: "right", content: <ConversationPanel standalone state="content-waiting" onViewChanges={viewChanges} /> },
     { id: "updating", title: "Session updating", description: "The active turn is streaming work and tool activity.", side: "left", content: <ConversationPanel standalone state="content-updating" /> },
+    { id: "compacted", title: "Context compacted", description: "A completed context compaction is recorded in the conversation timeline.", side: "left", content: <ConversationPanel standalone state="context-compacted" /> },
     { id: "attachments", title: "Two images attached", description: "Two image thumbnails are held in the composer before sending.", side: "right", content: <ConversationPanel standalone state="content-waiting" initialAttachments={sampleConversationAttachments} onViewChanges={viewChanges} /> },
     { id: "attachments", title: "Two images sent", description: "The user message includes two sent image thumbnails.", side: "left", content: <ConversationPanel standalone state="content-waiting" initialSentAttachments={sampleConversationAttachments} onViewChanges={viewChanges} /> },
     { id: "longTool", title: "Long tool call", description: "A long operation title is compacted while its details remain available.", side: "right", content: <ConversationPanel standalone state="long-tool-call" onViewChanges={viewChanges} /> },
