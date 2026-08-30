@@ -168,6 +168,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    session_image (image_id) {
+        image_id -> Text,
+        session_id -> Text,
+        display_name -> Text,
+        source_kind -> Text,
+        original_path -> Nullable<Text>,
+        storage_path -> Text,
+        thumbnail_base64 -> Text,
+        created_at -> Text,
+    }
+}
+
+diesel::table! {
     session_message (message_id) {
         message_id -> Text,
         session_id -> Text,
@@ -248,6 +261,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     project_dependency,
     session,
     session_call,
+    session_image,
     session_message,
     session_tool_use,
     session_turn,

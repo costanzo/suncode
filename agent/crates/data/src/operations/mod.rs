@@ -11,6 +11,7 @@ pub(crate) mod project;
 pub(crate) mod project_dependency;
 pub(crate) mod session;
 pub(crate) mod session_call;
+pub(crate) mod session_image;
 pub(crate) mod session_message;
 pub(crate) mod session_tool_use;
 pub(crate) mod session_turn;

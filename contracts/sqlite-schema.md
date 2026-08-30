@@ -2,11 +2,11 @@
 
 Status: Current Phase 1 contract.
 
-The `suncode-data` package is the only ORM/database-connection owner and uses Diesel's SQLite backend for connections, transactions, typed table declarations, and query execution. The `suncode-database` package owns backend resources: `suncode_database::sqlite` contains the current SQL manifests, seed data, table manifest, and database-file creation/existence check. There is one current 15-table set, no version table, and no general migration runner. File names do not encode execution order. Table-owned ORM operations live under `agent/crates/data/src/operations/`, with `projection.rs` and `recovery.rs` reserved for cross-table workflows. Opening a database with any unexpected application table fails without conversion. Initialization transactionally adds a missing `project_dependency` table to an otherwise-current 13-table database before validating the current 15-table manifest; this narrowly scoped additive bootstrap extension does not rename, rewrite, or convert incompatible schemas. `session_turn_todo` is the authoritative per-turn todo projection and is replaced transactionally by `todo.updated` events.
+The `suncode-data` package is the only ORM/database-connection owner and uses Diesel's SQLite backend for connections, transactions, typed table declarations, and query execution. The `suncode-database` package owns backend resources: `suncode_database::sqlite` contains the current SQL manifests, seed data, table manifest, and database-file creation/existence check. There is one current 16-table set, no version table, and no general migration runner. File names do not encode execution order. Table-owned ORM operations live under `agent/crates/data/src/operations/`, with `projection.rs` and `recovery.rs` reserved for cross-table workflows. Opening a database with any unexpected application table fails without conversion. Initialization transactionally adds a missing `project_dependency` table to an otherwise-current 13-table database and a missing `session_image` table to an otherwise-current 15-table database before validating the current 16-table manifest; these narrowly scoped additive bootstrap extensions do not rename, rewrite, or convert incompatible schemas. `session_turn_todo` is the authoritative per-turn todo projection and is replaced transactionally by `todo.updated` events.
 
-There are 15 application tables:
+There are 16 application tables:
 
-`approval_request`, `audit_record`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `project`, `project_dependency`, `session`, `session_call`, `session_message`, `session_tool_use`, `session_turn`, and `session_turn_todo`.
+`approval_request`, `audit_record`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `project`, `project_dependency`, `session`, `session_call`, `session_image`, `session_message`, `session_tool_use`, `session_turn`, and `session_turn_todo`.
 
 ## Conventions
 
@@ -31,7 +31,7 @@ Unified key/value configuration for `global`, `project`, and `session` scopes. G
 
 The project-only `tool_call_limit` key is a JSON integer from 1 through 256. When the row is absent, core uses 64.
 
-Fresh and reopened current databases seed four global logging settings: `log_level` (`"INFO"`), `log_directory` (`""`), `log_max_bytes` (`10485760`), and `log_retention` (`5`), plus global `verify_https_certificates` (`true`). An empty log directory means `<data directory>/logs`. These settings are global-only. The SDK accepts `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `OFF`; a directory string; a maximum size of at least 1024 bytes; a retention count from 0 through 100; and a boolean HTTPS verification value. Disabling verification makes subsequent built-in provider and WebFetch HTTPS requests accept invalid certificate chains and hostnames.
+Fresh and reopened current databases seed four global logging settings: `log_level` (`"INFO"`), `log_directory` (`""`), `log_max_bytes` (`10485760`), and `log_retention` (`5`), plus global `verify_https_certificates` (`true`) and `image_directory` (`""`). An empty log directory means `<data directory>/logs`; an empty image directory means `<data directory>/data/images`. These settings are global-only. The SDK accepts `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `OFF`; a directory string; a maximum size of at least 1024 bytes; a retention count from 0 through 100; a boolean HTTPS verification value; and an image directory string. Disabling verification makes subsequent built-in provider and WebFetch HTTPS requests accept invalid certificate chains and hostnames.
 
 ## Sessions
 
@@ -54,6 +54,10 @@ Approval recovery is kept on the turn in `recovery_approval_id`, `recovery_snaps
 ### `session_call`
 
 One row per LLM request within a turn. `call_id` is the SunCode-owned physical primary key and is linked to `session_turn`; nullable `provider_request_id` and `provider_response_id` retain the provider's HTTP request identifier and response-object identifier independently. Provider/model/wire-model identity, iteration, lifecycle state, normalized input/output/tool-call/usage/error JSON, finish reason, and timestamps are retained. Normalized usage may include nullable `cache_read_tokens`, `cache_miss_tokens`, `cache_write_tokens`, and `reasoning_tokens` in addition to input, output, and total tokens; provider-private aliases are not duplicated. States are `started`, `completed`, and `failed`. Session, turn, and in-flight indexes support diagnostics and recovery.
+
+### `session_image`
+
+One persisted placeholder image per row, linked to `session`. The row stores opaque `image_id`, display name, source kind (`file` or `clipboard`), nullable `original_path` for file uploads, durable `storage_path` pointing to the saved image file, Base64 thumbnail payload, and `created_at`. Original full image bytes are not stored in session messages, calls, or tool uses.
 
 ### `session_tool_use`
 

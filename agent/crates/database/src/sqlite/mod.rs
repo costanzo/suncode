@@ -16,6 +16,7 @@ pub const TABLE_NAMES: &[&str] = &[
     "project_dependency",
     "session",
     "session_call",
+    "session_image",
     "session_message",
     "session_tool_use",
     "session_turn",
@@ -36,6 +37,7 @@ const SCHEMA_SCRIPTS: &[&str] = &[
     include_str!("schema/checkpoint_manifest.sql"),
     include_str!("schema/checkpoint.sql"),
     include_str!("schema/session_message.sql"),
+    include_str!("schema/session_image.sql"),
     include_str!("schema/llm_model_provider.sql"),
     include_str!("schema/llm_model.sql"),
 ];

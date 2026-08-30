@@ -43,6 +43,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     private string _themeMode = "dark";
     private string _logLevel = "INFO";
     private string _logDirectory = string.Empty;
+    private string _imageDirectory = string.Empty;
     private long _logMaxBytes = 10 * 1024 * 1024;
     private int _logRetention = 5;
     private bool _verifyHttpsCertificates = true;
@@ -97,6 +98,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public ObservableCollection<ModelItem> Models { get; } = [];
     public IReadOnlyList<string> ReasoningEffortOptions { get; } = ["low", "medium", "high"];
     public ObservableCollection<CredentialItem> Credentials { get; } = [];
+    public ObservableCollection<ComposerAttachment> ComposerAttachments { get; } = [];
     public ObservableCollection<ProjectDependencyItem> ProjectDependencies { get; } = [];
     public ObservableCollection<ExplorerNode> ExplorerRoots { get; } = [];
     public BulkObservableCollection<MessageItem> Messages
@@ -279,6 +281,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
     public string ThemeMode { get => _themeMode; private set => SetProperty(ref _themeMode, value); }
     public string LogLevel { get => _logLevel; private set => SetProperty(ref _logLevel, value); }
     public string LogDirectory { get => _logDirectory; private set => SetProperty(ref _logDirectory, value); }
+    public string ImageDirectory { get => _imageDirectory; private set => SetProperty(ref _imageDirectory, value); }
     public long LogMaxBytes { get => _logMaxBytes; private set => SetProperty(ref _logMaxBytes, value); }
     public int LogRetention { get => _logRetention; private set => SetProperty(ref _logRetention, value); }
     public bool VerifyHttpsCertificates { get => _verifyHttpsCertificates; private set => SetProperty(ref _verifyHttpsCertificates, value); }
@@ -814,6 +817,12 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                 LogSession(operationId, sessionId, $"session_control.discard reason=stale current={DescribeSessionContext()}");
                 return;
             }
+            await LoadSessionImagesAsync(sessionId, loadVersion);
+            if (!IsCurrentSessionLoad(sessionId, loadVersion))
+            {
+                LogSession(operationId, sessionId, $"images.discard reason=stale current={DescribeSessionContext()}");
+                return;
+            }
             await LoadSessionUsageAsync(sessionId, loadVersion);
             if (!IsCurrentSessionLoad(sessionId, loadVersion))
             {
@@ -889,6 +898,72 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
                 _ => "Turn submitted"
             };
         });
+    }
+
+    public async Task LoadSessionImagesAsync(string? requestedSessionId = null, long? loadVersion = null)
+    {
+        if (_sdk is null || SelectedSession is null) return;
+        var sessionId = requestedSessionId ?? SelectedSession.SessionId;
+        var result = await _sdk.ListSessionImagesAsync(sessionId);
+        if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
+        ReplaceComposerAttachments(result.Array("images").OfType<JsonObject>().Select(ComposerAttachment.FromPayload));
+    }
+
+    public async Task<bool> AddSessionImageAsync(
+        string displayName,
+        string sourceKind,
+        string? originalPath,
+        string extension,
+        byte[] bytes,
+        byte[] thumbnailBytes)
+    {
+        if (!EnsureSdk() || SelectedSession is null) return false;
+        if (ComposerAttachments.Count >= 3)
+        {
+            StatusText = "You can keep up to three images in this session";
+            return false;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var payload = new JsonObject
+            {
+                ["displayName"] = displayName,
+                ["sourceKind"] = sourceKind,
+                ["originalPath"] = originalPath is null ? null : JsonValue.Create(originalPath),
+                ["extension"] = extension,
+                ["bytesBase64"] = Convert.ToBase64String(bytes),
+                ["thumbnailBase64"] = Convert.ToBase64String(thumbnailBytes)
+            };
+            var result = await _sdk!.AddSessionImageAsync(SelectedSession.SessionId, payload);
+            ComposerAttachments.Add(ComposerAttachment.FromPayload(result));
+            StatusText = "Image uploaded";
+            ConnectionState = "connected";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+            return false;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    public async Task RemoveSessionImageAsync(ComposerAttachment attachment)
+    {
+        if (!EnsureSdk() || SelectedSession is null) return;
+        await RunAsync(async () =>
+        {
+            await _sdk!.RemoveSessionImageAsync(SelectedSession.SessionId, attachment.ImageId);
+            if (ComposerAttachments.Remove(attachment))
+            {
+                attachment.Dispose();
+            }
+        }, "Image removed");
     }
 
     public async Task CancelTurnAsync()
@@ -1319,6 +1394,30 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
+    public async Task<bool> SaveImageDirectoryAsync(string? directory)
+    {
+        if (!EnsureSdk()) return false;
+        directory = directory?.Trim() ?? string.Empty;
+        IsBusy = true;
+        try
+        {
+            await _sdk!.SetSettingAsync("image_directory", directory);
+            ImageDirectory = directory;
+            StatusText = "Image storage location saved";
+            ConnectionState = "connected";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+            return false;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     public async Task<bool> SaveHttpsCertificateVerificationAsync(bool enabled)
     {
         if (!EnsureSdk()) return false;
@@ -1599,6 +1698,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
             ? configuredLevel
             : "INFO";
         LogDirectory = StringSetting("log_directory", string.Empty);
+        ImageDirectory = StringSetting("image_directory", string.Empty);
         var maxBytes = LongSetting("log_max_bytes", 10 * 1024 * 1024);
         LogMaxBytes = maxBytes >= 1024 ? maxBytes : 10 * 1024 * 1024;
         LogRetention = retention is >= 0 and <= 100 ? (int)retention : 5;
@@ -2240,6 +2340,7 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         ChangedPaths.Clear();
         Checkpoints.Clear();
         DiffLines.Clear();
+        ReplaceComposerAttachments([]);
         ClearProviderTraces();
         PendingApproval = null;
         FullControlEnabled = false;
@@ -2591,12 +2692,26 @@ public sealed class DesktopViewModel : ObservableObject, IDisposable
         return $"{value / 1_000_000d:0.#}m";
     }
 
+    private void ReplaceComposerAttachments(IEnumerable<ComposerAttachment> attachments)
+    {
+        foreach (var attachment in ComposerAttachments)
+        {
+            attachment.Dispose();
+        }
+        ComposerAttachments.Clear();
+        foreach (var attachment in attachments)
+        {
+            ComposerAttachments.Add(attachment);
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
         Interlocked.Increment(ref _sessionLoadVersion);
         CloseSubscription();
+        ReplaceComposerAttachments([]);
         _sdk?.Dispose();
         _sdk = null;
         lock (_initializationGate)

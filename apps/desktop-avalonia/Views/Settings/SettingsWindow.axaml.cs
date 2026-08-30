@@ -49,6 +49,7 @@ public sealed partial class SettingsWindow : Window
                 .OfType<ComboBoxItem>()
                 .FirstOrDefault(item => item.Tag as string == ViewModel.LogLevel);
             LogDirectoryInput.Text = ViewModel.LogDirectory;
+            ImageDirectoryInput.Text = ViewModel.ImageDirectory;
             LogMaxBytesInput.Text = ViewModel.LogMaxBytes.ToString(System.Globalization.CultureInfo.InvariantCulture);
             LogRetentionInput.Text = ViewModel.LogRetention.ToString(System.Globalization.CultureInfo.InvariantCulture);
             VerifyHttpsCertificatesToggle.IsChecked = ViewModel.VerifyHttpsCertificates;
@@ -172,6 +173,13 @@ public sealed partial class SettingsWindow : Window
             LogRetentionInput.Text ?? string.Empty);
         LoggingStatus.Text = ViewModel.StatusText;
         LoggingStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
+    }
+
+    private async void SaveImageDirectory(object? sender, RoutedEventArgs e)
+    {
+        var saved = await ViewModel.SaveImageDirectoryAsync(ImageDirectoryInput.Text);
+        ImageDirectoryStatus.Text = ViewModel.StatusText;
+        ImageDirectoryStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
     }
 
     private void HttpsCertificateVerificationChanged(object? sender, RoutedEventArgs e) =>

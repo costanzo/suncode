@@ -1,4 +1,5 @@
 use crate::logging::{self, Level};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use crate::{
     agent::{Agent, TurnResponse},
     agent_lock::AgentLock,
@@ -7,7 +8,7 @@ use crate::{
     domain::{
         ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectDependencyRecord,
         ProjectRecord, ProviderExchange, SessionCallMessage, SessionCallToolUse, SessionEvent,
-        SessionRecord, SessionTraceTurn, SettingRecord,
+        SessionImageRecord, SessionRecord, SessionTraceTurn, SettingRecord,
     },
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -145,6 +146,19 @@ pub struct SessionsResult {
 }
 
 #[derive(Debug, Serialize)]
+pub struct SessionImagesResult {
+    pub session_id: String,
+    pub images: Vec<SessionImageRecord>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SessionImageRemoval {
+    pub session_id: String,
+    pub image_id: String,
+    pub removed: bool,
+}
+
+#[derive(Debug, Serialize)]
 pub struct SessionSnapshot {
     pub session: SessionRecord,
     pub messages: Vec<Message>,
@@ -257,6 +271,17 @@ pub struct RestoreOutcome {
     pub manifest_id: String,
     pub status: &'static str,
     pub restored_items: usize,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AddSessionImageRequest {
+    display_name: String,
+    source_kind: String,
+    original_path: Option<String>,
+    extension: String,
+    bytes_base64: String,
+    thumbnail_base64: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -398,6 +423,14 @@ fn global_bool_setting(store: &Store, key: &str, fallback: bool) -> SdkResult<bo
         .unwrap_or(fallback))
 }
 
+fn global_string_setting(store: &Store, key: &str) -> SdkResult<Option<String>> {
+    Ok(store
+        .settings(None, None)?
+        .into_iter()
+        .find(|record| record.key == key)
+        .and_then(|record| record.value.as_str().map(str::to_string)))
+}
+
 fn configure_logging(store: &Store, data_dir: &Path) -> SdkResult<()> {
     let settings = store.settings(None, None)?;
     let value = |key: &str| {
@@ -428,6 +461,17 @@ fn configure_logging(store: &Store, data_dir: &Path) -> SdkResult<()> {
 }
 
 fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
+    if key == "image_directory" {
+        if scope != "global" {
+            return Err(BusinessError::invalid(
+                "image_directory is a global-only setting",
+            ));
+        }
+        if !value.is_string() {
+            return Err(BusinessError::invalid("image_directory must be a string"));
+        }
+        return Ok(());
+    }
     if key == "verify_https_certificates" {
         if scope != "global" {
             return Err(BusinessError::invalid(
@@ -964,6 +1008,114 @@ impl AgentSdk {
         self.state.store.set_session_archived(session_id, false)
     }
 
+    pub fn list_session_images(&self, session_id: &str) -> SdkResult<SessionImagesResult> {
+        if self.state.store.session_by_id(session_id)?.is_none() {
+            return Err(BusinessError::missing("session"));
+        }
+        Ok(SessionImagesResult {
+            session_id: session_id.to_string(),
+            images: self.state.store.session_images(session_id)?,
+        })
+    }
+
+    pub fn add_session_image(
+        &self,
+        session_id: &str,
+        payload: &Value,
+    ) -> SdkResult<SessionImageRecord> {
+        if self.state.store.session_by_id(session_id)?.is_none() {
+            return Err(BusinessError::missing("session"));
+        }
+        let request: AddSessionImageRequest = serde_json::from_value(payload.clone())?;
+        let display_name = request.display_name.trim();
+        let source_kind = request.source_kind.trim();
+        let extension = sanitize_image_extension(&request.extension)?;
+        if display_name.is_empty() {
+            return Err(BusinessError::invalid("display_name is required"));
+        }
+        if !matches!(source_kind, "file" | "clipboard") {
+            return Err(BusinessError::invalid(
+                "source_kind must be file or clipboard",
+            ));
+        }
+        if source_kind == "file"
+            && request
+                .original_path
+                .as_deref()
+                .is_none_or(|value| value.trim().is_empty())
+        {
+            return Err(BusinessError::invalid(
+                "original_path is required for file uploads",
+            ));
+        }
+        let image_bytes = STANDARD
+            .decode(request.bytes_base64.trim())
+            .map_err(|_| BusinessError::invalid("bytes_base64 is not valid Base64"))?;
+        if image_bytes.is_empty() {
+            return Err(BusinessError::invalid("image bytes are required"));
+        }
+        let thumbnail_base64 = request.thumbnail_base64.trim();
+        if thumbnail_base64.is_empty() {
+            return Err(BusinessError::invalid("thumbnail_base64 is required"));
+        }
+        let image_id = uuid::Uuid::new_v4().to_string();
+        let directory = self.resolved_image_directory()?.join(session_id);
+        std::fs::create_dir_all(&directory)
+            .map_err(|error| BusinessError::unavailable(error.to_string()))?;
+        let storage_path = directory.join(format!("{image_id}.{extension}"));
+        if let Err(error) = std::fs::write(&storage_path, &image_bytes) {
+            return Err(BusinessError::unavailable(error.to_string()));
+        }
+        match self.state.store.insert_session_image(
+            &image_id,
+            session_id,
+            display_name,
+            source_kind,
+            request.original_path.as_deref().map(str::trim),
+            &storage_path,
+            thumbnail_base64,
+        ) {
+            Ok(record) => Ok(record),
+            Err(error) => {
+                let _ = std::fs::remove_file(&storage_path);
+                Err(error)
+            }
+        }
+    }
+
+    pub fn remove_session_image(
+        &self,
+        session_id: &str,
+        image_id: &str,
+    ) -> SdkResult<SessionImageRemoval> {
+        let removed = self
+            .state
+            .store
+            .remove_session_image(session_id, image_id)?
+            .ok_or_else(|| BusinessError::missing("session_image"))?;
+        let path = PathBuf::from(&removed.storage_path);
+        if let Err(error) = std::fs::remove_file(&path) {
+            if error.kind() != std::io::ErrorKind::NotFound {
+                logging::write(
+                    Level::Warn,
+                    "session_image",
+                    format!(
+                        "remove_file_failed session={} image={} error={}",
+                        session_id, image_id, error
+                    ),
+                );
+            }
+        }
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::remove_dir(parent);
+        }
+        Ok(SessionImageRemoval {
+            session_id: session_id.to_string(),
+            image_id: image_id.to_string(),
+            removed: true,
+        })
+    }
+
     pub fn session_snapshot(&self, session_id: &str, _after: i64) -> SdkResult<SessionSnapshot> {
         logging::write(
             Level::Debug,
@@ -1366,6 +1518,17 @@ impl AgentSdk {
             cancellation,
             join: Mutex::new(Some(join)),
         })
+    }
+
+    fn resolved_image_directory(&self) -> SdkResult<PathBuf> {
+        let configured = global_string_setting(&self.state.store, "image_directory")?
+            .unwrap_or_default();
+        let configured = configured.trim();
+        if configured.is_empty() {
+            Ok(self.data_dir.join("data/images"))
+        } else {
+            Ok(PathBuf::from(configured))
+        }
     }
 
     #[cfg(test)]
@@ -1783,6 +1946,44 @@ pub unsafe extern "C" fn suncode_agent_sdk_session_snapshot(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_list_session_images(
+    handle: *mut SunCodeAgentHandle,
+    session_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.list_session_images(&c_string(session_id, "session_id")?)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_add_session_image(
+    handle: *mut SunCodeAgentHandle,
+    session_id: *const c_char,
+    image_json: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.add_session_image(
+            &c_string(session_id, "session_id")?,
+            &json_from_c(image_json, "image_json")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_remove_session_image(
+    handle: *mut SunCodeAgentHandle,
+    session_id: *const c_char,
+    image_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.remove_session_image(
+            &c_string(session_id, "session_id")?,
+            &c_string(image_id, "image_id")?,
+        )
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_provider_exchange(
     handle: *mut SunCodeAgentHandle,
     session_id: *const c_char,
@@ -2059,9 +2260,35 @@ fn into_c_string(value: String) -> *mut c_char {
         .into_raw()
 }
 
+fn sanitize_image_extension(value: &str) -> SdkResult<String> {
+    let value = value.trim().trim_start_matches('.').to_ascii_lowercase();
+    if value.is_empty() || value.len() > 16 {
+        return Err(BusinessError::invalid("image extension is invalid"));
+    }
+    if !value.chars().all(|character| character.is_ascii_alphanumeric()) {
+        return Err(BusinessError::invalid("image extension is invalid"));
+    }
+    Ok(value)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_sdk(directory: &std::path::Path) -> AgentSdk {
+        let state = test_state(directory);
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .thread_name("suncode-sdk-test")
+            .build()
+            .unwrap();
+        AgentSdk {
+            _lock: None,
+            data_dir: directory.to_path_buf(),
+            runtime,
+            state,
+        }
+    }
 
     fn test_state(directory: &std::path::Path) -> AgentState {
         let store = Store::open_memory().unwrap();
@@ -2266,12 +2493,15 @@ mod tests {
         assert!(validate_setting("global", "log_max_bytes", &json!(1024)).is_ok());
         assert!(validate_setting("global", "log_retention", &json!(0)).is_ok());
         assert!(validate_setting("global", "verify_https_certificates", &json!(true)).is_ok());
+        assert!(validate_setting("global", "image_directory", &json!("")).is_ok());
 
         assert!(validate_setting("project", "log_level", &json!("INFO")).is_err());
         assert!(validate_setting("global", "log_level", &json!("VERBOSE")).is_err());
         assert!(validate_setting("global", "log_directory", &json!(7)).is_err());
         assert!(validate_setting("global", "log_max_bytes", &json!(1023)).is_err());
         assert!(validate_setting("global", "log_retention", &json!(101)).is_err());
+        assert!(validate_setting("project", "image_directory", &json!("/tmp/images")).is_err());
+        assert!(validate_setting("global", "image_directory", &json!(9)).is_err());
         assert!(validate_setting("session", "full_control", &json!(true)).is_ok());
         assert!(validate_setting("global", "full_control", &json!(true)).is_err());
         assert!(validate_setting("session", "full_control", &json!("yes")).is_err());
@@ -2305,6 +2535,51 @@ mod tests {
         assert_eq!(
             global_bool_setting(&sdk.state.store, "verify_https_certificates", true).unwrap(),
             false
+        );
+    }
+
+    #[test]
+    fn session_image_methods_persist_and_remove_files() {
+        let directory = tempfile::tempdir().unwrap();
+        let project_root = directory.path().join("project");
+        std::fs::create_dir_all(&project_root).unwrap();
+        let sdk = test_sdk(directory.path());
+        let project = sdk
+            .open_project(project_root.to_str().unwrap(), None)
+            .unwrap();
+        let session = sdk
+            .create_session(&project.project_id, Some("Images"), Some("gpt-5.5"))
+            .unwrap();
+
+        let payload = json!({
+            "displayName": "diagram.png",
+            "sourceKind": "file",
+            "originalPath": project_root.join("diagram.png").to_str().unwrap(),
+            "extension": "png",
+            "bytesBase64": STANDARD.encode(b"png-bytes"),
+            "thumbnailBase64": STANDARD.encode(b"thumb")
+        });
+        let image = sdk.add_session_image(&session.session_id, &payload).unwrap();
+        assert_eq!(image.source_kind, "file");
+        assert!(std::path::Path::new(&image.storage_path).is_file());
+        assert_eq!(
+            sdk.list_session_images(&session.session_id)
+                .unwrap()
+                .images
+                .len(),
+            1
+        );
+        assert!(
+            sdk.remove_session_image(&session.session_id, &image.image_id)
+                .unwrap()
+                .removed
+        );
+        assert_eq!(
+            sdk.list_session_images(&session.session_id)
+                .unwrap()
+                .images
+                .len(),
+            0
         );
     }
 

@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -15,21 +17,20 @@ namespace SunCode.Desktop.Views.Chat;
 public sealed partial class ChatInput : UserControl
 {
     private const int MaxAttachments = 3;
+    private const int ThumbnailEdge = 96;
 
     public ChatInput()
     {
         InitializeComponent();
-        AttachmentStrip.ItemsSource = Attachments;
         ComposerInput.AddHandler(KeyDownEvent, ComposerKeyDown, RoutingStrategies.Tunnel);
+        ComposerInput.AddHandler(TextBox.PastingFromClipboardEvent, ComposerPaste);
     }
-
-    public ObservableCollection<ComposerAttachment> Attachments { get; } = [];
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
 
     private async void AddAttachment(object? sender, RoutedEventArgs e)
     {
-        if (Attachments.Count >= MaxAttachments) return;
+        if (ViewModel.ComposerAttachments.Count >= MaxAttachments) return;
 
         var topLevel = TopLevel.GetTopLevel(this);
         if (topLevel?.StorageProvider is null) return;
@@ -48,13 +49,25 @@ public sealed partial class ChatInput : UserControl
             ]
         });
 
-        foreach (var file in files.Take(MaxAttachments - Attachments.Count))
+        foreach (var file in files.Take(MaxAttachments - ViewModel.ComposerAttachments.Count))
         {
             try
             {
+                var localPath = file.TryGetLocalPath();
                 await using var stream = await file.OpenReadAsync();
-                var bitmap = new Bitmap(stream);
-                Attachments.Add(new ComposerAttachment(file.Name, bitmap));
+                using var memory = new MemoryStream();
+                await stream.CopyToAsync(memory);
+                var bytes = memory.ToArray();
+                using var original = new Bitmap(new MemoryStream(bytes, writable: false));
+                var thumbnail = CreateThumbnailBytes(original);
+                var extension = ExtensionFromName(file.Name);
+                await ViewModel.AddSessionImageAsync(
+                    file.Name,
+                    "file",
+                    localPath,
+                    extension,
+                    bytes,
+                    thumbnail);
             }
             catch (Exception exception)
             {
@@ -66,49 +79,57 @@ public sealed partial class ChatInput : UserControl
     private void RemoveAttachment(object? sender, RoutedEventArgs e)
     {
         if ((sender as Control)?.DataContext is not ComposerAttachment attachment) return;
-        RemoveAttachment(attachment);
-    }
-
-    private void RemoveAttachment(ComposerAttachment attachment)
-    {
-        if (Attachments.Remove(attachment)) attachment.Dispose();
+        _ = ViewModel.RemoveSessionImageAsync(attachment);
     }
 
     private async void PreviewAttachment(object? sender, RoutedEventArgs e)
     {
         if ((sender as Control)?.DataContext is not ComposerAttachment attachment) return;
         if (TopLevel.GetTopLevel(this) is not Window owner) return;
-
-        var preview = new Window
+        Bitmap? bitmap = null;
+        try
         {
-            Title = attachment.Name,
-            Width = 720,
-            Height = 560,
-            MinWidth = 360,
-            MinHeight = 280,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = this.FindResource("SurfaceRaisedBrush") as IBrush,
-            Content = new Border
+            bitmap = File.Exists(attachment.StoragePath)
+                ? new Bitmap(attachment.StoragePath)
+                : attachment.Preview;
+
+            var preview = new Window
             {
-                Margin = new Thickness(18),
-                Padding = new Thickness(1),
-                Background = this.FindResource("FieldBrush") as IBrush,
-                BorderBrush = this.FindResource("BorderBrush") as IBrush,
-                BorderThickness = new Thickness(1),
-                Child = new Image
+                Title = attachment.Name,
+                Width = 720,
+                Height = 560,
+                MinWidth = 360,
+                MinHeight = 280,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Background = this.FindResource("SurfaceRaisedBrush") as IBrush,
+                Content = new Border
                 {
-                    Source = attachment.Preview,
-                    Stretch = Avalonia.Media.Stretch.Uniform
+                    Margin = new Thickness(18),
+                    Padding = new Thickness(1),
+                    Background = this.FindResource("FieldBrush") as IBrush,
+                    BorderBrush = this.FindResource("BorderBrush") as IBrush,
+                    BorderThickness = new Thickness(1),
+                    Child = new Image
+                    {
+                        Source = bitmap,
+                        Stretch = Avalonia.Media.Stretch.Uniform
+                    }
                 }
+            };
+            await preview.ShowDialog(owner);
+        }
+        finally
+        {
+            if (bitmap is not null && !ReferenceEquals(bitmap, attachment.Preview))
+            {
+                bitmap.Dispose();
             }
-        };
-        await preview.ShowDialog(owner);
+        }
     }
 
     private async void SubmitTurn(object? sender, RoutedEventArgs e)
     {
         if (!ViewModel.CanSubmit) return;
-        ClearAttachments();
         await ViewModel.SubmitTurnAsync();
     }
 
@@ -160,19 +181,57 @@ public sealed partial class ChatInput : UserControl
 
         e.Handled = true;
         ViewModel.ComposerText = ComposerInput.Text ?? string.Empty;
-        ClearAttachments();
         await ViewModel.SubmitTurnAsync();
     }
 
-    private void ClearAttachments()
+    private async void ComposerPaste(object? sender, RoutedEventArgs e)
     {
-        foreach (var attachment in Attachments) attachment.Dispose();
-        Attachments.Clear();
+        if (sender is not TextBox
+            || TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard
+            || ViewModel.ComposerAttachments.Count >= MaxAttachments)
+        {
+            return;
+        }
+        try
+        {
+            var bitmap = await clipboard.TryGetBitmapAsync();
+            if (bitmap is null) return;
+                using (bitmap)
+            {
+                using var originalStream = new MemoryStream();
+                bitmap.Save(originalStream, PngBitmapEncoderOptions.Default);
+                var bytes = originalStream.ToArray();
+                var thumbnail = CreateThumbnailBytes(bitmap);
+                await ViewModel.AddSessionImageAsync(
+                    $"clipboard-{DateTimeOffset.Now:yyyyMMdd-HHmmss}.png",
+                    "clipboard",
+                    null,
+                    "png",
+                    bytes,
+                    thumbnail);
+            }
+            e.Handled = true;
+        }
+        catch (Exception exception)
+        {
+            ViewModel.ReportPresentationError($"Could not read image from clipboard: {exception.Message}");
+        }
     }
 
-    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    private static byte[] CreateThumbnailBytes(Bitmap original)
     {
-        ClearAttachments();
-        base.OnDetachedFromVisualTree(e);
+        var scale = Math.Min(1d, ThumbnailEdge / (double)Math.Max(original.PixelSize.Width, original.PixelSize.Height));
+        var width = Math.Max(1, (int)Math.Round(original.PixelSize.Width * scale));
+        var height = Math.Max(1, (int)Math.Round(original.PixelSize.Height * scale));
+        using var thumbnail = original.CreateScaledBitmap(new PixelSize(width, height), BitmapInterpolationMode.HighQuality);
+        using var stream = new MemoryStream();
+        thumbnail.Save(stream, PngBitmapEncoderOptions.Default);
+        return stream.ToArray();
+    }
+
+    private static string ExtensionFromName(string name)
+    {
+        var extension = Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(extension) ? "png" : extension;
     }
 }

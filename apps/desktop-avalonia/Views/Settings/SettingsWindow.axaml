@@ -185,6 +185,20 @@
               <Button Classes="compact primary" Content="Save logging settings" Click="SaveLogging" />
               <TextBlock x:Name="LoggingStatus" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
             </StackPanel>
+
+            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
+            <TextBlock Classes="section-label" Text="IMAGE STORAGE" />
+            <Grid ColumnDefinitions="*,180" ColumnSpacing="14">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Image directory" FontWeight="SemiBold" />
+                <TextBlock Classes="settings-hint" Text="Leave empty to use the data directory's images folder." />
+              </StackPanel>
+              <TextBox x:Name="ImageDirectoryInput" Grid.Column="1" Classes="mono" PlaceholderText="Default images folder" />
+            </Grid>
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <Button Classes="compact primary" Content="Save image location" Click="SaveImageDirectory" />
+              <TextBlock x:Name="ImageDirectoryStatus" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
           </StackPanel>
         </ScrollViewer>
 
