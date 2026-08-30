@@ -32,6 +32,7 @@ import { TuiPlatformPage } from "../platforms/tui/index.jsx";
 import { WebPlatformPage } from "../platforms/web/index.jsx";
 import { ProjectsPage } from "../projects/ProjectsPage.jsx";
 import { ProjectHubPage } from "../projects/desktop/index.jsx";
+import { AboutPage } from "../projects/desktop/about/index.jsx";
 import { DesktopProjectPage } from "../projects/desktop/DesktopProjectPage.jsx";
 import { SettingsPage } from "../projects/desktop/settings/index.jsx";
 import { WorkspacePage } from "../projects/desktop/workspace/index.jsx";
@@ -86,6 +87,7 @@ const routes = {
   "/projects": ProjectsPage,
   "/projects/desktop": DesktopProjectPage,
   "/projects/desktop/project-hub": ProjectHubPage,
+  "/projects/desktop/about": AboutPage,
   "/projects/desktop/settings": SettingsPage,
   "/projects/desktop/workspace": WorkspacePage,
   "/projects/desktop/workspace/sessions": WorkspaceSessionsPage,

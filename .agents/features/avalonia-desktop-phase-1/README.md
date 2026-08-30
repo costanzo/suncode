@@ -21,7 +21,7 @@ The desktop logger opens its default rotating `desktop.log` during process start
 ### Visual implementation notes
 
 - Shared Avalonia theme resources use the design-system's neutral graphite/silver primary action palette with separate success, warning, and danger semantics in both dark and light themes.
-- Production windows use a shared 36 px title bar, 14 px outer frame radius, compact traffic lights, and the existing native drag, resize, minimize, maximize, and close behavior.
+- The desktop has four top-level window roles: ProjectHub, Workspace, Settings, and About. Workspace alone uses `WindowDecorations=BorderOnly` with the 36 px custom title bar and compact traffic lights; ProjectHub, Settings, and About use full system decorations without duplicate client-side title bars.
 - ProjectHub uses a 62 px toolbar, 70 px recent-project rows, 24 px content insets, and a compact first-run empty state. The project workspace uses 4 px shell gaps, 26 px gutters, 272/312 px default side panes, mutually exclusive bottom drawers, and a 20 px status bar.
 - Sessions use 48 px rows with fixed pin/status/action columns and a compact empty state. Explorer uses 30 px tree rows, 12 px depth increments, explicit chevrons, root/dependency semantic styling, monospace path subtitles, and horizontal scrolling for deep paths.
 - Conversation uses 14 px assistant Markdown, compact process/tool rows, a 24 px no-session empty treatment, a recycling history container, and an active-turn work indicator. For models advertising image input, up to three bounded images can be uploaded from file or clipboard, previewed, removed before submission, submitted as message-owned references, and restored above their owning user message. Non-vision models keep image selection disabled.

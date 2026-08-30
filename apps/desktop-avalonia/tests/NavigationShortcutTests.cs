@@ -1,5 +1,5 @@
 using Avalonia.Input;
-using SunCode.Desktop.Views.Shell;
+using SunCode.Desktop.Views.Projects;
 
 namespace SunCode.Desktop.Tests;
 
@@ -10,19 +10,13 @@ public sealed class NavigationShortcutTests
     [InlineData(KeyModifiers.Control)]
     public void CommandOrControlOneTogglesProjectNavigation(KeyModifiers modifiers)
     {
-        Assert.True(MainWindow.IsToggleNavigationShortcut(Key.D1, modifiers, isProjectOpen: true));
+        Assert.True(WorkspaceWindow.IsToggleNavigationShortcut(Key.D1, modifiers));
     }
 
     [Fact]
     public void OneWithoutCommandModifierDoesNotToggleProjectNavigation()
     {
-        Assert.False(MainWindow.IsToggleNavigationShortcut(Key.D1, KeyModifiers.None, isProjectOpen: true));
-    }
-
-    [Fact]
-    public void ShortcutDoesNotToggleNavigationOutsideAProject()
-    {
-        Assert.False(MainWindow.IsToggleNavigationShortcut(Key.D1, KeyModifiers.Meta, isProjectOpen: false));
+        Assert.False(WorkspaceWindow.IsToggleNavigationShortcut(Key.D1, KeyModifiers.None));
     }
 
     [Theory]
@@ -30,18 +24,12 @@ public sealed class NavigationShortcutTests
     [InlineData(KeyModifiers.Control)]
     public void CommandOrControlNineTogglesGitViewer(KeyModifiers modifiers)
     {
-        Assert.True(MainWindow.IsToggleGitViewerShortcut(Key.D9, modifiers, isProjectOpen: true));
+        Assert.True(WorkspaceWindow.IsToggleGitViewerShortcut(Key.D9, modifiers));
     }
 
     [Fact]
     public void NineWithoutCommandModifierDoesNotToggleGitViewer()
     {
-        Assert.False(MainWindow.IsToggleGitViewerShortcut(Key.D9, KeyModifiers.None, isProjectOpen: true));
-    }
-
-    [Fact]
-    public void ShortcutDoesNotToggleGitViewerOutsideAProject()
-    {
-        Assert.False(MainWindow.IsToggleGitViewerShortcut(Key.D9, KeyModifiers.Meta, isProjectOpen: false));
+        Assert.False(WorkspaceWindow.IsToggleGitViewerShortcut(Key.D9, KeyModifiers.None));
     }
 }

@@ -1,9 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Styling;
 using Avalonia.VisualTree;
-using SvgControl = Avalonia.Svg.Skia.Svg;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
@@ -29,9 +27,7 @@ public sealed partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
-        WindowDecorations = OperatingSystem.IsMacOS()
-            ? Avalonia.Controls.WindowDecorations.BorderOnly
-            : Avalonia.Controls.WindowDecorations.None;
+        WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
         Opened += async (_, _) =>
@@ -70,50 +66,6 @@ public sealed partial class SettingsWindow : Window
     }
 
     private void CloseSettings(object? sender, RoutedEventArgs e) => Close();
-    private void MinimizeSettings(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-    private void ToggleSettingsMaximized(object? sender, RoutedEventArgs e) =>
-        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-
-    private void SettingsTitleBarPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && !OriginatesFromButton(e.Source)) BeginMoveDrag(e);
-    }
-
-    private void SettingsTitleBarDoubleTapped(object? sender, TappedEventArgs e)
-    {
-        if (OriginatesFromButton(e.Source)) return;
-        ToggleSettingsMaximized(sender, new RoutedEventArgs());
-        e.Handled = true;
-    }
-
-    private static bool OriginatesFromButton(object? source) =>
-        source is Button || source is Avalonia.Visual visual && visual.FindAncestorOfType<Button>() is not null;
-
-    private void TrafficLightEntered(object? sender, PointerEventArgs e) => SetTrafficLightState(sender, "hover");
-    private void TrafficLightExited(object? sender, PointerEventArgs e) => SetTrafficLightState(sender, "normal");
-    private void TrafficLightPressed(object? sender, PointerPressedEventArgs e) => SetTrafficLightState(sender, "press");
-    private void TrafficLightReleased(object? sender, PointerReleasedEventArgs e) => SetTrafficLightState(sender, "hover");
-
-    private static void SetTrafficLightState(object? sender, string state)
-    {
-        if (sender is not Button button || button.GetVisualDescendants().OfType<SvgControl>().FirstOrDefault() is not { } icon) return;
-        var kind = button.Name?.Contains("Close", StringComparison.Ordinal) == true
-            ? "close"
-            : button.Name?.Contains("Minimize", StringComparison.Ordinal) == true ? "minimize" : "maximize";
-        var file = (kind, state) switch
-        {
-            ("close", "hover") => "2-close-2-hover.svg",
-            ("close", "press") => "2-close-3-press.svg",
-            ("close", _) => "1-close-1-normal.svg",
-            ("minimize", "hover") => "2-minimize-2-hover.svg",
-            ("minimize", "press") => "2-minimize-3-press.svg",
-            ("minimize", _) => "2-minimize-1-normal.svg",
-            ("maximize", "hover") => "3-maximize-2-hover.svg",
-            ("maximize", "press") => "3-maximize-3-press.svg",
-            _ => "3-maximize-1-normal.svg"
-        };
-        icon.Path = $"/Assets/traffic-lights/{file}";
-    }
     private void ShowDefaults(object? sender, RoutedEventArgs e) => SelectPage("defaults", sender as Button);
     private void ShowAppearance(object? sender, RoutedEventArgs e) => SelectPage("appearance", sender as Button);
     private void ShowNetwork(object? sender, RoutedEventArgs e) => SelectPage("network", sender as Button);

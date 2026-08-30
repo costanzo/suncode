@@ -21,32 +21,8 @@
     </Style>
   </UserControl.Styles>
 
-  <Border Classes="window-frame">
-    <Border Classes="window-content">
-    <Grid RowDefinitions="36,62,*">
-      <Grid Grid.Row="0"
-            Classes="window-titlebar"
-            ColumnDefinitions="*,Auto,*"
-            ZIndex="110"
-            PointerPressed="TitleBarPressed"
-            PointerMoved="TitleBarMoved"
-            PointerReleased="TitleBarReleased"
-            DoubleTapped="TitleBarDoubleTapped">
-        <StackPanel Orientation="Horizontal" Spacing="6" Margin="5,0,0,0" VerticalAlignment="Center">
-          <Button x:Name="HubCloseLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="CloseApplication" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Close window">
-            <svg:Svg Path="/Assets/traffic-lights/1-close-1-normal.svg" />
-          </Button>
-          <Button x:Name="HubMinimizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="MinimizeWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Minimize window">
-            <svg:Svg Path="/Assets/traffic-lights/2-minimize-1-normal.svg" />
-          </Button>
-          <Button x:Name="HubMaximizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="ToggleHubMaximized" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Maximize window">
-            <svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" />
-          </Button>
-        </StackPanel>
-        <TextBlock Grid.Column="1" Classes="window-title" Text="Welcome to SunCode" VerticalAlignment="Center" />
-      </Grid>
-
-      <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+  <Grid RowDefinitions="62,*">
+      <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
         <Grid Margin="22,0" ColumnDefinitions="Auto,12,Auto,*,Auto,12,Auto" RowDefinitions="*,Auto">
           <Image Grid.Column="0" Width="30" Height="30" Source="/Assets/logo/suncode-logo-small-64.png" VerticalAlignment="Center" />
           <TextBlock Grid.Column="2" Text="SunCode" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -71,7 +47,7 @@
         </Grid>
       </Border>
 
-      <Border Grid.Row="2" Margin="24" Classes="raised" Padding="18">
+      <Border Grid.Row="1" Margin="24" Classes="raised" Padding="18">
         <Grid RowDefinitions="Auto,14,*">
           <Border Grid.Row="0" Padding="2,0,2,12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <TextBlock Classes="section-label" Text="RECENT PROJECTS" />
@@ -121,7 +97,5 @@
           </ScrollViewer>
         </Grid>
       </Border>
-    </Grid>
-    </Border>
-  </Border>
+  </Grid>
 </UserControl>

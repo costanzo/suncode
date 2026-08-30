@@ -5,7 +5,6 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
-using SunCode.Desktop.Views.Shell;
 
 namespace SunCode.Desktop.Views.Projects;
 
@@ -26,7 +25,7 @@ public sealed partial class ProjectWorkspace : UserControl
         InitializeComponent();
     }
 
-    private MainWindow? Owner => TopLevel.GetTopLevel(this) as MainWindow;
+    private WorkspaceWindow? Owner => TopLevel.GetTopLevel(this) as WorkspaceWindow;
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
 
     internal void ScrollConversationToEnd() =>
@@ -292,8 +291,8 @@ public sealed partial class ProjectWorkspace : UserControl
     private void TitleBarMoved(object? sender, PointerEventArgs e) => Owner?.TitleBarMoved(sender, e);
     private void TitleBarReleased(object? sender, PointerReleasedEventArgs e) => Owner?.TitleBarReleased(sender, e);
     private void TitleBarDoubleTapped(object? sender, TappedEventArgs e) => Owner?.TitleBarDoubleTapped(sender, e);
-    private void TrafficLightEntered(object? sender, PointerEventArgs e) => MainWindow.SetTrafficLightState(sender, "hover");
-    private void TrafficLightExited(object? sender, PointerEventArgs e) => MainWindow.SetTrafficLightState(sender, "normal");
-    private void TrafficLightPressed(object? sender, PointerPressedEventArgs e) => MainWindow.SetTrafficLightState(sender, "press");
-    private void TrafficLightReleased(object? sender, PointerReleasedEventArgs e) => MainWindow.SetTrafficLightState(sender, "hover");
+    private void TrafficLightEntered(object? sender, PointerEventArgs e) => WorkspaceWindow.SetTrafficLightState(sender, "hover");
+    private void TrafficLightExited(object? sender, PointerEventArgs e) => WorkspaceWindow.SetTrafficLightState(sender, "normal");
+    private void TrafficLightPressed(object? sender, PointerPressedEventArgs e) => WorkspaceWindow.SetTrafficLightState(sender, "press");
+    private void TrafficLightReleased(object? sender, PointerReleasedEventArgs e) => WorkspaceWindow.SetTrafficLightState(sender, "hover");
 }

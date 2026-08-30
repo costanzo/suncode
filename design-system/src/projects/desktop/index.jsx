@@ -4,7 +4,6 @@ import { ProjectCard } from "../../components/universal/card/index.js";
 import { EmptyState } from "../../components/universal/feedback/index.js";
 import { Icon } from "../../shared/Icon.jsx";
 import { PageHeader, Section } from "../../shared/PagePrimitives.jsx";
-import { TrafficLights } from "../../shared/TrafficLights.jsx";
 import { WorkspaceGuideState } from "./workspace/WorkspaceGuide.jsx";
 
 const recentProjects = [
@@ -15,12 +14,12 @@ const recentProjects = [
 const projectHubGuides = {
   recent: { tabs: {
     actions: ["Select a recent project card to reopen its local project window.", "Use Open project to choose a different local folder.", "Open Settings when defaults, providers, or logging need attention."],
-    style: ["The title bar is 36px high with 14px side padding and Avalonia-style traffic lights.", "The toolbar is 62px high with 22px horizontal padding and an 18px brand title.", "Project cards are 70px minimum height with 14px horizontal padding and an 8px list gap."],
+    style: ["The operating system owns the title bar, window buttons, shadow, and outer resize behavior.", "The client toolbar is 62px high with 22px horizontal padding and an 18px brand title.", "Project cards are 70px minimum height with 14px horizontal padding and an 8px list gap."],
     logic: ["Recent projects are local paths that can be reopened without provisioning a remote project.", "Selecting a card transitions to the active desktop project window.", "The list is a convenience index; the opened folder remains the project boundary."],
   } },
   empty: { tabs: {
     actions: ["Use Open project to select the first local folder.", "After opening a folder, return to ProjectHub to see it in Recents.", "Use Settings before opening a project when provider setup is required."],
-    style: ["The empty content area uses a 130px minimum height and 18px inset padding.", "Empty state copy is centered with a compact icon, 12px title, and 10px supporting text.", "The surrounding frame keeps the same 36px title bar and 62px toolbar geometry."],
+    style: ["The empty content area uses a 130px minimum height and 18px inset padding.", "Empty state copy is centered with a compact icon, 12px title, and 10px supporting text.", "The client area starts with the 62px toolbar beneath the operating system title bar."],
     logic: ["No local project has been opened in the current recent-project projection.", "Open project creates the first project entry and navigates to its workspace.", "An empty state does not imply an error or missing provider configuration."],
   } },
 };
@@ -29,10 +28,6 @@ function ProjectHubWindow({ projects = [] }) {
   const hasProjects = projects.length > 0;
 
   return <div className="project-hub-frame">
-    <div className="project-hub-titlebar">
-      <TrafficLights />
-      <strong>Welcome to SunCode</strong>
-    </div>
     <div className="project-hub-toolbar">
       <div className="project-hub-brand"><span className="project-hub-logo"><Icon name="components" size={20} /></span><strong>SunCode</strong></div>
       <div className="project-hub-actions"><Button variant="quiet" onClick={() => { window.location.hash = "/projects/desktop/settings"; }}>Settings</Button><Button variant="primary" icon="plus">Open project</Button></div>

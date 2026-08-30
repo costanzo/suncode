@@ -7,18 +7,18 @@ using SunCode.Desktop.Models;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.ViewModels;
 using SunCode.Desktop.Views.About;
+using SunCode.Desktop.Views.Projects;
 using SunCode.Desktop.Views.Settings;
-using SunCode.Desktop.Views.Shell;
 
 namespace SunCode.Desktop;
 
 public sealed partial class App : Application
 {
     private DesktopViewModel? _viewModel;
-    private MainWindow? _hubWindow;
+    private ProjectHubWindow? _hubWindow;
     private SettingsWindow? _settingsWindow;
     private AboutWindow? _aboutWindow;
-    private readonly Dictionary<string, MainWindow> _projectWindows = [];
+    private readonly Dictionary<string, WorkspaceWindow> _projectWindows = [];
     private readonly HashSet<string> _openingProjects = [];
 
     public override void Initialize()
@@ -37,8 +37,9 @@ public sealed partial class App : Application
             _viewModel = new DesktopViewModel();
             MacOSDockIcon.Apply();
             _viewModel.ThemeChanged += ApplyTheme;
-            _hubWindow = new MainWindow(isHubWindow: true) { DataContext = _viewModel };
-            desktop.MainWindow = _hubWindow;
+            _hubWindow = new ProjectHubWindow { DataContext = _viewModel };
+            desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
+            _hubWindow.Show();
             desktop.Exit += (_, _) =>
             {
                 DiagnosticLog.Info("app.lifecycle", "exit begin");
@@ -104,7 +105,7 @@ public sealed partial class App : Application
                 return;
             }
 
-            var window = new MainWindow(isHubWindow: false) { DataContext = viewModel };
+            var window = new WorkspaceWindow { DataContext = viewModel };
             _projectWindows[project.ProjectId] = window;
             window.Closed += (_, _) => ProjectWindowClosed(project.ProjectId, viewModel);
             _hubWindow?.Hide();
@@ -171,7 +172,7 @@ public sealed partial class App : Application
             if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop) return;
             var owner = desktop.Windows.FirstOrDefault(window => window.IsActive)
                 ?? desktop.Windows.FirstOrDefault(window => window.IsVisible)
-                ?? desktop.MainWindow;
+                ?? _hubWindow;
             if (owner is not null) ShowAbout(owner);
         };
         menu.Items.Add(about);

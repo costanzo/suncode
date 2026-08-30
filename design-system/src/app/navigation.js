@@ -129,6 +129,7 @@ export const primaryModules = [
         keywords: "project hub avalonia runtime mapping resources",
         children: [
           { path: "/projects/desktop/project-hub", label: "ProjectHub", keywords: "welcome recent projects open project settings" },
+          { path: "/projects/desktop/about", label: "About", keywords: "product version application information" },
           { path: "/projects/desktop/settings", label: "Settings", keywords: "defaults appearance network logging model providers credentials" },
           {
             path: "/projects/desktop/workspace",

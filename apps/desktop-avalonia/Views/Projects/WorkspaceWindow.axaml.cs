@@ -10,11 +10,10 @@ using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
-namespace SunCode.Desktop.Views.Shell;
+namespace SunCode.Desktop.Views.Projects;
 
-public sealed partial class MainWindow : Window
+public sealed partial class WorkspaceWindow : Window
 {
-    private readonly bool _isHubWindow;
     private bool _initialized;
     private bool _windowResizeActive;
     private WindowEdge _windowResizeEdge;
@@ -30,17 +29,10 @@ public sealed partial class MainWindow : Window
     private NativeMenuItem? _toggleNavigationMenuItem;
     private NativeMenu? _recentProjectsMenu;
 
-    public MainWindow() : this(true)
+    public WorkspaceWindow()
     {
-    }
-
-    internal MainWindow(bool isHubWindow)
-    {
-        _isHubWindow = isHubWindow;
         InitializeComponent();
-        WindowDecorations = OperatingSystem.IsMacOS()
-            ? Avalonia.Controls.WindowDecorations.BorderOnly
-            : Avalonia.Controls.WindowDecorations.None;
+        WindowDecorations = Avalonia.Controls.WindowDecorations.BorderOnly;
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
         Opened += OnOpened;
@@ -50,7 +42,7 @@ public sealed partial class MainWindow : Window
             ViewModel.UpdateLayoutWidth(Bounds.Width);
             ProjectWorkspaceView.ClampGitViewerHeight();
         };
-        if (!_isHubWindow) ConfigureNativeProjectMenu();
+        ConfigureNativeProjectMenu();
     }
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
@@ -61,19 +53,14 @@ public sealed partial class MainWindow : Window
         _initialized = true;
         ViewModel.ConversationChanged += ConversationChanged;
         await ViewModel.InitializeAsync();
-        if (_isHubWindow) ConfigureHubWindow();
-        else
-        {
-            ConfigureProjectWindow();
-            UpdateNativeProjectMenu();
-            ProjectWorkspaceView.ScrollConversationToEnd();
-        }
+        ConfigureProjectWindow();
+        UpdateNativeProjectMenu();
+        ProjectWorkspaceView.ScrollConversationToEnd();
     }
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
         ViewModel.ConversationChanged -= ConversationChanged;
-        if (_isHubWindow) ViewModel.Dispose();
     }
 
     internal async Task OpenProjectPickerAsync()
@@ -196,26 +183,26 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (IsToggleNavigationShortcut(e.Key, e.KeyModifiers, ViewModel.IsProjectOpen))
+        if (IsToggleNavigationShortcut(e.Key, e.KeyModifiers))
         {
             e.Handled = true;
             ViewModel.NavigationVisible = !ViewModel.NavigationVisible;
             return;
         }
 
-        if (IsToggleGitViewerShortcut(e.Key, e.KeyModifiers, ViewModel.IsProjectOpen))
+        if (IsToggleGitViewerShortcut(e.Key, e.KeyModifiers))
         {
             e.Handled = true;
             ProjectWorkspaceView.ToggleGitViewer();
         }
     }
 
-    internal static bool IsToggleNavigationShortcut(Key key, KeyModifiers modifiers, bool isProjectOpen) =>
-        isProjectOpen && key == Key.D1 &&
+    internal static bool IsToggleNavigationShortcut(Key key, KeyModifiers modifiers) =>
+        key == Key.D1 &&
         (modifiers.HasFlag(KeyModifiers.Meta) || modifiers.HasFlag(KeyModifiers.Control));
 
-    internal static bool IsToggleGitViewerShortcut(Key key, KeyModifiers modifiers, bool isProjectOpen) =>
-        isProjectOpen && key == Key.D9 &&
+    internal static bool IsToggleGitViewerShortcut(Key key, KeyModifiers modifiers) =>
+        key == Key.D9 &&
         (modifiers.HasFlag(KeyModifiers.Meta) || modifiers.HasFlag(KeyModifiers.Control));
 
     private void WindowResizePressed(object? sender, PointerPressedEventArgs e)
@@ -316,9 +303,6 @@ public sealed partial class MainWindow : Window
 
     internal void MinimizeWindow() => WindowState = WindowState.Minimized;
 
-    internal void ToggleHubMaximized() =>
-        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-
     internal void ToggleMaximized()
     {
         if (_isFullScreenTransition) return;
@@ -391,17 +375,6 @@ public sealed partial class MainWindow : Window
         MinHeight = 620;
         ResizeAndCenter(1440, 900);
         ViewModel.UpdateLayoutWidth(1440);
-    }
-
-    private void ConfigureHubWindow()
-    {
-        WindowState = WindowState.Normal;
-        ExtendClientAreaToDecorationsHint = true;
-        Title = "Welcome to SunCode";
-        MinWidth = 760;
-        MinHeight = 552;
-        ResizeAndCenter(980, 712);
-        ViewModel.UpdateLayoutWidth(980);
     }
 
     private void ResizeAndCenter(double width, double height)

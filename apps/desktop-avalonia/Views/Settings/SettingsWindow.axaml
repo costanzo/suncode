@@ -8,9 +8,8 @@
         Title="Settings"
         Width="900" Height="672"
         MinWidth="720" MinHeight="552"
-        Background="Transparent"
-        WindowDecorations="None"
-        TransparencyLevelHint="Transparent"
+        Background="{DynamicResource CanvasBrush}"
+        WindowDecorations="Full"
         WindowStartupLocation="CenterOwner">
   <Window.Styles>
     <Style Selector="Button.navigation">
@@ -39,19 +38,7 @@
       <Setter Property="Padding" Value="8,7" />
     </Style>
   </Window.Styles>
-  <Border x:Name="SettingsChrome"
-          Classes="window-frame">
-  <Border Classes="window-content">
-  <Grid RowDefinitions="36,*">
-    <Grid Grid.Row="0" Classes="window-titlebar" ColumnDefinitions="*,Auto,*" PointerPressed="SettingsTitleBarPressed" DoubleTapped="SettingsTitleBarDoubleTapped">
-      <StackPanel Orientation="Horizontal" Spacing="6" Margin="5,0,0,0" VerticalAlignment="Center">
-        <Button x:Name="SettingsCloseLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="CloseSettings" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Close window"><svg:Svg Path="/Assets/traffic-lights/1-close-1-normal.svg" /></Button>
-        <Button x:Name="SettingsMinimizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="MinimizeSettings" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Minimize window"><svg:Svg Path="/Assets/traffic-lights/2-minimize-1-normal.svg" /></Button>
-        <Button x:Name="SettingsMaximizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="ToggleSettingsMaximized" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Maximize window"><svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" /></Button>
-      </StackPanel>
-      <TextBlock Grid.Column="1" Classes="window-title" Text="Settings" VerticalAlignment="Center" />
-    </Grid>
-  <Grid Grid.Row="1" RowDefinitions="58,*">
+  <Grid RowDefinitions="58,*">
     <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
       <Grid Margin="22,0" ColumnDefinitions="*,Auto">
         <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -297,7 +284,4 @@
       </Grid>
     </Grid>
   </Grid>
-  </Grid>
-  </Border>
-  </Border>
 </Window>

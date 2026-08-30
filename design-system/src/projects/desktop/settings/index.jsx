@@ -3,7 +3,6 @@ import { Button } from "../../../components/universal/button/index.js";
 import { SingleDropdown } from "../../../components/universal/dropdown/index.js";
 import { Icon } from "../../../shared/Icon.jsx";
 import { PageHeader, Section } from "../../../shared/PagePrimitives.jsx";
-import { TrafficLights } from "../../../shared/TrafficLights.jsx";
 import { WorkspaceGuideState } from "../workspace/WorkspaceGuide.jsx";
 
 const providerCatalog = {
@@ -24,7 +23,7 @@ const navItems = [
 
 const settingsGuide = { tabs: {
   actions: ["Choose Defaults, Appearance, Network, or Logging from the left navigation.", "Open Model providers to review provider endpoints, then select a provider for credentials and models.", "Edit a control and use its save action; use Done to return to ProjectHub."],
-  style: ["The window title bar is 36px high; the toolbar is 58px high with 22px horizontal padding.", "The settings body uses a 238px navigation column and a content panel with 28px top / 32px side padding.", "Rows use 12px labels, 11px hints, 36px controls, 24px column gaps, and 16px section gaps."],
+  style: ["The operating system owns the title bar and window controls; the client toolbar is 58px high with 22px horizontal padding.", "The settings body uses a 238px navigation column and a content panel with 28px top / 32px side padding.", "Rows use 12px labels, 11px hints, 36px controls, 24px column gaps, and 16px section gaps."],
   logic: ["Settings are local to the embedded agent and are grouped by defaults, appearance, network, logging, and providers.", "Provider credentials are masked; only the first and last four characters are shown for recognition.", "Saving updates local configuration state and does not grant new machine authority."],
 } };
 
@@ -114,5 +113,5 @@ export function SettingsPage() {
     if (page.startsWith("provider:")) return <ProviderPanel key={page} providerId={page.split(":")[1]} onSave={save} />;
     return <DefaultsPanel onSave={save} />;
   };
-  return <><PageHeader title="Settings" description="The Avalonia desktop settings window for local defaults, security, diagnostics, and provider credentials." path="projects/desktop/settings/" /><Section id="settings-window" title="Desktop settings" description="A focused settings window with stable pages for each configuration area."><WorkspaceGuideState className="settings-guide-state" title="Settings controls" description="Navigate local defaults, security, diagnostics, and provider credentials." guide={settingsGuide} side="right" open={guideOpen} onToggle={() => setGuideOpen((open) => !open)} onClose={() => setGuideOpen(false)}><div className="settings-window"><div className="settings-titlebar"><TrafficLights onClose={navigateBack} onMinimize={() => setStatus("Minimize is available in the desktop window.")} onMaximize={() => setStatus("Maximize is available in the desktop window.")} /><strong>Settings</strong></div><div className="settings-toolbar"><strong>Settings</strong><Button variant="primary" size="sm" onClick={navigateBack}>Done</Button></div><div className="settings-body"><SettingsNav page={page} setPage={(nextPage) => { setPage(nextPage); setStatus(""); }} providersExpanded={providersExpanded} setProvidersExpanded={setProvidersExpanded} /><main className="settings-panel">{renderPanel()}{status && <div className="settings-global-status" role="status">{status}</div>}</main></div></div></WorkspaceGuideState></Section></>;
+  return <><PageHeader title="Settings" description="The Avalonia desktop settings window for local defaults, security, diagnostics, and provider credentials." path="projects/desktop/settings/" /><Section id="settings-window" title="Desktop settings" description="A focused settings window whose outer title bar and controls are native to the operating system."><WorkspaceGuideState className="settings-guide-state" title="Settings controls" description="Navigate local defaults, security, diagnostics, and provider credentials." guide={settingsGuide} side="right" open={guideOpen} onToggle={() => setGuideOpen((open) => !open)} onClose={() => setGuideOpen(false)}><div className="settings-window"><div className="settings-toolbar"><strong>Settings</strong><Button variant="primary" size="sm" onClick={navigateBack}>Done</Button></div><div className="settings-body"><SettingsNav page={page} setPage={(nextPage) => { setPage(nextPage); setStatus(""); }} providersExpanded={providersExpanded} setProvidersExpanded={setProvidersExpanded} /><main className="settings-panel">{renderPanel()}{status && <div className="settings-global-status" role="status">{status}</div>}</main></div></div></WorkspaceGuideState></Section></>;
 }

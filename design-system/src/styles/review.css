@@ -269,8 +269,6 @@ select.field { appearance: none; padding-right: 34px; background-image: linear-g
 .project-card strong, .project-card small { display: block; }
 .project-card small { margin-top: 2px; color: var(--text-muted); font: 11px var(--font-mono); }
 .project-hub-frame { overflow: hidden; color: var(--text); background: var(--canvas); border: .5px solid var(--chrome); border-radius: var(--radius-lg); box-shadow: 0 22px 48px rgba(0,0,0,.16); }
-.project-hub-titlebar { display: flex; align-items: center; justify-content: center; position: relative; min-height: 36px; padding: 0 16px; background: var(--canvas); border-bottom: 1px solid var(--border); }
-.project-hub-titlebar strong { font-size: 12px; }
 .traffic-lights { position: absolute; left: 5px; display: flex; align-items: center; gap: 6px; }
 .traffic-light { display: grid; width: 18px; height: 18px; place-items: center; padding: 2px; background: transparent; border: 0; border-radius: 4px; }
 .traffic-light:hover, .traffic-light:active { background: transparent; }
@@ -293,9 +291,6 @@ select.field { appearance: none; padding-right: 34px; background-image: linear-g
 .project-hub-empty-preview { margin-top: 14px; }
 .project-hub-empty { min-height: 130px; padding: 18px; background: var(--surface); }
 .settings-window { overflow: hidden; color: var(--text); background: var(--canvas); border: .5px solid var(--chrome); border-radius: var(--radius-lg); box-shadow: 0 22px 48px rgba(0,0,0,.16); }
-.settings-titlebar { display: flex; align-items: center; justify-content: center; position: relative; min-height: 36px; padding: 0 16px; background: var(--canvas); border-bottom: 1px solid var(--border); }
-.settings-titlebar strong { font-size: 12px; }
-.settings-titlebar > .traffic-lights { position: absolute; }
 .settings-toolbar { display: flex; align-items: center; justify-content: space-between; min-height: 58px; padding: 0 22px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .settings-toolbar strong { font-size: 20px; }
 .settings-body { display: grid; grid-template-columns: 238px minmax(0, 1fr); min-height: 500px; }
@@ -319,6 +314,11 @@ select.field { appearance: none; padding-right: 34px; background-image: linear-g
 .settings-nav-provider { min-height: 30px; padding-left: 10px; font-size: 11px; }
 .settings-panel { position: relative; min-width: 0; background: var(--surface); }
 .settings-panel-content { max-width: 720px; padding: 28px 32px 34px; }
+.about-window { display: grid; width: min(420px, 100%); min-height: 280px; margin-inline: auto; place-items: center; align-content: center; gap: 12px; color: var(--text); background: var(--canvas); border: .5px solid var(--chrome); border-radius: var(--radius-md); box-shadow: 0 22px 48px rgba(0,0,0,.16); }
+.about-window img { width: 64px; height: 64px; }
+.about-window strong { font-size: 22px; }
+.about-window code { color: var(--text-secondary); font-size: 13px; }
+.about-window span { color: var(--text-muted); font-size: 14px; }
 .settings-panel-heading { display: grid; gap: 4px; margin-bottom: 26px; }
 .settings-panel-heading h2 { margin: 0; font-size: 22px; }
 .settings-panel-heading p { max-width: 580px; margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
@@ -438,8 +438,8 @@ select.field { appearance: none; padding-right: 34px; background-image: linear-g
 .workspace-drawer-state-grid .workspace-guide.is-right { right: 0; left: auto; }
 .workspace-drawer-state-grid .workspace-guide.is-left { right: auto; left: 0; }
 .workspace-guide-state { position: relative; min-width: 0; }
-.settings-guide-state > .workspace-guide.is-right, .project-hub-guide-state > .workspace-guide.is-right { right: 0; left: auto; }
-.settings-guide-state > .workspace-guide.is-left, .project-hub-guide-state > .workspace-guide.is-left { right: auto; left: 0; }
+.settings-guide-state > .workspace-guide.is-right, .project-hub-guide-state > .workspace-guide.is-right, .about-guide-state > .workspace-guide.is-right { right: 0; left: auto; }
+.settings-guide-state > .workspace-guide.is-left, .project-hub-guide-state > .workspace-guide.is-left, .about-guide-state > .workspace-guide.is-left { right: auto; left: 0; }
 .workspace-guide-header { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
 .workspace-guide-header > div { display: grid; gap: 5px; min-width: 0; }
 .workspace-guide-header span { color: var(--text-muted); font: 9px var(--font-mono); letter-spacing: .08em; }
@@ -984,7 +984,7 @@ select.field { appearance: none; padding-right: 34px; background-image: linear-g
   .workspace-session-state-grid { grid-template-columns: 1fr; }
   .workspace-guide, .workspace-guide.is-right, .workspace-guide.is-left { position: relative; top: auto; right: auto; left: auto; width: auto; margin: 0 0 10px; }
   .workspace-drawer-state-grid .workspace-guide.is-right, .workspace-drawer-state-grid .workspace-guide.is-left { right: auto; left: auto; }
-  .settings-guide-state > .workspace-guide.is-right, .settings-guide-state > .workspace-guide.is-left, .project-hub-guide-state > .workspace-guide.is-right, .project-hub-guide-state > .workspace-guide.is-left { right: auto; left: auto; }
+  .settings-guide-state > .workspace-guide.is-right, .settings-guide-state > .workspace-guide.is-left, .project-hub-guide-state > .workspace-guide.is-right, .project-hub-guide-state > .workspace-guide.is-left, .about-guide-state > .workspace-guide.is-right, .about-guide-state > .workspace-guide.is-left { right: auto; left: auto; }
   .workspace-state-grid { grid-template-columns: 1fr; }
   .workspace-drawer-state-grid { grid-template-columns: 1fr; width: auto; max-width: none; overflow-x: visible; }
   .workspace-drawer-state-grid > div { min-width: 0; }
