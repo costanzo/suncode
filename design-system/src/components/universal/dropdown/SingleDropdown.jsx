@@ -6,7 +6,16 @@ function normalizeOption(option) {
   return { value: option.value, label: option.label ?? option.value };
 }
 
-export function SingleDropdown({ options, initialValue, value, onChange, ariaLabel = "Select an option", className = "", menuClassName = "", wide = false }) {
+export function SingleDropdown({
+  options,
+  initialValue,
+  value,
+  onChange,
+  ariaLabel = "Select an option",
+  className = "",
+  menuClassName = "",
+  wide = false,
+}) {
   const normalizedOptions = options.map(normalizeOption);
   const fallbackValue = normalizedOptions[0]?.value ?? "";
   const isControlled = value !== undefined;
@@ -15,7 +24,8 @@ export function SingleDropdown({ options, initialValue, value, onChange, ariaLab
   const rootRef = useRef(null);
   const triggerId = useId();
   const selectedValue = isControlled ? value : internalValue;
-  const selectedOption = normalizedOptions.find((option) => option.value === selectedValue) ?? normalizedOptions[0];
+  const selectedOption =
+    normalizedOptions.find((option) => option.value === selectedValue) ?? normalizedOptions[0];
 
   useEffect(() => {
     const closeOnOutsideInteraction = (event) => {
@@ -38,12 +48,43 @@ export function SingleDropdown({ options, initialValue, value, onChange, ariaLab
     setOpen(false);
   };
 
-  return <div ref={rootRef} className={`dropdown-anchor single-dropdown ${className}`}>
-    <button id={triggerId} type="button" className={`dropdown-trigger ${wide ? "dropdown-trigger-wide" : ""}`} aria-label={ariaLabel} aria-haspopup="menu" aria-expanded={open} aria-controls={`${triggerId}-menu`} onClick={() => setOpen((current) => !current)}>
-      <span>{selectedOption?.label ?? "Select"}</span><Icon name="chevron-right" size={12} className={open ? "is-open" : ""} />
-    </button>
-    {open && <div id={`${triggerId}-menu`} className={`dropdown-menu dropdown-menu-single ${menuClassName}`} role="menu" aria-label={ariaLabel}>
-      {normalizedOptions.map((option) => <button key={option.value} type="button" role="menuitemradio" aria-checked={selectedValue === option.value} className={`dropdown-option ${selectedValue === option.value ? "is-selected" : ""}`} onClick={() => selectOption(option.value)}><span>{option.label}</span>{selectedValue === option.value && <Icon name="check" size={13} />}</button>)}
-    </div>}
-  </div>;
+  return (
+    <div ref={rootRef} className={`dropdown-anchor single-dropdown ${className}`}>
+      <button
+        id={triggerId}
+        type="button"
+        className={`dropdown-trigger ${wide ? "dropdown-trigger-wide" : ""}`}
+        aria-label={ariaLabel}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={`${triggerId}-menu`}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span>{selectedOption?.label ?? "Select"}</span>
+        <Icon name="chevron-right" size={12} className={open ? "is-open" : ""} />
+      </button>
+      {open && (
+        <div
+          id={`${triggerId}-menu`}
+          className={`dropdown-menu dropdown-menu-single ${menuClassName}`}
+          role="menu"
+          aria-label={ariaLabel}
+        >
+          {normalizedOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="menuitemradio"
+              aria-checked={selectedValue === option.value}
+              className={`dropdown-option ${selectedValue === option.value ? "is-selected" : ""}`}
+              onClick={() => selectOption(option.value)}
+            >
+              <span>{option.label}</span>
+              {selectedValue === option.value && <Icon name="check" size={13} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }

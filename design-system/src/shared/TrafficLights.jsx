@@ -19,15 +19,40 @@ function TrafficLight({ kind, label, onClick }) {
   const [state, setState] = useState("normal");
   const sources = lightSources[kind];
 
-  return <button type="button" className={`traffic-light ${kind}`} aria-label={label} title={label} onClick={onClick} onPointerEnter={() => setState("hover")} onPointerLeave={() => setState("normal")} onPointerDown={() => setState("press")} onPointerUp={() => setState("hover")} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setState("press"); }} onKeyUp={() => setState("normal")} onBlur={() => setState("normal")}>
-    <img src={sources[state]} alt="" draggable="false" />
-  </button>;
+  return (
+    <button
+      type="button"
+      className={`traffic-light ${kind}`}
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      onPointerEnter={() => setState("hover")}
+      onPointerLeave={() => setState("normal")}
+      onPointerDown={() => setState("press")}
+      onPointerUp={() => setState("hover")}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") setState("press");
+      }}
+      onKeyUp={() => setState("normal")}
+      onBlur={() => setState("normal")}
+    >
+      <img src={sources[state]} alt="" draggable="false" />
+    </button>
+  );
 }
 
-export function TrafficLights({ onClose, onMinimize, onMaximize, maximizeLabel = "Maximize window", className = "" }) {
-  return <div className={`traffic-lights ${className}`} aria-label="Window controls">
-    <TrafficLight kind="close" label="Close window" onClick={onClose} />
-    <TrafficLight kind="minimize" label="Minimize window" onClick={onMinimize} />
-    <TrafficLight kind="maximize" label={maximizeLabel} onClick={onMaximize} />
-  </div>;
+export function TrafficLights({
+  onClose,
+  onMinimize,
+  onMaximize,
+  maximizeLabel = "Maximize window",
+  className = "",
+}) {
+  return (
+    <div className={`traffic-lights ${className}`} aria-label="Window controls">
+      <TrafficLight kind="close" label="Close window" onClick={onClose} />
+      <TrafficLight kind="minimize" label="Minimize window" onClick={onMinimize} />
+      <TrafficLight kind="maximize" label={maximizeLabel} onClick={onMaximize} />
+    </div>
+  );
 }

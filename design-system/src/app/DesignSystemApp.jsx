@@ -78,13 +78,19 @@ const routes = {
   "/platforms/desktop/anatomy": DesktopAnatomyPage,
   "/platforms/desktop/ownership": DesktopOwnershipPage,
   "/platforms/mobile": MobilePlatformPage,
-  "/platforms/mobile/boundary": () => <DeferredBoundaryPage platform="mobile" title="Mobile" icon="mobile" />,
+  "/platforms/mobile/boundary": () => (
+    <DeferredBoundaryPage platform="mobile" title="Mobile" icon="mobile" />
+  ),
   "/platforms/mobile/ownership": () => <DeferredOwnershipPage platform="mobile" title="Mobile" />,
   "/platforms/tui": TuiPlatformPage,
-  "/platforms/tui/boundary": () => <DeferredBoundaryPage platform="tui" title="TUI" icon="terminal" />,
+  "/platforms/tui/boundary": () => (
+    <DeferredBoundaryPage platform="tui" title="TUI" icon="terminal" />
+  ),
   "/platforms/tui/ownership": () => <DeferredOwnershipPage platform="tui" title="TUI" />,
   "/platforms/web": () => <WebPlatformPage />,
-  "/platforms/web/boundary": () => <DeferredBoundaryPage platform="web" title="Web" icon="platform" />,
+  "/platforms/web/boundary": () => (
+    <DeferredBoundaryPage platform="web" title="Web" icon="platform" />
+  ),
   "/platforms/web/ownership": () => <DeferredOwnershipPage platform="web" title="Web" />,
   "/projects": ProjectsPage,
   "/projects/desktop": DesktopProjectPage,
@@ -101,8 +107,11 @@ const routes = {
 };
 
 function readTheme() {
-  try { return window.localStorage.getItem("suncode-design-theme") || "light"; }
-  catch { return "light"; }
+  try {
+    return window.localStorage.getItem("suncode-design-theme") || "light";
+  } catch {
+    return "light";
+  }
 }
 
 function readCompactLayout() {
@@ -110,11 +119,22 @@ function readCompactLayout() {
 }
 
 function readSidebarCollapsed() {
-  try { return window.localStorage.getItem("suncode-design-sidebar-collapsed") === "true"; }
-  catch { return false; }
+  try {
+    return window.localStorage.getItem("suncode-design-sidebar-collapsed") === "true";
+  } catch {
+    return false;
+  }
 }
 
-function SidebarTreeItem({ item, path, expandedItems, onToggle, onRouteNavigate, level = 0, collapsed = false }) {
+function SidebarTreeItem({
+  item,
+  path,
+  expandedItems,
+  onToggle,
+  onRouteNavigate,
+  level = 0,
+  collapsed = false,
+}) {
   const hasChildren = item.children?.length > 0;
   const itemIsCurrent = path === item.path || path.startsWith(`${item.path}/`);
   const expanded = hasChildren && (expandedItems[item.path] ?? itemIsCurrent);
@@ -123,21 +143,56 @@ function SidebarTreeItem({ item, path, expandedItems, onToggle, onRouteNavigate,
   return (
     <div className={`sidebar-tree-item level-${level}`}>
       <div className={`sidebar-nav-row ${itemIsCurrent ? "is-current" : ""}`}>
-        <RouteLink to={item.path} className={`browser-nav-item browser-nav-link ${path === item.path ? "active" : ""}`} aria-label={collapsed ? item.label : undefined} title={collapsed ? item.label : undefined} aria-current={path === item.path ? "page" : undefined} aria-expanded={hasChildren && !collapsed ? expanded : undefined} aria-controls={hasChildren && !collapsed ? controlId : undefined} onClick={() => { if (hasChildren) onToggle(item); onRouteNavigate(); }}>
+        <RouteLink
+          to={item.path}
+          className={`browser-nav-item browser-nav-link ${path === item.path ? "active" : ""}`}
+          aria-label={collapsed ? item.label : undefined}
+          title={collapsed ? item.label : undefined}
+          aria-current={path === item.path ? "page" : undefined}
+          aria-expanded={hasChildren && !collapsed ? expanded : undefined}
+          aria-controls={hasChildren && !collapsed ? controlId : undefined}
+          onClick={() => {
+            if (hasChildren) onToggle(item);
+            onRouteNavigate();
+          }}
+        >
           {level === 0 && <Icon name={item.icon} />}
           <span>{item.label}</span>
-          {hasChildren && <Icon name="chevron-right" className={`sidebar-nav-chevron ${expanded ? "is-expanded" : ""}`} size={15} />}
+          {hasChildren && (
+            <Icon
+              name="chevron-right"
+              className={`sidebar-nav-chevron ${expanded ? "is-expanded" : ""}`}
+              size={15}
+            />
+          )}
         </RouteLink>
       </div>
       {hasChildren && expanded && (
         <div className="sidebar-nav-children" id={controlId}>
-          {item.children.map((child) => child.children?.length ? (
-            <SidebarTreeItem key={child.path} item={child} path={path} expandedItems={expandedItems} onToggle={onToggle} onRouteNavigate={onRouteNavigate} level={level + 1} collapsed={collapsed} />
-          ) : (
-            <RouteLink key={child.path} to={child.path} className={`browser-nav-item browser-nav-section level-${level + 1} ${path === child.path ? "active" : ""}`} aria-current={path === child.path ? "page" : undefined} onClick={onRouteNavigate}>
-              <span>{child.label}</span>
-            </RouteLink>
-          ))}
+          {item.children.map((child) =>
+            child.children?.length ? (
+              <SidebarTreeItem
+                key={child.path}
+                item={child}
+                path={path}
+                expandedItems={expandedItems}
+                onToggle={onToggle}
+                onRouteNavigate={onRouteNavigate}
+                level={level + 1}
+                collapsed={collapsed}
+              />
+            ) : (
+              <RouteLink
+                key={child.path}
+                to={child.path}
+                className={`browser-nav-item browser-nav-section level-${level + 1} ${path === child.path ? "active" : ""}`}
+                aria-current={path === child.path ? "page" : undefined}
+                onClick={onRouteNavigate}
+              >
+                <span>{child.label}</span>
+              </RouteLink>
+            ),
+          )}
         </div>
       )}
     </div>
@@ -161,11 +216,19 @@ export function DesignSystemApp() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    try { window.localStorage.setItem("suncode-design-theme", theme); } catch { /* non-fatal */ }
+    try {
+      window.localStorage.setItem("suncode-design-theme", theme);
+    } catch {
+      /* non-fatal */
+    }
   }, [theme]);
 
   useEffect(() => {
-    try { window.localStorage.setItem("suncode-design-sidebar-collapsed", String(sidebarCollapsed)); } catch { /* non-fatal */ }
+    try {
+      window.localStorage.setItem("suncode-design-sidebar-collapsed", String(sidebarCollapsed));
+    } catch {
+      /* non-fatal */
+    }
   }, [sidebarCollapsed]);
 
   useEffect(() => {
@@ -195,7 +258,10 @@ export function DesignSystemApp() {
 
   useEffect(() => {
     const handleKey = (event) => {
-      if (event.key === "Escape") { setMenuOpen(false); setModuleMenuOpen(false); }
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        setModuleMenuOpen(false);
+      }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
@@ -203,39 +269,129 @@ export function DesignSystemApp() {
 
   const toggleSidebarItem = (item) => {
     const itemIsCurrent = path === item.path || path.startsWith(`${item.path}/`);
-    setExpandedItems((current) => ({ ...current, [item.path]: !(current[item.path] ?? itemIsCurrent) }));
+    setExpandedItems((current) => ({
+      ...current,
+      [item.path]: !(current[item.path] ?? itemIsCurrent),
+    }));
   };
 
   const handleRouteNavigate = () => setMenuOpen(false);
 
   return (
-    <div className={`design-browser ${sidebarCollapsed && !compactLayout ? "is-sidebar-collapsed" : ""}`}>
+    <div
+      className={`design-browser ${sidebarCollapsed && !compactLayout ? "is-sidebar-collapsed" : ""}`}
+    >
       <header className="browser-topbar">
-        <button ref={mobileMenuRef} className="mobile-menu" aria-label={menuOpen ? "Close submodule navigation" : "Open submodule navigation"} aria-expanded={menuOpen} onClick={() => { setMenuOpen(!menuOpen); setModuleMenuOpen(false); }}><Icon name={menuOpen ? "close" : "menu"} /></button>
-        <RouteLink to="/" className="browser-brand"><img src={compactLogoUrl} alt="SunCode" /><strong>SunCode</strong><span>Design System</span></RouteLink>
+        <button
+          ref={mobileMenuRef}
+          className="mobile-menu"
+          aria-label={menuOpen ? "Close submodule navigation" : "Open submodule navigation"}
+          aria-expanded={menuOpen}
+          onClick={() => {
+            setMenuOpen(!menuOpen);
+            setModuleMenuOpen(false);
+          }}
+        >
+          <Icon name={menuOpen ? "close" : "menu"} />
+        </button>
+        <RouteLink to="/" className="browser-brand">
+          <img src={compactLogoUrl} alt="SunCode" />
+          <strong>SunCode</strong>
+          <span>Design System</span>
+        </RouteLink>
         <div className="browser-tools">
-          <button className="theme-toggle" onClick={() => setTheme(theme === "light" ? "dark" : "light")} aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}><Icon name={theme === "light" ? "moon" : "sun"} /><span>{theme === "light" ? "Dark" : "Light"}</span></button>
+          <button
+            className="theme-toggle"
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+          >
+            <Icon name={theme === "light" ? "moon" : "sun"} />
+            <span>{theme === "light" ? "Dark" : "Light"}</span>
+          </button>
         </div>
-        <nav className={`primary-module-nav ${moduleMenuOpen ? "is-open" : ""}`} aria-label="Primary design system modules">
-          {primaryModules.map((module) => <RouteLink key={module.id} to={module.path} className={`primary-module-link ${activeModule?.id === module.id ? "active" : ""}`} aria-current={activeModule?.id === module.id ? "page" : undefined}><span>{module.label}</span></RouteLink>)}
+        <nav
+          className={`primary-module-nav ${moduleMenuOpen ? "is-open" : ""}`}
+          aria-label="Primary design system modules"
+        >
+          {primaryModules.map((module) => (
+            <RouteLink
+              key={module.id}
+              to={module.path}
+              className={`primary-module-link ${activeModule?.id === module.id ? "active" : ""}`}
+              aria-current={activeModule?.id === module.id ? "page" : undefined}
+            >
+              <span>{module.label}</span>
+            </RouteLink>
+          ))}
         </nav>
-        <button className="module-menu-trigger" aria-label={moduleMenuOpen ? "Close primary modules" : "Open primary modules"} aria-expanded={moduleMenuOpen} onClick={() => { setModuleMenuOpen(!moduleMenuOpen); setMenuOpen(false); }}><Icon name="components" /><span>{activeModule?.label ?? "Modules"}</span></button>
+        <button
+          className="module-menu-trigger"
+          aria-label={moduleMenuOpen ? "Close primary modules" : "Open primary modules"}
+          aria-expanded={moduleMenuOpen}
+          onClick={() => {
+            setModuleMenuOpen(!moduleMenuOpen);
+            setMenuOpen(false);
+          }}
+        >
+          <Icon name="components" />
+          <span>{activeModule?.label ?? "Modules"}</span>
+        </button>
       </header>
-        {moduleMenuOpen && <button className="module-nav-scrim" aria-label="Close primary modules" onClick={() => setModuleMenuOpen(false)} />}
+      {moduleMenuOpen && (
+        <button
+          className="module-nav-scrim"
+          aria-label="Close primary modules"
+          onClick={() => setModuleMenuOpen(false)}
+        />
+      )}
       <div className="browser-layout">
-        <aside ref={sidebarRef} className={`browser-sidebar ${menuOpen ? "is-open" : ""}`} aria-hidden={compactLayout && !menuOpen ? "true" : undefined} inert={compactLayout && !menuOpen}>
+        <aside
+          ref={sidebarRef}
+          className={`browser-sidebar ${menuOpen ? "is-open" : ""}`}
+          aria-hidden={compactLayout && !menuOpen ? "true" : undefined}
+          inert={compactLayout && !menuOpen}
+        >
           <nav aria-label={`${activeModule?.label ?? "Overview"} submodules`}>
             <div className="nav-group">
               <div className="nav-group-heading">
-                <span className="nav-group-label">{activeModule ? "Submodules" : "Start here"}</span>
-                <button type="button" className="sidebar-collapse-toggle" aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!sidebarCollapsed} onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}><Icon name="panel-left" size={15} /></button>
+                <span className="nav-group-label">
+                  {activeModule ? "Submodules" : "Start here"}
+                </span>
+                <button
+                  type="button"
+                  className="sidebar-collapse-toggle"
+                  aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  aria-expanded={!sidebarCollapsed}
+                  onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+                >
+                  <Icon name="panel-left" size={15} />
+                </button>
               </div>
-              {sidebarItems.map((item) => <SidebarTreeItem key={item.path} item={item} path={path} expandedItems={expandedItems} onToggle={toggleSidebarItem} onRouteNavigate={handleRouteNavigate} collapsed={sidebarCollapsed && !compactLayout} />)}
+              {sidebarItems.map((item) => (
+                <SidebarTreeItem
+                  key={item.path}
+                  item={item}
+                  path={path}
+                  expandedItems={expandedItems}
+                  onToggle={toggleSidebarItem}
+                  onRouteNavigate={handleRouteNavigate}
+                  collapsed={sidebarCollapsed && !compactLayout}
+                />
+              ))}
             </div>
           </nav>
         </aside>
-        {menuOpen && <button className="nav-scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}
-        <main className="browser-main"><div className="browser-content">{Page ? <Page /> : <NotFoundPage path={path} />}</div></main>
+        {menuOpen && (
+          <button
+            className="nav-scrim"
+            aria-label="Close navigation"
+            onClick={() => setMenuOpen(false)}
+          />
+        )}
+        <main className="browser-main">
+          <div className="browser-content">{Page ? <Page /> : <NotFoundPage path={path} />}</div>
+        </main>
       </div>
     </div>
   );

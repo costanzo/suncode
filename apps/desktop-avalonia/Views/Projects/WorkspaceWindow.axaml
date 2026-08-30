@@ -7,19 +7,7 @@
         Title="SunCode"
         Width="1440" Height="900"
         MinWidth="620" MinHeight="620"
-        Background="Transparent"
-        WindowDecorations="BorderOnly"
-        TransparencyLevelHint="Transparent">
-  <Grid>
-    <projects:ProjectWorkspace x:Name="ProjectWorkspaceView" />
-
-    <Border x:Name="ResizeNorth" Height="5" VerticalAlignment="Top" Background="#01000000" Cursor="SizeNorthSouth" Tag="North" ZIndex="90" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
-    <Border x:Name="ResizeSouth" Height="5" VerticalAlignment="Bottom" Background="#01000000" Cursor="SizeNorthSouth" Tag="South" ZIndex="100" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
-    <Border x:Name="ResizeWest" Width="5" HorizontalAlignment="Left" Background="#01000000" Cursor="SizeWestEast" Tag="West" ZIndex="100" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
-    <Border x:Name="ResizeEast" Width="5" HorizontalAlignment="Right" Background="#01000000" Cursor="SizeWestEast" Tag="East" ZIndex="100" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
-    <Border x:Name="ResizeNorthWest" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#01000000" Cursor="TopLeftCorner" Tag="NorthWest" ZIndex="91" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
-    <Border x:Name="ResizeNorthEast" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#01000000" Cursor="TopRightCorner" Tag="NorthEast" ZIndex="91" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
-    <Border x:Name="ResizeSouthWest" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#01000000" Cursor="BottomLeftCorner" Tag="SouthWest" ZIndex="101" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
-    <Border x:Name="ResizeSouthEast" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="#01000000" Cursor="BottomRightCorner" Tag="SouthEast" ZIndex="101" PointerPressed="WindowResizePressed" PointerMoved="WindowResizeMoved" PointerReleased="WindowResizeReleased" />
-  </Grid>
+        Background="{DynamicResource CanvasBrush}"
+        WindowDecorations="BorderOnly">
+  <projects:ProjectWorkspace x:Name="ProjectWorkspaceView" />
 </Window>

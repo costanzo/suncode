@@ -152,19 +152,6 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="10" />
     </Style>
-    <Style Selector="Border.window-frame">
-      <Setter Property="Margin" Value="16" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource WindowChromeBorderBrush}" />
-      <Setter Property="BorderThickness" Value="0.5" />
-      <Setter Property="CornerRadius" Value="14" />
-    </Style>
-    <Style Selector="Border.window-content">
-      <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
-      <Setter Property="CornerRadius" Value="13" />
-      <Setter Property="ClipToBounds" Value="True" />
-    </Style>
     <Style Selector="Grid.window-titlebar">
       <Setter Property="MinHeight" Value="36" />
       <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
@@ -413,7 +400,6 @@
           <SolidColorBrush x:Key="TextSecondaryBrush" Color="#a7afb9" />
           <SolidColorBrush x:Key="TextMutedBrush" Color="#7f8994" />
           <SolidColorBrush x:Key="TextDisabledBrush" Color="#525a64" />
-          <SolidColorBrush x:Key="WindowChromeBorderBrush" Color="#1c2126" />
           <SolidColorBrush x:Key="BorderBrush" Color="#292f36" />
           <SolidColorBrush x:Key="BorderStrongBrush" Color="#46505b" />
           <SolidColorBrush x:Key="AccentBrush" Color="#d9e0e6" />
@@ -476,7 +462,6 @@
           <SolidColorBrush x:Key="TextSecondaryBrush" Color="#44515e" />
           <SolidColorBrush x:Key="TextMutedBrush" Color="#65717d" />
           <SolidColorBrush x:Key="TextDisabledBrush" Color="#a6b0ba" />
-          <SolidColorBrush x:Key="WindowChromeBorderBrush" Color="#e5e9ec" />
           <SolidColorBrush x:Key="BorderBrush" Color="#d5dde4" />
           <SolidColorBrush x:Key="BorderStrongBrush" Color="#bac6d0" />
           <SolidColorBrush x:Key="AccentBrush" Color="#2c3742" />

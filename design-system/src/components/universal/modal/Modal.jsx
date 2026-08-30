@@ -10,22 +10,51 @@ export function Modal({ open, title, description, onClose, children, actions, cl
     const handleKeyDown = (event) => {
       if (event.key === "Escape") onClose?.();
       if (event.key !== "Tab") return;
-      const focusable = [...dialogRef.current.querySelectorAll("button, input, textarea, select, [href]")];
+      const focusable = [
+        ...dialogRef.current.querySelectorAll("button, input, textarea, select, [href]"),
+      ];
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
-    return () => { document.removeEventListener("keydown", handleKeyDown); priorFocus?.focus(); };
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      priorFocus?.focus();
+    };
   }, [open, onClose]);
   if (!open) return null;
-  return <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
-    <div ref={dialogRef} className={`review-dialog ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby={description ? "modal-description" : undefined} onMouseDown={(event) => event.stopPropagation()}>
-      <div className="dialog-title"><div><h3 id="modal-title">{title}</h3>{description && <p id="modal-description">{description}</p>}</div><button className="btn btn-icon btn-quiet" onClick={onClose} aria-label="Close dialog"><Icon name="close" /></button></div>
-      {children}
-      {actions && <div className="dialog-actions">{actions}</div>}
+  return (
+    <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
+      <div
+        ref={dialogRef}
+        className={`review-dialog ${className}`.trim()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        aria-describedby={description ? "modal-description" : undefined}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="dialog-title">
+          <div>
+            <h3 id="modal-title">{title}</h3>
+            {description && <p id="modal-description">{description}</p>}
+          </div>
+          <button className="btn btn-icon btn-quiet" onClick={onClose} aria-label="Close dialog">
+            <Icon name="close" />
+          </button>
+        </div>
+        {children}
+        {actions && <div className="dialog-actions">{actions}</div>}
+      </div>
     </div>
-  </div>;
+  );
 }

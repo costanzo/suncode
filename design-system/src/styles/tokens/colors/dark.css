@@ -27,5 +27,5 @@
   --danger: #e68a83;
   --danger-surface: #2a1919;
   --danger-border: #633735;
-  --shadow-popover: 0 16px 36px rgba(0, 0, 0, .26);
+  --shadow-popover: 0 16px 36px rgba(0, 0, 0, 0.26);
 }

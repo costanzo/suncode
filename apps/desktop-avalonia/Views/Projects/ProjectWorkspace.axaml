@@ -19,11 +19,7 @@
   </UserControl.Styles>
 
   <Grid>
-    <Border x:Name="ProjectChrome"
-            Classes="window-frame">
-      <Border x:Name="ProjectChromeContent"
-              Classes="window-content">
-      <Grid RowDefinitions="36,*,20">
+    <Grid RowDefinitions="36,*,20">
         <Grid Grid.Row="0"
               Classes="window-titlebar"
               Background="#01000000"
@@ -34,13 +30,13 @@
               PointerReleased="TitleBarReleased"
               DoubleTapped="TitleBarDoubleTapped">
           <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="5,0,0,0" VerticalAlignment="Center">
-            <Button x:Name="ProjectCloseLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="CloseProjectWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Close window">
+            <Button x:Name="ProjectCloseLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="CloseProjectWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Close window">
               <svg:Svg Path="/Assets/traffic-lights/1-close-1-normal.svg" />
             </Button>
-            <Button x:Name="ProjectMinimizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="MinimizeWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Minimize window">
+            <Button x:Name="ProjectMinimizeLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="MinimizeWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Minimize window">
               <svg:Svg Path="/Assets/traffic-lights/2-minimize-1-normal.svg" />
             </Button>
-            <Button x:Name="ProjectMaximizeLight" Classes="titlebar" Width="18" Height="18" Padding="2" Click="ToggleMaximized" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Enter full screen">
+            <Button x:Name="ProjectMaximizeLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="ToggleFullScreen" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Enter full screen">
               <svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" />
             </Button>
           </StackPanel>
@@ -188,8 +184,6 @@
           </StackPanel>
         </Grid>
       </Grid>
-      </Border>
-    </Border>
 
     <Border x:Name="SessionDialogOverlay" IsVisible="False" Background="#99000000" ZIndex="200" PointerPressed="SessionOverlayPointerPressed">
       <Border Width="360" MaxWidth="360" Margin="28" Padding="20,0,20,18" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="8">

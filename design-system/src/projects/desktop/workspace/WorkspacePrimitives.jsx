@@ -9,7 +9,12 @@ import { TrafficLights } from "../../../shared/TrafficLights.jsx";
 export { TrafficLights } from "../../../shared/TrafficLights.jsx";
 
 const sessions = [
-  { title: "Workspace information architecture", time: "2 min ago", pinned: true, status: "running" },
+  {
+    title: "Workspace information architecture",
+    time: "2 min ago",
+    pinned: true,
+    status: "running",
+  },
   { title: "Provider migration review", time: "Yesterday", status: "approval" },
   { title: "Desktop navigation polish", time: "Aug 26", status: "idle" },
 ];
@@ -23,40 +28,221 @@ const sessionStatusLabels = {
 };
 
 const explorerNodes = [
-  { id: "agents", parent: "project-root", name: ".agents", path: "/Users/shuyi/Projects/suncode/.agents", kind: "folder", depth: 1 },
-  { id: "apps", parent: "project-root", name: "apps", path: "/Users/shuyi/Projects/suncode/apps", kind: "folder", depth: 1 },
-  { id: "desktop", parent: "apps", name: "desktop-avalonia", path: "/Users/shuyi/Projects/suncode/apps/desktop-avalonia", kind: "folder", depth: 2 },
-  { id: "views", parent: "desktop", name: "Views", path: "/Users/shuyi/Projects/suncode/apps/desktop-avalonia/Views", kind: "folder", depth: 3 },
-  { id: "workspace-file", parent: "views", name: "ProjectWorkspace.axaml", path: "/Users/shuyi/Projects/suncode/apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml", kind: "file", depth: 4, selected: true },
-  { id: "agent", parent: "project-root", name: "agent", path: "/Users/shuyi/Projects/suncode/agent", kind: "folder", depth: 1 },
-  { id: "design-system", parent: "project-root", name: "design-system", path: "/Users/shuyi/Projects/suncode/design-system", kind: "folder", depth: 1 },
+  {
+    id: "agents",
+    parent: "project-root",
+    name: ".agents",
+    path: "/Users/shuyi/Projects/suncode/.agents",
+    kind: "folder",
+    depth: 1,
+  },
+  {
+    id: "apps",
+    parent: "project-root",
+    name: "apps",
+    path: "/Users/shuyi/Projects/suncode/apps",
+    kind: "folder",
+    depth: 1,
+  },
+  {
+    id: "desktop",
+    parent: "apps",
+    name: "desktop-avalonia",
+    path: "/Users/shuyi/Projects/suncode/apps/desktop-avalonia",
+    kind: "folder",
+    depth: 2,
+  },
+  {
+    id: "views",
+    parent: "desktop",
+    name: "Views",
+    path: "/Users/shuyi/Projects/suncode/apps/desktop-avalonia/Views",
+    kind: "folder",
+    depth: 3,
+  },
+  {
+    id: "workspace-file",
+    parent: "views",
+    name: "ProjectWorkspace.axaml",
+    path: "/Users/shuyi/Projects/suncode/apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml",
+    kind: "file",
+    depth: 4,
+    selected: true,
+  },
+  {
+    id: "agent",
+    parent: "project-root",
+    name: "agent",
+    path: "/Users/shuyi/Projects/suncode/agent",
+    kind: "folder",
+    depth: 1,
+  },
+  {
+    id: "design-system",
+    parent: "project-root",
+    name: "design-system",
+    path: "/Users/shuyi/Projects/suncode/design-system",
+    kind: "folder",
+    depth: 1,
+  },
 ];
 const dependencyNodes = [
-  { id: "shared", parent: "dependencies", name: "shared-ui", path: "/Users/shuyi/Projects/shared-ui", kind: "folder", depth: 1, isDependency: true },
-  { id: "shared-readme", parent: "shared", name: "README.md", path: "/Users/shuyi/Projects/shared-ui/README.md", kind: "file", depth: 2, isDependency: true },
-  { id: "other-dependency", parent: "dependencies", name: "other-dependency-folder", path: "/Users/shuyi/Projects/other-dependency-folder", kind: "folder", depth: 1, isDependency: true },
+  {
+    id: "shared",
+    parent: "dependencies",
+    name: "shared-ui",
+    path: "/Users/shuyi/Projects/shared-ui",
+    kind: "folder",
+    depth: 1,
+    isDependency: true,
+  },
+  {
+    id: "shared-readme",
+    parent: "shared",
+    name: "README.md",
+    path: "/Users/shuyi/Projects/shared-ui/README.md",
+    kind: "file",
+    depth: 2,
+    isDependency: true,
+  },
+  {
+    id: "other-dependency",
+    parent: "dependencies",
+    name: "other-dependency-folder",
+    path: "/Users/shuyi/Projects/other-dependency-folder",
+    kind: "folder",
+    depth: 1,
+    isDependency: true,
+  },
 ];
 
 const constrainedExplorerNodes = [
-  { id: "stress-agents", parent: "stress-project-root", name: ".agents", path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents", kind: "folder", depth: 1 },
-  { id: "stress-requirements", parent: "stress-agents", name: "requirements", path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents/requirements", kind: "folder", depth: 2 },
-  { id: "stress-package", parent: "stress-requirements", name: "2026-08-29-workspace-explorer", path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents/requirements/2026-08-29-workspace-explorer", kind: "folder", depth: 3 },
-  { id: "stress-frontend", parent: "stress-package", name: "frontend", path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents/requirements/2026-08-29-workspace-explorer/frontend", kind: "folder", depth: 4 },
-  { id: "stress-components", parent: "stress-frontend", name: "components", path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents/requirements/2026-08-29-workspace-explorer/frontend/components", kind: "folder", depth: 5 },
-  { id: "stress-selection", parent: "stress-components", name: "selection", path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents/requirements/2026-08-29-workspace-explorer/frontend/components/selection", kind: "folder", depth: 6 },
-  { id: "stress-dropdown", parent: "stress-selection", name: "ModelProviderDropdown.jsx", path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents/requirements/2026-08-29-workspace-explorer/frontend/components/selection/ModelProviderDropdown.jsx", kind: "file", depth: 7, selected: true },
-  { id: "stress-apps", parent: "stress-project-root", name: "apps", path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/apps", kind: "folder", depth: 1 },
-  { id: "stress-dependency", parent: "stress-dependencies", name: "shared-ui-foundation", path: "/Users/shuyi/Projects/dependencies/design-system/shared-ui-foundation", kind: "folder", depth: 1, isDependency: true },
+  {
+    id: "stress-agents",
+    parent: "stress-project-root",
+    name: ".agents",
+    path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents",
+    kind: "folder",
+    depth: 1,
+  },
+  {
+    id: "stress-requirements",
+    parent: "stress-agents",
+    name: "requirements",
+    path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents/requirements",
+    kind: "folder",
+    depth: 2,
+  },
+  {
+    id: "stress-package",
+    parent: "stress-requirements",
+    name: "2026-08-29-workspace-explorer",
+    path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents/requirements/2026-08-29-workspace-explorer",
+    kind: "folder",
+    depth: 3,
+  },
+  {
+    id: "stress-frontend",
+    parent: "stress-package",
+    name: "frontend",
+    path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents/requirements/2026-08-29-workspace-explorer/frontend",
+    kind: "folder",
+    depth: 4,
+  },
+  {
+    id: "stress-components",
+    parent: "stress-frontend",
+    name: "components",
+    path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents/requirements/2026-08-29-workspace-explorer/frontend/components",
+    kind: "folder",
+    depth: 5,
+  },
+  {
+    id: "stress-selection",
+    parent: "stress-components",
+    name: "selection",
+    path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents/requirements/2026-08-29-workspace-explorer/frontend/components/selection",
+    kind: "folder",
+    depth: 6,
+  },
+  {
+    id: "stress-dropdown",
+    parent: "stress-selection",
+    name: "ModelProviderDropdown.jsx",
+    path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/.agents/requirements/2026-08-29-workspace-explorer/frontend/components/selection/ModelProviderDropdown.jsx",
+    kind: "file",
+    depth: 7,
+    selected: true,
+  },
+  {
+    id: "stress-apps",
+    parent: "stress-project-root",
+    name: "apps",
+    path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode/apps",
+    kind: "folder",
+    depth: 1,
+  },
+  {
+    id: "stress-dependency",
+    parent: "stress-dependencies",
+    name: "shared-ui-foundation",
+    path: "/Users/shuyi/Projects/dependencies/design-system/shared-ui-foundation",
+    kind: "folder",
+    depth: 1,
+    isDependency: true,
+  },
 ];
 
-const projectRoot = { id: "project-root", name: "suncode", path: "/Users/shuyi/Projects/suncode", kind: "project-root", depth: 0 };
-const dependencyRoot = { id: "dependencies", name: "Dependencies", path: "", kind: "dependencies", depth: 0, isDependency: true };
-const constrainedProjectRoot = { id: "stress-project-root", name: "suncode", path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode", kind: "project-root", depth: 0 };
-const constrainedDependencyRoot = { id: "stress-dependencies", name: "Dependencies", path: "", kind: "dependencies", depth: 0, isDependency: true };
+const projectRoot = {
+  id: "project-root",
+  name: "suncode",
+  path: "/Users/shuyi/Projects/suncode",
+  kind: "project-root",
+  depth: 0,
+};
+const dependencyRoot = {
+  id: "dependencies",
+  name: "Dependencies",
+  path: "",
+  kind: "dependencies",
+  depth: 0,
+  isDependency: true,
+};
+const constrainedProjectRoot = {
+  id: "stress-project-root",
+  name: "suncode",
+  path: "/Users/shuyi/Projects/client-work/organization/platform/desktop/suncode",
+  kind: "project-root",
+  depth: 0,
+};
+const constrainedDependencyRoot = {
+  id: "stress-dependencies",
+  name: "Dependencies",
+  path: "",
+  kind: "dependencies",
+  depth: 0,
+  isDependency: true,
+};
 
 const changes = [
-  { status: "M", kind: "modified", path: "design-system/src/projects/desktop/workspace/WorkspacePrimitives.jsx", additions: 45, deletions: 8, staged: false, unstaged: true },
-  { status: "M", kind: "modified", path: "design-system/src/styles/review.css", additions: 62, deletions: 24, staged: false, unstaged: true },
+  {
+    status: "M",
+    kind: "modified",
+    path: "design-system/src/projects/desktop/workspace/WorkspacePrimitives.jsx",
+    additions: 45,
+    deletions: 8,
+    staged: false,
+    unstaged: true,
+  },
+  {
+    status: "M",
+    kind: "modified",
+    path: "design-system/src/styles/review.css",
+    additions: 62,
+    deletions: 24,
+    staged: false,
+    unstaged: true,
+  },
 ];
 
 const diffLines = [
@@ -78,25 +264,126 @@ const workspaceModelGroups = [
 ];
 
 const conversationToolCalls = [
-  { icon: "activity", title: "Read ProjectWorkspace.axaml", state: "Succeeded", request: "apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml", result: "218 lines read", error: "" },
-  { icon: "files", title: "Updated workspace routes and modules", state: "Succeeded", request: "workspace route modules", result: "8 modules updated", error: "" },
+  {
+    icon: "activity",
+    title: "Read ProjectWorkspace.axaml",
+    state: "Succeeded",
+    request: "apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml",
+    result: "218 lines read",
+    error: "",
+  },
+  {
+    icon: "files",
+    title: "Updated workspace routes and modules",
+    state: "Succeeded",
+    request: "workspace route modules",
+    result: "8 modules updated",
+    error: "",
+  },
 ];
 const longConversationToolCalls = [
-  { icon: "activity", title: "Read apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml and inspect workspace layout constraints", state: "Succeeded", request: "apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml", result: "218 lines read", error: "" },
-  { icon: "files", title: "Updated workspace routes and modules", state: "Succeeded", request: "workspace route modules", result: "8 modules updated", error: "" },
+  {
+    icon: "activity",
+    title:
+      "Read apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml and inspect workspace layout constraints",
+    state: "Succeeded",
+    request: "apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml",
+    result: "218 lines read",
+    error: "",
+  },
+  {
+    icon: "files",
+    title: "Updated workspace routes and modules",
+    state: "Succeeded",
+    request: "workspace route modules",
+    result: "8 modules updated",
+    error: "",
+  },
 ];
 
 const completedTurnChanges = { added: 3, deleted: 1, edited: 5 };
 const completedTurnChangeSet = [
-  { status: "A", kind: "added", path: "design-system/src/projects/desktop/workspace/source-control/index.jsx", additions: 38, deletions: 0, staged: false, unstaged: true },
-  { status: "A", kind: "added", path: "design-system/src/projects/desktop/workspace/provider-trace/index.jsx", additions: 32, deletions: 0, staged: false, unstaged: true },
-  { status: "A", kind: "added", path: "design-system/src/components/universal/radio/index.js", additions: 12, deletions: 0, staged: false, unstaged: true },
-  { status: "D", kind: "deleted", path: "design-system/src/projects/desktop/workspace/legacy-drawer.jsx", additions: 0, deletions: 74, staged: false, unstaged: true },
-  { status: "M", kind: "modified", path: "design-system/src/projects/desktop/workspace/WorkspacePrimitives.jsx", additions: 45, deletions: 8, staged: false, unstaged: true },
-  { status: "M", kind: "modified", path: "design-system/src/styles/review.css", additions: 62, deletions: 24, staged: false, unstaged: true },
-  { status: "M", kind: "modified", path: "design-system/src/app/navigation.js", additions: 18, deletions: 6, staged: false, unstaged: true },
-  { status: "M", kind: "modified", path: "design-system/src/shared/Icon.jsx", additions: 9, deletions: 2, staged: false, unstaged: true },
-  { status: "M", kind: "modified", path: "design-system/src/projects/desktop/workspace/conversation/index.jsx", additions: 7, deletions: 3, staged: false, unstaged: true },
+  {
+    status: "A",
+    kind: "added",
+    path: "design-system/src/projects/desktop/workspace/source-control/index.jsx",
+    additions: 38,
+    deletions: 0,
+    staged: false,
+    unstaged: true,
+  },
+  {
+    status: "A",
+    kind: "added",
+    path: "design-system/src/projects/desktop/workspace/provider-trace/index.jsx",
+    additions: 32,
+    deletions: 0,
+    staged: false,
+    unstaged: true,
+  },
+  {
+    status: "A",
+    kind: "added",
+    path: "design-system/src/components/universal/radio/index.js",
+    additions: 12,
+    deletions: 0,
+    staged: false,
+    unstaged: true,
+  },
+  {
+    status: "D",
+    kind: "deleted",
+    path: "design-system/src/projects/desktop/workspace/legacy-drawer.jsx",
+    additions: 0,
+    deletions: 74,
+    staged: false,
+    unstaged: true,
+  },
+  {
+    status: "M",
+    kind: "modified",
+    path: "design-system/src/projects/desktop/workspace/WorkspacePrimitives.jsx",
+    additions: 45,
+    deletions: 8,
+    staged: false,
+    unstaged: true,
+  },
+  {
+    status: "M",
+    kind: "modified",
+    path: "design-system/src/styles/review.css",
+    additions: 62,
+    deletions: 24,
+    staged: false,
+    unstaged: true,
+  },
+  {
+    status: "M",
+    kind: "modified",
+    path: "design-system/src/app/navigation.js",
+    additions: 18,
+    deletions: 6,
+    staged: false,
+    unstaged: true,
+  },
+  {
+    status: "M",
+    kind: "modified",
+    path: "design-system/src/shared/Icon.jsx",
+    additions: 9,
+    deletions: 2,
+    staged: false,
+    unstaged: true,
+  },
+  {
+    status: "M",
+    kind: "modified",
+    path: "design-system/src/projects/desktop/workspace/conversation/index.jsx",
+    additions: 7,
+    deletions: 3,
+    staged: false,
+    unstaged: true,
+  },
 ];
 const currentTurnTodos = [
   { content: "Inspect Avalonia workspace", status: "completed", icon: "check" },
@@ -106,14 +393,63 @@ const currentTurnTodos = [
 ];
 
 function IconButton({ icon, label, active = false, onClick, disabled = false }) {
-  return <button type="button" className={`workspace-icon-button ${active ? "is-active" : ""}`} aria-label={label} aria-pressed={active} onClick={onClick} disabled={disabled}><Icon name={icon} size={15} /></button>;
+  return (
+    <button
+      type="button"
+      className={`workspace-icon-button ${active ? "is-active" : ""}`}
+      aria-label={label}
+      aria-pressed={active}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      <Icon name={icon} size={15} />
+    </button>
+  );
 }
 
 function TurnChangeSummary({ added, deleted, edited, onViewChanges }) {
-  const stats = [["added", added, "is-added"], ["deleted", deleted, "is-deleted"], ["edited", edited, "is-edited"]];
-  const content = <><span className="workspace-turn-summary-heading"><Icon name="check" size={12} /><strong>Changes</strong></span><span className="workspace-turn-summary-stats">{stats.map(([label, count, tone]) => <span key={label} className={`workspace-turn-summary-stat ${tone}`}><b>{count}</b><small>{label}</small></span>)}</span></>;
-  if (!onViewChanges) return <div className="workspace-turn-summary" role="status" aria-label={`Turn complete: ${added} files added, ${deleted} files deleted, ${edited} files edited`}>{content}</div>;
-  return <button type="button" className="workspace-turn-summary is-actionable" aria-label={`View changes from this turn: ${added} files added, ${deleted} files deleted, ${edited} files edited`} title="View turn changes" onClick={onViewChanges}>{content}</button>;
+  const stats = [
+    ["added", added, "is-added"],
+    ["deleted", deleted, "is-deleted"],
+    ["edited", edited, "is-edited"],
+  ];
+  const content = (
+    <>
+      <span className="workspace-turn-summary-heading">
+        <Icon name="check" size={12} />
+        <strong>Changes</strong>
+      </span>
+      <span className="workspace-turn-summary-stats">
+        {stats.map(([label, count, tone]) => (
+          <span key={label} className={`workspace-turn-summary-stat ${tone}`}>
+            <b>{count}</b>
+            <small>{label}</small>
+          </span>
+        ))}
+      </span>
+    </>
+  );
+  if (!onViewChanges)
+    return (
+      <div
+        className="workspace-turn-summary"
+        role="status"
+        aria-label={`Turn complete: ${added} files added, ${deleted} files deleted, ${edited} files edited`}
+      >
+        {content}
+      </div>
+    );
+  return (
+    <button
+      type="button"
+      className="workspace-turn-summary is-actionable"
+      aria-label={`View changes from this turn: ${added} files added, ${deleted} files deleted, ${edited} files edited`}
+      title="View turn changes"
+      onClick={onViewChanges}
+    >
+      {content}
+    </button>
+  );
 }
 
 export function SessionPanel({ compact = false, standalone = false, initialSessions = sessions }) {
@@ -145,12 +481,18 @@ export function SessionPanel({ compact = false, standalone = false, initialSessi
   const confirmRename = () => {
     const title = renameTitle.trim();
     if (!title || renameIndex === null) return;
-    setItems((current) => current.map((item, itemIndex) => itemIndex === renameIndex ? { ...item, title } : item));
+    setItems((current) =>
+      current.map((item, itemIndex) => (itemIndex === renameIndex ? { ...item, title } : item)),
+    );
     setRenameOpen(false);
     setRenameIndex(null);
   };
   const togglePin = (index) => {
-    setItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, pinned: !item.pinned } : item));
+    setItems((current) =>
+      current.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, pinned: !item.pinned } : item,
+      ),
+    );
     setMenu(null);
   };
   const archive = (index) => {
@@ -158,33 +500,180 @@ export function SessionPanel({ compact = false, standalone = false, initialSessi
     setSelected(0);
     setMenu(null);
   };
-  return <aside className={`workspace-panel workspace-sessions ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""}`}>
-    <header className="workspace-panel-header"><span>SESSIONS</span><IconButton icon="plus" label="New session" onClick={createSession} /></header>
-    <div className="workspace-session-list">
-      {items.map((session, index) => <div className="workspace-session-wrap" key={`${session.title}-${index}`}>
-        <button type="button" className={`workspace-session ${selected === index ? "is-selected" : ""}`} onClick={() => setSelected(index)}>
-          <span className="workspace-session-pin">{session.pinned && <Icon name="pin" size={12} />}</span>
-          <span><strong>{session.title}</strong><small>{session.time}</small></span>
-        </button>
-        <span className={`workspace-session-status is-${session.status ?? "idle"}`} role="img" aria-label={sessionStatusLabels[session.status] ?? sessionStatusLabels.idle} title={sessionStatusLabels[session.status] ?? sessionStatusLabels.idle} aria-hidden={session.status === "idle" || !session.status} />
-        <button type="button" className="workspace-session-more" aria-label={`Actions for ${session.title}`} aria-expanded={menu === index} onClick={() => setMenu(menu === index ? null : index)}><Icon name="more" size={14} /></button>
-        {menu === index && <div className="workspace-session-menu"><button type="button" onClick={() => openRename(index)}>Rename</button><button type="button" onClick={() => togglePin(index)}>{session.pinned ? "Unpin" : "Pin"}</button><button type="button" onClick={() => archive(index)}>Archive</button></div>}
-      </div>)}
-      {!items.length && <div className="workspace-session-empty"><Icon name="components" size={22} /><strong>No sessions yet</strong><span>Use + to create one.</span></div>}
-    </div>
-    <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New session" description="Give this conversation a name before you begin." className="workspace-session-modal" actions={<><button className="btn" onClick={() => setCreateOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={confirmCreate} disabled={!newTitle.trim()}>Create session</button></>}><input id="new-session-name" className="field" aria-label="Session name" value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="e.g. Provider migration review" onKeyDown={(event) => { if (event.key === "Enter") confirmCreate(); }} /></Modal>
-    <Modal open={renameOpen} onClose={() => { setRenameOpen(false); setRenameIndex(null); }} title="Rename session" description="Choose a new name for this conversation." className="workspace-session-modal" actions={<><button className="btn" onClick={() => { setRenameOpen(false); setRenameIndex(null); }}>Cancel</button><button className="btn btn-primary" onClick={confirmRename} disabled={!renameTitle.trim()}>Save name</button></>}><input id="rename-session-name" className="field" aria-label="Session name" value={renameTitle} onChange={(event) => setRenameTitle(event.target.value)} placeholder="e.g. Provider migration review" onKeyDown={(event) => { if (event.key === "Enter") confirmRename(); }} /></Modal>
-  </aside>;
+  return (
+    <aside
+      className={`workspace-panel workspace-sessions ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""}`}
+    >
+      <header className="workspace-panel-header">
+        <span>SESSIONS</span>
+        <IconButton icon="plus" label="New session" onClick={createSession} />
+      </header>
+      <div className="workspace-session-list">
+        {items.map((session, index) => (
+          <div className="workspace-session-wrap" key={`${session.title}-${index}`}>
+            <button
+              type="button"
+              className={`workspace-session ${selected === index ? "is-selected" : ""}`}
+              onClick={() => setSelected(index)}
+            >
+              <span className="workspace-session-pin">
+                {session.pinned && <Icon name="pin" size={12} />}
+              </span>
+              <span>
+                <strong>{session.title}</strong>
+                <small>{session.time}</small>
+              </span>
+            </button>
+            <span
+              className={`workspace-session-status is-${session.status ?? "idle"}`}
+              role="img"
+              aria-label={sessionStatusLabels[session.status] ?? sessionStatusLabels.idle}
+              title={sessionStatusLabels[session.status] ?? sessionStatusLabels.idle}
+              aria-hidden={session.status === "idle" || !session.status}
+            />
+            <button
+              type="button"
+              className="workspace-session-more"
+              aria-label={`Actions for ${session.title}`}
+              aria-expanded={menu === index}
+              onClick={() => setMenu(menu === index ? null : index)}
+            >
+              <Icon name="more" size={14} />
+            </button>
+            {menu === index && (
+              <div className="workspace-session-menu">
+                <button type="button" onClick={() => openRename(index)}>
+                  Rename
+                </button>
+                <button type="button" onClick={() => togglePin(index)}>
+                  {session.pinned ? "Unpin" : "Pin"}
+                </button>
+                <button type="button" onClick={() => archive(index)}>
+                  Archive
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+        {!items.length && (
+          <div className="workspace-session-empty">
+            <Icon name="components" size={22} />
+            <strong>No sessions yet</strong>
+            <span>Use + to create one.</span>
+          </div>
+        )}
+      </div>
+      <Modal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="New session"
+        description="Give this conversation a name before you begin."
+        className="workspace-session-modal"
+        actions={
+          <>
+            <button className="btn" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={confirmCreate} disabled={!newTitle.trim()}>
+              Create session
+            </button>
+          </>
+        }
+      >
+        <input
+          id="new-session-name"
+          className="field"
+          aria-label="Session name"
+          value={newTitle}
+          onChange={(event) => setNewTitle(event.target.value)}
+          placeholder="e.g. Provider migration review"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") confirmCreate();
+          }}
+        />
+      </Modal>
+      <Modal
+        open={renameOpen}
+        onClose={() => {
+          setRenameOpen(false);
+          setRenameIndex(null);
+        }}
+        title="Rename session"
+        description="Choose a new name for this conversation."
+        className="workspace-session-modal"
+        actions={
+          <>
+            <button
+              className="btn"
+              onClick={() => {
+                setRenameOpen(false);
+                setRenameIndex(null);
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={confirmRename}
+              disabled={!renameTitle.trim()}
+            >
+              Save name
+            </button>
+          </>
+        }
+      >
+        <input
+          id="rename-session-name"
+          className="field"
+          aria-label="Session name"
+          value={renameTitle}
+          onChange={(event) => setRenameTitle(event.target.value)}
+          placeholder="e.g. Provider migration review"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") confirmRename();
+          }}
+        />
+      </Modal>
+    </aside>
+  );
 }
 
-export function ExplorerPanel({ compact = false, standalone = false, hasDependency = true, constrained = false }) {
-  const roots = constrained ? [constrainedProjectRoot, constrainedDependencyRoot] : [projectRoot, dependencyRoot];
+export function ExplorerPanel({
+  compact = false,
+  standalone = false,
+  hasDependency = true,
+  constrained = false,
+}) {
+  const roots = constrained
+    ? [constrainedProjectRoot, constrainedDependencyRoot]
+    : [projectRoot, dependencyRoot];
   const treeNodes = constrained ? constrainedExplorerNodes : explorerNodes;
-  const dependencyTreeNodes = constrained ? constrainedExplorerNodes.filter((node) => node.isDependency) : dependencyNodes;
-  const nodes = [...roots.slice(0, 1), ...treeNodes.filter((node) => !node.isDependency), roots[1], ...(hasDependency ? dependencyTreeNodes : [])];
-  const [expanded, setExpanded] = useState(() => new Set(constrained
-    ? ["stress-project-root", "stress-agents", "stress-requirements", "stress-package", "stress-frontend", "stress-components", "stress-selection", "stress-dependencies"]
-    : ["project-root", "apps", "desktop", "views", "dependencies", "shared"]));
+  const dependencyTreeNodes = constrained
+    ? constrainedExplorerNodes.filter((node) => node.isDependency)
+    : dependencyNodes;
+  const nodes = [
+    ...roots.slice(0, 1),
+    ...treeNodes.filter((node) => !node.isDependency),
+    roots[1],
+    ...(hasDependency ? dependencyTreeNodes : []),
+  ];
+  const [expanded, setExpanded] = useState(
+    () =>
+      new Set(
+        constrained
+          ? [
+              "stress-project-root",
+              "stress-agents",
+              "stress-requirements",
+              "stress-package",
+              "stress-frontend",
+              "stress-components",
+              "stress-selection",
+              "stress-dependencies",
+            ]
+          : ["project-root", "apps", "desktop", "views", "dependencies", "shared"],
+      ),
+  );
   const visibleNodes = nodes.filter((node) => {
     let parentId = node.parent;
     while (parentId) {
@@ -197,34 +686,89 @@ export function ExplorerPanel({ compact = false, standalone = false, hasDependen
     if (node.kind === "file") return;
     setExpanded((current) => {
       const next = new Set(current);
-      if (next.has(node.id)) next.delete(node.id); else next.add(node.id);
+      if (next.has(node.id)) next.delete(node.id);
+      else next.add(node.id);
       return next;
     });
   };
-  return <aside className={`workspace-panel workspace-explorer ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""} ${constrained ? "is-constrained" : ""}`}>
-    <header className="workspace-panel-header"><span>EXPLORER</span><span className="workspace-panel-actions"><IconButton icon="refresh" label="Refresh explorer" disabled /><IconButton icon="plus" label="Add dependency folder" disabled /></span></header>
-    <div className="workspace-tree" role="tree" aria-label="Project files">
-      {visibleNodes.map((node) => {
-        const isContainer = node.kind !== "file";
-        const dependencyParent = constrained ? "stress-dependencies" : "dependencies";
-        const isDependencyNode = node.isDependency || node.parent === dependencyParent;
-        const extension = node.name.includes(".") ? node.name.split(".").pop().toLowerCase() : "";
-        const fileIcon = extension === "md" ? "file-markdown" : ["jsx", "js", "ts", "tsx", "rs", "go", "java", "py"].includes(extension) ? "file-code" : ["json", "yaml", "yml", "toml", "xml", "axaml"].includes(extension) ? "file-config" : extension ? "file-text" : "file";
-        const showPath = node.kind === "project-root" || node.parent === dependencyParent;
-        const iconName = node.kind === "project-root" ? "project" : node.kind === "dependencies" ? "dependencies" : isContainer ? "folder" : fileIcon;
-        return <button key={node.id} type="button" role="treeitem" aria-level={node.depth + 1} aria-expanded={isContainer ? expanded.has(node.id) : undefined} aria-selected={node.selected || undefined} className={`workspace-tree-row ${node.selected ? "is-selected" : ""} ${isDependencyNode ? "is-dependency" : ""} ${node.kind === "dependencies" ? "is-dependency-root" : ""} ${node.kind === "workspace" ? "is-workspace-root" : ""}`} style={{ "--tree-depth": node.depth }} onClick={() => toggleNode(node)}>
-          {isContainer ? <Icon name="chevron-right" className={expanded.has(node.id) ? "is-open" : ""} size={12} /> : <span />}
-          <Icon name={iconName} size={14} />
-          <span className="workspace-tree-copy" title={node.path || node.name}><strong>{node.name}</strong>{showPath && node.path && <small>{node.path}</small>}</span>
-        </button>;
-      })}
-    </div>
-  </aside>;
+  return (
+    <aside
+      className={`workspace-panel workspace-explorer ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""} ${constrained ? "is-constrained" : ""}`}
+    >
+      <header className="workspace-panel-header">
+        <span>EXPLORER</span>
+        <span className="workspace-panel-actions">
+          <IconButton icon="refresh" label="Refresh explorer" disabled />
+          <IconButton icon="plus" label="Add dependency folder" disabled />
+        </span>
+      </header>
+      <div className="workspace-tree" role="tree" aria-label="Project files">
+        {visibleNodes.map((node) => {
+          const isContainer = node.kind !== "file";
+          const dependencyParent = constrained ? "stress-dependencies" : "dependencies";
+          const isDependencyNode = node.isDependency || node.parent === dependencyParent;
+          const extension = node.name.includes(".") ? node.name.split(".").pop().toLowerCase() : "";
+          const fileIcon =
+            extension === "md"
+              ? "file-markdown"
+              : ["jsx", "js", "ts", "tsx", "rs", "go", "java", "py"].includes(extension)
+                ? "file-code"
+                : ["json", "yaml", "yml", "toml", "xml", "axaml"].includes(extension)
+                  ? "file-config"
+                  : extension
+                    ? "file-text"
+                    : "file";
+          const showPath = node.kind === "project-root" || node.parent === dependencyParent;
+          const iconName =
+            node.kind === "project-root"
+              ? "project"
+              : node.kind === "dependencies"
+                ? "dependencies"
+                : isContainer
+                  ? "folder"
+                  : fileIcon;
+          return (
+            <button
+              key={node.id}
+              type="button"
+              role="treeitem"
+              aria-level={node.depth + 1}
+              aria-expanded={isContainer ? expanded.has(node.id) : undefined}
+              aria-selected={node.selected || undefined}
+              className={`workspace-tree-row ${node.selected ? "is-selected" : ""} ${isDependencyNode ? "is-dependency" : ""} ${node.kind === "dependencies" ? "is-dependency-root" : ""} ${node.kind === "workspace" ? "is-workspace-root" : ""}`}
+              style={{ "--tree-depth": node.depth }}
+              onClick={() => toggleNode(node)}
+            >
+              {isContainer ? (
+                <Icon
+                  name="chevron-right"
+                  className={expanded.has(node.id) ? "is-open" : ""}
+                  size={12}
+                />
+              ) : (
+                <span />
+              )}
+              <Icon name={iconName} size={14} />
+              <span className="workspace-tree-copy" title={node.path || node.name}>
+                <strong>{node.name}</strong>
+                {showPath && node.path && <small>{node.path}</small>}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </aside>
+  );
 }
 
 const createSampleAttachment = (name, title, detail) => {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200"><rect width="320" height="200" fill="#f2f3f5"/><rect x="18" y="18" width="284" height="164" rx="8" fill="#ffffff" stroke="#d6d9de"/><rect x="34" y="38" width="68" height="10" rx="3" fill="#23262b"/><rect x="34" y="62" width="112" height="8" rx="3" fill="#d6d9de"/><rect x="34" y="82" width="210" height="8" rx="3" fill="#e7e9ed"/><rect x="34" y="112" width="${title === "Workspace" ? 152 : 184}" height="28" rx="5" fill="#${title === "Workspace" ? "dfe3e8" : "eceef1"}"/><circle cx="270" cy="48" r="8" fill="#${detail}"/><text x="34" y="164" fill="#7d848e" font-family="Arial,sans-serif" font-size="10">${title}</text></svg>`;
-  return { id: `sample-${name}`, name, type: "image/svg+xml", url: `data:image/svg+xml,${encodeURIComponent(svg)}` };
+  return {
+    id: `sample-${name}`,
+    name,
+    type: "image/svg+xml",
+    url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
+  };
 };
 
 export const sampleConversationAttachments = [
@@ -232,7 +776,15 @@ export const sampleConversationAttachments = [
   createSampleAttachment("settings-reference.svg", "Settings", "8a919b"),
 ];
 
-export function ConversationPanel({ compact = false, standalone = false, state = "content-waiting", initialAttachments = [], initialSentAttachments = [], imageInputEnabled = false, onViewChanges }) {
+export function ConversationPanel({
+  compact = false,
+  standalone = false,
+  state = "content-waiting",
+  initialAttachments = [],
+  initialSentAttachments = [],
+  imageInputEnabled = false,
+  onViewChanges,
+}) {
   const [message, setMessage] = useState("");
   const [processOpen, setProcessOpen] = useState(true);
   const [toolPreview, setToolPreview] = useState(null);
@@ -249,18 +801,23 @@ export function ConversationPanel({ compact = false, standalone = false, state =
   const toolCalls = state === "long-tool-call" ? longConversationToolCalls : conversationToolCalls;
   const handleAttachmentChange = (event) => {
     if (!imageInputEnabled) return;
-    const selectedImages = Array.from(event.target.files ?? []).filter((file) => file.type.startsWith("image/"));
-    if (selectedImages.length) setAttachments((current) => {
-      const newAttachments = selectedImages.slice(0, Math.max(0, 3 - current.length)).map((file, index) => ({
-        id: `${file.name}-${file.lastModified}-${index}`,
-        name: file.name,
-        type: file.type,
-        url: URL.createObjectURL(file),
-        local: true,
-      }));
-      newAttachments.forEach((attachment) => localAttachmentUrls.current.add(attachment.url));
-      return [...current, ...newAttachments];
-    });
+    const selectedImages = Array.from(event.target.files ?? []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+    if (selectedImages.length)
+      setAttachments((current) => {
+        const newAttachments = selectedImages
+          .slice(0, Math.max(0, 3 - current.length))
+          .map((file, index) => ({
+            id: `${file.name}-${file.lastModified}-${index}`,
+            name: file.name,
+            type: file.type,
+            url: URL.createObjectURL(file),
+            local: true,
+          }));
+        newAttachments.forEach((attachment) => localAttachmentUrls.current.add(attachment.url));
+        return [...current, ...newAttachments];
+      });
     event.target.value = "";
   };
   const removeAttachment = (id) => {
@@ -280,45 +837,250 @@ export function ConversationPanel({ compact = false, standalone = false, state =
     setAttachments([]);
     setMessage("");
   };
-  return <section className={`workspace-conversation ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""} workspace-conversation-${state}`}>
-    {!hasSession && <div className="workspace-conversation-empty"><Icon name="workspace" size={24} /><strong>No session selected</strong><span>Create or select a session to start a conversation.</span></div>}
-    {hasSession && !hasContent && <div className="workspace-conversation-empty"><Icon name="plus" size={24} /><strong>New session</strong><span>Send a message to start this conversation.</span></div>}
-    {hasContent && <>
-    <div className="workspace-message workspace-message-user">
-      {sentAttachments.length > 0 && <div className="workspace-message-attachments" aria-label="Images sent with this message">{sentAttachments.map((attachment) => <button type="button" className="workspace-message-attachment" key={attachment.id} onClick={() => setPreviewAttachment(attachment)} aria-label={`View ${attachment.name}`} title="View image"><img src={attachment.url} alt={attachment.name} /></button>)}</div>}
-      <span>Add the Workspace surface to the design system, but keep each major area independently reachable.</span>
-    </div>
-    <div className="workspace-process">
-      <button type="button" className="workspace-process-toggle" aria-expanded={processOpen} onClick={() => setProcessOpen(!processOpen)}><Icon name="chevron-right" className={processOpen ? "is-open" : ""} size={12} /> Worked for 42s{compacted && <span className="workspace-process-compaction-note"> · Context compacted</span>}</button>
-      {processOpen && toolCalls.map((tool, index) => <button key={tool.title} type="button" className="workspace-tool-row" aria-haspopup="dialog" onClick={() => setToolPreview(index)}><Icon name={tool.icon} size={14} /><span>{tool.title}</span><small>{tool.state}</small><Icon name="chevron-right" size={12} /></button>)}
-      {processOpen && compacted && <div className="workspace-context-compaction is-complete" role="status"><i aria-hidden="true" /><span><strong>Context compacted</strong><small>Earlier messages were summarized for the next model call</small></span></div>}
-    </div>
-    <div className="workspace-message workspace-message-assistant">
-      <p>I split Workspace into a complete composition and focused pages for sessions, explorer, conversation, review, source control, and provider trace.</p>
-      <div className="workspace-message-footer"><button type="button" className="workspace-copy" aria-label="Copy response"><Icon name="copy" size={13} /></button>{!turnActive && <TurnChangeSummary {...completedTurnChanges} onViewChanges={onViewChanges} />}</div>
-    </div>
-    {updating && <div className="workspace-running-indicator" role="status" aria-label="Agent is working"><i /><i /><i /></div>}
-    </>}
-    {hasSession && <div className={`workspace-composer ${attachments.length ? "has-attachments" : ""}`}>
-      {attachments.length > 0 && <div className="workspace-attachment-strip" aria-label="Attached images">
-        {attachments.map((attachment) => <div className="workspace-attachment" key={attachment.id}>
-          <button type="button" className="workspace-attachment-preview" onClick={() => setPreviewAttachment(attachment)} aria-label={`View ${attachment.name}`} title="View image"><img src={attachment.url} alt={attachment.name} /></button>
-          <button type="button" className="workspace-attachment-remove" aria-label={`Remove ${attachment.name}`} title="Remove image" onClick={() => removeAttachment(attachment.id)}><Icon name="close" size={10} /></button>
-        </div>)}
-      </div>}
-      <textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ask SunCode to work on this project" aria-label="Message SunCode" />
-      <div className="workspace-composer-footer"><button type="button" className="workspace-attach" aria-label="Add attachment" title={!imageInputEnabled ? "Selected model does not support image input" : attachments.length >= 3 ? "Maximum 3 images" : "Add image"} disabled={!imageInputEnabled || attachments.length >= 3} onClick={() => attachmentInputRef.current?.click()}><Icon name="plus" size={14} /></button><input ref={attachmentInputRef} className="workspace-attachment-input" type="file" accept="image/*" multiple tabIndex={-1} onChange={handleAttachmentChange} /><div className="workspace-composer-options"><ModelDropdown groups={imageInputEnabled ? [{ id: "specimen", label: "Specimen", models: ["vision-input specimen"] }] : workspaceModelGroups} initialValue={imageInputEnabled ? "vision-input specimen" : "gpt-5.6-sol"} className="workspace-model-dropdown" /><SingleDropdown options={["Medium", "High"]} initialValue="High" ariaLabel="Reasoning effort" className="workspace-reasoning-dropdown" /><Button variant="primary" className="workspace-send" icon="arrow-up" aria-label="Send message" disabled={!message.trim() && !attachments.length} onClick={sendMessage} /></div></div>
-    </div>}
-    <Modal open={toolPreview !== null} title="Operation details" onClose={() => setToolPreview(null)} className="workspace-tool-modal" actions={<button type="button" className="btn btn-sm" onClick={() => setToolPreview(null)}>Close</button>}>
-      {toolPreview !== null && <div className="workspace-tool-modal-content">
-        <div className="workspace-tool-modal-heading"><strong>{toolCalls[toolPreview].title}</strong><span>{toolCalls[toolPreview].state}</span></div>
-        <div className="workspace-tool-modal-section"><span>Request</span><code>{toolCalls[toolPreview].request}</code></div>
-        <div className="workspace-tool-modal-section"><span>Result</span><code>{toolCalls[toolPreview].result}</code></div>
-        {toolCalls[toolPreview].error && <div className="workspace-tool-modal-section is-error"><span>Error</span><code>{toolCalls[toolPreview].error}</code></div>}
-      </div>}
-    </Modal>
-    <Modal open={Boolean(previewAttachment)} title={previewAttachment?.name ?? "Image preview"} onClose={() => setPreviewAttachment(null)} className="workspace-image-modal"><div className="workspace-image-preview">{previewAttachment && <img src={previewAttachment.url} alt={previewAttachment.name} />}</div></Modal>
-  </section>;
+  return (
+    <section
+      className={`workspace-conversation ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""} workspace-conversation-${state}`}
+    >
+      {!hasSession && (
+        <div className="workspace-conversation-empty">
+          <Icon name="workspace" size={24} />
+          <strong>No session selected</strong>
+          <span>Create or select a session to start a conversation.</span>
+        </div>
+      )}
+      {hasSession && !hasContent && (
+        <div className="workspace-conversation-empty">
+          <Icon name="plus" size={24} />
+          <strong>New session</strong>
+          <span>Send a message to start this conversation.</span>
+        </div>
+      )}
+      {hasContent && (
+        <>
+          <div className="workspace-message workspace-message-user">
+            {sentAttachments.length > 0 && (
+              <div
+                className="workspace-message-attachments"
+                aria-label="Images sent with this message"
+              >
+                {sentAttachments.map((attachment) => (
+                  <button
+                    type="button"
+                    className="workspace-message-attachment"
+                    key={attachment.id}
+                    onClick={() => setPreviewAttachment(attachment)}
+                    aria-label={`View ${attachment.name}`}
+                    title="View image"
+                  >
+                    <img src={attachment.url} alt={attachment.name} />
+                  </button>
+                ))}
+              </div>
+            )}
+            <span>
+              Add the Workspace surface to the design system, but keep each major area independently
+              reachable.
+            </span>
+          </div>
+          <div className="workspace-process">
+            <button
+              type="button"
+              className="workspace-process-toggle"
+              aria-expanded={processOpen}
+              onClick={() => setProcessOpen(!processOpen)}
+            >
+              <Icon name="chevron-right" className={processOpen ? "is-open" : ""} size={12} />{" "}
+              Worked for 42s
+              {compacted && (
+                <span className="workspace-process-compaction-note"> · Context compacted</span>
+              )}
+            </button>
+            {processOpen &&
+              toolCalls.map((tool, index) => (
+                <button
+                  key={tool.title}
+                  type="button"
+                  className="workspace-tool-row"
+                  aria-haspopup="dialog"
+                  onClick={() => setToolPreview(index)}
+                >
+                  <Icon name={tool.icon} size={14} />
+                  <span>{tool.title}</span>
+                  <small>{tool.state}</small>
+                  <Icon name="chevron-right" size={12} />
+                </button>
+              ))}
+            {processOpen && compacted && (
+              <div className="workspace-context-compaction is-complete" role="status">
+                <i aria-hidden="true" />
+                <span>
+                  <strong>Context compacted</strong>
+                  <small>Earlier messages were summarized for the next model call</small>
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="workspace-message workspace-message-assistant">
+            <p>
+              I split Workspace into a complete composition and focused pages for sessions,
+              explorer, conversation, review, source control, and provider trace.
+            </p>
+            <div className="workspace-message-footer">
+              <button type="button" className="workspace-copy" aria-label="Copy response">
+                <Icon name="copy" size={13} />
+              </button>
+              {!turnActive && (
+                <TurnChangeSummary {...completedTurnChanges} onViewChanges={onViewChanges} />
+              )}
+            </div>
+          </div>
+          {updating && (
+            <div
+              className="workspace-running-indicator"
+              role="status"
+              aria-label="Agent is working"
+            >
+              <i />
+              <i />
+              <i />
+            </div>
+          )}
+        </>
+      )}
+      {hasSession && (
+        <div className={`workspace-composer ${attachments.length ? "has-attachments" : ""}`}>
+          {attachments.length > 0 && (
+            <div className="workspace-attachment-strip" aria-label="Attached images">
+              {attachments.map((attachment) => (
+                <div className="workspace-attachment" key={attachment.id}>
+                  <button
+                    type="button"
+                    className="workspace-attachment-preview"
+                    onClick={() => setPreviewAttachment(attachment)}
+                    aria-label={`View ${attachment.name}`}
+                    title="View image"
+                  >
+                    <img src={attachment.url} alt={attachment.name} />
+                  </button>
+                  <button
+                    type="button"
+                    className="workspace-attachment-remove"
+                    aria-label={`Remove ${attachment.name}`}
+                    title="Remove image"
+                    onClick={() => removeAttachment(attachment.id)}
+                  >
+                    <Icon name="close" size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <textarea
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            placeholder="Ask SunCode to work on this project"
+            aria-label="Message SunCode"
+          />
+          <div className="workspace-composer-footer">
+            <button
+              type="button"
+              className="workspace-attach"
+              aria-label="Add attachment"
+              title={
+                !imageInputEnabled
+                  ? "Selected model does not support image input"
+                  : attachments.length >= 3
+                    ? "Maximum 3 images"
+                    : "Add image"
+              }
+              disabled={!imageInputEnabled || attachments.length >= 3}
+              onClick={() => attachmentInputRef.current?.click()}
+            >
+              <Icon name="plus" size={14} />
+            </button>
+            <input
+              ref={attachmentInputRef}
+              className="workspace-attachment-input"
+              type="file"
+              accept="image/*"
+              multiple
+              tabIndex={-1}
+              onChange={handleAttachmentChange}
+            />
+            <div className="workspace-composer-options">
+              <ModelDropdown
+                groups={
+                  imageInputEnabled
+                    ? [{ id: "specimen", label: "Specimen", models: ["vision-input specimen"] }]
+                    : workspaceModelGroups
+                }
+                initialValue={imageInputEnabled ? "vision-input specimen" : "gpt-5.6-sol"}
+                className="workspace-model-dropdown"
+              />
+              <SingleDropdown
+                options={["Medium", "High"]}
+                initialValue="High"
+                ariaLabel="Reasoning effort"
+                className="workspace-reasoning-dropdown"
+              />
+              <Button
+                variant="primary"
+                className="workspace-send"
+                icon="arrow-up"
+                aria-label="Send message"
+                disabled={!message.trim() && !attachments.length}
+                onClick={sendMessage}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      <Modal
+        open={toolPreview !== null}
+        title="Operation details"
+        onClose={() => setToolPreview(null)}
+        className="workspace-tool-modal"
+        actions={
+          <button type="button" className="btn btn-sm" onClick={() => setToolPreview(null)}>
+            Close
+          </button>
+        }
+      >
+        {toolPreview !== null && (
+          <div className="workspace-tool-modal-content">
+            <div className="workspace-tool-modal-heading">
+              <strong>{toolCalls[toolPreview].title}</strong>
+              <span>{toolCalls[toolPreview].state}</span>
+            </div>
+            <div className="workspace-tool-modal-section">
+              <span>Request</span>
+              <code>{toolCalls[toolPreview].request}</code>
+            </div>
+            <div className="workspace-tool-modal-section">
+              <span>Result</span>
+              <code>{toolCalls[toolPreview].result}</code>
+            </div>
+            {toolCalls[toolPreview].error && (
+              <div className="workspace-tool-modal-section is-error">
+                <span>Error</span>
+                <code>{toolCalls[toolPreview].error}</code>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+      <Modal
+        open={Boolean(previewAttachment)}
+        title={previewAttachment?.name ?? "Image preview"}
+        onClose={() => setPreviewAttachment(null)}
+        className="workspace-image-modal"
+      >
+        <div className="workspace-image-preview">
+          {previewAttachment && <img src={previewAttachment.url} alt={previewAttachment.name} />}
+        </div>
+      </Modal>
+    </section>
+  );
 }
 
 export function ReviewPanel({ compact = false, standalone = false, state = "approval" }) {
@@ -329,88 +1091,672 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
   const failed = state === "failed";
   const noChanges = state === "running-no-changes";
   const inactive = idle;
-  const statusTone = idle ? "idle" : failed ? "failed" : compacting ? "compacting" : running ? "running" : state === "approval" ? "approval" : "question";
-  const statusLabel = idle ? "Agent idle" : failed ? "Turn failed" : compacting ? "Compacting conversation context" : running ? (noChanges ? "Agent running, no file changes" : "Agent running") : state === "approval" ? "Waiting for approval" : "Waiting for answer";
+  const statusTone = idle
+    ? "idle"
+    : failed
+      ? "failed"
+      : compacting
+        ? "compacting"
+        : running
+          ? "running"
+          : state === "approval"
+            ? "approval"
+            : "question";
+  const statusLabel = idle
+    ? "Agent idle"
+    : failed
+      ? "Turn failed"
+      : compacting
+        ? "Compacting conversation context"
+        : running
+          ? noChanges
+            ? "Agent running, no file changes"
+            : "Agent running"
+          : state === "approval"
+            ? "Waiting for approval"
+            : "Waiting for answer";
   const [questionOption, setQuestionOption] = useState(null);
   const [customAnswer, setCustomAnswer] = useState("");
   const questionOptions = [
-    { id: "a", label: "A · Stack list above detail", description: "Keep the focused trace easy to scan on narrow screens." },
-    { id: "b", label: "B · Keep a narrow split view", description: "Preserve side-by-side context when the viewport allows it." },
-    { id: "c", label: "C · Custom answer", description: "Provide a different behavior in your own words." },
+    {
+      id: "a",
+      label: "A · Stack list above detail",
+      description: "Keep the focused trace easy to scan on narrow screens.",
+    },
+    {
+      id: "b",
+      label: "B · Keep a narrow split view",
+      description: "Preserve side-by-side context when the viewport allows it.",
+    },
+    {
+      id: "c",
+      label: "C · Custom answer",
+      description: "Provide a different behavior in your own words.",
+    },
   ];
   const showTurnChanges = !inactive && !noChanges && !failed && !compacting;
   const turnChangeRows = completedTurnChangeSet;
   const [turnChangesOpen, setTurnChangesOpen] = useState(false);
-  return <aside className={`workspace-panel workspace-review ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""}`}>
-    <div className={`workspace-review-heading is-${statusTone}`}><h3>{idle ? "No active process" : failed ? "Turn stopped" : compacting ? "Compacting context" : running ? "1 active process" : "Awaiting input"}</h3><i role="status" aria-label={statusLabel} title={statusLabel} /></div>
-    {inactive && <div className="workspace-review-empty"><Icon name="activity" size={22} /><strong>Agent is idle</strong><span>Start a turn from the conversation composer.</span></div>}
-    {failed && <div className="workspace-failure-card"><div><span>TURN STOPPED</span><b>FAILED</b></div><strong>Provider request failed</strong><p>The turn ended before completion. No further tool calls will run.</p><dl><div><dt>Reason</dt><dd>Network unavailable</dd></div><div><dt>Turn</dt><dd><code>turn_01JY7F3K9M</code></dd></div></dl><Button variant="primary" size="sm">Retry turn</Button></div>}
-    {compacting && <div className="workspace-process-card workspace-compaction-card"><div><i /><strong>Context compaction</strong><small>Compacting</small></div><code>Turn turn_01JY7F3K9M</code><span>Context&nbsp; Summarizing earlier turns</span><span>Next&nbsp; Resume model call</span></div>}
-    {running && <><div className="workspace-process-card"><div><i /><strong>Agent loop</strong><small>Running</small></div><code>Turn turn_01JY7F3K9M</code><span>Model&nbsp; gpt-5.6-sol</span><span>Latest&nbsp; {noChanges ? "Inspecting project, no file changes yet" : "Editing workspace modules"}</span></div><div className="workspace-todo-card"><div><span>TODO</span><small>{currentTurnTodos.length} items</small></div>{currentTurnTodos.map((todo) => <p key={todo.content} className={`workspace-todo-item is-${todo.status}`}><span className="workspace-todo-marker"><Icon name={todo.icon} size={11} /></span><span>{todo.content}</span></p>)}</div></>}
-    {showTurnChanges && <div className="workspace-turn-changes"><button type="button" className="workspace-turn-changes-summary" aria-expanded={turnChangesOpen} onClick={() => setTurnChangesOpen((open) => !open)}><span className="workspace-turn-changes-summary-title"><strong>CHANGES</strong><small>{turnChangeRows.length} files</small></span><span className="workspace-turn-changes-summary-meta"><small className="is-added">{completedTurnChanges.added} added</small><small className="is-deleted">{completedTurnChanges.deleted} deleted</small><small className="is-edited">{completedTurnChanges.edited} edited</small>{running && <small className="is-live">LIVE</small>}</span></button>{turnChangesOpen && <div className="workspace-turn-changes-list">{turnChangeRows.map((change) => <div className="workspace-turn-change" key={change.path}><b className={`workspace-change-status is-${change.kind}`}>{change.status}</b><code title={change.path}>{change.path}</code><small>+{change.additions} &nbsp;−{change.deletions}</small></div>)}</div>}</div>}
-    {!compacting && <div className="workspace-review-divider" />}
-    {waiting && <><span className="workspace-label">REVIEW QUEUE</span>{state === "approval" ? <div className="workspace-approval-card"><div><span>Approval required</span><b>REVIEW</b></div><strong>Run the production design build</strong><code>vite build</code><div className="workspace-approval-actions"><Button variant="primary" size="sm">Allow once</Button><Button variant="danger" size="sm">Deny</Button></div><Button size="sm">Allow for session</Button></div> : <div className="workspace-question-card"><div><span>Clarification needed</span><b>ANSWER</b></div><div className="workspace-question-prompt"><span>Scope</span><strong>Which responsive behavior should the focused trace use?</strong></div><div className="workspace-question-options">{questionOptions.map((option) => <label key={option.id} className={`workspace-question-option ${questionOption === option.id ? "is-selected" : ""}`}><Radio className="workspace-question-radio" name="trace-layout" value={option.id} checked={questionOption === option.id} onChange={() => setQuestionOption(option.id)} /><span><strong>{option.label}</strong><small>{option.description}</small></span></label>)}</div><input className="workspace-question-custom" value={customAnswer} onChange={(event) => setCustomAnswer(event.target.value)} placeholder="Add a custom answer" aria-label="Custom answer" /><div className="workspace-question-actions"><Button variant="primary" size="sm" disabled={!questionOption && !customAnswer.trim()}>Submit answers</Button><Button variant="danger" size="sm">Skip</Button></div></div>}</>}
-    {!compact && running && !noChanges && <div className="workspace-checkpoint-card"><div><span>CHECKPOINT</span><small>3 files</small></div><strong>Workspace route implementation</strong><code>navigation.js{"\n"}WorkspacePrimitives.jsx{"\n"}review.css</code><Button size="sm">Undo</Button></div>}
-  </aside>;
+  return (
+    <aside
+      className={`workspace-panel workspace-review ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""}`}
+    >
+      <div className={`workspace-review-heading is-${statusTone}`}>
+        <h3>
+          {idle
+            ? "No active process"
+            : failed
+              ? "Turn stopped"
+              : compacting
+                ? "Compacting context"
+                : running
+                  ? "1 active process"
+                  : "Awaiting input"}
+        </h3>
+        <i role="status" aria-label={statusLabel} title={statusLabel} />
+      </div>
+      {inactive && (
+        <div className="workspace-review-empty">
+          <Icon name="activity" size={22} />
+          <strong>Agent is idle</strong>
+          <span>Start a turn from the conversation composer.</span>
+        </div>
+      )}
+      {failed && (
+        <div className="workspace-failure-card">
+          <div>
+            <span>TURN STOPPED</span>
+            <b>FAILED</b>
+          </div>
+          <strong>Provider request failed</strong>
+          <p>The turn ended before completion. No further tool calls will run.</p>
+          <dl>
+            <div>
+              <dt>Reason</dt>
+              <dd>Network unavailable</dd>
+            </div>
+            <div>
+              <dt>Turn</dt>
+              <dd>
+                <code>turn_01JY7F3K9M</code>
+              </dd>
+            </div>
+          </dl>
+          <Button variant="primary" size="sm">
+            Retry turn
+          </Button>
+        </div>
+      )}
+      {compacting && (
+        <div className="workspace-process-card workspace-compaction-card">
+          <div>
+            <i />
+            <strong>Context compaction</strong>
+            <small>Compacting</small>
+          </div>
+          <code>Turn turn_01JY7F3K9M</code>
+          <span>Context&nbsp; Summarizing earlier turns</span>
+          <span>Next&nbsp; Resume model call</span>
+        </div>
+      )}
+      {running && (
+        <>
+          <div className="workspace-process-card">
+            <div>
+              <i />
+              <strong>Agent loop</strong>
+              <small>Running</small>
+            </div>
+            <code>Turn turn_01JY7F3K9M</code>
+            <span>Model&nbsp; gpt-5.6-sol</span>
+            <span>
+              Latest&nbsp;{" "}
+              {noChanges ? "Inspecting project, no file changes yet" : "Editing workspace modules"}
+            </span>
+          </div>
+          <div className="workspace-todo-card">
+            <div>
+              <span>TODO</span>
+              <small>{currentTurnTodos.length} items</small>
+            </div>
+            {currentTurnTodos.map((todo) => (
+              <p key={todo.content} className={`workspace-todo-item is-${todo.status}`}>
+                <span className="workspace-todo-marker">
+                  <Icon name={todo.icon} size={11} />
+                </span>
+                <span>{todo.content}</span>
+              </p>
+            ))}
+          </div>
+        </>
+      )}
+      {showTurnChanges && (
+        <div className="workspace-turn-changes">
+          <button
+            type="button"
+            className="workspace-turn-changes-summary"
+            aria-expanded={turnChangesOpen}
+            onClick={() => setTurnChangesOpen((open) => !open)}
+          >
+            <span className="workspace-turn-changes-summary-title">
+              <strong>CHANGES</strong>
+              <small>{turnChangeRows.length} files</small>
+            </span>
+            <span className="workspace-turn-changes-summary-meta">
+              <small className="is-added">{completedTurnChanges.added} added</small>
+              <small className="is-deleted">{completedTurnChanges.deleted} deleted</small>
+              <small className="is-edited">{completedTurnChanges.edited} edited</small>
+              {running && <small className="is-live">LIVE</small>}
+            </span>
+          </button>
+          {turnChangesOpen && (
+            <div className="workspace-turn-changes-list">
+              {turnChangeRows.map((change) => (
+                <div className="workspace-turn-change" key={change.path}>
+                  <b className={`workspace-change-status is-${change.kind}`}>{change.status}</b>
+                  <code title={change.path}>{change.path}</code>
+                  <small>
+                    +{change.additions} &nbsp;−{change.deletions}
+                  </small>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {!compacting && <div className="workspace-review-divider" />}
+      {waiting && (
+        <>
+          <span className="workspace-label">REVIEW QUEUE</span>
+          {state === "approval" ? (
+            <div className="workspace-approval-card">
+              <div>
+                <span>Approval required</span>
+                <b>REVIEW</b>
+              </div>
+              <strong>Run the production design build</strong>
+              <code>vite build</code>
+              <div className="workspace-approval-actions">
+                <Button variant="primary" size="sm">
+                  Allow once
+                </Button>
+                <Button variant="danger" size="sm">
+                  Deny
+                </Button>
+              </div>
+              <Button size="sm">Allow for session</Button>
+            </div>
+          ) : (
+            <div className="workspace-question-card">
+              <div>
+                <span>Clarification needed</span>
+                <b>ANSWER</b>
+              </div>
+              <div className="workspace-question-prompt">
+                <span>Scope</span>
+                <strong>Which responsive behavior should the focused trace use?</strong>
+              </div>
+              <div className="workspace-question-options">
+                {questionOptions.map((option) => (
+                  <label
+                    key={option.id}
+                    className={`workspace-question-option ${questionOption === option.id ? "is-selected" : ""}`}
+                  >
+                    <Radio
+                      className="workspace-question-radio"
+                      name="trace-layout"
+                      value={option.id}
+                      checked={questionOption === option.id}
+                      onChange={() => setQuestionOption(option.id)}
+                    />
+                    <span>
+                      <strong>{option.label}</strong>
+                      <small>{option.description}</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <input
+                className="workspace-question-custom"
+                value={customAnswer}
+                onChange={(event) => setCustomAnswer(event.target.value)}
+                placeholder="Add a custom answer"
+                aria-label="Custom answer"
+              />
+              <div className="workspace-question-actions">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={!questionOption && !customAnswer.trim()}
+                >
+                  Submit answers
+                </Button>
+                <Button variant="danger" size="sm">
+                  Skip
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      {!compact && running && !noChanges && (
+        <div className="workspace-checkpoint-card">
+          <div>
+            <span>CHECKPOINT</span>
+            <small>3 files</small>
+          </div>
+          <strong>Workspace route implementation</strong>
+          <code>
+            navigation.js{"\n"}WorkspacePrimitives.jsx{"\n"}review.css
+          </code>
+          <Button size="sm">Undo</Button>
+        </div>
+      )}
+    </aside>
+  );
 }
 
-export function SourceControlPanel({ onClose, standalone = false, clean = false, changeSet = changes }) {
+export function SourceControlPanel({
+  onClose,
+  standalone = false,
+  clean = false,
+  changeSet = changes,
+}) {
   const [scope, setScope] = useState("all");
-  const [selectedPath, setSelectedPath] = useState(() => changeSet[1]?.path ?? changeSet[0]?.path ?? "");
+  const [selectedPath, setSelectedPath] = useState(
+    () => changeSet[1]?.path ?? changeSet[0]?.path ?? "",
+  );
   const [filter, setFilter] = useState("");
   const filtered = (clean ? [] : changeSet).filter((change) => {
     const matchesScope = scope === "all" || (scope === "staged" ? change.staged : change.unstaged);
     return matchesScope && change.path.toLowerCase().includes(filter.toLowerCase());
   });
   const selected = filtered.find((change) => change.path === selectedPath) ?? filtered[0] ?? null;
-  return <section className={`workspace-drawer workspace-git ${standalone ? "is-standalone" : ""}`}>
-    <header>
-      <Icon className="workspace-git-icon" name="git" size={16} />
-      <strong>main</strong>
-      <span className="workspace-git-divider" aria-hidden="true" />
-      <div className="workspace-scope">{[["all", "All"], ["staged", "Staged"], ["unstaged", "Unstaged"]].map(([value, label]) => <button key={value} type="button" className={scope === value ? "is-selected" : ""} onClick={() => setScope(value)}>{label}</button>)}</div>
-      <input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Filter changed files" aria-label="Filter changed files" />
-      <IconButton icon="refresh" label="Refresh Git status" onClick={() => setFilter("")} />
-      <IconButton icon="copy" label="Copy patch" onClick={() => navigator.clipboard?.writeText(diffLines.map((line) => `${line.kind === "addition" ? "+" : line.kind === "deletion" ? "-" : " "}${line.text}`).join("\n"))} />
-      <IconButton icon="close" label="Close source control" onClick={onClose} disabled={!onClose} />
-    </header>
-    <div className="workspace-git-body">
-      <div className="workspace-change-list">
-        <div className="workspace-drawer-label">{filtered.length} {filtered.length === 1 ? "file" : "files"}</div>
-        {filtered.map((change) => <button key={change.path} type="button" className={selected?.path === change.path ? "is-selected" : ""} onClick={() => setSelectedPath(change.path)}>
-          <b className={`workspace-change-status is-${change.kind}`}>{change.status}</b>
-          <span><code>{change.path}</code>{change.oldPath && <small>from {change.oldPath}</small>}</span>
-          <small>+{change.additions}  -{change.deletions}</small>
-        </button>)}
-        {!filtered.length && !clean && <div className="workspace-change-empty">No changed files match this filter.</div>}
+  return (
+    <section className={`workspace-drawer workspace-git ${standalone ? "is-standalone" : ""}`}>
+      <header>
+        <Icon className="workspace-git-icon" name="git" size={16} />
+        <strong>main</strong>
+        <span className="workspace-git-divider" aria-hidden="true" />
+        <div className="workspace-scope">
+          {[
+            ["all", "All"],
+            ["staged", "Staged"],
+            ["unstaged", "Unstaged"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={scope === value ? "is-selected" : ""}
+              onClick={() => setScope(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <input
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+          placeholder="Filter changed files"
+          aria-label="Filter changed files"
+        />
+        <IconButton icon="refresh" label="Refresh Git status" onClick={() => setFilter("")} />
+        <IconButton
+          icon="copy"
+          label="Copy patch"
+          onClick={() =>
+            navigator.clipboard?.writeText(
+              diffLines
+                .map(
+                  (line) =>
+                    `${line.kind === "addition" ? "+" : line.kind === "deletion" ? "-" : " "}${line.text}`,
+                )
+                .join("\n"),
+            )
+          }
+        />
+        <IconButton
+          icon="close"
+          label="Close source control"
+          onClick={onClose}
+          disabled={!onClose}
+        />
+      </header>
+      <div className="workspace-git-body">
+        <div className="workspace-change-list">
+          <div className="workspace-drawer-label">
+            {filtered.length} {filtered.length === 1 ? "file" : "files"}
+          </div>
+          {filtered.map((change) => (
+            <button
+              key={change.path}
+              type="button"
+              className={selected?.path === change.path ? "is-selected" : ""}
+              onClick={() => setSelectedPath(change.path)}
+            >
+              <b className={`workspace-change-status is-${change.kind}`}>{change.status}</b>
+              <span>
+                <code>{change.path}</code>
+                {change.oldPath && <small>from {change.oldPath}</small>}
+              </span>
+              <small>
+                +{change.additions} -{change.deletions}
+              </small>
+            </button>
+          ))}
+          {!filtered.length && !clean && (
+            <div className="workspace-change-empty">No changed files match this filter.</div>
+          )}
+        </div>
+        <div className="workspace-diff">
+          {selected ? (
+            <>
+              <div className="workspace-diff-heading">
+                <code>{selected.path}</code>
+                <span>
+                  <b>+{selected.additions}</b> <i>-{selected.deletions}</i>
+                </span>
+              </div>
+              <pre aria-label={`Diff for ${selected.path}`}>
+                {diffLines.map((line, index) => (
+                  <span
+                    key={`${line.kind}-${index}`}
+                    className={`workspace-diff-line diff-${line.kind}`}
+                  >
+                    <span>{line.oldLine}</span>
+                    <span>{line.newLine}</span>
+                    <i aria-hidden="true" />
+                    <code>
+                      {line.kind === "addition"
+                        ? "+"
+                        : line.kind === "deletion"
+                          ? "-"
+                          : line.kind === "hunk"
+                            ? ""
+                            : " "}
+                      {line.text}
+                    </code>
+                  </span>
+                ))}
+              </pre>
+            </>
+          ) : (
+            !clean && (
+              <div className="workspace-diff-empty">No changed files match this filter.</div>
+            )
+          )}
+        </div>
       </div>
-      <div className="workspace-diff">
-        {selected ? <><div className="workspace-diff-heading"><code>{selected.path}</code><span><b>+{selected.additions}</b> <i>-{selected.deletions}</i></span></div>
-          <pre aria-label={`Diff for ${selected.path}`}>{diffLines.map((line, index) => <span key={`${line.kind}-${index}`} className={`workspace-diff-line diff-${line.kind}`}><span>{line.oldLine}</span><span>{line.newLine}</span><i aria-hidden="true" /><code>{line.kind === "addition" ? "+" : line.kind === "deletion" ? "-" : line.kind === "hunk" ? "" : " "}{line.text}</code></span>)}</pre></>
-          : !clean && <div className="workspace-diff-empty">No changed files match this filter.</div>}
-      </div>
-    </div>
-  </section>;
+    </section>
+  );
 }
 
 export function ProviderTracePanel({ onClose, standalone = false, state = "expanded" }) {
   const [selected, setSelected] = useState(state === "context-compaction" ? 1 : 0);
   const [selectedContent, setSelectedContent] = useState(0);
   const [expandedTurn, setExpandedTurn] = useState(state !== "turn-collapsed");
-  const [expandedCall, setExpandedCall] = useState(state === "expanded" || state === "context-compaction");
+  const [expandedCall, setExpandedCall] = useState(
+    state === "expanded" || state === "context-compaction",
+  );
   const traces = [
-    { title: "Response · gpt-5.6-sol", time: "14:32:18", status: "Completed", tokens: "18,420 → 1,284", contents: [{ kind: "user", label: "USER", title: "User message", summary: "Add the Workspace surface to the design system.", time: "14:32:18" }, { kind: "assistant", label: "ASSISTANT", title: "Assistant message", summary: "I’ll inspect the current Avalonia composition first.", time: "14:32:19" }, { kind: "tool", label: "TOOL CALL", title: "Read ProjectWorkspace.axaml", summary: "Read 218 lines from the project workspace view.", time: "14:32:24" }] },
-    { title: "Context compaction", kind: "compaction", time: "14:32:07", status: "Completed", tokens: "18,420 → 12,160", contents: [{ kind: "system", label: "CONTEXT", title: "Context summary", summary: "Reduced the earlier conversation to 12,160 retained tokens and dropped 6 messages.", time: "14:32:07" }] },
-    { title: "Tool continuation", time: "14:31:46", status: "Completed", tokens: "12,918 → 826", contents: [{ kind: "user", label: "USER", title: "Tool result", summary: "The workspace view and its review drawer are available.", time: "14:31:46" }, { kind: "assistant", label: "ASSISTANT", title: "Assistant message", summary: "I’ll split each workspace area into a focused route.", time: "14:31:48" }, { kind: "tool", label: "TOOL CALL", title: "Update workspace routes", summary: "Updated 8 route modules and navigation entries.", time: "14:31:55" }] },
-    { title: "Initial request", time: "14:30:09", status: "Completed", tokens: "8,204 → 612", contents: [{ kind: "user", label: "USER", title: "User message", summary: "Keep the major areas independently reachable from the sidebar.", time: "14:30:09" }, { kind: "assistant", label: "ASSISTANT", title: "Assistant message", summary: "I’ll preserve the desktop composition and add stable child routes.", time: "14:30:12" }, { kind: "tool", label: "TOOL CALL", title: "List design-system files", summary: "Found the desktop workspace modules and shared primitives.", time: "14:30:18" }] },
+    {
+      title: "Response · gpt-5.6-sol",
+      time: "14:32:18",
+      status: "Completed",
+      tokens: "18,420 → 1,284",
+      contents: [
+        {
+          kind: "user",
+          label: "USER",
+          title: "User message",
+          summary: "Add the Workspace surface to the design system.",
+          time: "14:32:18",
+        },
+        {
+          kind: "assistant",
+          label: "ASSISTANT",
+          title: "Assistant message",
+          summary: "I’ll inspect the current Avalonia composition first.",
+          time: "14:32:19",
+        },
+        {
+          kind: "tool",
+          label: "TOOL CALL",
+          title: "Read ProjectWorkspace.axaml",
+          summary: "Read 218 lines from the project workspace view.",
+          time: "14:32:24",
+        },
+      ],
+    },
+    {
+      title: "Context compaction",
+      kind: "compaction",
+      time: "14:32:07",
+      status: "Completed",
+      tokens: "18,420 → 12,160",
+      contents: [
+        {
+          kind: "system",
+          label: "CONTEXT",
+          title: "Context summary",
+          summary:
+            "Reduced the earlier conversation to 12,160 retained tokens and dropped 6 messages.",
+          time: "14:32:07",
+        },
+      ],
+    },
+    {
+      title: "Tool continuation",
+      time: "14:31:46",
+      status: "Completed",
+      tokens: "12,918 → 826",
+      contents: [
+        {
+          kind: "user",
+          label: "USER",
+          title: "Tool result",
+          summary: "The workspace view and its review drawer are available.",
+          time: "14:31:46",
+        },
+        {
+          kind: "assistant",
+          label: "ASSISTANT",
+          title: "Assistant message",
+          summary: "I’ll split each workspace area into a focused route.",
+          time: "14:31:48",
+        },
+        {
+          kind: "tool",
+          label: "TOOL CALL",
+          title: "Update workspace routes",
+          summary: "Updated 8 route modules and navigation entries.",
+          time: "14:31:55",
+        },
+      ],
+    },
+    {
+      title: "Initial request",
+      time: "14:30:09",
+      status: "Completed",
+      tokens: "8,204 → 612",
+      contents: [
+        {
+          kind: "user",
+          label: "USER",
+          title: "User message",
+          summary: "Keep the major areas independently reachable from the sidebar.",
+          time: "14:30:09",
+        },
+        {
+          kind: "assistant",
+          label: "ASSISTANT",
+          title: "Assistant message",
+          summary: "I’ll preserve the desktop composition and add stable child routes.",
+          time: "14:30:12",
+        },
+        {
+          kind: "tool",
+          label: "TOOL CALL",
+          title: "List design-system files",
+          summary: "Found the desktop workspace modules and shared primitives.",
+          time: "14:30:18",
+        },
+      ],
+    },
   ];
   const noTurns = state === "no-turns";
   const activeTrace = traces[selected] ?? traces[0];
   const activeContent = activeTrace.contents[selectedContent] ?? activeTrace.contents[0];
-  return <section className={`workspace-drawer workspace-trace ${standalone ? "is-standalone" : ""}`}>
-    <header><Icon name="activity" size={16} /><strong>Provider trace</strong><span>{noTurns ? "0 turns" : `1 turn · ${traces.length} calls`}</span><div /><IconButton icon="refresh" label="Refresh provider trace" disabled /><IconButton icon="copy" label="Copy trace" onClick={() => navigator.clipboard?.writeText("Provider trace preview")} /><IconButton icon="close" label="Close provider trace" onClick={onClose} disabled={!onClose} /></header>
-    {noTurns ? <div className="workspace-trace-empty"><Icon name="activity" size={24} /><strong>No turns yet</strong><span>Provider requests will appear here after the agent starts a turn.</span></div> : <div className="workspace-trace-body"><div className="workspace-trace-list"><div className="workspace-drawer-label">CURRENT SESSION</div><button type="button" className={`workspace-trace-turn ${expandedTurn ? "is-expanded" : ""}`} onClick={() => setExpandedTurn(!expandedTurn)}><Icon name="chevron-right" className={expandedTurn ? "is-open" : ""} size={11} /><span><strong>Turn 0198e82c</strong><small>Completed · 1.84 s</small></span><b>{traces.length} calls</b></button>{expandedTurn && <div className="workspace-trace-children">{traces.map((trace, index) => <div key={trace.title}><button type="button" className={`workspace-trace-call ${trace.kind ? `is-${trace.kind}` : ""} ${selected === index ? "is-selected" : ""}`} aria-expanded={selected === index && expandedCall} onClick={() => { setSelected(index); setSelectedContent(0); setExpandedCall(selected === index ? !expandedCall : state === "expanded" || state === "context-compaction"); }}><Icon name="chevron-right" className={selected === index && expandedCall ? "is-open" : ""} size={11} /><span><strong>{trace.title}</strong><small>{trace.time}</small></span><span><b>{trace.status}</b><small>{trace.tokens}</small></span></button>{selected === index && expandedCall && <div className="workspace-trace-call-contents">{trace.contents.map((content, contentIndex) => <button type="button" className={`workspace-trace-content-row is-${content.kind} ${selectedContent === contentIndex ? "is-selected" : ""}`} key={`${trace.title}-${content.title}`} onClick={() => setSelectedContent(contentIndex)}><span>{content.label}</span><span><strong>{content.title}</strong><small>{content.summary}</small></span><time>{content.time}</time></button>)}</div>}</div>)}</div>}</div><div className="workspace-trace-detail"><div className="workspace-trace-title"><code>{activeTrace.title} · {activeContent.label}</code><span>{activeTrace.kind === "compaction" ? "context build" : "1.84 s  gpt-5.6-sol"}</span></div><div className="workspace-trace-metrics">{[["INPUT", activeTrace.kind === "compaction" ? "18,420" : "18,420"], ["OUTPUT", activeTrace.kind === "compaction" ? "12,160" : "1,284"], ["CACHE READ", activeTrace.kind === "compaction" ? "0" : "12,160"], ["CACHE WRITE", "0"], ["CACHE HIT", activeTrace.kind === "compaction" ? "—" : "66%"], ["DURATION", activeTrace.kind === "compaction" ? "0.42 s" : "1.84 s"]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div><div className="workspace-trace-content"><div><code>TURN 0198e82c · COMPLETED</code><span>{activeTrace.kind === "compaction" ? "event  context.compacted" : "exchange  exch_01JY7F6P8S"}</span></div><h4>{activeContent.label}</h4><p><b>{activeContent.label}</b><span>{activeContent.summary}</span></p><h4>{activeTrace.kind === "compaction" ? "Compaction result" : "Model response"}</h4><pre>{activeTrace.kind === "compaction" ? `{"status":"completed","event":"context.compacted","dropped_messages":6,"retained_tokens":12160}` : activeContent.kind === "tool" ? `{"status":"completed","tool":"${activeContent.title}"}` : `{"status":"completed","role":"${activeContent.kind}"}`}</pre></div></div></div>}
-  </section>;
+  return (
+    <section className={`workspace-drawer workspace-trace ${standalone ? "is-standalone" : ""}`}>
+      <header>
+        <Icon name="activity" size={16} />
+        <strong>Provider trace</strong>
+        <span>{noTurns ? "0 turns" : `1 turn · ${traces.length} calls`}</span>
+        <div />
+        <IconButton icon="refresh" label="Refresh provider trace" disabled />
+        <IconButton
+          icon="copy"
+          label="Copy trace"
+          onClick={() => navigator.clipboard?.writeText("Provider trace preview")}
+        />
+        <IconButton
+          icon="close"
+          label="Close provider trace"
+          onClick={onClose}
+          disabled={!onClose}
+        />
+      </header>
+      {noTurns ? (
+        <div className="workspace-trace-empty">
+          <Icon name="activity" size={24} />
+          <strong>No turns yet</strong>
+          <span>Provider requests will appear here after the agent starts a turn.</span>
+        </div>
+      ) : (
+        <div className="workspace-trace-body">
+          <div className="workspace-trace-list">
+            <div className="workspace-drawer-label">CURRENT SESSION</div>
+            <button
+              type="button"
+              className={`workspace-trace-turn ${expandedTurn ? "is-expanded" : ""}`}
+              onClick={() => setExpandedTurn(!expandedTurn)}
+            >
+              <Icon name="chevron-right" className={expandedTurn ? "is-open" : ""} size={11} />
+              <span>
+                <strong>Turn 0198e82c</strong>
+                <small>Completed · 1.84 s</small>
+              </span>
+              <b>{traces.length} calls</b>
+            </button>
+            {expandedTurn && (
+              <div className="workspace-trace-children">
+                {traces.map((trace, index) => (
+                  <div key={trace.title}>
+                    <button
+                      type="button"
+                      className={`workspace-trace-call ${trace.kind ? `is-${trace.kind}` : ""} ${selected === index ? "is-selected" : ""}`}
+                      aria-expanded={selected === index && expandedCall}
+                      onClick={() => {
+                        setSelected(index);
+                        setSelectedContent(0);
+                        setExpandedCall(
+                          selected === index
+                            ? !expandedCall
+                            : state === "expanded" || state === "context-compaction",
+                        );
+                      }}
+                    >
+                      <Icon
+                        name="chevron-right"
+                        className={selected === index && expandedCall ? "is-open" : ""}
+                        size={11}
+                      />
+                      <span>
+                        <strong>{trace.title}</strong>
+                        <small>{trace.time}</small>
+                      </span>
+                      <span>
+                        <b>{trace.status}</b>
+                        <small>{trace.tokens}</small>
+                      </span>
+                    </button>
+                    {selected === index && expandedCall && (
+                      <div className="workspace-trace-call-contents">
+                        {trace.contents.map((content, contentIndex) => (
+                          <button
+                            type="button"
+                            className={`workspace-trace-content-row is-${content.kind} ${selectedContent === contentIndex ? "is-selected" : ""}`}
+                            key={`${trace.title}-${content.title}`}
+                            onClick={() => setSelectedContent(contentIndex)}
+                          >
+                            <span>{content.label}</span>
+                            <span>
+                              <strong>{content.title}</strong>
+                              <small>{content.summary}</small>
+                            </span>
+                            <time>{content.time}</time>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="workspace-trace-detail">
+            <div className="workspace-trace-title">
+              <code>
+                {activeTrace.title} · {activeContent.label}
+              </code>
+              <span>
+                {activeTrace.kind === "compaction" ? "context build" : "1.84 s  gpt-5.6-sol"}
+              </span>
+            </div>
+            <div className="workspace-trace-metrics">
+              {[
+                ["INPUT", activeTrace.kind === "compaction" ? "18,420" : "18,420"],
+                ["OUTPUT", activeTrace.kind === "compaction" ? "12,160" : "1,284"],
+                ["CACHE READ", activeTrace.kind === "compaction" ? "0" : "12,160"],
+                ["CACHE WRITE", "0"],
+                ["CACHE HIT", activeTrace.kind === "compaction" ? "—" : "66%"],
+                ["DURATION", activeTrace.kind === "compaction" ? "0.42 s" : "1.84 s"],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="workspace-trace-content">
+              <div>
+                <code>TURN 0198e82c · COMPLETED</code>
+                <span>
+                  {activeTrace.kind === "compaction"
+                    ? "event  context.compacted"
+                    : "exchange  exch_01JY7F6P8S"}
+                </span>
+              </div>
+              <h4>{activeContent.label}</h4>
+              <p>
+                <b>{activeContent.label}</b>
+                <span>{activeContent.summary}</span>
+              </p>
+              <h4>{activeTrace.kind === "compaction" ? "Compaction result" : "Model response"}</h4>
+              <pre>
+                {activeTrace.kind === "compaction"
+                  ? `{"status":"completed","event":"context.compacted","dropped_messages":6,"retained_tokens":12160}`
+                  : activeContent.kind === "tool"
+                    ? `{"status":"completed","tool":"${activeContent.title}"}`
+                    : `{"status":"completed","role":"${activeContent.kind}"}`}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 export function WorkspaceWindow() {
@@ -418,18 +1764,135 @@ export function WorkspaceWindow() {
   const [reviewVisible, setReviewVisible] = useState(true);
   const [drawer, setDrawer] = useState(null);
   const [surfaceMenuOpen, setSurfaceMenuOpen] = useState(false);
-  const toggleDrawer = (next) => setDrawer((current) => current === next ? null : next);
-  return <div className="workspace-window">
-    <div className="workspace-titlebar"><TrafficLights /><strong className="workspace-project-title">suncode</strong><span>Workspace information architecture</span><div className="workspace-titlebar-actions"><div className="workspace-surface-menu-anchor"><IconButton icon="more" label="Open workspace panel menu" onClick={() => setSurfaceMenuOpen((open) => !open)} />{surfaceMenuOpen && <div className="workspace-surface-menu" role="menu" aria-label="Workspace panels">{[["Sessions", () => setNavigation("sessions")], ["Explorer", () => setNavigation("explorer")], ["Review", () => setReviewVisible(true)], ["Source control", () => setDrawer("git")], ["Provider trace", () => setDrawer("trace")]].map(([label, action]) => <button key={label} type="button" role="menuitem" onClick={() => { action(); setSurfaceMenuOpen(false); }}>{label}</button>)}</div>}</div><IconButton icon="settings" label="Open settings" onClick={() => { window.location.hash = "/projects/desktop/settings"; }} /></div></div>
-    <div className="workspace-window-body">
-      <aside className="workspace-gutter"><div><IconButton icon="panel-left" label="Show sessions" active={navigation === "sessions"} onClick={() => setNavigation(navigation === "sessions" ? null : "sessions")} /><IconButton icon="files" label="Show explorer" active={navigation === "explorer"} onClick={() => setNavigation(navigation === "explorer" ? null : "explorer")} /></div><div><IconButton icon="git" label="Show source control" active={drawer === "git"} onClick={() => toggleDrawer("git")} /><IconButton icon="activity" label="Show provider trace" active={drawer === "trace"} onClick={() => toggleDrawer("trace")} /></div></aside>
-      <div className="workspace-main-stack"><div className="workspace-main-row">{navigation === "sessions" && <SessionPanel compact />}{navigation === "explorer" && <ExplorerPanel compact />}<ConversationPanel compact onViewChanges={() => setDrawer("git")} />{reviewVisible && <ReviewPanel compact />}</div>{drawer === "git" && <SourceControlPanel onClose={() => setDrawer(null)} changeSet={completedTurnChangeSet} />}{drawer === "trace" && <ProviderTracePanel onClose={() => setDrawer(null)} />}</div>
-      <aside className="workspace-gutter workspace-gutter-right"><IconButton icon="panel-right" label="Show review" active={reviewVisible} onClick={() => setReviewVisible(!reviewVisible)} /></aside>
+  const toggleDrawer = (next) => setDrawer((current) => (current === next ? null : next));
+  return (
+    <div className="workspace-window">
+      <div className="workspace-titlebar">
+        <TrafficLights />
+        <strong className="workspace-project-title">suncode</strong>
+        <span>Workspace information architecture</span>
+        <div className="workspace-titlebar-actions">
+          <div className="workspace-surface-menu-anchor">
+            <IconButton
+              icon="more"
+              label="Open workspace panel menu"
+              onClick={() => setSurfaceMenuOpen((open) => !open)}
+            />
+            {surfaceMenuOpen && (
+              <div className="workspace-surface-menu" role="menu" aria-label="Workspace panels">
+                {[
+                  ["Sessions", () => setNavigation("sessions")],
+                  ["Explorer", () => setNavigation("explorer")],
+                  ["Review", () => setReviewVisible(true)],
+                  ["Source control", () => setDrawer("git")],
+                  ["Provider trace", () => setDrawer("trace")],
+                ].map(([label, action]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      action();
+                      setSurfaceMenuOpen(false);
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <IconButton
+            icon="settings"
+            label="Open settings"
+            onClick={() => {
+              window.location.hash = "/projects/desktop/settings";
+            }}
+          />
+        </div>
+      </div>
+      <div className="workspace-window-body">
+        <aside className="workspace-gutter">
+          <div>
+            <IconButton
+              icon="panel-left"
+              label="Show sessions"
+              active={navigation === "sessions"}
+              onClick={() => setNavigation(navigation === "sessions" ? null : "sessions")}
+            />
+            <IconButton
+              icon="files"
+              label="Show explorer"
+              active={navigation === "explorer"}
+              onClick={() => setNavigation(navigation === "explorer" ? null : "explorer")}
+            />
+          </div>
+          <div>
+            <IconButton
+              icon="git"
+              label="Show source control"
+              active={drawer === "git"}
+              onClick={() => toggleDrawer("git")}
+            />
+            <IconButton
+              icon="activity"
+              label="Show provider trace"
+              active={drawer === "trace"}
+              onClick={() => toggleDrawer("trace")}
+            />
+          </div>
+        </aside>
+        <div className="workspace-main-stack">
+          <div className="workspace-main-row">
+            {navigation === "sessions" && <SessionPanel compact />}
+            {navigation === "explorer" && <ExplorerPanel compact />}
+            <ConversationPanel compact onViewChanges={() => setDrawer("git")} />
+            {reviewVisible && <ReviewPanel compact />}
+          </div>
+          {drawer === "git" && (
+            <SourceControlPanel
+              onClose={() => setDrawer(null)}
+              changeSet={completedTurnChangeSet}
+            />
+          )}
+          {drawer === "trace" && <ProviderTracePanel onClose={() => setDrawer(null)} />}
+        </div>
+        <aside className="workspace-gutter workspace-gutter-right">
+          <IconButton
+            icon="panel-right"
+            label="Show review"
+            active={reviewVisible}
+            onClick={() => setReviewVisible(!reviewVisible)}
+          />
+        </aside>
+      </div>
+      <footer className="workspace-statusbar">
+        <div>
+          <code>codex/workspace-design</code>
+          <b>3 changes</b>
+          <span>+308</span>
+          <i>−8</i>
+        </div>
+        <div>
+          <code>gpt-5.6-sol</code>
+          <span>19.7k tokens</span>
+          <span>3 calls · 4.2s</span>
+        </div>
+      </footer>
     </div>
-    <footer className="workspace-statusbar"><div><code>codex/workspace-design</code><b>3 changes</b><span>+308</span><i>−8</i></div><div><code>gpt-5.6-sol</code><span>19.7k tokens</span><span>3 calls · 4.2s</span></div></footer>
-  </div>;
+  );
 }
 
 export function FocusedWorkspaceFrame({ title, children, className = "" }) {
-  return <div className={`workspace-focused-frame ${className}`}><div className="workspace-focused-titlebar"><TrafficLights /><strong>suncode</strong><span>{title}</span><Icon name="settings" size={14} /></div>{children}</div>;
+  return (
+    <div className={`workspace-focused-frame ${className}`}>
+      <div className="workspace-focused-titlebar">
+        <TrafficLights />
+        <strong>suncode</strong>
+        <span>{title}</span>
+        <Icon name="settings" size={14} />
+      </div>
+      {children}
+    </div>
+  );
 }

@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using SvgControl = Avalonia.Svg.Skia.Svg;
@@ -15,11 +14,6 @@ namespace SunCode.Desktop.Views.Projects;
 public sealed partial class WorkspaceWindow : Window
 {
     private bool _initialized;
-    private bool _windowResizeActive;
-    private WindowEdge _windowResizeEdge;
-    private PixelPoint _windowResizeStartPointer;
-    private PixelPoint _windowResizeStartPosition;
-    private Size _windowResizeStartSize;
     private bool _windowDragActive;
     private bool _windowDragStarted;
     private PixelPoint _windowDragStartPointer;
@@ -205,59 +199,6 @@ public sealed partial class WorkspaceWindow : Window
         key == Key.D9 &&
         (modifiers.HasFlag(KeyModifiers.Meta) || modifiers.HasFlag(KeyModifiers.Control));
 
-    private void WindowResizePressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (sender is not Control { Tag: string edgeName } control ||
-            !e.GetCurrentPoint(control).Properties.IsLeftButtonPressed || _isFullScreen) return;
-        _windowResizeEdge = edgeName switch
-        {
-            "North" => WindowEdge.North,
-            "South" => WindowEdge.South,
-            "West" => WindowEdge.West,
-            "East" => WindowEdge.East,
-            "NorthWest" => WindowEdge.NorthWest,
-            "NorthEast" => WindowEdge.NorthEast,
-            "SouthWest" => WindowEdge.SouthWest,
-            "SouthEast" => WindowEdge.SouthEast,
-            _ => throw new InvalidOperationException($"Unknown window edge {edgeName}")
-        };
-        _windowResizeActive = true;
-        _windowResizeStartPointer = Avalonia.VisualExtensions.PointToScreen(this, e.GetPosition(this));
-        _windowResizeStartPosition = Position;
-        _windowResizeStartSize = Bounds.Size;
-        e.Pointer.Capture(control);
-        e.Handled = true;
-    }
-
-    private void WindowResizeMoved(object? sender, PointerEventArgs e)
-    {
-        if (!_windowResizeActive) return;
-        var pointer = Avalonia.VisualExtensions.PointToScreen(this, e.GetPosition(this));
-        const double coordinateScale = 1;
-        var deltaX = pointer.X - _windowResizeStartPointer.X;
-        var deltaY = pointer.Y - _windowResizeStartPointer.Y;
-        var west = _windowResizeEdge is WindowEdge.West or WindowEdge.NorthWest or WindowEdge.SouthWest;
-        var east = _windowResizeEdge is WindowEdge.East or WindowEdge.NorthEast or WindowEdge.SouthEast;
-        var north = _windowResizeEdge is WindowEdge.North or WindowEdge.NorthWest or WindowEdge.NorthEast;
-        var south = _windowResizeEdge is WindowEdge.South or WindowEdge.SouthWest or WindowEdge.SouthEast;
-        var width = Math.Max(MinWidth, _windowResizeStartSize.Width + (east ? deltaX : west ? -deltaX : 0));
-        var height = Math.Max(MinHeight, _windowResizeStartSize.Height + (south ? deltaY : north ? -deltaY : 0));
-        Width = width;
-        Height = height;
-        Position = new PixelPoint(
-            west ? _windowResizeStartPosition.X + (int)Math.Round((_windowResizeStartSize.Width - width) * coordinateScale) : _windowResizeStartPosition.X,
-            north ? _windowResizeStartPosition.Y + (int)Math.Round((_windowResizeStartSize.Height - height) * coordinateScale) : _windowResizeStartPosition.Y);
-        e.Handled = true;
-    }
-
-    private void WindowResizeReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        if (!_windowResizeActive) return;
-        _windowResizeActive = false;
-        e.Pointer.Capture(null);
-        e.Handled = true;
-    }
-
     internal void TitleBarPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is not Control region || !e.GetCurrentPoint(region).Properties.IsLeftButtonPressed ||
@@ -294,16 +235,28 @@ public sealed partial class WorkspaceWindow : Window
     internal void TitleBarDoubleTapped(object? sender, TappedEventArgs e)
     {
         if (OriginatesFromButton(e.Source)) return;
-        ToggleMaximized();
+        if (UsesMaximizedStateForTitleBarDoubleTap(OperatingSystem.IsMacOS())) ToggleWindowMaximized();
+        else ToggleFullScreen();
         e.Handled = true;
     }
+
+    internal static bool UsesMaximizedStateForTitleBarDoubleTap(bool isMacOS) => isMacOS;
 
     private static bool OriginatesFromButton(object? source) =>
         source is Button || source is Visual visual && visual.FindAncestorOfType<Button>() is not null;
 
     internal void MinimizeWindow() => WindowState = WindowState.Minimized;
 
-    internal void ToggleMaximized()
+    internal void ToggleWindowMaximized()
+    {
+        if (_isFullScreen || _isFullScreenTransition) return;
+        WindowState = GetTitleBarDoubleTapTargetState(WindowState);
+    }
+
+    internal static WindowState GetTitleBarDoubleTapTargetState(WindowState currentState) =>
+        currentState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+    internal void ToggleFullScreen()
     {
         if (_isFullScreenTransition) return;
         if (_isFullScreen) _ = ExitFullScreenAsync();
@@ -314,9 +267,6 @@ public sealed partial class WorkspaceWindow : Window
     {
         _isFullScreenTransition = true;
         _isFullScreen = true;
-        Background = this.FindResource("CanvasBrush") as IBrush;
-        ProjectWorkspaceView.SetFullScreenChrome(true);
-        SetResizeHandlesVisible(false);
         WindowState = WindowState.FullScreen;
         await Task.Delay(900);
         _isFullScreenTransition = false;
@@ -326,24 +276,9 @@ public sealed partial class WorkspaceWindow : Window
     {
         _isFullScreenTransition = true;
         _isFullScreen = false;
-        ProjectWorkspaceView.SetFullScreenChrome(false);
-        SetResizeHandlesVisible(true);
         WindowState = WindowState.Normal;
         await Task.Delay(900);
-        Background = Brushes.Transparent;
         _isFullScreenTransition = false;
-    }
-
-    private void SetResizeHandlesVisible(bool visible)
-    {
-        ResizeNorth.IsVisible = visible;
-        ResizeSouth.IsVisible = visible;
-        ResizeWest.IsVisible = visible;
-        ResizeEast.IsVisible = visible;
-        ResizeNorthWest.IsVisible = visible;
-        ResizeNorthEast.IsVisible = visible;
-        ResizeSouthWest.IsVisible = visible;
-        ResizeSouthEast.IsVisible = visible;
     }
 
     internal static void SetTrafficLightState(object? sender, string state)

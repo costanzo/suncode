@@ -20,7 +20,11 @@ export const primaryModules = [
         children: [
           { path: "/core/tokens/colors", label: "Colors", keywords: "color roles semantic theme" },
           { path: "/core/tokens/typography", label: "Typography", keywords: "font type hierarchy" },
-          { path: "/core/tokens/spacing", label: "Spacing & shape", keywords: "spacing radius controls dimensions" },
+          {
+            path: "/core/tokens/spacing",
+            label: "Spacing & shape",
+            keywords: "spacing radius controls dimensions",
+          },
         ],
       },
       {
@@ -48,15 +52,43 @@ export const primaryModules = [
         icon: "components",
         keywords: "button input checkbox radio toggle badge avatar card modal tooltip markdown",
         children: [
-          { path: "/components/universal/actions", label: "Actions", keywords: "button primary danger" },
-          { path: "/components/universal/fields", label: "Fields", keywords: "input select textarea validation" },
-          { path: "/components/universal/selection", label: "Selection", keywords: "checkbox radio toggle dropdown menu provider model nested" },
+          {
+            path: "/components/universal/actions",
+            label: "Actions",
+            keywords: "button primary danger",
+          },
+          {
+            path: "/components/universal/fields",
+            label: "Fields",
+            keywords: "input select textarea validation",
+          },
+          {
+            path: "/components/universal/selection",
+            label: "Selection",
+            keywords: "checkbox radio toggle dropdown menu provider model nested",
+          },
           { path: "/components/universal/surfaces", label: "Surfaces", keywords: "card authority" },
-          { path: "/components/universal/overlays", label: "Overlays", keywords: "avatar modal tooltip" },
-          { path: "/components/universal/navigation", label: "Navigation", keywords: "tabs segmented filters" },
-          { path: "/components/universal/feedback", label: "Feedback", keywords: "status alert progress loading empty" },
+          {
+            path: "/components/universal/overlays",
+            label: "Overlays",
+            keywords: "avatar modal tooltip",
+          },
+          {
+            path: "/components/universal/navigation",
+            label: "Navigation",
+            keywords: "tabs segmented filters",
+          },
+          {
+            path: "/components/universal/feedback",
+            label: "Feedback",
+            keywords: "status alert progress loading empty",
+          },
           { path: "/components/universal/data", label: "Data", keywords: "code table mono" },
-          { path: "/components/universal/markdown", label: "Markdown", keywords: "heading prose lists quote code" },
+          {
+            path: "/components/universal/markdown",
+            label: "Markdown",
+            keywords: "heading prose lists quote code",
+          },
         ],
       },
       {
@@ -64,7 +96,13 @@ export const primaryModules = [
         label: "Platform-specific",
         icon: "platform",
         keywords: "desktop mobile tui only",
-        children: [{ path: "/components/platform-specific/platform-indexes", label: "Platform indexes", keywords: "desktop mobile tui" }],
+        children: [
+          {
+            path: "/components/platform-specific/platform-indexes",
+            label: "Platform indexes",
+            keywords: "desktop mobile tui",
+          },
+        ],
       },
     ],
   },
@@ -80,9 +118,21 @@ export const primaryModules = [
         icon: "platform",
         keywords: "avalonia shell sidebar inspector",
         children: [
-          { path: "/platforms/desktop/titlebar", label: "Titlebar", keywords: "macos windows native window frame traffic lights minimize maximize close" },
-          { path: "/platforms/desktop/anatomy", label: "Window anatomy", keywords: "conversation sidebar review" },
-          { path: "/platforms/desktop/ownership", label: "Desktop ownership", keywords: "desktop-only components" },
+          {
+            path: "/platforms/desktop/titlebar",
+            label: "Titlebar",
+            keywords: "macos windows native window frame traffic lights minimize maximize close",
+          },
+          {
+            path: "/platforms/desktop/anatomy",
+            label: "Window anatomy",
+            keywords: "conversation sidebar review",
+          },
+          {
+            path: "/platforms/desktop/ownership",
+            label: "Desktop ownership",
+            keywords: "desktop-only components",
+          },
         ],
       },
       {
@@ -91,8 +141,16 @@ export const primaryModules = [
         icon: "mobile",
         keywords: "deferred bottom nav tab swipe",
         children: [
-          { path: "/platforms/mobile/boundary", label: "Adaptation boundary", keywords: "deferred future" },
-          { path: "/platforms/mobile/ownership", label: "Ownership contract", keywords: "tokens components pages" },
+          {
+            path: "/platforms/mobile/boundary",
+            label: "Adaptation boundary",
+            keywords: "deferred future",
+          },
+          {
+            path: "/platforms/mobile/ownership",
+            label: "Ownership contract",
+            keywords: "tokens components pages",
+          },
         ],
       },
       {
@@ -101,8 +159,16 @@ export const primaryModules = [
         icon: "terminal",
         keywords: "deferred terminal command palette tree",
         children: [
-          { path: "/platforms/tui/boundary", label: "Adaptation boundary", keywords: "deferred future" },
-          { path: "/platforms/tui/ownership", label: "Ownership contract", keywords: "tokens components" },
+          {
+            path: "/platforms/tui/boundary",
+            label: "Adaptation boundary",
+            keywords: "deferred future",
+          },
+          {
+            path: "/platforms/tui/ownership",
+            label: "Ownership contract",
+            keywords: "tokens components",
+          },
         ],
       },
       {
@@ -111,8 +177,16 @@ export const primaryModules = [
         icon: "platform",
         keywords: "deferred browser web client",
         children: [
-          { path: "/platforms/web/boundary", label: "Adaptation boundary", keywords: "deferred future browser" },
-          { path: "/platforms/web/ownership", label: "Ownership contract", keywords: "tokens components pages" },
+          {
+            path: "/platforms/web/boundary",
+            label: "Adaptation boundary",
+            keywords: "deferred future browser",
+          },
+          {
+            path: "/platforms/web/ownership",
+            label: "Ownership contract",
+            keywords: "tokens components pages",
+          },
         ],
       },
     ],
@@ -129,21 +203,58 @@ export const primaryModules = [
         icon: "project",
         keywords: "project hub avalonia runtime mapping resources",
         children: [
-          { path: "/projects/desktop/project-hub", label: "ProjectHub", keywords: "welcome recent projects open project settings" },
-          { path: "/projects/desktop/about", label: "About", keywords: "product version application information" },
-          { path: "/projects/desktop/settings", label: "Settings", keywords: "defaults appearance network logging model providers credentials" },
+          {
+            path: "/projects/desktop/project-hub",
+            label: "ProjectHub",
+            keywords: "welcome recent projects open project settings",
+          },
+          {
+            path: "/projects/desktop/about",
+            label: "About",
+            keywords: "product version application information",
+          },
+          {
+            path: "/projects/desktop/settings",
+            label: "Settings",
+            keywords: "defaults appearance network logging model providers credentials",
+          },
           {
             path: "/projects/desktop/workspace",
             label: "Workspace",
             icon: "workspace",
-            keywords: "project workspace sessions explorer conversation review source control provider trace",
+            keywords:
+              "project workspace sessions explorer conversation review source control provider trace",
             children: [
-              { path: "/projects/desktop/workspace/sessions", label: "Sessions", keywords: "session list pin rename archive" },
-              { path: "/projects/desktop/workspace/explorer", label: "Explorer", keywords: "project files dependencies tree" },
-              { path: "/projects/desktop/workspace/conversation", label: "Conversation", keywords: "messages tools composer model reasoning" },
-              { path: "/projects/desktop/workspace/review", label: "Review", keywords: "agent process approvals questions checkpoints undo" },
-              { path: "/projects/desktop/workspace/source-control", label: "Source control", keywords: "git changed files diff additions deletions" },
-              { path: "/projects/desktop/workspace/provider-trace", label: "Provider trace", keywords: "model calls tokens cache duration request response" },
+              {
+                path: "/projects/desktop/workspace/sessions",
+                label: "Sessions",
+                keywords: "session list pin rename archive",
+              },
+              {
+                path: "/projects/desktop/workspace/explorer",
+                label: "Explorer",
+                keywords: "project files dependencies tree",
+              },
+              {
+                path: "/projects/desktop/workspace/conversation",
+                label: "Conversation",
+                keywords: "messages tools composer model reasoning",
+              },
+              {
+                path: "/projects/desktop/workspace/review",
+                label: "Review",
+                keywords: "agent process approvals questions checkpoints undo",
+              },
+              {
+                path: "/projects/desktop/workspace/source-control",
+                label: "Source control",
+                keywords: "git changed files diff additions deletions",
+              },
+              {
+                path: "/projects/desktop/workspace/provider-trace",
+                label: "Provider trace",
+                keywords: "model calls tokens cache duration request response",
+              },
             ],
           },
         ],
@@ -153,5 +264,7 @@ export const primaryModules = [
 ];
 
 export function getModuleForPath(path) {
-  return primaryModules.find((module) => path === `/${module.id}` || path.startsWith(`/${module.id}/`));
+  return primaryModules.find(
+    (module) => path === `/${module.id}` || path.startsWith(`/${module.id}/`),
+  );
 }

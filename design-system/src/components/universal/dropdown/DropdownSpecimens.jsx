@@ -10,21 +10,27 @@ const modelGroups = [
 ];
 
 export function DropdownSpecimens() {
-  return <div className="specimen-grid specimen-grid-2 dropdown-specimens">
-    <Specimen label="Single-level dropdown">
-      <div className="dropdown-demo">
-        <span className="field-label">Reasoning effort</span>
-        <SingleDropdown options={effortOptions} initialValue="Medium" ariaLabel="Reasoning effort" />
-        <p className="sample-note">One list of mutually exclusive options.</p>
-      </div>
-    </Specimen>
+  return (
+    <div className="specimen-grid specimen-grid-2 dropdown-specimens">
+      <Specimen label="Single-level dropdown">
+        <div className="dropdown-demo">
+          <span className="field-label">Reasoning effort</span>
+          <SingleDropdown
+            options={effortOptions}
+            initialValue="Medium"
+            ariaLabel="Reasoning effort"
+          />
+          <p className="sample-note">One list of mutually exclusive options.</p>
+        </div>
+      </Specimen>
 
-    <Specimen label="Two-level model dropdown">
-      <div className="dropdown-demo">
-        <span className="field-label">Model</span>
-        <ModelDropdown groups={modelGroups} initialValue="DeepSeek V4 Pro" ariaLabel="Model" />
-        <p className="sample-note">Provider groups reveal their model options.</p>
-      </div>
-    </Specimen>
-  </div>;
+      <Specimen label="Two-level model dropdown">
+        <div className="dropdown-demo">
+          <span className="field-label">Model</span>
+          <ModelDropdown groups={modelGroups} initialValue="DeepSeek V4 Pro" ariaLabel="Model" />
+          <p className="sample-note">Provider groups reveal their model options.</p>
+        </div>
+      </Specimen>
+    </div>
+  );
 }

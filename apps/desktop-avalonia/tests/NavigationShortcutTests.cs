@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.Input;
 using SunCode.Desktop.Views.Projects;
 
@@ -31,5 +32,21 @@ public sealed class NavigationShortcutTests
     public void NineWithoutCommandModifierDoesNotToggleGitViewer()
     {
         Assert.False(WorkspaceWindow.IsToggleGitViewerShortcut(Key.D9, KeyModifiers.None));
+    }
+
+    [Theory]
+    [InlineData(WindowState.Normal, WindowState.Maximized)]
+    [InlineData(WindowState.Maximized, WindowState.Normal)]
+    public void DoubleClickingTitleBarTogglesMaximizedState(WindowState current, WindowState expected)
+    {
+        Assert.Equal(expected, WorkspaceWindow.GetTitleBarDoubleTapTargetState(current));
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public void OnlyMacOsUsesMaximizedStateForTitleBarDoubleClick(bool isMacOS, bool expected)
+    {
+        Assert.Equal(expected, WorkspaceWindow.UsesMaximizedStateForTitleBarDoubleTap(isMacOS));
     }
 }

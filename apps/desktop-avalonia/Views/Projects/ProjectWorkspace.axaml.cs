@@ -37,15 +37,6 @@ public sealed partial class ProjectWorkspace : UserControl
         ViewModel.BottomDrawerHeight = Math.Clamp(ViewModel.BottomDrawerHeight, 240, Math.Max(240, window.Bounds.Height - 300));
     }
 
-    internal void SetFullScreenChrome(bool fullScreen)
-    {
-        ProjectChrome.Margin = fullScreen ? new Thickness(0) : new Thickness(16);
-        ProjectChrome.Padding = new Thickness(0);
-        ProjectChrome.BorderThickness = fullScreen ? new Thickness(0) : new Thickness(0.5);
-        ProjectChrome.CornerRadius = fullScreen ? new CornerRadius(0) : new CornerRadius(14);
-        ProjectChromeContent.CornerRadius = fullScreen ? new CornerRadius(0) : new CornerRadius(13);
-    }
-
     internal bool HandleEscape()
     {
         if (SessionDialogOverlay.IsVisible)
@@ -286,7 +277,7 @@ public sealed partial class ProjectWorkspace : UserControl
     private void OpenSettings(object? sender, RoutedEventArgs e) => Owner?.ShowSettings();
     private void CloseProjectWindow(object? sender, RoutedEventArgs e) => Owner?.Close();
     private void MinimizeWindow(object? sender, RoutedEventArgs e) => Owner?.MinimizeWindow();
-    private void ToggleMaximized(object? sender, RoutedEventArgs e) => Owner?.ToggleMaximized();
+    private void ToggleFullScreen(object? sender, RoutedEventArgs e) => Owner?.ToggleFullScreen();
     private void TitleBarPressed(object? sender, PointerPressedEventArgs e) => Owner?.TitleBarPressed(sender, e);
     private void TitleBarMoved(object? sender, PointerEventArgs e) => Owner?.TitleBarMoved(sender, e);
     private void TitleBarReleased(object? sender, PointerReleasedEventArgs e) => Owner?.TitleBarReleased(sender, e);

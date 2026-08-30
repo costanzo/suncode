@@ -1,4 +1,6 @@
 :root {
-  --font-ui: "Noto Sans", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  --font-ui:
+    "Noto Sans", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", "Helvetica Neue", Arial,
+    sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
 }
