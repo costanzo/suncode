@@ -27,6 +27,17 @@ Before non-trivial work:
 - Phase 1 uses an embedded desktop agent. Do not add tenancy, remote identity, or hosted-infrastructure assumptions without an approved requirement.
 - Vocabulary: **project** (a directory tree the user opened), **session** (one conversation), **turn** (one user submission and its execution). "Workspace" and "task" are retired as domain nouns.
 
+## UI and interaction design system
+
+The `design-system/` project is the repository-wide source of truth for UI appearance, component behavior, interaction patterns, states, and layout specifications.
+
+- Before changing any user interface or interaction, inspect the relevant page in `design-system/`, its shared component implementation, and the applicable tokens under `design-system/src/styles/tokens/`.
+- Implement production UI, including Avalonia views, consistently with the corresponding design-system specification. Reuse established tokens, dimensions, typography, spacing, colors, states, and interaction behavior instead of introducing local alternatives.
+- If the required UI or state is not specified, add or update the design-system specimen as part of the same change before treating the production implementation as complete.
+- After every UI or interaction change, compare the result with the relevant design-system page and verify all affected states, themes, sizing, alignment, overflow, and interaction behavior.
+- Any intentional deviation from the design system must be explicitly justified and must update the design-system specification so the prototype and production client do not diverge.
+- The React/Vite design-system project is specification and review tooling only. It must not become a production runtime dependency of the Avalonia desktop client.
+
 ## Working principles
 
 - Understand the affected boundary and contracts before editing.
