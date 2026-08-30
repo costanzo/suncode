@@ -289,6 +289,10 @@ select.field { appearance: none; padding-right: 34px; background-image: linear-g
 .project-card-copy strong, .project-card-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-hub-empty-preview { margin-top: 14px; }
 .project-hub-empty { min-height: 130px; padding: 18px; background: var(--surface); }
+.window-size-note { display: flex; align-items: center; width: fit-content; max-width: 100%; min-height: 34px; margin: -18px 0 8px; padding: 0 11px; gap: 9px; color: var(--text-secondary); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.window-size-note span { font-size: 11px; font-weight: 600; }
+.window-size-note code { color: var(--text); font: 11px var(--font-mono); }
+.window-size-note small { padding-left: 9px; color: var(--text-muted); border-left: 1px solid var(--border); font-size: 10px; }
 .settings-toolbar { display: flex; align-items: center; justify-content: space-between; min-height: 58px; padding: 0 22px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .settings-toolbar strong { font-size: 20px; }
 .settings-body { display: grid; grid-template-columns: 238px minmax(0, 1fr); min-height: 500px; }

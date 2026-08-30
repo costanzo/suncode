@@ -3,6 +3,7 @@ import { PageHeader, Section } from "../../../shared/PagePrimitives.jsx";
 import { NativeWindowFrame } from "../../../platforms/desktop/components/titlebar/index.js";
 import logoUrl from "../../../assets/logos/suncode-logo-64.png";
 import { WorkspaceGuideState } from "../workspace/WorkspaceGuide.jsx";
+import { WindowSizeNote } from "../WindowSizeNote.jsx";
 
 const aboutGuide = { tabs: {
   actions: ["Open About SunCode from the operating system application menu.", "Read the installed product version beneath the SunCode identity.", "Close the native window to return control to the window that opened it."],
@@ -12,5 +13,5 @@ const aboutGuide = { tabs: {
 
 export function AboutPage() {
   const [guideOpen, setGuideOpen] = useState(false);
-  return <><PageHeader title="About" description="The native-decorated Avalonia window for product identity and installed version." path="projects/desktop/about/" /><Section id="about-window" title="About SunCode" description="The operating system supplies the title bar and window controls; the specimen represents the 420 × 320 client area."><WorkspaceGuideState className="about-guide-state" title="About window" description="Review the product identity, installed version, native window treatment, and modal behavior." guide={aboutGuide} side="right" open={guideOpen} onToggle={() => setGuideOpen((open) => !open)} onClose={() => setGuideOpen(false)}><NativeWindowFrame platform="macos" title="About SunCode" width="420px" height="348px" className="about-native-window"><div className="about-window"><img src={logoUrl} alt="" /><strong>SunCode</strong><code>v0.0.1</code><span>General-purpose coding agent</span></div></NativeWindowFrame></WorkspaceGuideState></Section></>;
+  return <><PageHeader title="About" description="The native-decorated Avalonia window for product identity and installed version." path="projects/desktop/about/" /><WindowSizeNote width="420" height="320" minimumWidth="360" minimumHeight="280" /><Section id="about-window" title="About SunCode" description="The operating system supplies the title bar and window controls; the specimen represents the 420 × 320 client area."><WorkspaceGuideState className="about-guide-state" title="About window" description="Review the product identity, installed version, native window treatment, and modal behavior." guide={aboutGuide} side="right" open={guideOpen} onToggle={() => setGuideOpen((open) => !open)} onClose={() => setGuideOpen(false)}><NativeWindowFrame platform="macos" title="About SunCode" width="420px" height="348px" className="about-native-window"><div className="about-window"><img src={logoUrl} alt="" /><strong>SunCode</strong><code>v0.0.1</code><span>General-purpose coding agent</span></div></NativeWindowFrame></WorkspaceGuideState></Section></>;
 }
