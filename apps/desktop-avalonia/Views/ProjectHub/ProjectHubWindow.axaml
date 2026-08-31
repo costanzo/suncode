@@ -1,0 +1,14 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SunCode.Desktop.ViewModels"
+        xmlns:projectHub="using:SunCode.Desktop.Views.ProjectHub"
+        x:Class="SunCode.Desktop.Views.ProjectHub.ProjectHubWindow"
+        x:DataType="vm:DesktopViewModel"
+        Title="Welcome to SunCode"
+        Width="980" Height="712"
+        MinWidth="760" MinHeight="552"
+        Background="{DynamicResource CanvasBrush}"
+        WindowDecorations="Full"
+        WindowStartupLocation="CenterScreen">
+  <projectHub:ProjectHub />
+</Window>

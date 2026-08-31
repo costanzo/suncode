@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.ProjectWorkspace.Navigation.ProjectSidebar"
+             x:DataType="vm:DesktopViewModel">
+  <Border Classes="sidebar-card" PointerExited="NavigationPointerExited">
+    <Grid Margin="16,14,16,12" RowDefinitions="34,10,*">
+      <Grid Grid.Row="0" ColumnDefinitions="*,30">
+        <TextBlock Classes="section-label" Text="SESSIONS" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="icon" Click="CreateSession" ToolTip.Tip="New session" AutomationProperties.Name="Create session" IsEnabled="{Binding IsProjectOpen}">
+          <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
+      </Grid>
+      <Grid Grid.Row="2">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <ListBox Classes="sessions"
+                   x:Name="SessionList"
+                   ItemsSource="{Binding Sessions}"
+                   SelectedItem="{Binding SelectedSession, Mode=OneWay}"
+                   SelectionChanged="SessionSelectionChanged"
+                   IsVisible="{Binding HasSessions}"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   Padding="0">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="models:SessionItem">
+                <Grid Height="48" ColumnDefinitions="18,*,16,28">
+                  <svg:Svg Grid.Column="0" Width="13" Height="13" HorizontalAlignment="Center" VerticalAlignment="Center" Path="/Assets/icons/pin.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding IsPinned}" />
+                  <Button Grid.Column="1" Classes="quiet" Padding="4,4,10,4" HorizontalContentAlignment="Stretch">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding DisplayTitle}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding RelativeActivity}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+                    </StackPanel>
+                  </Button>
+                  <Grid Grid.Column="2" ToolTip.Tip="{Binding AgentStateLabel}" AutomationProperties.Name="{Binding AgentStateLabel}" IsVisible="{Binding HasAgentState}">
+                    <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsRunning}" />
+                    <Ellipse Width="7" Height="7" Fill="{DynamicResource WarningBrush}" IsVisible="{Binding IsWaitingForApproval}" />
+                    <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsWaitingForAnswer}" />
+                    <Ellipse Width="7" Height="7" Fill="{DynamicResource DangerBrush}" IsVisible="{Binding IsFailed}" />
+                  </Grid>
+                  <Button Grid.Column="3" Classes="quiet" Width="28" Padding="6" ToolTip.Tip="Session actions" AutomationProperties.Name="{Binding DisplayTitle, StringFormat=Actions for {0}}">
+                    <Button.Flyout>
+                      <MenuFlyout>
+                        <MenuItem Header="Pin" CommandParameter="{Binding}" Click="PinSessionItem" IsVisible="{Binding !IsPinned}" />
+                        <MenuItem Header="Unpin" CommandParameter="{Binding}" Click="UnpinSessionItem" IsVisible="{Binding IsPinned}" />
+                        <MenuItem Header="Rename" CommandParameter="{Binding}" Click="RenameSessionItem" />
+                        <MenuItem Header="Archive" CommandParameter="{Binding}" Click="ArchiveSessionItem" />
+                      </MenuFlyout>
+                    </Button.Flyout>
+                    <svg:Svg Path="/Assets/icons/more-horizontal.svg" Css="{DynamicResource IconSvgCss}" />
+                  </Button>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </ScrollViewer>
+        <StackPanel IsVisible="{Binding !HasSessions}" Margin="0,44,0,32" Spacing="6" HorizontalAlignment="Center">
+          <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
+          <TextBlock Text="No sessions yet" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <TextBlock Text="Use + to create one." FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

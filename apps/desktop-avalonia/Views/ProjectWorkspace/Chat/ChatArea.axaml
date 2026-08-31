@@ -1,0 +1,225 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             xmlns:controls="using:SunCode.Desktop.Controls"
+             xmlns:chat="using:SunCode.Desktop.Views.ProjectWorkspace.Chat"
+             x:Class="SunCode.Desktop.Views.ProjectWorkspace.Chat.ChatArea"
+             x:DataType="vm:DesktopViewModel">
+  <UserControl.Styles>
+    <Style Selector="Button.tool-card">
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="10,8" />
+    </Style>
+    <Style Selector="Button.tool-card:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    </Style>
+    <Style Selector="ListBox.conversation">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="ListBox.conversation ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Ellipse.running-dot">
+      <Setter Property="Width" Value="5" />
+      <Setter Property="Height" Value="5" />
+      <Setter Property="Fill" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="workspace-card" ClipToBounds="True">
+    <Grid>
+      <ListBox x:Name="ConversationList"
+                      Classes="conversation"
+                      Margin="24,18,24,128"
+                      ItemsSource="{Binding Messages}"
+                      HorizontalAlignment="Stretch"
+                      SelectionMode="Single"
+                      SelectionChanged="ConversationSelectionChanged"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                      IsVisible="{Binding HasSelectedSession}"
+                      Focusable="False">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="models:MessageItem">
+            <Grid MaxWidth="780" Margin="12,8" HorizontalAlignment="Stretch" IsVisible="{Binding IsVisible}">
+              <Border IsVisible="{Binding IsUser}" HorizontalAlignment="Right" MaxWidth="480" Padding="12,10" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                  <ItemsControl ItemsSource="{Binding Attachments}" IsVisible="{Binding HasAttachments}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="7" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="models:ComposerAttachment">
+                        <Button Width="72" Height="56" Padding="0" Classes="quiet" Click="PreviewMessageAttachment" AutomationProperties.Name="{Binding Name, StringFormat=View attached image {0}}">
+                          <Image Source="{Binding Preview}" Stretch="UniformToFill" />
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <SelectableTextBlock Text="{Binding Text}" FontSize="12" TextWrapping="Wrap" LineHeight="19" />
+                </StackPanel>
+              </Border>
+
+              <StackPanel IsVisible="{Binding IsProcess}" MaxWidth="620" HorizontalAlignment="Left" Spacing="5">
+                <Button Classes="quiet"
+                        MinHeight="26"
+                        Padding="4,3"
+                        Margin="-5,0,0,2"
+                        HorizontalAlignment="Left"
+                        Click="ToggleTurnProcess"
+                        IsVisible="{Binding ShowProcessToggle}"
+                        ToolTip.Tip="Show or hide this turn's work"
+                        AutomationProperties.Name="{Binding ProcessToggleText}">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <svg:Svg Width="12"
+                             Height="12"
+                             Path="/Assets/icons/chevron-right.svg"
+                             Css="{DynamicResource IconSvgCss}"
+                             IsVisible="{Binding ProcessCollapsed}" />
+                    <svg:Svg Width="12"
+                             Height="12"
+                             Path="/Assets/icons/chevron-right.svg"
+                             Css="{DynamicResource IconSvgCss}"
+                             IsVisible="{Binding ProcessExpanded}"
+                             RenderTransformOrigin="50%,50%">
+                      <svg:Svg.RenderTransform>
+                        <RotateTransform Angle="90" />
+                      </svg:Svg.RenderTransform>
+                    </svg:Svg>
+                    <TextBlock Text="{Binding ProcessToggleText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+
+                <StackPanel IsVisible="{Binding ProcessContentVisible}" Spacing="5">
+                  <Grid IsVisible="{Binding IsAssistant}">
+                    <controls:MarkdownText Markdown="{Binding Text}" FontSize="14" HorizontalAlignment="Stretch" />
+                  </Grid>
+
+                  <Button Classes="tool-card"
+                          IsVisible="{Binding IsTool}"
+                          Click="OpenToolDetail"
+                          ToolTip.Tip="View operation details"
+                          AutomationProperties.Name="{Binding ToolSummaryText, StringFormat=View operation details for {0}}">
+                    <Grid ColumnDefinitions="18,*,Auto,16">
+                      <svg:Svg Grid.Row="0" Grid.Column="0" Width="13" Height="13" Margin="0,1,0,0" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" />
+                      <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ToolSummaryText}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ToolStateText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsToolSucceeded}" />
+                      <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ToolStateText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsToolFailed}" />
+                      <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ToolStateText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsToolActive}" />
+                      <svg:Svg Grid.Row="0" Grid.Column="3" Width="12" Height="12" HorizontalAlignment="Right" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
+                    </Grid>
+                  </Button>
+                </StackPanel>
+              </StackPanel>
+
+              <StackPanel IsVisible="{Binding IsFinalAssistant}" MaxWidth="610" HorizontalAlignment="Left" Spacing="4">
+                <Grid>
+                  <controls:MarkdownText Markdown="{Binding Text}" FontSize="14" HorizontalAlignment="Stretch" />
+                </Grid>
+                <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Margin="-7,0,0,0" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response" AutomationProperties.Name="Copy response" IsVisible="{Binding ShowCopy}">
+                  <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
+                </Button>
+              </StackPanel>
+            </Grid>
+          </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+      <StackPanel ZIndex="1" Margin="36,0,0,112" HorizontalAlignment="Left" VerticalAlignment="Bottom" Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsTurnActive}">
+        <Ellipse Classes="running-dot" />
+        <Ellipse Classes="running-dot" />
+        <Ellipse Classes="running-dot" />
+      </StackPanel>
+      <TextBlock x:Name="ConversationAnnouncement" IsVisible="False" AutomationProperties.LiveSetting="Polite" />
+
+      <StackPanel ZIndex="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding IsSessionLoadingVisible}">
+        <ProgressBar Width="160" Height="3" IsIndeterminate="True" />
+        <TextBlock Text="Loading conversation..." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+      </StackPanel>
+
+      <StackPanel MaxWidth="420" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding HasSessionLoadError}">
+        <TextBlock Text="Conversation could not be loaded" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding SessionLoadError}" FontSize="12" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" TextAlignment="Center" />
+        <Button Classes="compact" HorizontalAlignment="Center" Click="RetrySession">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <svg:Svg Width="14" Height="14" Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
+            <TextBlock Text="Retry" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="7" IsVisible="{Binding !HasSelectedSession}">
+        <svg:Svg Width="24" Height="24" Path="/Assets/icons/panel-left.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
+        <TextBlock Text="No session selected" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Text="Create or select a session to start a conversation." FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+      </StackPanel>
+
+      <Border x:Name="ToolDetailOverlay"
+              IsVisible="False"
+              Background="#99000000"
+              ZIndex="200">
+        <Border Width="560"
+                MaxWidth="560"
+                MaxHeight="620"
+                Margin="24"
+                Padding="20,16,20,18"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="{DynamicResource SurfaceRaisedBrush}"
+                BorderBrush="{DynamicResource BorderStrongBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+          <Grid RowDefinitions="Auto,*,Auto" MinHeight="180">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,14">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Operation details" Classes="eyebrow" />
+                <TextBlock x:Name="ToolDetailTitle" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBlock x:Name="ToolDetailState" Grid.Column="1" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+              <StackPanel Spacing="12">
+                <StackPanel x:Name="ToolDetailErrorPanel" Spacing="5" IsVisible="False">
+                  <TextBlock Text="Error" Classes="eyebrow" Foreground="{DynamicResource DangerBrush}" />
+                  <Border Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                    <TextBlock x:Name="ToolDetailError" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" />
+                  </Border>
+                </StackPanel>
+                <StackPanel x:Name="ToolDetailRequestPanel" Spacing="5" IsVisible="False">
+                  <TextBlock Text="Request" Classes="eyebrow" />
+                  <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                    <SelectableTextBlock x:Name="ToolDetailRequest" Classes="mono" FontSize="11" TextWrapping="Wrap" />
+                  </Border>
+                </StackPanel>
+                <StackPanel x:Name="ToolDetailResultPanel" Spacing="5" IsVisible="False">
+                  <TextBlock Text="Result" Classes="eyebrow" />
+                  <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                    <SelectableTextBlock x:Name="ToolDetailResult" Classes="mono" FontSize="11" TextWrapping="Wrap" />
+                  </Border>
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,16,0,0">
+              <Button x:Name="ToolDetailCloseButton" Classes="compact" Content="Close" Click="CloseToolDetail" />
+            </StackPanel>
+          </Grid>
+        </Border>
+      </Border>
+
+      <chat:ChatInput IsVisible="{Binding HasSelectedSession}" />
+    </Grid>
+  </Border>
+</UserControl>

@@ -1,0 +1,129 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Dark">
+      <Color x:Key="BorderColor">#292f36</Color>
+      <Color x:Key="ForegroundColor">#edf0f3</Color>
+      <Color x:Key="CardBackgroundColor">#121519</Color>
+      <Color x:Key="SecondaryCardBackgroundColor">#15191e</Color>
+      <Color x:Key="CodeInlineColor">#d9e0e6</Color>
+      <Color x:Key="QuoteBorderColor">#65717d</Color>
+      <x:Double x:Key="FontSizeS">12</x:Double>
+      <x:Double x:Key="FontSizeM">14</x:Double>
+      <x:Double x:Key="FontSizeL">14</x:Double>
+      <x:Double x:Key="FontSizeXl">15</x:Double>
+      <x:Double x:Key="FontSize2Xl">19</x:Double>
+      <x:Double x:Key="FontSize3Xl">26</x:Double>
+      <Color x:Key="SystemAccentColor">#d9e0e6</Color>
+      <Color x:Key="SystemAccentColorDark1">#b9c3cc</Color>
+      <Color x:Key="SystemAccentColorDark2">#929faa</Color>
+      <Color x:Key="SystemAccentColorDark3">#65717d</Color>
+      <Color x:Key="SystemAccentColorLight1">#e5eaee</Color>
+      <Color x:Key="SystemAccentColorLight2">#edf1f4</Color>
+      <Color x:Key="SystemAccentColorLight3">#f3f6f8</Color>
+      <Color x:Key="IconColor">#a7afb9</Color>
+      <Color x:Key="AccentColor">#d9e0e6</Color>
+      <Color x:Key="AccentInkColor">#101317</Color>
+      <Color x:Key="TextControlSelectionHighlightColor">#65717d</Color>
+      <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#d9e0e6" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#d9e0e6" />
+      <x:String x:Key="IconSvgCss">[stroke='#000'] { stroke: #a7afb9; } [fill='#000'] { fill: #a7afb9; } [stroke='currentColor'] { stroke: #a7afb9; }</x:String>
+      <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #d9e0e6; } [fill='#000'] { fill: #d9e0e6; } [stroke='currentColor'] { stroke: #d9e0e6; }</x:String>
+      <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #101317; } [fill='#000'] { fill: #101317; } [stroke='currentColor'] { stroke: #101317; }</x:String>
+      <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #9fb3c3; } [fill='#000'] { fill: #9fb3c3; } [stroke='currentColor'] { stroke: #9fb3c3; }</x:String>
+      <SolidColorBrush x:Key="CanvasBrush" Color="#0d0f12" />
+      <SolidColorBrush x:Key="SurfaceBrush" Color="#121519" />
+      <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#181c21" />
+      <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#1e2329" />
+      <SolidColorBrush x:Key="SurfaceActiveBrush" Color="#242a31" />
+      <SolidColorBrush x:Key="SidebarBrush" Color="#0b0e12" />
+      <SolidColorBrush x:Key="InspectorBrush" Color="#0c0f13" />
+      <SolidColorBrush x:Key="WorkspaceBrush" Color="#13171c" />
+      <SolidColorBrush x:Key="ComposerBrush" Color="#181d23" />
+      <SolidColorBrush x:Key="FieldBrush" Color="#15191e" />
+      <SolidColorBrush x:Key="FieldFocusBrush" Color="#191f24" />
+      <SolidColorBrush x:Key="TextBrush" Color="#edf0f3" />
+      <SolidColorBrush x:Key="TextSecondaryBrush" Color="#a7afb9" />
+      <SolidColorBrush x:Key="TextMutedBrush" Color="#7f8994" />
+      <SolidColorBrush x:Key="TextDisabledBrush" Color="#525a64" />
+      <SolidColorBrush x:Key="BorderBrush" Color="#292f36" />
+      <SolidColorBrush x:Key="BorderStrongBrush" Color="#46505b" />
+      <SolidColorBrush x:Key="AccentBrush" Color="#d9e0e6" />
+      <SolidColorBrush x:Key="AccentHoverBrush" Color="#f3f6f8" />
+      <SolidColorBrush x:Key="AccentPressedBrush" Color="#b9c3cc" />
+      <SolidColorBrush x:Key="AccentInkBrush" Color="#101317" />
+      <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#20262d" />
+      <SolidColorBrush x:Key="AccentBorderBrush" Color="#65717d" />
+      <SolidColorBrush x:Key="SuccessBrush" Color="#9fb3c3" />
+      <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="#1e2730" />
+      <SolidColorBrush x:Key="WarningBrush" Color="#d5ad6f" />
+      <SolidColorBrush x:Key="WarningSurfaceBrush" Color="#2a2115" />
+      <SolidColorBrush x:Key="WarningBorderBrush" Color="#5d492d" />
+      <SolidColorBrush x:Key="DangerBrush" Color="#e68a83" />
+      <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#2a1919" />
+      <SolidColorBrush x:Key="DangerBorderBrush" Color="#633735" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Light">
+      <Color x:Key="BorderColor">#d5dde4</Color>
+      <Color x:Key="ForegroundColor">#17202a</Color>
+      <Color x:Key="CardBackgroundColor">#ffffff</Color>
+      <Color x:Key="SecondaryCardBackgroundColor">#f4f7f9</Color>
+      <Color x:Key="CodeInlineColor">#2c3742</Color>
+      <Color x:Key="QuoteBorderColor">#aab8c4</Color>
+      <x:Double x:Key="FontSizeS">12</x:Double>
+      <x:Double x:Key="FontSizeM">14</x:Double>
+      <x:Double x:Key="FontSizeL">14</x:Double>
+      <x:Double x:Key="FontSizeXl">15</x:Double>
+      <x:Double x:Key="FontSize2Xl">19</x:Double>
+      <x:Double x:Key="FontSize3Xl">26</x:Double>
+      <Color x:Key="SystemAccentColor">#2c3742</Color>
+      <Color x:Key="SystemAccentColorDark1">#1e2730</Color>
+      <Color x:Key="SystemAccentColorDark2">#161d24</Color>
+      <Color x:Key="SystemAccentColorDark3">#10161b</Color>
+      <Color x:Key="SystemAccentColorLight1">#3b4854</Color>
+      <Color x:Key="SystemAccentColorLight2">#65717d</Color>
+      <Color x:Key="SystemAccentColorLight3">#aab8c4</Color>
+      <Color x:Key="IconColor">#44515e</Color>
+      <Color x:Key="AccentColor">#2c3742</Color>
+      <Color x:Key="AccentInkColor">#ffffff</Color>
+      <Color x:Key="TextControlSelectionHighlightColor">#aab8c4</Color>
+      <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#2c3742" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#2c3742" />
+      <x:String x:Key="IconSvgCss">[stroke='#000'] { stroke: #44515e; } [fill='#000'] { fill: #44515e; } [stroke='currentColor'] { stroke: #44515e; }</x:String>
+      <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #2c3742; } [fill='#000'] { fill: #2c3742; } [stroke='currentColor'] { stroke: #2c3742; }</x:String>
+      <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #ffffff; } [fill='#000'] { fill: #ffffff; } [stroke='currentColor'] { stroke: #ffffff; }</x:String>
+      <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #4f6d82; } [fill='#000'] { fill: #4f6d82; } [stroke='currentColor'] { stroke: #4f6d82; }</x:String>
+      <SolidColorBrush x:Key="CanvasBrush" Color="#f3f5f7" />
+      <SolidColorBrush x:Key="SurfaceBrush" Color="#ffffff" />
+      <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#f8fafc" />
+      <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#eef2f5" />
+      <SolidColorBrush x:Key="SurfaceActiveBrush" Color="#e7edf1" />
+      <SolidColorBrush x:Key="SidebarBrush" Color="#e9eef2" />
+      <SolidColorBrush x:Key="InspectorBrush" Color="#edf1f4" />
+      <SolidColorBrush x:Key="WorkspaceBrush" Color="#f8fafb" />
+      <SolidColorBrush x:Key="ComposerBrush" Color="#ffffff" />
+      <SolidColorBrush x:Key="FieldBrush" Color="#f4f7f9" />
+      <SolidColorBrush x:Key="FieldFocusBrush" Color="#ffffff" />
+      <SolidColorBrush x:Key="TextBrush" Color="#17202a" />
+      <SolidColorBrush x:Key="TextSecondaryBrush" Color="#44515e" />
+      <SolidColorBrush x:Key="TextMutedBrush" Color="#65717d" />
+      <SolidColorBrush x:Key="TextDisabledBrush" Color="#a6b0ba" />
+      <SolidColorBrush x:Key="BorderBrush" Color="#d5dde4" />
+      <SolidColorBrush x:Key="BorderStrongBrush" Color="#bac6d0" />
+      <SolidColorBrush x:Key="AccentBrush" Color="#2c3742" />
+      <SolidColorBrush x:Key="AccentHoverBrush" Color="#1e2730" />
+      <SolidColorBrush x:Key="AccentPressedBrush" Color="#3b4854" />
+      <SolidColorBrush x:Key="AccentInkBrush" Color="#ffffff" />
+      <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#e7edf1" />
+      <SolidColorBrush x:Key="AccentBorderBrush" Color="#aab8c4" />
+      <SolidColorBrush x:Key="SuccessBrush" Color="#4f6d82" />
+      <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="#e8eef2" />
+      <SolidColorBrush x:Key="WarningBrush" Color="#966a25" />
+      <SolidColorBrush x:Key="WarningSurfaceBrush" Color="#fff2dc" />
+      <SolidColorBrush x:Key="WarningBorderBrush" Color="#dfbe83" />
+      <SolidColorBrush x:Key="DangerBrush" Color="#b6463f" />
+      <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#fae6e4" />
+      <SolidColorBrush x:Key="DangerBorderBrush" Color="#dda09b" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

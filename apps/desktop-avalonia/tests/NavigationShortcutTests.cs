@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using SunCode.Desktop.Views.Projects;
+using SunCode.Desktop.Views.ProjectWorkspace;
 
 namespace SunCode.Desktop.Tests;
 

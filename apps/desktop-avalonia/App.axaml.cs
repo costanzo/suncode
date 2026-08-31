@@ -7,7 +7,8 @@ using SunCode.Desktop.Models;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.ViewModels;
 using SunCode.Desktop.Views.About;
-using SunCode.Desktop.Views.Projects;
+using SunCode.Desktop.Views.ProjectHub;
+using SunCode.Desktop.Views.ProjectWorkspace;
 using SunCode.Desktop.Views.Settings;
 
 namespace SunCode.Desktop;

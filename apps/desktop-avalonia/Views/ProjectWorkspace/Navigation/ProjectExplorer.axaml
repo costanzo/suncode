@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.ProjectWorkspace.Navigation.ProjectExplorer"
+             x:DataType="vm:DesktopViewModel">
+  <UserControl.Styles>
+    <Style Selector="TreeView.explorer-tree">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="TreeView.explorer-tree TreeViewItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded, Mode=TwoWay}" />
+    </Style>
+    <Style Selector="TreeView.explorer-tree TreeViewItem /template/ Border#PART_LayoutRoot">
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="TreeView.explorer-tree TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Grid.explorer-row">
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Margin" Value="6,3" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Grid.explorer-row.dependency">
+      <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    </Style>
+    <Style Selector="TextBlock.explorer-name">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.root TextBlock.explorer-name">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.dependency-root TextBlock.explorer-name">
+      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+    </Style>
+    <Style Selector="TextBlock.explorer-path">
+      <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="FontSize" Value="9" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="sidebar-card">
+    <Grid Margin="12,12,10,10" RowDefinitions="34,8,*">
+      <Grid Grid.Row="0" ColumnDefinitions="*,28,28">
+        <TextBlock Classes="section-label" Text="EXPLORER" Margin="4,0,0,0" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="icon" Width="28" Height="28" Padding="6" Click="RefreshExplorer" ToolTip.Tip="Refresh explorer" AutomationProperties.Name="Refresh explorer">
+          <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
+        <Button Grid.Column="2" Classes="icon" Width="28" Height="28" Padding="6" Click="AddDependency" ToolTip.Tip="Add dependency folder" AutomationProperties.Name="Add dependency folder">
+          <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
+      </Grid>
+
+      <TreeView x:Name="ExplorerTree"
+                Grid.Row="2"
+                Classes="explorer-tree"
+                ItemsSource="{Binding ExplorerRoots}"
+                ScrollViewer.HorizontalScrollBarVisibility="Auto">
+        <TreeView.DataTemplates>
+          <TreeDataTemplate DataType="models:ExplorerNode" ItemsSource="{Binding Children}">
+            <Grid Classes="explorer-row" Classes.dependency="{Binding IsDependency}" Classes.root="{Binding IsRoot}" Classes.dependency-root="{Binding IsDependencyRoot}" ColumnDefinitions="13,16,Auto,24" ColumnSpacing="5" HorizontalAlignment="Left">
+              <svg:Svg Grid.Column="0" Width="12" Height="12" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsDirectory}" RenderTransformOrigin="50%,50%">
+                <svg:Svg.RenderTransform>
+                  <RotateTransform Angle="{Binding ExpansionRotation}" />
+                </svg:Svg.RenderTransform>
+              </svg:Svg>
+              <svg:Svg Grid.Column="1" Width="14" Height="14" Path="/Assets/icons/files.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsFile}" />
+              <svg:Svg Grid.Column="1" Width="14" Height="14" Path="/Assets/icons/sidebar-project.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsDirectory}" />
+              <StackPanel Grid.Column="2" Spacing="1" VerticalAlignment="Center">
+                <TextBlock Classes="explorer-name" Text="{Binding Name}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                <TextBlock Classes="explorer-path" Text="{Binding Path}" IsVisible="{Binding HasPathSubtitle}" TextWrapping="NoWrap" />
+              </StackPanel>
+              <Button Grid.Column="3" Classes="quiet" Width="24" Height="24" Padding="5" IsVisible="{Binding CanRemove}" ToolTip.Tip="Dependency actions" AutomationProperties.Name="{Binding Name, StringFormat=Actions for dependency {0}}">
+                <Button.Flyout>
+                  <MenuFlyout>
+                    <MenuItem Header="Delete" CommandParameter="{Binding}" Click="DeleteDependency" />
+                  </MenuFlyout>
+                </Button.Flyout>
+                <svg:Svg Path="/Assets/icons/more-horizontal.svg" Css="{DynamicResource IconSvgCss}" />
+              </Button>
+            </Grid>
+          </TreeDataTemplate>
+        </TreeView.DataTemplates>
+      </TreeView>
+
+    </Grid>
+  </Border>
+</UserControl>

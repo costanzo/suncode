@@ -1,0 +1,237 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:chat="using:SunCode.Desktop.Views.ProjectWorkspace.Chat"
+             xmlns:navigation="using:SunCode.Desktop.Views.ProjectWorkspace.Navigation"
+             xmlns:review="using:SunCode.Desktop.Views.ProjectWorkspace.Review"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.ProjectWorkspace.ProjectWorkspace"
+             x:DataType="vm:DesktopViewModel">
+  <UserControl.Styles>
+    <Style Selector="Button.icon.gutter">
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.icon.gutter.active">
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid>
+    <Grid RowDefinitions="36,*,20">
+        <Grid Grid.Row="0"
+              Classes="window-titlebar"
+              Background="#01000000"
+              ColumnDefinitions="*,280,*"
+              ZIndex="110"
+              PointerPressed="TitleBarPressed"
+              PointerMoved="TitleBarMoved"
+              PointerReleased="TitleBarReleased"
+              DoubleTapped="TitleBarDoubleTapped">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="5,0,0,0" VerticalAlignment="Center">
+            <Button x:Name="ProjectCloseLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="CloseProjectWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Close window">
+              <svg:Svg Path="/Assets/traffic-lights/1-close-1-normal.svg" />
+            </Button>
+            <Button x:Name="ProjectMinimizeLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="MinimizeWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Minimize window">
+              <svg:Svg Path="/Assets/traffic-lights/2-minimize-1-normal.svg" />
+            </Button>
+            <Button x:Name="ProjectMaximizeLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="ToggleFullScreen" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Enter full screen">
+              <svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" />
+            </Button>
+          </StackPanel>
+          <TextBlock Grid.Column="0"
+                     Text="{Binding ProjectTitle}"
+                     FontSize="12"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     MaxWidth="180"
+                     TextTrimming="CharacterEllipsis"
+                     HorizontalAlignment="Left"
+                     VerticalAlignment="Center"
+                     Margin="90,0,0,0" />
+          <TextBlock Grid.Column="1"
+                     Classes="window-title"
+                     Text="{Binding SessionTitle}"
+                     TextTrimming="CharacterEllipsis"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     MaxWidth="260"
+                     IsVisible="{Binding HasSelectedSession}" />
+          <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="2" Margin="0,0,6,0">
+            <Button Classes="titlebar" Width="26" Height="28" Click="OpenSurfaceMenu" ToolTip.Tip="Workspace panels" AutomationProperties.Name="Open workspace panel menu">
+              <svg:Svg Path="/Assets/icons/more-horizontal.svg" Css="{DynamicResource IconSvgCss}" />
+              <Button.Flyout>
+                <MenuFlyout>
+                  <MenuItem Header="Sessions" Click="ToggleNavigation" />
+                  <MenuItem Header="Explorer" Click="ToggleExplorer" />
+                  <Separator />
+                  <MenuItem Header="Review" Click="ToggleReview" />
+                  <MenuItem Header="Source control" Click="ToggleGit" />
+                  <MenuItem Header="Provider trace" Click="ToggleProviderTrace" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+            <Button Classes="titlebar" Width="26" Height="28" Click="OpenSettings" ToolTip.Tip="Open settings" AutomationProperties.Name="Open settings">
+              <svg:Svg Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />
+            </Button>
+          </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="4">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="{Binding WorkspaceGutterWidth}" />
+            <ColumnDefinition Width="{Binding WorkspaceGutterGap}" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="{Binding WorkspaceGutterGap}" />
+            <ColumnDefinition Width="{Binding WorkspaceGutterWidth}" />
+          </Grid.ColumnDefinitions>
+          <Border Grid.Column="0" Background="#01000000" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
+          <Border Grid.Column="4" Background="#01000000" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
+          <Grid Grid.Column="0" RowDefinitions="Auto,6,Auto,*,Auto,6,Auto" Margin="0,7" IsVisible="{Binding WorkspaceGuttersVisible}">
+            <Button Grid.Row="0" Classes="icon gutter" Classes.active="{Binding SessionSidebarVisible}" Width="26" Height="28" Padding="4" Click="ToggleNavigation" ToolTip.Tip="Show sessions" AutomationProperties.Name="Show or hide sessions">
+              <Grid>
+                <svg:Svg Path="/Assets/icons/panel-left.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !SessionSidebarVisible}" />
+                <svg:Svg Path="/Assets/icons/panel-left.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding SessionSidebarVisible}" />
+              </Grid>
+            </Button>
+            <Button Grid.Row="2" Classes="icon gutter" Classes.active="{Binding ExplorerSidebarVisible}" Width="26" Height="28" Padding="4" Click="ToggleExplorer" ToolTip.Tip="Show explorer" AutomationProperties.Name="Show or hide explorer">
+              <Grid>
+                <svg:Svg Path="/Assets/icons/files.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !ExplorerSidebarVisible}" />
+                <svg:Svg Path="/Assets/icons/files.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding ExplorerSidebarVisible}" />
+              </Grid>
+            </Button>
+            <Button Grid.Row="4" Classes="icon gutter" Classes.active="{Binding GitVisible}" Width="26" Height="28" Padding="4" Click="ToggleGit" ToolTip.Tip="Show or hide source control" AutomationProperties.Name="Show or hide source control">
+              <Grid>
+                <svg:Svg Path="/Assets/icons/git-branch.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !GitVisible}" />
+                <svg:Svg Path="/Assets/icons/git-branch.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding GitVisible}" />
+              </Grid>
+            </Button>
+            <Button Grid.Row="6" Classes="icon gutter" Classes.active="{Binding ProviderTraceVisible}" Width="26" Height="28" Padding="4" Click="ToggleProviderTrace" ToolTip.Tip="Show or hide provider trace" AutomationProperties.Name="Show or hide provider trace">
+              <Grid>
+                <svg:Svg Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !ProviderTraceVisible}" />
+                <svg:Svg Path="/Assets/icons/activity.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding ProviderTraceVisible}" />
+              </Grid>
+            </Button>
+          </Grid>
+
+          <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*" />
+              <RowDefinition Height="{Binding BottomDrawerGap}" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="{Binding NavigationWidth}" />
+                <ColumnDefinition Width="{Binding NavigationGap}" />
+                <ColumnDefinition Width="*" MinWidth="300" />
+                <ColumnDefinition Width="{Binding ReviewGap}" />
+                <ColumnDefinition Width="{Binding ReviewWidth}" />
+              </Grid.ColumnDefinitions>
+
+              <Grid Grid.Column="0" IsVisible="{Binding EffectiveNavigationVisible}">
+                <navigation:ProjectSidebar IsVisible="{Binding EffectiveSessionSidebarVisible}" />
+                <navigation:ProjectExplorer IsVisible="{Binding EffectiveExplorerSidebarVisible}" />
+              </Grid>
+
+              <Border Grid.Column="1" Background="#01000000" Cursor="SizeWestEast" Tag="Navigation" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveNavigationVisible}" />
+
+              <chat:ChatArea x:Name="ChatArea" Grid.Column="2" />
+
+              <Border Grid.Column="3" Background="#01000000" Cursor="SizeWestEast" Tag="Review" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveReviewVisible}" />
+
+              <review:AgentSidebar Grid.Column="4" IsVisible="{Binding EffectiveReviewVisible}" />
+            </Grid>
+
+            <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveGitVisible}" />
+            <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveProviderTraceVisible}" />
+
+            <Grid Grid.Row="2">
+              <review:GitViewer x:Name="GitViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding EffectiveGitVisible}" />
+              <review:ProviderTraceViewer x:Name="ProviderTraceViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding EffectiveProviderTraceVisible}" />
+            </Grid>
+          </Grid>
+
+          <StackPanel Grid.Column="4" Margin="0,7,0,0" IsVisible="{Binding WorkspaceGuttersVisible}">
+            <Button Classes="icon gutter" Classes.active="{Binding ReviewVisible}" Width="26" Height="28" Padding="4" Click="ToggleReview" ToolTip.Tip="Show or hide review" AutomationProperties.Name="Show or hide review">
+              <Grid>
+                <svg:Svg Path="/Assets/icons/panel-right.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !ReviewVisible}" />
+                <svg:Svg Path="/Assets/icons/panel-right.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding ReviewVisible}" />
+              </Grid>
+            </Button>
+          </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="36,0,12,0">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding IsProjectOpen}">
+            <TextBlock Text="{Binding GitFooterBranchText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" MaxWidth="180" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding WorkspaceStatusDetailsVisible}">
+              <TextBlock Text="{Binding GitChangeSummary}" Classes="mono" FontSize="9" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsGitClean}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding GitChangeSummary}" Classes="mono" FontSize="9" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsGitDirty}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding GitAdditions, StringFormat=+{0}}" Classes="mono" FontSize="9" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsGitReady}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding GitDeletions, StringFormat=-{0}}" Classes="mono" FontSize="9" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsGitReady}" VerticalAlignment="Center" />
+            </StackPanel>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasSelectedSession}" VerticalAlignment="Center">
+            <TextBlock Text="{Binding SelectedModelName}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" MaxWidth="180" TextTrimming="CharacterEllipsis" />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding WorkspaceStatusDetailsVisible}">
+              <Border Width="1" Height="10" Background="{DynamicResource BorderBrush}" />
+              <TextBlock Text="{Binding SessionTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+              <Border Width="1" Height="10" Background="{DynamicResource BorderBrush}" />
+              <TextBlock Text="{Binding ProviderTraceSummary}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+      </Grid>
+
+    <Border x:Name="SessionDialogOverlay" IsVisible="False" Background="#99000000" ZIndex="200" PointerPressed="SessionOverlayPointerPressed">
+      <Border Width="360" MaxWidth="360" Margin="28" Padding="20,0,20,18" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="8">
+        <Grid RowDefinitions="54,Auto,14,Auto">
+          <TextBlock x:Name="SessionDialogTitle" Grid.Row="0" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          <TextBox x:Name="SessionTitleInput" Grid.Row="1" PlaceholderText="Session name" TextChanged="SessionTitleChanged" KeyDown="SessionTitleKeyDown" />
+          <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Classes="compact" Content="Cancel" Click="CloseSessionDialog" />
+            <Button x:Name="SessionDialogSubmitButton" Classes="compact primary" Click="SubmitSessionDialog" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Border>
+
+    <Border x:Name="UndoDialogOverlay" IsVisible="False" Background="#99000000" ZIndex="200">
+      <Border Width="520" MaxWidth="520" Margin="24" Padding="20,16,20,18" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="8">
+        <StackPanel Spacing="16">
+          <TextBlock Text="Undo this turn's file changes?" FontSize="17" FontWeight="SemiBold" />
+          <TextBlock Text="SunCode will restore the files changed during this turn." TextWrapping="Wrap" />
+          <Border MaxHeight="150" Padding="12" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+              <TextBlock x:Name="UndoPathsText" Classes="mono" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            </ScrollViewer>
+          </Border>
+          <TextBlock Text="External side effects cannot be reversed." FontSize="12" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button x:Name="UndoCancelButton" Content="Cancel" Click="CloseUndoDialog" />
+            <Button Classes="primary" Content="Undo changes" Click="ConfirmUndoDialog" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border x:Name="DependencyDeleteDialogOverlay" IsVisible="False" Background="#99000000" ZIndex="200" PointerPressed="DependencyDeleteOverlayPointerPressed">
+      <Border Width="420" MaxWidth="420" Margin="24" Padding="20,16,20,18" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="8">
+        <StackPanel Spacing="14">
+          <TextBlock Text="Delete dependency?" FontSize="17" FontWeight="SemiBold" />
+          <TextBlock TextWrapping="Wrap">
+            <Run Text="Remove " />
+            <Run x:Name="DependencyDeleteName" FontWeight="SemiBold" />
+            <Run Text=" from this project's dependencies? The folder and its files will not be deleted." />
+          </TextBlock>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button x:Name="DependencyDeleteCancelButton" Content="Cancel" Click="CloseDependencyDeleteDialog" />
+            <Button Classes="danger" Content="Delete dependency" Click="ConfirmDependencyDeleteDialog" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+  </Grid>
+</UserControl>
