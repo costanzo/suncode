@@ -66,6 +66,7 @@ const settingsGuide = {
       "Use the chevron beside Model providers to collapse or expand its provider links.",
       "Select a provider to edit its OpenAI-compatible URL or credential.",
       "Use Reset default to restore a provider's built-in URL.",
+      "Use Network to review certificate verification, system trust, and custom certificate-path states.",
       "Use the folder buttons in Logging to choose log and image storage directories.",
       "Edit a control and use its save action; use Done to return to ProjectHub.",
     ],
@@ -77,6 +78,7 @@ const settingsGuide = {
     logic: [
       "Settings are local to the embedded agent and are grouped by defaults, appearance, network, logging, and providers.",
       "Provider URL changes and default resets are persisted and applied to subsequent requests without changing credentials or models.",
+      "Certificate-source controls are subordinate to HTTPS verification and switch between system trust and custom certificate-file input.",
       "Provider credentials are masked; only the first and last four characters are shown for recognition.",
       "Saving updates local configuration state and does not grant new machine authority.",
     ],
@@ -242,6 +244,19 @@ function AppearancePanel({ onSave }) {
 
 function NetworkPanel({ onSave }) {
   const [verify, setVerify] = useState(true);
+  const [useSystemCertificates, setUseSystemCertificates] = useState(true);
+  const [certificatePath, setCertificatePath] = useState(
+    "/Users/shuyi/.config/suncode/certs/dev-ca.pem",
+  );
+  const certificateInputRef = useRef(null);
+  const chooseCertificate = () => {
+    certificateInputRef.current?.click();
+  };
+  const chooseFallbackCertificate = (event) => {
+    const file = event.target.files?.[0];
+    if (file) setCertificatePath(`/Users/shuyi/Downloads/${file.name}`);
+    event.target.value = "";
+  };
   return (
     <div className="settings-panel-content">
       <div className="settings-panel-heading">
@@ -267,6 +282,71 @@ function NetworkPanel({ onSave }) {
             <b>{verify ? "On" : "Off"}</b>
           </label>
         </SettingRow>
+        {verify && (
+          <div className="settings-subsection">
+            <span className="settings-subsection-label">Certificate trust source</span>
+            <SettingRow
+              label="Use system certificates"
+              hint="Trust the operating system certificate store for provider and WebFetch HTTPS requests."
+            >
+              <label className="settings-switch">
+                <input
+                  type="checkbox"
+                  checked={useSystemCertificates}
+                  onChange={(event) => setUseSystemCertificates(event.target.checked)}
+                  aria-label="Use system certificates"
+                />
+                <span className="settings-switch-track">
+                  <span />
+                </span>
+                <b>{useSystemCertificates ? "On" : "Off"}</b>
+              </label>
+            </SettingRow>
+            <SettingRow
+              label="Certificate path"
+              hint={
+                useSystemCertificates
+                  ? "Disable system certificates to provide a custom certificate file."
+                  : "Choose a PEM, CRT, CER, or DER certificate file for custom trust."
+              }
+            >
+              <div
+                className={`settings-directory-field settings-file-selector ${useSystemCertificates ? "is-disabled" : ""}`}
+              >
+                <input
+                  className="field mono"
+                  value={useSystemCertificates ? "" : certificatePath}
+                  onChange={(event) => setCertificatePath(event.target.value)}
+                  aria-label="Custom certificate path"
+                  placeholder={
+                    useSystemCertificates
+                      ? "Using system certificates"
+                      : "/path/to/custom-certificate.pem"
+                  }
+                  spellCheck="false"
+                  disabled={useSystemCertificates}
+                />
+                <button
+                  type="button"
+                  aria-label="Choose certificate file"
+                  title="Choose file"
+                  onClick={chooseCertificate}
+                  disabled={useSystemCertificates}
+                >
+                  <Icon name="folder" size={16} />
+                </button>
+                <input
+                  ref={certificateInputRef}
+                  type="file"
+                  accept=".pem,.crt,.cer,.der"
+                  aria-hidden="true"
+                  tabIndex="-1"
+                  onChange={chooseFallbackCertificate}
+                />
+              </div>
+            </SettingRow>
+          </div>
+        )}
         {!verify && (
           <div className="settings-warning">
             <Icon name="platform" size={16} />
@@ -286,7 +366,11 @@ function NetworkPanel({ onSave }) {
           Save HTTPS setting
         </Button>
         <span className="settings-save-status" role="status">
-          {verify ? "Verification enabled" : "Review required"}
+          {verify
+            ? useSystemCertificates
+              ? "System trust store"
+              : "Custom certificate required"
+            : "Review required"}
         </span>
       </div>
     </div>

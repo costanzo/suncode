@@ -193,6 +193,11 @@ const paths = {
       <path d="M21 20v-6h-6" />
     </>
   ),
+  expand: (
+    <>
+      <path d="M9 3H3v6M15 3h6v6M21 15v6h-6M3 15v6h6" />
+    </>
+  ),
 };
 
 export function Icon({ name, size = 18, className = "", ...props }) {

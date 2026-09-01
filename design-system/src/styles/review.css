@@ -1080,6 +1080,19 @@ select.field {
   display: grid;
   gap: 16px;
 }
+.settings-subsection {
+  display: grid;
+  gap: 14px;
+  margin-top: -2px;
+  padding: 14px 0 0 18px;
+  border-left: 1px solid var(--border);
+}
+.settings-subsection-label {
+  color: var(--text-muted);
+  font: 10px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .settings-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);
@@ -1163,6 +1176,18 @@ select.field {
 }
 .settings-directory-field > input[type="file"] {
   display: none;
+}
+.settings-file-selector.is-disabled > .field {
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-inset) 70%, var(--canvas));
+  border-color: var(--border);
+}
+.settings-file-selector.is-disabled > button {
+  color: var(--border-strong);
+  cursor: not-allowed;
+}
+.settings-file-selector.is-disabled > button:hover {
+  background: transparent;
 }
 .settings-unit-field {
   position: relative;
@@ -2342,6 +2367,9 @@ select.field {
   text-align: left;
   font-size: 10px;
 }
+.workspace-tool-row.is-running {
+  border-color: var(--warning-border);
+}
 .workspace-tool-row:hover {
   color: var(--text);
   background: var(--surface-hover);
@@ -2357,6 +2385,9 @@ select.field {
 .workspace-tool-row small {
   color: var(--success);
   font-size: 9px;
+}
+.workspace-tool-row.is-running small {
+  color: var(--warning);
 }
 .workspace-tool-modal {
   width: min(620px, 100%);
@@ -2387,8 +2418,22 @@ select.field {
 }
 .workspace-tool-modal-heading span {
   flex: 0 0 auto;
+}
+.workspace-tool-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--success-border);
+  border-radius: 999px;
   color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
   font: 11px var(--font-mono);
+}
+.workspace-tool-badge.is-running {
+  border-color: var(--warning-border);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
 }
 .workspace-tool-modal-section {
   display: grid;
@@ -2413,6 +2458,27 @@ select.field {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.workspace-tool-live-output {
+  min-height: 220px;
+  max-height: 280px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.workspace-tool-live-output code {
+  display: block;
+  min-height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .workspace-tool-modal-section.is-error > span {
   color: var(--danger);
 }
@@ -2433,6 +2499,50 @@ select.field {
 .workspace-message-assistant {
   position: relative;
   color: var(--text-secondary);
+}
+.workspace-message-assistant-status {
+  max-width: 640px;
+  padding-bottom: 6px;
+}
+.workspace-thinking-indicator {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font: 500 12px/1.2 var(--font-ui);
+  letter-spacing: 0.02em;
+}
+.workspace-thinking-indicator span {
+  position: relative;
+  color: color-mix(in srgb, var(--text-secondary) 28%, transparent);
+}
+.workspace-thinking-indicator span::after {
+  content: "Thinking";
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: var(--text);
+  white-space: nowrap;
+  animation: workspace-thinking-reveal 1.75s ease-in-out infinite;
+}
+@keyframes workspace-thinking-reveal {
+  0% {
+    width: 0%;
+    opacity: 0.42;
+  }
+  45% {
+    width: 100%;
+    opacity: 1;
+  }
+  55% {
+    width: 100%;
+    opacity: 1;
+  }
+  100% {
+    width: 0%;
+    opacity: 0.42;
+  }
 }
 .workspace-message-assistant p {
   margin: 0;
@@ -2659,13 +2769,19 @@ select.field {
   justify-content: space-between;
   gap: 6px;
 }
+.workspace-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .workspace-composer-options {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
 }
-.workspace-attach {
+.workspace-attach,
+.workspace-expand-composer {
   display: grid;
   width: 24px;
   height: 24px;
@@ -2676,12 +2792,14 @@ select.field {
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
 }
-.workspace-attach:hover {
+.workspace-attach:hover,
+.workspace-expand-composer:hover {
   color: var(--text);
   background: var(--surface-hover);
   border-color: var(--border);
 }
-.workspace-attach:focus-visible {
+.workspace-attach:focus-visible,
+.workspace-expand-composer:focus-visible {
   color: var(--text);
   box-shadow: var(--focus-ring);
   outline: 0;
@@ -2689,6 +2807,44 @@ select.field {
 .workspace-attach:disabled {
   color: var(--border-strong);
   cursor: not-allowed;
+}
+.workspace-composer-modal {
+  width: min(860px, 100%);
+}
+.workspace-composer-modal-content {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+.workspace-composer-modal-content textarea {
+  width: 100%;
+  min-height: 420px;
+  padding: 18px 18px 22px;
+  resize: vertical;
+  color: var(--text);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: 0;
+  font: 14px/1.55 var(--font-ui);
+}
+.workspace-composer-modal-content textarea::placeholder {
+  color: var(--text-muted);
+}
+.workspace-composer-modal-content textarea:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.workspace-composer-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.workspace-composer-modal-footer strong {
+  color: var(--text-secondary);
+  font: 11px var(--font-mono);
 }
 .workspace-reasoning-dropdown .dropdown-trigger {
   width: 76px;
@@ -4467,6 +4623,9 @@ select.field {
   .settings-panel-content {
     padding: 24px 18px 30px;
   }
+  .settings-subsection {
+    padding-left: 14px;
+  }
   .settings-row {
     grid-template-columns: 1fr;
     gap: 9px;
@@ -4515,6 +4674,9 @@ select.field {
   }
   .workspace-tool-row small {
     display: none;
+  }
+  .workspace-composer-modal-content textarea {
+    min-height: 320px;
   }
   .workspace-statusbar {
     padding-left: 12px;

@@ -268,6 +268,7 @@ const conversationToolCalls = [
     icon: "activity",
     title: "Read ProjectWorkspace.axaml",
     state: "Succeeded",
+    tone: "success",
     request: "apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml",
     result: "218 lines read",
     error: "",
@@ -276,6 +277,41 @@ const conversationToolCalls = [
     icon: "files",
     title: "Updated workspace routes and modules",
     state: "Succeeded",
+    tone: "success",
+    request: "workspace route modules",
+    result: "8 modules updated",
+    error: "",
+  },
+];
+const runningConversationToolCalls = [
+  {
+    icon: "terminal",
+    title: "Run mvn compile for the workspace shell specimen",
+    state: "Running",
+    tone: "running",
+    request: "mvn -pl design-system compile",
+    result: "Command still running",
+    liveLabel: "Command output",
+    liveOutput: [
+      "[INFO] Scanning for projects...",
+      "[INFO] ------------------------------------------------------------------------",
+      "[INFO] Building design-system 0.0.0-review",
+      "[INFO] --- frontend-maven-plugin:1.15.0:npm (npm install) @ design-system ---",
+      "[INFO] added 214 packages in 4s",
+      "[INFO] --- frontend-maven-plugin:1.15.0:npm (npm run build) @ design-system ---",
+      "> design-system@0.0.0 build",
+      "> vite build",
+      "vite v7.1.3 building for production...",
+      "transforming modules...",
+      "rendering chunks...",
+    ],
+    error: "",
+  },
+  {
+    icon: "files",
+    title: "Updated workspace routes and modules",
+    state: "Succeeded",
+    tone: "success",
     request: "workspace route modules",
     result: "8 modules updated",
     error: "",
@@ -287,6 +323,7 @@ const longConversationToolCalls = [
     title:
       "Read apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml and inspect workspace layout constraints",
     state: "Succeeded",
+    tone: "success",
     request: "apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml",
     result: "218 lines read",
     error: "",
@@ -295,6 +332,7 @@ const longConversationToolCalls = [
     icon: "files",
     title: "Updated workspace routes and modules",
     state: "Succeeded",
+    tone: "success",
     request: "workspace route modules",
     result: "8 modules updated",
     error: "",
@@ -785,20 +823,33 @@ export function ConversationPanel({
   imageInputEnabled = false,
   onViewChanges,
 }) {
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(
+    state === "immersive-composer"
+      ? "Please refactor the conversation layout into focused review states, preserve the existing attachment behavior, and keep the visual language aligned with Quiet Control Desk. I want the resulting specimen to stay calm even when the prompt is several paragraphs long.\n\nAlso add a clearer tool-inspection state so long-running commands can be observed without leaving the conversation surface."
+      : "",
+  );
   const [processOpen, setProcessOpen] = useState(true);
   const [toolPreview, setToolPreview] = useState(null);
   const [attachments, setAttachments] = useState(initialAttachments);
   const [sentAttachments, setSentAttachments] = useState(initialSentAttachments);
   const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [composerExpanded, setComposerExpanded] = useState(state === "immersive-composer");
+  const [visibleToolOutputLines, setVisibleToolOutputLines] = useState(0);
   const attachmentInputRef = useRef(null);
   const localAttachmentUrls = useRef(new Set());
   const hasSession = state !== "no-session";
   const hasContent = state !== "new-session" && hasSession;
-  const updating = state === "content-updating";
+  const updating = state === "content-updating" || state === "live-tool-stream";
+  const thinking = state === "content-thinking";
   const compacted = state === "context-compacted";
-  const turnActive = updating;
-  const toolCalls = state === "long-tool-call" ? longConversationToolCalls : conversationToolCalls;
+  const turnActive = updating || thinking;
+  const toolCalls =
+    state === "long-tool-call"
+      ? longConversationToolCalls
+      : updating
+        ? runningConversationToolCalls
+        : conversationToolCalls;
+  const messageCharacters = Array.from(message).length;
   const handleAttachmentChange = (event) => {
     if (!imageInputEnabled) return;
     const selectedImages = Array.from(event.target.files ?? []).filter((file) =>
@@ -831,11 +882,40 @@ export function ConversationPanel({
     });
   };
   useEffect(() => () => localAttachmentUrls.current.forEach((url) => URL.revokeObjectURL(url)), []);
+  useEffect(() => {
+    if (state === "immersive-composer") setComposerExpanded(true);
+  }, [state]);
+  useEffect(() => {
+    if (state === "live-tool-stream") setToolPreview(0);
+  }, [state]);
+  useEffect(() => {
+    if (toolPreview === null) {
+      setVisibleToolOutputLines(0);
+      return undefined;
+    }
+    const activeTool = toolCalls[toolPreview];
+    if (!activeTool?.liveOutput?.length) {
+      setVisibleToolOutputLines(0);
+      return undefined;
+    }
+    setVisibleToolOutputLines(Math.min(3, activeTool.liveOutput.length));
+    const intervalId = window.setInterval(() => {
+      setVisibleToolOutputLines((current) => {
+        if (current >= activeTool.liveOutput.length) {
+          window.clearInterval(intervalId);
+          return current;
+        }
+        return current + 1;
+      });
+    }, 540);
+    return () => window.clearInterval(intervalId);
+  }, [toolCalls, toolPreview, state]);
   const sendMessage = () => {
     if (!message.trim() && !attachments.length) return;
     if (attachments.length) setSentAttachments((current) => [...current, ...attachments]);
     setAttachments([]);
     setMessage("");
+    setComposerExpanded(false);
   };
   return (
     <section
@@ -900,7 +980,7 @@ export function ConversationPanel({
                 <button
                   key={tool.title}
                   type="button"
-                  className="workspace-tool-row"
+                  className={`workspace-tool-row ${tool.tone === "running" ? "is-running" : ""}`.trim()}
                   aria-haspopup="dialog"
                   onClick={() => setToolPreview(index)}
                 >
@@ -920,21 +1000,37 @@ export function ConversationPanel({
               </div>
             )}
           </div>
-          <div className="workspace-message workspace-message-assistant">
-            <p>
-              I split Workspace into a complete composition and focused pages for sessions,
-              explorer, conversation, review, source control, and provider trace.
-            </p>
-            <div className="workspace-message-footer">
-              <button type="button" className="workspace-copy" aria-label="Copy response">
-                <Icon name="copy" size={13} />
-              </button>
-              {!turnActive && (
+          {!turnActive ? (
+            <div className="workspace-message workspace-message-assistant">
+              <p>
+                I split Workspace into a complete composition and focused pages for sessions,
+                explorer, conversation, review, source control, and provider trace.
+              </p>
+              <div className="workspace-message-footer">
+                <button type="button" className="workspace-copy" aria-label="Copy response">
+                  <Icon name="copy" size={13} />
+                </button>
                 <TurnChangeSummary {...completedTurnChanges} onViewChanges={onViewChanges} />
-              )}
+              </div>
             </div>
-          </div>
-          {updating && (
+          ) : (
+            <div className="workspace-message workspace-message-assistant workspace-message-assistant-status">
+              <p>
+                Inspecting the workspace shell and keeping the long-running build visible in the
+                conversation timeline.
+              </p>
+            </div>
+          )}
+          {thinking && (
+            <div
+              className="workspace-thinking-indicator"
+              role="status"
+              aria-label="Assistant is thinking"
+            >
+              <span>Thinking</span>
+            </div>
+          )}
+          {updating && !thinking && (
             <div
               className="workspace-running-indicator"
               role="status"
@@ -982,22 +1078,33 @@ export function ConversationPanel({
             aria-label="Message SunCode"
           />
           <div className="workspace-composer-footer">
-            <button
-              type="button"
-              className="workspace-attach"
-              aria-label="Add attachment"
-              title={
-                !imageInputEnabled
-                  ? "Selected model does not support image input"
-                  : attachments.length >= 3
-                    ? "Maximum 3 images"
-                    : "Add image"
-              }
-              disabled={!imageInputEnabled || attachments.length >= 3}
-              onClick={() => attachmentInputRef.current?.click()}
-            >
-              <Icon name="plus" size={14} />
-            </button>
+            <div className="workspace-composer-actions">
+              <button
+                type="button"
+                className="workspace-attach"
+                aria-label="Add attachment"
+                title={
+                  !imageInputEnabled
+                    ? "Selected model does not support image input"
+                    : attachments.length >= 3
+                      ? "Maximum 3 images"
+                      : "Add image"
+                }
+                disabled={!imageInputEnabled || attachments.length >= 3}
+                onClick={() => attachmentInputRef.current?.click()}
+              >
+                <Icon name="plus" size={14} />
+              </button>
+              <button
+                type="button"
+                className="workspace-expand-composer"
+                aria-label="Open expanded composer"
+                title="Open expanded composer"
+                onClick={() => setComposerExpanded(true)}
+              >
+                <Icon name="expand" size={13} />
+              </button>
+            </div>
             <input
               ref={attachmentInputRef}
               className="workspace-attachment-input"
@@ -1050,14 +1157,28 @@ export function ConversationPanel({
           <div className="workspace-tool-modal-content">
             <div className="workspace-tool-modal-heading">
               <strong>{toolCalls[toolPreview].title}</strong>
-              <span>{toolCalls[toolPreview].state}</span>
+              <span className={`workspace-tool-badge is-${toolCalls[toolPreview].tone ?? "success"}`}>
+                {toolCalls[toolPreview].state}
+              </span>
             </div>
             <div className="workspace-tool-modal-section">
               <span>Request</span>
               <code>{toolCalls[toolPreview].request}</code>
             </div>
+            {toolCalls[toolPreview].liveOutput && (
+              <div className="workspace-tool-modal-section">
+                <span>{toolCalls[toolPreview].liveLabel ?? "Live output"}</span>
+                <pre className="workspace-tool-live-output" aria-live="polite">
+                  <code>
+                    {toolCalls[toolPreview].liveOutput
+                      .slice(0, visibleToolOutputLines || toolCalls[toolPreview].liveOutput.length)
+                      .join("\n")}
+                  </code>
+                </pre>
+              </div>
+            )}
             <div className="workspace-tool-modal-section">
-              <span>Result</span>
+              <span>{toolCalls[toolPreview].liveOutput ? "Latest status" : "Result"}</span>
               <code>{toolCalls[toolPreview].result}</code>
             </div>
             {toolCalls[toolPreview].error && (
@@ -1077,6 +1198,41 @@ export function ConversationPanel({
       >
         <div className="workspace-image-preview">
           {previewAttachment && <img src={previewAttachment.url} alt={previewAttachment.name} />}
+        </div>
+      </Modal>
+      <Modal
+        open={composerExpanded}
+        title="Expanded composer"
+        description="Use a larger drafting surface when the compact composer is not enough."
+        onClose={() => setComposerExpanded(false)}
+        className="workspace-composer-modal"
+        actions={
+          <>
+            <button type="button" className="btn" onClick={() => setComposerExpanded(false)}>
+              Return to composer
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={sendMessage}
+              disabled={!message.trim() && !attachments.length}
+            >
+              Send message
+            </button>
+          </>
+        }
+      >
+        <div className="workspace-composer-modal-content">
+          <textarea
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            placeholder="Ask SunCode to work on this project"
+            aria-label="Expanded message composer"
+          />
+          <div className="workspace-composer-modal-footer">
+            <span>Draft syncs with the compact composer</span>
+            <strong aria-live="polite">{messageCharacters} characters</strong>
+          </div>
         </div>
       </Modal>
     </section>

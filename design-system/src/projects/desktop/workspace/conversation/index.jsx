@@ -80,6 +80,25 @@ const conversationGuides = {
       ],
     },
   },
+  thinking: {
+    tabs: {
+      actions: [
+        "Use this state to review the assistant's thinking phase before tool execution or final output appears.",
+        "Confirm that the status remains readable without relying on bouncing dots.",
+        "Check that the animation still feels calm and legible in the conversation timeline.",
+      ],
+      style: [
+        "The thinking indicator uses the literal word Thinking instead of the three-dot running marker.",
+        "Letters reveal from left to right in a repeating loop, keeping motion directional but restrained.",
+        "The indicator stays low-noise and uses the same graphite conversation hierarchy as the rest of the surface.",
+      ],
+      logic: [
+        "Thinking is a dedicated conversation state, separate from generic active tool execution.",
+        "While thinking is shown, the standard three-dot running indicator is intentionally absent.",
+        "The surface can transition from thinking into tool activity or a final assistant response.",
+      ],
+    },
+  },
   compacted: {
     tabs: {
       actions: [
@@ -118,6 +137,25 @@ const conversationGuides = {
       ],
     },
   },
+  immersiveComposer: {
+    tabs: {
+      actions: [
+        "Use the expand control in the composer footer when the compact field feels too small.",
+        "Draft a multi-paragraph prompt in the larger modal surface.",
+        "Watch the character counter update live in the lower-right corner while you type.",
+      ],
+      style: [
+        "The expanded composer keeps the graphite dialog language and a quieter title treatment than a destructive modal.",
+        "The large textarea uses the same UI type as the compact composer, but grows into an immersive drafting surface.",
+        "Character feedback stays attached to the drafting area instead of adding extra chrome to the compact composer.",
+      ],
+      logic: [
+        "The modal edits the same draft as the compact composer so closing it does not lose work.",
+        "The expanded state is a conversation-surface behavior, not a separate page or workflow.",
+        "Sending from the expanded composer uses the same submission path as the compact composer.",
+      ],
+    },
+  },
   longTool: {
     tabs: {
       actions: [
@@ -134,6 +172,25 @@ const conversationGuides = {
         "A long tool call is still one operation in the current turn.",
         "The list preserves full data in the modal while keeping the timeline compact.",
         "Tool completion state is independent from the assistant message that follows.",
+      ],
+    },
+  },
+  liveToolStream: {
+    tabs: {
+      actions: [
+        "Open the running tool row to inspect the command while it is still executing.",
+        "Read the live output region in the modal to follow long operations such as compile commands.",
+        "Use the request and status details to understand what is still running without leaving the conversation.",
+      ],
+      style: [
+        "The running tool row keeps the timeline compact and shows a warm live status instead of a completed success tone.",
+        "The modal adds a dedicated output viewport with monospace lines and vertical scrolling.",
+        "Request, live output, and completion summary stay in one raised dialog rather than splitting the user into multiple panes.",
+      ],
+      logic: [
+        "Long-running process tools can surface incremental output before the assistant reply completes.",
+        "The live-output modal is inspection-only and keeps the main conversation readable.",
+        "Completed tools still use the same modal shell, but the live pane becomes a historical output record.",
       ],
     },
   },
@@ -174,6 +231,13 @@ export function WorkspaceConversationPage() {
       content: <ConversationPanel standalone state="content-updating" />,
     },
     {
+      id: "thinking",
+      title: "Assistant thinking",
+      description: "A dedicated thinking phase replaces the generic three-dot running marker.",
+      side: "right",
+      content: <ConversationPanel standalone state="content-thinking" />,
+    },
+    {
       id: "compacted",
       title: "Context compacted",
       description: "A completed context compaction is recorded in the conversation timeline.",
@@ -210,11 +274,25 @@ export function WorkspaceConversationPage() {
       ),
     },
     {
+      id: "immersiveComposer",
+      title: "Expanded composer",
+      description: "A large drafting modal opens from the compact composer for longer prompts.",
+      side: "left",
+      content: <ConversationPanel standalone state="immersive-composer" onViewChanges={viewChanges} />,
+    },
+    {
       id: "longTool",
       title: "Long tool call",
       description: "A long operation title is compacted while its details remain available.",
       side: "right",
       content: <ConversationPanel standalone state="long-tool-call" onViewChanges={viewChanges} />,
+    },
+    {
+      id: "liveToolStream",
+      title: "Live tool output",
+      description: "A running command opens a modal with streaming output while the turn is still active.",
+      side: "right",
+      content: <ConversationPanel standalone state="live-tool-stream" />,
     },
   ];
   return (

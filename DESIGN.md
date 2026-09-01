@@ -170,6 +170,22 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Focus:** Two-pixel control-silver border and slightly lifted field background.
 - **Disabled:** Muted text and canvas-level contrast; the control remains recognizable but clearly unavailable.
 
+### Conversation Composer And Tool Inspection
+
+- **Compact composer:** The default conversation composer remains a compact floating surface anchored to the bottom of the conversation region.
+- **Expanded drafting:** The composer exposes an explicit expand action that opens a raised modal with a large multi-paragraph drafting textarea. The modal edits the same draft as the compact composer rather than creating a second independent buffer.
+- **Character feedback:** The expanded drafting modal shows a live character count in the lower-right area so long prompts stay measurable without crowding the compact composer.
+- **Tool inspection:** Tool rows stay compact inside the timeline, but opening a running command can reveal a modal with the full request, current status, and a scrollable live command-output pane.
+- **Output presentation:** Live command output uses the code/data monospace treatment, wraps safely for narrow widths, and never turns the conversation into a dashboard.
+- **Thinking feedback:** A dedicated thinking phase uses animated `Thinking` text that reveals from left to right and replaces the generic three-dot running marker during that phase.
+
+### Network Certificate Settings
+
+- **Verification scope:** The HTTPS verification toggle remains the primary control for certificate-chain and hostname verification.
+- **Certificate source:** When verification stays enabled, the settings surface exposes a subordinate certificate-source toggle for using system certificates.
+- **Custom certificates:** Turning off system certificates enables a file-selector field for a custom certificate path. Leaving system certificates on disables that path field rather than hiding it, so the dependency remains visible.
+- **Path selector:** Certificate path selection uses the same field-plus-browse-button language as other path selectors, but in file mode rather than folder mode.
+
 ### Navigation
 
 The left bay is project and session navigation, with uppercase section labels, a strong project identity line, and clear session actions. Expanded windows use the side gutter; the title-bar panel menu remains available at every width so hidden supporting surfaces can always be restored without replacing the conversation with a drawer overlay.
