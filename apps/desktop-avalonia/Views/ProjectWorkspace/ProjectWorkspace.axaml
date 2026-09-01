@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SunCode.Desktop.Controls"
              xmlns:vm="using:SunCode.Desktop.ViewModels"
              xmlns:chat="using:SunCode.Desktop.Views.ProjectWorkspace.Chat"
              xmlns:navigation="using:SunCode.Desktop.Views.ProjectWorkspace.Navigation"
@@ -185,53 +186,59 @@
         </Grid>
       </Grid>
 
-    <Border x:Name="SessionDialogOverlay" IsVisible="False" Background="#99000000" ZIndex="200" PointerPressed="SessionOverlayPointerPressed">
-      <Border Width="360" MaxWidth="360" Margin="28" Padding="20,0,20,18" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="8">
-        <Grid RowDefinitions="54,Auto,14,Auto">
-          <TextBlock x:Name="SessionDialogTitle" Grid.Row="0" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-          <TextBox x:Name="SessionTitleInput" Grid.Row="1" PlaceholderText="Session name" TextChanged="SessionTitleChanged" KeyDown="SessionTitleKeyDown" />
-          <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Classes="compact" Content="Cancel" Click="CloseSessionDialog" />
-            <Button x:Name="SessionDialogSubmitButton" Classes="compact primary" Click="SubmitSessionDialog" />
-          </StackPanel>
-        </Grid>
-      </Border>
-    </Border>
+    <controls:SCModal x:Name="SessionDialogModal"
+                      Width="360"
+                      MaxWidth="360"
+                      IsOpen="False"
+                      PrimaryButtonText="Create"
+                      SecondaryButtonText="Cancel"
+                      PrimaryAction="SubmitSessionDialog"
+                      SecondaryAction="CloseSessionDialog"
+                      CloseRequested="CloseSessionDialog">
+      <TextBox x:Name="SessionTitleInput"
+               PlaceholderText="Session name"
+               TextChanged="SessionTitleChanged"
+               KeyDown="SessionTitleKeyDown" />
+    </controls:SCModal>
 
-    <Border x:Name="UndoDialogOverlay" IsVisible="False" Background="#99000000" ZIndex="200">
-      <Border Width="520" MaxWidth="520" Margin="24" Padding="20,16,20,18" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="8">
-        <StackPanel Spacing="16">
-          <TextBlock Text="Undo this turn's file changes?" FontSize="17" FontWeight="SemiBold" />
-          <TextBlock Text="SunCode will restore the files changed during this turn." TextWrapping="Wrap" />
-          <Border MaxHeight="150" Padding="12" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
-            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-              <TextBlock x:Name="UndoPathsText" Classes="mono" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
-            </ScrollViewer>
-          </Border>
-          <TextBlock Text="External side effects cannot be reversed." FontSize="12" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" />
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button x:Name="UndoCancelButton" Content="Cancel" Click="CloseUndoDialog" />
-            <Button Classes="primary" Content="Undo changes" Click="ConfirmUndoDialog" />
-          </StackPanel>
-        </StackPanel>
-      </Border>
-    </Border>
+    <controls:SCModal x:Name="UndoDialogModal"
+                      Width="520"
+                      MaxWidth="520"
+                      IsOpen="False"
+                      Title="Undo this turn's file changes?"
+                      Description="SunCode will restore the files changed during this turn."
+                      PrimaryButtonText="Undo changes"
+                      SecondaryButtonText="Cancel"
+                      CloseOnOverlayPress="False"
+                      PrimaryAction="ConfirmUndoDialog"
+                      SecondaryAction="CloseUndoDialog"
+                      CloseRequested="CloseUndoDialog">
+      <StackPanel Spacing="16">
+        <Border MaxHeight="150" Padding="12" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <TextBlock x:Name="UndoPathsText" Classes="mono" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+          </ScrollViewer>
+        </Border>
+        <TextBlock Text="External side effects cannot be reversed." FontSize="12" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" />
+      </StackPanel>
+    </controls:SCModal>
 
-    <Border x:Name="DependencyDeleteDialogOverlay" IsVisible="False" Background="#99000000" ZIndex="200" PointerPressed="DependencyDeleteOverlayPointerPressed">
-      <Border Width="420" MaxWidth="420" Margin="24" Padding="20,16,20,18" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="8">
-        <StackPanel Spacing="14">
-          <TextBlock Text="Delete dependency?" FontSize="17" FontWeight="SemiBold" />
-          <TextBlock TextWrapping="Wrap">
-            <Run Text="Remove " />
-            <Run x:Name="DependencyDeleteName" FontWeight="SemiBold" />
-            <Run Text=" from this project's dependencies? The folder and its files will not be deleted." />
-          </TextBlock>
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button x:Name="DependencyDeleteCancelButton" Content="Cancel" Click="CloseDependencyDeleteDialog" />
-            <Button Classes="danger" Content="Delete dependency" Click="ConfirmDependencyDeleteDialog" />
-          </StackPanel>
-        </StackPanel>
-      </Border>
-    </Border>
+    <controls:SCModal x:Name="DependencyDeleteDialogModal"
+                      Width="420"
+                      MaxWidth="420"
+                      IsOpen="False"
+                      Title="Delete dependency?"
+                      PrimaryButtonText="Delete dependency"
+                      SecondaryButtonText="Cancel"
+                      PrimaryIsDanger="True"
+                      PrimaryAction="ConfirmDependencyDeleteDialog"
+                      SecondaryAction="CloseDependencyDeleteDialog"
+                      CloseRequested="CloseDependencyDeleteDialog">
+      <TextBlock TextWrapping="Wrap">
+        <Run Text="Remove " />
+        <Run x:Name="DependencyDeleteName" FontWeight="SemiBold" />
+        <Run Text=" from this project's dependencies? The folder and its files will not be deleted." />
+      </TextBlock>
+    </controls:SCModal>
   </Grid>
 </UserControl>

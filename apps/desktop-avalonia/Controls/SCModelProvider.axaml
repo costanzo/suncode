@@ -1,0 +1,141 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Controls.SCModelProvider"
+             x:CompileBindings="False">
+  <Grid>
+    <ScrollViewer x:Name="OverviewPanel"
+                  HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="32,28,32,34"
+                  Spacing="20"
+                  MaxWidth="720">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Model providers"
+                     Classes="sc-text-title" />
+          <TextBlock Text="Built-in providers available to the local agent."
+                     Classes="sc-text-hint" />
+        </StackPanel>
+        <ItemsControl x:Name="ProviderItemsControl">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="models:ProviderItem">
+              <Button Classes="navigation sc-button"
+                      Tag="{Binding Id}"
+                      Click="SelectProvider"
+                      Padding="4,10"
+                      MinHeight="58"
+                      HorizontalContentAlignment="Stretch"
+                      AutomationProperties.Name="{Binding DisplayName, StringFormat=Open {0} provider settings}">
+                <Grid ColumnDefinitions="8,*,16"
+                      ColumnSpacing="11">
+                  <Ellipse Width="7"
+                           Height="7"
+                           Fill="{DynamicResource WarningBrush}"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding !Configured}" />
+                  <Ellipse Width="7"
+                           Height="7"
+                           Fill="{DynamicResource SuccessBrush}"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding Configured}" />
+                  <StackPanel Grid.Column="1"
+                              Spacing="3">
+                    <TextBlock Text="{Binding DisplayName}"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ApiBase}"
+                               Classes="mono sc-text-hint"
+                               FontSize="10"
+                               TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <svg:Svg Grid.Column="2"
+                           Width="12"
+                           Height="12"
+                           Path="/Assets/icons/chevron-right.svg"
+                           Css="{DynamicResource IconSvgCss}"
+                           VerticalAlignment="Center" />
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+
+    <ScrollViewer x:Name="DetailPanel"
+                  IsVisible="False"
+                  HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="32,28,32,34"
+                  Spacing="16"
+                  MaxWidth="720">
+        <StackPanel Spacing="4">
+          <TextBlock x:Name="ProviderTitleText"
+                     Classes="sc-text-title" />
+          <TextBlock x:Name="ProviderDescriptionText"
+                     Classes="sc-text-hint"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+        <TextBlock Text="PROVIDER URL"
+                   Classes="section-label" />
+        <TextBlock Text="OpenAI-compatible API base URL used for subsequent requests."
+                   Classes="sc-text-hint" />
+        <TextBox x:Name="EndpointInput"
+                 Classes="mono"
+                 PlaceholderText="https://api.example.com/v1"
+                 TextChanged="EndpointInputChanged"
+                 AutomationProperties.Name="Provider URL" />
+        <StackPanel Orientation="Horizontal"
+                    Spacing="8"
+                    VerticalAlignment="Center">
+          <Button x:Name="SaveEndpointButton"
+                  Classes="compact primary sc-button"
+                  Content="Save URL"
+                  Click="SaveEndpoint"
+                  IsEnabled="False" />
+          <TextBlock x:Name="EndpointStatusTextBlock"
+                     VerticalAlignment="Center"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+        <Border Height="1"
+                Background="{DynamicResource BorderBrush}"
+                Margin="0,4" />
+        <TextBlock Text="CREDENTIAL"
+                   Classes="section-label" />
+        <Border x:Name="CredentialStatusBorder"
+                Classes="settings-provider-status"
+                Background="{DynamicResource FieldBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1">
+          <TextBlock x:Name="CredentialStatusTextBlock"
+                     TextWrapping="Wrap"
+                     FontSize="11" />
+        </Border>
+        <TextBox x:Name="ApiKeyInput"
+                 Classes="mono sc-secret-input"
+                 TextChanged="ApiKeyInputChanged" />
+        <StackPanel Orientation="Horizontal"
+                    Spacing="8">
+          <Button x:Name="SaveCredentialButton"
+                  Classes="compact primary sc-button"
+                  Content="Save key"
+                  Click="SaveCredential"
+                  IsEnabled="False" />
+          <Button x:Name="RemoveCredentialButton"
+                  Classes="compact danger sc-button"
+                  Content="Remove key"
+                  Click="RemoveCredential" />
+        </StackPanel>
+        <Border Height="1"
+                Background="{DynamicResource BorderBrush}"
+                Margin="0,4" />
+        <TextBlock Text="AVAILABLE MODELS"
+                   Classes="section-label" />
+        <TextBlock x:Name="ProviderModelsTextBlock"
+                   Classes="mono"
+                   TextWrapping="Wrap" />
+        <TextBlock Text="The agent owns provider availability and model registration."
+                   Classes="sc-text-hint" />
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

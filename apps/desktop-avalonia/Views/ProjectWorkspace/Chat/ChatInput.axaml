@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SunCode.Desktop.Controls"
              xmlns:models="using:SunCode.Desktop.Models"
              xmlns:vm="using:SunCode.Desktop.ViewModels"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
@@ -20,6 +21,20 @@
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     </Style>
     <Style Selector="Button.composer-option">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="5" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="controls|SCComboBox.composer-option ComboBox">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="5" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="controls|SCComboBox.composer-option Button">
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
@@ -132,49 +147,28 @@
                   Grid.Row="1"
                   Orientation="Horizontal"
                   Spacing="6">
-        <Button x:Name="ModelMenuButton"
-                Width="136"
-                Height="24"
-                MinHeight="24"
-                Padding="7,1,5,1"
-                Classes="composer-option"
-                IsEnabled="{Binding CanChooseModel}"
-                Click="OpenModelMenu"
-                ToolTip.Tip="Choose model">
-          <Grid ColumnDefinitions="*,12" ColumnSpacing="5">
-            <TextBlock Grid.Column="0"
-                       Classes="mono"
-                       Text="{Binding SelectedModelName}"
-                       FontSize="11"
-                       TextTrimming="CharacterEllipsis"
-                       VerticalAlignment="Center" />
-            <svg:Svg Grid.Column="1"
-                     Width="9"
-                     Height="9"
-                     Path="/Assets/icons/chevron-right.svg"
-                     Css="{DynamicResource IconSvgCss}"
-                     RenderTransformOrigin="50%,50%"
-                     RenderTransform="rotate(90deg)" />
-          </Grid>
-        </Button>
+        <controls:SCComboBox x:Name="ModelSelector"
+                             Width="136"
+                             Height="24"
+                             MinHeight="24"
+                             Classes="mono composer-option"
+                             IsHierarchical="True"
+                             UseMonospace="True"
+                             PlaceholderText="Choose model"
+                             IsEnabled="{Binding CanChooseModel}"
+                             ToolTip.Tip="Choose model"
+                             SelectionChanged="ModelSelectionChanged" />
 
-        <ComboBox Width="76"
-                  Height="24"
-                  MinHeight="24"
-                  Padding="6,1"
-                  Classes="mono composer-option"
-                  ItemsSource="{Binding ReasoningEffortOptions}"
-                  SelectedItem="{Binding SelectedReasoningEffort}"
-                  IsEnabled="{Binding CanChooseReasoningEffort}"
-                  ToolTip.Tip="Reasoning effort">
-          <ComboBox.ItemTemplate>
-            <DataTemplate>
-              <TextBlock Classes="mono"
-                         Text="{Binding}"
-                         FontSize="11" />
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
+        <controls:SCComboBox x:Name="ReasoningSelector"
+                             Width="76"
+                             Height="24"
+                             MinHeight="24"
+                             Classes="mono composer-option"
+                             UseMonospace="True"
+                             PlaceholderText="Effort"
+                             IsEnabled="{Binding CanChooseReasoningEffort}"
+                             ToolTip.Tip="Reasoning effort"
+                             SelectionChanged="ReasoningSelectionChanged" />
 
         <Button Width="24"
                 Height="24"

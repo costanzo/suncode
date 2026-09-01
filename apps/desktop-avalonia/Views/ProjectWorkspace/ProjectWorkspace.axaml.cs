@@ -13,7 +13,6 @@ public sealed partial class ProjectWorkspace : UserControl
     private SessionItem? _sessionDialogTarget;
     private CheckpointItem? _pendingCheckpoint;
     private ExplorerNode? _pendingDependencyDeletion;
-    private Control? _dialogReturnFocus;
     private string _layoutResizeTarget = string.Empty;
     private Point _layoutResizeStart;
     private double _layoutResizeStartNavigationWidth;
@@ -39,19 +38,19 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal bool HandleEscape()
     {
-        if (SessionDialogOverlay.IsVisible)
+        if (SessionDialogModal.IsOpen)
         {
             HideSessionDialog();
             return true;
         }
 
-        if (UndoDialogOverlay.IsVisible)
+        if (UndoDialogModal.IsOpen)
         {
             HideUndoDialog();
             return true;
         }
 
-        if (DependencyDeleteDialogOverlay.IsVisible)
+        if (DependencyDeleteDialogModal.IsOpen)
         {
             HideDependencyDeleteDialog();
             return true;
@@ -62,33 +61,31 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal void ShowSessionDialog(string title, string value, string acceptText, SessionItem? target)
     {
-        CaptureDialogFocus();
         _sessionDialogTarget = target;
-        SessionDialogTitle.Text = title;
-        SessionDialogSubmitButton.Content = acceptText;
+        SessionDialogModal.Title = title;
+        SessionDialogModal.PrimaryButtonText = acceptText;
         SessionTitleInput.Text = value;
-        SessionDialogOverlay.IsVisible = true;
-        SessionDialogSubmitButton.IsEnabled = !string.IsNullOrWhiteSpace(value);
-        SessionTitleInput.Focus();
-        SessionTitleInput.SelectAll();
+        SessionDialogModal.PrimaryEnabled = !string.IsNullOrWhiteSpace(value);
+        SessionDialogModal.IsOpen = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            SessionTitleInput.Focus();
+            SessionTitleInput.SelectAll();
+        }, DispatcherPriority.Input);
     }
 
     internal void ShowUndoDialog(CheckpointItem checkpoint)
     {
-        CaptureDialogFocus();
         _pendingCheckpoint = checkpoint;
         UndoPathsText.Text = checkpoint.PathsText;
-        UndoDialogOverlay.IsVisible = true;
-        Dispatcher.UIThread.Post(() => UndoCancelButton.Focus(), DispatcherPriority.Input);
+        UndoDialogModal.IsOpen = true;
     }
 
     internal void ShowDependencyDeleteDialog(ExplorerNode node)
     {
-        CaptureDialogFocus();
         _pendingDependencyDeletion = node;
         DependencyDeleteName.Text = node.Name;
-        DependencyDeleteDialogOverlay.IsVisible = true;
-        Dispatcher.UIThread.Post(() => DependencyDeleteCancelButton.Focus(), DispatcherPriority.Input);
+        DependencyDeleteDialogModal.IsOpen = true;
     }
 
     private void ToggleNavigation(object? sender, RoutedEventArgs e)
@@ -191,7 +188,7 @@ public sealed partial class ProjectWorkspace : UserControl
         Math.Clamp(width, min, Math.Min(max, Math.Max(min, windowWidth - 560)));
 
     private void SessionTitleChanged(object? sender, TextChangedEventArgs e) =>
-        SessionDialogSubmitButton.IsEnabled = !string.IsNullOrWhiteSpace(SessionTitleInput.Text);
+        SessionDialogModal.PrimaryEnabled = !string.IsNullOrWhiteSpace(SessionTitleInput.Text);
 
     private async void SessionTitleKeyDown(object? sender, KeyEventArgs e)
     {
@@ -215,16 +212,10 @@ public sealed partial class ProjectWorkspace : UserControl
 
     private void CloseSessionDialog(object? sender, RoutedEventArgs e) => HideSessionDialog();
 
-    private void SessionOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (e.Source == sender) HideSessionDialog();
-    }
-
     private void HideSessionDialog()
     {
-        SessionDialogOverlay.IsVisible = false;
+        SessionDialogModal.IsOpen = false;
         _sessionDialogTarget = null;
-        RestoreDialogFocus();
     }
 
     private void CloseUndoDialog(object? sender, RoutedEventArgs e) => HideUndoDialog();
@@ -238,9 +229,8 @@ public sealed partial class ProjectWorkspace : UserControl
 
     private void HideUndoDialog()
     {
-        UndoDialogOverlay.IsVisible = false;
+        UndoDialogModal.IsOpen = false;
         _pendingCheckpoint = null;
-        RestoreDialogFocus();
     }
 
     private void CloseDependencyDeleteDialog(object? sender, RoutedEventArgs e) => HideDependencyDeleteDialog();
@@ -252,26 +242,10 @@ public sealed partial class ProjectWorkspace : UserControl
         if (dependency is not null) await ViewModel.RemoveProjectDependencyAsync(dependency);
     }
 
-    private void DependencyDeleteOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (e.Source == sender) HideDependencyDeleteDialog();
-    }
-
     private void HideDependencyDeleteDialog()
     {
-        DependencyDeleteDialogOverlay.IsVisible = false;
+        DependencyDeleteDialogModal.IsOpen = false;
         _pendingDependencyDeletion = null;
-        RestoreDialogFocus();
-    }
-
-    private void CaptureDialogFocus() =>
-        _dialogReturnFocus = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control;
-
-    private void RestoreDialogFocus()
-    {
-        var target = _dialogReturnFocus;
-        _dialogReturnFocus = null;
-        if (target is not null) Dispatcher.UIThread.Post(() => target.Focus(), DispatcherPriority.Input);
     }
 
     private void OpenSettings(object? sender, RoutedEventArgs e) => Owner?.ShowSettings();

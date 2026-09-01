@@ -1,14 +1,17 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
+using SunCode.Desktop.Controls;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
@@ -20,12 +23,14 @@ public sealed partial class ChatInput : UserControl
     private const int ThumbnailEdge = 96;
     private const int MaxImageBytes = 20 * 1024 * 1024;
     private const long MaxImagePixels = 50_000_000;
+    private DesktopViewModel? _subscribedViewModel;
 
     public ChatInput()
     {
         InitializeComponent();
         ComposerInput.AddHandler(KeyDownEvent, ComposerKeyDown, RoutingStrategies.Tunnel);
         ComposerInput.AddHandler(TextBox.PastingFromClipboardEvent, ComposerPaste);
+        DataContextChanged += (_, _) => RebindViewModelSubscriptions();
     }
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
@@ -135,43 +140,16 @@ public sealed partial class ChatInput : UserControl
     private async void CancelTurn(object? sender, RoutedEventArgs e) =>
         await ViewModel.CancelTurnAsync();
 
-    private void OpenModelMenu(object? sender, RoutedEventArgs e)
+    private void ModelSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        var menu = new MenuFlyout
-        {
-            Placement = PlacementMode.TopEdgeAlignedRight
-        };
-        foreach (var provider in ViewModel.Providers)
-        {
-            var providerItem = new MenuItem
-            {
-                Header = provider.Display
-            };
-            foreach (var model in ViewModel.ModelsForProvider(provider.Id))
-            {
-                var modelItem = new MenuItem
-                {
-                    Header = model.Display,
-                    CommandParameter = model,
-                    ToggleType = MenuItemToggleType.Radio,
-                    GroupName = "models",
-                    IsChecked = model == ViewModel.SelectedModel
-                };
-                modelItem.Click += SelectModel;
-                providerItem.Items.Add(modelItem);
-            }
-            menu.Items.Add(providerItem);
-        }
-        menu.ShowAt(ModelMenuButton);
-    }
-
-    private void SelectModel(object? sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { CommandParameter: ModelItem model })
+        if (ModelSelector.SelectedItem?.Value is ModelItem model)
         {
             ViewModel.SelectedModel = model;
         }
     }
+
+    private void ReasoningSelectionChanged(object? sender, SelectionChangedEventArgs e) =>
+        ViewModel.SelectedReasoningEffort = ReasoningSelector.SelectedItem?.Value as string;
 
     private async void ComposerKeyDown(object? sender, KeyEventArgs e)
     {
@@ -263,5 +241,63 @@ public sealed partial class ChatInput : UserControl
     {
         var extension = Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
         return string.IsNullOrWhiteSpace(extension) ? "png" : extension;
+    }
+
+    private void RebindViewModelSubscriptions()
+    {
+        if (_subscribedViewModel is not null)
+        {
+            _subscribedViewModel.Models.CollectionChanged -= ModelDataChanged;
+            _subscribedViewModel.Providers.CollectionChanged -= ModelDataChanged;
+            _subscribedViewModel.PropertyChanged -= ViewModelPropertyChanged;
+        }
+
+        _subscribedViewModel = DataContext as DesktopViewModel;
+        if (_subscribedViewModel is null)
+        {
+            return;
+        }
+
+        _subscribedViewModel.Models.CollectionChanged += ModelDataChanged;
+        _subscribedViewModel.Providers.CollectionChanged += ModelDataChanged;
+        _subscribedViewModel.PropertyChanged += ViewModelPropertyChanged;
+        RefreshSelectors();
+    }
+
+    private void ModelDataChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        RefreshSelectors();
+
+    private void ViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(DesktopViewModel.SelectedModel) or nameof(DesktopViewModel.SelectedReasoningEffort))
+        {
+            RefreshSelectors();
+        }
+    }
+
+    private void RefreshSelectors()
+    {
+        if (DataContext is not DesktopViewModel viewModel)
+        {
+            return;
+        }
+
+        var groups = viewModel.Providers
+            .Select(provider => new SCComboBoxGroup(
+                provider.DisplayName,
+                viewModel.ModelsForProvider(provider.Id)
+                    .Select(model => new SCComboBoxItem(model.Display, model))
+                    .ToArray()))
+            .ToArray();
+        ModelSelector.GroupSource = groups;
+        ModelSelector.SelectedItem = groups
+            .SelectMany(group => group.Items)
+            .FirstOrDefault(item => item.Value is ModelItem model && model.Id == viewModel.SelectedModel?.Id);
+
+        var effortItems = viewModel.ReasoningEffortOptions
+            .Select(option => new SCComboBoxItem(option.ToUpperInvariant(), option))
+            .ToArray();
+        ReasoningSelector.ItemsSource = effortItems;
+        ReasoningSelector.SelectedItem = effortItems.FirstOrDefault(item => Equals(item.Value, viewModel.SelectedReasoningEffort));
     }
 }

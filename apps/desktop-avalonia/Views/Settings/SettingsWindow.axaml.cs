@@ -1,8 +1,11 @@
+using System.Collections.Specialized;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
+using Avalonia.Media;
 using Avalonia.VisualTree;
+using SunCode.Desktop.Controls;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
@@ -10,20 +13,26 @@ namespace SunCode.Desktop.Views.Settings;
 
 public sealed partial class SettingsWindow : Window
 {
-    private static readonly IReadOnlyDictionary<string, (string Title, string Description, string Placeholder)> Providers =
-        new Dictionary<string, (string, string, string)>
-        {
-            ["deepseek"] = ("DeepSeek", "Configure the URL and credential used by the local DeepSeek provider.", "Paste DeepSeek API key"),
-            ["zhipu"] = ("Zhipu GLM", "Configure the URL and credential used by the local Zhipu GLM provider.", "Paste Zhipu API key"),
-            ["openai"] = ("OpenAI", "Configure the URL and credential used by the local OpenAI provider.", "Paste OpenAI API key"),
-            ["kimi"] = ("Kimi", "Configure the URL and credential used by the local Kimi provider.", "Paste Kimi API key"),
-            ["claude"] = ("Claude", "Configure the URL and credential used by the local Claude provider.", "Paste Anthropic API key"),
-            ["gemini"] = ("Gemini", "Configure the URL and credential used by the local Gemini provider.", "Paste Gemini API key")
-        };
+    private static readonly IReadOnlyList<SCComboBoxItem> ThemeOptions =
+    [
+        new("Dark", "dark"),
+        new("Light", "light")
+    ];
+
+    private static readonly IReadOnlyList<SCComboBoxItem> LogLevelOptions =
+    [
+        new("TRACE", "TRACE"),
+        new("DEBUG", "DEBUG"),
+        new("INFO", "INFO"),
+        new("WARN", "WARN"),
+        new("ERROR", "ERROR"),
+        new("OFF", "OFF")
+    ];
 
     private bool _ready;
     private bool _providersExpanded = true;
     private string _provider = "deepseek";
+    private DesktopViewModel? _subscribedViewModel;
 
     public SettingsWindow()
     {
@@ -31,20 +40,22 @@ public sealed partial class SettingsWindow : Window
         WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
+        DataContextChanged += (_, _) => RebindViewModelSubscriptions();
         Opened += async (_, _) =>
         {
+            RebindViewModelSubscriptions();
             await ViewModel.LoadProjectToolCallLimitAsync();
-            ThemeSelector.SelectedIndex = ViewModel.ThemeMode == "light" ? 1 : 0;
-            DefaultModelSelector.SelectedItem = ViewModel.SelectedModel;
+            RefreshModelSelector();
+            ThemeSelector.ItemsSource = ThemeOptions;
+            ThemeSelector.SelectedItem = ThemeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ThemeMode));
+            LogLevelSelector.ItemsSource = LogLevelOptions;
+            LogLevelSelector.SelectedItem = LogLevelOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.LogLevel));
             ToolCallLimitInput.Value = ViewModel.ToolCallLimit;
             ToolCallLimitInput.IsEnabled = ViewModel.IsProjectOpen;
             SaveToolCallLimitButton.IsEnabled = ViewModel.IsProjectOpen;
             ToolCallLimitScope.Text = ViewModel.SelectedProject is { } project
                 ? $"Project: {project.DisplayName}"
                 : "Open a project to configure this setting.";
-            LogLevelSelector.SelectedItem = LogLevelSelector.Items
-                .OfType<ComboBoxItem>()
-                .FirstOrDefault(item => item.Tag as string == ViewModel.LogLevel);
             LogDirectoryInput.Text = ViewModel.LogDirectory;
             ImageDirectoryInput.Text = ViewModel.ImageDirectory;
             LogMaxMegabytesInput.Text = Math.Max(1, ViewModel.LogMaxBytes / (1024 * 1024))
@@ -53,6 +64,7 @@ public sealed partial class SettingsWindow : Window
             VerifyHttpsCertificatesToggle.IsChecked = ViewModel.VerifyHttpsCertificates;
             RefreshHttpsCertificateWarning();
             ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
+            ShowProviderPanel(null);
             _ready = true;
         };
     }
@@ -74,6 +86,7 @@ public sealed partial class SettingsWindow : Window
 
     private void ShowProviders(object? sender, RoutedEventArgs e)
     {
+        ShowProviderPanel(null);
         SelectPage("providers", sender as Button);
     }
 
@@ -86,16 +99,36 @@ public sealed partial class SettingsWindow : Window
 
     private void ShowProvider(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: string provider } || !Providers.TryGetValue(provider, out var copy)) return;
-        _provider = provider;
-        ProviderTitle.Text = copy.Title;
-        ProviderDescription.Text = copy.Description;
-        ProviderEndpointInput.Text = ViewModel.ProviderEndpoint(provider);
-        ProviderEndpointStatus.Text = string.Empty;
-        ProviderApiKey.PlaceholderText = copy.Placeholder;
-        ProviderApiKey.Text = string.Empty;
+        if (sender is not Button { Tag: string provider }) return;
+        ShowProviderPanel(provider);
+        SelectPage("providers", ProvidersNavigation);
+    }
+
+    private void ProviderSelected(object? sender, string provider)
+    {
+        ShowProviderPanel(provider);
+        SelectPage("providers", ProvidersNavigation);
+    }
+
+    private void ShowProviderPanel(string? provider)
+    {
+        if (!string.IsNullOrWhiteSpace(provider))
+        {
+            _provider = provider;
+        }
+
+        ProviderManager.SelectedProviderId = provider;
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            return;
+        }
+
+        ProviderManager.EndpointText = ViewModel.ProviderEndpoint(provider);
+        ProviderManager.EndpointStatusText = string.Empty;
+        ProviderManager.EndpointStatusBrush = this.FindResource("TextSecondaryBrush") as IBrush;
+        ProviderManager.ApiKeyText = string.Empty;
+        ProviderManager.ApiKeyPlaceholderText = SCProviderCatalog.GetOrDefault(provider).ApiKeyPlaceholder;
         RefreshProvider();
-        SelectPage("provider", sender as Button);
     }
 
     private void SelectPage(string page, Button? selected)
@@ -105,7 +138,6 @@ public sealed partial class SettingsWindow : Window
         NetworkPage.IsVisible = page == "network";
         LoggingPage.IsVisible = page == "logging";
         ProvidersPage.IsVisible = page == "providers";
-        ProviderPage.IsVisible = page == "provider";
         foreach (var button in this.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("navigation")))
             button.Classes.Set("selected", button == selected);
         if (page == "defaults") DefaultsNavigation.Classes.Set("selected", true);
@@ -117,23 +149,27 @@ public sealed partial class SettingsWindow : Window
 
     private async void DefaultModelChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (_ready && DefaultModelSelector.SelectedItem is ModelItem model) await ViewModel.SaveDefaultModelAsync(model);
+        if (_ready && DefaultModelSelector.SelectedItem?.Value is ModelItem model) await ViewModel.SaveDefaultModelAsync(model);
     }
 
     private async void ThemeChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (!_ready || ThemeSelector.SelectedItem is not ComboBoxItem { Tag: string mode }) return;
+        if (!_ready || ThemeSelector.SelectedItem?.Value is not string mode) return;
         await ViewModel.SaveThemeAsync(mode);
+    }
+
+    private void LogLevelChanged(object? sender, SelectionChangedEventArgs e)
+    {
     }
 
     private async void SaveLogging(object? sender, RoutedEventArgs e)
     {
-        var level = (LogLevelSelector.SelectedItem as ComboBoxItem)?.Tag as string ?? ViewModel.LogLevel;
+        var level = LogLevelSelector.SelectedItem?.Value as string ?? ViewModel.LogLevel;
         if (!long.TryParse(LogMaxMegabytesInput.Text?.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var megabytes)
             || megabytes is < 1 or > 1000)
         {
             LoggingStatus.Text = "Maximum log size must be between 1 and 1000 MB";
-            LoggingStatus.Foreground = this.FindResource("DangerBrush") as Avalonia.Media.IBrush;
+            LoggingStatus.Foreground = this.FindResource("DangerBrush") as IBrush;
             return;
         }
         var saved = await ViewModel.SaveLoggingSettingsAsync(
@@ -142,36 +178,14 @@ public sealed partial class SettingsWindow : Window
             checked(megabytes * 1024 * 1024).ToString(System.Globalization.CultureInfo.InvariantCulture),
             LogRetentionInput.Text ?? string.Empty);
         LoggingStatus.Text = ViewModel.StatusText;
-        LoggingStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
-    }
-
-    private async void ChooseLogDirectory(object? sender, RoutedEventArgs e) =>
-        await ChooseDirectoryAsync(LogDirectoryInput, "Choose log directory");
-
-    private async void ChooseImageDirectory(object? sender, RoutedEventArgs e) =>
-        await ChooseDirectoryAsync(ImageDirectoryInput, "Choose image directory");
-
-    private async Task ChooseDirectoryAsync(TextBox target, string title)
-    {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = title,
-            AllowMultiple = false
-        });
-        var folder = folders.FirstOrDefault();
-        var path = folder?.TryGetLocalPath();
-        if (string.IsNullOrWhiteSpace(path) && folder?.Path is { IsFile: true } uri)
-        {
-            path = uri.LocalPath;
-        }
-        if (!string.IsNullOrWhiteSpace(path)) target.Text = path;
+        LoggingStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
     }
 
     private async void SaveImageDirectory(object? sender, RoutedEventArgs e)
     {
         var saved = await ViewModel.SaveImageDirectoryAsync(ImageDirectoryInput.Text);
         ImageDirectoryStatus.Text = ViewModel.StatusText;
-        ImageDirectoryStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
+        ImageDirectoryStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
     }
 
     private void HttpsCertificateVerificationChanged(object? sender, RoutedEventArgs e) =>
@@ -182,7 +196,7 @@ public sealed partial class SettingsWindow : Window
         var enabled = VerifyHttpsCertificatesToggle.IsChecked == true;
         var saved = await ViewModel.SaveHttpsCertificateVerificationAsync(enabled);
         HttpsCertificateStatus.Text = ViewModel.StatusText;
-        HttpsCertificateStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
+        HttpsCertificateStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
         if (!saved)
         {
             VerifyHttpsCertificatesToggle.IsChecked = ViewModel.VerifyHttpsCertificates;
@@ -198,32 +212,32 @@ public sealed partial class SettingsWindow : Window
         if (ToolCallLimitInput.Value is not { } value) return;
         var saved = await ViewModel.SaveProjectToolCallLimitAsync(decimal.ToInt32(value));
         ToolCallLimitStatus.Text = ViewModel.StatusText;
-        ToolCallLimitStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
+        ToolCallLimitStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
     }
 
     private async void SaveCredential(object? sender, RoutedEventArgs e)
     {
-        var value = ProviderApiKey.Text?.Trim();
+        var value = ProviderManager.ApiKeyText?.Trim();
         if (string.IsNullOrWhiteSpace(value)) return;
         await ViewModel.SaveCredentialAsync(_provider, value);
-        ProviderApiKey.Text = string.Empty;
+        ProviderManager.ApiKeyText = string.Empty;
         RefreshProvider();
     }
 
     private void ProviderApiKeyChanged(object? sender, TextChangedEventArgs e) =>
-        SaveCredentialButton.IsEnabled = !string.IsNullOrWhiteSpace(ProviderApiKey.Text);
+        ProviderManager.CanSaveCredential = !string.IsNullOrWhiteSpace(ProviderManager.ApiKeyText);
 
     private void ProviderEndpointChanged(object? sender, TextChangedEventArgs e) =>
-        SaveProviderEndpointButton.IsEnabled = !string.IsNullOrWhiteSpace(ProviderEndpointInput.Text)
-            && !string.Equals(ProviderEndpointInput.Text?.Trim(), ViewModel.ProviderEndpoint(_provider), StringComparison.Ordinal);
+        ProviderManager.CanSaveEndpoint = !string.IsNullOrWhiteSpace(ProviderManager.EndpointText)
+            && !string.Equals(ProviderManager.EndpointText?.Trim(), ViewModel.ProviderEndpoint(_provider), StringComparison.Ordinal);
 
     private async void SaveProviderEndpoint(object? sender, RoutedEventArgs e)
     {
-        var saved = await ViewModel.SaveProviderEndpointAsync(_provider, ProviderEndpointInput.Text);
-        ProviderEndpointStatus.Text = ViewModel.StatusText;
-        ProviderEndpointStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as Avalonia.Media.IBrush;
-        if (saved) ProviderEndpointInput.Text = ViewModel.ProviderEndpoint(_provider);
-        SaveProviderEndpointButton.IsEnabled = !saved;
+        var saved = await ViewModel.SaveProviderEndpointAsync(_provider, ProviderManager.EndpointText);
+        ProviderManager.EndpointStatusText = ViewModel.StatusText;
+        ProviderManager.EndpointStatusBrush = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
+        if (saved) ProviderManager.EndpointText = ViewModel.ProviderEndpoint(_provider);
+        ProviderManager.CanSaveEndpoint = !saved;
     }
 
     private async void RemoveCredential(object? sender, RoutedEventArgs e)
@@ -235,14 +249,45 @@ public sealed partial class SettingsWindow : Window
     private void RefreshProvider()
     {
         var configured = ViewModel.IsProviderConfigured(_provider);
-        CredentialStatus.Text = configured
+        ProviderManager.CredentialConfigured = configured;
+        ProviderManager.CredentialStatusText = configured
             ? "API key configured in the local agent credential store."
             : "No API key configured.";
-        CredentialStatus.Foreground = this.FindResource(configured ? "SuccessBrush" : "WarningBrush") as Avalonia.Media.IBrush;
-        RemoveCredentialButton.IsEnabled = configured;
-        SaveCredentialButton.IsEnabled = !string.IsNullOrWhiteSpace(ProviderApiKey.Text);
-        SaveProviderEndpointButton.IsEnabled = !string.IsNullOrWhiteSpace(ProviderEndpointInput.Text)
-            && !string.Equals(ProviderEndpointInput.Text?.Trim(), ViewModel.ProviderEndpoint(_provider), StringComparison.Ordinal);
-        ProviderModelsText.Text = ViewModel.ProviderModels(_provider);
+        ProviderManager.CanRemoveCredential = configured;
+        ProviderManager.CanSaveCredential = !string.IsNullOrWhiteSpace(ProviderManager.ApiKeyText);
+        ProviderManager.CanSaveEndpoint = !string.IsNullOrWhiteSpace(ProviderManager.EndpointText)
+            && !string.Equals(ProviderManager.EndpointText?.Trim(), ViewModel.ProviderEndpoint(_provider), StringComparison.Ordinal);
+        ProviderManager.ProviderModelsText = ViewModel.ProviderModels(_provider);
+    }
+
+    private void RebindViewModelSubscriptions()
+    {
+        if (_subscribedViewModel is not null)
+        {
+            _subscribedViewModel.Models.CollectionChanged -= ModelsCollectionChanged;
+        }
+
+        _subscribedViewModel = DataContext as DesktopViewModel;
+        if (_subscribedViewModel is not null)
+        {
+            _subscribedViewModel.Models.CollectionChanged += ModelsCollectionChanged;
+        }
+    }
+
+    private void ModelsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        RefreshModelSelector();
+        if (!string.IsNullOrWhiteSpace(ProviderManager.SelectedProviderId))
+        {
+            RefreshProvider();
+        }
+    }
+
+    private void RefreshModelSelector()
+    {
+        if (DataContext is not DesktopViewModel viewModel) return;
+        var items = viewModel.Models.Select(model => new SCComboBoxItem(model.Id, model)).ToArray();
+        DefaultModelSelector.ItemsSource = items;
+        DefaultModelSelector.SelectedItem = items.FirstOrDefault(item => item.Value is ModelItem model && model.Id == viewModel.SelectedModel?.Id);
     }
 }

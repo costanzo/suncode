@@ -1,0 +1,145 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+        xmlns:controls="using:SunCode.Desktop.Controls">
+  <Style Selector="Button.sc-button">
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="14,6" />
+  </Style>
+  <Style Selector="Button.sc-button.compact">
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="10,4" />
+  </Style>
+  <Style Selector="Button.sc-button.icon-only">
+    <Setter Property="Width" Value="30" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="6" />
+  </Style>
+  <Style Selector="Button.sc-combo-trigger">
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="TextBlock.sc-text-title">
+    <Setter Property="FontSize" Value="22" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.sc-text-body">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="TextBlock.sc-text-hint">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="TextBlock.sc-text-status">
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="Border.settings-warning">
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="11,10" />
+  </Style>
+  <Style Selector="Border.settings-provider-status">
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="8,7" />
+  </Style>
+  <Style Selector="TextBlock.settings-hint">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="TextBox.sc-secret-input">
+    <Setter Property="PasswordChar" Value="●" />
+  </Style>
+  <Style Selector="TextBox.sc-secret-input, TextBox.sc-secret-input:focus">
+    <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+  </Style>
+  <Style Selector="NumericUpDown.sc-numeric-input">
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="12,7" />
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="NumericUpDown.sc-numeric-input:focus">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="NumericUpDown.sc-numeric-input Button">
+    <Setter Property="MinHeight" Value="16" />
+    <Setter Property="Padding" Value="4,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch">
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="OnContent" Value="On" />
+    <Setter Property="OffContent" Value="Off" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch:disabled">
+    <Setter Property="Opacity" Value="0.72" />
+  </Style>
+  <Style Selector="controls|SCModal">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid IsVisible="{TemplateBinding IsOpen}"
+              Focusable="True"
+              ZIndex="200">
+          <Border x:Name="PART_Backdrop"
+                  Background="#99000000" />
+          <Border x:Name="PART_Dialog"
+                  Width="{TemplateBinding Width}"
+                  MaxWidth="{TemplateBinding MaxWidth}"
+                  Margin="24"
+                  Padding="20,16,20,18"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Background="{DynamicResource SurfaceRaisedBrush}"
+                  BorderBrush="{DynamicResource BorderStrongBrush}"
+                  BorderThickness="1"
+                  CornerRadius="10">
+            <StackPanel Spacing="16">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="{TemplateBinding Title}"
+                             FontSize="17"
+                             FontWeight="SemiBold" />
+                  <TextBlock x:Name="PART_DescriptionText"
+                             Text="{TemplateBinding Description}"
+                             Classes="sc-text-hint" />
+                </StackPanel>
+                <Button x:Name="PART_CloseButton"
+                        Grid.Column="1"
+                        Classes="quiet sc-button icon-only"
+                        Width="24"
+                        Height="24"
+                        MinHeight="24"
+                        Padding="5">
+                  <svg:Svg Path="/Assets/icons/close.svg"
+                           Css="{DynamicResource IconSvgCss}" />
+                </Button>
+              </Grid>
+              <ContentPresenter Content="{TemplateBinding Content}" />
+              <StackPanel Orientation="Horizontal"
+                          HorizontalAlignment="Right"
+                          Spacing="8">
+                <Button x:Name="PART_SecondaryButton"
+                        Classes="compact sc-button"
+                        Content="{TemplateBinding SecondaryButtonText}" />
+                <Button x:Name="PART_PrimaryButton"
+                        Classes="compact sc-button primary"
+                        Content="{TemplateBinding PrimaryButtonText}"
+                        IsEnabled="{TemplateBinding PrimaryEnabled}" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+</Styles>

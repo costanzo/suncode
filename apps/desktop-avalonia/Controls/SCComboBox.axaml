@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SunCode.Desktop.Controls"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Controls.SCComboBox"
+             x:CompileBindings="False">
+  <Grid>
+    <ComboBox x:Name="FlatCombo"
+              IsVisible="False">
+      <ComboBox.ItemTemplate>
+        <DataTemplate x:DataType="controls:SCComboBoxItem">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{Binding Label}"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding SecondaryText}"
+                       Classes="sc-text-hint"
+                       FontSize="10"
+                       IsVisible="{Binding HasSecondaryText}" />
+          </StackPanel>
+        </DataTemplate>
+      </ComboBox.ItemTemplate>
+    </ComboBox>
+
+    <Button x:Name="GroupedButton"
+            Classes="sc-button sc-combo-trigger"
+            IsVisible="False"
+            Click="OpenGroupedMenu">
+      <Grid ColumnDefinitions="*,12"
+            ColumnSpacing="6">
+        <TextBlock x:Name="GroupedLabel"
+                   VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" />
+        <svg:Svg Grid.Column="1"
+                 Width="9"
+                 Height="9"
+                 Path="/Assets/icons/chevron-right.svg"
+                 Css="{DynamicResource IconSvgCss}"
+                 RenderTransformOrigin="50%,50%"
+                 RenderTransform="rotate(90deg)"
+                 VerticalAlignment="Center" />
+      </Grid>
+    </Button>
+  </Grid>
+</UserControl>
