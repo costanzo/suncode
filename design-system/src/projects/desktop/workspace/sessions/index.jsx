@@ -88,6 +88,27 @@ const sessionGuides = {
       ],
     },
   },
+  archiveConfirmation: {
+    title: "Archive confirmation",
+    side: "right",
+    tabs: {
+      actions: [
+        "Review the exact session name before confirming the archive action.",
+        "Choose Cancel, press Escape, or close the dialog to leave the session unchanged.",
+        "Choose Archive session to remove it from the active list.",
+      ],
+      style: [
+        "The shared confirmation dialog uses the raised graphite modal surface, strong border, and 14px radius.",
+        "The affected session appears in an inset target block between the consequence copy and actions.",
+        "Cancel receives initial keyboard focus; the explicit Archive session action uses the danger treatment.",
+      ],
+      logic: [
+        "Opening Archive from a session menu never changes data immediately.",
+        "Backdrop, close, Escape, and Cancel all dismiss the dialog without archiving.",
+        "Only the explicit Archive session action removes the session from the active list.",
+      ],
+    },
+  },
 };
 
 export function WorkspaceSessionsPage() {
@@ -134,6 +155,13 @@ export function WorkspaceSessionsPage() {
       description: "Five sessions mapped to the Review panel status variants.",
       sessions: sessionsByAgentStatus,
     },
+    {
+      id: "archiveConfirmation",
+      title: "Archive confirmation",
+      description: "A shared confirmation dialog protects the consequential session action.",
+      sessions: sessionsWithoutPins,
+      initialArchiveConfirmation: true,
+    },
   ];
   return (
     <>
@@ -158,7 +186,11 @@ export function WorkspaceSessionsPage() {
                 onToggle={() => setOpenGuide(guideOpen ? null : state.id)}
                 onClose={() => setOpenGuide(null)}
               >
-                <SessionPanel standalone initialSessions={state.sessions} />
+                <SessionPanel
+                  standalone
+                  initialSessions={state.sessions}
+                  initialArchiveConfirmation={state.initialArchiveConfirmation}
+                />
               </WorkspaceGuideState>
             );
           })}

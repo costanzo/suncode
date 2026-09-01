@@ -1046,6 +1046,38 @@ body {
   justify-content: flex-end;
   gap: 8px;
 }
+.confirmation-dialog {
+  width: min(430px, 100%);
+}
+.confirmation-dialog-content {
+  margin-top: 18px;
+}
+.confirmation-dialog-target {
+  display: grid;
+  gap: 4px;
+  padding: 12px 13px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.confirmation-dialog-target span {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.confirmation-dialog-target strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.confirmation-dialog .dialog-actions {
+  margin-top: 18px;
+}
 
 .deferred-panel {
   display: grid;

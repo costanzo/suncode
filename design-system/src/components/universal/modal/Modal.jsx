@@ -1,12 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Icon } from "../../../shared/Icon.jsx";
 
 export function Modal({ open, title, description, onClose, children, actions, className = "" }) {
   const dialogRef = useRef(null);
+  const titleId = useId();
+  const descriptionId = useId();
   useEffect(() => {
     if (!open) return undefined;
     const priorFocus = document.activeElement;
-    dialogRef.current?.querySelector("input, button, textarea, select")?.focus();
+    const initialFocus =
+      dialogRef.current?.querySelector("[data-dialog-initial-focus]") ??
+      dialogRef.current?.querySelector("input, button, textarea, select");
+    initialFocus?.focus();
     const handleKeyDown = (event) => {
       if (event.key === "Escape") onClose?.();
       if (event.key !== "Tab") return;
@@ -39,16 +44,21 @@ export function Modal({ open, title, description, onClose, children, actions, cl
         className={`review-dialog ${className}`.trim()}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-title"
-        aria-describedby={description ? "modal-description" : undefined}
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="dialog-title">
           <div>
-            <h3 id="modal-title">{title}</h3>
-            {description && <p id="modal-description">{description}</p>}
+            <h3 id={titleId}>{title}</h3>
+            {description && <p id={descriptionId}>{description}</p>}
           </div>
-          <button className="btn btn-icon btn-quiet" onClick={onClose} aria-label="Close dialog">
+          <button
+            type="button"
+            className="btn btn-icon btn-quiet"
+            onClick={onClose}
+            aria-label="Close dialog"
+          >
             <Icon name="close" />
           </button>
         </div>

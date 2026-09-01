@@ -8,14 +8,14 @@ export function OverlaysPage() {
     <>
       <PageHeader
         title="Overlays"
-        description="Contextual layers and identity markers appear only when they clarify focus or ownership."
+        description="Contextual layers, confirmation dialogs, and identity markers appear only when they clarify focus or ownership."
         path="components/universal/overlays/"
         status="Universal"
         tone="implemented"
       />
       <Section
         id="overlay-components"
-        title="Avatar, modal, and tooltip"
+        title="Avatar, dialog, and tooltip"
         description="Overlays appear only when focus or compact explanation genuinely requires them."
       >
         <div className="specimen-grid specimen-grid-3">

@@ -50,7 +50,7 @@ export const primaryModules = [
         path: "/components/universal",
         label: "Universal",
         icon: "components",
-        keywords: "button input checkbox radio toggle badge avatar card modal tooltip markdown",
+        keywords: "button input checkbox radio toggle badge avatar card modal dialog confirmation tooltip markdown",
         children: [
           {
             path: "/components/universal/actions",

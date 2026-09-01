@@ -186,6 +186,14 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Custom certificates:** Turning off system certificates enables a file-selector field for a custom certificate path. Leaving system certificates on disables that path field rather than hiding it, so the dependency remains visible.
 - **Path selector:** Certificate path selection uses the same field-plus-browse-button language as other path selectors, but in file mode rather than folder mode.
 
+### Confirmation Dialogs
+
+- **Shared pattern:** Consequential actions use the reusable confirmation dialog rather than implementing page-specific modal structure or performing the action immediately.
+- **Decision content:** The title names the action as a question, the description states the consequence and reversibility, and the body identifies the exact affected item when ambiguity is possible.
+- **Actions:** Cancel appears before an explicit verb-led confirmation label. Destructive or list-removal confirmations use the danger button treatment; neutral confirmations use the primary treatment.
+- **Safe dismissal:** Cancel receives initial keyboard focus. Escape, the close action, backdrop dismissal, and Cancel all leave state unchanged; only the explicit confirmation action commits the operation.
+- **Session archive:** Choosing Archive from a session menu opens a confirmation dialog naming that session. Confirmation removes it from the active list while preserving the ability to reopen it later.
+
 ### Navigation
 
 The left bay is project and session navigation, with uppercase section labels, a strong project identity line, and clear session actions. Expanded windows use the side gutter; the title-bar panel menu remains available at every width so hidden supporting surfaces can always be restored without replacing the conversation with a drawer overlay.

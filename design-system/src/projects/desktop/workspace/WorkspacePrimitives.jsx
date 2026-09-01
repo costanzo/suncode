@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/universal/button/index.js";
 import { ModelDropdown, SingleDropdown } from "../../../components/universal/dropdown/index.js";
-import { Modal } from "../../../components/universal/modal/index.js";
+import { ConfirmationDialog, Modal } from "../../../components/universal/modal/index.js";
 import { Radio } from "../../../components/universal/radio/index.js";
 import { Icon } from "../../../shared/Icon.jsx";
 import { TrafficLights } from "../../../shared/TrafficLights.jsx";
@@ -490,7 +490,12 @@ function TurnChangeSummary({ added, deleted, edited, onViewChanges }) {
   );
 }
 
-export function SessionPanel({ compact = false, standalone = false, initialSessions = sessions }) {
+export function SessionPanel({
+  compact = false,
+  standalone = false,
+  initialSessions = sessions,
+  initialArchiveConfirmation = false,
+}) {
   const [selected, setSelected] = useState(0);
   const [items, setItems] = useState(initialSessions);
   const [menu, setMenu] = useState(null);
@@ -499,6 +504,9 @@ export function SessionPanel({ compact = false, standalone = false, initialSessi
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameIndex, setRenameIndex] = useState(null);
   const [renameTitle, setRenameTitle] = useState("");
+  const [archiveIndex, setArchiveIndex] = useState(
+    initialArchiveConfirmation && initialSessions.length ? 0 : null,
+  );
   const createSession = () => {
     setNewTitle("");
     setCreateOpen(true);
@@ -533,10 +541,15 @@ export function SessionPanel({ compact = false, standalone = false, initialSessi
     );
     setMenu(null);
   };
-  const archive = (index) => {
-    setItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
-    setSelected(0);
+  const openArchiveConfirmation = (index) => {
+    setArchiveIndex(index);
     setMenu(null);
+  };
+  const confirmArchive = () => {
+    if (archiveIndex === null) return;
+    setItems((current) => current.filter((_, itemIndex) => itemIndex !== archiveIndex));
+    setSelected(0);
+    setArchiveIndex(null);
   };
   return (
     <aside
@@ -586,7 +599,7 @@ export function SessionPanel({ compact = false, standalone = false, initialSessi
                 <button type="button" onClick={() => togglePin(index)}>
                   {session.pinned ? "Unpin" : "Pin"}
                 </button>
-                <button type="button" onClick={() => archive(index)}>
+                <button type="button" onClick={() => openArchiveConfirmation(index)}>
                   Archive
                 </button>
               </div>
@@ -672,6 +685,22 @@ export function SessionPanel({ compact = false, standalone = false, initialSessi
           }}
         />
       </Modal>
+      <ConfirmationDialog
+        open={archiveIndex !== null}
+        title="Archive this session?"
+        description="It will leave the active session list, but can be reopened later."
+        confirmLabel="Archive session"
+        onCancel={() => setArchiveIndex(null)}
+        onConfirm={confirmArchive}
+        className="workspace-archive-dialog"
+      >
+        {archiveIndex !== null && items[archiveIndex] && (
+          <div className="confirmation-dialog-target">
+            <span>SESSION</span>
+            <strong>{items[archiveIndex].title}</strong>
+          </div>
+        )}
+      </ConfirmationDialog>
     </aside>
   );
 }

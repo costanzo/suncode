@@ -9,7 +9,11 @@ const modules = [
   { path: "fields", title: "Fields", description: "Text entry, selection fields, and validation." },
   { path: "selection", title: "Selection", description: "Checkboxes, radios, and toggles." },
   { path: "surfaces", title: "Surfaces", description: "Cards and authority-focused containers." },
-  { path: "overlays", title: "Overlays", description: "Avatars, modals, and contextual tooltips." },
+  {
+    path: "overlays",
+    title: "Overlays",
+    description: "Avatars, dialogs, modals, and contextual tooltips.",
+  },
   {
     path: "navigation",
     title: "Navigation",
