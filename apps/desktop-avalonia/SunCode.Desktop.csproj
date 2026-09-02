@@ -58,8 +58,10 @@
     <MakeDir Directories="$(SunCodeAppBundle)/Contents/MacOS;$(SunCodeAppBundle)/Contents/Resources" />
     <ItemGroup>
       <SunCodePublishedFiles Include="$(PublishDir)*" Exclude="$(SunCodeAppBundle)/**" />
+      <SunCodeMacOSNativeLibrary Include="$(SunCodeAgentOutput)/libsuncode_agent.dylib" />
     </ItemGroup>
     <Copy SourceFiles="@(SunCodePublishedFiles)" DestinationFolder="$(SunCodeAppBundle)/Contents/MacOS/%(RecursiveDir)" />
+    <Copy SourceFiles="@(SunCodeMacOSNativeLibrary)" DestinationFolder="$(SunCodeAppBundle)/Contents/MacOS" SkipUnchangedFiles="true" />
     <Copy SourceFiles="Info.plist" DestinationFolder="$(SunCodeAppBundle)/Contents" />
     <Copy SourceFiles="Assets/suncode-desktop.icns" DestinationFolder="$(SunCodeAppBundle)/Contents/Resources" />
   </Target>
