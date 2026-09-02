@@ -14,15 +14,11 @@ Both loggers initialize a default file before SQLite settings are loaded, flush 
 
 HTTPS server verification is durable global configuration. `verify_https_certificates` is a JSON boolean that defaults to `true`. When `true`, built-in Rust HTTPS clients validate the server certificate chain and hostname. When `false`, subsequent built-in provider and WebFetch requests accept invalid certificates and hostnames, equivalent to the TLS verification behavior of `curl -k`. The insecure value does not bypass URL validation, redirect restrictions, network approval, credential redaction, or other policy checks.
 
-SunCode currently has one 16-table schema and no database migration or version metadata. Initialization applies the ordered schema and data manifests transactionally. Reopening the current schema is idempotent; a database with an unexpected application table is rejected without conversion. As explicit additive bootstrap extensions, initialization adds the empty `project_dependency` table to an otherwise-current 13-table database and the empty `session_image` table to an otherwise-current 15-table database before validating the 16-table manifest. It does not provide a general migration mechanism. The current project identity table is singular `project`; a database containing the former `projects` table is therefore incompatible and is not renamed automatically.
+SunCode currently has one 15-table schema and no database migration or version metadata. Initialization applies the ordered schema and data manifests transactionally. Reopening the current schema is idempotent; a database with an unexpected application table is rejected without conversion. The current project identity table is singular `project`; a database containing the former `projects` table is therefore incompatible and is not renamed automatically.
 
 Project source dependencies are stored in `project_dependency`. Rust persists their canonical roots, rejects self/nested/overlapping roots at the SDK boundary, and deletes registrations with the owning project. The SDK never exposes a dependency's absolute root to Avalonia or to the model; external code refers to it by an opaque dependency ID.
 
 ## Streams
-
-### Audit
-
-Immutable and long-lived. Records authority decisions only: requested capability, canonical scope, policy result, decision source, grant lifetime, assertion ID, operation outcome, and correlation IDs. It contains no prompt, file content, secret, or provider credential. Audit records are never compacted or rewritten.
 
 ### Session content
 
@@ -34,9 +30,9 @@ Approval requests and turn-submission idempotency are durable relational state. 
 
 ## Secrets
 
-Provider API keys are classified user secrets. The agent stores and resolves the plaintext value exclusively through `llm_model_provider.api_key`; provider credential environment variables are not a fallback or override. The SQLite data directory and its backups must be treated as sensitive. The key never enters a protocol message, audit record, session content event, log, or client response. Updating a provider key replaces the current value in one row.
+Provider API keys are classified user secrets. The agent stores and resolves the plaintext value exclusively through `llm_model_provider.api_key`; provider credential environment variables are not a fallback or override. The SQLite data directory and its backups must be treated as sensitive. The key never enters a protocol message, session content event, log, or client response. Updating a provider key replaces the current value in one row.
 
-`llm_model_provider` and `llm_model` are the durable source for provider endpoints, adapter compatibility, built-in and custom model identities, request model codes, context lengths, auto-compaction thresholds, output limits, capability flags including reasoning-effort support, enabled state, and ordering. Every provider row names a known `suncode-llm` adapter; currently `openai` is the supported OpenAI-compatible adapter and is the default for custom endpoints. `suncode-data` exposes these rows to agent core; `suncode-llm` and `suncode-database` remain database-driver independent.
+`llm_model_provider` and `llm_model` are the durable source for provider endpoints, adapter compatibility, built-in and custom model identities, request model codes, context lengths, auto-compaction thresholds, output limits, capability flags, comma-separated per-model reasoning-effort catalogs, enabled state, and ordering. Every provider row names a known `suncode-llm` adapter; currently `openai` is the supported OpenAI-compatible adapter and is the default for custom endpoints. `suncode-data` exposes these rows to agent core; `suncode-llm` and `suncode-database` remain database-driver independent.
 
 The named SDK provider-endpoint update modifies only the endpoint of an existing provider row. It validates an absolute HTTP or HTTPS URL with a host and rejects embedded credentials, queries, and fragments. The update preserves the provider's API key and all other provider/model fields, then changes the live Rust route for subsequent calls without requiring a process restart.
 

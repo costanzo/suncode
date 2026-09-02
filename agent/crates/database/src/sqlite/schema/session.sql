@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS session (
     session_id TEXT PRIMARY KEY CHECK(length(session_id) > 0),
-    project_id TEXT NOT NULL REFERENCES project(project_id) ON DELETE RESTRICT,
+    project_id TEXT NOT NULL,
     title TEXT,
     model_id TEXT,
     status TEXT NOT NULL CHECK(status IN ('active', 'archived')),

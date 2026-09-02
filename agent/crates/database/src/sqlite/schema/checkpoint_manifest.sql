@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS checkpoint_manifest (
     manifest_id TEXT PRIMARY KEY CHECK(length(manifest_id) > 0),
-    session_id TEXT NOT NULL REFERENCES session(session_id) ON DELETE CASCADE,
-    turn_id TEXT REFERENCES session_turn(turn_id) ON DELETE SET NULL,
+    session_id TEXT NOT NULL,
+    turn_id TEXT,
     status TEXT NOT NULL CHECK(status IN (
         'available',
         'restoring',

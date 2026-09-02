@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS llm_model (
     model_id TEXT PRIMARY KEY CHECK(length(model_id) > 0),
-    provider_id TEXT NOT NULL REFERENCES llm_model_provider(provider_id) ON DELETE CASCADE,
+    provider_id TEXT NOT NULL,
     display_name TEXT NOT NULL CHECK(length(display_name) > 0),
     request_model TEXT NOT NULL CHECK(length(request_model) > 0),
     context_tokens INTEGER NOT NULL CHECK(context_tokens >= 16000),
@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS llm_model (
     supports_structured_output INTEGER NOT NULL DEFAULT 0 CHECK(supports_structured_output IN (0, 1)),
     supports_cancellation INTEGER NOT NULL DEFAULT 1 CHECK(supports_cancellation IN (0, 1)),
     supports_reasoning_effort INTEGER NOT NULL DEFAULT 0 CHECK(supports_reasoning_effort IN (0, 1)),
+    reasoning_efforts TEXT NOT NULL DEFAULT '',
     enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),
     sort_order INTEGER NOT NULL DEFAULT 0 CHECK(sort_order >= 0),
     created_at TEXT NOT NULL,

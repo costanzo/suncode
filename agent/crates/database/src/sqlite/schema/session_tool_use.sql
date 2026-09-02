@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS session_tool_use (
     turn_id TEXT NOT NULL,
     tool_call_id TEXT NOT NULL CHECK(length(tool_call_id) > 0),
-    session_call_id TEXT REFERENCES session_call(call_id) ON DELETE SET NULL,
+    session_call_id TEXT,
     name TEXT NOT NULL CHECK(length(name) > 0),
     request_json TEXT CHECK(request_json IS NULL OR json_valid(request_json)),
     result_json TEXT CHECK(result_json IS NULL OR json_valid(result_json)),

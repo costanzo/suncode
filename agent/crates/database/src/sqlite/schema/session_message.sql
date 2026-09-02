@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS session_message (
     message_id TEXT PRIMARY KEY CHECK(length(message_id) > 0),
-    session_id TEXT NOT NULL REFERENCES session(session_id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL,
     turn_id TEXT,
-    session_call_id TEXT REFERENCES session_call(call_id) ON DELETE SET NULL,
+    session_call_id TEXT,
     role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'thinking')),
     message_json TEXT NOT NULL CHECK(json_valid(message_json)),
     created_at TEXT NOT NULL

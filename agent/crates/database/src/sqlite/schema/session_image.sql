@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS session_image (
     image_id TEXT PRIMARY KEY CHECK(length(trim(image_id)) > 0),
-    session_id TEXT NOT NULL REFERENCES session(session_id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL,
     display_name TEXT NOT NULL CHECK(length(trim(display_name)) > 0),
     source_kind TEXT NOT NULL CHECK(source_kind IN ('file', 'clipboard')),
     original_path TEXT,

@@ -104,6 +104,7 @@ pub struct ModelDescriptor {
     pub wire_model: String,
     pub api_base: String,
     pub capabilities: ModelCapabilities,
+    pub reasoning_efforts: Vec<String>,
     pub limits: ModelLimits,
     pub availability: String,
 }

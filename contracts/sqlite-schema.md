@@ -2,18 +2,18 @@
 
 Status: Current Phase 1 contract.
 
-The `suncode-data` package is the only ORM/database-connection owner and uses Diesel's SQLite backend for connections, transactions, typed table declarations, and query execution. The `suncode-database` package owns backend resources: `suncode_database::sqlite` contains the current SQL manifests, seed data, table manifest, and database-file creation/existence check. There is one current 16-table set, no version table, and no general migration runner. File names do not encode execution order. Table-owned ORM operations live under `agent/crates/data/src/operations/`, with `projection.rs` and `recovery.rs` reserved for cross-table workflows. Opening a database with any unexpected application table fails without conversion. Initialization transactionally adds a missing `project_dependency` table to an otherwise-current 13-table database and a missing `session_image` table to an otherwise-current 15-table database before validating the current 16-table manifest; these narrowly scoped additive bootstrap extensions do not rename, rewrite, or convert incompatible schemas. `session_turn_todo` is the authoritative per-turn todo projection and is replaced transactionally by `todo.updated` events.
+The `suncode-data` package is the only ORM/database-connection owner and uses Diesel's SQLite backend for connections, transactions, typed table declarations, and query execution. The `suncode-database` package owns backend resources: `suncode_database::sqlite` contains the current SQL manifests, seed data, table manifest, and database-file creation/existence check. There is one current 15-table set, no version table, and no general migration runner. File names do not encode execution order. Table-owned ORM operations live under `agent/crates/data/src/operations/`, with `projection.rs` and `recovery.rs` reserved for cross-table workflows. Opening a database with any unexpected application table fails without conversion. Initialization applies the current manifest transactionally; it does not provide a general migration mechanism. `session_turn_todo` is the authoritative per-turn todo projection and is replaced transactionally by `todo.updated` events.
 
-There are 16 application tables:
+There are 15 application tables:
 
-`approval_request`, `audit_record`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `project`, `project_dependency`, `session`, `session_call`, `session_image`, `session_message`, `session_tool_use`, `session_turn`, and `session_turn_todo`.
+`approval_request`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `project`, `project_dependency`, `session`, `session_call`, `session_image`, `session_message`, `session_tool_use`, `session_turn`, and `session_turn_todo`.
 
 ## Conventions
 
 - IDs are non-empty opaque text; agent IDs are UUIDs.
 - Timestamps are UTC RFC 3339 strings with millisecond precision.
 - JSON columns must contain valid JSON. Queryable identity, state, ordering, and ownership remain relational columns.
-- Foreign keys are enabled on every connection. Projects and sessions are archived rather than normally deleted.
+- Foreign-key enforcement is disabled on every connection. Rust validates referenced identifiers at the owning operation boundary. Projects and sessions are archived rather than normally deleted.
 
 ## Project And Settings
 
@@ -67,10 +67,6 @@ One row per tool invocation, keyed by `(turn_id, tool_call_id)`. It records the 
 
 Human-readable messages keyed by `message_id`. Each row links to its session, optionally to a turn and `session_call`, and stores role, message JSON, and `created_at`. Roles are `user`, `assistant`, and `thinking`; the schema rejects `tool`. Message history is ordered by `created_at` with `rowid` as a deterministic tie-breaker; no content sequence or usage column is used. Provider-reported per-call usage belongs to `session_call`; cumulative turn usage belongs to `session_turn`.
 
-### `audit_record`
-
-Immutable authority and operation history with optional project/session/turn correlations, event type, timestamp, and valid payload JSON. Update/delete triggers reject mutations.
-
 ## Approvals And Checkpoints
 
 ### `approval_request`
@@ -93,7 +89,7 @@ Built-in or custom provider row keyed by `provider_id`. It stores display name, 
 
 ### `llm_model`
 
-Model row keyed by `model_id` and linked to `llm_model_provider`. It stores display/request identifiers, context and auto-compaction token limits, optional output limit, capability flags including `supports_reasoning_effort`, enabled/order state, and timestamps. `auto_compact_tokens` is positive and smaller than `context_tokens`. When this capability is true, the OpenAI-compatible adapter accepts `low`, `medium`, or `high` as a turn's reasoning effort.
+Model row keyed by `model_id` and associated with `llm_model_provider` by `provider_id`. It stores display/request identifiers, context and auto-compaction token limits, optional output limit, capability flags including `supports_reasoning_effort`, a comma-separated `reasoning_efforts` catalog, enabled/order state, and timestamps. `auto_compact_tokens` is positive and smaller than `context_tokens`. When this capability is true, the OpenAI-compatible adapter accepts values from that model's catalog as a turn's reasoning effort.
 
 ## Projection Rules
 

@@ -1,5 +1,6 @@
 use super::{operations, schema};
 use crate::domain::*;
+use crate::model::{ModelRow, ProviderRow};
 use chrono::{Duration, Utc};
 use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
@@ -225,64 +226,6 @@ struct CheckpointRow {
     invalidated_at: Option<String>,
     #[diesel(sql_type = Nullable<Integer>)]
     ordinal: Option<i32>,
-}
-#[derive(QueryableByName)]
-struct ProviderRow {
-    #[diesel(sql_type = Text)]
-    provider_id: String,
-    #[diesel(sql_type = Text)]
-    display_name: String,
-    #[diesel(sql_type = Text)]
-    endpoint: String,
-    #[diesel(sql_type = Text)]
-    adapter_type: String,
-    #[diesel(sql_type = Integer)]
-    api_key_configured: i32,
-    #[diesel(sql_type = Integer)]
-    enabled: i32,
-    #[diesel(sql_type = Integer)]
-    sort_order: i32,
-    #[diesel(sql_type = Text)]
-    created_at: String,
-    #[diesel(sql_type = Text)]
-    updated_at: String,
-}
-#[derive(QueryableByName)]
-struct ModelRow {
-    #[diesel(sql_type = Text)]
-    model_id: String,
-    #[diesel(sql_type = Text)]
-    provider_id: String,
-    #[diesel(sql_type = Text)]
-    display_name: String,
-    #[diesel(sql_type = Text)]
-    request_model: String,
-    #[diesel(sql_type = Integer)]
-    context_tokens: i32,
-    #[diesel(sql_type = Integer)]
-    auto_compact_tokens: i32,
-    #[diesel(sql_type = Nullable<Integer>)]
-    max_output_tokens: Option<i32>,
-    #[diesel(sql_type = Integer)]
-    supports_streaming: i32,
-    #[diesel(sql_type = Integer)]
-    supports_tool_use: i32,
-    #[diesel(sql_type = Integer)]
-    supports_vision: i32,
-    #[diesel(sql_type = Integer)]
-    supports_structured_output: i32,
-    #[diesel(sql_type = Integer)]
-    supports_cancellation: i32,
-    #[diesel(sql_type = Integer)]
-    supports_reasoning_effort: i32,
-    #[diesel(sql_type = Integer)]
-    enabled: i32,
-    #[diesel(sql_type = Integer)]
-    sort_order: i32,
-    #[diesel(sql_type = Text)]
-    created_at: String,
-    #[diesel(sql_type = Text)]
-    updated_at: String,
 }
 #[derive(QueryableByName)]
 struct ExchangeRow {
@@ -715,20 +658,6 @@ impl Store {
         sql_query("UPDATE session_turn SET state='failed',error_json=?,error_code=COALESCE(?,error_code),completed_at=COALESCE(completed_at,?),updated_at=? WHERE session_id=? AND submission_idempotency_key=? AND state NOT IN ('completed','cancelled','interrupted')").bind::<Text,_>(&value).bind::<Nullable<Text>,_>(code).bind::<Text,_>(&t).bind::<Text,_>(&t).bind::<Text,_>(session_id).bind::<Text,_>(key).execute(&mut *c).map_err(crate::database_error)?;
         Ok(())
     }
-    pub fn append_audit(
-        &self,
-        project_id: Option<&str>,
-        session_id: Option<&str>,
-        turn_id: Option<&str>,
-        event_type: &str,
-        payload: &Value,
-    ) -> Result<(), BusinessError> {
-        let mut c = lock(&self.connection)?;
-        let value = serde_json::to_string(payload)?;
-        sql_query("INSERT INTO audit_record(project_id,session_id,turn_id,occurred_at,event_type,payload_json) VALUES (?,?,?,?,?,?)").bind::<Nullable<Text>,_>(project_id).bind::<Nullable<Text>,_>(session_id).bind::<Nullable<Text>,_>(turn_id).bind::<Text,_>(&now()).bind::<Text,_>(event_type).bind::<Text,_>(&value).execute(&mut *c).map_err(crate::database_error)?;
-        Ok(())
-    }
-
     pub fn create_approval(
         &self,
         input: ApprovalInput<'_>,
@@ -865,7 +794,6 @@ impl Store {
             let row=sql_query("SELECT recovery_approval_id AS approval_id,session_id,turn_id,recovery_snapshot_json AS snapshot FROM session_turn WHERE recovery_approval_id=? AND recovery_status='pending'").bind::<Text,_>(id).get_result::<Row>(c).map_err(crate::database_error)?;
             if decision == "allow_session" {
                 sql_query("INSERT INTO configuration(scope,session_id,key,value_json,updated_at) VALUES ('session',?,'full_control','true',?) ON CONFLICT(session_id,key) WHERE scope='session' DO UPDATE SET value_json='true',updated_at=excluded.updated_at").bind::<Text,_>(&row.session_id).bind::<Text,_>(&now()).execute(c).map_err(crate::database_error)?;
-                sql_query("INSERT INTO audit_record(project_id,session_id,turn_id,occurred_at,event_type,payload_json) VALUES (NULL,?,?,?,?,?)").bind::<Text,_>(&row.session_id).bind::<Text,_>(&row.turn_id).bind::<Text,_>(&now()).bind::<Text,_>("session.full_control.changed").bind::<Text,_>("{\"enabled\":true,\"source\":\"approval\"}").execute(c).map_err(crate::database_error)?;
             }
             sql_query("UPDATE session_turn SET recovery_status=?,recovery_updated_at=? WHERE recovery_approval_id=?").bind::<Text,_>(if approved{"resuming"}else{"denied"}).bind::<Text,_>(&now()).bind::<Text,_>(id).execute(c).map_err(crate::database_error)?;
             Ok(Some(row))
@@ -1076,9 +1004,9 @@ impl Store {
     pub fn llm_models(&self, enabled_only: bool) -> Result<Vec<LlmModelRecord>, BusinessError> {
         let mut c = lock(&self.connection)?;
         let sql = if enabled_only {
-            "SELECT model_id,provider_id,display_name,request_model,context_tokens,auto_compact_tokens,max_output_tokens,supports_streaming,supports_tool_use,supports_vision,supports_structured_output,supports_cancellation,supports_reasoning_effort,enabled,sort_order,created_at,updated_at FROM llm_model WHERE enabled=1 ORDER BY sort_order,model_id"
+            "SELECT model_id,provider_id,display_name,request_model,context_tokens,auto_compact_tokens,max_output_tokens,supports_streaming,supports_tool_use,supports_vision,supports_structured_output,supports_cancellation,supports_reasoning_effort,enabled,sort_order,created_at,updated_at,reasoning_efforts FROM llm_model WHERE enabled=1 ORDER BY sort_order,model_id"
         } else {
-            "SELECT model_id,provider_id,display_name,request_model,context_tokens,auto_compact_tokens,max_output_tokens,supports_streaming,supports_tool_use,supports_vision,supports_structured_output,supports_cancellation,supports_reasoning_effort,enabled,sort_order,created_at,updated_at FROM llm_model ORDER BY sort_order,model_id"
+            "SELECT model_id,provider_id,display_name,request_model,context_tokens,auto_compact_tokens,max_output_tokens,supports_streaming,supports_tool_use,supports_vision,supports_structured_output,supports_cancellation,supports_reasoning_effort,enabled,sort_order,created_at,updated_at,reasoning_efforts FROM llm_model ORDER BY sort_order,model_id"
         };
         sql_query(sql)
             .load::<ModelRow>(&mut *c)
@@ -1113,7 +1041,7 @@ impl Store {
             .transpose()?;
         let mut c = lock(&self.connection)?;
         let t = now();
-        sql_query("INSERT INTO llm_model(model_id,provider_id,display_name,request_model,context_tokens,auto_compact_tokens,max_output_tokens,supports_streaming,supports_tool_use,supports_vision,supports_structured_output,supports_cancellation,supports_reasoning_effort,enabled,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(model_id) DO UPDATE SET provider_id=excluded.provider_id,display_name=excluded.display_name,request_model=excluded.request_model,context_tokens=excluded.context_tokens,auto_compact_tokens=excluded.auto_compact_tokens,max_output_tokens=excluded.max_output_tokens,supports_streaming=excluded.supports_streaming,supports_tool_use=excluded.supports_tool_use,supports_vision=excluded.supports_vision,supports_structured_output=excluded.supports_structured_output,supports_cancellation=excluded.supports_cancellation,supports_reasoning_effort=excluded.supports_reasoning_effort,enabled=excluded.enabled,sort_order=excluded.sort_order,updated_at=excluded.updated_at").bind::<Text,_>(input.model_id.trim()).bind::<Text,_>(input.provider_id.trim()).bind::<Text,_>(input.display_name.trim()).bind::<Text,_>(input.request_model.trim()).bind::<Integer,_>(context).bind::<Integer,_>(compact).bind::<Nullable<Integer>,_>(max).bind::<Integer,_>(input.supports_streaming as i32).bind::<Integer,_>(input.supports_tool_use as i32).bind::<Integer,_>(input.supports_vision as i32).bind::<Integer,_>(input.supports_structured_output as i32).bind::<Integer,_>(input.supports_cancellation as i32).bind::<Integer,_>(input.supports_reasoning_effort as i32).bind::<Integer,_>(input.enabled as i32).bind::<Integer,_>(input.sort_order as i32).bind::<Text,_>(&t).bind::<Text,_>(&t).execute(&mut *c).map_err(crate::database_error)?;
+        sql_query("INSERT INTO llm_model(model_id,provider_id,display_name,request_model,context_tokens,auto_compact_tokens,max_output_tokens,supports_streaming,supports_tool_use,supports_vision,supports_structured_output,supports_cancellation,supports_reasoning_effort,enabled,sort_order,created_at,updated_at,reasoning_efforts) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(model_id) DO UPDATE SET provider_id=excluded.provider_id,display_name=excluded.display_name,request_model=excluded.request_model,context_tokens=excluded.context_tokens,auto_compact_tokens=excluded.auto_compact_tokens,max_output_tokens=excluded.max_output_tokens,supports_streaming=excluded.supports_streaming,supports_tool_use=excluded.supports_tool_use,supports_vision=excluded.supports_vision,supports_structured_output=excluded.supports_structured_output,supports_cancellation=excluded.supports_cancellation,supports_reasoning_effort=excluded.supports_reasoning_effort,enabled=excluded.enabled,sort_order=excluded.sort_order,reasoning_efforts=excluded.reasoning_efforts,updated_at=excluded.updated_at").bind::<Text,_>(input.model_id.trim()).bind::<Text,_>(input.provider_id.trim()).bind::<Text,_>(input.display_name.trim()).bind::<Text,_>(input.request_model.trim()).bind::<Integer,_>(context).bind::<Integer,_>(compact).bind::<Nullable<Integer>,_>(max).bind::<Integer,_>(input.supports_streaming as i32).bind::<Integer,_>(input.supports_tool_use as i32).bind::<Integer,_>(input.supports_vision as i32).bind::<Integer,_>(input.supports_structured_output as i32).bind::<Integer,_>(input.supports_cancellation as i32).bind::<Integer,_>(input.supports_reasoning_effort as i32).bind::<Integer,_>(input.enabled as i32).bind::<Integer,_>(input.sort_order as i32).bind::<Text,_>(&t).bind::<Text,_>(&t).bind::<Text,_>(input.reasoning_efforts.trim()).execute(&mut *c).map_err(crate::database_error)?;
         Ok(())
     }
     pub fn llm_provider_api_key(&self, provider_id: &str) -> Result<Option<String>, BusinessError> {
@@ -1420,7 +1348,9 @@ const MANIFEST_SELECT: &str = "SELECT manifest_id,session_id,turn_id,status,crea
 
 fn configure(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
     connection
-        .batch_execute("PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;")
+        .batch_execute(
+            "PRAGMA foreign_keys=OFF; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;",
+        )
         .map_err(crate::database_error)?;
     Ok(())
 }
@@ -1597,6 +1527,13 @@ fn model_from_row(row: ModelRow) -> Result<LlmModelRecord, BusinessError> {
         supports_structured_output: row.supports_structured_output != 0,
         supports_cancellation: row.supports_cancellation != 0,
         supports_reasoning_effort: row.supports_reasoning_effort != 0,
+        reasoning_efforts: row
+            .reasoning_efforts
+            .split(',')
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_owned)
+            .collect(),
         enabled: row.enabled != 0,
         sort_order: row.sort_order as i64,
         created_at: row.created_at,

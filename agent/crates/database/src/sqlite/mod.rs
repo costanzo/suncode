@@ -6,7 +6,6 @@ use std::path::Path;
 
 pub const TABLE_NAMES: &[&str] = &[
     "approval_request",
-    "audit_record",
     "checkpoint",
     "checkpoint_manifest",
     "configuration",
@@ -24,7 +23,6 @@ pub const TABLE_NAMES: &[&str] = &[
 ];
 
 const SCHEMA_SCRIPTS: &[&str] = &[
-    include_str!("schema/audit_record.sql"),
     include_str!("schema/project.sql"),
     include_str!("schema/project_dependency.sql"),
     include_str!("schema/session.sql"),
@@ -43,6 +41,7 @@ const SCHEMA_SCRIPTS: &[&str] = &[
 ];
 
 const DATA_SCRIPTS: &[&str] = &[
+    include_str!("data/configuration.sql"),
     include_str!("data/llm_model_provider.sql"),
     include_str!("data/llm_model.sql"),
 ];
@@ -77,6 +76,6 @@ mod tests {
         assert!(path.is_file());
         assert!(ensure_database(&path).unwrap());
         assert_eq!(schema_scripts().len(), TABLE_NAMES.len());
-        assert_eq!(data_scripts().len(), 2);
+        assert_eq!(data_scripts().len(), 3);
     }
 }

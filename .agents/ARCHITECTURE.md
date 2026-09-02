@@ -46,7 +46,7 @@ The Rust agent packages own:
 
 - built-in model provider integrations and canonical provider messages
 - context construction, turn scheduling, budgets, cancellation, and the agent loop
-- tool registration, policy evaluation, durable approvals, and audit records
+- tool registration, policy evaluation, and durable approvals
 - typed SDK methods, normalized snapshots, and live subscription delivery
 - SQLite initialization, transactions, projections, settings, and local event streams through the database package
 - provider credentials and model catalog through SQLite-owned LLM provider/model records
@@ -84,7 +84,7 @@ Mutating calls carry idempotency keys where replay could duplicate work. Session
 
 The seeded providers are DeepSeek, Zhipu GLM, OpenAI, Kimi, Claude, and Gemini. The seeded database catalog currently exposes two models per provider: `deepseek-v4-flash` and `deepseek-v4-pro`; `glm-5.2` and `glm-5.3`; `gpt-5.5` and `gpt-5.6-sol`; `kimi-k2.7-code` and `kimi-k3`; `claude-sonnet-5` and `claude-opus-5`; and `gemini-3.5` and `gemini-3.6-flash`. Users may add provider and model rows for custom OpenAI-compatible gateways. One trusted adapter serves each provider, while each model route supplies its own vendor wire model. Kimi, Claude, and Gemini use their documented OpenAI-compatible chat-completions surfaces. Vendor request and streaming response shapes remain inside `suncode-llm`. Clients receive canonical messages, tool activity, usage, and redacted errors only.
 
-The API key is read exclusively from the plaintext `llm_model_provider.api_key` column in SQLite. Provider endpoints and required `adapter_type` values are read from `llm_model_provider`; model request codes, context lengths, auto-compaction thresholds, output limits, capability flags, and enabled/order state are read from `llm_model`. A custom provider must select an adapter implemented by `suncode-llm`; the current persisted adapter is `openai` for OpenAI-compatible endpoints. Plaintext credentials never enter protocol responses, events, audit rows, or logs. Provider API-key environment variables are not read in either interactive or non-interactive mode. Global `verify_https_certificates` defaults to `true` and controls server certificate-chain and hostname verification for built-in provider and WebFetch HTTPS requests. Disabling it is an explicit insecure mode equivalent to `curl -k`; it does not weaken other authority or URL controls.
+The API key is read exclusively from the plaintext `llm_model_provider.api_key` column in SQLite. Provider endpoints and required `adapter_type` values are read from `llm_model_provider`; model request codes, context lengths, auto-compaction thresholds, output limits, capability flags, and enabled/order state are read from `llm_model`. A custom provider must select an adapter implemented by `suncode-llm`; the current persisted adapter is `openai` for OpenAI-compatible endpoints. Plaintext credentials never enter protocol responses, events, or logs. Provider API-key environment variables are not read in either interactive or non-interactive mode. Global `verify_https_certificates` defaults to `true` and controls server certificate-chain and hostname verification for built-in provider and WebFetch HTTPS requests. Disabling it is an explicit insecure mode equivalent to `curl -k`; it does not weaken other authority or URL controls.
 
 ## 7. Persistence
 
@@ -92,7 +92,7 @@ Rust is the only database owner. Avalonia, providers, and future extensions neve
 
 SQLite keeps separate durable concerns:
 
-- immutable audit records for authority decisions and outcomes
+- normalized authority and operation outcomes in the owning session/tool rows
 - normalized rows in `project`, `session`, turn, model-call, tool-use, message, approval, and checkpoint tables
 - ephemeral live streaming deltas that are broadcast to connected clients but not retained
 - durable turn admission and approval continuation

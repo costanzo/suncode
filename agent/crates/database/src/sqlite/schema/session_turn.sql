@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS session_turn (
     turn_id TEXT PRIMARY KEY CHECK(length(turn_id) > 0),
-    session_id TEXT NOT NULL REFERENCES session(session_id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL,
     submission_idempotency_key TEXT,
     state TEXT NOT NULL CHECK(state IN (
         'admitted', 'queued', 'preparing', 'calling_model',

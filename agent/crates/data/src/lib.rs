@@ -1,4 +1,5 @@
 mod domain;
+mod model;
 mod operations;
 mod schema;
 mod store;

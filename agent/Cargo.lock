@@ -1473,6 +1473,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "suncode-common",
+ "suncode-config",
  "suncode-data",
  "suncode-llm",
  "suncode-tool",
@@ -1490,6 +1491,10 @@ dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "suncode-config"
+version = "0.1.0"
 
 [[package]]
 name = "suncode-data"
@@ -1523,6 +1528,17 @@ dependencies = [
  "suncode-common",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "suncode-sdk"
+version = "0.1.0"
+dependencies = [
+ "suncode-agent",
+ "suncode-common",
+ "suncode-config",
+ "suncode-data",
+ "suncode-llm",
 ]
 
 [[package]]

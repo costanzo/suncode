@@ -1,0 +1,15 @@
+[package]
+name = "suncode-sdk"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "suncode_sdk"
+path = "src/lib.rs"
+
+[dependencies]
+suncode-agent = { path = "../core" }
+suncode-common = { path = "../common" }
+suncode-config = { path = "../../../config" }
+suncode-data = { path = "../data" }
+suncode-llm = { path = "../llm" }

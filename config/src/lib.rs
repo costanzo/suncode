@@ -1,3 +1,5 @@
+//! Shared bootstrap configuration used by the embedded agent and native hosts.
+
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -36,13 +38,9 @@ fn env_bool(name: &str, fallback: bool) -> Result<bool, String> {
 }
 
 fn default_data_dir() -> PathBuf {
-    home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".suncode")
-}
-
-fn home_dir() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("USERPROFILE").map(PathBuf::from))
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".suncode")
 }

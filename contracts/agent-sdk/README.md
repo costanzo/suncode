@@ -140,7 +140,7 @@ Callbacks run on an SDK-owned thread. Hosts must copy the callback payload and m
 
 Embedding removes transport authentication because the host is inside the agent process trust boundary. It does not remove project/session ownership checks, policy evaluation, approval, operation auditing, canonical path validation, checkpoint conflict checks, or credential redaction.
 
-Provider API keys remain Rust-owned plaintext values in `llm_model_provider.api_key`, which is their exclusive runtime source. Provider credential environment variables are ignored. Key values never appear in SDK results, events, diagnostics, audit records, or logs.
+Provider API keys remain Rust-owned plaintext values in `llm_model_provider.api_key`, which is their exclusive runtime source. Provider credential environment variables are ignored. Key values never appear in SDK results, events, diagnostics, or logs.
 
 ## Language bindings
 

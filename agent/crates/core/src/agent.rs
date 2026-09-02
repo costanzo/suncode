@@ -1176,7 +1176,6 @@ impl Agent {
                 self.non_interactive,
                 self.store.session_full_control(&context.session_id)?,
             );
-            self.store.append_audit(Some(&context.project_id), Some(&context.session_id), Some(&context.turn_id), "capability.decision", &json!({"tool_call_id":call.call_id,"operation":call.name,"decision":format!("{decision:?}")}))?;
             match decision {
                 Decision::Deny => {
                     self.execute_allowed_calls(
@@ -1406,18 +1405,6 @@ impl Agent {
                 "result": result,
             }),
         )?;
-        self.store.append_audit(
-            Some(&context.project_id),
-            Some(&context.session_id),
-            Some(&context.turn_id),
-            "operation.result",
-            &json!({
-                "tool_call_id": call.call_id,
-                "operation": call.name,
-                "outcome": "failed",
-                "error_code": error.code,
-            }),
-        )?;
         let mut tool = Message::text(
             "tool",
             serde_json::to_string(&result).unwrap_or_else(|_| "{\"error\":{}}".into()),
@@ -1476,13 +1463,6 @@ impl Agent {
                 "tool_call_id": call.call_id,
                 "result": normalized_result,
             }),
-        )?;
-        self.store.append_audit(
-            Some(&context.project_id),
-            Some(&context.session_id),
-            Some(&context.turn_id),
-            "operation.result",
-            &json!({"tool_call_id":call.call_id,"operation":call.name,"outcome":if process_failed { "failed" } else { "succeeded" }, "status": normalized_result.get("status")}),
         )?;
         let checkpoint_ids = result
             .get("checkpoint_ids")
@@ -3061,6 +3041,7 @@ mod tests {
                     cancellation: true,
                     reasoning_effort: false,
                 },
+                reasoning_efforts: Vec::new(),
                 limits: ModelLimits {
                     max_input_tokens: Some(64_000),
                     auto_compact_tokens: Some(47_616),

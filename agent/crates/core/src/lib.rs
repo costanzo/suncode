@@ -1,6 +1,5 @@
 mod agent;
 mod agent_lock;
-mod config;
 mod context;
 mod credentials;
 mod domain;
@@ -24,4 +23,5 @@ pub use domain::{
     ProjectRecord, SessionEvent, SessionImageRecord, SessionRecord, SettingRecord,
 };
 pub use suncode_common::BusinessError;
+pub use suncode_config::Config;
 pub use suncode_llm::{ModelCapabilities, ModelDescriptor, ModelLimits};

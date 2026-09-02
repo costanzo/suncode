@@ -19,18 +19,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    audit_record (id) {
-        id -> Integer,
-        project_id -> Nullable<Text>,
-        session_id -> Nullable<Text>,
-        turn_id -> Nullable<Text>,
-        occurred_at -> Text,
-        event_type -> Text,
-        payload_json -> Text,
-    }
-}
-
-diesel::table! {
     checkpoint (checkpoint_id) {
         checkpoint_id -> Text,
         manifest_id -> Nullable<Text>,
@@ -86,6 +74,7 @@ diesel::table! {
         supports_structured_output -> Integer,
         supports_cancellation -> Integer,
         supports_reasoning_effort -> Integer,
+        reasoning_efforts -> Text,
         enabled -> Integer,
         sort_order -> Integer,
         created_at -> Text,
@@ -251,7 +240,6 @@ diesel::table! {
 
 diesel::allow_tables_to_appear_in_same_query!(
     approval_request,
-    audit_record,
     checkpoint,
     checkpoint_manifest,
     configuration,

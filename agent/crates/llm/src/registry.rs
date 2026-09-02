@@ -250,6 +250,7 @@ mod tests {
                 cancellation: true,
                 reasoning_effort: false,
             },
+            reasoning_efforts: Vec::new(),
             limits: ModelLimits {
                 max_input_tokens: Some(32_000),
                 auto_compact_tokens: Some(28_000),

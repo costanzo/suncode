@@ -2,13 +2,13 @@ use crate::logging::{self, Level};
 use crate::{
     agent::{Agent, TurnResponse},
     agent_lock::AgentLock,
-    config::Config,
     credentials::{CredentialState, CredentialStore},
     domain::{
         ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectDependencyRecord,
         ProjectRecord, ProviderExchange, SessionCallMessage, SessionCallToolUse, SessionEvent,
         SessionImageRecord, SessionRecord, SessionTraceTurn, SettingRecord,
     },
+    Config,
 };
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -334,6 +334,7 @@ fn provider_models(
                 cancellation: model.supports_cancellation,
                 reasoning_effort: model.supports_reasoning_effort,
             },
+            reasoning_efforts: model.reasoning_efforts.clone(),
             limits: ModelLimits {
                 max_input_tokens: Some(model.context_tokens),
                 auto_compact_tokens: Some(model.auto_compact_tokens),
@@ -392,6 +393,7 @@ fn registry_from_store(
                     cancellation: model.supports_cancellation,
                     reasoning_effort: model.supports_reasoning_effort,
                 },
+                reasoning_efforts: model.reasoning_efforts.clone(),
                 limits: ModelLimits {
                     max_input_tokens: Some(model.context_tokens),
                     auto_compact_tokens: Some(model.auto_compact_tokens),
@@ -837,15 +839,6 @@ impl AgentSdk {
             self.state
                 .verify_https_certificates
                 .store(value.as_bool().unwrap_or(true), Ordering::SeqCst);
-        }
-        if scope == "session" && key == "full_control" {
-            self.state.store.append_audit(
-                None,
-                Some(scope_id),
-                None,
-                "session.full_control.changed",
-                &json!({"enabled": value.as_bool().unwrap_or(false), "source": "user"}),
-            )?;
         }
         if scope == "global"
             && matches!(

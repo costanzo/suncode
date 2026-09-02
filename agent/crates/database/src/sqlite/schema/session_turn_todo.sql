@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS session_turn_todo (
-    turn_id TEXT NOT NULL REFERENCES session_turn(turn_id) ON DELETE CASCADE,
+    turn_id TEXT NOT NULL,
     ordinal INTEGER NOT NULL CHECK(ordinal >= 0),
     content TEXT NOT NULL CHECK(length(content) > 0 AND length(content) <= 500),
     status TEXT NOT NULL CHECK(status IN ('pending', 'in_progress', 'completed', 'cancelled')),

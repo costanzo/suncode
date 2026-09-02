@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS session_call (
     call_id TEXT PRIMARY KEY CHECK(length(call_id) > 0),
-    session_id TEXT NOT NULL REFERENCES session(session_id) ON DELETE CASCADE,
-    turn_id TEXT NOT NULL REFERENCES session_turn(turn_id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL,
+    turn_id TEXT NOT NULL,
     provider TEXT NOT NULL CHECK(length(provider) > 0),
     model_id TEXT NOT NULL CHECK(length(model_id) > 0),
     wire_model TEXT NOT NULL CHECK(length(wire_model) > 0),

@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS approval_request (
     approval_id TEXT PRIMARY KEY CHECK(length(approval_id) > 0),
-    project_id TEXT REFERENCES project(project_id) ON DELETE RESTRICT,
-    session_id TEXT NOT NULL REFERENCES session(session_id) ON DELETE CASCADE,
+    project_id TEXT,
+    session_id TEXT NOT NULL,
     turn_id TEXT NOT NULL,
     tool_call_id TEXT NOT NULL,
     operation TEXT NOT NULL CHECK(length(operation) > 0),
@@ -11,10 +11,7 @@ CREATE TABLE IF NOT EXISTS approval_request (
     decision TEXT,
     decision_source TEXT,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    FOREIGN KEY(turn_id, tool_call_id)
-        REFERENCES session_tool_use(turn_id, tool_call_id)
-        ON DELETE CASCADE
+    updated_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS approval_request_session_status_idx
