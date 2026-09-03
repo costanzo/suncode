@@ -170,6 +170,9 @@ public sealed class AgentSdk : IDisposable
     public Task<JsonObject> CancelTurnAsync(string sessionId, string turnId) => WithUtf8Async(
         [sessionId, turnId], values => NativeMethods.suncode_agent_sdk_cancel_turn(_handle, values[0], values[1]));
 
+    public Task<JsonObject> RetryLastTurnAsync(string sessionId) => WithUtf8Async(
+        [sessionId], values => NativeMethods.suncode_agent_sdk_retry_last_turn(_handle, values[0]));
+
     public Task<JsonObject> ResolveApprovalAsync(string approvalId, string decision) => WithUtf8Async(
         [approvalId, decision], values => NativeMethods.suncode_agent_sdk_resolve_approval(_handle, values[0], values[1]));
 

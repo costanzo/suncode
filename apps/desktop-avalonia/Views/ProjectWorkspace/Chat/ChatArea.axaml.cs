@@ -105,10 +105,12 @@ public sealed partial class ChatArea : UserControl
         ToolDetailState.Text = message.ToolStateText;
         ToolDetailRequest.Text = message.ToolRequest;
         ToolDetailResult.Text = message.ToolResult;
+        ToolDetailOutput.Text = message.ToolOutput;
         ToolDetailResultLabel.Text = message.ToolName == "bash" ? "Command output" : "Result";
         ToolDetailError.Text = message.ToolErrorText;
         ToolDetailRequestPanel.IsVisible = message.HasToolRequest;
         ToolDetailResultPanel.IsVisible = message.HasToolResult;
+        ToolDetailOutputPanel.IsVisible = message.HasToolOutput;
         ToolDetailErrorPanel.IsVisible = message.HasToolError;
         _dialogReturnFocus = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control;
         ToolDetailOverlay.IsVisible = true;

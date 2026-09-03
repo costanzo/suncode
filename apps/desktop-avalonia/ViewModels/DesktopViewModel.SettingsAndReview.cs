@@ -346,6 +346,29 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
+    public async Task<bool> SaveCertificateTrustAsync(bool useSystem, string? certificatePath)
+    {
+        if (!EnsureSdk()) return false;
+        IsBusy = true;
+        try
+        {
+            certificatePath = certificatePath?.Trim() ?? string.Empty;
+            await _sdk!.SetSettingAsync("use_system_certificates", useSystem);
+            await _sdk.SetSettingAsync("certificate_path", certificatePath);
+            UseSystemCertificates = useSystem;
+            CertificatePath = certificatePath;
+            StatusText = "Certificate trust settings saved";
+            ConnectionState = "connected";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+            return false;
+        }
+        finally { IsBusy = false; }
+    }
+
     public async Task LoadProjectToolCallLimitAsync()
     {
         ToolCallLimit = 64;

@@ -29,7 +29,7 @@ One registered read-only source root per row: opaque `dependency_id`, owning `pr
 
 Unified key/value configuration for `global`, `project`, and `session` scopes. Global rows have no owner ID; project rows reference `project`; session rows reference `session`. A CHECK constraint enforces the exact owner shape for each scope, and partial unique indexes enforce one value per key at each scope. Effective reads apply `global < project < session` precedence. The project-aware `default_model` key is stored as a JSON string containing a model ID.
 
-The project-only `tool_call_limit` key is a JSON integer from 1 through 256. When the row is absent, core uses 64.
+The project-only `tool_call_limit` key is a JSON integer from 1 through 256. When the row is absent, core uses 64. Global TLS settings include `verify_https_certificates`, `use_system_certificates`, and optional PEM/DER `certificate_path`.
 
 Fresh and reopened current databases seed four global logging settings: `log_level` (`"INFO"`), `log_directory` (`""`), `log_max_bytes` (`10485760`), and `log_retention` (`5`), plus global `verify_https_certificates` (`true`) and `image_directory` (`""`). An empty log directory means `<data directory>/logs`; an empty image directory means `<data directory>/data/images`. These settings are global-only. The SDK accepts `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `OFF`; a directory string; a maximum size of at least 1024 bytes; a retention count from 0 through 100; a boolean HTTPS verification value; and an image directory string. Disabling verification makes subsequent built-in provider and WebFetch HTTPS requests accept invalid certificate chains and hostnames.
 

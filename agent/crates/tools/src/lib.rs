@@ -8,12 +8,16 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
+use std::sync::RwLock;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use suncode_common::BusinessError;
 
 static CHECKPOINT_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+/// Callback for bounded, best-effort streaming process output chunks.
+pub type ProcessOutputCallback = Arc<dyn Fn(&str, &[u8]) + Send + Sync>;
+pub type CertificatePath = Arc<RwLock<Option<PathBuf>>>;
 mod arguments;
 mod artifacts;
 mod checkpoint;
@@ -34,7 +38,7 @@ fn execute_operation(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
 ) -> Result<Value, BusinessError> {
-    execute_operation_with_cancellation(method, params, project_root, checkpoint_root, None, true)
+    execute_operation_with_cancellation(method, params, project_root, checkpoint_root, None, true, None, true, Arc::new(RwLock::new(None)))
 }
 
 fn execute_operation_with_cancellation(
@@ -44,14 +48,20 @@ fn execute_operation_with_cancellation(
     checkpoint_root: Option<&Path>,
     cancellation: Option<&AtomicBool>,
     verify_https_certificates: bool,
+    output_callback: Option<ProcessOutputCallback>,
+    use_system_certificates: bool,
+    certificate_path: CertificatePath,
 ) -> Result<Value, BusinessError> {
-    if let Some(result) = tools::dispatch(
+    if let Some(result) = tools::dispatch_with_output(
         method,
         params,
         project_root,
         checkpoint_root,
         cancellation,
         verify_https_certificates,
+        output_callback,
+        use_system_certificates,
+        certificate_path.read().ok().and_then(|p| p.clone()).as_deref(),
     ) {
         return result;
     }
@@ -341,6 +351,8 @@ fn safe_relative_path(path: &str) -> Result<PathBuf, BusinessError> {
 pub struct Operations {
     checkpoint_root: PathBuf,
     verify_https_certificates: Arc<AtomicBool>,
+    use_system_certificates: Arc<AtomicBool>,
+    certificate_path: CertificatePath,
 }
 
 impl Operations {
@@ -359,7 +371,14 @@ impl Operations {
         Ok(Self {
             checkpoint_root: checkpoint_root.canonicalize()?,
             verify_https_certificates,
+            use_system_certificates: Arc::new(AtomicBool::new(true)),
+            certificate_path: Arc::new(RwLock::new(None)),
         })
+    }
+
+    pub fn set_certificate_configuration(&self, use_system: bool, path: Option<PathBuf>) {
+        self.use_system_certificates.store(use_system, Ordering::SeqCst);
+        if let Ok(mut current) = self.certificate_path.write() { *current = path; }
     }
 
     pub fn open_project(&self, project_path: &Path) -> Result<Value, Value> {
@@ -451,6 +470,9 @@ impl Operations {
             Some(&self.checkpoint_root),
             None,
             self.verify_https_certificates.load(Ordering::SeqCst),
+            None,
+            self.use_system_certificates.load(Ordering::SeqCst),
+            self.certificate_path.clone(),
         )
         .map_err(failure_value)
     }
@@ -461,6 +483,17 @@ impl Operations {
         method: &str,
         params: Value,
         cancellation: Option<&AtomicBool>,
+    ) -> Result<Value, Value> {
+        self.execute_in_project_with_cancellation_and_output(project_path, method, params, cancellation, None)
+    }
+
+    pub fn execute_in_project_with_cancellation_and_output(
+        &self,
+        project_path: &Path,
+        method: &str,
+        params: Value,
+        cancellation: Option<&AtomicBool>,
+        output_callback: Option<ProcessOutputCallback>,
     ) -> Result<Value, Value> {
         let canonical = project_path.canonicalize().map_err(|_| json!({"code":"project_unavailable","message":"project root is unavailable","retryable":false}))?;
         if !canonical.is_dir() {
@@ -475,6 +508,9 @@ impl Operations {
             Some(&self.checkpoint_root),
             cancellation,
             self.verify_https_certificates.load(Ordering::SeqCst),
+            output_callback,
+            self.use_system_certificates.load(Ordering::SeqCst),
+            self.certificate_path.clone(),
         )
         .map_err(failure_value)
     }

@@ -339,6 +339,26 @@ impl Agent {
         result
     }
 
+    /// Retry the most recently failed turn in a session using its persisted input.
+    /// A new idempotency key is generated so the retry is admitted as a distinct turn.
+    pub async fn retry_last_turn(&self, session_id: &str) -> Result<TurnResponse, BusinessError> {
+        let Some((input, model, image_ids)) = self.store.latest_failed_turn_input(session_id)? else {
+            return Err(BusinessError::new("conflict", "no failed turn to retry"));
+        };
+        if model.is_empty() {
+            return Err(BusinessError::new("agent_unavailable", "failed turn has no model"));
+        }
+        self.submit_with_attachments(
+            session_id,
+            &Uuid::new_v4().to_string(),
+            &input,
+            Some(&model),
+            None,
+            &image_ids,
+        )
+        .await
+    }
+
     fn clear_queued_messages(&self, session_id: &str) {
         self.queued_messages
             .lock()
@@ -729,11 +749,18 @@ impl Agent {
             );
             if prompt.compacted && !context.context_compacted {
                 context.context_compacted = true;
+                let compaction_id = Uuid::new_v4().to_string();
                 self.emit(
                     &context.session_id,
                     "context.compacted",
                     json!({
+                        "exchange_id": compaction_id,
                         "turn_id": context.turn_id,
+                        "provider": "SunCode",
+                        "model_id": "context-compaction",
+                        "wire_model": "internal",
+                        "iteration": context.iterations,
+                        "started_at": chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
                         "original_characters": prompt.original_characters,
                         "retained_characters": prompt.retained_characters,
                         "original_tokens": prompt.original_tokens,
@@ -1273,11 +1300,27 @@ impl Agent {
                     return Err(error);
                 }
             };
-            let agent = self.clone();
-            let token = token.clone();
-            futures.push(async move {
-                let result = agent
-                    .operation_in_project(&project_root, &method, params, token)
+                let agent = self.clone();
+                let token = token.clone();
+                let output_callback = {
+                    let agent = agent.clone();
+                    let session_id = context.session_id.clone();
+                    let turn_id = context.turn_id.clone();
+                    let call_id = context.active_call_id.clone();
+                    let tool_call_id = call.call_id.clone();
+                    Some(std::sync::Arc::new(move |stream: &str, chunk: &[u8]| {
+                        agent.emit_live(&session_id, "tool.output", json!({
+                            "turn_id": turn_id,
+                            "call_id": call_id,
+                            "tool_call_id": tool_call_id,
+                            "stream": stream,
+                            "chunk_base64": STANDARD.encode(chunk),
+                        }));
+                    }) as suncode_tool::ProcessOutputCallback)
+                };
+                futures.push(async move {
+                    let result = agent
+                    .operation_in_project(&project_root, &method, params, token, output_callback)
                     .await;
                 (call, result)
             });
@@ -1361,7 +1404,22 @@ impl Agent {
             }
         };
         let result = match self
-            .operation_in_project(&project_root, method, params, token)
+            .operation_in_project(&project_root, method, params, token, {
+                let agent = self.clone();
+                let session_id = context.session_id.clone();
+                let turn_id = context.turn_id.clone();
+                let call_id = context.active_call_id.clone();
+                let tool_call_id = call.call_id.clone();
+                Some(std::sync::Arc::new(move |stream: &str, chunk: &[u8]| {
+                    agent.emit_live(&session_id, "tool.output", json!({
+                        "turn_id": turn_id,
+                        "call_id": call_id,
+                        "tool_call_id": tool_call_id,
+                        "stream": stream,
+                        "chunk_base64": STANDARD.encode(chunk),
+                    }));
+                }) as suncode_tool::ProcessOutputCallback)
+            })
             .await
         {
             Ok(result) => result,
@@ -1510,6 +1568,7 @@ impl Agent {
         method: &str,
         params: Value,
         token: CancellationToken,
+        output_callback: Option<suncode_tool::ProcessOutputCallback>,
     ) -> Result<Value, BusinessError> {
         let operations = self.operations.clone();
         let root = std::path::PathBuf::from(project_root);
@@ -1517,11 +1576,12 @@ impl Agent {
         let cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let cancelled_for_operation = cancelled.clone();
         let mut operation = Box::pin(tokio::task::spawn_blocking(move || {
-            operations.execute_in_project_with_cancellation(
+            operations.execute_in_project_with_cancellation_and_output(
                 &root,
                 &method,
                 params,
                 Some(&cancelled_for_operation),
+                output_callback,
             )
         }));
         let join_result = tokio::select! {

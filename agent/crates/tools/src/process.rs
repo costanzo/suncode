@@ -1,6 +1,7 @@
 use super::arguments::ProcessArguments;
 use super::{
     artifacts, journal_id, now_string, require_project, safe_relative_path, BusinessError,
+    ProcessOutputCallback,
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
@@ -208,13 +209,22 @@ impl OutputCapture {
     }
 }
 
-fn collect_output(mut reader: impl Read, label: &'static str) -> std::io::Result<CapturedOutput> {
+fn collect_output(
+    mut reader: impl Read,
+    label: &'static str,
+    callback: Option<ProcessOutputCallback>,
+) -> std::io::Result<CapturedOutput> {
     let mut output = OutputCapture::new(label);
     let mut buffer = [0u8; 8192];
     loop {
         let bytes = reader.read(&mut buffer)?;
         if bytes == 0 {
             break;
+        }
+        if let Some(callback) = callback.as_ref() {
+            // Chunks are bounded by the fixed read buffer; callbacks are best effort and
+            // must never interfere with process capture or completion.
+            callback(label, &buffer[..bytes]);
         }
         output.push(&buffer[..bytes])?;
     }
@@ -347,6 +357,7 @@ pub(super) fn run(
     checkpoint_root: Option<&Path>,
     args: &ProcessArguments,
     cancellation: Option<&AtomicBool>,
+    output_callback: Option<ProcessOutputCallback>,
 ) -> Result<Value, BusinessError> {
     let root = require_project(project_root)?;
     let (command, command_args) = command_arguments(args)?;
@@ -364,14 +375,16 @@ pub(super) fn run(
         .stderr(Stdio::piped())
         .spawn()
         .map_err(process_start_failure)?;
+    let stdout_callback = output_callback.clone();
+    let stderr_callback = output_callback;
     let stdout = child
         .stdout
         .take()
-        .map(|reader| std::thread::spawn(|| collect_output(reader, "stdout")));
+        .map(|reader| std::thread::spawn(|| collect_output(reader, "stdout", stdout_callback)));
     let stderr = child
         .stderr
         .take()
-        .map(|reader| std::thread::spawn(|| collect_output(reader, "stderr")));
+        .map(|reader| std::thread::spawn(|| collect_output(reader, "stderr", stderr_callback)));
     let started = std::time::Instant::now();
     let mut timed_out = false;
     let mut cancelled = false;
@@ -520,7 +533,7 @@ mod tests {
             idempotency_key: None,
             operation_id: None,
         };
-        let result = run(Some(&root), Some(&checkpoint), &params, None).unwrap();
+        let result = run(Some(&root), Some(&checkpoint), &params, None, None).unwrap();
         assert_eq!(result["success"], true);
         let output = STANDARD
             .decode(result["stdout_base64"].as_str().unwrap())
@@ -564,7 +577,7 @@ mod tests {
             idempotency_key: None,
             operation_id: None,
         };
-        let result = run(Some(&root), Some(&checkpoint), &params, None).unwrap();
+        let result = run(Some(&root), Some(&checkpoint), &params, None, None).unwrap();
         assert_eq!(result["status"], "failed");
         assert_eq!(result["success"], false);
         assert_eq!(result["exit_code"], 7);
@@ -613,7 +626,7 @@ mod tests {
             idempotency_key: None,
             operation_id: None,
         };
-        let result = run(Some(&root), Some(&checkpoint), &params, None).unwrap();
+        let result = run(Some(&root), Some(&checkpoint), &params, None, None).unwrap();
         assert_eq!(result["success"], true);
         assert_eq!(result["truncated"], true);
         assert!(result["artifact_id"].as_str().is_some());
@@ -667,7 +680,7 @@ mod tests {
             operation_id: None,
         };
         let cancellation = AtomicBool::new(true);
-        let result = run(Some(&root), Some(&checkpoint), &params, Some(&cancellation)).unwrap();
+        let result = run(Some(&root), Some(&checkpoint), &params, Some(&cancellation), None).unwrap();
         assert_eq!(result["status"], "cancelled");
         assert_eq!(result["success"], false);
         std::fs::remove_dir_all(root).unwrap();

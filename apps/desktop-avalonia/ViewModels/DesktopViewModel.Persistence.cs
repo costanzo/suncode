@@ -211,6 +211,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         LogMaxBytes = maxBytes >= 1024 ? maxBytes : 10 * 1024 * 1024;
         LogRetention = retention is >= 0 and <= 100 ? (int)retention : 5;
         VerifyHttpsCertificates = BoolSetting("verify_https_certificates", true);
+        UseSystemCertificates = BoolSetting("use_system_certificates", true);
+        CertificatePath = StringSetting("certificate_path", string.Empty);
         DiagnosticLog.Configure(
             LogLevel,
             LogDirectory,
@@ -555,7 +557,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 ConversationChanged?.Invoke();
             }
         }
-        else if (type is "tool.requested" or "tool.state" or "tool.result")
+        else if (type is "tool.requested" or "tool.state" or "tool.result" or "tool.output")
         {
             ApplyToolEvent(payload, type);
             Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.String("state"), payload.String("name")));
@@ -661,6 +663,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var result = eventType == "tool.result"
             ? Pretty(payload["result"])
             : existing?.ToolResult ?? string.Empty;
+        var output = eventType == "tool.output"
+            ? AppendBoundedOutput(existing?.ToolOutput ?? string.Empty, DecodeOutputChunk(payload))
+            : existing?.ToolOutput ?? string.Empty;
         var error = eventType == "tool.state"
             ? payload.String("reason")
             : existing?.ToolError ?? string.Empty;
@@ -674,9 +679,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             ToolCallId = toolCallId,
             ToolName = name,
             ToolState = state,
-            ToolDetail = result.Length > 0 ? result : request,
+            ToolDetail = output.Length > 0 ? output : (result.Length > 0 ? result : request),
             ToolRequest = request,
             ToolResult = result,
+            ToolOutput = output,
             ToolError = error,
             IsProcess = true
         };
@@ -700,6 +706,22 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ToolError = item.String("errorCode", "error_code"),
         IsProcess = true
     };
+
+    private static string DecodeOutputChunk(JsonObject payload)
+    {
+        var encoded = payload.String("chunk_base64", "chunkBase64");
+        if (encoded.Length == 0) return payload.String("chunk");
+        try { return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(encoded)); }
+        catch (FormatException) { return string.Empty; }
+    }
+
+    private static string AppendBoundedOutput(string existing, string chunk)
+    {
+        const int maxCharacters = 256 * 1024;
+        if (existing.Length >= maxCharacters || chunk.Length == 0) return existing;
+        var remaining = maxCharacters - existing.Length;
+        return existing + (chunk.Length <= remaining ? chunk : chunk[..remaining]);
+    }
 
     private static IReadOnlyList<TodoItem> ParseTodos(JsonNode? value) =>
         (value as JsonArray)?.OfType<JsonObject>()
@@ -778,6 +800,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             "checkpoint.restore_failed" => "Undo stopped because a file changed outside SunCode",
             "turn.state" => $"Turn {payload.String("state")}",
             "assistant.delta" => payload.String("text"),
+            "tool.output" => $"Command output · {payload.String("stream")}",
             _ => type
         };
     }

@@ -221,6 +221,14 @@
                     </ScrollViewer>
                   </Border>
                 </StackPanel>
+                <StackPanel x:Name="ToolDetailOutputPanel" Spacing="5" IsVisible="False">
+                  <TextBlock Text="Live output" Classes="eyebrow" />
+                  <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" MaxHeight="260">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                      <SelectableTextBlock x:Name="ToolDetailOutput" Classes="mono" FontSize="11" TextWrapping="Wrap" />
+                    </ScrollViewer>
+                  </Border>
+                </StackPanel>
               </StackPanel>
             </ScrollViewer>
 

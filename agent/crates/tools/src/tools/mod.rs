@@ -13,19 +13,22 @@ use super::arguments::{
     CheckpointRestoreArguments, EditArguments, GitDiffArguments, GlobArguments, GrepArguments,
     ProcessArguments, ReadArguments, WebfetchArguments, WriteArguments,
 };
-use super::BusinessError;
+use super::{BusinessError, ProcessOutputCallback};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 
-pub(super) fn dispatch(
+pub(super) fn dispatch_with_output(
     method: &str,
     params: &Value,
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
     cancellation: Option<&AtomicBool>,
     verify_https_certificates: bool,
+    output_callback: Option<ProcessOutputCallback>,
+    use_system_certificates: bool,
+    certificate_path: Option<&Path>,
 ) -> Option<Result<Value, BusinessError>> {
     Some(match method {
         "tool/read" => run_read_typed(params, project_root),
@@ -41,6 +44,8 @@ pub(super) fn dispatch(
                 args,
                 cancellation,
                 verify_https_certificates,
+                use_system_certificates,
+                certificate_path,
             )
         }),
         "tool/write" => run_typed(params, |args: WriteArguments| {
@@ -50,7 +55,7 @@ pub(super) fn dispatch(
             edit::execute(project_root, checkpoint_root, args)
         }),
         "tool/bash" => run_typed(params, |args: ProcessArguments| {
-            process::run(project_root, checkpoint_root, args, cancellation)
+            process::run(project_root, checkpoint_root, args, cancellation, output_callback)
         }),
         "checkpoint/restore" => run_typed(params, |args: CheckpointRestoreArguments| {
             checkpoint_restore::execute(project_root, checkpoint_root, args)

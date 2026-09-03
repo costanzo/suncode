@@ -364,6 +364,20 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var contents = new List<ProviderTraceContentItem>();
         var identities = new HashSet<string>(StringComparer.Ordinal);
 
+        if (details.IsCompaction)
+        {
+            contents.Add(new ProviderTraceContentItem(
+                trace.ExchangeId,
+                "context",
+                "Context compaction",
+                details.OutputText,
+                details.OutputText,
+                string.Empty,
+                details.OutputText,
+                string.Empty,
+                details.CompletedAt));
+        }
+
         void AddMessage(string role, string content, string createdAt)
         {
             if (role is not ("user" or "assistant" or "thinking") || string.IsNullOrWhiteSpace(content)) return;

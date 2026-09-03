@@ -7,8 +7,9 @@ use futures_util::StreamExt;
 use serde_json::{json, Value};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    Arc,
+    Arc, RwLock,
 };
+use std::path::PathBuf;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -21,13 +22,14 @@ const REQUEST_ID_HEADERS: &[&str] = &[
 
 #[derive(Clone)]
 pub struct OpenAiCompatibleProvider {
-    verified_client: reqwest::Client,
     insecure_client: Result<reqwest::Client, String>,
     provider_id: String,
     provider_label: String,
     endpoint: String,
     keys: Arc<dyn ApiKeyResolver>,
     verify_https_certificates: Arc<AtomicBool>,
+    use_system_certificates: Arc<AtomicBool>,
+    certificate_path: Arc<RwLock<Option<PathBuf>>>,
 }
 
 impl OpenAiCompatibleProvider {
@@ -53,27 +55,38 @@ impl OpenAiCompatibleProvider {
         keys: Arc<dyn ApiKeyResolver>,
         verify_https_certificates: Arc<AtomicBool>,
     ) -> Self {
+        Self::new_with_tls_configuration(provider_id, provider_label, endpoint, keys, verify_https_certificates, Arc::new(AtomicBool::new(true)), Arc::new(RwLock::new(None)))
+    }
+
+    pub fn new_with_tls_configuration(
+        provider_id: impl Into<String>,
+        provider_label: impl Into<String>,
+        endpoint: impl Into<String>,
+        keys: Arc<dyn ApiKeyResolver>,
+        verify_https_certificates: Arc<AtomicBool>,
+        use_system_certificates: Arc<AtomicBool>,
+        certificate_path: Arc<RwLock<Option<PathBuf>>>,
+    ) -> Self {
         let insecure_client = reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
             .danger_accept_invalid_hostnames(true)
             .build()
             .map_err(|error| error.to_string());
         Self {
-            verified_client: reqwest::Client::new(),
             insecure_client,
             provider_id: provider_id.into(),
             provider_label: provider_label.into(),
             endpoint: endpoint.into().trim_end_matches('/').to_string(),
             keys,
             verify_https_certificates,
+            use_system_certificates,
+            certificate_path,
         }
     }
 
     fn client(&self) -> Result<reqwest::Client, BusinessError> {
-        if self.verify_https_certificates.load(Ordering::SeqCst) {
-            return Ok(self.verified_client.clone());
-        }
-        self.insecure_client.clone().map_err(|error| {
+        if !self.verify_https_certificates.load(Ordering::SeqCst) {
+            return self.insecure_client.clone().map_err(|error| {
             BusinessError::provider(
                 "provider_client_unavailable",
                 format!(
@@ -83,7 +96,20 @@ impl OpenAiCompatibleProvider {
                 false,
                 None,
             )
-        })
+            });
+        }
+        let mut builder = reqwest::Client::builder();
+        if !self.use_system_certificates.load(Ordering::SeqCst) {
+            builder = builder.tls_built_in_root_certs(false);
+        }
+        if let Some(path) = self.certificate_path.read().ok().and_then(|p| p.clone()) {
+            let bytes = std::fs::read(&path).map_err(|e| BusinessError::provider("certificate_unavailable", format!("could not read certificate file: {e}"), false, None))?;
+            let cert = reqwest::Certificate::from_pem(&bytes)
+                .or_else(|_| reqwest::Certificate::from_der(&bytes))
+                .map_err(|e| BusinessError::provider("certificate_invalid", format!("invalid certificate file: {e}"), false, None))?;
+            builder = builder.add_root_certificate(cert);
+        }
+        builder.build().map_err(|error| BusinessError::provider("provider_client_unavailable", error.to_string(), false, None))
     }
 
     async fn complete_inner(

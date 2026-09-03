@@ -77,6 +77,7 @@ public sealed class MessageItem : ObservableObject, IDisposable
     public string ToolDetail { get; init; } = string.Empty;
     public string ToolRequest { get; init; } = string.Empty;
     public string ToolResult { get; init; } = string.Empty;
+    public string ToolOutput { get; init; } = string.Empty;
     public string ToolError { get; init; } = string.Empty;
     public IReadOnlyList<ComposerAttachment> Attachments { get; init; } = [];
     public bool HasAttachments => Attachments.Count > 0;
@@ -167,6 +168,7 @@ public sealed class MessageItem : ObservableObject, IDisposable
     public bool HasToolDetail => !string.IsNullOrWhiteSpace(ToolDetail);
     public bool HasToolRequest => !string.IsNullOrWhiteSpace(ToolRequest);
     public bool HasToolResult => !string.IsNullOrWhiteSpace(ToolResult);
+    public bool HasToolOutput => !string.IsNullOrWhiteSpace(ToolOutput);
     public bool HasToolError => !string.IsNullOrWhiteSpace(ToolError);
     public string ToolErrorText => ToolError switch
     {

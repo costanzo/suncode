@@ -204,6 +204,7 @@ public sealed partial class SettingsWindow : Window
     {
         var enabled = VerifyHttpsCertificatesToggle.IsChecked == true;
         var saved = await ViewModel.SaveHttpsCertificateVerificationAsync(enabled);
+        saved = await ViewModel.SaveCertificateTrustAsync(UseSystemCertificatesToggle.IsChecked == true, CertificatePathInput.Text) && saved;
         HttpsCertificateStatus.Text = ViewModel.StatusText;
         HttpsCertificateStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
         if (!saved)

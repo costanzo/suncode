@@ -21,7 +21,7 @@ use std::{
     ptr,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, RwLock,
     },
     thread::JoinHandle,
 };
@@ -44,6 +44,8 @@ struct AgentState {
     events: broadcast::Sender<SessionEvent>,
     credentials: CredentialStore,
     verify_https_certificates: Arc<AtomicBool>,
+    use_system_certificates: Arc<AtomicBool>,
+    certificate_path: Arc<RwLock<Option<PathBuf>>>,
     agent: Agent,
     providers: Arc<ModelProviderRegistry>,
 }
@@ -349,15 +351,19 @@ fn openai_provider(
     provider: &LlmModelProviderRecord,
     keys: Arc<dyn suncode_llm::ApiKeyResolver>,
     verify_https_certificates: Arc<AtomicBool>,
+    use_system_certificates: Arc<AtomicBool>,
+    certificate_path: Arc<RwLock<Option<PathBuf>>>,
 ) -> SdkResult<Arc<dyn suncode_llm::LlmProvider>> {
     match provider.adapter_type.as_str() {
         "openai" => Ok(Arc::new(
-            OpenAiCompatibleProvider::new_with_https_certificate_verification(
+            OpenAiCompatibleProvider::new_with_tls_configuration(
                 provider.provider_id.clone(),
                 provider.display_name.clone(),
                 provider.endpoint.clone(),
                 keys,
                 verify_https_certificates,
+                use_system_certificates,
+                certificate_path,
             ),
         )),
         adapter_type => Err(BusinessError::new(
@@ -371,6 +377,8 @@ fn registry_from_store(
     store: &Store,
     keys: Arc<dyn suncode_llm::ApiKeyResolver>,
     verify_https_certificates: Arc<AtomicBool>,
+    use_system_certificates: Arc<AtomicBool>,
+    certificate_path: Arc<RwLock<Option<PathBuf>>>,
 ) -> SdkResult<ModelProviderRegistry> {
     let providers = store.llm_model_providers(true)?;
     let models = store.llm_models(true)?;
@@ -405,7 +413,7 @@ fn registry_from_store(
         if provider_models.is_empty() {
             continue;
         }
-        let adapter = openai_provider(&provider, keys.clone(), verify_https_certificates.clone())?;
+        let adapter = openai_provider(&provider, keys.clone(), verify_https_certificates.clone(), use_system_certificates.clone(), certificate_path.clone())?;
         registry
             .register(provider.provider_id, adapter, provider_models)
             .map_err(|error| {
@@ -426,6 +434,8 @@ where
         "verify_https_certificates",
         true,
     )?));
+    let use_system_certificates = Arc::new(AtomicBool::new(global_bool_setting(&store, "use_system_certificates", true)?));
+    let certificate_path = Arc::new(RwLock::new(global_string_setting(&store, "certificate_path")?.map(PathBuf::from)));
     let operations = Arc::new(
         suncode_tool::Operations::new_with_https_certificate_verification(
             config.data_dir.join("operations"),
@@ -433,12 +443,18 @@ where
         )
         .map_err(|error| BusinessError::unavailable(error.to_string()))?,
     );
+    operations.set_certificate_configuration(
+        use_system_certificates.load(Ordering::SeqCst),
+        certificate_path.read().ok().and_then(|path| path.clone()),
+    );
     let (events, _) = broadcast::channel(256);
     let credentials = CredentialStore::load(store.clone());
     let mut providers = registry_from_store(
         &store,
         Arc::new(credentials.clone()),
         verify_https_certificates.clone(),
+        use_system_certificates.clone(),
+        certificate_path.clone(),
     )?;
     configure_providers(&mut providers)
         .map_err(|error| BusinessError::new("provider_registration_failed", error.to_string()))?;
@@ -457,6 +473,8 @@ where
         events,
         credentials,
         verify_https_certificates,
+        use_system_certificates,
+        certificate_path,
         agent,
         providers,
     };
@@ -555,6 +573,16 @@ fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
                 "verify_https_certificates must be a boolean",
             ));
         }
+        return Ok(());
+    }
+    if key == "use_system_certificates" {
+        if scope != "global" { return Err(BusinessError::invalid("use_system_certificates is a global-only setting")); }
+        if !value.is_boolean() { return Err(BusinessError::invalid("use_system_certificates must be a boolean")); }
+        return Ok(());
+    }
+    if key == "certificate_path" {
+        if scope != "global" { return Err(BusinessError::invalid("certificate_path is a global-only setting")); }
+        if !value.is_string() { return Err(BusinessError::invalid("certificate_path must be a string")); }
         return Ok(());
     }
     if key == "tool_call_limit" {
@@ -781,6 +809,8 @@ impl AgentSdk {
             &provider,
             Arc::new(self.state.credentials.clone()),
             self.state.verify_https_certificates.clone(),
+            self.state.use_system_certificates.clone(),
+            self.state.certificate_path.clone(),
         )?;
         self.state
             .store
@@ -839,6 +869,18 @@ impl AgentSdk {
             self.state
                 .verify_https_certificates
                 .store(value.as_bool().unwrap_or(true), Ordering::SeqCst);
+        }
+        if scope == "global" && key == "use_system_certificates" {
+            self.state.use_system_certificates.store(value.as_bool().unwrap_or(true), Ordering::SeqCst);
+        }
+        if scope == "global" && key == "certificate_path" {
+            if let Ok(mut path) = self.state.certificate_path.write() { *path = value.as_str().filter(|s| !s.trim().is_empty()).map(PathBuf::from); }
+        }
+        if scope == "global" && (key == "use_system_certificates" || key == "certificate_path") {
+            self.state.operations.set_certificate_configuration(
+                self.state.use_system_certificates.load(Ordering::SeqCst),
+                self.state.certificate_path.read().ok().and_then(|path| path.clone()),
+            );
         }
         if scope == "global"
             && matches!(
@@ -1535,6 +1577,10 @@ impl AgentSdk {
             turn_id: turn_id.to_string(),
             status: "cancellation_requested",
         })
+    }
+
+    pub fn retry_last_turn(&self, session_id: &str) -> SdkResult<TurnResponse> {
+        self.runtime.block_on(self.state.agent.retry_last_turn(session_id))
     }
 
     pub fn get_approval(&self, approval_id: &str) -> SdkResult<ApprovalRecord> {
@@ -2280,6 +2326,14 @@ pub unsafe extern "C" fn suncode_agent_sdk_cancel_turn(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_retry_last_turn(
+    handle: *mut SunCodeAgentHandle,
+    session_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| sdk.retry_last_turn(&c_string(session_id, "session_id")?))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_resolve_approval(
     handle: *mut SunCodeAgentHandle,
     approval_id: *const c_char,
@@ -2539,6 +2593,8 @@ mod tests {
                 &store,
                 Arc::new(credentials.clone()),
                 verify_https_certificates.clone(),
+                Arc::new(AtomicBool::new(true)),
+                Arc::new(RwLock::new(None)),
             )
             .unwrap(),
         );
@@ -2556,6 +2612,8 @@ mod tests {
             events,
             credentials,
             verify_https_certificates,
+            use_system_certificates: Arc::new(AtomicBool::new(true)),
+            certificate_path: Arc::new(RwLock::new(None)),
             agent,
             providers,
         }

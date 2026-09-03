@@ -71,6 +71,8 @@ pub(super) fn execute(
     args: WebfetchArguments,
     cancellation: Option<&AtomicBool>,
     verify_https_certificates: bool,
+    use_system_certificates: bool,
+    certificate_path: Option<&Path>,
 ) -> Result<Value, BusinessError> {
     let url = args.url.trim();
     if url.is_empty() {
@@ -85,9 +87,10 @@ pub(super) fn execute(
     let allowed_host = url.host_str().unwrap().to_string();
     let allowed_scheme = url.scheme().to_string();
     let allowed_port = url.port_or_known_default().unwrap();
-    let client = Client::builder()
+    let mut client_builder = Client::builder()
         .danger_accept_invalid_certs(!verify_https_certificates)
         .danger_accept_invalid_hostnames(!verify_https_certificates)
+        .tls_built_in_root_certs(use_system_certificates)
         .redirect(Policy::custom(move |attempt| {
             if attempt.previous().len() >= 10 {
                 return attempt.error("too many redirects");
@@ -111,7 +114,23 @@ pub(super) fn execute(
             } else {
                 attempt.error("redirect target is outside the approved web origin")
             }
-        }))
+        }));
+    if verify_https_certificates {
+        if let Some(path) = certificate_path {
+            let bytes = std::fs::read(path).map_err(|_| {
+                BusinessError::new("certificate_unavailable", "certificate file is unavailable")
+                    .with_retryable(false)
+            })?;
+            let certificate = reqwest::Certificate::from_pem(&bytes)
+                .or_else(|_| reqwest::Certificate::from_der(&bytes))
+                .map_err(|_| {
+                    BusinessError::new("certificate_invalid", "certificate file is not a valid PEM or DER certificate")
+                        .with_retryable(false)
+                })?;
+            client_builder = client_builder.add_root_certificate(certificate);
+        }
+    }
+    let client = client_builder
         .build()
         .map_err(|_| fetch_failure("web client could not be created", false))?;
 
@@ -510,6 +529,8 @@ mod tests {
             },
             None,
             true,
+            true,
+            None,
         )
         .unwrap();
         server.join().unwrap();
@@ -564,6 +585,8 @@ mod tests {
             },
             None,
             true,
+            true,
+            None,
         )
         .unwrap_err();
         server.join().unwrap();
@@ -585,6 +608,8 @@ mod tests {
             },
             None,
             true,
+            true,
+            None,
         )
         .unwrap_err();
         redirect_server.join().unwrap();
@@ -606,6 +631,8 @@ mod tests {
             },
             None,
             true,
+            true,
+            None,
         )
         .unwrap();
         server.join().unwrap();

@@ -11,9 +11,9 @@
 
 ## In progress
 
-## Residual gaps
+## Completed contract extensions
 
-- Certificate trust source/path is presentation-only until the Rust SDK, persistence, and HTTP trust configuration expose a matching contract.
-- Rust currently emits completed tool results rather than live tool-output events, so the tool detail modal cannot stream output while a command is running.
-- Provider trace storage exposes model exchanges but not `context.compacted` as a trace call; the conversation surface shows the event, while the dedicated trace row awaits a contract extension.
-- “Retry turn” currently reloads the selected session because no SDK retry-last-turn operation exists.
+- Certificate trust source/path is persisted and applied by Rust Provider and WebFetch clients.
+- Bash operations emit bounded live `tool.output` events and Avalonia renders a scrolling live-output panel.
+- `context.compacted` is projected into `session_call` as an internal Provider Trace exchange.
+- `retry_last_turn` is exposed through Rust SDK/C ABI and invoked by the Review panel.

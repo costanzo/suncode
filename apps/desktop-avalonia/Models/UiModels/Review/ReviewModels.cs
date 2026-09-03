@@ -84,6 +84,7 @@ public sealed record ProviderTraceItem(
     public bool IsRunning => State == "started";
     public bool IsCompleted => State == "completed";
     public bool IsFailed => State == "failed";
+    public bool IsCompaction => ModelId == "context-compaction" || FinishReason == "context_compacted";
     public bool HasOutput => !string.IsNullOrWhiteSpace(OutputText);
     public bool HasToolCalls => !string.IsNullOrWhiteSpace(ToolCallsText) && ToolCallsText != "[]";
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorText);
@@ -187,12 +188,14 @@ public sealed record ProviderTraceContentItem(
         "assistant" => "ASSISTANT MESSAGE",
         "thinking" => "THINKING MESSAGE",
         "tool" => "TOOL USE",
+        "context" => "CONTEXT",
         _ => Kind.ToUpperInvariant()
     };
     public bool IsUser => Kind == "user";
     public bool IsAssistant => Kind == "assistant";
     public bool IsThinking => Kind == "thinking";
     public bool IsTool => Kind == "tool";
+    public bool IsContext => Kind == "context";
     public bool HasContent => !string.IsNullOrWhiteSpace(Content);
     public bool HasRequest => !string.IsNullOrWhiteSpace(Request);
     public bool HasResult => !string.IsNullOrWhiteSpace(Result);

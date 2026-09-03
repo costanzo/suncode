@@ -364,6 +364,32 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
+    public async Task RetryLastTurnAsync()
+    {
+        if (!EnsureSdk() || SelectedSession is null || IsTurnActive) return;
+        IsBusy = true;
+        try
+        {
+            var result = await _sdk!.RetryLastTurnAsync(SelectedSession.SessionId);
+            StatusText = result.String("status") switch
+            {
+                "awaiting_approval" => "Retry is awaiting approval",
+                "awaiting_question" => "Retry is awaiting your answer",
+                "queued" => "Retry queued for this turn",
+                _ => "Turn retry submitted"
+            };
+            ConnectionState = "connected";
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     public async Task LoadSessionImagesAsync(string? requestedSessionId = null, long? loadVersion = null)
     {
         if (_sdk is null || SelectedSession is null) return;

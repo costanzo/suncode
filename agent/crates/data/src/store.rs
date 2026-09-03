@@ -157,6 +157,13 @@ struct SubmissionRow {
     response_json: Option<String>,
 }
 #[derive(QueryableByName)]
+struct RetryInputRow {
+    #[diesel(sql_type = Nullable<Text>)]
+    input_json: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    model_id: Option<String>,
+}
+#[derive(QueryableByName)]
 struct ApprovalRow {
     #[diesel(sql_type = Text)]
     approval_id: String,
@@ -626,6 +633,38 @@ impl Store {
             status: "pending".into(),
             response: None,
         })
+    }
+
+    /// Return the most recently failed turn's original input and image attachments.
+    /// The caller is responsible for submitting it with a fresh idempotency key.
+    pub fn latest_failed_turn_input(
+        &self,
+        session_id: &str,
+    ) -> Result<Option<(String, String, Vec<String>)>, BusinessError> {
+        let mut c = lock(&self.connection)?;
+        let Some(row) = sql_query(
+            "SELECT input_json, model_id FROM session_turn WHERE session_id=? AND state='failed' ORDER BY created_at DESC, turn_id DESC LIMIT 1",
+        )
+        .bind::<Text, _>(session_id)
+        .get_result::<RetryInputRow>(&mut *c)
+        .optional()
+        .map_err(crate::database_error)? else {
+            return Ok(None);
+        };
+        let Some(input_json) = row.input_json else { return Ok(None) };
+        let value: Value = serde_json::from_str(&input_json)
+            .map_err(|_| BusinessError::invalid("stored turn input is invalid"))?;
+        let input = value
+            .get("input")
+            .and_then(Value::as_str)
+            .ok_or_else(|| BusinessError::invalid("stored turn input is invalid"))?
+            .to_string();
+        let image_ids = value
+            .get("image_ids")
+            .and_then(Value::as_array)
+            .map(|items| items.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+            .unwrap_or_default();
+        Ok(Some((input, row.model_id.unwrap_or_default(), image_ids)))
     }
     pub fn mark_turn_started(&self, session_id: &str, key: &str) -> Result<(), BusinessError> {
         let mut c = lock(&self.connection)?;
@@ -1878,6 +1917,37 @@ mod tests {
             serde_json::to_value(Message::text("user", "hello")).unwrap()
         );
         assert_eq!(conversation[0].todos[0].status, "completed");
+    }
+
+    #[test]
+    fn latest_failed_turn_input_returns_persisted_submission() {
+        let store = Store::open_memory().unwrap();
+        let project = store.project("/tmp/suncode-retry", "Retry").unwrap();
+        let session = store.create_session(&project.project_id, None, None).unwrap();
+        let admission = store
+            .begin_turn_with_images(
+                &session.session_id,
+                "key-1",
+                "retry me",
+                "model-x",
+                &["img-1".to_string()],
+            )
+            .unwrap();
+        store
+            .fail_turn(
+                &session.session_id,
+                "key-1",
+                &json!({"code":"provider_failed","message":"boom"}),
+            )
+            .unwrap();
+        let latest = store
+            .latest_failed_turn_input(&session.session_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(latest.0, "retry me");
+        assert_eq!(latest.1, "model-x");
+        assert_eq!(latest.2, vec!["img-1"]);
+        assert!(!admission.turn_id.is_empty());
     }
 
     #[test]

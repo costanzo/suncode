@@ -82,6 +82,40 @@ pub(crate) fn apply(
             .bind::<Text, _>(occurred_at).bind::<Text, _>(&to_string(&input)?).bind::<Text, _>("[]").execute(connection).map_err(crate::database_error)?;
     }
 
+    if event_type == "context.compacted" {
+        let exchange_id = required(payload, "exchange_id")?;
+        let turn_id = required(payload, "turn_id")?;
+        let summary = serde_json::json!({
+            "original_characters": payload.get("original_characters"),
+            "retained_characters": payload.get("retained_characters"),
+            "original_tokens": payload.get("original_tokens"),
+            "retained_tokens": payload.get("retained_tokens"),
+            "dropped_messages": payload.get("dropped_messages"),
+            "summary": payload.get("summary"),
+        });
+        let usage = serde_json::json!({
+            "input_tokens": payload.get("original_tokens").and_then(Value::as_u64).unwrap_or(0),
+            "output_tokens": payload.get("retained_tokens").and_then(Value::as_u64).unwrap_or(0),
+            "total_tokens": payload.get("retained_tokens").and_then(Value::as_u64).unwrap_or(0),
+        });
+        sql_query("INSERT INTO session_call(call_id,session_id,turn_id,provider,model_id,wire_model,state,iteration,started_at,completed_at,input_messages_json,output_message_json,tool_calls_json,usage_json,finish_reason) VALUES (?,?,?,?,?,?, 'completed',?,?,?,?,?,?,?,?) ON CONFLICT(call_id) DO NOTHING")
+            .bind::<Text, _>(exchange_id)
+            .bind::<Text, _>(session_id)
+            .bind::<Text, _>(turn_id)
+            .bind::<Text, _>(payload.get("provider").and_then(Value::as_str).unwrap_or("SunCode"))
+            .bind::<Text, _>(payload.get("model_id").and_then(Value::as_str).unwrap_or("context-compaction"))
+            .bind::<Text, _>(payload.get("wire_model").and_then(Value::as_str).unwrap_or("internal"))
+            .bind::<Integer, _>(payload.get("iteration").and_then(Value::as_i64).unwrap_or(0) as i32)
+            .bind::<Text, _>(payload.get("started_at").and_then(Value::as_str).unwrap_or(occurred_at))
+            .bind::<Text, _>(occurred_at)
+            .bind::<Text, _>("[]")
+            .bind::<Nullable<Text>, _>(Some(to_string(&summary)?))
+            .bind::<Text, _>("[]")
+            .bind::<Nullable<Text>, _>(Some(to_string(&usage)?))
+            .bind::<Nullable<Text>, _>(Some("context_compacted"))
+            .execute(connection).map_err(crate::database_error)?;
+    }
+
     if matches!(
         event_type,
         "provider.exchange.completed" | "provider.exchange.failed"

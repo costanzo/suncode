@@ -112,6 +112,7 @@
                         <TextBlock Text="ASSISTANT" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsAssistant}" />
                         <TextBlock Text="THINKING" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsThinking}" />
                         <TextBlock Text="TOOL USE" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsTool}" />
+                        <TextBlock Text="CONTEXT" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsContext}" />
                       </Grid>
                       <StackPanel Grid.Column="2" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Title}" FontSize="10" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
@@ -255,7 +256,8 @@
                       <TextBlock Text="{Binding SelectedProviderTraceContent.KindText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding SelectedProviderTraceContent.IsAssistant}" />
                       <TextBlock Text="{Binding SelectedProviderTraceContent.KindText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding SelectedProviderTraceContent.IsUser}" />
                       <TextBlock Text="{Binding SelectedProviderTraceContent.KindText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding SelectedProviderTraceContent.IsThinking}" />
-                      <TextBlock Text="{Binding SelectedProviderTraceContent.KindText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding SelectedProviderTraceContent.IsTool}" />
+                                <TextBlock Text="{Binding SelectedProviderTraceContent.KindText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding SelectedProviderTraceContent.IsTool}" />
+                                <TextBlock Text="{Binding SelectedProviderTraceContent.KindText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding SelectedProviderTraceContent.IsContext}" />
                       <TextBlock Text="{Binding SelectedProviderTraceContent.Title}" FontSize="14" FontWeight="SemiBold" />
                     </StackPanel>
                     <TextBlock Grid.Column="1" Text="{Binding SelectedProviderTraceContent.TimeText}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" />

@@ -57,6 +57,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `submit_turn` | Idempotently submit text-only input to a session and selected model, with an optional `reasoning_effort` (`low`, `medium`, or `high`) accepted only for models advertising that capability |
 | `submit_turn_with_attachments` | Submit text plus up to three same-session image IDs to a model advertising image input |
 | `cancel_turn` | Cooperatively cancel a running turn |
+| `retry_last_turn` | Re-submit the most recently failed turn in a session using its persisted input and model; creates a new turn with a fresh idempotency key |
 | `get_approval` | Read one approval state |
 | `resolve_approval` | Resolve one pending approval with `allow_once`, `allow_session`, or `deny` |
 | `reply_question` | Submit ordered answer arrays for one pending question request |
@@ -68,6 +69,8 @@ Rust-generated project, session, turn, approval, checkpoint, event, and message 
 `tool_call_limit` is a project-only integer setting from 1 through 256. A project without that row uses 64. Turn admission snapshots the resolved value, so changing Settings affects later turns but not an active or approval-suspended turn. If one provider response would cross the limit, all calls in that response are retained as failed with `tool_budget_exceeded`, and none enters policy or execution.
 
 `verify_https_certificates` is a global-only boolean setting that defaults to `true`. A successful update applies immediately to subsequent built-in OpenAI-compatible provider and WebFetch requests. Setting it to `false` accepts invalid server certificate chains and hostnames, equivalent to the TLS verification behavior of `curl -k`; an already-running request keeps the policy it started with. Trusted custom provider implementations remain responsible for their own transport behavior.
+
+`use_system_certificates` is a global-only boolean defaulting to `true`. `certificate_path` is a global-only optional PEM or DER trust-anchor file. When verification is enabled, built-in provider and WebFetch clients use the system roots when enabled and add the configured custom root when present; disabling system roots makes the supplied file the trust source. Invalid or unreadable certificate files fail the subsequent request with a stable SDK error.
 
 `set_provider_endpoint` updates the existing URL for one registered provider without changing its provider identity, adapter, credential, models, enabled state, or ordering. The endpoint must be an absolute HTTP or HTTPS URL with a host and without embedded credentials, query parameters, or a fragment; whitespace and trailing slashes are removed. A successful update is durable and atomically replaces the in-memory route used by subsequent provider calls. A provider request that already captured its route continues with the previous endpoint.
 
@@ -129,6 +132,8 @@ Session events are live-only in-memory notifications. Normalized messages, turns
 Provider exchange lifecycle events are durable: `provider.exchange.started`, `provider.exchange.completed`, and `provider.exchange.failed`. They project into the provider-exchange query surface and may be used by clients to refresh an open trace drawer.
 
 Question events are live notifications with normalized snapshot support: `question.asked` contains `request_id`, `turn_id`, `tool_call_id`, and ordered prompts; `question.replied` contains the same correlation plus ordered answer arrays; `question.rejected` contains the request correlation and an unanswered result. A session snapshot includes `pendingQuestion` while a request is waiting.
+
+Process tools also emit live-only `tool.output` events while a command is running. Each event contains `turn_id`, `call_id`, `tool_call_id`, `stream` (`stdout` or `stderr`), and a UTF-8 `chunk_base64` payload. Chunks are bounded (at most 8 KiB per event), are best-effort notifications, and are not persisted or replayed; the terminal `tool.result` remains the durable source of truth.
 
 Todo state is turn-scoped and stored in the Rust-owned `session_turn_todo` table. The model-facing `todowrite` tool replaces the complete list with at most 100 items, and each item has `content`, `status` (`pending`, `in_progress`, `completed`, or `cancelled`), and `priority` (`high`, `medium`, or `low`). Successful calls emit a live `todo.updated` event containing `turn_id`, `tool_call_id`, and the complete `todos` list. Clients restore the current list from `conversationTurns[*].todos`; the corresponding `todowrite` tool result remains call history and is not the progress source.
 
