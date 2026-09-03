@@ -3,7 +3,7 @@
              xmlns:md="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia"
              x:Class="SunCode.Desktop.App"
              Name="SunCode"
-             RequestedThemeVariant="Dark">
+             RequestedThemeVariant="Light">
   <Application.Styles>
     <FluentTheme DensityStyle="Compact" />
     <StyleInclude Source="avares://SunCode/Styles/Application/FoundationStyles.axaml" />

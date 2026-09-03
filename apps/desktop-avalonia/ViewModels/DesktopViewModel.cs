@@ -42,7 +42,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private string _statusText = "Starting local agent...";
     private string _composerText = string.Empty;
     private string _activeTurnId = string.Empty;
-    private string _themeMode = "dark";
+    private string _themeMode = "light";
     private string _logLevel = "INFO";
     private string _logDirectory = string.Empty;
     private string _imageDirectory = string.Empty;
