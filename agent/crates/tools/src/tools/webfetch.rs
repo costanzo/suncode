@@ -124,8 +124,11 @@ pub(super) fn execute(
             let certificate = reqwest::Certificate::from_pem(&bytes)
                 .or_else(|_| reqwest::Certificate::from_der(&bytes))
                 .map_err(|_| {
-                    BusinessError::new("certificate_invalid", "certificate file is not a valid PEM or DER certificate")
-                        .with_retryable(false)
+                    BusinessError::new(
+                        "certificate_invalid",
+                        "certificate file is not a valid PEM or DER certificate",
+                    )
+                    .with_retryable(false)
                 })?;
             client_builder = client_builder.add_root_certificate(certificate);
         }

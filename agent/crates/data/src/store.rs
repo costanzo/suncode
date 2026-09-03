@@ -651,7 +651,9 @@ impl Store {
         .map_err(crate::database_error)? else {
             return Ok(None);
         };
-        let Some(input_json) = row.input_json else { return Ok(None) };
+        let Some(input_json) = row.input_json else {
+            return Ok(None);
+        };
         let value: Value = serde_json::from_str(&input_json)
             .map_err(|_| BusinessError::invalid("stored turn input is invalid"))?;
         let input = value
@@ -662,7 +664,13 @@ impl Store {
         let image_ids = value
             .get("image_ids")
             .and_then(Value::as_array)
-            .map(|items| items.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(str::to_owned)
+                    .collect()
+            })
             .unwrap_or_default();
         Ok(Some((input, row.model_id.unwrap_or_default(), image_ids)))
     }
@@ -1923,7 +1931,9 @@ mod tests {
     fn latest_failed_turn_input_returns_persisted_submission() {
         let store = Store::open_memory().unwrap();
         let project = store.project("/tmp/suncode-retry", "Retry").unwrap();
-        let session = store.create_session(&project.project_id, None, None).unwrap();
+        let session = store
+            .create_session(&project.project_id, None, None)
+            .unwrap();
         let admission = store
             .begin_turn_with_images(
                 &session.session_id,

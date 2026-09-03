@@ -18,7 +18,7 @@ serde_json = "1"
 sha2 = "0.10"
 suncode-tool = { path = "../tools" }
 suncode-common = { path = "../common" }
-suncode-config = { path = "../../../config" }
+suncode-config = { path = "../config" }
 suncode-data = { path = "../data" }
 suncode-llm = { path = "../llm" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }

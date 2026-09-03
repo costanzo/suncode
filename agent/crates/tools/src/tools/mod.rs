@@ -55,7 +55,13 @@ pub(super) fn dispatch_with_output(
             edit::execute(project_root, checkpoint_root, args)
         }),
         "tool/bash" => run_typed(params, |args: ProcessArguments| {
-            process::run(project_root, checkpoint_root, args, cancellation, output_callback)
+            process::run(
+                project_root,
+                checkpoint_root,
+                args,
+                cancellation,
+                output_callback,
+            )
         }),
         "checkpoint/restore" => run_typed(params, |args: CheckpointRestoreArguments| {
             checkpoint_restore::execute(project_root, checkpoint_root, args)

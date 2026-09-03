@@ -680,7 +680,14 @@ mod tests {
             operation_id: None,
         };
         let cancellation = AtomicBool::new(true);
-        let result = run(Some(&root), Some(&checkpoint), &params, Some(&cancellation), None).unwrap();
+        let result = run(
+            Some(&root),
+            Some(&checkpoint),
+            &params,
+            Some(&cancellation),
+            None,
+        )
+        .unwrap();
         assert_eq!(result["status"], "cancelled");
         assert_eq!(result["success"], false);
         std::fs::remove_dir_all(root).unwrap();

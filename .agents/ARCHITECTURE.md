@@ -122,6 +122,7 @@ Startup marks non-recoverable in-memory turn execution interrupted, discovers ad
 apps/desktop-avalonia/    .NET 10 Avalonia desktop client
 contracts/                hand-written protocols and contract documentation
 agent/crates/core/      agent core and embedded Rust SDK facade
+agent/crates/config/    Rust-owned bootstrap configuration crate
 agent/crates/common/    shared Rust business errors and cross-crate contracts
 agent/crates/database/  backend-specific SQL resources and database setup
 agent/crates/data/      Diesel ORM, persistence DTOs, and data operations

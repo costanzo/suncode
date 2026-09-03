@@ -8,9 +8,9 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
-use std::sync::RwLock;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 use suncode_common::BusinessError;
 
@@ -38,7 +38,17 @@ fn execute_operation(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
 ) -> Result<Value, BusinessError> {
-    execute_operation_with_cancellation(method, params, project_root, checkpoint_root, None, true, None, true, Arc::new(RwLock::new(None)))
+    execute_operation_with_cancellation(
+        method,
+        params,
+        project_root,
+        checkpoint_root,
+        None,
+        true,
+        None,
+        true,
+        Arc::new(RwLock::new(None)),
+    )
 }
 
 fn execute_operation_with_cancellation(
@@ -61,7 +71,11 @@ fn execute_operation_with_cancellation(
         verify_https_certificates,
         output_callback,
         use_system_certificates,
-        certificate_path.read().ok().and_then(|p| p.clone()).as_deref(),
+        certificate_path
+            .read()
+            .ok()
+            .and_then(|p| p.clone())
+            .as_deref(),
     ) {
         return result;
     }
@@ -377,8 +391,11 @@ impl Operations {
     }
 
     pub fn set_certificate_configuration(&self, use_system: bool, path: Option<PathBuf>) {
-        self.use_system_certificates.store(use_system, Ordering::SeqCst);
-        if let Ok(mut current) = self.certificate_path.write() { *current = path; }
+        self.use_system_certificates
+            .store(use_system, Ordering::SeqCst);
+        if let Ok(mut current) = self.certificate_path.write() {
+            *current = path;
+        }
     }
 
     pub fn open_project(&self, project_path: &Path) -> Result<Value, Value> {
@@ -484,7 +501,13 @@ impl Operations {
         params: Value,
         cancellation: Option<&AtomicBool>,
     ) -> Result<Value, Value> {
-        self.execute_in_project_with_cancellation_and_output(project_path, method, params, cancellation, None)
+        self.execute_in_project_with_cancellation_and_output(
+            project_path,
+            method,
+            params,
+            cancellation,
+            None,
+        )
     }
 
     pub fn execute_in_project_with_cancellation_and_output(

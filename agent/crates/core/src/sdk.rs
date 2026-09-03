@@ -413,7 +413,13 @@ fn registry_from_store(
         if provider_models.is_empty() {
             continue;
         }
-        let adapter = openai_provider(&provider, keys.clone(), verify_https_certificates.clone(), use_system_certificates.clone(), certificate_path.clone())?;
+        let adapter = openai_provider(
+            &provider,
+            keys.clone(),
+            verify_https_certificates.clone(),
+            use_system_certificates.clone(),
+            certificate_path.clone(),
+        )?;
         registry
             .register(provider.provider_id, adapter, provider_models)
             .map_err(|error| {
@@ -434,8 +440,14 @@ where
         "verify_https_certificates",
         true,
     )?));
-    let use_system_certificates = Arc::new(AtomicBool::new(global_bool_setting(&store, "use_system_certificates", true)?));
-    let certificate_path = Arc::new(RwLock::new(global_string_setting(&store, "certificate_path")?.map(PathBuf::from)));
+    let use_system_certificates = Arc::new(AtomicBool::new(global_bool_setting(
+        &store,
+        "use_system_certificates",
+        true,
+    )?));
+    let certificate_path = Arc::new(RwLock::new(
+        global_string_setting(&store, "certificate_path")?.map(PathBuf::from),
+    ));
     let operations = Arc::new(
         suncode_tool::Operations::new_with_https_certificate_verification(
             config.data_dir.join("operations"),
@@ -576,13 +588,27 @@ fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
         return Ok(());
     }
     if key == "use_system_certificates" {
-        if scope != "global" { return Err(BusinessError::invalid("use_system_certificates is a global-only setting")); }
-        if !value.is_boolean() { return Err(BusinessError::invalid("use_system_certificates must be a boolean")); }
+        if scope != "global" {
+            return Err(BusinessError::invalid(
+                "use_system_certificates is a global-only setting",
+            ));
+        }
+        if !value.is_boolean() {
+            return Err(BusinessError::invalid(
+                "use_system_certificates must be a boolean",
+            ));
+        }
         return Ok(());
     }
     if key == "certificate_path" {
-        if scope != "global" { return Err(BusinessError::invalid("certificate_path is a global-only setting")); }
-        if !value.is_string() { return Err(BusinessError::invalid("certificate_path must be a string")); }
+        if scope != "global" {
+            return Err(BusinessError::invalid(
+                "certificate_path is a global-only setting",
+            ));
+        }
+        if !value.is_string() {
+            return Err(BusinessError::invalid("certificate_path must be a string"));
+        }
         return Ok(());
     }
     if key == "tool_call_limit" {
@@ -871,15 +897,26 @@ impl AgentSdk {
                 .store(value.as_bool().unwrap_or(true), Ordering::SeqCst);
         }
         if scope == "global" && key == "use_system_certificates" {
-            self.state.use_system_certificates.store(value.as_bool().unwrap_or(true), Ordering::SeqCst);
+            self.state
+                .use_system_certificates
+                .store(value.as_bool().unwrap_or(true), Ordering::SeqCst);
         }
         if scope == "global" && key == "certificate_path" {
-            if let Ok(mut path) = self.state.certificate_path.write() { *path = value.as_str().filter(|s| !s.trim().is_empty()).map(PathBuf::from); }
+            if let Ok(mut path) = self.state.certificate_path.write() {
+                *path = value
+                    .as_str()
+                    .filter(|s| !s.trim().is_empty())
+                    .map(PathBuf::from);
+            }
         }
         if scope == "global" && (key == "use_system_certificates" || key == "certificate_path") {
             self.state.operations.set_certificate_configuration(
                 self.state.use_system_certificates.load(Ordering::SeqCst),
-                self.state.certificate_path.read().ok().and_then(|path| path.clone()),
+                self.state
+                    .certificate_path
+                    .read()
+                    .ok()
+                    .and_then(|path| path.clone()),
             );
         }
         if scope == "global"
@@ -1580,7 +1617,8 @@ impl AgentSdk {
     }
 
     pub fn retry_last_turn(&self, session_id: &str) -> SdkResult<TurnResponse> {
-        self.runtime.block_on(self.state.agent.retry_last_turn(session_id))
+        self.runtime
+            .block_on(self.state.agent.retry_last_turn(session_id))
     }
 
     pub fn get_approval(&self, approval_id: &str) -> SdkResult<ApprovalRecord> {
@@ -2330,7 +2368,9 @@ pub unsafe extern "C" fn suncode_agent_sdk_retry_last_turn(
     handle: *mut SunCodeAgentHandle,
     session_id: *const c_char,
 ) -> *mut c_char {
-    ffi_call(handle, |sdk| sdk.retry_last_turn(&c_string(session_id, "session_id")?))
+    ffi_call(handle, |sdk| {
+        sdk.retry_last_turn(&c_string(session_id, "session_id")?)
+    })
 }
 
 #[no_mangle]

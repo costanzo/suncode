@@ -10,6 +10,6 @@ path = "src/lib.rs"
 [dependencies]
 suncode-agent = { path = "../core" }
 suncode-common = { path = "../common" }
-suncode-config = { path = "../../../config" }
+suncode-config = { path = "../config" }
 suncode-data = { path = "../data" }
 suncode-llm = { path = "../llm" }
