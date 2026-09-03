@@ -65,10 +65,10 @@ public sealed partial class ProjectSidebar : UserControl
             Workspace?.ShowSessionDialog("Rename session", session.DisplayTitle, "Save", session);
     }
 
-    private async void ArchiveSessionItem(object? sender, RoutedEventArgs e)
+    private void ArchiveSessionItem(object? sender, RoutedEventArgs e)
     {
         if (sender is MenuItem { CommandParameter: SessionItem session })
-            await ViewModel.ArchiveSessionAsync(session);
+            Workspace?.ShowArchiveDialog(session);
     }
 
     private async void PinSessionItem(object? sender, RoutedEventArgs e)

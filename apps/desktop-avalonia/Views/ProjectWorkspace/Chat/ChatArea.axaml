@@ -61,7 +61,7 @@
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="7" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="models:ComposerAttachment">
-                        <Button Width="72" Height="56" Padding="0" Classes="quiet" Click="PreviewMessageAttachment" AutomationProperties.Name="{Binding Name, StringFormat=View attached image {0}}">
+                        <Button Width="96" Height="64" Padding="0" Classes="quiet" Click="PreviewMessageAttachment" AutomationProperties.Name="{Binding Name, StringFormat=View attached image {0}}">
                           <Image Source="{Binding Preview}" Stretch="UniformToFill" />
                         </Button>
                       </DataTemplate>
@@ -72,6 +72,14 @@
               </Border>
 
               <StackPanel IsVisible="{Binding IsProcess}" MaxWidth="620" HorizontalAlignment="Left" Spacing="5">
+                <Border IsVisible="{Binding IsCompaction}"
+                        Padding="10,8"
+                        Background="{DynamicResource SurfaceRaisedBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6">
+                  <TextBlock Text="{Binding Text}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </Border>
                 <Button Classes="quiet"
                         MinHeight="26"
                         Padding="4,3"
@@ -137,9 +145,11 @@
         </ListBox>
 
       <StackPanel ZIndex="1" Margin="36,0,0,112" HorizontalAlignment="Left" VerticalAlignment="Bottom" Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsTurnActive}">
-        <Ellipse Classes="running-dot" />
-        <Ellipse Classes="running-dot" />
-        <Ellipse Classes="running-dot" />
+        <TextBlock Text="Thinking" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsTurnThinking}" />
+        <TextBlock Text="Compacting context" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsTurnCompacting}" />
+        <Ellipse Classes="running-dot" IsVisible="{Binding IsTurnIndicatorDots}" />
+        <Ellipse Classes="running-dot" IsVisible="{Binding IsTurnIndicatorDots}" />
+        <Ellipse Classes="running-dot" IsVisible="{Binding IsTurnIndicatorDots}" />
       </StackPanel>
       <TextBlock x:Name="ConversationAnnouncement" IsVisible="False" AutomationProperties.LiveSetting="Polite" />
 
@@ -204,9 +214,11 @@
                   </Border>
                 </StackPanel>
                 <StackPanel x:Name="ToolDetailResultPanel" Spacing="5" IsVisible="False">
-                  <TextBlock Text="Result" Classes="eyebrow" />
-                  <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                  <TextBlock x:Name="ToolDetailResultLabel" Text="Result" Classes="eyebrow" />
+                  <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" MaxHeight="220">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                     <SelectableTextBlock x:Name="ToolDetailResult" Classes="mono" FontSize="11" TextWrapping="Wrap" />
+                    </ScrollViewer>
                   </Border>
                 </StackPanel>
               </StackPanel>

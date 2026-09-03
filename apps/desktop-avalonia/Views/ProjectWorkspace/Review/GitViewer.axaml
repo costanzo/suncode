@@ -121,6 +121,5 @@
       </Grid>
       </Grid>
     </Border>
-    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="14" IsHitTestVisible="False" ZIndex="10" />
   </Grid>
 </UserControl>

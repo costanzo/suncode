@@ -38,14 +38,14 @@
         <ScrollViewer HorizontalScrollBarVisibility="Disabled">
           <StackPanel Margin="16,18" Spacing="4">
             <TextBlock Classes="section-label" Text="GENERAL" Margin="10,0,0,0" />
-            <Button x:Name="DefaultsNavigation" Classes="navigation selected" Content="Defaults" Click="ShowDefaults" />
-            <Button x:Name="AppearanceNavigation" Classes="navigation" Content="Appearance" Click="ShowAppearance" />
-            <Button x:Name="NetworkNavigation" Classes="navigation" Content="Network" Click="ShowNetwork" />
-            <Button x:Name="LoggingNavigation" Classes="navigation" Content="Logging" Click="ShowLogging" />
+            <Button x:Name="DefaultsNavigation" Classes="navigation selected" Click="ShowDefaults"><StackPanel Orientation="Horizontal" Spacing="8"><svg:Svg Width="15" Height="15" Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" /><TextBlock Text="Defaults" /></StackPanel></Button>
+            <Button x:Name="AppearanceNavigation" Classes="navigation" Click="ShowAppearance"><StackPanel Orientation="Horizontal" Spacing="8"><svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" /><TextBlock Text="Appearance" /></StackPanel></Button>
+            <Button x:Name="NetworkNavigation" Classes="navigation" Click="ShowNetwork"><StackPanel Orientation="Horizontal" Spacing="8"><svg:Svg Width="15" Height="15" Path="/Assets/icons/unlock.svg" Css="{DynamicResource IconSvgCss}" /><TextBlock Text="Network" /></StackPanel></Button>
+            <Button x:Name="LoggingNavigation" Classes="navigation" Click="ShowLogging"><StackPanel Orientation="Horizontal" Spacing="8"><svg:Svg Width="15" Height="15" Path="/Assets/icons/files.svg" Css="{DynamicResource IconSvgCss}" /><TextBlock Text="Logging" /></StackPanel></Button>
             <Border Height="12" />
             <TextBlock Classes="section-label" Text="MODELS" Margin="10,0,0,0" />
             <Grid ColumnDefinitions="*,28">
-              <Button x:Name="ProvidersNavigation" Grid.Column="0" Classes="navigation" Content="Model providers" Click="ShowProviders" />
+              <Button x:Name="ProvidersNavigation" Grid.Column="0" Classes="navigation" Click="ShowProviders"><StackPanel Orientation="Horizontal" Spacing="8"><svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" /><TextBlock Text="Model providers" /></StackPanel></Button>
               <Button Grid.Column="1" Classes="navigation" Width="28" MinHeight="28" Padding="8" HorizontalContentAlignment="Center" Click="ToggleProviders" AutomationProperties.Name="Expand or collapse model providers">
                 <svg:Svg x:Name="ProvidersChevron" Width="10" Height="10" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
               </Button>
@@ -220,6 +220,31 @@
                             VerticalAlignment="Center"
                             Click="HttpsCertificateVerificationChanged" />
             </Grid>
+
+            <Border Classes="settings-provider-status"
+                    Background="{DynamicResource FieldBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1">
+              <StackPanel Spacing="10">
+                <TextBlock Text="CERTIFICATE TRUST SOURCE" Classes="section-label" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="Use system certificates" FontWeight="SemiBold" />
+                    <TextBlock Classes="settings-hint" Text="Trust the operating system certificate store for provider and WebFetch HTTPS requests." />
+                  </StackPanel>
+                  <ToggleSwitch x:Name="UseSystemCertificatesToggle" Grid.Column="1" Classes="sc-toggle-switch" OnContent="On" OffContent="Off" IsChecked="True" Click="SystemCertificatesChanged" />
+                </Grid>
+                <controls:SCFileSelector x:Name="CertificatePathInput"
+                                         Text="{Binding CertificatePath, Mode=TwoWay}"
+                                         IsEnabled="{Binding !UseSystemCertificates}"
+                                         PlaceholderText="Using system certificates"
+                                         DialogTitle="Choose certificate file"
+                                         FileTypeName="Certificates"
+                                         AllowedExtensions="pem,crt,cer,der"
+                                         SelectionMode="File" />
+                <TextBlock Classes="settings-hint" Text="Disable system certificates to provide a custom certificate file." />
+              </StackPanel>
+            </Border>
 
             <Border x:Name="HttpsCertificateWarning"
                     IsVisible="False"

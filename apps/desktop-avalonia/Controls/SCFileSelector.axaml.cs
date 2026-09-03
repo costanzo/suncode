@@ -1,6 +1,7 @@
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 
@@ -84,7 +85,8 @@ public sealed partial class SCFileSelector : UserControl
         if (change.Property == TextProperty
             || change.Property == PlaceholderTextProperty
             || change.Property == DialogTitleProperty
-            || change.Property == SelectionModeProperty)
+            || change.Property == SelectionModeProperty
+            || change.Property == InputElement.IsEnabledProperty)
         {
             SyncView();
         }
@@ -114,6 +116,8 @@ public sealed partial class SCFileSelector : UserControl
         PathInput.Text = Text ?? string.Empty;
         _syncingText = false;
         PathInput.PlaceholderText = PlaceholderText;
+        PathInput.IsEnabled = IsEnabled;
+        BrowseButton.IsEnabled = IsEnabled;
         ToolTip.SetTip(BrowseButton, SelectionMode == SCFileSelectorSelectionMode.File ? "Choose file" : "Choose folder");
     }
 

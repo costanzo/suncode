@@ -24,6 +24,7 @@ public sealed partial class ChatInput : UserControl
     private const int MaxImageBytes = 20 * 1024 * 1024;
     private const long MaxImagePixels = 50_000_000;
     private DesktopViewModel? _subscribedViewModel;
+    private string _expandedDraft = string.Empty;
 
     public ChatInput()
     {
@@ -139,6 +140,36 @@ public sealed partial class ChatInput : UserControl
 
     private async void CancelTurn(object? sender, RoutedEventArgs e) =>
         await ViewModel.CancelTurnAsync();
+
+    private void ExpandComposer(object? sender, RoutedEventArgs e)
+    {
+        _expandedDraft = ComposerInput.Text ?? string.Empty;
+        ExpandedComposerInput.Text = _expandedDraft;
+        ExpandedComposerCount.Text = $"{_expandedDraft.Length} characters";
+        ExpandedComposerModal.IsOpen = true;
+        ExpandedComposerInput.Focus();
+    }
+
+    private void ExpandedComposerChanged(object? sender, TextChangedEventArgs e)
+    {
+        _expandedDraft = ExpandedComposerInput.Text ?? string.Empty;
+        ExpandedComposerCount.Text = $"{_expandedDraft.Length} characters";
+    }
+
+    private void CloseExpandedComposer(object? sender, RoutedEventArgs e)
+    {
+        ComposerInput.Text = _expandedDraft;
+        ViewModel.ComposerText = _expandedDraft;
+        ExpandedComposerModal.IsOpen = false;
+    }
+
+    private async void SubmitExpandedComposer(object? sender, RoutedEventArgs e)
+    {
+        ComposerInput.Text = _expandedDraft;
+        ViewModel.ComposerText = _expandedDraft;
+        ExpandedComposerModal.IsOpen = false;
+        if (ViewModel.CanSubmit) await ViewModel.SubmitTurnAsync();
+    }
 
     private void ModelSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {

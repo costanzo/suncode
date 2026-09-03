@@ -1,0 +1,29 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SunCode.Desktop.Views.DialogWindow.DialogWindow"
+        Title="Confirm action"
+        Width="620"
+        Height="420"
+        MinWidth="480"
+        MinHeight="360"
+        Background="{DynamicResource CanvasBrush}"
+        WindowDecorations="Full"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="*,Auto">
+    <StackPanel Margin="32,28" Spacing="12">
+      <TextBlock Text="SECONDARY CONFIRMATION" Classes="section-label" />
+      <TextBlock x:Name="TitleText" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock x:Name="DescriptionText" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+      <Border Padding="12,10" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+        <StackPanel Spacing="4">
+          <TextBlock Text="SESSION" Classes="eyebrow" />
+          <TextBlock x:Name="TargetText" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="32,0,32,28" Spacing="8">
+      <Button x:Name="CancelButton" Classes="compact" Content="Cancel" Click="CancelClicked" />
+      <Button x:Name="ConfirmButton" Classes="compact danger" Content="Archive session" Click="ConfirmClicked" />
+    </StackPanel>
+  </Grid>
+</Window>

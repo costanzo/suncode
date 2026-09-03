@@ -62,6 +62,9 @@ public sealed partial class SettingsWindow : Window
                 .ToString(System.Globalization.CultureInfo.InvariantCulture);
             LogRetentionInput.Text = ViewModel.LogRetention.ToString(System.Globalization.CultureInfo.InvariantCulture);
             VerifyHttpsCertificatesToggle.IsChecked = ViewModel.VerifyHttpsCertificates;
+            UseSystemCertificatesToggle.IsChecked = ViewModel.UseSystemCertificates;
+            CertificatePathInput.Text = ViewModel.CertificatePath;
+            CertificatePathInput.IsEnabled = ViewModel.UseSystemCertificates == false;
             RefreshHttpsCertificateWarning();
             ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
             ShowProviderPanel(null);
@@ -190,6 +193,12 @@ public sealed partial class SettingsWindow : Window
 
     private void HttpsCertificateVerificationChanged(object? sender, RoutedEventArgs e) =>
         RefreshHttpsCertificateWarning();
+
+    private void SystemCertificatesChanged(object? sender, RoutedEventArgs e)
+    {
+        ViewModel.UseSystemCertificates = UseSystemCertificatesToggle.IsChecked == true;
+        CertificatePathInput.IsEnabled = !ViewModel.UseSystemCertificates;
+    }
 
     private async void SaveHttpsCertificateVerification(object? sender, RoutedEventArgs e)
     {

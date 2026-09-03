@@ -73,12 +73,12 @@
                     <ItemsControl ItemsSource="{Binding Options}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="models:QuestionOptionItem">
-                          <ToggleButton Classes="compact" HorizontalContentAlignment="Left" Margin="0,0,0,4" Click="SelectQuestionOption" IsChecked="{Binding IsSelected, Mode=OneWay}" AutomationProperties.Name="{Binding Label}">
+                          <RadioButton Classes="compact" GroupName="QuestionOption" HorizontalContentAlignment="Left" Margin="0,0,0,4" Click="SelectQuestionOption" IsChecked="{Binding IsSelected, Mode=OneWay}" AutomationProperties.Name="{Binding Label}">
                             <StackPanel Spacing="2">
                               <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
                               <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
                             </StackPanel>
-                          </ToggleButton>
+                          </RadioButton>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -94,7 +94,7 @@
           </StackPanel>
         </Border>
         <TextBlock Text="No pending approvals" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding !HasPendingApproval}" />
-        <Button Classes="raised" Padding="11" HorizontalContentAlignment="Stretch" Click="ViewTurnChanges" AutomationProperties.Name="View changes from this turn">
+        <Button Classes="raised" Padding="11" HorizontalContentAlignment="Stretch" Click="ViewTurnChanges" AutomationProperties.Name="View changes from this turn" IsVisible="{Binding HasChangedPaths}">
           <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
             <svg:Svg Width="14" Height="14" Path="/Assets/icons/git-branch.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
             <StackPanel Grid.Column="1" Spacing="2">
@@ -114,10 +114,13 @@
           </ItemsControl>
           <TextBlock Text="No files touched yet" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding !HasChangedPaths}" />
         </StackPanel>
-        <Border Classes="process-card" Classes.active="{Binding IsTurnActive}" Padding="11" CornerRadius="6">
+        <Border Classes="process-card" Classes.active="{Binding IsTurnActive}" Padding="11" CornerRadius="6" IsVisible="{Binding !HasFailedTurn}">
           <StackPanel Spacing="7">
             <Grid ColumnDefinitions="Auto,8,*,Auto">
-              <Ellipse Width="7" Height="7" Classes="process-dot" Classes.active="{Binding IsTurnActive}" VerticalAlignment="Center" />
+              <Border Width="13" Height="13" CornerRadius="7" Background="{DynamicResource AccentSurfaceBrush}" IsVisible="{Binding IsTurnActive}" VerticalAlignment="Center">
+                <Ellipse Width="7" Height="7" Classes="process-dot" Classes.active="{Binding IsTurnActive}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <Ellipse Width="7" Height="7" Classes="process-dot" VerticalAlignment="Center" IsVisible="{Binding !IsTurnActive}" />
               <TextBlock Grid.Column="2" Text="Runtime health" FontWeight="SemiBold" />
               <TextBlock Grid.Column="3" Text="Running" FontSize="10" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsTurnActive}" />
               <TextBlock Grid.Column="3" Text="Ready" FontSize="10" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding !IsTurnActive}" />
@@ -125,6 +128,16 @@
             <TextBlock Text="{Binding RuntimeHealthSummary}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
             <TextBlock Text="{Binding SelectedModelName, StringFormat=Model  {0}}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
             <TextBlock Text="{Binding LatestActivityText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="2" IsVisible="{Binding IsTurnActive}" />
+          </StackPanel>
+        </Border>
+        <Border Padding="11" CornerRadius="6" Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" IsVisible="{Binding HasFailedTurn}">
+          <StackPanel Spacing="8">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="TURN STOPPED" Classes="eyebrow" Foreground="{DynamicResource DangerBrush}" />
+              <TextBlock Grid.Column="1" Text="FAILED" Classes="mono" FontSize="9" Foreground="{DynamicResource DangerBrush}" />
+            </Grid>
+            <TextBlock Text="The turn ended before completion. No further tool calls will run." FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            <Button Classes="compact primary" Content="Retry turn" Click="RetryTurn" />
           </StackPanel>
         </Border>
         <Expander Header="Current turn details" IsVisible="{Binding HasCurrentTodos}">

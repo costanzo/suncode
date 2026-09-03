@@ -10,6 +10,7 @@ using SunCode.Desktop.Views.About;
 using SunCode.Desktop.Views.ProjectHub;
 using SunCode.Desktop.Views.ProjectWorkspace;
 using SunCode.Desktop.Views.Settings;
+using SunCode.Desktop.Views.DialogWindow;
 
 namespace SunCode.Desktop;
 
@@ -162,6 +163,18 @@ public sealed partial class App : Application
             _aboutWindow = null;
         };
         _ = _aboutWindow.ShowDialog(owner);
+    }
+
+    internal void ShowArchiveConfirmation(Window owner, SessionItem session, Action confirm)
+    {
+        var dialog = new DialogWindow(
+            "Archive this session?",
+            "It will leave the active session list, but can be reopened later.",
+            session.DisplayTitle,
+            confirm);
+        SetOtherWindowsEnabled(owner, false);
+        dialog.Closed += (_, _) => SetOtherWindowsEnabled(owner, true);
+        _ = dialog.ShowDialog(owner);
     }
 
     private void ConfigureNativeApplicationMenu()

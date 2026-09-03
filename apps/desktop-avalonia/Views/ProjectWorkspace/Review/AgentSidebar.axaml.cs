@@ -37,6 +37,12 @@ public sealed partial class AgentSidebar : UserControl
     private async void RejectQuestion(object? sender, RoutedEventArgs e) =>
         await ViewModel.RejectQuestionAsync();
 
+    private async void RetryTurn(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedSession is not null)
+            await ViewModel.SelectSessionAsync(ViewModel.SelectedSession);
+    }
+
     private async void DisableFullControl(object? sender, RoutedEventArgs e) =>
         await ViewModel.DisableFullControlAsync();
 

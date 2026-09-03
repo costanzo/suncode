@@ -85,6 +85,7 @@ public sealed class MessageItem : ObservableObject, IDisposable
     public bool IsUser => Role == "user";
     public bool IsAssistant => Role == "assistant";
     public bool IsTool => Kind == "tool";
+    public bool IsCompaction => Kind == "context.compacted";
     public string Author => IsUser ? "You" : "SunCode";
     public bool IsVisible { get => _isVisible; set => SetProperty(ref _isVisible, value); }
     public bool IsProcess { get => _isProcess; set => SetProperty(ref _isProcess, value); }

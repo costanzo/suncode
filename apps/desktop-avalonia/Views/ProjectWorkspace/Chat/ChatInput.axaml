@@ -142,6 +142,19 @@
         <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
       </Button>
 
+      <Button Grid.Row="1"
+              Width="24"
+              Height="24"
+              MinHeight="24"
+              Padding="5"
+              Classes="quiet"
+              Click="ExpandComposer"
+              IsEnabled="{Binding CanCompose}"
+              ToolTip.Tip="Open expanded composer"
+              AutomationProperties.Name="Open expanded composer">
+        <svg:Svg Path="/Assets/icons/maximize.svg" Css="{DynamicResource IconSvgCss}" />
+      </Button>
+
       <StackPanel VerticalAlignment="Bottom"
                   HorizontalAlignment="Right"
                   Grid.Row="1"
@@ -200,5 +213,35 @@
       </StackPanel>
     </Grid>
     </Border>
+    <controls:SCModal x:Name="ExpandedComposerModal"
+                      Width="860"
+                      MaxWidth="860"
+                      IsOpen="False"
+                      PrimaryButtonText="Send message"
+                      SecondaryButtonText="Return to composer"
+                      PrimaryAction="SubmitExpandedComposer"
+                      SecondaryAction="CloseExpandedComposer"
+                      CloseRequested="CloseExpandedComposer">
+      <Grid RowDefinitions="*,Auto" MinHeight="420">
+        <TextBox x:Name="ExpandedComposerInput"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 FontSize="14"
+                 LineHeight="22"
+                 Background="{DynamicResource FieldBrush}"
+                 BorderBrush="{DynamicResource BorderBrush}"
+                 BorderThickness="1"
+                 CornerRadius="10"
+                 Padding="18"
+                 TextChanged="ExpandedComposerChanged" />
+        <TextBlock x:Name="ExpandedComposerCount"
+                   Grid.Row="1"
+                   HorizontalAlignment="Right"
+                   Margin="0,8,2,0"
+                   Classes="mono"
+                   FontSize="11"
+                   Foreground="{DynamicResource TextSecondaryBrush}" />
+      </Grid>
+    </controls:SCModal>
   </Grid>
 </UserControl>

@@ -94,6 +94,12 @@ public sealed partial class WorkspaceWindow : Window
         if (Application.Current is App app) app.ShowSettings(this);
     }
 
+    internal void ShowArchiveConfirmation(SessionItem session)
+    {
+        if (Application.Current is App app)
+            app.ShowArchiveConfirmation(this, session, () => _ = ViewModel.ArchiveSessionAsync(session));
+    }
+
     private void ConfigureNativeProjectMenu()
     {
         var projectActions = new NativeMenu();

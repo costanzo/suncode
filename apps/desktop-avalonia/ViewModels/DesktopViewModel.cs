@@ -42,6 +42,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private string _statusText = "Starting local agent...";
     private string _composerText = string.Empty;
     private string _activeTurnId = string.Empty;
+    private string _activeTurnState = string.Empty;
     private string _themeMode = "light";
     private string _logLevel = "INFO";
     private string _logDirectory = string.Empty;
@@ -49,6 +50,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private long _logMaxBytes = 10 * 1024 * 1024;
     private int _logRetention = 5;
     private bool _verifyHttpsCertificates = true;
+    private bool _useSystemCertificates = true;
+    private string _certificatePath = string.Empty;
     private int _toolCallLimit = 64;
     private string _diagnosticsText = "Diagnostics unavailable";
     private string _gitState = "idle";
@@ -279,7 +282,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public string StatusText { get => _statusText; private set => SetProperty(ref _statusText, value); }
     public void ReportPresentationError(string message) => StatusText = message;
     public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) OnPropertyChanged(nameof(CanSubmit)); } }
-    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); } } }
+    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); } } }
+    public string ActiveTurnState { get => _activeTurnState; private set { if (SetProperty(ref _activeTurnState, value)) { OnPropertyChanged(nameof(IsTurnCompacting)); OnPropertyChanged(nameof(IsTurnThinking)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(HasFailedTurn)); } } }
     public string ThemeMode { get => _themeMode; private set => SetProperty(ref _themeMode, value); }
     public string LogLevel { get => _logLevel; private set => SetProperty(ref _logLevel, value); }
     public string LogDirectory { get => _logDirectory; private set => SetProperty(ref _logDirectory, value); }
@@ -419,6 +423,12 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         : $"{ChangedPaths.Count} {(ChangedPaths.Count == 1 ? "file" : "files")} touched";
     public string RuntimeHealthSummary => IsAgentHealthy ? "Agent and database ready" : "Runtime needs attention";
     public bool IsTurnActive => !string.IsNullOrWhiteSpace(ActiveTurnId);
+    public bool IsTurnCompacting => ActiveTurnState == "compacting";
+    public bool IsTurnThinking => ActiveTurnState == "calling_model";
+    public bool IsTurnIndicatorDots => IsTurnActive && !IsTurnThinking && !IsTurnCompacting;
+    public bool HasFailedTurn => ActiveTurnState == "failed";
+    public bool UseSystemCertificates { get => _useSystemCertificates; set => SetProperty(ref _useSystemCertificates, value); }
+    public string CertificatePath { get => _certificatePath; set => SetProperty(ref _certificatePath, value); }
     public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && SelectedModel?.Configured == true && !HasSessionLoadError;
     public bool CanSubmit => SelectedSession is not null && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsTurnActive && !IsSessionLoading && !HasSessionLoadError;
     public bool CanChooseModel => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !HasSessionLoadError;
@@ -436,7 +446,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             : SelectedModel.Configured ? "Tell SunCode what to do..." : "Store the selected provider's API key first...";
     public GridLength NavigationWidth => EffectiveNavigationVisible ? new GridLength(NavigationPaneWidth) : new GridLength(0);
     public GridLength ReviewWidth => EffectiveReviewVisible ? new GridLength(ReviewPaneWidth) : new GridLength(0);
-    public GridLength GitFileListWidth => new(Math.Min(300, Math.Max(228, (_layoutWidth - 80) * 0.28)));
+    public GridLength GitFileListWidth => new(Math.Min(260, Math.Max(230, (_layoutWidth - 80) * 0.24)));
     public bool IsGitReady => GitState == "ready";
     public bool IsGitClean => IsGitReady && GitChangedFiles == 0;
     public bool IsGitDirty => IsGitReady && GitChangedFiles > 0;

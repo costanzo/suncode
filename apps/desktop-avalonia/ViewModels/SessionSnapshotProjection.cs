@@ -9,4 +9,5 @@ internal sealed record SessionSnapshotProjection(
     IReadOnlyList<TodoItem> CurrentTodos,
     ApprovalItem? PendingApproval,
     PendingQuestionItem? PendingQuestion,
-    string ActiveTurnId);
+    string ActiveTurnId,
+    string ActiveTurnState = "");

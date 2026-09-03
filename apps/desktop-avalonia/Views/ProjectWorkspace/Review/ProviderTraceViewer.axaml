@@ -55,7 +55,7 @@
         </Grid>
         <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
 
-        <Grid Grid.Row="2" ColumnDefinitions="390,1,*">
+        <Grid Grid.Row="2" ColumnDefinitions="230,1,*">
           <Grid Grid.Column="0" Background="{DynamicResource SidebarBrush}" RowDefinitions="32,1,*">
             <Grid Grid.Row="0" Margin="12,0,10,0" ColumnDefinitions="*,Auto">
               <TextBlock Text="{Binding ProviderTraceCountText}" Classes="eyebrow" VerticalAlignment="Center" />
@@ -301,6 +301,5 @@
         </Grid>
       </Grid>
     </Border>
-    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" IsHitTestVisible="False" ZIndex="10" />
   </Grid>
 </UserControl>

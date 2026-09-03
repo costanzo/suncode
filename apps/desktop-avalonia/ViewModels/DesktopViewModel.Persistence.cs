@@ -276,6 +276,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             ? PendingQuestionItem.FromPayload(pendingPayload)
             : null;
         var activeTurnId = string.Empty;
+        var activeTurnState = string.Empty;
         var imagePayloads = snapshot.Array("images")
             .OfType<JsonObject>()
             .Where(image => image.String("imageId", "image_id").Length > 0)
@@ -297,6 +298,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 var turnId = turn.String("turnId", "turn_id");
                 var state = turn.String("state");
                 if (!IsTerminalTurnState(state)) activeTurnId = turnId;
+                activeTurnState = state;
                 var toolUses = turn.Array("toolUses").OfType<JsonObject>().ToArray();
                 if (turnId == todoTurnId)
                     currentTodos = ParseTodos(turn["todos"]);
@@ -373,6 +375,19 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 activities.Add(new ActivityItem(type, EventText(type, payload), activities.Count + 1, payload.String("state"), payload.String("operation")));
             }
 
+            if (type == "context.compacted")
+            {
+                messages.Add(new MessageItem
+                {
+                    Role = "assistant",
+                    Kind = "context.compacted",
+                    Text = EventText(type, payload),
+                    ContentSequence = messages.Count + 1,
+                    TurnId = payload.String("turn_id"),
+                    IsProcess = true
+                });
+            }
+
             foreach (var path in new[] { payload.String("path"), payload.String("from"), payload.String("to") })
             {
                 if (path.Length > 0 && changedPathSet.Add(path)) changedPaths.Add(path);
@@ -391,7 +406,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             }
         }
 
-        return new SessionSnapshotProjection(messages, activities, changedPaths, currentTodos, pendingApproval, pendingQuestion, activeTurnId);
+        return new SessionSnapshotProjection(messages, activities, changedPaths, currentTodos, pendingApproval, pendingQuestion, activeTurnId, activeTurnState);
     }
 
     internal void ApplySnapshot(SessionSnapshotProjection projection)
@@ -411,6 +426,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         PendingApproval = projection.PendingApproval;
         PendingQuestion = projection.PendingQuestion;
         ActiveTurnId = projection.ActiveTurnId;
+        ActiveTurnState = projection.ActiveTurnState;
         OnPropertyChanged(nameof(HasMessages));
         OnPropertyChanged(nameof(HasActivities));
         OnPropertyChanged(nameof(HasCurrentTodos));
@@ -555,6 +571,20 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(HasActivities));
             OnPropertyChanged(nameof(LatestActivityText));
         }
+        else if (type == "context.compacted")
+        {
+            Messages.Add(new MessageItem
+            {
+                Role = "assistant",
+                Kind = "context.compacted",
+                Text = EventText(type, payload),
+                ContentSequence = Messages.Count + 1,
+                TurnId = payload.String("turn_id"),
+                IsProcess = true
+            });
+            OnPropertyChanged(nameof(HasMessages));
+            ConversationChanged?.Invoke();
+        }
         else if (!type.StartsWith("provider.exchange.", StringComparison.Ordinal))
         {
             Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.String("state"), payload.String("operation")));
@@ -591,6 +621,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(HasCurrentTodos));
             }
             ActiveTurnId = IsTerminalTurnState(state) ? string.Empty : turnId;
+            ActiveTurnState = state;
             ConfigureTurnPresentation(Messages, turnId, state, expanded: !IsTerminalTurnState(state));
             ConversationChanged?.Invoke();
         }
@@ -742,6 +773,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             "question.replied" => "Question answered",
             "question.rejected" => "Question skipped",
             "todo.updated" => "Todo list updated",
+            "context.compacted" => $"Context compacted · retained {payload.String("retained_tokens")} tokens",
             "checkpoint.captured" => $"Checkpoint captured for {payload.String("path")}",
             "checkpoint.restore_failed" => "Undo stopped because a file changed outside SunCode",
             "turn.state" => $"Turn {payload.String("state")}",

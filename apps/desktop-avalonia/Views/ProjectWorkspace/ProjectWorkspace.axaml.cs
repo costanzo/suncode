@@ -81,6 +81,11 @@ public sealed partial class ProjectWorkspace : UserControl
         UndoDialogModal.IsOpen = true;
     }
 
+    internal void ShowArchiveDialog(SessionItem session)
+    {
+        Owner?.ShowArchiveConfirmation(session);
+    }
+
     internal void ShowDependencyDeleteDialog(ExplorerNode node)
     {
         _pendingDependencyDeletion = node;
