@@ -27,6 +27,11 @@ public sealed partial class SCComboBox : UserControl
     public static readonly StyledProperty<bool> UseMonospaceProperty =
         AvaloniaProperty.Register<SCComboBox, bool>(nameof(UseMonospace));
 
+    public static readonly DirectProperty<SCComboBox, string> DisplayTextProperty =
+        AvaloniaProperty.RegisterDirect<SCComboBox, string>(nameof(DisplayText), control => control.DisplayText);
+
+    private string _displayText = string.Empty;
+
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
 
     public SCComboBox()
@@ -72,6 +77,8 @@ public sealed partial class SCComboBox : UserControl
         set => SetValue(UseMonospaceProperty, value);
     }
 
+    public string DisplayText => _displayText;
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -88,6 +95,10 @@ public sealed partial class SCComboBox : UserControl
 
     private void SyncView()
     {
+        if (FlatCombo is null || GroupedButton is null || GroupedLabel is null)
+        {
+            return;
+        }
         FlatCombo.IsVisible = !IsHierarchical;
         GroupedButton.IsVisible = IsHierarchical;
         FlatCombo.ItemsSource = ItemsSource;
@@ -95,10 +106,7 @@ public sealed partial class SCComboBox : UserControl
 
         FlatCombo.Classes.Set("mono", UseMonospace);
         GroupedLabel.Classes.Set("mono", UseMonospace);
-        GroupedLabel.Text = SelectedItem?.Label ?? PlaceholderText ?? string.Empty;
-        GroupedLabel.Foreground = SelectedItem is null
-            ? this.FindResource("TextMutedBrush") as Avalonia.Media.IBrush
-            : this.FindResource("TextBrush") as Avalonia.Media.IBrush;
+        UpdateGroupedLabel();
     }
 
     private void FlatSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -158,7 +166,11 @@ public sealed partial class SCComboBox : UserControl
         if (sender is not MenuItem { CommandParameter: SCComboBoxItem item }) return;
         var previous = SelectedItem;
         SelectedItem = item;
-        GroupedLabel.Text = item.Label;
+        // Update the visible trigger immediately. The grouped menu closes
+        // before the ViewModel's property-change refresh can rebuild the
+        // presentation items, so keep the selected label stable across that
+        // replacement as well.
+        UpdateGroupedLabel();
         var removedItems = previous is null
             ? new List<object?>()
             : new List<object?> { previous };
@@ -168,6 +180,19 @@ public sealed partial class SCComboBox : UserControl
             new SelectionChangedEventArgs(
                 SelectingItemsControl.SelectionChangedEvent,
                 removedItems,
-                addedItems));
+            addedItems));
+    }
+
+    private void UpdateGroupedLabel()
+    {
+        if (GroupedLabel is null) return;
+
+        var previousText = _displayText;
+        _displayText = SelectedItem?.Label ?? PlaceholderText ?? string.Empty;
+        RaisePropertyChanged(DisplayTextProperty, previousText, _displayText);
+        GroupedLabel.Text = _displayText;
+        GroupedLabel.Foreground = SelectedItem is null
+            ? this.FindResource("TextMutedBrush") as Avalonia.Media.IBrush
+            : this.FindResource("TextBrush") as Avalonia.Media.IBrush;
     }
 }

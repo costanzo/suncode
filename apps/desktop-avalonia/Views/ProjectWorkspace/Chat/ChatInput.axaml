@@ -7,7 +7,7 @@
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Chat.ChatInput"
              x:DataType="vm:DesktopViewModel"
              Height="126"
-             Margin="10,0"
+             Margin="0"
              VerticalAlignment="Bottom"
              ZIndex="2">
   <UserControl.Styles>
@@ -19,6 +19,9 @@
     <Style Selector="TextBox.composer-input">
       <Setter Property="FontSize" Value="11" />
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+      <Setter Property="MinHeight" Value="52" />
+      <Setter Property="VerticalContentAlignment" Value="Top" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
     <Style Selector="Button.composer-option">
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
@@ -28,6 +31,11 @@
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     </Style>
     <Style Selector="controls|SCComboBox.composer-option ComboBox">
+      <Setter Property="Height" Value="24" />
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
@@ -35,6 +43,11 @@
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     </Style>
     <Style Selector="controls|SCComboBox.composer-option Button">
+      <Setter Property="Height" Value="24" />
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
@@ -104,17 +117,18 @@
     </ItemsControl.ItemTemplate>
     </ItemsControl>
 
-    <Border Margin="14,14,14,10"
+    <Border Margin="24,14,24,10"
           Padding="16,12,12,10"
           CornerRadius="16"
           Background="{DynamicResource ComposerBrush}"
           BorderBrush="{DynamicResource BorderStrongBrush}"
           BorderThickness="1"
           BoxShadow="0 6 14 0 #57000000">
-    <Grid RowDefinitions="*,Auto">
+    <Grid RowDefinitions="*,Auto" ColumnDefinitions="*,Auto">
       <TextBox x:Name="ComposerInput"
                Classes="composer-input"
                Grid.Row="0"
+               Grid.ColumnSpan="2"
                Text="{Binding ComposerText}"
                PlaceholderText="{Binding ComposerPlaceholder}"
                AcceptsReturn="True"
@@ -129,35 +143,39 @@
         </TextBox.Resources>
       </TextBox>
 
-      <Button Grid.Row="1"
-              Width="24"
-              Height="24"
-              MinHeight="24"
-              Padding="5"
-              Classes="quiet"
-              Click="AddAttachment"
-              IsEnabled="{Binding CanAttachImages}"
-              ToolTip.Tip="Add image (requires a model with image input)"
-              AutomationProperties.Name="Add image attachment">
-        <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
-      </Button>
+      <StackPanel Grid.Row="1"
+                  Grid.Column="0"
+                  Orientation="Horizontal"
+                  Spacing="4">
+        <Button Width="24"
+                Height="24"
+                MinHeight="24"
+                Padding="5"
+                Classes="quiet"
+                Click="AddAttachment"
+                IsEnabled="{Binding CanAttachImages}"
+                ToolTip.Tip="Add image (requires a model with image input)"
+                AutomationProperties.Name="Add image attachment">
+          <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
 
-      <Button Grid.Row="1"
-              Width="24"
-              Height="24"
-              MinHeight="24"
-              Padding="5"
-              Classes="quiet"
-              Click="ExpandComposer"
-              IsEnabled="{Binding CanCompose}"
-              ToolTip.Tip="Open expanded composer"
-              AutomationProperties.Name="Open expanded composer">
-        <svg:Svg Path="/Assets/icons/maximize.svg" Css="{DynamicResource IconSvgCss}" />
-      </Button>
+        <Button Width="24"
+                Height="24"
+                MinHeight="24"
+                Padding="0"
+                Classes="quiet"
+                Click="ExpandComposer"
+                IsEnabled="{Binding CanCompose}"
+                ToolTip.Tip="Open expanded composer"
+                AutomationProperties.Name="Open expanded composer">
+          <svg:Svg Width="13" Height="13" Path="/Assets/icons/expand.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
+      </StackPanel>
 
       <StackPanel VerticalAlignment="Bottom"
                   HorizontalAlignment="Right"
                   Grid.Row="1"
+                  Grid.Column="1"
                   Orientation="Horizontal"
                   Spacing="6">
         <controls:SCComboBox x:Name="ModelSelector"
@@ -213,35 +231,5 @@
       </StackPanel>
     </Grid>
     </Border>
-    <controls:SCModal x:Name="ExpandedComposerModal"
-                      Width="860"
-                      MaxWidth="860"
-                      IsOpen="False"
-                      PrimaryButtonText="Send message"
-                      SecondaryButtonText="Return to composer"
-                      PrimaryAction="SubmitExpandedComposer"
-                      SecondaryAction="CloseExpandedComposer"
-                      CloseRequested="CloseExpandedComposer">
-      <Grid RowDefinitions="*,Auto" MinHeight="420">
-        <TextBox x:Name="ExpandedComposerInput"
-                 AcceptsReturn="True"
-                 TextWrapping="Wrap"
-                 FontSize="14"
-                 LineHeight="22"
-                 Background="{DynamicResource FieldBrush}"
-                 BorderBrush="{DynamicResource BorderBrush}"
-                 BorderThickness="1"
-                 CornerRadius="10"
-                 Padding="18"
-                 TextChanged="ExpandedComposerChanged" />
-        <TextBlock x:Name="ExpandedComposerCount"
-                   Grid.Row="1"
-                   HorizontalAlignment="Right"
-                   Margin="0,8,2,0"
-                   Classes="mono"
-                   FontSize="11"
-                   Foreground="{DynamicResource TextSecondaryBrush}" />
-      </Grid>
-    </controls:SCModal>
   </Grid>
 </UserControl>

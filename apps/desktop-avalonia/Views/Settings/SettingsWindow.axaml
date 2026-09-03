@@ -8,259 +8,377 @@
         Title="Settings"
         Width="900" Height="672"
         MinWidth="720" MinHeight="552"
-        Background="{DynamicResource CanvasBrush}"
+        Background="{DynamicResource SurfaceBrush}"
         WindowDecorations="Full"
         WindowStartupLocation="CenterOwner">
   <Window.Styles>
     <Style Selector="Button.navigation">
-      <Setter Property="MinHeight" Value="34" />
-      <Setter Property="Padding" Value="10,5" />
-      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Normal" />
       <Setter Property="CornerRadius" Value="5" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.navigation:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <Style Selector="Button.navigation:selected">
       <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="Button.navigation:focus /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.navigation.provider">
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="FontSize" Value="11" />
+    </Style>
+    <Style Selector="ToggleSwitch.settings-switch">
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <!-- Provider fields match the specimen's resting border after a pointer click. -->
+    <Style Selector="TextBox.settings-provider-input:focus">
+      <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
     </Style>
   </Window.Styles>
-  <Grid RowDefinitions="58,*">
-    <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+
+  <Grid RowDefinitions="58,*" Background="{DynamicResource SurfaceBrush}">
+    <Border Grid.Row="0"
+            Background="{DynamicResource SurfaceBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,0,0,1">
       <Grid Margin="22,0" ColumnDefinitions="*,Auto">
         <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Classes="compact primary sc-button" Content="Done" Click="CloseSettings" VerticalAlignment="Center" />
+        <Button Grid.Column="1"
+                Classes="compact primary sc-button"
+                Content="Done"
+                Click="CloseSettings"
+                VerticalAlignment="Center" />
       </Grid>
     </Border>
 
     <Grid Grid.Row="1" ColumnDefinitions="238,*">
-      <Border Grid.Column="0" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+      <Border Grid.Column="0"
+              Background="{DynamicResource SurfaceBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="0,0,1,0">
         <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="16,18" Spacing="4">
-            <TextBlock Classes="section-label" Text="GENERAL" Margin="10,0,0,0" />
-            <Button x:Name="DefaultsNavigation" Classes="navigation selected" Click="ShowDefaults"><StackPanel Orientation="Horizontal" Spacing="8"><svg:Svg Width="15" Height="15" Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" /><TextBlock Text="Defaults" /></StackPanel></Button>
-            <Button x:Name="AppearanceNavigation" Classes="navigation" Click="ShowAppearance"><StackPanel Orientation="Horizontal" Spacing="8"><svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" /><TextBlock Text="Appearance" /></StackPanel></Button>
-            <Button x:Name="NetworkNavigation" Classes="navigation" Click="ShowNetwork"><StackPanel Orientation="Horizontal" Spacing="8"><svg:Svg Width="15" Height="15" Path="/Assets/icons/unlock.svg" Css="{DynamicResource IconSvgCss}" /><TextBlock Text="Network" /></StackPanel></Button>
-            <Button x:Name="LoggingNavigation" Classes="navigation" Click="ShowLogging"><StackPanel Orientation="Horizontal" Spacing="8"><svg:Svg Width="15" Height="15" Path="/Assets/icons/files.svg" Css="{DynamicResource IconSvgCss}" /><TextBlock Text="Logging" /></StackPanel></Button>
-            <Border Height="12" />
-            <TextBlock Classes="section-label" Text="MODELS" Margin="10,0,0,0" />
-            <Grid ColumnDefinitions="*,28">
-              <Button x:Name="ProvidersNavigation" Grid.Column="0" Classes="navigation" Click="ShowProviders"><StackPanel Orientation="Horizontal" Spacing="8"><svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" /><TextBlock Text="Model providers" /></StackPanel></Button>
-              <Button Grid.Column="1" Classes="navigation" Width="28" MinHeight="28" Padding="8" HorizontalContentAlignment="Center" Click="ToggleProviders" AutomationProperties.Name="Expand or collapse model providers">
-                <svg:Svg x:Name="ProvidersChevron" Width="10" Height="10" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
-              </Button>
-            </Grid>
-            <StackPanel x:Name="ProviderNavigation" Spacing="4">
-              <Button Classes="navigation" Content="DeepSeek" Tag="deepseek" Margin="18,0,0,0" Click="ShowProvider" />
-              <Button Classes="navigation" Content="Zhipu GLM" Tag="zhipu" Margin="18,0,0,0" Click="ShowProvider" />
-              <Button Classes="navigation" Content="OpenAI" Tag="openai" Margin="18,0,0,0" Click="ShowProvider" />
-              <Button Classes="navigation" Content="Kimi" Tag="kimi" Margin="18,0,0,0" Click="ShowProvider" />
-              <Button Classes="navigation" Content="Claude" Tag="claude" Margin="18,0,0,0" Click="ShowProvider" />
-              <Button Classes="navigation" Content="Gemini" Tag="gemini" Margin="18,0,0,0" Click="ShowProvider" />
+          <StackPanel Margin="16,20" Spacing="4">
+            <Button x:Name="DefaultsNavigation" Classes="navigation selected" Click="ShowDefaults">
+              <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/foundation.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="Defaults" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+            <Button x:Name="AppearanceNavigation" Classes="navigation" Click="ShowAppearance">
+              <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/sun.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="Appearance" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+            <Button x:Name="NetworkNavigation" Classes="navigation" Click="ShowNetwork">
+              <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/platform.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="Network" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+            <Button x:Name="LoggingNavigation" Classes="navigation" Click="ShowLogging">
+              <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/assets.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="Logging" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+            <Button x:Name="ProvidersNavigation" Classes="navigation" Click="ShowProviders">
+              <Grid ColumnDefinitions="15,*,13" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/components.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="Model providers" VerticalAlignment="Center" />
+                <svg:Svg x:Name="ProvidersChevron"
+                         Grid.Column="2"
+                         Width="13"
+                         Height="13"
+                         Path="/Assets/icons/chevron-right.svg"
+                         Css="{DynamicResource IconSvgCss}"
+                         VerticalAlignment="Center"
+                         RenderTransformOrigin="50%,50%" />
+              </Grid>
+            </Button>
+            <StackPanel x:Name="ProviderNavigation" Margin="30,0,0,0" Spacing="3">
+              <Button Classes="navigation provider" Content="DeepSeek" Tag="deepseek" Click="ShowProvider" />
+              <Button Classes="navigation provider" Content="Zhipu GLM" Tag="zhipu" Click="ShowProvider" />
+              <Button Classes="navigation provider" Content="OpenAI" Tag="openai" Click="ShowProvider" />
+              <Button Classes="navigation provider" Content="Kimi" Tag="kimi" Click="ShowProvider" />
+              <Button Classes="navigation provider" Content="Claude" Tag="claude" Click="ShowProvider" />
+              <Button Classes="navigation provider" Content="Gemini" Tag="gemini" Click="ShowProvider" />
             </StackPanel>
           </StackPanel>
         </ScrollViewer>
       </Border>
 
-      <Grid Grid.Column="1">
+      <Grid Grid.Column="1" Background="{DynamicResource SurfaceBrush}">
         <ScrollViewer x:Name="DefaultsPage" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="32,28,32,34" Spacing="16" MaxWidth="720">
-            <StackPanel Spacing="4">
+          <StackPanel Classes="settings-panel-content">
+            <StackPanel Classes="settings-panel-heading">
               <TextBlock Text="Defaults" Classes="sc-text-title" />
               <TextBlock Classes="settings-hint" Text="Configure model and turn defaults." />
             </StackPanel>
-            <TextBlock Classes="section-label" Text="DEFAULT MODEL" />
-            <controls:SCComboBox x:Name="DefaultModelSelector"
-                                 HorizontalAlignment="Stretch"
-                                 UseMonospace="True"
-                                 PlaceholderText="Choose a model"
-                                 SelectionChanged="DefaultModelChanged" />
-            <TextBlock Classes="settings-hint" Text="Only models registered by the local agent appear here." />
-            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
-            <TextBlock Classes="section-label" Text="TURN EXECUTION" />
-            <Grid ColumnDefinitions="*,140">
-              <StackPanel Spacing="3">
-                <TextBlock Text="Tool-call limit" FontWeight="SemiBold" />
-                <TextBlock x:Name="ToolCallLimitScope" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
-              </StackPanel>
-              <NumericUpDown x:Name="ToolCallLimitInput"
-                            Grid.Column="1"
-                            Classes="sc-numeric-input"
-                            HorizontalAlignment="Stretch"
-                            Minimum="1"
-                            Maximum="256"
-                            Increment="1"
-                            FormatString="0" />
-            </Grid>
-            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-              <Button x:Name="SaveToolCallLimitButton" Classes="compact primary sc-button" Content="Save project limit" Click="SaveToolCallLimit" />
+            <StackPanel Classes="settings-panel-section">
+              <TextBlock Classes="section-label" Text="DEFAULT MODEL" />
+              <Grid Classes="settings-row" ColumnDefinitions="*,220">
+                <StackPanel Classes="settings-row-copy">
+                  <TextBlock Classes="settings-row-title" Text="Model" />
+                  <TextBlock Classes="settings-row-hint" Text="Only models registered by the local agent appear here." />
+                </StackPanel>
+                <controls:SCComboBox x:Name="DefaultModelSelector"
+                                     Grid.Column="1"
+                                     HorizontalAlignment="Stretch"
+                                     PlaceholderText="Choose a model"
+                                     SelectionChanged="DefaultModelChanged" />
+              </Grid>
+            </StackPanel>
+            <Border Classes="settings-divider" />
+            <StackPanel Classes="settings-panel-section">
+              <TextBlock Classes="section-label" Text="TURN EXECUTION" />
+              <Grid Classes="settings-row" ColumnDefinitions="*,220">
+                <StackPanel Classes="settings-row-copy">
+                  <TextBlock Classes="settings-row-title" Text="Tool-call limit" />
+                  <TextBlock Classes="settings-row-hint" Text="Maximum number of tool calls allowed in one turn." />
+                </StackPanel>
+                <NumericUpDown x:Name="ToolCallLimitInput"
+                               Grid.Column="1"
+                               Classes="sc-numeric-input"
+                               HorizontalAlignment="Stretch"
+                               Minimum="1"
+                               Maximum="256"
+                               Increment="1"
+                               FormatString="0" />
+              </Grid>
+            </StackPanel>
+            <StackPanel Classes="settings-actions">
+              <Button x:Name="SaveToolCallLimitButton"
+                      Classes="compact primary sc-button"
+                      Content="Save project limit"
+                      Click="SaveToolCallLimit" />
+              <TextBlock x:Name="ToolCallLimitScope" Classes="sc-text-status" VerticalAlignment="Center" />
               <TextBlock x:Name="ToolCallLimitStatus" Classes="sc-text-status" VerticalAlignment="Center" />
             </StackPanel>
           </StackPanel>
         </ScrollViewer>
 
         <ScrollViewer x:Name="AppearancePage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="32,28,32,34" Spacing="16" MaxWidth="720">
-            <StackPanel Spacing="4">
+          <StackPanel Classes="settings-panel-content">
+            <StackPanel Classes="settings-panel-heading">
               <TextBlock Text="Appearance" Classes="sc-text-title" />
               <TextBlock Classes="settings-hint" Text="Adjust how SunCode looks across every open window." />
             </StackPanel>
-            <TextBlock Classes="section-label" Text="THEME" />
-            <Grid ColumnDefinitions="*,160">
-              <TextBlock Text="Color theme" FontWeight="SemiBold" VerticalAlignment="Center" />
-              <controls:SCComboBox x:Name="ThemeSelector"
-                                   Grid.Column="1"
-                                   PlaceholderText="Choose theme"
-                                   SelectionChanged="ThemeChanged" />
-            </Grid>
-            <TextBlock Classes="settings-hint" Text="Changes apply immediately." />
+            <StackPanel Classes="settings-panel-section">
+              <TextBlock Classes="section-label" Text="THEME" />
+              <Grid Classes="settings-row" ColumnDefinitions="*,220">
+                <StackPanel Classes="settings-row-copy">
+                  <TextBlock Classes="settings-row-title" Text="Color theme" />
+                  <TextBlock Classes="settings-row-hint" Text="Changes apply immediately." />
+                </StackPanel>
+                <controls:SCComboBox x:Name="ThemeSelector"
+                                     Grid.Column="1"
+                                     HorizontalAlignment="Stretch"
+                                     PlaceholderText="Choose theme"
+                                     SelectionChanged="ThemeChanged" />
+              </Grid>
+            </StackPanel>
           </StackPanel>
         </ScrollViewer>
 
         <ScrollViewer x:Name="LoggingPage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="32,28,32,34" Spacing="16" MaxWidth="720">
-            <StackPanel Spacing="4">
+          <StackPanel Classes="settings-panel-content">
+            <StackPanel Classes="settings-panel-heading">
               <TextBlock Text="Logging" Classes="sc-text-title" />
               <TextBlock Classes="settings-hint" Text="Control diagnostic detail and how long local log files are kept." />
             </StackPanel>
-
-            <TextBlock Classes="section-label" Text="DIAGNOSTIC OUTPUT" />
-            <Grid ColumnDefinitions="*,180" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="14">
-              <StackPanel Spacing="3">
-                <TextBlock Text="Minimum level" FontWeight="SemiBold" />
-                <TextBlock Classes="settings-hint" Text="Lower levels include more diagnostic detail." />
-              </StackPanel>
-              <controls:SCComboBox x:Name="LogLevelSelector"
-                                   Grid.Column="1"
-                                   HorizontalAlignment="Stretch"
-                                   UseMonospace="True"
-                                   SelectionChanged="LogLevelChanged" />
-
-              <StackPanel Grid.Row="1" Spacing="3">
-                <TextBlock Text="Log directory" FontWeight="SemiBold" />
-                <TextBlock Classes="settings-hint" Text="Leave empty to use the data directory's logs folder." />
-              </StackPanel>
-              <controls:SCFileSelector x:Name="LogDirectoryInput"
-                                       Grid.Row="1"
-                                       Grid.Column="1"
-                                       PlaceholderText="Default logs folder"
-                                       DialogTitle="Choose log directory"
-                                       SelectionMode="Folder" />
-
-              <StackPanel Grid.Row="2" Spacing="3">
-                <TextBlock Text="Maximum file size" FontWeight="SemiBold" />
-                <TextBlock Classes="settings-hint" Text="Rotate each log file when it reaches this size." />
-              </StackPanel>
-              <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto">
-                <TextBox x:Name="LogMaxMegabytesInput" Grid.ColumnSpan="2" Classes="mono" Padding="12,7,42,7" PlaceholderText="10" AutomationProperties.Name="Maximum file size in megabytes" />
-                <TextBlock Grid.Column="1" Text="MB" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,10,0" VerticalAlignment="Center" IsHitTestVisible="False" />
+            <StackPanel Classes="settings-panel-section">
+              <TextBlock Classes="section-label" Text="DIAGNOSTIC OUTPUT" />
+              <Grid Classes="settings-row" ColumnDefinitions="*,220">
+                <StackPanel Classes="settings-row-copy">
+                  <TextBlock Classes="settings-row-title" Text="Minimum level" />
+                  <TextBlock Classes="settings-row-hint" Text="Lower levels include more diagnostic detail." />
+                </StackPanel>
+                <controls:SCComboBox x:Name="LogLevelSelector"
+                                     Grid.Column="1"
+                                     HorizontalAlignment="Stretch"
+                                     UseMonospace="True"
+                                     SelectionChanged="LogLevelChanged" />
               </Grid>
-
-              <StackPanel Grid.Row="3" Spacing="3">
-                <TextBlock Text="Retained backups" FontWeight="SemiBold" />
-                <TextBlock Classes="settings-hint" Text="Number of rotated backups to keep, from 0 to 100." />
-              </StackPanel>
-              <TextBox x:Name="LogRetentionInput" Grid.Row="3" Grid.Column="1" Classes="mono" PlaceholderText="5" />
-            </Grid>
-
-            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <Grid Classes="settings-row" ColumnDefinitions="*,220">
+                <StackPanel Classes="settings-row-copy">
+                  <TextBlock Classes="settings-row-title" Text="Log directory" />
+                  <TextBlock Classes="settings-row-hint" Text="Agent and desktop log files are written to this folder." />
+                </StackPanel>
+                <controls:SCFileSelector x:Name="LogDirectoryInput"
+                                         Grid.Column="1"
+                                         PlaceholderText="Default logs folder"
+                                         DialogTitle="Choose log directory"
+                                         SelectionMode="Folder" />
+              </Grid>
+              <Grid Classes="settings-row" ColumnDefinitions="*,220">
+                <StackPanel Classes="settings-row-copy">
+                  <TextBlock Classes="settings-row-title" Text="Maximum file size" />
+                  <TextBlock Classes="settings-row-hint" Text="Rotate each log file when it reaches this size." />
+                </StackPanel>
+                <Grid Grid.Column="1" ColumnDefinitions="*,Auto">
+                  <TextBox x:Name="LogMaxMegabytesInput"
+                           Grid.ColumnSpan="2"
+                           Classes="mono"
+                           Padding="12,7,42,7"
+                           PlaceholderText="10"
+                           AutomationProperties.Name="Maximum file size in megabytes" />
+                  <TextBlock Grid.Column="1"
+                             Text="MB"
+                             FontSize="9"
+                             FontFamily="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace"
+                             Foreground="{DynamicResource TextMutedBrush}"
+                             Margin="0,0,10,0"
+                             VerticalAlignment="Center"
+                             IsHitTestVisible="False" />
+                </Grid>
+              </Grid>
+              <Grid Classes="settings-row" ColumnDefinitions="*,220">
+                <StackPanel Classes="settings-row-copy">
+                  <TextBlock Classes="settings-row-title" Text="Retained backups" />
+                  <TextBlock Classes="settings-row-hint" Text="Number of rotated backups to keep, from 0 to 100." />
+                </StackPanel>
+                <TextBox x:Name="LogRetentionInput" Grid.Column="1" Classes="mono" PlaceholderText="5" />
+              </Grid>
+            </StackPanel>
+            <StackPanel Classes="settings-actions">
               <Button Classes="compact primary sc-button" Content="Save logging settings" Click="SaveLogging" />
               <TextBlock x:Name="LoggingStatus" Classes="sc-text-status" VerticalAlignment="Center" />
             </StackPanel>
-
-            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4" />
-            <TextBlock Classes="section-label" Text="IMAGE STORAGE" />
-            <Grid ColumnDefinitions="*,180" ColumnSpacing="14">
-              <StackPanel Spacing="3">
-                <TextBlock Text="Image directory" FontWeight="SemiBold" />
-                <TextBlock Classes="settings-hint" Text="Directory for saving images." />
-              </StackPanel>
-              <controls:SCFileSelector x:Name="ImageDirectoryInput"
-                                       Grid.Column="1"
-                                       PlaceholderText="Default images folder"
-                                       DialogTitle="Choose image directory"
-                                       SelectionMode="Folder" />
-            </Grid>
-            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <Border Classes="settings-divider" />
+            <StackPanel Classes="settings-panel-section">
+              <TextBlock Classes="section-label" Text="IMAGE STORAGE" />
+              <Grid Classes="settings-row" ColumnDefinitions="*,220">
+                <StackPanel Classes="settings-row-copy">
+                  <TextBlock Classes="settings-row-title" Text="Image directory" />
+                  <TextBlock Classes="settings-row-hint" Text="Directory for saving images." />
+                </StackPanel>
+                <controls:SCFileSelector x:Name="ImageDirectoryInput"
+                                         Grid.Column="1"
+                                         PlaceholderText="Default images folder"
+                                         DialogTitle="Choose image directory"
+                                         SelectionMode="Folder" />
+              </Grid>
+            </StackPanel>
+            <StackPanel Classes="settings-actions">
               <Button Classes="compact primary sc-button" Content="Save image location" Click="SaveImageDirectory" />
               <TextBlock x:Name="ImageDirectoryStatus" Classes="sc-text-status" VerticalAlignment="Center" />
             </StackPanel>
           </StackPanel>
         </ScrollViewer>
 
-        <ScrollViewer x:Name="ProvidersPage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
+        <Grid x:Name="ProvidersPage" IsVisible="False">
           <controls:SCModelProvider x:Name="ProviderManager"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
                                     Providers="{Binding Providers}"
                                     ProviderSelected="ProviderSelected"
                                     EndpointTextChanged="ProviderEndpointChanged"
                                     ApiKeyTextChanged="ProviderApiKeyChanged"
                                     SaveEndpointRequested="SaveProviderEndpoint"
+                                    ResetEndpointRequested="ResetProviderEndpoint"
                                     SaveCredentialRequested="SaveCredential"
                                     RemoveCredentialRequested="RemoveCredential" />
-        </ScrollViewer>
+        </Grid>
 
         <ScrollViewer x:Name="NetworkPage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="32,28,32,34" Spacing="16" MaxWidth="720">
-            <StackPanel Spacing="4">
+          <StackPanel Classes="settings-panel-content">
+            <StackPanel Classes="settings-panel-heading">
               <TextBlock Text="Network" Classes="sc-text-title" />
               <TextBlock Classes="settings-hint" Text="Configure how Rust HTTPS clients establish secure connections." />
             </StackPanel>
-
-            <TextBlock Classes="section-label" Text="HTTPS SECURITY" />
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
-              <StackPanel Spacing="3">
-                <TextBlock Text="Verify server certificates" FontWeight="SemiBold" />
-                <TextBlock Classes="settings-hint" Text="Validate certificate chains and hostnames for model provider and WebFetch requests." />
-              </StackPanel>
-              <ToggleSwitch x:Name="VerifyHttpsCertificatesToggle"
-                            Grid.Column="1"
-                            Classes="sc-toggle-switch"
-                            OnContent="On"
-                            OffContent="Off"
-                            VerticalAlignment="Center"
-                            Click="HttpsCertificateVerificationChanged" />
-            </Grid>
-
-            <Border Classes="settings-provider-status"
-                    Background="{DynamicResource FieldBrush}"
-                    BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="1">
-              <StackPanel Spacing="10">
-                <TextBlock Text="CERTIFICATE TRUST SOURCE" Classes="section-label" />
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
-                  <StackPanel Spacing="3">
-                    <TextBlock Text="Use system certificates" FontWeight="SemiBold" />
-                    <TextBlock Classes="settings-hint" Text="Trust the operating system certificate store for provider and WebFetch HTTPS requests." />
+            <StackPanel Classes="settings-panel-section">
+              <TextBlock Classes="section-label" Text="HTTPS SECURITY" />
+              <Grid Classes="settings-row" ColumnDefinitions="*,220">
+                <StackPanel Classes="settings-row-copy">
+                  <TextBlock Classes="settings-row-title" Text="Verify server certificates" />
+                  <TextBlock Classes="settings-row-hint" Text="Validate certificate chains and hostnames for model provider and WebFetch requests." />
+                </StackPanel>
+                <ToggleSwitch x:Name="VerifyHttpsCertificatesToggle"
+                              Grid.Column="1"
+                              Classes="settings-switch"
+                              OnContent="On"
+                              OffContent="Off"
+                              HorizontalAlignment="Right"
+                              VerticalAlignment="Center"
+                              Click="HttpsCertificateVerificationChanged" />
+              </Grid>
+              <Border x:Name="CertificateTrustSection" Classes="settings-subsection">
+                <StackPanel Spacing="14">
+                  <TextBlock Text="CERTIFICATE TRUST SOURCE" Classes="section-label" />
+                  <Grid Classes="settings-row" ColumnDefinitions="*,220">
+                    <StackPanel Classes="settings-row-copy">
+                      <TextBlock Classes="settings-row-title" Text="Use system certificates" />
+                      <TextBlock Classes="settings-row-hint" Text="Trust the operating system certificate store for provider and WebFetch HTTPS requests." />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="UseSystemCertificatesToggle"
+                                  Grid.Column="1"
+                                  Classes="settings-switch"
+                                  OnContent="On"
+                                  OffContent="Off"
+                                  IsChecked="True"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
+                                  Click="SystemCertificatesChanged" />
+                  </Grid>
+                  <Grid Classes="settings-row" ColumnDefinitions="*,220">
+                    <StackPanel Classes="settings-row-copy">
+                      <TextBlock Classes="settings-row-title" Text="Certificate path" />
+                      <TextBlock x:Name="CertificatePathHint"
+                                 Classes="settings-row-hint"
+                                 Text="Disable system certificates to provide a custom certificate file." />
+                    </StackPanel>
+                    <controls:SCFileSelector x:Name="CertificatePathInput"
+                                             Grid.Column="1"
+                                             Text="{Binding CertificatePath, Mode=TwoWay}"
+                                             IsEnabled="{Binding !UseSystemCertificates}"
+                                             PlaceholderText="Using system certificates"
+                                             DialogTitle="Choose certificate file"
+                                             FileTypeName="Certificates"
+                                             AllowedExtensions="pem,crt,cer,der"
+                                             SelectionMode="File" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+              <Border x:Name="HttpsCertificateWarning"
+                      IsVisible="False"
+                      Background="{DynamicResource WarningSurfaceBrush}"
+                      BorderBrush="{DynamicResource WarningBorderBrush}"
+                      BorderThickness="1"
+                      Classes="settings-warning">
+                <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
+                  <svg:Svg Width="16"
+                           Height="16"
+                           Path="/Assets/icons/platform.svg"
+                           Css="{DynamicResource IconSvgCss}"
+                           VerticalAlignment="Top" />
+                  <StackPanel Grid.Column="1" Spacing="3">
+                    <TextBlock Text="Certificate verification is off" FontSize="12" FontWeight="SemiBold" />
+                    <TextBlock Classes="settings-row-hint"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="SunCode will accept invalid certificates and hostnames, similar to curl -k. This can expose provider credentials and fetched content to man-in-the-middle attacks." />
                   </StackPanel>
-                  <ToggleSwitch x:Name="UseSystemCertificatesToggle" Grid.Column="1" Classes="sc-toggle-switch" OnContent="On" OffContent="Off" IsChecked="True" Click="SystemCertificatesChanged" />
                 </Grid>
-                <controls:SCFileSelector x:Name="CertificatePathInput"
-                                         Text="{Binding CertificatePath, Mode=TwoWay}"
-                                         IsEnabled="{Binding !UseSystemCertificates}"
-                                         PlaceholderText="Using system certificates"
-                                         DialogTitle="Choose certificate file"
-                                         FileTypeName="Certificates"
-                                         AllowedExtensions="pem,crt,cer,der"
-                                         SelectionMode="File" />
-                <TextBlock Classes="settings-hint" Text="Disable system certificates to provide a custom certificate file." />
-              </StackPanel>
-            </Border>
-
-            <Border x:Name="HttpsCertificateWarning"
-                    IsVisible="False"
-                    Background="{DynamicResource WarningSurfaceBrush}"
-                    BorderBrush="{DynamicResource WarningBorderBrush}"
-                    BorderThickness="1"
-                    Classes="settings-warning"
-                    CornerRadius="6"
-                    Padding="12,10">
-              <StackPanel Spacing="4">
-                <TextBlock Text="Certificate verification is off" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" />
-                <TextBlock Classes="settings-hint" Text="SunCode will accept invalid certificates and hostnames, similar to curl -k. This can expose provider credentials and fetched content to man-in-the-middle attacks." />
-              </StackPanel>
-            </Border>
-
-            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              </Border>
+            </StackPanel>
+            <StackPanel Classes="settings-actions">
               <Button Classes="compact primary sc-button" Content="Save HTTPS setting" Click="SaveHttpsCertificateVerification" />
               <TextBlock x:Name="HttpsCertificateStatus" Classes="sc-text-status" VerticalAlignment="Center" />
             </StackPanel>

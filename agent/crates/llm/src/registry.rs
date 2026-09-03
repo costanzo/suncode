@@ -122,6 +122,20 @@ impl ModelProviderRegistry {
         })
     }
 
+    pub fn reasoning_efforts(&self, model_id: &str) -> Vec<String> {
+        self.state
+            .read()
+            .ok()
+            .and_then(|state| {
+                state
+                    .models
+                    .iter()
+                    .find(|model| model.id == model_id)
+                    .map(|model| model.reasoning_efforts.clone())
+            })
+            .unwrap_or_default()
+    }
+
     pub fn supports_vision(&self, model_id: &str) -> bool {
         self.state.read().is_ok_and(|state| {
             state

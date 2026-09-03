@@ -66,6 +66,9 @@ public sealed partial class SettingsWindow : Window
             CertificatePathInput.Text = ViewModel.CertificatePath;
             CertificatePathInput.IsEnabled = ViewModel.UseSystemCertificates == false;
             RefreshHttpsCertificateWarning();
+            RefreshCertificateTrustPresentation();
+            LoggingStatus.Text = "Local settings";
+            ImageDirectoryStatus.Text = "Local settings";
             ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
             ShowProviderPanel(null);
             _ready = true;
@@ -91,11 +94,12 @@ public sealed partial class SettingsWindow : Window
     {
         ShowProviderPanel(null);
         SelectPage("providers", sender as Button);
+        SetProvidersExpanded(!_providersExpanded);
     }
 
-    private void ToggleProviders(object? sender, RoutedEventArgs e)
+    private void SetProvidersExpanded(bool expanded)
     {
-        _providersExpanded = !_providersExpanded;
+        _providersExpanded = expanded;
         ProviderNavigation.IsVisible = _providersExpanded;
         ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
     }
@@ -104,13 +108,16 @@ public sealed partial class SettingsWindow : Window
     {
         if (sender is not Button { Tag: string provider }) return;
         ShowProviderPanel(provider);
-        SelectPage("providers", ProvidersNavigation);
+        SelectPage("providers", sender as Button);
     }
 
     private void ProviderSelected(object? sender, string provider)
     {
         ShowProviderPanel(provider);
-        SelectPage("providers", ProvidersNavigation);
+        var navigation = this.GetVisualDescendants()
+            .OfType<Button>()
+            .FirstOrDefault(button => button.Classes.Contains("navigation") && Equals(button.Tag, provider));
+        SelectPage("providers", navigation);
     }
 
     private void ShowProviderPanel(string? provider)
@@ -147,7 +154,7 @@ public sealed partial class SettingsWindow : Window
         if (page == "appearance") AppearanceNavigation.Classes.Set("selected", true);
         if (page == "network") NetworkNavigation.Classes.Set("selected", true);
         if (page == "logging") LoggingNavigation.Classes.Set("selected", true);
-        if (page == "providers") ProvidersNavigation.Classes.Set("selected", true);
+        if (page == "providers" && selected is null) ProvidersNavigation.Classes.Set("selected", true);
     }
 
     private async void DefaultModelChanged(object? sender, SelectionChangedEventArgs e)
@@ -192,12 +199,13 @@ public sealed partial class SettingsWindow : Window
     }
 
     private void HttpsCertificateVerificationChanged(object? sender, RoutedEventArgs e) =>
-        RefreshHttpsCertificateWarning();
+        RefreshCertificateTrustPresentation();
 
     private void SystemCertificatesChanged(object? sender, RoutedEventArgs e)
     {
         ViewModel.UseSystemCertificates = UseSystemCertificatesToggle.IsChecked == true;
         CertificatePathInput.IsEnabled = !ViewModel.UseSystemCertificates;
+        RefreshCertificateTrustPresentation();
     }
 
     private async void SaveHttpsCertificateVerification(object? sender, RoutedEventArgs e)
@@ -214,8 +222,26 @@ public sealed partial class SettingsWindow : Window
         RefreshHttpsCertificateWarning();
     }
 
-    private void RefreshHttpsCertificateWarning() =>
-        HttpsCertificateWarning.IsVisible = VerifyHttpsCertificatesToggle.IsChecked != true;
+    private void RefreshHttpsCertificateWarning()
+    {
+        var verify = VerifyHttpsCertificatesToggle.IsChecked == true;
+        HttpsCertificateWarning.IsVisible = !verify;
+        CertificateTrustSection.IsVisible = verify;
+    }
+
+    private void RefreshCertificateTrustPresentation()
+    {
+        var useSystemCertificates = UseSystemCertificatesToggle.IsChecked == true;
+        CertificatePathHint.Text = useSystemCertificates
+            ? "Disable system certificates to provide a custom certificate file."
+            : "Choose a PEM, CRT, CER, or DER certificate file for custom trust.";
+        RefreshHttpsCertificateWarning();
+        HttpsCertificateStatus.Text = VerifyHttpsCertificatesToggle.IsChecked == true
+            ? useSystemCertificates
+                ? "System trust store"
+                : "Custom certificate required"
+            : "Review required";
+    }
 
     private async void SaveToolCallLimit(object? sender, RoutedEventArgs e)
     {
@@ -238,8 +264,7 @@ public sealed partial class SettingsWindow : Window
         ProviderManager.CanSaveCredential = !string.IsNullOrWhiteSpace(ProviderManager.ApiKeyText);
 
     private void ProviderEndpointChanged(object? sender, TextChangedEventArgs e) =>
-        ProviderManager.CanSaveEndpoint = !string.IsNullOrWhiteSpace(ProviderManager.EndpointText)
-            && !string.Equals(ProviderManager.EndpointText?.Trim(), ViewModel.ProviderEndpoint(_provider), StringComparison.Ordinal);
+        RefreshProviderEndpointActions();
 
     private async void SaveProviderEndpoint(object? sender, RoutedEventArgs e)
     {
@@ -247,7 +272,19 @@ public sealed partial class SettingsWindow : Window
         ProviderManager.EndpointStatusText = ViewModel.StatusText;
         ProviderManager.EndpointStatusBrush = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
         if (saved) ProviderManager.EndpointText = ViewModel.ProviderEndpoint(_provider);
-        ProviderManager.CanSaveEndpoint = !saved;
+        RefreshProviderEndpointActions();
+    }
+
+    private async void ResetProviderEndpoint(object? sender, RoutedEventArgs e)
+    {
+        var defaultEndpoint = SCProviderCatalog.GetOrDefault(_provider).DefaultEndpoint;
+        if (string.IsNullOrWhiteSpace(defaultEndpoint)) return;
+        ProviderManager.EndpointText = defaultEndpoint;
+        var saved = await ViewModel.SaveProviderEndpointAsync(_provider, defaultEndpoint);
+        ProviderManager.EndpointStatusText = ViewModel.StatusText;
+        ProviderManager.EndpointStatusBrush = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
+        if (saved) ProviderManager.EndpointText = ViewModel.ProviderEndpoint(_provider);
+        RefreshProviderEndpointActions();
     }
 
     private async void RemoveCredential(object? sender, RoutedEventArgs e)
@@ -261,13 +298,26 @@ public sealed partial class SettingsWindow : Window
         var configured = ViewModel.IsProviderConfigured(_provider);
         ProviderManager.CredentialConfigured = configured;
         ProviderManager.CredentialStatusText = configured
-            ? "API key configured in the local agent credential store."
-            : "No API key configured.";
+            ? "API key configured"
+            : "No API key configured";
         ProviderManager.CanRemoveCredential = configured;
         ProviderManager.CanSaveCredential = !string.IsNullOrWhiteSpace(ProviderManager.ApiKeyText);
-        ProviderManager.CanSaveEndpoint = !string.IsNullOrWhiteSpace(ProviderManager.EndpointText)
-            && !string.Equals(ProviderManager.EndpointText?.Trim(), ViewModel.ProviderEndpoint(_provider), StringComparison.Ordinal);
-        ProviderManager.ProviderModelsText = ViewModel.ProviderModels(_provider);
+        RefreshProviderEndpointActions();
+        ProviderManager.ProviderModels = ViewModel.Models
+            .Where(item => item.Provider == _provider)
+            .Select(item => item.Display)
+            .ToArray();
+    }
+
+    private void RefreshProviderEndpointActions()
+    {
+        var endpoint = ProviderManager.EndpointText?.Trim() ?? string.Empty;
+        var savedEndpoint = ViewModel.ProviderEndpoint(_provider).Trim();
+        var defaultEndpoint = SCProviderCatalog.GetOrDefault(_provider).DefaultEndpoint;
+        ProviderManager.CanSaveEndpoint = endpoint.Length > 0
+            && !string.Equals(endpoint, savedEndpoint, StringComparison.Ordinal);
+        ProviderManager.CanResetEndpoint = defaultEndpoint.Length > 0
+            && !string.Equals(endpoint.TrimEnd('/'), defaultEndpoint.TrimEnd('/'), StringComparison.Ordinal);
     }
 
     private void RebindViewModelSubscriptions()

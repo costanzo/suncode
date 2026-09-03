@@ -845,9 +845,11 @@ export function ConversationPanel({
   const [sentAttachments, setSentAttachments] = useState(initialSentAttachments);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [composerExpanded, setComposerExpanded] = useState(false);
+  const [copiedResponse, setCopiedResponse] = useState(false);
   const [visibleToolOutputLines, setVisibleToolOutputLines] = useState(0);
   const attachmentInputRef = useRef(null);
   const localAttachmentUrls = useRef(new Set());
+  const copyResetTimerRef = useRef(null);
   const hasSession = state !== "no-session";
   const hasContent = state !== "new-session" && hasSession;
   const updating = state === "content-updating" || state === "live-tool-stream";
@@ -892,7 +894,13 @@ export function ConversationPanel({
       return current.filter((attachment) => attachment.id !== id);
     });
   };
-  useEffect(() => () => localAttachmentUrls.current.forEach((url) => URL.revokeObjectURL(url)), []);
+  useEffect(
+    () => () => {
+      localAttachmentUrls.current.forEach((url) => URL.revokeObjectURL(url));
+      if (copyResetTimerRef.current) window.clearTimeout(copyResetTimerRef.current);
+    },
+    [],
+  );
   useEffect(() => {
     if (toolPreview === null) {
       setVisibleToolOutputLines(0);
@@ -921,6 +929,14 @@ export function ConversationPanel({
     setAttachments([]);
     setMessage("");
     setComposerExpanded(false);
+  };
+  const copyResponse = async () => {
+    await navigator.clipboard?.writeText(
+      "I split Workspace into a complete composition and focused pages for sessions, explorer, conversation, review, source control, and provider trace.",
+    );
+    setCopiedResponse(true);
+    if (copyResetTimerRef.current) window.clearTimeout(copyResetTimerRef.current);
+    copyResetTimerRef.current = window.setTimeout(() => setCopiedResponse(false), 1400);
   };
   return (
     <section
@@ -1012,8 +1028,14 @@ export function ConversationPanel({
                 explorer, conversation, review, source control, and provider trace.
               </p>
               <div className="workspace-message-footer">
-                <button type="button" className="workspace-copy" aria-label="Copy response">
-                  <Icon name="copy" size={13} />
+                <button
+                  type="button"
+                  className={`workspace-copy ${copiedResponse ? "is-copied" : ""}`}
+                  aria-label={copiedResponse ? "Copied response" : "Copy response"}
+                  title={copiedResponse ? "Copied" : "Copy response"}
+                  onClick={copyResponse}
+                >
+                  <Icon name={copiedResponse ? "check" : "copy"} size={13} />
                 </button>
                 <TurnChangeSummary {...completedTurnChanges} onViewChanges={onViewChanges} />
               </div>
@@ -1215,7 +1237,7 @@ export function ConversationPanel({
         actions={
           <>
             <button type="button" className="btn" onClick={() => setComposerExpanded(false)}>
-              Return to composer
+              Close
             </button>
             <button
               type="button"

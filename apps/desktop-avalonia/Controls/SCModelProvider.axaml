@@ -4,117 +4,179 @@
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Controls.SCModelProvider"
              x:CompileBindings="False">
-  <Grid>
+  <UserControl.Styles>
+    <Style Selector="Button.provider-overview-row">
+      <Setter Property="MinHeight" Value="58" />
+      <Setter Property="Padding" Value="4,9" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.provider-overview-row:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    </Style>
+    <Style Selector="Border.provider-model-chip">
+      <Setter Property="Padding" Value="9,7" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="5" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
     <ScrollViewer x:Name="OverviewPanel"
-                  HorizontalScrollBarVisibility="Disabled">
-      <StackPanel Margin="32,28,32,34"
-                  Spacing="20"
-                  MaxWidth="720">
-        <StackPanel Spacing="4">
-          <TextBlock Text="Model providers"
-                     Classes="sc-text-title" />
-          <TextBlock Text="Built-in providers available to the local agent."
-                     Classes="sc-text-hint" />
+                  HorizontalScrollBarVisibility="Disabled"
+                  HorizontalContentAlignment="Stretch">
+      <StackPanel Classes="settings-panel-content" HorizontalAlignment="Stretch">
+        <StackPanel Classes="settings-panel-heading">
+          <TextBlock Text="Model providers" Classes="sc-text-title" />
+          <TextBlock Text="Built-in providers available to the local agent." Classes="sc-text-hint" />
         </StackPanel>
-        <ItemsControl x:Name="ProviderItemsControl">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="models:ProviderItem">
-              <Button Classes="navigation sc-button"
-                      Tag="{Binding Id}"
-                      Click="SelectProvider"
-                      Padding="4,10"
-                      MinHeight="58"
-                      HorizontalContentAlignment="Stretch"
-                      AutomationProperties.Name="{Binding DisplayName, StringFormat=Open {0} provider settings}">
-                <Grid ColumnDefinitions="8,*,16"
-                      ColumnSpacing="11">
-                  <Ellipse Width="7"
-                           Height="7"
-                           Fill="{DynamicResource WarningBrush}"
-                           VerticalAlignment="Center"
-                           IsVisible="{Binding !Configured}" />
-                  <Ellipse Width="7"
-                           Height="7"
-                           Fill="{DynamicResource SuccessBrush}"
-                           VerticalAlignment="Center"
-                           IsVisible="{Binding Configured}" />
-                  <StackPanel Grid.Column="1"
-                              Spacing="3">
-                    <TextBlock Text="{Binding DisplayName}"
-                               FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding ApiBase}"
-                               Classes="mono sc-text-hint"
-                               FontSize="10"
-                               TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
-                  <svg:Svg Grid.Column="2"
-                           Width="12"
-                           Height="12"
-                           Path="/Assets/icons/chevron-right.svg"
-                           Css="{DynamicResource IconSvgCss}"
-                           VerticalAlignment="Center" />
-                </Grid>
-              </Button>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+          <ItemsControl x:Name="ProviderItemsControl"
+                        HorizontalAlignment="Stretch">
+            <ItemsControl.Styles>
+              <Style Selector="ContentPresenter">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+              </Style>
+            </ItemsControl.Styles>
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel HorizontalAlignment="Stretch" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="models:ProviderItem">
+                <Button Classes="provider-overview-row"
+                        Tag="{Binding Id}"
+                        Click="SelectProvider"
+                        AutomationProperties.Name="{Binding DisplayName, StringFormat=Open {0} provider settings}">
+                  <Grid ColumnDefinitions="8,*,16" ColumnSpacing="11">
+                    <Ellipse Width="7"
+                             Height="7"
+                             Fill="{DynamicResource WarningBrush}"
+                             VerticalAlignment="Center"
+                             IsVisible="{Binding !Configured}" />
+                    <Ellipse Width="7"
+                             Height="7"
+                             Fill="{DynamicResource SuccessBrush}"
+                             VerticalAlignment="Center"
+                             IsVisible="{Binding Configured}" />
+                    <StackPanel Grid.Column="1" Spacing="4">
+                      <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding ApiBase}"
+                                 Classes="mono sc-text-hint"
+                                 FontSize="10"
+                                 TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <svg:Svg Grid.Column="2"
+                             Width="14"
+                             Height="14"
+                             Path="/Assets/icons/chevron-right.svg"
+                             Css="{DynamicResource IconSvgCss}"
+                             VerticalAlignment="Center" />
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
       </StackPanel>
     </ScrollViewer>
 
     <ScrollViewer x:Name="DetailPanel"
                   IsVisible="False"
-                  HorizontalScrollBarVisibility="Disabled">
-      <StackPanel Margin="32,28,32,34"
-                  Spacing="16"
-                  MaxWidth="720">
-        <StackPanel Spacing="4">
-          <TextBlock x:Name="ProviderTitleText"
-                     Classes="sc-text-title" />
-          <TextBlock x:Name="ProviderDescriptionText"
-                     Classes="sc-text-hint"
-                     TextWrapping="Wrap" />
+                  HorizontalScrollBarVisibility="Disabled"
+                  HorizontalContentAlignment="Stretch">
+      <StackPanel Classes="settings-panel-content" HorizontalAlignment="Stretch">
+        <StackPanel Classes="settings-panel-heading">
+          <TextBlock x:Name="ProviderTitleText" Classes="sc-text-title" />
+          <TextBlock x:Name="ProviderDescriptionText" Classes="sc-text-hint" TextWrapping="Wrap" />
         </StackPanel>
-        <TextBlock Text="PROVIDER URL"
-                   Classes="section-label" />
-        <TextBlock Text="OpenAI-compatible API base URL used for subsequent requests."
-                   Classes="sc-text-hint" />
-        <TextBox x:Name="EndpointInput"
-                 Classes="mono"
-                 PlaceholderText="https://api.example.com/v1"
-                 TextChanged="EndpointInputChanged"
-                 AutomationProperties.Name="Provider URL" />
-        <StackPanel Orientation="Horizontal"
-                    Spacing="8"
-                    VerticalAlignment="Center">
+
+        <StackPanel Classes="settings-panel-section">
+          <TextBlock Text="PROVIDER URL" Classes="section-label" />
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="API base URL" Classes="settings-row-title" />
+              <TextBlock Text="OpenAI-compatible URL used for subsequent requests." Classes="settings-row-hint" />
+            </StackPanel>
+            <TextBox x:Name="EndpointInput"
+                     Grid.Column="1"
+                     Classes="mono settings-provider-input"
+                     PlaceholderText="https://api.example.com/v1"
+                     TextChanged="EndpointInputChanged"
+                     AutomationProperties.Name="Provider URL" />
+          </Grid>
+        </StackPanel>
+        <StackPanel Classes="settings-actions">
           <Button x:Name="SaveEndpointButton"
                   Classes="compact primary sc-button"
                   Content="Save URL"
                   Click="SaveEndpoint"
                   IsEnabled="False" />
+          <Button x:Name="ResetEndpointButton"
+                  Classes="compact sc-button"
+                  Content="Reset default"
+                  Click="ResetEndpoint"
+                  IsEnabled="False" />
           <TextBlock x:Name="EndpointStatusTextBlock"
-                     VerticalAlignment="Center"
-                     Foreground="{DynamicResource TextSecondaryBrush}"
-                     TextWrapping="Wrap" />
+                     Classes="sc-text-status"
+                     VerticalAlignment="Center" />
         </StackPanel>
-        <Border Height="1"
-                Background="{DynamicResource BorderBrush}"
-                Margin="0,4" />
-        <TextBlock Text="CREDENTIAL"
-                   Classes="section-label" />
-        <Border x:Name="CredentialStatusBorder"
-                Classes="settings-provider-status"
-                Background="{DynamicResource FieldBrush}"
-                BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="1">
-          <TextBlock x:Name="CredentialStatusTextBlock"
-                     TextWrapping="Wrap"
-                     FontSize="11" />
-        </Border>
-        <TextBox x:Name="ApiKeyInput"
-                 Classes="mono sc-secret-input"
-                 TextChanged="ApiKeyInputChanged" />
-        <StackPanel Orientation="Horizontal"
-                    Spacing="8">
+
+        <Border Classes="settings-divider" />
+
+        <StackPanel Classes="settings-panel-section">
+          <TextBlock Text="CREDENTIAL" Classes="section-label" />
+          <Grid ColumnDefinitions="7,*" ColumnSpacing="9">
+            <Ellipse x:Name="CredentialWarningDot"
+                     Width="7"
+                     Height="7"
+                     Margin="0,5,0,0"
+                     Fill="{DynamicResource WarningBrush}"
+                     VerticalAlignment="Top" />
+            <Ellipse x:Name="CredentialSuccessDot"
+                     Width="7"
+                     Height="7"
+                     Margin="0,5,0,0"
+                     Fill="{DynamicResource SuccessBrush}"
+                     VerticalAlignment="Top"
+                     IsVisible="False" />
+            <StackPanel Grid.Column="1" Spacing="5">
+              <TextBlock x:Name="CredentialStatusTextBlock"
+                         FontSize="12"
+                         FontWeight="SemiBold"
+                         TextWrapping="Wrap" />
+              <Border x:Name="CredentialStoredBorder"
+                      Padding="8,6"
+                      HorizontalAlignment="Left"
+                      Background="{DynamicResource FieldBrush}"
+                      BorderBrush="{DynamicResource BorderBrush}"
+                      BorderThickness="1"
+                      CornerRadius="5"
+                      IsVisible="False">
+                <TextBlock Text="Stored in the local agent"
+                           Classes="mono"
+                           FontSize="11" />
+              </Border>
+              <TextBlock x:Name="CredentialMissingHint"
+                         Text="Add a key to enable this provider."
+                         Classes="settings-row-hint" />
+            </StackPanel>
+          </Grid>
+          <TextBox x:Name="ApiKeyInput"
+                   Classes="mono sc-secret-input settings-provider-input"
+                   TextChanged="ApiKeyInputChanged" />
+        </StackPanel>
+        <StackPanel Classes="settings-actions">
           <Button x:Name="SaveCredentialButton"
                   Classes="compact primary sc-button"
                   Content="Save key"
@@ -125,16 +187,30 @@
                   Content="Remove key"
                   Click="RemoveCredential" />
         </StackPanel>
-        <Border Height="1"
-                Background="{DynamicResource BorderBrush}"
-                Margin="0,4" />
-        <TextBlock Text="AVAILABLE MODELS"
-                   Classes="section-label" />
-        <TextBlock x:Name="ProviderModelsTextBlock"
-                   Classes="mono"
-                   TextWrapping="Wrap" />
-        <TextBlock Text="The agent owns provider availability and model registration."
-                   Classes="sc-text-hint" />
+
+        <Border Classes="settings-divider" />
+
+        <StackPanel Classes="settings-panel-section">
+          <TextBlock Text="AVAILABLE MODELS" Classes="section-label" />
+          <ItemsControl x:Name="ProviderModelsItemsControl">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="8" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Classes="provider-model-chip">
+                  <TextBlock Text="{Binding}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock x:Name="NoProviderModelsText"
+                     Text="No models available"
+                     Classes="settings-row-hint"
+                     IsVisible="False" />
+        </StackPanel>
       </StackPanel>
     </ScrollViewer>
   </Grid>

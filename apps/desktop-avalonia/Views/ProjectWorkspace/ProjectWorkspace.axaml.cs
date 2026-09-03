@@ -18,10 +18,12 @@ public sealed partial class ProjectWorkspace : UserControl
     private double _layoutResizeStartNavigationWidth;
     private double _layoutResizeStartReviewWidth;
     private double _layoutResizeStartBottomHeight;
+    private string _expandedComposerDraft = string.Empty;
 
     public ProjectWorkspace()
     {
         InitializeComponent();
+        ChatArea.ExpandedComposerRequested += ShowExpandedComposer;
     }
 
     private WorkspaceWindow? Owner => TopLevel.GetTopLevel(this) as WorkspaceWindow;
@@ -38,6 +40,12 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal bool HandleEscape()
     {
+        if (ExpandedComposerModal.IsOpen)
+        {
+            HideExpandedComposer();
+            return true;
+        }
+
         if (SessionDialogModal.IsOpen)
         {
             HideSessionDialog();
@@ -251,6 +259,39 @@ public sealed partial class ProjectWorkspace : UserControl
     {
         DependencyDeleteDialogModal.IsOpen = false;
         _pendingDependencyDeletion = null;
+    }
+
+    private void ShowExpandedComposer(object? sender, EventArgs e)
+    {
+        _expandedComposerDraft = ChatArea.ExpandedComposerDraft;
+        ExpandedComposerInput.Text = _expandedComposerDraft;
+        ExpandedComposerCount.Text = $"{_expandedComposerDraft.Length} characters";
+        ExpandedComposerModal.IsOpen = true;
+        Dispatcher.UIThread.Post(() => ExpandedComposerInput.Focus(), DispatcherPriority.Input);
+    }
+
+    private void ExpandedComposerChanged(object? sender, TextChangedEventArgs e)
+    {
+        _expandedComposerDraft = ExpandedComposerInput.Text ?? string.Empty;
+        ExpandedComposerCount.Text = $"{_expandedComposerDraft.Length} characters";
+    }
+
+    private void CloseExpandedComposer(object? sender, RoutedEventArgs e)
+    {
+        HideExpandedComposer();
+    }
+
+    private void HideExpandedComposer()
+    {
+        ChatArea.SetComposerText(_expandedComposerDraft);
+        ExpandedComposerModal.IsOpen = false;
+    }
+
+    private async void SubmitExpandedComposer(object? sender, RoutedEventArgs e)
+    {
+        ChatArea.SetComposerText(_expandedComposerDraft);
+        ExpandedComposerModal.IsOpen = false;
+        if (ViewModel.CanSubmit) await ViewModel.SubmitTurnAsync();
     }
 
     private void OpenSettings(object? sender, RoutedEventArgs e) => Owner?.ShowSettings();

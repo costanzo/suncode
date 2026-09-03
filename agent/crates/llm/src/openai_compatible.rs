@@ -110,26 +110,32 @@ impl OpenAiCompatibleProvider {
         if !self.use_system_certificates.load(Ordering::SeqCst) {
             builder = builder.tls_built_in_root_certs(false);
         }
-        if let Some(path) = self.certificate_path.read().ok().and_then(|p| p.clone()) {
-            let bytes = std::fs::read(&path).map_err(|e| {
-                BusinessError::provider(
-                    "certificate_unavailable",
-                    format!("could not read certificate file: {e}"),
-                    false,
-                    None,
-                )
-            })?;
-            let cert = reqwest::Certificate::from_pem(&bytes)
-                .or_else(|_| reqwest::Certificate::from_der(&bytes))
-                .map_err(|e| {
+        // A custom trust file is only meaningful when the system trust store
+        // has explicitly been disabled. Ignore any stale persisted path in
+        // the default system-certificates mode so a deleted file cannot break
+        // provider calls or retries.
+        if !self.use_system_certificates.load(Ordering::SeqCst) {
+            if let Some(path) = self.certificate_path.read().ok().and_then(|p| p.clone()) {
+                let bytes = std::fs::read(&path).map_err(|e| {
                     BusinessError::provider(
-                        "certificate_invalid",
-                        format!("invalid certificate file: {e}"),
+                        "certificate_unavailable",
+                        format!("could not read certificate file: {e}"),
                         false,
                         None,
                     )
                 })?;
-            builder = builder.add_root_certificate(cert);
+                let cert = reqwest::Certificate::from_pem(&bytes)
+                    .or_else(|_| reqwest::Certificate::from_der(&bytes))
+                    .map_err(|e| {
+                        BusinessError::provider(
+                            "certificate_invalid",
+                            format!("invalid certificate file: {e}"),
+                            false,
+                            None,
+                        )
+                    })?;
+                builder = builder.add_root_certificate(cert);
+            }
         }
         builder.build().map_err(|error| {
             BusinessError::provider(
@@ -293,6 +299,7 @@ mod tests {
         atomic::{AtomicBool, Ordering},
         Arc,
     };
+    use std::{path::PathBuf, sync::RwLock};
     use tokio::sync::mpsc;
     use tokio_util::sync::CancellationToken;
 
@@ -396,6 +403,26 @@ mod tests {
 
         assert!(provider.client().is_ok());
         verify.store(false, Ordering::SeqCst);
+        assert!(provider.client().is_ok());
+    }
+
+    #[test]
+    fn ignores_custom_certificate_path_when_system_certificates_are_enabled() {
+        let verify = Arc::new(AtomicBool::new(true));
+        let use_system = Arc::new(AtomicBool::new(true));
+        let certificate_path = Arc::new(RwLock::new(Some(PathBuf::from(
+            "/path/that/does/not/exist.pem",
+        ))));
+        let provider = OpenAiCompatibleProvider::new_with_tls_configuration(
+            "enterprise",
+            "Enterprise Gateway",
+            "https://example.test",
+            Arc::new(TestKeys),
+            verify,
+            use_system,
+            certificate_path,
+        );
+
         assert!(provider.client().is_ok());
     }
 }

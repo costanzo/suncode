@@ -115,7 +115,7 @@ pub(super) fn execute(
                 attempt.error("redirect target is outside the approved web origin")
             }
         }));
-    if verify_https_certificates {
+    if verify_https_certificates && !use_system_certificates {
         if let Some(path) = certificate_path {
             let bytes = std::fs::read(path).map_err(|_| {
                 BusinessError::new("certificate_unavailable", "certificate file is unavailable")

@@ -47,6 +47,12 @@
     <Setter Property="MinHeight" Value="30" />
     <Setter Property="Padding" Value="10,4" />
   </Style>
+  <Style Selector="Button.project-hub-action">
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="14,4" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
   <Style Selector="Button.primary">
     <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}" />
@@ -79,7 +85,7 @@
     <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
     <Setter Property="Opacity" Value="0.72" />
   </Style>
-  <Style Selector="Button:focus /template/ ContentPresenter#PART_ContentPresenter">
+  <Style Selector="Button:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
     <Setter Property="BorderThickness" Value="2" />
   </Style>

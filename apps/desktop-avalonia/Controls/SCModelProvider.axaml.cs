@@ -29,14 +29,17 @@ public sealed partial class SCModelProvider : UserControl
     public static readonly StyledProperty<string?> ApiKeyTextProperty =
         AvaloniaProperty.Register<SCModelProvider, string?>(nameof(ApiKeyText), defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
 
-    public static readonly StyledProperty<string?> ProviderModelsTextProperty =
-        AvaloniaProperty.Register<SCModelProvider, string?>(nameof(ProviderModelsText));
+    public static readonly StyledProperty<IEnumerable<string>?> ProviderModelsProperty =
+        AvaloniaProperty.Register<SCModelProvider, IEnumerable<string>?>(nameof(ProviderModels));
 
     public static readonly StyledProperty<IBrush?> EndpointStatusBrushProperty =
         AvaloniaProperty.Register<SCModelProvider, IBrush?>(nameof(EndpointStatusBrush));
 
     public static readonly StyledProperty<bool> CanSaveEndpointProperty =
         AvaloniaProperty.Register<SCModelProvider, bool>(nameof(CanSaveEndpoint));
+
+    public static readonly StyledProperty<bool> CanResetEndpointProperty =
+        AvaloniaProperty.Register<SCModelProvider, bool>(nameof(CanResetEndpoint));
 
     public static readonly StyledProperty<bool> CanSaveCredentialProperty =
         AvaloniaProperty.Register<SCModelProvider, bool>(nameof(CanSaveCredential));
@@ -49,6 +52,7 @@ public sealed partial class SCModelProvider : UserControl
 
     public event EventHandler<string>? ProviderSelected;
     public event EventHandler<RoutedEventArgs>? SaveEndpointRequested;
+    public event EventHandler<RoutedEventArgs>? ResetEndpointRequested;
     public event EventHandler<RoutedEventArgs>? SaveCredentialRequested;
     public event EventHandler<RoutedEventArgs>? RemoveCredentialRequested;
     public event EventHandler<TextChangedEventArgs>? EndpointTextChanged;
@@ -105,10 +109,10 @@ public sealed partial class SCModelProvider : UserControl
         set => SetValue(ApiKeyTextProperty, value);
     }
 
-    public string? ProviderModelsText
+    public IEnumerable<string>? ProviderModels
     {
-        get => GetValue(ProviderModelsTextProperty);
-        set => SetValue(ProviderModelsTextProperty, value);
+        get => GetValue(ProviderModelsProperty);
+        set => SetValue(ProviderModelsProperty, value);
     }
 
     public IBrush? EndpointStatusBrush
@@ -121,6 +125,12 @@ public sealed partial class SCModelProvider : UserControl
     {
         get => GetValue(CanSaveEndpointProperty);
         set => SetValue(CanSaveEndpointProperty, value);
+    }
+
+    public bool CanResetEndpoint
+    {
+        get => GetValue(CanResetEndpointProperty);
+        set => SetValue(CanResetEndpointProperty, value);
     }
 
     public bool CanSaveCredential
@@ -151,9 +161,10 @@ public sealed partial class SCModelProvider : UserControl
             || change.Property == CredentialStatusTextProperty
             || change.Property == ApiKeyPlaceholderTextProperty
             || change.Property == ApiKeyTextProperty
-            || change.Property == ProviderModelsTextProperty
+            || change.Property == ProviderModelsProperty
             || change.Property == EndpointStatusBrushProperty
             || change.Property == CanSaveEndpointProperty
+            || change.Property == CanResetEndpointProperty
             || change.Property == CanSaveCredentialProperty
             || change.Property == CanRemoveCredentialProperty
             || change.Property == CredentialConfiguredProperty)
@@ -191,10 +202,19 @@ public sealed partial class SCModelProvider : UserControl
         ApiKeyInput.PlaceholderText = ApiKeyPlaceholderText ?? metadata.ApiKeyPlaceholder;
         EndpointStatusTextBlock.Text = EndpointStatusText ?? string.Empty;
         EndpointStatusTextBlock.Foreground = EndpointStatusBrush ?? this.FindResource("TextSecondaryBrush") as IBrush;
-        ProviderModelsTextBlock.Text = ProviderModelsText ?? string.Empty;
+        var models = ProviderModels?.Where(model => !string.IsNullOrWhiteSpace(model)).ToArray() ?? [];
+        ProviderModelsItemsControl.ItemsSource = models;
+        ProviderModelsItemsControl.IsVisible = models.Length > 0;
+        NoProviderModelsText.IsVisible = models.Length == 0;
         CredentialStatusTextBlock.Text = CredentialStatusText ?? string.Empty;
-        CredentialStatusTextBlock.Foreground = this.FindResource(CredentialConfigured ? "SuccessBrush" : "WarningBrush") as IBrush;
+        CredentialStatusTextBlock.Foreground = this.FindResource("TextBrush") as IBrush;
+        CredentialWarningDot.IsVisible = !CredentialConfigured;
+        CredentialSuccessDot.IsVisible = CredentialConfigured;
+        CredentialStoredBorder.IsVisible = CredentialConfigured;
+        CredentialMissingHint.IsVisible = !CredentialConfigured;
+        SaveCredentialButton.Content = CredentialConfigured ? "Replace key" : "Save key";
         SaveEndpointButton.IsEnabled = CanSaveEndpoint;
+        ResetEndpointButton.IsEnabled = CanResetEndpoint;
         SaveCredentialButton.IsEnabled = CanSaveCredential;
         RemoveCredentialButton.IsEnabled = CanRemoveCredential;
     }
@@ -227,6 +247,9 @@ public sealed partial class SCModelProvider : UserControl
 
     private void SaveEndpoint(object? sender, RoutedEventArgs e) =>
         SaveEndpointRequested?.Invoke(this, e);
+
+    private void ResetEndpoint(object? sender, RoutedEventArgs e) =>
+        ResetEndpointRequested?.Invoke(this, e);
 
     private void SaveCredential(object? sender, RoutedEventArgs e) =>
         SaveCredentialRequested?.Invoke(this, e);

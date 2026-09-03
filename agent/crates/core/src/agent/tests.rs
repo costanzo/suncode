@@ -577,7 +577,9 @@ mod tests {
             .await
             .unwrap_err();
         assert_eq!(invalid.code, "invalid_arguments");
-        assert!(invalid.message.contains("low, medium, or high"));
+        assert!(invalid
+            .message
+            .contains("does not support reasoning effort"));
 
         let unsupported = agent
             .submit(

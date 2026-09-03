@@ -100,7 +100,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public ObservableCollection<SessionItem> Sessions { get; } = [];
     public ObservableCollection<ProviderItem> Providers { get; } = [];
     public ObservableCollection<ModelItem> Models { get; } = [];
-    public IReadOnlyList<string> ReasoningEffortOptions { get; } = ["low", "medium", "high"];
+    public IReadOnlyList<string> ReasoningEffortOptions =>
+        SelectedModel?.ReasoningEfforts is { Count: > 0 } efforts
+            ? efforts
+            : ["low", "medium", "high"];
     public ObservableCollection<CredentialItem> Credentials { get; } = [];
     public ObservableCollection<ComposerAttachment> ComposerAttachments { get; } = [];
     public ObservableCollection<ProjectDependencyItem> ProjectDependencies { get; } = [];
@@ -171,12 +174,15 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 }
                 else if (SelectedReasoningEffort is null)
                 {
-                    SelectedReasoningEffort = "medium";
+                    SelectedReasoningEffort = ReasoningEffortOptions.Contains("medium")
+                        ? "medium"
+                        : ReasoningEffortOptions.FirstOrDefault();
                 }
                 OnPropertyChanged(nameof(CanSubmit));
                 OnPropertyChanged(nameof(CanCompose));
                 OnPropertyChanged(nameof(SelectedModelName));
                 OnPropertyChanged(nameof(CanChooseReasoningEffort));
+                OnPropertyChanged(nameof(ReasoningEffortOptions));
                 OnPropertyChanged(nameof(CanAttachImages));
                 OnPropertyChanged(nameof(ComposerPlaceholder));
             }
@@ -188,7 +194,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         get => _selectedReasoningEffort;
         set
         {
-            var normalized = SelectedModel?.SupportsReasoningEffort == true && value is "low" or "medium" or "high"
+            var normalized = SelectedModel?.SupportsReasoningEffort == true
+                && value is not null
+                && ReasoningEffortOptions.Contains(value, StringComparer.Ordinal)
                 ? value
                 : null;
             if (SetProperty(ref _selectedReasoningEffort, normalized)) OnPropertyChanged(nameof(CanChooseReasoningEffort));
@@ -443,7 +451,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ? "Create a session first..."
         : SelectedModel is null
             ? "Choose a model first..."
-            : SelectedModel.Configured ? "Tell SunCode what to do..." : "Store the selected provider's API key first...";
+            : SelectedModel.Configured ? "Ask SunCode to work on this project" : "Store the selected provider's API key first...";
     public GridLength NavigationWidth => EffectiveNavigationVisible ? new GridLength(NavigationPaneWidth) : new GridLength(0);
     public GridLength ReviewWidth => EffectiveReviewVisible ? new GridLength(ReviewPaneWidth) : new GridLength(0);
     public GridLength GitFileListWidth => new(Math.Min(260, Math.Max(230, (_layoutWidth - 80) * 0.24)));

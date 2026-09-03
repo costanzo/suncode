@@ -136,7 +136,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 item.String("availability"),
                 item.Object("capabilities").Bool("reasoning_effort"),
                 item.Object("capabilities").Bool("vision"),
-                item.String("apiBase", "api_base")));
+                item.String("apiBase", "api_base"),
+                item.Array("reasoningEfforts", "reasoning_efforts")
+                    .Select(value => value?.GetValue<string>() ?? string.Empty)
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .ToArray()));
         }
         foreach (var group in Models.GroupBy(model => model.Provider, StringComparer.Ordinal))
         {

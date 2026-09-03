@@ -3,6 +3,7 @@
              xmlns:controls="using:SunCode.Desktop.Controls"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Controls.SCComboBox"
+             x:Name="Root"
              x:CompileBindings="False">
   <Grid>
     <ComboBox x:Name="FlatCombo"
@@ -28,7 +29,9 @@
       <Grid ColumnDefinitions="*,12"
             ColumnSpacing="6">
         <TextBlock x:Name="GroupedLabel"
+                   Foreground="{DynamicResource TextSecondaryBrush}"
                    VerticalAlignment="Center"
+                   HorizontalAlignment="Stretch"
                    TextTrimming="CharacterEllipsis" />
         <svg:Svg Grid.Column="1"
                  Width="9"

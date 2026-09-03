@@ -44,12 +44,6 @@ impl Agent {
         reasoning_effort: Option<&str>,
         image_ids: &[String],
     ) -> Result<TurnResponse, BusinessError> {
-        if reasoning_effort.is_some_and(|value| !matches!(value, "low" | "medium" | "high")) {
-            return Err(BusinessError::new(
-                "invalid_arguments",
-                "reasoning_effort must be low, medium, or high",
-            ));
-        }
         let session_lock = self.session_lock(session_id).await;
         let model = match model {
             Some(model) => model.to_string(),
@@ -77,6 +71,15 @@ impl Agent {
                 "invalid_arguments",
                 "selected model does not support reasoning effort",
             ));
+        }
+        if let Some(value) = reasoning_effort {
+            let supported = self.providers.reasoning_efforts(&model);
+            if !supported.iter().any(|effort| effort == value) {
+                return Err(BusinessError::new(
+                    "invalid_arguments",
+                    format!("reasoning_effort is not supported by model `{model}`"),
+                ));
+            }
         }
         let images = self.validate_message_images(session_id, &model, image_ids)?;
         let user_message = message_with_image_refs(input, &images);
@@ -216,11 +219,15 @@ impl Agent {
     /// Retry the most recently failed turn in a session using its persisted input.
     /// A new idempotency key is generated so the retry is admitted as a distinct turn.
     pub async fn retry_last_turn(&self, session_id: &str) -> Result<TurnResponse, BusinessError> {
-        let Some((input, model, image_ids)) = self.store.latest_failed_turn_input(session_id)? else {
+        let Some((input, model, image_ids)) = self.store.latest_failed_turn_input(session_id)?
+        else {
             return Err(BusinessError::new("conflict", "no failed turn to retry"));
         };
         if model.is_empty() {
-            return Err(BusinessError::new("agent_unavailable", "failed turn has no model"));
+            return Err(BusinessError::new(
+                "agent_unavailable",
+                "failed turn has no model",
+            ));
         }
         self.submit_with_attachments(
             session_id,

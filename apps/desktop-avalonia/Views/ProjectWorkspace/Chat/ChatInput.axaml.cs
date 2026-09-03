@@ -26,12 +26,21 @@ public sealed partial class ChatInput : UserControl
     private DesktopViewModel? _subscribedViewModel;
     private string _expandedDraft = string.Empty;
 
+    /// <summary>
+    /// Raised when the expanded composer should be shown. The modal itself is
+    /// hosted by ProjectWorkspace so its backdrop can cover the full window.
+    /// </summary>
+    public event EventHandler? ExpandedComposerRequested;
+
+    internal string ExpandedComposerDraft => _expandedDraft;
+
     public ChatInput()
     {
         InitializeComponent();
         ComposerInput.AddHandler(KeyDownEvent, ComposerKeyDown, RoutingStrategies.Tunnel);
         ComposerInput.AddHandler(TextBox.PastingFromClipboardEvent, ComposerPaste);
         DataContextChanged += (_, _) => RebindViewModelSubscriptions();
+        AttachedToVisualTree += (_, _) => RebindViewModelSubscriptions();
     }
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
@@ -144,39 +153,25 @@ public sealed partial class ChatInput : UserControl
     private void ExpandComposer(object? sender, RoutedEventArgs e)
     {
         _expandedDraft = ComposerInput.Text ?? string.Empty;
-        ExpandedComposerInput.Text = _expandedDraft;
-        ExpandedComposerCount.Text = $"{_expandedDraft.Length} characters";
-        ExpandedComposerModal.IsOpen = true;
-        ExpandedComposerInput.Focus();
+        ExpandedComposerRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    private void ExpandedComposerChanged(object? sender, TextChangedEventArgs e)
+    internal void SetComposerText(string text)
     {
-        _expandedDraft = ExpandedComposerInput.Text ?? string.Empty;
-        ExpandedComposerCount.Text = $"{_expandedDraft.Length} characters";
-    }
-
-    private void CloseExpandedComposer(object? sender, RoutedEventArgs e)
-    {
-        ComposerInput.Text = _expandedDraft;
-        ViewModel.ComposerText = _expandedDraft;
-        ExpandedComposerModal.IsOpen = false;
-    }
-
-    private async void SubmitExpandedComposer(object? sender, RoutedEventArgs e)
-    {
-        ComposerInput.Text = _expandedDraft;
-        ViewModel.ComposerText = _expandedDraft;
-        ExpandedComposerModal.IsOpen = false;
-        if (ViewModel.CanSubmit) await ViewModel.SubmitTurnAsync();
+        _expandedDraft = text;
+        ComposerInput.Text = text;
+        ViewModel.ComposerText = text;
     }
 
     private void ModelSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (ModelSelector.SelectedItem?.Value is ModelItem model)
-        {
-            ViewModel.SelectedModel = model;
-        }
+        if (ModelSelector.SelectedItem?.Value is not ModelItem selected) return;
+
+        // Resolve back to the ViewModel-owned instance. The selector rebuilds
+        // presentation items whenever model data changes, so its item payload
+        // must not become a second source of model state.
+        var model = ViewModel.Models.FirstOrDefault(item => item.Id == selected.Id) ?? selected;
+        ViewModel.SelectedModel = model;
     }
 
     private void ReasoningSelectionChanged(object? sender, SelectionChangedEventArgs e) =>

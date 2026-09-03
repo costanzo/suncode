@@ -20,6 +20,14 @@ public sealed class SCModal : ContentControl
     public static readonly StyledProperty<string?> DescriptionProperty =
         AvaloniaProperty.Register<SCModal, string?>(nameof(Description));
 
+    /// <summary>
+    /// The width of the dialog card rendered inside the full-size modal host.
+    /// Keep this separate from the control's own Width so the backdrop can
+    /// stretch across the entire parent while the card remains constrained.
+    /// </summary>
+    public static readonly StyledProperty<double> DialogWidthProperty =
+        AvaloniaProperty.Register<SCModal, double>(nameof(DialogWidth), 420);
+
     public static readonly StyledProperty<string> PrimaryButtonTextProperty =
         AvaloniaProperty.Register<SCModal, string>(nameof(PrimaryButtonText), "Save");
 
@@ -65,6 +73,12 @@ public sealed class SCModal : ContentControl
     {
         get => GetValue(DescriptionProperty);
         set => SetValue(DescriptionProperty, value);
+    }
+
+    public double DialogWidth
+    {
+        get => GetValue(DialogWidthProperty);
+        set => SetValue(DialogWidthProperty, value);
     }
 
     public string PrimaryButtonText
@@ -133,6 +147,8 @@ public sealed class SCModal : ContentControl
         _secondaryButton = e.NameScope.Find<Button>("PART_SecondaryButton");
         _closeButton = e.NameScope.Find<Button>("PART_CloseButton");
 
+        UpdateDialogMaxHeight();
+
         if (_backdrop is not null)
         {
             _backdrop.PointerPressed += BackdropPointerPressed;
@@ -159,11 +175,31 @@ public sealed class SCModal : ContentControl
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
+        if (change.Property == BoundsProperty)
+        {
+            UpdateDialogMaxHeight();
+        }
         if (change.Property == IsOpenProperty
             || change.Property == PrimaryIsDangerProperty
             || change.Property == DescriptionProperty)
         {
             SyncFocusState();
+        }
+    }
+
+    private void UpdateDialogMaxHeight()
+    {
+        if (_dialog is null || Bounds.Height <= 0) return;
+
+        // Keep the card inside the modal host while retaining a small safety
+        // allowance around the design-system 24px breathing room. The extra
+        // pixels ensure the one-pixel bottom border is not clipped at the host
+        // edge on fractional/native window sizes. Content itself is scrollable
+        // in the template when it exceeds the available height.
+        var maxHeight = Math.Max(160, Bounds.Height - 56);
+        if (Math.Abs(_dialog.MaxHeight - maxHeight) > 0.5)
+        {
+            _dialog.MaxHeight = maxHeight;
         }
     }
 

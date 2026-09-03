@@ -239,7 +239,7 @@
         </Border>
       </Border>
 
-      <chat:ChatInput IsVisible="{Binding HasSelectedSession}" />
+      <chat:ChatInput x:Name="ChatInput" IsVisible="{Binding HasSelectedSession}" />
     </Grid>
   </Border>
 </UserControl>

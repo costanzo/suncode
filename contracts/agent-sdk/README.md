@@ -54,7 +54,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `list_checkpoints` | List turn-level checkpoint manifests for a session |
 | `checkpoint_manifest` | Inspect one manifest and its items |
 | `restore_checkpoint` | Restore a manifest with ownership and post-image conflict checks |
-| `submit_turn` | Idempotently submit text-only input to a session and selected model, with an optional `reasoning_effort` (`low`, `medium`, or `high`) accepted only for models advertising that capability |
+| `submit_turn` | Idempotently submit text-only input to a session and selected model, with an optional `reasoning_effort` accepted only when it appears in the selected model's advertised `reasoning_efforts` catalog |
 | `submit_turn_with_attachments` | Submit text plus up to three same-session image IDs to a model advertising image input |
 | `cancel_turn` | Cooperatively cancel a running turn |
 | `retry_last_turn` | Re-submit the most recently failed turn in a session using its persisted input and model; creates a new turn with a fresh idempotency key |
@@ -78,7 +78,7 @@ Rust-generated project, session, turn, approval, checkpoint, event, and message 
 
 Image upload accepts PNG, JPEG, GIF, WebP, BMP, and AVIF file extensions. Original files are bounded to 20 MiB and thumbnail payloads to 1 MiB. `submit_turn_with_attachments` accepts at most three unique IDs, verifies same-session ownership and file availability, and rejects models that do not advertise `capabilities.vision`. Accepted user messages persist `image_ref` content parts; provider requests resolve those references to data URLs only at call time, while provider trace input stores a redacted `[image attachment]` marker. Image-bearing submissions are rejected rather than queued behind an active turn so their files cannot be removed before admission. The original text-only ABI remains a compatibility wrapper with an empty image list.
 
-Models advertise `capabilities.reasoning_effort`. Avalonia presents `low`, `medium`, and `high` beside the model selector; unsupported models disable that selector and omit the parameter. For OpenAI-compatible providers, a selected value is sent as the `reasoning_effort` request field and is retained in the in-memory turn continuation across approval or question suspension.
+Models advertise `capabilities.reasoning_effort` and a `reasoning_efforts` catalog. Avalonia presents the selected model's advertised values beside the model selector; unsupported models disable that selector and omit the parameter. For OpenAI-compatible providers, a selected value is sent as the `reasoning_effort` request field and is retained in the in-memory turn continuation across approval or question suspension.
 
 Project dependency DTOs contain `dependencyId`, `projectId`, `displayName`, and `createdAt`, but never the canonical absolute root. `list_project_directory` selects the main project when `dependencyId` is null and a registered dependency otherwise. It returns at most 500 directories/files for one level, directories first, with root-relative slash-separated paths and a `truncated` flag. Symlinks and non-file entries are omitted. Adding a dependency rejects the project root, ancestors or descendants of the project, and roots that overlap another dependency.
 

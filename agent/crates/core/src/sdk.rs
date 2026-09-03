@@ -446,7 +446,9 @@ where
         true,
     )?));
     let certificate_path = Arc::new(RwLock::new(
-        global_string_setting(&store, "certificate_path")?.map(PathBuf::from),
+        global_string_setting(&store, "certificate_path")?
+            .filter(|value| !value.trim().is_empty())
+            .map(PathBuf::from),
     ));
     let operations = Arc::new(
         suncode_tool::Operations::new_with_https_certificate_verification(
@@ -2878,7 +2880,7 @@ mod tests {
             .open_project(project_root.to_str().unwrap(), None)
             .unwrap();
         let session = sdk
-            .create_session(&project.project_id, Some("Images"), Some("gpt-5.5"))
+            .create_session(&project.project_id, Some("Images"), Some("deepseek-v4-pro"))
             .unwrap();
 
         let payload = json!({
@@ -2906,7 +2908,7 @@ mod tests {
                 &session.session_id,
                 "inspect",
                 "image-unsupported",
-                Some("gpt-5.5"),
+                Some("deepseek-v4-pro"),
                 None,
                 std::slice::from_ref(&image.image_id),
             )
@@ -2919,7 +2921,7 @@ mod tests {
                 &session.session_id,
                 "inspect",
                 "image-count",
-                Some("gpt-5.5"),
+                Some("deepseek-v4-pro"),
                 None,
                 &["1".into(), "2".into(), "3".into(), "4".into()],
             )

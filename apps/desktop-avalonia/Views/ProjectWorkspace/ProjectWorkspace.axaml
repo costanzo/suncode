@@ -9,13 +9,45 @@
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.ProjectWorkspace"
              x:DataType="vm:DesktopViewModel">
   <UserControl.Styles>
+    <Style Selector="TextBox.expanded-composer-input:focus">
+      <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
     <Style Selector="Button.icon.gutter">
+      <Setter Property="Width" Value="26" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+    <Style Selector="Button.icon.gutter:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.icon.gutter svg|Svg">
+      <Setter Property="Css" Value="{DynamicResource IconSvgCss}" />
+    </Style>
+    <Style Selector="Button.icon.gutter.active svg|Svg">
+      <Setter Property="Css" Value="{DynamicResource AccentSvgCss}" />
     </Style>
     <Style Selector="Button.icon.gutter.active">
       <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Button.icon.gutter.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+    </Style>
+    <Style Selector="Button.icon.gutter:pointerover svg|Svg">
+      <Setter Property="Css" Value="{DynamicResource GutterIconHoverSvgCss}" />
+    </Style>
+    <Style Selector="Button.icon.gutter.active:pointerover svg|Svg">
+      <Setter Property="Css" Value="{DynamicResource AccentSvgCss}" />
     </Style>
   </UserControl.Styles>
 
@@ -30,7 +62,7 @@
               PointerMoved="TitleBarMoved"
               PointerReleased="TitleBarReleased"
               DoubleTapped="TitleBarDoubleTapped">
-          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="5,0,0,0" VerticalAlignment="Center">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="8,0,0,0" VerticalAlignment="Center">
             <Button x:Name="ProjectCloseLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="CloseProjectWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="Close window">
               <svg:Svg Path="/Assets/traffic-lights/1-close-1-normal.svg" />
             </Button>
@@ -79,7 +111,7 @@
           </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="1" Margin="4">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="{Binding WorkspaceGutterWidth}" />
             <ColumnDefinition Width="{Binding WorkspaceGutterGap}" />
@@ -90,28 +122,28 @@
           <Border Grid.Column="0" Background="#01000000" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
           <Border Grid.Column="4" Background="#01000000" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
           <Grid Grid.Column="0" RowDefinitions="Auto,6,Auto,*,Auto,6,Auto" Margin="0,7" IsVisible="{Binding WorkspaceGuttersVisible}">
-            <Button Grid.Row="0" Classes="icon gutter" Classes.active="{Binding SessionSidebarVisible}" Width="26" Height="28" Padding="4" Click="ToggleNavigation" ToolTip.Tip="Show sessions" AutomationProperties.Name="Show or hide sessions">
+            <Button Grid.Row="0" Classes="icon gutter" Classes.active="{Binding SessionSidebarVisible}" Click="ToggleNavigation" ToolTip.Tip="Show sessions" AutomationProperties.Name="Show or hide sessions">
               <Grid>
-                <svg:Svg Path="/Assets/icons/panel-left.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !SessionSidebarVisible}" />
-                <svg:Svg Path="/Assets/icons/panel-left.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding SessionSidebarVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-left.svg" IsVisible="{Binding !SessionSidebarVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-left.svg" IsVisible="{Binding SessionSidebarVisible}" />
               </Grid>
             </Button>
-            <Button Grid.Row="2" Classes="icon gutter" Classes.active="{Binding ExplorerSidebarVisible}" Width="26" Height="28" Padding="4" Click="ToggleExplorer" ToolTip.Tip="Show explorer" AutomationProperties.Name="Show or hide explorer">
+            <Button Grid.Row="2" Classes="icon gutter" Classes.active="{Binding ExplorerSidebarVisible}" Click="ToggleExplorer" ToolTip.Tip="Show explorer" AutomationProperties.Name="Show or hide explorer">
               <Grid>
-                <svg:Svg Path="/Assets/icons/files.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !ExplorerSidebarVisible}" />
-                <svg:Svg Path="/Assets/icons/files.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding ExplorerSidebarVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/workspace-files.svg" IsVisible="{Binding !ExplorerSidebarVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/workspace-files.svg" IsVisible="{Binding ExplorerSidebarVisible}" />
               </Grid>
             </Button>
-            <Button Grid.Row="4" Classes="icon gutter" Classes.active="{Binding GitVisible}" Width="26" Height="28" Padding="4" Click="ToggleGit" ToolTip.Tip="Show or hide source control" AutomationProperties.Name="Show or hide source control">
+            <Button Grid.Row="4" Classes="icon gutter" Classes.active="{Binding GitVisible}" Click="ToggleGit" ToolTip.Tip="Show or hide source control" AutomationProperties.Name="Show or hide source control">
               <Grid>
-                <svg:Svg Path="/Assets/icons/git-branch.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !GitVisible}" />
-                <svg:Svg Path="/Assets/icons/git-branch.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding GitVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/git-branch.svg" IsVisible="{Binding !GitVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/git-branch.svg" IsVisible="{Binding GitVisible}" />
               </Grid>
             </Button>
-            <Button Grid.Row="6" Classes="icon gutter" Classes.active="{Binding ProviderTraceVisible}" Width="26" Height="28" Padding="4" Click="ToggleProviderTrace" ToolTip.Tip="Show or hide provider trace" AutomationProperties.Name="Show or hide provider trace">
+            <Button Grid.Row="6" Classes="icon gutter" Classes.active="{Binding ProviderTraceVisible}" Click="ToggleProviderTrace" ToolTip.Tip="Show or hide provider trace" AutomationProperties.Name="Show or hide provider trace">
               <Grid>
-                <svg:Svg Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !ProviderTraceVisible}" />
-                <svg:Svg Path="/Assets/icons/activity.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding ProviderTraceVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding !ProviderTraceVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding ProviderTraceVisible}" />
               </Grid>
             </Button>
           </Grid>
@@ -155,10 +187,10 @@
           </Grid>
 
           <StackPanel Grid.Column="4" Margin="0,7,0,0" IsVisible="{Binding WorkspaceGuttersVisible}">
-            <Button Classes="icon gutter" Classes.active="{Binding ReviewVisible}" Width="26" Height="28" Padding="4" Click="ToggleReview" ToolTip.Tip="Show or hide review" AutomationProperties.Name="Show or hide review">
+            <Button Classes="icon gutter" Classes.active="{Binding ReviewVisible}" Click="ToggleReview" ToolTip.Tip="Show or hide review" AutomationProperties.Name="Show or hide review">
               <Grid>
-                <svg:Svg Path="/Assets/icons/panel-right.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !ReviewVisible}" />
-                <svg:Svg Path="/Assets/icons/panel-right.svg" Css="{DynamicResource AccentSvgCss}" IsVisible="{Binding ReviewVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-right.svg" IsVisible="{Binding !ReviewVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-right.svg" IsVisible="{Binding ReviewVisible}" />
               </Grid>
             </Button>
           </StackPanel>
@@ -187,8 +219,7 @@
       </Grid>
 
     <controls:SCModal x:Name="SessionDialogModal"
-                      Width="360"
-                      MaxWidth="360"
+                      DialogWidth="360"
                       IsOpen="False"
                       PrimaryButtonText="Create"
                       SecondaryButtonText="Cancel"
@@ -202,8 +233,7 @@
     </controls:SCModal>
 
     <controls:SCModal x:Name="UndoDialogModal"
-                      Width="520"
-                      MaxWidth="520"
+                      DialogWidth="520"
                       IsOpen="False"
                       Title="Undo this turn's file changes?"
                       Description="SunCode will restore the files changed during this turn."
@@ -224,8 +254,7 @@
     </controls:SCModal>
 
     <controls:SCModal x:Name="DependencyDeleteDialogModal"
-                      Width="420"
-                      MaxWidth="420"
+                      DialogWidth="420"
                       IsOpen="False"
                       Title="Delete dependency?"
                       PrimaryButtonText="Delete dependency"
@@ -239,6 +268,41 @@
         <Run x:Name="DependencyDeleteName" FontWeight="SemiBold" />
         <Run Text=" from this project's dependencies? The folder and its files will not be deleted." />
       </TextBlock>
+    </controls:SCModal>
+
+    <controls:SCModal x:Name="ExpandedComposerModal"
+                      DialogWidth="860"
+                      IsOpen="False"
+                      PrimaryButtonText="Send message"
+                      SecondaryButtonText="Close"
+                      PrimaryAction="SubmitExpandedComposer"
+                      SecondaryAction="CloseExpandedComposer"
+                      CloseRequested="CloseExpandedComposer">
+      <Grid RowDefinitions="*,Auto" MinHeight="420">
+        <TextBox x:Name="ExpandedComposerInput"
+                 Classes="expanded-composer-input"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 FontSize="14"
+                 LineHeight="22"
+                 Background="{DynamicResource FieldBrush}"
+                 BorderBrush="{DynamicResource BorderBrush}"
+                 BorderThickness="1"
+                 CornerRadius="10"
+                 Padding="18"
+                 TextChanged="ExpandedComposerChanged">
+          <TextBox.Resources>
+            <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource BorderColor}" />
+          </TextBox.Resources>
+        </TextBox>
+        <TextBlock x:Name="ExpandedComposerCount"
+                   Grid.Row="1"
+                   HorizontalAlignment="Right"
+                   Margin="0,8,2,0"
+                   Classes="mono"
+                   FontSize="11"
+                   Foreground="{DynamicResource TextSecondaryBrush}" />
+      </Grid>
     </controls:SCModal>
   </Grid>
 </UserControl>

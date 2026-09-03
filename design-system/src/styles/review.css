@@ -27,6 +27,7 @@
   --accent-ink: #101317;
   --accent-border: #65717d;
   --success: #9fb3c3;
+  --copy-success: #78c99b;
   --success-surface: #1e2730;
   --warning: #d5ad6f;
   --warning-surface: #2a2115;
@@ -90,6 +91,7 @@
   --accent-ink: #ffffff;
   --accent-border: #aab8c4;
   --success: #4f6d82;
+  --copy-success: #27845b;
   --success-surface: #e8eef2;
   --warning: #966a25;
   --warning-surface: #fff2dc;
@@ -1457,7 +1459,7 @@ select.field {
   grid-column: 1;
   justify-self: start;
   gap: 8px;
-  margin-left: 5px;
+  margin-left: 1px;
 }
 .workspace-titlebar > span,
 .workspace-focused-titlebar > span {
@@ -2577,6 +2579,10 @@ select.field {
 .workspace-copy:hover {
   color: var(--text);
   background: var(--surface-hover);
+}
+.workspace-copy.is-copied,
+.workspace-copy.is-copied:hover {
+  color: var(--copy-success);
 }
 .workspace-turn-summary {
   display: inline-flex;

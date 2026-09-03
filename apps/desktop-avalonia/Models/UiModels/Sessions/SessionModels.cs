@@ -45,7 +45,15 @@ public sealed record ProviderItem(string Id, string DisplayName, bool Configured
     public string Display => Configured ? DisplayName : $"{DisplayName} (needs key)";
 }
 
-public sealed record ModelItem(string Id, string Provider, string ProviderLabel, string Availability, bool SupportsReasoningEffort, bool SupportsVision = false, string ApiBase = "")
+public sealed record ModelItem(
+    string Id,
+    string Provider,
+    string ProviderLabel,
+    string Availability,
+    bool SupportsReasoningEffort,
+    bool SupportsVision = false,
+    string ApiBase = "",
+    IReadOnlyList<string>? ReasoningEfforts = null)
 {
     public bool Configured => Availability == "configured";
     public string Display => Configured ? Id : $"{Id} (needs key)";

@@ -19,16 +19,20 @@
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
     </Style>
+    <Style Selector="Button.project-hub-action">
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
   </UserControl.Styles>
 
   <Grid RowDefinitions="62,*">
       <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-        <Grid Margin="22,0" ColumnDefinitions="Auto,12,Auto,*,Auto,12,Auto" RowDefinitions="*,Auto">
+        <Grid Margin="22,0" ColumnDefinitions="Auto,12,Auto,*,Auto,8,Auto" RowDefinitions="*,Auto">
           <Image Grid.Column="0" Width="30" Height="30" Source="/Assets/logo/suncode-logo-small-64.png" VerticalAlignment="Center" />
           <TextBlock Grid.Column="2" Text="SunCode" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <Button Grid.Column="4" Classes="compact quiet" Content="Settings" Click="OpenSettings" VerticalAlignment="Center" />
+          <Button Grid.Column="4" Classes="project-hub-action quiet" Content="Settings" Click="OpenSettings" VerticalAlignment="Center" />
           <Button Grid.Column="6"
-                  Classes="compact primary"
+                  Classes="project-hub-action primary"
                   Click="OpenProject"
                   VerticalAlignment="Center"
                   IsEnabled="{Binding CanOpenProjects}">

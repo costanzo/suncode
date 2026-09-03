@@ -20,13 +20,23 @@ public sealed partial class ChatArea : UserControl
     private ScrollViewer? _conversationScroller;
     private Control? _dialogReturnFocus;
 
+    public event EventHandler? ExpandedComposerRequested;
+
     public ChatArea()
     {
         InitializeComponent();
         AttachedToVisualTree += (_, _) => AttachConversationScroller();
+        ChatInput.ExpandedComposerRequested += ForwardExpandedComposerRequested;
     }
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
+
+    internal string ExpandedComposerDraft => ChatInput.ExpandedComposerDraft;
+
+    internal void SetComposerText(string text) => ChatInput.SetComposerText(text);
+
+    private void ForwardExpandedComposerRequested(object? sender, EventArgs e) =>
+        ExpandedComposerRequested?.Invoke(this, EventArgs.Empty);
 
     internal void ScrollConversationToEnd()
     {
@@ -163,11 +173,17 @@ public sealed partial class ChatArea : UserControl
 
         ToolTip.SetTip(button, "Copied");
         if (button.GetVisualDescendants().OfType<SvgControl>().FirstOrDefault() is { } icon)
-            SvgControl.SetCss(icon, this.FindResource("SuccessSvgCss") as string);
+        {
+            icon.Path = "/Assets/icons/check.svg";
+            SvgControl.SetCss(icon, this.FindResource("CopySuccessSvgCss") as string);
+        }
         await Task.Delay(1400);
         ConversationAnnouncement.Text = string.Empty;
         ToolTip.SetTip(button, "Copy response");
         if (button.GetVisualDescendants().OfType<SvgControl>().FirstOrDefault() is { } resetIcon)
+        {
+            resetIcon.Path = "/Assets/icons/copy.svg";
             SvgControl.SetCss(resetIcon, this.FindResource("IconSvgCss") as string);
+        }
     }
 }

@@ -28,9 +28,11 @@
       <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#d9e0e6" />
       <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#d9e0e6" />
       <x:String x:Key="IconSvgCss">[stroke='#000'] { stroke: #a7afb9; } [fill='#000'] { fill: #a7afb9; } [stroke='currentColor'] { stroke: #a7afb9; }</x:String>
+      <x:String x:Key="GutterIconHoverSvgCss">[stroke='#000'] { stroke: #edf0f3; stroke-width: 2.4; } [fill='#000'] { fill: #edf0f3; } [stroke='currentColor'] { stroke: #edf0f3; stroke-width: 2.4; }</x:String>
       <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #d9e0e6; } [fill='#000'] { fill: #d9e0e6; } [stroke='currentColor'] { stroke: #d9e0e6; }</x:String>
       <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #101317; } [fill='#000'] { fill: #101317; } [stroke='currentColor'] { stroke: #101317; }</x:String>
       <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #9fb3c3; } [fill='#000'] { fill: #9fb3c3; } [stroke='currentColor'] { stroke: #9fb3c3; }</x:String>
+      <x:String x:Key="CopySuccessSvgCss">[stroke='#000'] { stroke: #78c99b; } [fill='#000'] { fill: #78c99b; } [stroke='currentColor'] { stroke: #78c99b; }</x:String>
       <SolidColorBrush x:Key="CanvasBrush" Color="#0d0f12" />
       <SolidColorBrush x:Key="SurfaceBrush" Color="#121519" />
       <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#181c21" />
@@ -55,6 +57,7 @@
       <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#20262d" />
       <SolidColorBrush x:Key="AccentBorderBrush" Color="#65717d" />
       <SolidColorBrush x:Key="SuccessBrush" Color="#9fb3c3" />
+      <SolidColorBrush x:Key="CopySuccessBrush" Color="#78c99b" />
       <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="#1e2730" />
       <SolidColorBrush x:Key="WarningBrush" Color="#d5ad6f" />
       <SolidColorBrush x:Key="WarningSurfaceBrush" Color="#2a2115" />
@@ -90,9 +93,11 @@
       <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#2c3742" />
       <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#2c3742" />
       <x:String x:Key="IconSvgCss">[stroke='#000'] { stroke: #44515e; } [fill='#000'] { fill: #44515e; } [stroke='currentColor'] { stroke: #44515e; }</x:String>
+      <x:String x:Key="GutterIconHoverSvgCss">[stroke='#000'] { stroke: #17202a; stroke-width: 2.4; } [fill='#000'] { fill: #17202a; } [stroke='currentColor'] { stroke: #17202a; stroke-width: 2.4; }</x:String>
       <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #2c3742; } [fill='#000'] { fill: #2c3742; } [stroke='currentColor'] { stroke: #2c3742; }</x:String>
       <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #ffffff; } [fill='#000'] { fill: #ffffff; } [stroke='currentColor'] { stroke: #ffffff; }</x:String>
       <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #4f6d82; } [fill='#000'] { fill: #4f6d82; } [stroke='currentColor'] { stroke: #4f6d82; }</x:String>
+      <x:String x:Key="CopySuccessSvgCss">[stroke='#000'] { stroke: #27845b; } [fill='#000'] { fill: #27845b; } [stroke='currentColor'] { stroke: #27845b; }</x:String>
       <SolidColorBrush x:Key="CanvasBrush" Color="#f3f5f7" />
       <SolidColorBrush x:Key="SurfaceBrush" Color="#ffffff" />
       <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#f8fafc" />
@@ -117,6 +122,7 @@
       <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#e7edf1" />
       <SolidColorBrush x:Key="AccentBorderBrush" Color="#aab8c4" />
       <SolidColorBrush x:Key="SuccessBrush" Color="#4f6d82" />
+      <SolidColorBrush x:Key="CopySuccessBrush" Color="#27845b" />
       <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="#e8eef2" />
       <SolidColorBrush x:Key="WarningBrush" Color="#966a25" />
       <SolidColorBrush x:Key="WarningSurfaceBrush" Color="#fff2dc" />
