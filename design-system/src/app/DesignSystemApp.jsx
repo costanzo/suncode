@@ -35,6 +35,7 @@ import { ProjectsPage } from "../projects/ProjectsPage.jsx";
 import { ProjectHubPage } from "../projects/desktop/index.jsx";
 import { AboutPage } from "../projects/desktop/about/index.jsx";
 import { DesktopProjectPage } from "../projects/desktop/DesktopProjectPage.jsx";
+import { DialogWindowPage } from "../projects/desktop/dialog-window/index.jsx";
 import { SettingsPage } from "../projects/desktop/settings/index.jsx";
 import { WorkspacePage } from "../projects/desktop/workspace/index.jsx";
 import { WorkspaceSessionsPage } from "../projects/desktop/workspace/sessions/index.jsx";
@@ -95,6 +96,7 @@ const routes = {
   "/projects": ProjectsPage,
   "/projects/desktop": DesktopProjectPage,
   "/projects/desktop/project-hub": ProjectHubPage,
+  "/projects/desktop/dialog-window": DialogWindowPage,
   "/projects/desktop/about": AboutPage,
   "/projects/desktop/settings": SettingsPage,
   "/projects/desktop/workspace": WorkspacePage,

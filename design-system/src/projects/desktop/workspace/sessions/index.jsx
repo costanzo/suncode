@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
 import { SessionPanel } from "../WorkspacePrimitives.jsx";
+import { DialogWindowConfirmation } from "../../dialog-window/index.jsx";
 
 const sessionGuides = {
   empty: {
@@ -88,31 +89,11 @@ const sessionGuides = {
       ],
     },
   },
-  archiveConfirmation: {
-    title: "Archive confirmation",
-    side: "right",
-    tabs: {
-      actions: [
-        "Review the exact session name before confirming the archive action.",
-        "Choose Cancel, press Escape, or close the dialog to leave the session unchanged.",
-        "Choose Archive session to remove it from the active list.",
-      ],
-      style: [
-        "The shared confirmation dialog uses the raised graphite modal surface, strong border, and 14px radius.",
-        "The affected session appears in an inset target block between the consequence copy and actions.",
-        "Cancel receives initial keyboard focus; the explicit Archive session action uses the danger treatment.",
-      ],
-      logic: [
-        "Opening Archive from a session menu never changes data immediately.",
-        "Backdrop, close, Escape, and Cancel all dismiss the dialog without archiving.",
-        "Only the explicit Archive session action removes the session from the active list.",
-      ],
-    },
-  },
 };
 
 export function WorkspaceSessionsPage() {
   const [openGuide, setOpenGuide] = useState(null);
+  const [archiveRequest, setArchiveRequest] = useState(null);
   const noSessions = [];
   const sessionsWithoutPins = [
     { title: "Provider migration review", time: "Yesterday" },
@@ -155,13 +136,6 @@ export function WorkspaceSessionsPage() {
       description: "Five sessions mapped to the Review panel status variants.",
       sessions: sessionsByAgentStatus,
     },
-    {
-      id: "archiveConfirmation",
-      title: "Archive confirmation",
-      description: "A shared confirmation dialog protects the consequential session action.",
-      sessions: sessionsWithoutPins,
-      initialArchiveConfirmation: true,
-    },
   ];
   return (
     <>
@@ -189,13 +163,22 @@ export function WorkspaceSessionsPage() {
                 <SessionPanel
                   standalone
                   initialSessions={state.sessions}
-                  initialArchiveConfirmation={state.initialArchiveConfirmation}
+                  onArchiveRequest={setArchiveRequest}
                 />
               </WorkspaceGuideState>
             );
           })}
         </div>
       </Section>
+      <DialogWindowConfirmation
+        open={Boolean(archiveRequest)}
+        sessionTitle={archiveRequest?.session?.title}
+        onCancel={() => setArchiveRequest(null)}
+        onConfirm={() => {
+          archiveRequest?.confirm();
+          setArchiveRequest(null);
+        }}
+      />
     </>
   );
 }

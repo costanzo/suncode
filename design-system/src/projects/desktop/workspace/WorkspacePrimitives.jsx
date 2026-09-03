@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/universal/button/index.js";
 import { ModelDropdown, SingleDropdown } from "../../../components/universal/dropdown/index.js";
-import { ConfirmationDialog, Modal } from "../../../components/universal/modal/index.js";
+import { Modal } from "../../../components/universal/modal/index.js";
 import { Radio } from "../../../components/universal/radio/index.js";
 import { Icon } from "../../../shared/Icon.jsx";
 import { TrafficLights } from "../../../shared/TrafficLights.jsx";
+import { DialogWindowConfirmation } from "../dialog-window/index.jsx";
 
 export { TrafficLights } from "../../../shared/TrafficLights.jsx";
 
@@ -494,7 +495,7 @@ export function SessionPanel({
   compact = false,
   standalone = false,
   initialSessions = sessions,
-  initialArchiveConfirmation = false,
+  onArchiveRequest,
 }) {
   const [selected, setSelected] = useState(0);
   const [items, setItems] = useState(initialSessions);
@@ -504,9 +505,6 @@ export function SessionPanel({
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameIndex, setRenameIndex] = useState(null);
   const [renameTitle, setRenameTitle] = useState("");
-  const [archiveIndex, setArchiveIndex] = useState(
-    initialArchiveConfirmation && initialSessions.length ? 0 : null,
-  );
   const createSession = () => {
     setNewTitle("");
     setCreateOpen(true);
@@ -542,14 +540,14 @@ export function SessionPanel({
     setMenu(null);
   };
   const openArchiveConfirmation = (index) => {
-    setArchiveIndex(index);
     setMenu(null);
-  };
-  const confirmArchive = () => {
-    if (archiveIndex === null) return;
-    setItems((current) => current.filter((_, itemIndex) => itemIndex !== archiveIndex));
-    setSelected(0);
-    setArchiveIndex(null);
+    onArchiveRequest?.({
+      session: items[index],
+      confirm: () => {
+        setItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
+        setSelected(0);
+      },
+    });
   };
   return (
     <aside
@@ -685,22 +683,6 @@ export function SessionPanel({
           }}
         />
       </Modal>
-      <ConfirmationDialog
-        open={archiveIndex !== null}
-        title="Archive this session?"
-        description="It will leave the active session list, but can be reopened later."
-        confirmLabel="Archive session"
-        onCancel={() => setArchiveIndex(null)}
-        onConfirm={confirmArchive}
-        className="workspace-archive-dialog"
-      >
-        {archiveIndex !== null && items[archiveIndex] && (
-          <div className="confirmation-dialog-target">
-            <span>SESSION</span>
-            <strong>{items[archiveIndex].title}</strong>
-          </div>
-        )}
-      </ConfirmationDialog>
     </aside>
   );
 }
@@ -862,7 +844,7 @@ export function ConversationPanel({
   const [attachments, setAttachments] = useState(initialAttachments);
   const [sentAttachments, setSentAttachments] = useState(initialSentAttachments);
   const [previewAttachment, setPreviewAttachment] = useState(null);
-  const [composerExpanded, setComposerExpanded] = useState(state === "immersive-composer");
+  const [composerExpanded, setComposerExpanded] = useState(false);
   const [visibleToolOutputLines, setVisibleToolOutputLines] = useState(0);
   const attachmentInputRef = useRef(null);
   const localAttachmentUrls = useRef(new Set());
@@ -911,12 +893,6 @@ export function ConversationPanel({
     });
   };
   useEffect(() => () => localAttachmentUrls.current.forEach((url) => URL.revokeObjectURL(url)), []);
-  useEffect(() => {
-    if (state === "immersive-composer") setComposerExpanded(true);
-  }, [state]);
-  useEffect(() => {
-    if (state === "live-tool-stream") setToolPreview(0);
-  }, [state]);
   useEffect(() => {
     if (toolPreview === null) {
       setVisibleToolOutputLines(0);
@@ -1231,10 +1207,11 @@ export function ConversationPanel({
       </Modal>
       <Modal
         open={composerExpanded}
-        title="Expanded composer"
-        description="Use a larger drafting surface when the compact composer is not enough."
         onClose={() => setComposerExpanded(false)}
         className="workspace-composer-modal"
+        hideTitle
+        ariaLabel="Expanded composer"
+        hideClose
         actions={
           <>
             <button type="button" className="btn" onClick={() => setComposerExpanded(false)}>
@@ -1259,7 +1236,6 @@ export function ConversationPanel({
             aria-label="Expanded message composer"
           />
           <div className="workspace-composer-modal-footer">
-            <span>Draft syncs with the compact composer</span>
             <strong aria-live="polite">{messageCharacters} characters</strong>
           </div>
         </div>
@@ -1949,6 +1925,7 @@ export function WorkspaceWindow() {
   const [reviewVisible, setReviewVisible] = useState(true);
   const [drawer, setDrawer] = useState(null);
   const [surfaceMenuOpen, setSurfaceMenuOpen] = useState(false);
+  const [archiveRequest, setArchiveRequest] = useState(null);
   const toggleDrawer = (next) => setDrawer((current) => (current === next ? null : next));
   return (
     <div className="workspace-window">
@@ -2029,7 +2006,9 @@ export function WorkspaceWindow() {
         </aside>
         <div className="workspace-main-stack">
           <div className="workspace-main-row">
-            {navigation === "sessions" && <SessionPanel compact />}
+            {navigation === "sessions" && (
+              <SessionPanel compact onArchiveRequest={setArchiveRequest} />
+            )}
             {navigation === "explorer" && <ExplorerPanel compact />}
             <ConversationPanel compact onViewChanges={() => setDrawer("git")} />
             {reviewVisible && <ReviewPanel compact />}
@@ -2064,6 +2043,15 @@ export function WorkspaceWindow() {
           <span>3 calls · 4.2s</span>
         </div>
       </footer>
+      <DialogWindowConfirmation
+        open={Boolean(archiveRequest)}
+        sessionTitle={archiveRequest?.session?.title}
+        onCancel={() => setArchiveRequest(null)}
+        onConfirm={() => {
+          archiveRequest?.confirm();
+          setArchiveRequest(null);
+        }}
+      />
     </div>
   );
 }

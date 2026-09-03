@@ -276,7 +276,7 @@ export function WorkspaceConversationPage() {
     {
       id: "immersiveComposer",
       title: "Expanded composer",
-      description: "A large drafting modal opens from the compact composer for longer prompts.",
+      description: "A large drafting modal opens from the compact composer when requested.",
       side: "left",
       content: <ConversationPanel standalone state="immersive-composer" onViewChanges={viewChanges} />,
     },
@@ -290,7 +290,7 @@ export function WorkspaceConversationPage() {
     {
       id: "liveToolStream",
       title: "Live tool output",
-      description: "A running command opens a modal with streaming output while the turn is still active.",
+      description: "Click a running command to open its streaming output modal while the turn is still active.",
       side: "right",
       content: <ConversationPanel standalone state="live-tool-stream" />,
     },

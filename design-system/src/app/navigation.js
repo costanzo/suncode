@@ -209,6 +209,11 @@ export const primaryModules = [
             keywords: "welcome recent projects open project settings",
           },
           {
+            path: "/projects/desktop/dialog-window",
+            label: "DialogWindow",
+            keywords: "confirmation dialog secondary confirm archive consequential action",
+          },
+          {
             path: "/projects/desktop/about",
             label: "About",
             keywords: "product version application information",

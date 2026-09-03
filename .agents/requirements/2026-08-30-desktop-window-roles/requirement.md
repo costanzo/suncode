@@ -6,7 +6,7 @@ The Avalonia client used one `MainWindow` to switch between the project hub and 
 
 ## Goals
 
-- Define exactly four top-level window roles: ProjectHub, Workspace, Settings, and About.
+- Define five top-level window roles: ProjectHub, Workspace, DialogWindow, Settings, and About.
 - Keep the custom title bar only on Workspace.
 - Use system title bars and controls for ProjectHub, Settings, and About.
 
@@ -15,7 +15,8 @@ The Avalonia client used one `MainWindow` to switch between the project hub and 
 - ProjectHub is an independent startup window.
 - Each opened project gets an independent Workspace window.
 - Workspace uses `WindowDecorations=BorderOnly`.
-- ProjectHub, Settings, and About use full system decorations and contain no duplicate title bar controls.
+- ProjectHub, DialogWindow, Settings, and About use full system decorations and contain no duplicate title bar controls.
+- DialogWindow is the sibling desktop surface for secondary confirmation; it starts closed and opens a confirmation dialog only after an explicit action click.
 
 ## Acceptance criteria
 

@@ -1,7 +1,18 @@
 import { useEffect, useId, useRef } from "react";
 import { Icon } from "../../../shared/Icon.jsx";
 
-export function Modal({ open, title, description, onClose, children, actions, className = "" }) {
+export function Modal({
+  open,
+  title,
+  description,
+  onClose,
+  children,
+  actions,
+  className = "",
+  hideTitle = false,
+  ariaLabel,
+  hideClose = false,
+}) {
   const dialogRef = useRef(null);
   const titleId = useId();
   const descriptionId = useId();
@@ -44,24 +55,31 @@ export function Modal({ open, title, description, onClose, children, actions, cl
         className={`review-dialog ${className}`.trim()}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
+        aria-labelledby={!hideTitle && title ? titleId : undefined}
+        aria-label={ariaLabel || (hideTitle ? "Dialog" : undefined)}
         aria-describedby={description ? descriptionId : undefined}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="dialog-title">
-          <div>
-            <h3 id={titleId}>{title}</h3>
-            {description && <p id={descriptionId}>{description}</p>}
+        {(title || !hideClose) && (
+          <div className={`dialog-title ${hideTitle ? "is-title-hidden" : ""}`.trim()}>
+            {!hideTitle && (
+              <div>
+                <h3 id={titleId}>{title}</h3>
+                {description && <p id={descriptionId}>{description}</p>}
+              </div>
+            )}
+            {!hideClose && (
+              <button
+                type="button"
+                className="btn btn-icon btn-quiet"
+                onClick={onClose}
+                aria-label="Close dialog"
+              >
+                <Icon name="close" />
+              </button>
+            )}
           </div>
-          <button
-            type="button"
-            className="btn btn-icon btn-quiet"
-            onClick={onClose}
-            aria-label="Close dialog"
-          >
-            <Icon name="close" />
-          </button>
-        </div>
+        )}
         {children}
         {actions && <div className="dialog-actions">{actions}</div>}
       </div>

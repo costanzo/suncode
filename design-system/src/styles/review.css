@@ -134,6 +134,13 @@ a:focus-visible,
   outline: none;
   box-shadow: var(--focus-ring);
 }
+.workspace-composer textarea:focus,
+.workspace-composer textarea:focus-visible,
+.workspace-composer-modal-content textarea:focus,
+.workspace-composer-modal-content textarea:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
 
 .page {
   min-height: 100vh;
@@ -2669,6 +2676,54 @@ select.field {
 .workspace-composer textarea::placeholder {
   color: var(--text-muted);
 }
+.dialog-window-content {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 12px;
+  height: 100%;
+  padding: 28px 32px;
+  background: var(--surface);
+}
+.dialog-window-content h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.dialog-window-content p {
+  max-width: 520px;
+  margin: 0 0 4px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.dialog-window-target {
+  display: grid;
+  gap: 4px;
+  width: min(440px, 100%);
+  margin-bottom: 8px;
+  padding: 12px 13px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.dialog-window-target span {
+  color: var(--text-muted);
+  font: 9px var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.dialog-window-target strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.dialog-window-status {
+  color: var(--success);
+  font-size: 11px;
+}
+.desktop-dialog-confirmation {
+  width: min(430px, calc(100% - 40px));
+}
 .workspace-attachment-input {
   display: none;
 }
@@ -2832,7 +2887,7 @@ select.field {
   color: var(--text-muted);
 }
 .workspace-composer-modal-content textarea:focus-visible {
-  box-shadow: var(--focus-ring);
+  border-color: var(--border);
 }
 .workspace-composer-modal-footer {
   display: flex;

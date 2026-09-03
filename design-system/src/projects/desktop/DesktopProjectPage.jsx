@@ -5,7 +5,7 @@ export function DesktopProjectPage() {
     <>
       <PageHeader
         title="Desktop"
-        description="The desktop project surface and its four top-level windows."
+        description="The desktop project surface and its five top-level windows."
         status="Project index"
         tone="implemented"
       />
@@ -24,6 +24,13 @@ export function DesktopProjectPage() {
             title="Workspace"
             description="The active project window for sessions, conversation, review, and traceability."
             path="Default 1440 × 900 DIP"
+          />
+          <ModuleLink
+            to="/projects/desktop/dialog-window"
+            icon="components"
+            title="DialogWindow"
+            description="Focused confirmation window for consequential actions that require a second decision."
+            path="Default 620 × 420 DIP"
           />
           <ModuleLink
             to="/projects/desktop/settings"
