@@ -12,7 +12,7 @@ const explorerGuides = {
         "Use the dependency root even when it contains no entries.",
       ],
       style: [
-        "Rows are 30px high with 3px vertical and 6px horizontal padding.",
+        "Rows are 24px high with 1px vertical and 6px horizontal padding.",
         "Folder and file icons are 14px; indentation advances 12px per tree depth.",
         "The project tree uses the surface background; selected rows use the active surface.",
       ],
@@ -52,7 +52,7 @@ const explorerGuides = {
       style: [
         "The constrained tree uses a max-content row width with horizontal overflow.",
         "Long paths are not ellipsized; the monospace path remains fully inspectable.",
-        "The selected file keeps the same 30px row height and active-surface treatment.",
+        "The selected file keeps the same 24px row height and active-surface treatment.",
       ],
       logic: [
         "This state represents projects with long absolute paths or deep nesting.",

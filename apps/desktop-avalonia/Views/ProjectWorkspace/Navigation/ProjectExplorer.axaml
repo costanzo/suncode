@@ -11,11 +11,28 @@
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Padding" Value="0" />
     </Style>
+    <Style Selector="Button.explorer-action">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.explorer-action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
     <Style Selector="TreeView.explorer-tree TreeViewItem">
       <Setter Property="Padding" Value="0" />
       <Setter Property="Margin" Value="0" />
-      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="MinHeight" Value="24" />
       <Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded, Mode=TwoWay}" />
+    </Style>
+    <Style Selector="TreeView.explorer-tree TreeViewItem /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="TreeView.explorer-tree TreeViewItem /template/ ToggleButton#PART_ExpandButton">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="Height" Value="10" />
+      <Setter Property="Padding" Value="0" />
     </Style>
     <Style Selector="TreeView.explorer-tree TreeViewItem /template/ Border#PART_LayoutRoot">
       <Setter Property="CornerRadius" Value="4" />
@@ -26,12 +43,18 @@
       <Setter Property="BorderThickness" Value="1" />
     </Style>
     <Style Selector="Grid.explorer-row">
-      <Setter Property="MinHeight" Value="30" />
-      <Setter Property="Margin" Value="6,3" />
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="Margin" Value="-8,1,6,1" />
       <Setter Property="Background" Value="Transparent" />
     </Style>
     <Style Selector="Grid.explorer-row.dependency">
       <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.root svg|Svg">
+      <Setter Property="Css" Value="{DynamicResource AccentSvgCss}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.dependency-root svg|Svg">
+      <Setter Property="Css" Value="{DynamicResource WarningSvgCss}" />
     </Style>
     <Style Selector="TextBlock.explorer-name">
       <Setter Property="FontSize" Value="10" />
@@ -53,13 +76,13 @@
   </UserControl.Styles>
 
   <Border Classes="sidebar-card">
-    <Grid Margin="12,12,10,10" RowDefinitions="34,8,*">
-      <Grid Grid.Row="0" ColumnDefinitions="*,28,28">
-        <TextBlock Classes="section-label" Text="EXPLORER" Margin="4,0,0,0" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Classes="icon" Width="28" Height="28" Padding="6" Click="RefreshExplorer" ToolTip.Tip="Refresh explorer" AutomationProperties.Name="Refresh explorer">
+    <Grid Margin="0,0,0,10" RowDefinitions="44,0,*">
+      <Grid Grid.Row="0" ColumnDefinitions="*,30,30">
+        <TextBlock Classes="section-label" Text="EXPLORER" Margin="14,0,0,0" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="icon explorer-action" Width="30" Height="30" Padding="6" Click="RefreshExplorer" ToolTip.Tip="Refresh explorer" AutomationProperties.Name="Refresh explorer">
           <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
-        <Button Grid.Column="2" Classes="icon" Width="28" Height="28" Padding="6" Click="AddDependency" ToolTip.Tip="Add dependency folder" AutomationProperties.Name="Add dependency folder">
+        <Button Grid.Column="2" Classes="icon explorer-action" Width="30" Height="30" Padding="6" Click="AddDependency" ToolTip.Tip="Add dependency folder" AutomationProperties.Name="Add dependency folder">
           <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
       </Grid>
@@ -71,19 +94,13 @@
                 ScrollViewer.HorizontalScrollBarVisibility="Auto">
         <TreeView.DataTemplates>
           <TreeDataTemplate DataType="models:ExplorerNode" ItemsSource="{Binding Children}">
-            <Grid Classes="explorer-row" Classes.dependency="{Binding IsDependency}" Classes.root="{Binding IsRoot}" Classes.dependency-root="{Binding IsDependencyRoot}" ColumnDefinitions="13,16,Auto,24" ColumnSpacing="5" HorizontalAlignment="Left">
-              <svg:Svg Grid.Column="0" Width="12" Height="12" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsDirectory}" RenderTransformOrigin="50%,50%">
-                <svg:Svg.RenderTransform>
-                  <RotateTransform Angle="{Binding ExpansionRotation}" />
-                </svg:Svg.RenderTransform>
-              </svg:Svg>
-              <svg:Svg Grid.Column="1" Width="14" Height="14" Path="/Assets/icons/files.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsFile}" />
-              <svg:Svg Grid.Column="1" Width="14" Height="14" Path="/Assets/icons/sidebar-project.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding IsDirectory}" />
-              <StackPanel Grid.Column="2" Spacing="1" VerticalAlignment="Center">
+            <Grid Classes="explorer-row" Classes.dependency="{Binding IsDependency}" Classes.root="{Binding IsRoot}" Classes.dependency-root="{Binding IsDependencyRoot}" ColumnDefinitions="16,*,24" ColumnSpacing="2" HorizontalAlignment="Stretch">
+              <svg:Svg Grid.Column="0" Classes="explorer-icon" Width="14" Height="14" Path="{Binding IconPath}" Css="{DynamicResource IconSvgCss}" />
+              <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
                 <TextBlock Classes="explorer-name" Text="{Binding Name}" TextWrapping="NoWrap" VerticalAlignment="Center" />
-                <TextBlock Classes="explorer-path" Text="{Binding Path}" IsVisible="{Binding HasPathSubtitle}" TextWrapping="NoWrap" />
+                <TextBlock Classes="explorer-path" Text="{Binding PathSubtitle}" IsVisible="{Binding ShowPathSubtitle}" TextWrapping="NoWrap" />
               </StackPanel>
-              <Button Grid.Column="3" Classes="quiet" Width="24" Height="24" Padding="5" IsVisible="{Binding CanRemove}" ToolTip.Tip="Dependency actions" AutomationProperties.Name="{Binding Name, StringFormat=Actions for dependency {0}}">
+              <Button Grid.Column="2" Classes="quiet" Width="24" Height="24" Padding="5" IsVisible="{Binding CanRemove}" ToolTip.Tip="Dependency actions" AutomationProperties.Name="{Binding Name, StringFormat=Actions for dependency {0}}">
                 <Button.Flyout>
                   <MenuFlyout>
                     <MenuItem Header="Delete" CommandParameter="{Binding}" Click="DeleteDependency" />

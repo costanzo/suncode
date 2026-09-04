@@ -32,6 +32,7 @@
       <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #d9e0e6; } [fill='#000'] { fill: #d9e0e6; } [stroke='currentColor'] { stroke: #d9e0e6; }</x:String>
       <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #101317; } [fill='#000'] { fill: #101317; } [stroke='currentColor'] { stroke: #101317; }</x:String>
       <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #9fb3c3; } [fill='#000'] { fill: #9fb3c3; } [stroke='currentColor'] { stroke: #9fb3c3; }</x:String>
+      <x:String x:Key="WarningSvgCss">[stroke='#000'] { stroke: #d5ad6f; } [fill='#000'] { fill: #d5ad6f; } [stroke='currentColor'] { stroke: #d5ad6f; }</x:String>
       <x:String x:Key="CopySuccessSvgCss">[stroke='#000'] { stroke: #78c99b; } [fill='#000'] { fill: #78c99b; } [stroke='currentColor'] { stroke: #78c99b; }</x:String>
       <SolidColorBrush x:Key="CanvasBrush" Color="#0d0f12" />
       <SolidColorBrush x:Key="SurfaceBrush" Color="#121519" />
@@ -97,6 +98,7 @@
       <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #2c3742; } [fill='#000'] { fill: #2c3742; } [stroke='currentColor'] { stroke: #2c3742; }</x:String>
       <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #ffffff; } [fill='#000'] { fill: #ffffff; } [stroke='currentColor'] { stroke: #ffffff; }</x:String>
       <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #4f6d82; } [fill='#000'] { fill: #4f6d82; } [stroke='currentColor'] { stroke: #4f6d82; }</x:String>
+      <x:String x:Key="WarningSvgCss">[stroke='#000'] { stroke: #9a6a28; } [fill='#000'] { fill: #9a6a28; } [stroke='currentColor'] { stroke: #9a6a28; }</x:String>
       <x:String x:Key="CopySuccessSvgCss">[stroke='#000'] { stroke: #27845b; } [fill='#000'] { fill: #27845b; } [stroke='currentColor'] { stroke: #27845b; }</x:String>
       <SolidColorBrush x:Key="CanvasBrush" Color="#f3f5f7" />
       <SolidColorBrush x:Key="SurfaceBrush" Color="#ffffff" />

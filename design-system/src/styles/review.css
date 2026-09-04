@@ -1998,11 +1998,11 @@ select.field {
 .workspace-tree-row {
   display: grid;
   grid-template-columns: 13px 16px minmax(0, 1fr);
-  gap: 5px;
+  gap: 3px;
   align-items: center;
   min-width: 0;
-  min-height: 30px;
-  padding: 3px 6px 3px calc(6px + var(--tree-depth) * 12px);
+  min-height: 24px;
+  padding: 1px 6px 1px calc(6px + var(--tree-depth) * 12px);
   color: var(--text-secondary);
   background: transparent;
   border: 0;
@@ -2020,6 +2020,10 @@ select.field {
 }
 .workspace-tree-row .is-open {
   transform: rotate(90deg);
+}
+.workspace-tree-row > .ds-icon:first-child {
+  width: 10px;
+  height: 10px;
 }
 .workspace-tree-row > .ds-icon:nth-child(2) {
   color: var(--text-muted);
@@ -2194,6 +2198,21 @@ select.field {
   background: transparent;
 }
 .workspace-conversation-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--border-strong) 58%, transparent);
+  border-radius: 999px;
+}
+.workspace-tree {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--border-strong) 58%, transparent) transparent;
+}
+.workspace-tree::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.workspace-tree::-webkit-scrollbar-track {
+  background: transparent;
+}
+.workspace-tree::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--border-strong) 58%, transparent);
   border-radius: 999px;
 }

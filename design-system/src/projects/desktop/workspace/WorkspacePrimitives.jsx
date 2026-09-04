@@ -767,7 +767,7 @@ export function ExplorerPanel({
                   : extension
                     ? "file-text"
                     : "file";
-          const showPath = node.kind === "project-root" || node.parent === dependencyParent;
+          const showPath = node.parent === dependencyParent;
           const iconName =
             node.kind === "project-root"
               ? "project"
@@ -792,7 +792,7 @@ export function ExplorerPanel({
                 <Icon
                   name="chevron-right"
                   className={expanded.has(node.id) ? "is-open" : ""}
-                  size={12}
+                  size={10}
                 />
               ) : (
                 <span />

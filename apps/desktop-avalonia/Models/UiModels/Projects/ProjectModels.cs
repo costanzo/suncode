@@ -60,6 +60,30 @@ public sealed class ExplorerNode : ObservableObject
     public bool CanRemove => IsRoot && IsDependency;
     public bool IsDependencyRoot => IsRoot && IsDependency;
     public bool HasPathSubtitle => !string.IsNullOrWhiteSpace(Path) && Path != ".";
+    public bool ShowPathSubtitle => IsDependency && HasPathSubtitle;
+    public string PathSubtitle => ShowPathSubtitle ? Path : string.Empty;
+    public string IconPath
+    {
+        get
+        {
+            if (IsRoot && !IsDependency) return "/Assets/icons/sidebar-project.svg";
+            if (IsGroup) return "/Assets/icons/assets.svg";
+            if (IsDirectory) return "/Assets/icons/folder.svg";
+            if (!IsFile) return "/Assets/icons/files.svg";
+
+            var extension = Name.Contains('.')
+                ? Name[(Name.LastIndexOf('.') + 1)..].ToLowerInvariant()
+                : string.Empty;
+            return extension switch
+            {
+                "md" or "markdown" => "/Assets/icons/file-markdown.svg",
+                "jsx" or "js" or "ts" or "tsx" or "rs" or "go" or "java" or "py" or "cs" or "c" or "cpp" or "h" or "hpp" => "/Assets/icons/file-code.svg",
+                "json" or "yaml" or "yml" or "toml" or "xml" or "axaml" or "xaml" or "ini" or "env" => "/Assets/icons/file-config.svg",
+                "" => "/Assets/icons/files.svg",
+                _ => "/Assets/icons/file-text.svg"
+            };
+        }
+    }
     public double ExpansionRotation => IsExpanded ? 90 : 0;
     public bool IsLoading { get => _isLoading; set => SetProperty(ref _isLoading, value); }
     public bool IsLoaded { get => _isLoaded; set => SetProperty(ref _isLoaded, value); }
