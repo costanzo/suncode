@@ -180,6 +180,7 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Composer focus:** Compact and expanded composer textareas keep their resting border without adding a dark focus ring when focused.
 - **Character feedback:** The expanded drafting modal shows a live character count below the drafting field on the left so long prompts stay measurable without crowding the compact composer.
 - **Long message preview:** Submitted user messages that exceed the compact reading measure clamp to five lines with an ellipsis. A differentiated `View more` action sits inside the message bubble immediately after the truncation and opens a read-only full-message dialog with character count and copy feedback.
+- **Scroll-to-bottom:** When the conversation viewport is away from the newest message, show a compact circular down-arrow control above the composer. Activating it returns the viewport to the latest message; it remains hidden while the viewport is already at the bottom.
 - **Tool inspection:** Tool rows stay compact inside the timeline, but opening a running command can reveal a modal with the full request, current status, and a scrollable live command-output pane.
 - **Output presentation:** Live command output uses the code/data monospace treatment, wraps safely for narrow widths, and never turns the conversation into a dashboard.
 - **Thinking feedback:** A dedicated thinking phase uses animated `Thinking` text that reveals from left to right and replaces the generic three-dot running marker during that phase.

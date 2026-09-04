@@ -2175,6 +2175,52 @@ select.field {
 .workspace-trace-empty .ds-icon {
   color: var(--text-muted);
 }
+.workspace-conversation-scroll {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 4px;
+  padding-bottom: 18px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--border-strong) 58%, transparent) transparent;
+}
+.workspace-conversation-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.workspace-conversation-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.workspace-conversation-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--border-strong) 58%, transparent);
+  border-radius: 999px;
+}
+.workspace-scroll-to-bottom {
+  position: absolute;
+  right: 34px;
+  bottom: 140px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  box-shadow: var(--shadow-popover);
+  cursor: pointer;
+}
+.workspace-scroll-to-bottom:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+  border-color: var(--accent-border);
+}
+.workspace-scroll-to-bottom:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
 .workspace-running-indicator {
   display: inline-flex;
   align-items: center;

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
@@ -26,7 +27,9 @@ public sealed partial class ChatArea : UserControl
     public ChatArea()
     {
         InitializeComponent();
-        AttachedToVisualTree += (_, _) => AttachConversationScroller();
+        AttachedToVisualTree += (_, _) => QueueAttachConversationScroller();
+        Loaded += (_, _) => QueueAttachConversationScroller();
+        ConversationList.TemplateApplied += (_, _) => QueueAttachConversationScroller();
         ChatInput.ExpandedComposerRequested += ForwardExpandedComposerRequested;
     }
 
@@ -43,6 +46,9 @@ public sealed partial class ChatArea : UserControl
 
     internal void ScrollConversationToEnd()
     {
+        // Session content can be realized after the view's initial template pass.
+        // Re-check here so scrolling remains observable for the current session.
+        AttachConversationScroller();
         var sourceChanged = !ReferenceEquals(_messageSource, ViewModel.Messages);
         if (sourceChanged)
         {
@@ -51,6 +57,7 @@ public sealed partial class ChatArea : UserControl
             _forceScrollPending = true;
         }
         if (!_followTail && !_forceScrollPending) return;
+        ScrollToBottomButton.IsVisible = false;
         QueueScrollToEnd();
     }
 
@@ -66,10 +73,35 @@ public sealed partial class ChatArea : UserControl
             if ((!force && !_followTail) || ViewModel.Messages.Count == 0) return;
 
             _scrollingToEnd = true;
-            ConversationList.ScrollIntoView(ViewModel.Messages[^1]);
+            if (_conversationScroller is null)
+            {
+                AttachConversationScroller();
+            }
+
+            // ScrollIntoView(last item) can stop short with a virtualized
+            // ListBox and the conversation's bottom clearance. Set the
+            // ScrollViewer to its actual maximum offset instead.
+            SetConversationOffsetToBottom();
             _followTail = true;
-            Dispatcher.UIThread.Post(() => _scrollingToEnd = false, DispatcherPriority.Background);
+            // A second pass handles the extent update produced by virtualization
+            // after the first offset assignment.
+            Dispatcher.UIThread.Post(() =>
+            {
+                SetConversationOffsetToBottom();
+                _scrollingToEnd = false;
+            }, DispatcherPriority.Background);
         }, DispatcherPriority.Background);
+    }
+
+    private void SetConversationOffsetToBottom()
+    {
+        if (_conversationScroller is null) return;
+        var bottomOffset = Math.Max(
+            0,
+            _conversationScroller.Extent.Height - _conversationScroller.Viewport.Height);
+        _conversationScroller.Offset = new Vector(
+            _conversationScroller.Offset.X,
+            bottomOffset);
     }
 
     private void AttachConversationScroller()
@@ -81,15 +113,38 @@ public sealed partial class ChatArea : UserControl
         _conversationScroller.ScrollChanged += ConversationScrollChanged;
     }
 
+    private void QueueAttachConversationScroller()
+    {
+        // The ListBox's ScrollViewer is created by its template. Retry after
+        // layout so the control is available even when the view is initially
+        // loaded before the template or session content is realized.
+        Dispatcher.UIThread.Post(AttachConversationScroller, DispatcherPriority.Loaded);
+    }
+
     private void ConversationScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
+        if (_conversationScroller is null) return;
+        var distanceFromBottom = _conversationScroller.Extent.Height
+            - _conversationScroller.Viewport.Height
+            - _conversationScroller.Offset.Y;
+        var atBottom = distanceFromBottom <= 32;
         if (!_scrollingToEnd && Math.Abs(e.OffsetDelta.Y) > 0.1 && _conversationScroller is not null)
         {
-            _followTail = _conversationScroller.Extent.Height
-                - _conversationScroller.Viewport.Height
-                - _conversationScroller.Offset.Y <= 32;
+            _followTail = atBottom;
         }
+        ScrollToBottomButton.IsVisible = !atBottom && distanceFromBottom > 1;
         if (_followTail && e.ExtentDelta.Y > 0.1) QueueScrollToEnd();
+    }
+
+    private void ScrollToBottom(object? sender, RoutedEventArgs e)
+    {
+        _followTail = true;
+        _forceScrollPending = true;
+        ScrollToBottomButton.IsVisible = false;
+        AttachConversationScroller();
+        SetConversationOffsetToBottom();
+        Dispatcher.UIThread.Post(SetConversationOffsetToBottom, DispatcherPriority.Loaded);
+        QueueScrollToEnd();
     }
 
     private void ConversationSelectionChanged(object? sender, SelectionChangedEventArgs e)

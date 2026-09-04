@@ -123,6 +123,11 @@ const paths = {
       <path d="M12 19V5M6 11l6-6 6 6" />
     </>
   ),
+  "arrow-down": (
+    <>
+      <path d="M12 5v14M6 13l6 6 6-6" />
+    </>
+  ),
   check: <path d="m5 12 4 4L19 6" />,
   workspace: (
     <>

@@ -853,6 +853,8 @@ export function ConversationPanel({
   const [copiedOverflowMessage, setCopiedOverflowMessage] = useState(false);
   const [visibleToolOutputLines, setVisibleToolOutputLines] = useState(0);
   const [overflowActionStyle, setOverflowActionStyle] = useState(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(state === "scrolled-up");
+  const conversationScrollRef = useRef(null);
   const attachmentInputRef = useRef(null);
   const localAttachmentUrls = useRef(new Set());
   const copyResetTimerRef = useRef(null);
@@ -865,6 +867,13 @@ export function ConversationPanel({
   const compacted = state === "context-compacted";
   const inputTooLong = state === "input-too-long";
   const turnActive = updating || thinking;
+  const scrollToBottom = () => {
+    conversationScrollRef.current?.scrollTo({
+      top: conversationScrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+    setShowScrollToBottom(false);
+  };
   const toolCalls =
     state === "long-tool-call"
       ? longConversationToolCalls
@@ -1006,6 +1015,16 @@ export function ConversationPanel({
       )}
       {hasContent && (
         <>
+          <div
+            ref={conversationScrollRef}
+            className="workspace-conversation-scroll"
+            onScroll={(event) => {
+              const element = event.currentTarget;
+              setShowScrollToBottom(
+                element.scrollHeight - element.clientHeight - element.scrollTop > 32,
+              );
+            }}
+          >
           <div className={inputTooLong ? "workspace-message-overflow-row" : undefined}>
             <div className="workspace-message workspace-message-user">
               {sentAttachments.length > 0 && (
@@ -1135,6 +1154,18 @@ export function ConversationPanel({
               <i />
               <i />
             </div>
+          )}
+          </div>
+          {showScrollToBottom && (
+            <button
+              type="button"
+              className="workspace-scroll-to-bottom"
+              onClick={scrollToBottom}
+              aria-label="Scroll to bottom"
+              title="Scroll to bottom"
+            >
+              <Icon name="arrow-down" size={14} />
+            </button>
           )}
         </>
       )}

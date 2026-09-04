@@ -37,6 +37,22 @@
     <Style Selector="ListBox.conversation ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="Transparent" />
     </Style>
+    <Style Selector="ListBox.conversation ScrollBar:vertical">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="MinWidth" Value="10" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.conversation ScrollBar:vertical /template/ Thumb">
+      <Setter Property="Width" Value="6" />
+      <Setter Property="MinWidth" Value="6" />
+      <Setter Property="Background" Value="{DynamicResource BorderStrongBrush}" />
+      <Setter Property="Opacity" Value="0.58" />
+    </Style>
+    <Style Selector="ListBox.conversation ScrollBar:vertical:pointerover /template/ Thumb">
+      <Setter Property="Background" Value="{DynamicResource TextMutedBrush}" />
+      <Setter Property="Opacity" Value="0.72" />
+    </Style>
     <Style Selector="Ellipse.running-dot">
       <Setter Property="Width" Value="5" />
       <Setter Property="Height" Value="5" />
@@ -48,6 +64,22 @@
     </Style>
     <Style Selector="Button.view-more:pointerover TextBlock">
       <Setter Property="TextDecorations" Value="Underline" />
+    </Style>
+    <Style Selector="Button.scroll-to-bottom">
+      <Setter Property="Width" Value="30" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="MinWidth" Value="30" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Padding" Value="7" />
+      <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="15" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.scroll-to-bottom:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
     </Style>
   </UserControl.Styles>
 
@@ -192,6 +224,26 @@
         <Ellipse Classes="running-dot" IsVisible="{Binding IsTurnIndicatorDots}" />
         <Ellipse Classes="running-dot" IsVisible="{Binding IsTurnIndicatorDots}" />
       </StackPanel>
+      <Button x:Name="ScrollToBottomButton"
+              Classes="scroll-to-bottom"
+              ZIndex="3"
+              Margin="0,0,30,124"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Bottom"
+              IsVisible="False"
+              Click="ScrollToBottom"
+              ToolTip.Tip="Scroll to bottom"
+              AutomationProperties.Name="Scroll to bottom">
+        <svg:Svg Width="14"
+                 Height="14"
+                 Path="/Assets/icons/chevron-right.svg"
+                 Css="{DynamicResource IconSvgCss}"
+                 RenderTransformOrigin="50%,50%">
+          <svg:Svg.RenderTransform>
+            <RotateTransform Angle="90" />
+          </svg:Svg.RenderTransform>
+        </svg:Svg>
+      </Button>
       <TextBlock x:Name="ConversationAnnouncement" IsVisible="False" AutomationProperties.LiveSetting="Polite" />
 
       <StackPanel ZIndex="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding IsSessionLoadingVisible}">

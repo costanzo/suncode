@@ -216,6 +216,25 @@ const conversationGuides = {
       ],
     },
   },
+  scrolledUp: {
+    tabs: {
+      actions: [
+        "Scroll up to review earlier messages in a long conversation.",
+        "Use the floating down-arrow control to return to the newest message.",
+        "Continue reading from the bottom without manually dragging the scrollbar.",
+      ],
+      style: [
+        "The return-to-bottom control is a compact circular button above the composer.",
+        "It uses the accent color sparingly and stays subordinate to the conversation content.",
+        "The control appears only while the conversation is scrolled away from its latest message.",
+      ],
+      logic: [
+        "The conversation viewport tracks whether the user is near the latest message.",
+        "New content follows the tail only while the user remains at the bottom.",
+        "Activating the control scrolls to the newest message and hides the control.",
+      ],
+    },
+  },
 };
 
 export function WorkspaceConversationPage() {
@@ -322,6 +341,13 @@ export function WorkspaceConversationPage() {
       description: "Click a running command to open its streaming output modal while the turn is still active.",
       side: "right",
       content: <ConversationPanel standalone state="live-tool-stream" />,
+    },
+    {
+      id: "scrolledUp",
+      title: "Scrolled up",
+      description: "Earlier messages are in view and the newest message is below the viewport.",
+      side: "left",
+      content: <ConversationPanel standalone state="scrolled-up" onViewChanges={viewChanges} />,
     },
   ];
   return (
