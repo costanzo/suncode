@@ -3,7 +3,45 @@
         xmlns:md="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia">
   <StyleInclude Source="avares://LiveMarkdown.Avalonia/Styles.axaml" />
   <Style Selector="md|MarkdownRenderer">
-    <Setter Property="MaxWidth" Value="760" />
+    <Setter Property="MaxWidth" Value="Infinity" />
+    <Style Selector="^ Border.Table">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="ClipToBounds" Value="True" />
+      <Setter Property="Margin" Value="0,16" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="^ Border.TableCell">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,1,1" />
+      <Setter Property="Padding" Value="11,9" />
+      <Style Selector="^ md|MarkdownTextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="LineHeight" Value="19" />
+      </Style>
+    </Style>
+    <Style Selector="^ Border.TableCell.Header">
+      <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,1,1" />
+      <Style Selector="^ md|MarkdownTextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="LineHeight" Value="17" />
+        <Setter Property="FontWeight" Value="Bold" />
+      </Style>
+    </Style>
+    <Style Selector="^ md|MarkdownTableGrid">
+      <Setter Property="ColumnSpacing" Value="0" />
+      <Setter Property="RowSpacing" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="MinWidth" Value="520" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
   </Style>
   <Style Selector="md|MarkdownTextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
@@ -68,7 +106,7 @@
   <Style Selector="md|MarkdownTableGrid">
     <Setter Property="ColumnSpacing" Value="0" />
     <Setter Property="RowSpacing" Value="0" />
-    <Setter Property="Margin" Value="0,10" />
+    <Setter Property="Margin" Value="0" />
   </Style>
   <Style Selector="Border.QuoteBlock">
     <Setter Property="Background" Value="{DynamicResource AccentSurfaceBrush}" />
@@ -80,6 +118,6 @@
   <Style Selector="Border.TableCell">
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
     <Setter Property="BorderThickness" Value="0,0,1,1" />
-    <Setter Property="Padding" Value="9,7" />
+    <Setter Property="Padding" Value="11,9" />
   </Style>
 </Styles>

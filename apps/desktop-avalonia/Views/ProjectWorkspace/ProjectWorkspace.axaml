@@ -92,19 +92,6 @@
                      MaxWidth="260"
                      IsVisible="{Binding HasSelectedSession}" />
           <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="2" Margin="0,0,6,0">
-            <Button Classes="titlebar" Width="26" Height="28" Click="OpenSurfaceMenu" ToolTip.Tip="Workspace panels" AutomationProperties.Name="Open workspace panel menu">
-              <svg:Svg Path="/Assets/icons/more-horizontal.svg" Css="{DynamicResource IconSvgCss}" />
-              <Button.Flyout>
-                <MenuFlyout>
-                  <MenuItem Header="Sessions" Click="ToggleNavigation" />
-                  <MenuItem Header="Explorer" Click="ToggleExplorer" />
-                  <Separator />
-                  <MenuItem Header="Review" Click="ToggleReview" />
-                  <MenuItem Header="Source control" Click="ToggleGit" />
-                  <MenuItem Header="Provider trace" Click="ToggleProviderTrace" />
-                </MenuFlyout>
-              </Button.Flyout>
-            </Button>
             <Button Classes="titlebar" Width="26" Height="28" Click="OpenSettings" ToolTip.Tip="Open settings" AutomationProperties.Name="Open settings">
               <svg:Svg Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
@@ -305,5 +292,51 @@
                    Foreground="{DynamicResource TextSecondaryBrush}" />
       </Grid>
     </controls:SCModal>
+
+    <controls:SCModal x:Name="LongUserMessageModal"
+                      DialogWidth="860"
+                      IsOpen="False"
+                      Title="Message"
+                      PrimaryButtonText=""
+                      HidePrimaryButton="True"
+                      SecondaryButtonText="Close"
+                      SecondaryAction="CloseLongUserMessage"
+                      CloseRequested="CloseLongUserMessage">
+      <Grid RowDefinitions="*,Auto" Height="620" Margin="0,4,0,0">
+        <Border Background="{DynamicResource FieldBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="18">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <SelectableTextBlock x:Name="LongUserMessageText"
+                                 FontSize="14"
+                                 LineHeight="22"
+                                 TextWrapping="Wrap" />
+          </ScrollViewer>
+        </Border>
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Margin="0,8,0,0">
+          <Button x:Name="LongUserMessageCopyButton"
+                  Classes="quiet"
+                  Width="26"
+                  Height="26"
+                  MinHeight="26"
+                  Padding="5"
+                  Click="CopyLongUserMessage"
+                  ToolTip.Tip="Copy message"
+                  AutomationProperties.Name="Copy message">
+            <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
+          </Button>
+          <TextBlock x:Name="LongUserMessageCount"
+                     Grid.Column="1"
+                     Margin="8,0,0,0"
+                     VerticalAlignment="Center"
+                     Classes="mono"
+                     FontSize="11"
+                     Foreground="{DynamicResource TextSecondaryBrush}" />
+        </Grid>
+      </Grid>
+    </controls:SCModal>
+    <TextBlock x:Name="LongUserMessageAnnouncement" IsVisible="False" AutomationProperties.LiveSetting="Polite" />
   </Grid>
 </UserControl>

@@ -66,6 +66,37 @@ public sealed class SessionSnapshotProjectionTests
     }
 
     [Fact]
+    public void LongUserMessagesExposeAClampedPreviewWithoutChangingCanonicalText()
+    {
+        var text = string.Join("\n", Enumerable.Range(1, 7).Select(index => $"Line {index}: review the conversation layout and preserve the existing behavior."));
+        var message = new MessageItem
+        {
+            Role = "user",
+            Text = text,
+            ContentSequence = 1
+        };
+
+        Assert.True(message.IsLongUserMessage);
+        Assert.EndsWith("...", message.UserPreviewText);
+        Assert.Equal(text, message.Text);
+        Assert.Equal(5, message.UserPreviewText.Split('\n').Length);
+    }
+
+    [Fact]
+    public void ShortUserMessagesKeepTheirFullPreview()
+    {
+        var message = new MessageItem
+        {
+            Role = "user",
+            Text = "Short prompt",
+            ContentSequence = 1
+        };
+
+        Assert.False(message.IsLongUserMessage);
+        Assert.Equal(message.Text, message.UserPreviewText);
+    }
+
+    [Fact]
     public void ApprovalItemFormatsShellRequestsForReview()
     {
         var payload = JsonNode.Parse("""

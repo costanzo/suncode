@@ -4,6 +4,7 @@
              xmlns:vm="using:SunCode.Desktop.ViewModels"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              xmlns:controls="using:SunCode.Desktop.Controls"
+             xmlns:documents="using:Avalonia.Controls.Documents"
              xmlns:chat="using:SunCode.Desktop.Views.ProjectWorkspace.Chat"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Chat.ChatArea"
              x:DataType="vm:DesktopViewModel">
@@ -28,6 +29,7 @@
       <Setter Property="Padding" Value="0" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
     <Style Selector="ListBox.conversation ListBoxItem:pointerover">
       <Setter Property="Background" Value="Transparent" />
@@ -40,13 +42,20 @@
       <Setter Property="Height" Value="5" />
       <Setter Property="Fill" Value="{DynamicResource TextMutedBrush}" />
     </Style>
+    <Style Selector="Button.view-more:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.view-more:pointerover TextBlock">
+      <Setter Property="TextDecorations" Value="Underline" />
+    </Style>
   </UserControl.Styles>
 
   <Border Classes="workspace-card" ClipToBounds="True">
     <Grid>
       <ListBox x:Name="ConversationList"
                       Classes="conversation"
-                      Margin="24,18,24,128"
+                      Margin="0,0,0,0"
                       ItemsSource="{Binding Messages}"
                       HorizontalAlignment="Stretch"
                       SelectionMode="Single"
@@ -60,7 +69,7 @@
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
           <DataTemplate x:DataType="models:MessageItem">
-            <Grid MaxWidth="780" Margin="12,8" HorizontalAlignment="Stretch" IsVisible="{Binding IsVisible}">
+            <Grid Margin="12,8" HorizontalAlignment="Stretch" IsVisible="{Binding IsVisible}">
               <Border IsVisible="{Binding IsUser}" HorizontalAlignment="Right" MaxWidth="480" Padding="12,10" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="8">
                   <ItemsControl ItemsSource="{Binding Attachments}" IsVisible="{Binding HasAttachments}">
@@ -73,11 +82,36 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <SelectableTextBlock Text="{Binding Text}" FontSize="12" TextWrapping="Wrap" LineHeight="19" />
+                  <SelectableTextBlock Text="{Binding Text}"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       LineHeight="19"
+                                       IsVisible="{Binding !IsLongUserMessage}" />
+                  <TextBlock FontSize="12"
+                             TextWrapping="Wrap"
+                             LineHeight="19"
+                             MaxHeight="114"
+                             IsVisible="{Binding IsLongUserMessage}">
+                    <Run Text="{Binding UserPreviewText}" />
+                    <documents:InlineUIContainer>
+                      <Button Classes="quiet view-more"
+                              Padding="0"
+                              Margin="8,0,0,0"
+                              VerticalAlignment="Center"
+                              Click="ViewLongUserMessage"
+                              ToolTip.Tip="View full message"
+                              AutomationProperties.Name="View full message">
+                        <TextBlock Text="View more"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}" />
+                      </Button>
+                    </documents:InlineUIContainer>
+                  </TextBlock>
                 </StackPanel>
               </Border>
 
-              <StackPanel IsVisible="{Binding IsProcess}" MaxWidth="620" HorizontalAlignment="Left" Spacing="5">
+              <StackPanel IsVisible="{Binding IsProcess}" HorizontalAlignment="Stretch" Spacing="5">
                 <Border IsVisible="{Binding IsCompaction}"
                         Padding="10,8"
                         Background="{DynamicResource SurfaceRaisedBrush}"
@@ -137,7 +171,7 @@
                 </StackPanel>
               </StackPanel>
 
-              <StackPanel IsVisible="{Binding IsFinalAssistant}" MaxWidth="610" HorizontalAlignment="Left" Spacing="4">
+              <StackPanel IsVisible="{Binding IsFinalAssistant}" HorizontalAlignment="Stretch" Spacing="4">
                 <Grid>
                   <controls:MarkdownText Markdown="{Binding Text}" FontSize="14" HorizontalAlignment="Stretch" />
                 </Grid>

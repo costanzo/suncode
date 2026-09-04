@@ -1482,38 +1482,6 @@ select.field {
   justify-self: end;
   gap: 2px;
 }
-.workspace-surface-menu-anchor {
-  position: relative;
-}
-.workspace-surface-menu {
-  position: absolute;
-  z-index: 20;
-  top: 32px;
-  right: 0;
-  display: grid;
-  width: 156px;
-  padding: 4px;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-popover);
-}
-.workspace-surface-menu button {
-  min-height: 30px;
-  padding: 0 9px;
-  color: var(--text-secondary);
-  background: transparent;
-  border: 0;
-  border-radius: 4px;
-  text-align: left;
-  font-size: 11px;
-}
-.workspace-surface-menu button:hover,
-.workspace-surface-menu button:focus-visible {
-  color: var(--text);
-  background: var(--surface-hover);
-  outline: 0;
-}
 .workspace-project-title {
   position: absolute;
   left: 90px;
@@ -2315,34 +2283,41 @@ select.field {
   max-width: 100%;
 }
 .workspace-message-overflow-row .workspace-message-user {
-  position: relative;
   min-width: 0;
-  padding-right: 40px;
 }
-.workspace-message-overflow-text {
+.workspace-message-overflow-content {
+  position: relative;
   display: -webkit-box;
+  padding-right: 62px;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
   line-clamp: 5;
+}
+.workspace-message-overflow-text {
+  display: inline;
   white-space: pre-line;
 }
 .workspace-message-view-more {
-  display: grid;
+  display: inline-grid;
   position: absolute;
-  right: 10px;
-  bottom: 8px;
-  width: 24px;
-  height: 24px;
+  width: max-content;
+  min-width: 52px;
+  height: 18px;
+  margin: 0;
+  padding: 0 2px;
   place-items: center;
-  padding: 0;
   color: var(--accent);
   background: transparent;
   border: 0;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 18px;
   white-space: nowrap;
 }
 .workspace-message-view-more:hover {
   color: var(--accent-hover);
+  text-decoration: underline;
 }
 .workspace-message-view-more:focus-visible {
   box-shadow: var(--focus-ring);

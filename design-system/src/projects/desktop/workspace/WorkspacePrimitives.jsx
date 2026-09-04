@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "../../../components/universal/button/index.js";
 import { ModelDropdown, SingleDropdown } from "../../../components/universal/dropdown/index.js";
 import { Modal } from "../../../components/universal/modal/index.js";
@@ -852,10 +852,12 @@ export function ConversationPanel({
   const [copiedResponse, setCopiedResponse] = useState(false);
   const [copiedOverflowMessage, setCopiedOverflowMessage] = useState(false);
   const [visibleToolOutputLines, setVisibleToolOutputLines] = useState(0);
+  const [overflowActionStyle, setOverflowActionStyle] = useState(null);
   const attachmentInputRef = useRef(null);
   const localAttachmentUrls = useRef(new Set());
   const copyResetTimerRef = useRef(null);
   const overflowCopyResetTimerRef = useRef(null);
+  const overflowTextRef = useRef(null);
   const hasSession = state !== "no-session";
   const hasContent = state !== "new-session" && hasSession;
   const updating = state === "content-updating" || state === "live-tool-stream";
@@ -931,6 +933,35 @@ export function ConversationPanel({
     }, 540);
     return () => window.clearInterval(intervalId);
   }, [toolCalls, toolPreview, state]);
+  useLayoutEffect(() => {
+    if (!inputTooLong || !overflowTextRef.current) {
+      setOverflowActionStyle(null);
+      return undefined;
+    }
+    const textElement = overflowTextRef.current;
+    const container = textElement.parentElement;
+    if (!container) return undefined;
+
+    const updateActionPosition = () => {
+      const containerRect = container.getBoundingClientRect();
+      const visibleBottom = containerRect.bottom + 1;
+      const range = document.createRange();
+      range.selectNodeContents(textElement);
+      const lastVisibleRect = [...range.getClientRects()]
+        .filter((rect) => rect.width > 0 && rect.bottom <= visibleBottom)
+        .at(-1);
+      if (!lastVisibleRect) return;
+      setOverflowActionStyle({
+        left: `${Math.max(0, lastVisibleRect.right - containerRect.left + 10)}px`,
+        top: `${Math.max(0, lastVisibleRect.top - containerRect.top + (lastVisibleRect.height - 18) / 2)}px`,
+      });
+    };
+
+    updateActionPosition();
+    const observer = new ResizeObserver(updateActionPosition);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [inputTooLong]);
   const sendMessage = () => {
     if (!message.trim() && !attachments.length) return;
     if (attachments.length) setSentAttachments((current) => [...current, ...attachments]);
@@ -996,21 +1027,27 @@ export function ConversationPanel({
                   ))}
                 </div>
               )}
-              <span className={inputTooLong ? "workspace-message-overflow-text" : undefined}>
-                {inputTooLong
-                  ? overflowUserMessage
-                  : "Add the Workspace surface to the design system, but keep each major area independently reachable."}
-              </span>
               {inputTooLong && (
-                <button
-                  type="button"
-                  className="workspace-message-view-more"
-                  onClick={() => setOverflowMessageOpen(true)}
-                  aria-label="View full message"
-                  title="View full message"
-                >
-                  <Icon name="eye" size={14} />
-                </button>
+                <span className="workspace-message-overflow-content">
+                  <span ref={overflowTextRef} className="workspace-message-overflow-text">
+                    {overflowUserMessage}
+                  </span>
+                  <button
+                    type="button"
+                    className="workspace-message-view-more"
+                    style={overflowActionStyle ?? undefined}
+                    onClick={() => setOverflowMessageOpen(true)}
+                    aria-label="View full message"
+                    title="View full message"
+                  >
+                    View more
+                  </button>
+                </span>
+              )}
+              {!inputTooLong && (
+                <span>
+                  Add the Workspace surface to the design system, but keep each major area independently reachable.
+                </span>
               )}
             </div>
           </div>
@@ -2008,7 +2045,6 @@ export function WorkspaceWindow() {
   const [navigation, setNavigation] = useState("sessions");
   const [reviewVisible, setReviewVisible] = useState(true);
   const [drawer, setDrawer] = useState(null);
-  const [surfaceMenuOpen, setSurfaceMenuOpen] = useState(false);
   const [archiveRequest, setArchiveRequest] = useState(null);
   const toggleDrawer = (next) => setDrawer((current) => (current === next ? null : next));
   return (
@@ -2018,36 +2054,6 @@ export function WorkspaceWindow() {
         <strong className="workspace-project-title">suncode</strong>
         <span>Workspace information architecture</span>
         <div className="workspace-titlebar-actions">
-          <div className="workspace-surface-menu-anchor">
-            <IconButton
-              icon="more"
-              label="Open workspace panel menu"
-              onClick={() => setSurfaceMenuOpen((open) => !open)}
-            />
-            {surfaceMenuOpen && (
-              <div className="workspace-surface-menu" role="menu" aria-label="Workspace panels">
-                {[
-                  ["Sessions", () => setNavigation("sessions")],
-                  ["Explorer", () => setNavigation("explorer")],
-                  ["Review", () => setReviewVisible(true)],
-                  ["Source control", () => setDrawer("git")],
-                  ["Provider trace", () => setDrawer("trace")],
-                ].map(([label, action]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      action();
-                      setSurfaceMenuOpen(false);
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           <IconButton
             icon="settings"
             label="Open settings"

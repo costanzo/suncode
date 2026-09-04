@@ -49,6 +49,9 @@ public sealed class SCModal : ContentControl
     public static readonly StyledProperty<bool> HideCloseProperty =
         AvaloniaProperty.Register<SCModal, bool>(nameof(HideClose));
 
+    public static readonly StyledProperty<bool> HidePrimaryButtonProperty =
+        AvaloniaProperty.Register<SCModal, bool>(nameof(HidePrimaryButton));
+
     public event EventHandler<RoutedEventArgs>? PrimaryAction;
     public event EventHandler<RoutedEventArgs>? SecondaryAction;
     public event EventHandler<RoutedEventArgs>? CloseRequested;
@@ -128,6 +131,12 @@ public sealed class SCModal : ContentControl
         set => SetValue(HideCloseProperty, value);
     }
 
+    public bool HidePrimaryButton
+    {
+        get => GetValue(HidePrimaryButtonProperty);
+        set => SetValue(HidePrimaryButtonProperty, value);
+    }
+
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
         base.OnApplyTemplate(e);
@@ -196,7 +205,8 @@ public sealed class SCModal : ContentControl
             || change.Property == PrimaryIsDangerProperty
             || change.Property == DescriptionProperty
             || change.Property == TitleProperty
-            || change.Property == HideCloseProperty)
+            || change.Property == HideCloseProperty
+            || change.Property == HidePrimaryButtonProperty)
         {
             SyncFocusState();
         }
@@ -304,6 +314,7 @@ public sealed class SCModal : ContentControl
         {
             _primaryButton.Classes.Set("danger", PrimaryIsDanger);
             _primaryButton.Classes.Set("primary", !PrimaryIsDanger);
+            _primaryButton.IsVisible = !HidePrimaryButton;
         }
 
         if (_closeButton is not null)

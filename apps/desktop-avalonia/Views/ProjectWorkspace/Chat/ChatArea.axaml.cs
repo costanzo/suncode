@@ -21,6 +21,7 @@ public sealed partial class ChatArea : UserControl
     private Control? _dialogReturnFocus;
 
     public event EventHandler? ExpandedComposerRequested;
+    public event Action<MessageItem>? LongUserMessageRequested;
 
     public ChatArea()
     {
@@ -107,6 +108,12 @@ public sealed partial class ChatArea : UserControl
     {
         if ((sender as Control)?.DataContext is MessageItem message)
             ViewModel.ToggleTurnProcess(message);
+    }
+
+    private void ViewLongUserMessage(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is MessageItem message)
+            LongUserMessageRequested?.Invoke(message);
     }
 
     private void OpenToolDetail(object? sender, RoutedEventArgs e)

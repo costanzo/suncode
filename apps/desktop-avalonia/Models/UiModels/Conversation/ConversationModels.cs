@@ -67,7 +67,16 @@ public sealed class MessageItem : ObservableObject, IDisposable
 
     public string MessageId { get => _messageId; set => SetProperty(ref _messageId, value); }
     public required string Role { get; init; }
-    public required string Text { get => _text; set => SetProperty(ref _text, value); }
+    public required string Text
+    {
+        get => _text;
+        set
+        {
+            if (!SetProperty(ref _text, value)) return;
+            OnPropertyChanged(nameof(IsLongUserMessage));
+            OnPropertyChanged(nameof(UserPreviewText));
+        }
+    }
     public required long ContentSequence { get; set; }
     public string TurnId { get; init; } = string.Empty;
     public string Kind { get; init; } = "message";
@@ -88,6 +97,21 @@ public sealed class MessageItem : ObservableObject, IDisposable
     public bool IsTool => Kind == "tool";
     public bool IsCompaction => Kind == "context.compacted";
     public string Author => IsUser ? "You" : "SunCode";
+    // Keep the timeline compact for unusually large submitted prompts while
+    // retaining the canonical text for the read-only detail dialog.
+    public bool IsLongUserMessage => IsUser && (Text.Length > 340 || Text.Count(c => c == '\n') >= 5);
+    public string UserPreviewText
+    {
+        get
+        {
+            if (!IsLongUserMessage) return Text;
+
+            var lines = Text.Replace("\r\n", "\n").Split('\n');
+            var preview = string.Join("\n", lines.Take(5));
+            if (preview.Length > 340) preview = preview[..340].TrimEnd();
+            return preview.TrimEnd() + "...";
+        }
+    }
     public bool IsVisible { get => _isVisible; set => SetProperty(ref _isVisible, value); }
     public bool IsProcess { get => _isProcess; set => SetProperty(ref _isProcess, value); }
     public bool IsFinalAssistant

@@ -1,8 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using SvgControl = Avalonia.Svg.Skia.Svg;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
@@ -19,11 +22,13 @@ public sealed partial class ProjectWorkspace : UserControl
     private double _layoutResizeStartReviewWidth;
     private double _layoutResizeStartBottomHeight;
     private string _expandedComposerDraft = string.Empty;
+    private MessageItem? _longUserMessage;
 
     public ProjectWorkspace()
     {
         InitializeComponent();
         ChatArea.ExpandedComposerRequested += ShowExpandedComposer;
+        ChatArea.LongUserMessageRequested += ShowLongUserMessage;
     }
 
     private WorkspaceWindow? Owner => TopLevel.GetTopLevel(this) as WorkspaceWindow;
@@ -61,6 +66,12 @@ public sealed partial class ProjectWorkspace : UserControl
         if (DependencyDeleteDialogModal.IsOpen)
         {
             HideDependencyDeleteDialog();
+            return true;
+        }
+
+        if (LongUserMessageModal.IsOpen)
+        {
+            HideLongUserMessage();
             return true;
         }
 
@@ -126,11 +137,6 @@ public sealed partial class ProjectWorkspace : UserControl
 
     private void ToggleReview(object? sender, RoutedEventArgs e) =>
         ViewModel.ReviewVisible = !ViewModel.ReviewVisible;
-
-    private void OpenSurfaceMenu(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Button { Flyout: { } flyout } button) flyout.ShowAt(button);
-    }
 
     internal void ToggleGitViewer()
     {
@@ -259,6 +265,45 @@ public sealed partial class ProjectWorkspace : UserControl
     {
         DependencyDeleteDialogModal.IsOpen = false;
         _pendingDependencyDeletion = null;
+    }
+
+    private void ShowLongUserMessage(MessageItem message)
+    {
+        _longUserMessage = message;
+        LongUserMessageText.Text = message.Text;
+        LongUserMessageCount.Text = $"{message.Text.Length} characters";
+        LongUserMessageModal.IsOpen = true;
+        Dispatcher.UIThread.Post(() => LongUserMessageCopyButton.Focus(), DispatcherPriority.Input);
+    }
+
+    private void CloseLongUserMessage(object? sender, RoutedEventArgs e) => HideLongUserMessage();
+
+    private void HideLongUserMessage()
+    {
+        LongUserMessageModal.IsOpen = false;
+        _longUserMessage = null;
+    }
+
+    private async void CopyLongUserMessage(object? sender, RoutedEventArgs e)
+    {
+        if (_longUserMessage is null || TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard) return;
+        await clipboard.SetTextAsync(_longUserMessage.Text);
+        LongUserMessageAnnouncement.Text = "Message copied to clipboard";
+        if (sender is not Button button) return;
+        ToolTip.SetTip(button, "Copied");
+        if (button.GetVisualDescendants().OfType<SvgControl>().FirstOrDefault() is { } icon)
+        {
+            icon.Path = "/Assets/icons/check.svg";
+            SvgControl.SetCss(icon, this.FindResource("CopySuccessSvgCss") as string);
+        }
+        await Task.Delay(1400);
+        ToolTip.SetTip(button, "Copy message");
+        LongUserMessageAnnouncement.Text = string.Empty;
+        if (button.GetVisualDescendants().OfType<SvgControl>().FirstOrDefault() is { } resetIcon)
+        {
+            resetIcon.Path = "/Assets/icons/copy.svg";
+            SvgControl.SetCss(resetIcon, this.FindResource("IconSvgCss") as string);
+        }
     }
 
     private void ShowExpandedComposer(object? sender, EventArgs e)

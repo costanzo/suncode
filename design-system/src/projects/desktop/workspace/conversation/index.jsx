@@ -143,12 +143,12 @@ const conversationGuides = {
     tabs: {
       actions: [
         "Read the first five lines of the long user message in the conversation timeline.",
-        "Choose the eye icon to inspect the complete message without editing it.",
+        "Choose View more to inspect the complete message without editing it.",
         "Use the copy control in the read-only dialog to copy the full message text.",
       ],
       style: [
         "Long user messages are clamped to five lines and use an ellipsis to preserve the timeline rhythm.",
-        "A small eye icon sits inside the message bubble immediately after the truncated ellipsis as the only expansion affordance.",
+        "View more sits inside the message bubble immediately after the truncated ellipsis as the only expansion affordance.",
         "The full-message dialog uses the expanded composer surface language with read-only text and a left-aligned character count.",
       ],
       logic: [
