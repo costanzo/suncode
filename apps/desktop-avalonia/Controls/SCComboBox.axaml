@@ -21,15 +21,28 @@
         </DataTemplate>
       </ComboBox.ItemTemplate>
     </ComboBox>
+    <TextBlock x:Name="FlatLabel"
+               IsVisible="False"
+               IsHitTestVisible="False"
+               Margin="8,0,28,0"
+               VerticalAlignment="Center"
+               Text="{Binding DisplayText, ElementName=Root}"
+               TextTrimming="CharacterEllipsis"
+               Foreground="{DynamicResource TextSecondaryBrush}" />
 
     <Button x:Name="GroupedButton"
             Classes="sc-button sc-combo-trigger"
+            HorizontalContentAlignment="Stretch"
+            Foreground="{DynamicResource TextBrush}"
             IsVisible="False"
             Click="OpenGroupedMenu">
       <Grid ColumnDefinitions="*,12"
             ColumnSpacing="6">
         <TextBlock x:Name="GroupedLabel"
-                   Foreground="{DynamicResource TextSecondaryBrush}"
+                   Text="{Binding DisplayText, ElementName=Root}"
+                   Foreground="{DynamicResource TextBrush}"
+                   MinWidth="1"
+                   FontSize="10"
                    VerticalAlignment="Center"
                    HorizontalAlignment="Stretch"
                    TextTrimming="CharacterEllipsis" />

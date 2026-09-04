@@ -2744,6 +2744,35 @@ select.field {
 .workspace-composer textarea::placeholder {
   color: var(--text-muted);
 }
+.workspace-composer-status {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  left: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 18px;
+  color: var(--warning);
+  font-size: 10px;
+}
+.workspace-composer-status strong {
+  font-weight: 600;
+}
+.workspace-composer-status span {
+  color: var(--text-muted);
+}
+.workspace-composer textarea:disabled {
+  padding-top: 20px;
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+.workspace-composer:has(textarea:disabled) {
+  border-color: var(--warning-border);
+}
+.workspace-composer:has(textarea:disabled) .workspace-composer-options {
+  opacity: 0.72;
+}
 .dialog-window-content {
   display: grid;
   align-content: start;

@@ -866,6 +866,7 @@ export function ConversationPanel({
   const thinking = state === "content-thinking";
   const compacted = state === "context-compacted";
   const inputTooLong = state === "input-too-long";
+  const modelUnavailable = state === "model-unavailable";
   const turnActive = updating || thinking;
   const scrollToBottom = () => {
     conversationScrollRef.current?.scrollTo({
@@ -1197,11 +1198,17 @@ export function ConversationPanel({
               ))}
             </div>
           )}
+          {modelUnavailable && (
+            <div className="workspace-composer-status" role="status">
+              <span>Configure an API key in Settings to send messages.</span>
+            </div>
+          )}
           <textarea
             value={message}
             onChange={(event) => setMessage(event.target.value)}
-            placeholder="Ask SunCode to work on this project"
+            placeholder={modelUnavailable ? "" : "Ask SunCode to work on this project"}
             aria-label="Message SunCode"
+            disabled={modelUnavailable}
           />
           <div className="workspace-composer-footer">
             <div className="workspace-composer-actions">
@@ -1227,6 +1234,7 @@ export function ConversationPanel({
                 aria-label="Open expanded composer"
                 title="Open expanded composer"
                 onClick={() => setComposerExpanded(true)}
+                disabled={modelUnavailable}
               >
                 <Icon name="expand" size={13} />
               </button>
@@ -1245,9 +1253,17 @@ export function ConversationPanel({
                 groups={
                   imageInputEnabled
                     ? [{ id: "specimen", label: "Specimen", models: ["vision-input specimen"] }]
+                    : modelUnavailable
+                      ? [{ id: "openai", label: "OpenAI", models: ["gpt-5.6-sol (needs key)"] }]
                     : workspaceModelGroups
                 }
-                initialValue={imageInputEnabled ? "vision-input specimen" : "gpt-5.6-sol"}
+                initialValue={
+                  imageInputEnabled
+                    ? "vision-input specimen"
+                    : modelUnavailable
+                      ? "gpt-5.6-sol (needs key)"
+                      : "gpt-5.6-sol"
+                }
                 className="workspace-model-dropdown"
               />
               <SingleDropdown
@@ -1261,7 +1277,7 @@ export function ConversationPanel({
                 className="workspace-send"
                 icon="arrow-up"
                 aria-label="Send message"
-                disabled={!message.trim() && !attachments.length}
+                disabled={modelUnavailable || (!message.trim() && !attachments.length)}
                 onClick={sendMessage}
               />
             </div>

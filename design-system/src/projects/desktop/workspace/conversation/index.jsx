@@ -42,6 +42,25 @@ const conversationGuides = {
       ],
     },
   },
+  modelUnavailable: {
+    tabs: {
+      actions: [
+        "Review the conversation history while the selected model remains unavailable.",
+        "Open Settings and add the provider API key before starting another turn.",
+        "Choose a configured model when one is available in the model menu.",
+      ],
+      style: [
+        "The composer stays visible but uses a quiet warning strip to explain why sending is disabled.",
+        "The textarea and send action use the disabled treatment without hiding the model selector.",
+        "The warning copy is compact and anchored to the composer rather than the message timeline.",
+      ],
+      logic: [
+        "The selected model does not have a stored provider API key.",
+        "Existing messages remain readable, but new submissions are blocked until a configured model is selected.",
+        "Model selection remains available so the user can switch models without leaving the conversation.",
+      ],
+    },
+  },
   waiting: {
     tabs: {
       actions: [
@@ -256,6 +275,13 @@ export function WorkspaceConversationPage() {
       description: "A session is ready for its first message.",
       side: "left",
       content: <ConversationPanel standalone state="new-session" />,
+    },
+    {
+      id: "modelUnavailable",
+      title: "Model unavailable",
+      description: "The selected provider has no API key, so new messages cannot be sent.",
+      side: "left",
+      content: <ConversationPanel standalone state="model-unavailable" onViewChanges={viewChanges} />,
     },
     {
       id: "waiting",

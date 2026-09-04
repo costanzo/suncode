@@ -159,6 +159,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
             OnPropertyChanged(nameof(HasSelectedSession));
             OnPropertyChanged(nameof(ComposerPlaceholder));
+            OnPropertyChanged(nameof(IsModelUnavailable));
         }
     }
 
@@ -186,6 +187,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(ReasoningEffortOptions));
                 OnPropertyChanged(nameof(CanAttachImages));
                 OnPropertyChanged(nameof(ComposerPlaceholder));
+                OnPropertyChanged(nameof(IsModelUnavailable));
             }
         }
     }
@@ -485,7 +487,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ? "Create a session first..."
         : SelectedModel is null
             ? "Choose a model first..."
-            : SelectedModel.Configured ? "Ask SunCode to work on this project" : "Store the selected provider's API key first...";
+            : SelectedModel.Configured ? "Ask SunCode to work on this project" : string.Empty;
+    public bool IsModelUnavailable => SelectedSession is not null && SelectedModel is not null && !SelectedModel.Configured;
     public GridLength NavigationWidth => EffectiveNavigationVisible ? new GridLength(NavigationPaneWidth) : new GridLength(0);
     public GridLength ReviewWidth => EffectiveReviewVisible ? new GridLength(ReviewPaneWidth) : new GridLength(0);
     public GridLength GitFileListWidth => new(Math.Min(260, Math.Max(230, (_layoutWidth - 80) * 0.24)));

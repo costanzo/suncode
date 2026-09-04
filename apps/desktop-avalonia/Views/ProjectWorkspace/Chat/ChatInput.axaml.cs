@@ -11,6 +11,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using SunCode.Desktop.Controls;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
@@ -25,6 +26,8 @@ public sealed partial class ChatInput : UserControl
     private const long MaxImagePixels = 50_000_000;
     private DesktopViewModel? _subscribedViewModel;
     private string _expandedDraft = string.Empty;
+    private bool _selectorRefreshQueued;
+    private bool _selectorRefreshInProgress;
 
     /// <summary>
     /// Raised when the expanded composer should be shown. The modal itself is
@@ -297,23 +300,38 @@ public sealed partial class ChatInput : UserControl
     }
 
     private void ModelDataChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
-        RefreshSelectors();
+        QueueRefreshSelectors();
 
     private void ViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(DesktopViewModel.SelectedModel) or nameof(DesktopViewModel.SelectedReasoningEffort))
         {
-            RefreshSelectors();
+            QueueRefreshSelectors();
         }
+    }
+
+    private void QueueRefreshSelectors()
+    {
+        if (_selectorRefreshQueued) return;
+        _selectorRefreshQueued = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _selectorRefreshQueued = false;
+            RefreshSelectors();
+        }, DispatcherPriority.Background);
     }
 
     private void RefreshSelectors()
     {
+        if (_selectorRefreshInProgress) return;
         if (DataContext is not DesktopViewModel viewModel)
         {
             return;
         }
 
+        _selectorRefreshInProgress = true;
+        try
+        {
         var groups = viewModel.Providers
             .Select(provider => new SCComboBoxGroup(
                 provider.DisplayName,
@@ -331,5 +349,10 @@ public sealed partial class ChatInput : UserControl
             .ToArray();
         ReasoningSelector.ItemsSource = effortItems;
         ReasoningSelector.SelectedItem = effortItems.FirstOrDefault(item => Equals(item.Value, viewModel.SelectedReasoningEffort));
+        }
+        finally
+        {
+            _selectorRefreshInProgress = false;
+        }
     }
 }

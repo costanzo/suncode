@@ -38,6 +38,7 @@ public sealed partial class SCComboBox : UserControl
     {
         InitializeComponent();
         FlatCombo.SelectionChanged += FlatSelectionChanged;
+        Loaded += (_, _) => SyncView();
         SyncView();
     }
 
@@ -95,14 +96,18 @@ public sealed partial class SCComboBox : UserControl
 
     private void SyncView()
     {
-        if (FlatCombo is null || GroupedButton is null || GroupedLabel is null)
+        if (FlatCombo is null || GroupedButton is null || GroupedLabel is null || FlatLabel is null)
         {
             return;
         }
         FlatCombo.IsVisible = !IsHierarchical;
+        FlatLabel.IsVisible = !IsHierarchical;
         GroupedButton.IsVisible = IsHierarchical;
-        FlatCombo.ItemsSource = ItemsSource;
-        FlatCombo.SelectedItem = SelectedItem;
+        if (!IsHierarchical)
+        {
+            FlatCombo.ItemsSource = ItemsSource;
+            FlatCombo.SelectedItem = SelectedItem;
+        }
 
         FlatCombo.Classes.Set("mono", UseMonospace);
         GroupedLabel.Classes.Set("mono", UseMonospace);
@@ -191,6 +196,10 @@ public sealed partial class SCComboBox : UserControl
         _displayText = SelectedItem?.Label ?? PlaceholderText ?? string.Empty;
         RaisePropertyChanged(DisplayTextProperty, previousText, _displayText);
         GroupedLabel.Text = _displayText;
+        FlatLabel.Text = _displayText;
+        FlatLabel.Foreground = SelectedItem is null
+            ? this.FindResource("TextMutedBrush") as Avalonia.Media.IBrush
+            : this.FindResource("TextBrush") as Avalonia.Media.IBrush;
         GroupedLabel.Foreground = SelectedItem is null
             ? this.FindResource("TextMutedBrush") as Avalonia.Media.IBrush
             : this.FindResource("TextBrush") as Avalonia.Media.IBrush;

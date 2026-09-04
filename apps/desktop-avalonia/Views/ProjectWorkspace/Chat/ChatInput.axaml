@@ -23,6 +23,36 @@
       <Setter Property="VerticalContentAlignment" Value="Top" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
+    <Style Selector="TextBox.composer-input.unavailable">
+      <Setter Property="Margin" Value="0,20,0,0" />
+    </Style>
+    <Style Selector="TextBox.composer-input:disabled">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="TextBox.composer-input:disabled /template/ Border">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.quiet:disabled /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.composer-surface">
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    </Style>
+    <Style Selector="Border.composer-surface.unavailable">
+      <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}" />
+    </Style>
+    <Style Selector="TextBlock.composer-status">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+    </Style>
     <Style Selector="Button.composer-option">
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
@@ -117,16 +147,23 @@
     </ItemsControl.ItemTemplate>
     </ItemsControl>
 
-    <Border Margin="24,14,24,10"
+    <Border Classes="composer-surface" Classes.unavailable="{Binding IsModelUnavailable}"
+          Margin="24,14,24,10"
           Padding="16,12,12,10"
           CornerRadius="16"
           Background="{DynamicResource ComposerBrush}"
-          BorderBrush="{DynamicResource BorderStrongBrush}"
           BorderThickness="1"
           BoxShadow="0 6 14 0 #57000000">
     <Grid RowDefinitions="*,Auto" ColumnDefinitions="*,Auto">
+      <TextBlock Grid.Row="0"
+                 Grid.ColumnSpan="2"
+                 Classes="composer-status"
+                 Text="Configure an API key in Settings to send messages."
+                 IsVisible="{Binding IsModelUnavailable}"
+                 VerticalAlignment="Top" />
       <TextBox x:Name="ComposerInput"
                Classes="composer-input"
+               Classes.unavailable="{Binding IsModelUnavailable}"
                Grid.Row="0"
                Grid.ColumnSpan="2"
                Text="{Binding ComposerText}"
