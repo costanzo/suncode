@@ -56,7 +56,9 @@ public sealed record ModelItem(
     IReadOnlyList<string>? ReasoningEfforts = null)
 {
     public bool Configured => Availability == "configured";
-    public string Display => Configured ? Id : $"{Id} (needs key)";
+    // Availability is represented by the composer state after selection; keep
+    // model names clean in dropdown options instead of appending status text.
+    public string Display => Id;
 }
 
 public sealed record CredentialItem(string Provider, bool Configured);

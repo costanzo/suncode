@@ -40,6 +40,7 @@ public sealed class SessionSnapshotProjectionTests
 
         Assert.Equal([deepSeekFlash, deepSeekPro], viewModel.ModelsForProvider(deepSeek.Id));
         Assert.Equal("DeepSeek (needs key)", deepSeek.Display);
+        Assert.Equal("deepseek-v4-flash", deepSeekFlash.Display);
         Assert.Equal([gpt], viewModel.ModelsForProvider(openAi.Id));
     }
 

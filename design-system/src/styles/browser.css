@@ -856,7 +856,7 @@ body {
   width: 136px;
 }
 .dropdown-menu-model {
-  width: min(390px, calc(100vw - 48px));
+  width: min(340px, calc(100vw - 48px));
 }
 .dropdown-menu-columns {
   display: grid;

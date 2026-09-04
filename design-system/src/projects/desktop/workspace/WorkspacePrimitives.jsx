@@ -1254,14 +1254,14 @@ export function ConversationPanel({
                   imageInputEnabled
                     ? [{ id: "specimen", label: "Specimen", models: ["vision-input specimen"] }]
                     : modelUnavailable
-                      ? [{ id: "openai", label: "OpenAI", models: ["gpt-5.6-sol (needs key)"] }]
+                      ? [{ id: "openai", label: "OpenAI", models: ["gpt-5.6-sol"] }]
                     : workspaceModelGroups
                 }
                 initialValue={
                   imageInputEnabled
                     ? "vision-input specimen"
                     : modelUnavailable
-                      ? "gpt-5.6-sol (needs key)"
+                      ? "gpt-5.6-sol"
                       : "gpt-5.6-sol"
                 }
                 className="workspace-model-dropdown"
