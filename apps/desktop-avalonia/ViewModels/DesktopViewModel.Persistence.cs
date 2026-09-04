@@ -268,6 +268,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         });
         Checkpoints.ReplaceAll(checkpoints);
         OnPropertyChanged(nameof(HasCheckpoints));
+        NotifyReviewPresentationChanged();
     }
 
     internal static SessionSnapshotProjection ProjectSnapshot(JsonObject snapshot)
@@ -428,6 +429,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ChangedPaths.ReplaceAll(projection.ChangedPaths);
         OnPropertyChanged(nameof(HasChangedPaths));
         OnPropertyChanged(nameof(TurnChangeSummary));
+        NotifyReviewPresentationChanged();
         CurrentTodos.ReplaceAll(projection.CurrentTodos);
         PendingApproval = projection.PendingApproval;
         PendingQuestion = projection.PendingQuestion;
@@ -606,6 +608,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 ChangedPaths.Add(path);
                 OnPropertyChanged(nameof(HasChangedPaths));
                 OnPropertyChanged(nameof(TurnChangeSummary));
+                NotifyReviewPresentationChanged();
                 pathAdded = true;
             }
         }
@@ -621,6 +624,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         {
             var state = payload.String("state");
             var turnId = payload.String("turn_id");
+            if (!string.IsNullOrWhiteSpace(turnId)) LastTurnId = turnId;
             if (state == "admitted")
             {
                 CurrentTodos.Clear();

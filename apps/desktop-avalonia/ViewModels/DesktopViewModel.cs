@@ -43,6 +43,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private string _composerText = string.Empty;
     private string _activeTurnId = string.Empty;
     private string _activeTurnState = string.Empty;
+    private string _lastTurnId = string.Empty;
     private string _themeMode = "light";
     private string _logLevel = "INFO";
     private string _logDirectory = string.Empty;
@@ -260,7 +261,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         get => _pendingApproval;
         private set
         {
-            if (SetProperty(ref _pendingApproval, value)) OnPropertyChanged(nameof(HasPendingApproval));
+            if (SetProperty(ref _pendingApproval, value))
+            {
+                OnPropertyChanged(nameof(HasPendingApproval));
+                NotifyReviewPresentationChanged();
+            }
         }
     }
 
@@ -269,7 +274,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         get => _pendingQuestion;
         private set
         {
-            if (SetProperty(ref _pendingQuestion, value)) OnPropertyChanged(nameof(HasPendingQuestion));
+            if (SetProperty(ref _pendingQuestion, value))
+            {
+                OnPropertyChanged(nameof(HasPendingQuestion));
+                NotifyReviewPresentationChanged();
+            }
         }
     }
 
@@ -290,8 +299,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public string StatusText { get => _statusText; private set => SetProperty(ref _statusText, value); }
     public void ReportPresentationError(string message) => StatusText = message;
     public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) OnPropertyChanged(nameof(CanSubmit)); } }
-    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); } } }
-    public string ActiveTurnState { get => _activeTurnState; private set { if (SetProperty(ref _activeTurnState, value)) { OnPropertyChanged(nameof(IsTurnCompacting)); OnPropertyChanged(nameof(IsTurnThinking)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(HasFailedTurn)); } } }
+    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); NotifyReviewPresentationChanged(); } } }
+    public string ActiveTurnState { get => _activeTurnState; private set { if (SetProperty(ref _activeTurnState, value)) { OnPropertyChanged(nameof(IsTurnCompacting)); OnPropertyChanged(nameof(IsTurnThinking)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(HasFailedTurn)); NotifyReviewPresentationChanged(); } } }
+    public string LastTurnId { get => _lastTurnId; private set => SetProperty(ref _lastTurnId, value); }
     public string ThemeMode { get => _themeMode; private set => SetProperty(ref _themeMode, value); }
     public string LogLevel { get => _logLevel; private set => SetProperty(ref _logLevel, value); }
     public string LogDirectory { get => _logDirectory; private set => SetProperty(ref _logDirectory, value); }
@@ -435,6 +445,16 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool IsTurnThinking => ActiveTurnState == "calling_model";
     public bool IsTurnIndicatorDots => IsTurnActive && !IsTurnThinking && !IsTurnCompacting;
     public bool HasFailedTurn => ActiveTurnState == "failed";
+    public string ReviewHeadingText => HasFailedTurn ? "Turn stopped" : IsTurnCompacting ? "Compacting context" : IsTurnActive ? "1 active process" : HasPendingApproval || HasPendingQuestion ? "Awaiting input" : "No active process";
+    public string ReviewStatusText => HasFailedTurn ? "Turn failed" : IsTurnCompacting ? "Compacting conversation context" : IsTurnActive ? "Agent running" : HasPendingApproval ? "Waiting for approval" : HasPendingQuestion ? "Waiting for answer" : "Agent idle";
+    public bool IsReviewIdle => !IsTurnActive && !HasPendingApproval && !HasPendingQuestion && !HasFailedTurn && !IsTurnCompacting;
+    public bool IsReviewRunning => IsTurnActive && !IsTurnCompacting && !HasFailedTurn;
+    public bool IsReviewCompacting => IsTurnCompacting;
+    public bool IsReviewApproval => HasPendingApproval;
+    public bool IsReviewQuestion => !HasPendingApproval && HasPendingQuestion;
+    public bool IsReviewFailed => HasFailedTurn;
+    public bool IsReviewChangesVisible => !IsReviewIdle && !IsReviewCompacting && !IsReviewFailed && (IsTurnActive || HasChangedPaths);
+    public bool IsReviewCheckpointVisible => IsReviewRunning && HasCheckpoints;
     public bool UseSystemCertificates { get => _useSystemCertificates; set => SetProperty(ref _useSystemCertificates, value); }
     public string CertificatePath { get => _certificatePath; set => SetProperty(ref _certificatePath, value); }
     public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && SelectedModel?.Configured == true && !HasSessionLoadError;
@@ -442,6 +462,20 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool CanChooseModel => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !HasSessionLoadError;
     public bool CanChooseReasoningEffort => CanCompose && SelectedModel?.SupportsReasoningEffort == true;
     public bool CanAttachImages => CanCompose && SelectedModel?.SupportsVision == true && !IsTurnActive;
+
+    private void NotifyReviewPresentationChanged()
+    {
+        OnPropertyChanged(nameof(ReviewHeadingText));
+        OnPropertyChanged(nameof(ReviewStatusText));
+        OnPropertyChanged(nameof(IsReviewIdle));
+        OnPropertyChanged(nameof(IsReviewRunning));
+        OnPropertyChanged(nameof(IsReviewCompacting));
+        OnPropertyChanged(nameof(IsReviewApproval));
+        OnPropertyChanged(nameof(IsReviewQuestion));
+        OnPropertyChanged(nameof(IsReviewFailed));
+        OnPropertyChanged(nameof(IsReviewChangesVisible));
+        OnPropertyChanged(nameof(IsReviewCheckpointVisible));
+    }
     public string ProjectTitle => SelectedProject?.DisplayName ?? "SunCode";
     public string SessionTitle => SelectedSession?.DisplayTitle ?? "No session selected";
     public string SessionTokenText => $"Session {CompactNumber(SessionTotalTokens)} tokens";

@@ -8,6 +8,17 @@
   <Border Classes="inspector-card">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled">
       <StackPanel Margin="12,14" Spacing="12">
+        <Grid ColumnDefinitions="*,Auto" MinHeight="24" Margin="0,0,0, -2">
+          <TextBlock Text="{Binding ReviewHeadingText}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <Ellipse Grid.Column="1" Width="7" Height="7" Classes="review-status-dot" Classes.running="{Binding IsReviewRunning}" Classes.compacting="{Binding IsReviewCompacting}" Classes.approval="{Binding IsReviewApproval}" Classes.question="{Binding IsReviewQuestion}" Classes.failed="{Binding IsReviewFailed}" VerticalAlignment="Center" ToolTip.Tip="{Binding ReviewStatusText}" />
+        </Grid>
+        <Border Padding="30,28" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="6" IsVisible="{Binding IsReviewIdle}">
+          <StackPanel Spacing="7" HorizontalAlignment="Center">
+            <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
+            <TextBlock Text="Agent is idle" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Text="Start a turn from the conversation composer." FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" />
+          </StackPanel>
+        </Border>
         <Border Padding="10" CornerRadius="6" Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="{Binding FullControlEnabled}">
           <Grid ColumnDefinitions="Auto,8,*,Auto">
             <svg:Svg Width="16" Height="16" Path="/Assets/icons/unlock.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
@@ -73,12 +84,14 @@
                     <ItemsControl ItemsSource="{Binding Options}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="models:QuestionOptionItem">
-                          <RadioButton Classes="compact" GroupName="QuestionOption" HorizontalContentAlignment="Left" Margin="0,0,0,4" Click="SelectQuestionOption" IsChecked="{Binding IsSelected, Mode=OneWay}" AutomationProperties.Name="{Binding Label}">
-                            <StackPanel Spacing="2">
-                              <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                              <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
-                            </StackPanel>
-                          </RadioButton>
+                          <Border Classes="question-option" Classes.selected="{Binding IsSelected}" Margin="0,0,0,4">
+                            <RadioButton Classes="compact" GroupName="QuestionOption" HorizontalContentAlignment="Left" Click="SelectQuestionOption" IsChecked="{Binding IsSelected, Mode=OneWay}" AutomationProperties.Name="{Binding Label}">
+                              <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding Label}" FontSize="10" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Description}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+                              </StackPanel>
+                            </RadioButton>
+                          </Border>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -93,8 +106,7 @@
             </Grid>
           </StackPanel>
         </Border>
-        <TextBlock Text="No pending approvals" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding !HasPendingApproval}" />
-        <Button Classes="raised" Padding="11" HorizontalContentAlignment="Stretch" Click="ViewTurnChanges" AutomationProperties.Name="View changes from this turn" IsVisible="{Binding HasChangedPaths}">
+        <Button Classes="raised" Padding="11" HorizontalContentAlignment="Stretch" Click="ViewTurnChanges" AutomationProperties.Name="View changes from this turn" IsVisible="{Binding IsReviewChangesVisible}">
           <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
             <svg:Svg Width="14" Height="14" Path="/Assets/icons/git-branch.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
             <StackPanel Grid.Column="1" Spacing="2">
@@ -114,18 +126,18 @@
           </ItemsControl>
           <TextBlock Text="No files touched yet" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding !HasChangedPaths}" />
         </StackPanel>
-        <Border Classes="process-card" Classes.active="{Binding IsTurnActive}" Padding="11" CornerRadius="6" IsVisible="{Binding !HasFailedTurn}">
+        <Border Classes="process-card" Classes.active="{Binding IsTurnActive}" Padding="11" CornerRadius="6" IsVisible="{Binding IsReviewRunning}">
           <StackPanel Spacing="7">
             <Grid ColumnDefinitions="Auto,8,*,Auto">
               <Border Width="13" Height="13" CornerRadius="7" Background="{DynamicResource AccentSurfaceBrush}" IsVisible="{Binding IsTurnActive}" VerticalAlignment="Center">
                 <Ellipse Width="7" Height="7" Classes="process-dot" Classes.active="{Binding IsTurnActive}" HorizontalAlignment="Center" VerticalAlignment="Center" />
               </Border>
               <Ellipse Width="7" Height="7" Classes="process-dot" VerticalAlignment="Center" IsVisible="{Binding !IsTurnActive}" />
-              <TextBlock Grid.Column="2" Text="Runtime health" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="2" Text="Agent loop" FontWeight="SemiBold" />
               <TextBlock Grid.Column="3" Text="Running" FontSize="10" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsTurnActive}" />
               <TextBlock Grid.Column="3" Text="Ready" FontSize="10" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding !IsTurnActive}" />
             </Grid>
-            <TextBlock Text="{Binding RuntimeHealthSummary}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+            <TextBlock Text="{Binding LastTurnId, StringFormat=Turn  {0}}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
             <TextBlock Text="{Binding SelectedModelName, StringFormat=Model  {0}}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
             <TextBlock Text="{Binding LatestActivityText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="2" IsVisible="{Binding IsTurnActive}" />
           </StackPanel>
@@ -136,16 +148,26 @@
               <TextBlock Text="TURN STOPPED" Classes="eyebrow" Foreground="{DynamicResource DangerBrush}" />
               <TextBlock Grid.Column="1" Text="FAILED" Classes="mono" FontSize="9" Foreground="{DynamicResource DangerBrush}" />
             </Grid>
+            <TextBlock Text="Provider request failed" FontSize="11" FontWeight="SemiBold" />
             <TextBlock Text="The turn ended before completion. No further tool calls will run." FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,2,0,0">
+              <TextBlock Text="Reason" Classes="eyebrow" />
+              <TextBlock Grid.Column="1" Text="Network unavailable" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Right" />
+              <TextBlock Grid.Row="1" Text="Turn" Classes="eyebrow" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LastTurnId}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Right" />
+            </Grid>
             <Button Classes="compact primary" Content="Retry turn" Click="RetryTurn" />
           </StackPanel>
         </Border>
-        <Expander Header="Current turn details" IsVisible="{Binding HasCurrentTodos}">
-          <ItemsControl ItemsSource="{Binding CurrentTodos}" Margin="0,8,0,0">
-            <ItemsControl.ItemTemplate><DataTemplate x:DataType="models:TodoItem"><Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2"><TextBlock Text="{Binding StatusMarker}" Classes="mono" /><TextBlock Grid.Column="1" Text="{Binding Content}" FontSize="10" TextWrapping="Wrap" Margin="6,0" /><TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" /></Grid></DataTemplate></ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </Expander>
-        <ItemsControl ItemsSource="{Binding Checkpoints}" IsVisible="{Binding HasCheckpoints}">
+        <Border Classes="process-card" Padding="11" CornerRadius="6" IsVisible="{Binding IsReviewRunning}">
+          <StackPanel Spacing="7">
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="TODO" Classes="section-label" /><TextBlock Grid.Column="1" Text="{Binding CurrentTodos.Count, StringFormat={}{0} items}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" /></Grid>
+            <ItemsControl ItemsSource="{Binding CurrentTodos}">
+              <ItemsControl.ItemTemplate><DataTemplate x:DataType="models:TodoItem"><Grid ColumnDefinitions="Auto,*,Auto" Margin="0,1"><TextBlock Text="{Binding StatusMarker}" Classes="mono" FontSize="10" /><TextBlock Grid.Column="1" Text="{Binding Content}" FontSize="10" TextWrapping="Wrap" Margin="6,0" /><TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" /></Grid></DataTemplate></ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+        <ItemsControl ItemsSource="{Binding Checkpoints}" IsVisible="{Binding IsReviewCheckpointVisible}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="models:CheckpointItem">
               <Border Classes="raised" Padding="9" Margin="0,0,0,6" CornerRadius="6">

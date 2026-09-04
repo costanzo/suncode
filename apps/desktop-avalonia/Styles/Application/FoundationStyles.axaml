@@ -176,6 +176,35 @@
   <Style Selector="Ellipse.process-dot.active">
     <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
   </Style>
+  <Style Selector="Ellipse.review-status-dot">
+    <Setter Property="Fill" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="Ellipse.review-status-dot.running">
+    <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+  </Style>
+  <Style Selector="Ellipse.review-status-dot.compacting">
+    <Setter Property="Fill" Value="{DynamicResource SuccessBrush}" />
+  </Style>
+  <Style Selector="Ellipse.review-status-dot.approval">
+    <Setter Property="Fill" Value="{DynamicResource WarningBrush}" />
+  </Style>
+  <Style Selector="Ellipse.review-status-dot.question">
+    <Setter Property="Fill" Value="{DynamicResource SuccessBrush}" />
+  </Style>
+  <Style Selector="Ellipse.review-status-dot.failed">
+    <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
+  </Style>
+  <Style Selector="Border.question-option">
+    <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Padding" Value="7,5" />
+  </Style>
+  <Style Selector="Border.question-option.selected">
+    <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+  </Style>
   <Style Selector="Border.sidebar-card">
     <Setter Property="Background" Value="{DynamicResource SidebarBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
