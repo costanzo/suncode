@@ -55,7 +55,8 @@
     <Grid>
       <ListBox x:Name="ConversationList"
                       Classes="conversation"
-                      Margin="0,0,0,0"
+                      Margin="0"
+                      Padding="18,0,18,128"
                       ItemsSource="{Binding Messages}"
                       HorizontalAlignment="Stretch"
                       SelectionMode="Single"
