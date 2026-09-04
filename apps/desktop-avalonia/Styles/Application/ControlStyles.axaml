@@ -150,8 +150,8 @@
                   BorderThickness="1"
                   CornerRadius="10"
                   ClipToBounds="True">
-            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16">
-              <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <Grid x:Name="PART_DialogLayout" RowDefinitions="Auto,*,Auto" RowSpacing="16">
+              <Grid x:Name="PART_Header" Grid.Row="0" ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="4">
                   <TextBlock Text="{TemplateBinding Title}"
                              FontSize="17"

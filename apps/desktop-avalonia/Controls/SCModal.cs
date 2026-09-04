@@ -46,12 +46,17 @@ public sealed class SCModal : ContentControl
     public static readonly StyledProperty<bool> CloseOnEscapeProperty =
         AvaloniaProperty.Register<SCModal, bool>(nameof(CloseOnEscape), true);
 
+    public static readonly StyledProperty<bool> HideCloseProperty =
+        AvaloniaProperty.Register<SCModal, bool>(nameof(HideClose));
+
     public event EventHandler<RoutedEventArgs>? PrimaryAction;
     public event EventHandler<RoutedEventArgs>? SecondaryAction;
     public event EventHandler<RoutedEventArgs>? CloseRequested;
 
     private Border? _backdrop;
     private Border? _dialog;
+    private Grid? _dialogLayout;
+    private Grid? _header;
     private Button? _primaryButton;
     private Button? _secondaryButton;
     private Button? _closeButton;
@@ -117,6 +122,12 @@ public sealed class SCModal : ContentControl
         set => SetValue(CloseOnEscapeProperty, value);
     }
 
+    public bool HideClose
+    {
+        get => GetValue(HideCloseProperty);
+        set => SetValue(HideCloseProperty, value);
+    }
+
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
         base.OnApplyTemplate(e);
@@ -143,6 +154,8 @@ public sealed class SCModal : ContentControl
 
         _backdrop = e.NameScope.Find<Border>("PART_Backdrop");
         _dialog = e.NameScope.Find<Border>("PART_Dialog");
+        _dialogLayout = e.NameScope.Find<Grid>("PART_DialogLayout");
+        _header = e.NameScope.Find<Grid>("PART_Header");
         _primaryButton = e.NameScope.Find<Button>("PART_PrimaryButton");
         _secondaryButton = e.NameScope.Find<Button>("PART_SecondaryButton");
         _closeButton = e.NameScope.Find<Button>("PART_CloseButton");
@@ -181,7 +194,9 @@ public sealed class SCModal : ContentControl
         }
         if (change.Property == IsOpenProperty
             || change.Property == PrimaryIsDangerProperty
-            || change.Property == DescriptionProperty)
+            || change.Property == DescriptionProperty
+            || change.Property == TitleProperty
+            || change.Property == HideCloseProperty)
         {
             SyncFocusState();
         }
@@ -273,10 +288,27 @@ public sealed class SCModal : ContentControl
 
     private void SyncTemplateState()
     {
+        var hasHeaderContent = !HideClose
+            || !string.IsNullOrWhiteSpace(Title)
+            || !string.IsNullOrWhiteSpace(Description);
+        if (_header is not null)
+        {
+            _header.IsVisible = hasHeaderContent;
+        }
+        if (_dialogLayout is not null)
+        {
+            _dialogLayout.RowSpacing = hasHeaderContent ? 16 : 0;
+        }
+
         if (_primaryButton is not null)
         {
             _primaryButton.Classes.Set("danger", PrimaryIsDanger);
             _primaryButton.Classes.Set("primary", !PrimaryIsDanger);
+        }
+
+        if (_closeButton is not null)
+        {
+            _closeButton.IsVisible = !HideClose;
         }
 
         if (_dialog?.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(text => text.Name == "PART_DescriptionText") is { } descriptionText)

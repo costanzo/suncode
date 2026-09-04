@@ -2301,11 +2301,52 @@ select.field {
 }
 .workspace-message-user {
   align-self: flex-end;
+  margin-left: auto;
   max-width: 480px;
   padding: 12px 14px;
   background: var(--surface-hover);
   border: 1px solid var(--border);
   border-radius: 14px;
+}
+.workspace-message-overflow-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-left: auto;
+  max-width: 100%;
+}
+.workspace-message-overflow-row .workspace-message-user {
+  position: relative;
+  min-width: 0;
+  padding-right: 40px;
+}
+.workspace-message-overflow-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  white-space: pre-line;
+}
+.workspace-message-view-more {
+  display: grid;
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  white-space: nowrap;
+}
+.workspace-message-view-more:hover {
+  color: var(--accent-hover);
+}
+.workspace-message-view-more:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
 }
 .workspace-message-attachments {
   display: flex;
@@ -2875,7 +2916,7 @@ select.field {
 .workspace-composer-modal-content {
   display: grid;
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 0;
 }
 .workspace-composer-modal-content textarea {
   width: 100%;
@@ -2904,6 +2945,34 @@ select.field {
   font-size: 11px;
 }
 .workspace-composer-modal-footer strong {
+  color: var(--text-secondary);
+  font: 11px var(--font-mono);
+}
+.workspace-overflow-message-modal {
+  width: min(860px, 100%);
+}
+.workspace-overflow-message-modal-content {
+  display: grid;
+  gap: 12px;
+}
+.workspace-overflow-message-modal-body {
+  min-height: 320px;
+  max-height: 520px;
+  padding: 18px;
+  overflow: auto;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font: 14px/1.55 var(--font-ui);
+}
+.workspace-overflow-message-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
   color: var(--text-secondary);
   font: 11px var(--font-mono);
 }
@@ -4896,9 +4965,5 @@ select.field {
   }
   .toggle-track::after {
     transition: none;
-  }
-  .workspace-running-indicator i {
-    animation: none;
-    opacity: 1;
   }
 }

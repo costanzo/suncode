@@ -173,9 +173,13 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 ### Conversation Composer And Tool Inspection
 
 - **Compact composer:** The default conversation composer remains a compact floating surface anchored to the bottom of the conversation region.
+- **Stable message rows:** User and assistant message rows are reading surfaces, not list actions, so pointer hover does not change their background. Only actionable controls inside a message, such as attachments, tool rows, and copy actions, receive hover feedback.
 - **Expanded drafting:** The composer exposes an explicit expand action that opens a raised modal with a large multi-paragraph drafting textarea and minimal chrome. The modal edits the same draft as the compact composer rather than creating a second independent buffer.
+- **Expanded drafting spacing:** When the expanded drafting modal hides its title and close affordance, the textarea begins at the same 20px inset as the dialog's horizontal edges so the editor does not carry an empty header band.
+- **Expanded character feedback:** The live character count sits below the drafting field on the left, aligned with the field's content edge.
 - **Composer focus:** Compact and expanded composer textareas keep their resting border without adding a dark focus ring when focused.
-- **Character feedback:** The expanded drafting modal shows a live character count in the lower-right area so long prompts stay measurable without crowding the compact composer.
+- **Character feedback:** The expanded drafting modal shows a live character count below the drafting field on the left so long prompts stay measurable without crowding the compact composer.
+- **Long message preview:** Submitted user messages that exceed the compact reading measure clamp to five lines with an ellipsis. An eye icon sits inside the message bubble immediately after the truncation and opens a read-only full-message dialog with character count and copy feedback.
 - **Tool inspection:** Tool rows stay compact inside the timeline, but opening a running command can reveal a modal with the full request, current status, and a scrollable live command-output pane.
 - **Output presentation:** Live command output uses the code/data monospace treatment, wraps safely for narrow widths, and never turns the conversation into a dashboard.
 - **Thinking feedback:** A dedicated thinking phase uses animated `Thinking` text that reveals from left to right and replaces the generic three-dot running marker during that phase.

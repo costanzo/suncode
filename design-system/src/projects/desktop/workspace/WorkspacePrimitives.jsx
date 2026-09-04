@@ -825,6 +825,9 @@ export const sampleConversationAttachments = [
   createSampleAttachment("settings-reference.svg", "Settings", "8a919b"),
 ];
 
+const overflowUserMessage =
+  "Please review the current Workspace conversation implementation and refactor the layout so each major area remains independently reachable. Preserve the existing attachment behavior, keep the visual language aligned with Quiet Control Desk, and make sure the conversation stays calm and readable when a prompt spans several paragraphs.\n\nAlso document the interaction states, verify the responsive behavior at compact widths, and summarize any tradeoffs in the final response so I can review the result without opening every file individually.";
+
 export function ConversationPanel({
   compact = false,
   standalone = false,
@@ -845,16 +848,20 @@ export function ConversationPanel({
   const [sentAttachments, setSentAttachments] = useState(initialSentAttachments);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [composerExpanded, setComposerExpanded] = useState(false);
+  const [overflowMessageOpen, setOverflowMessageOpen] = useState(false);
   const [copiedResponse, setCopiedResponse] = useState(false);
+  const [copiedOverflowMessage, setCopiedOverflowMessage] = useState(false);
   const [visibleToolOutputLines, setVisibleToolOutputLines] = useState(0);
   const attachmentInputRef = useRef(null);
   const localAttachmentUrls = useRef(new Set());
   const copyResetTimerRef = useRef(null);
+  const overflowCopyResetTimerRef = useRef(null);
   const hasSession = state !== "no-session";
   const hasContent = state !== "new-session" && hasSession;
   const updating = state === "content-updating" || state === "live-tool-stream";
   const thinking = state === "content-thinking";
   const compacted = state === "context-compacted";
+  const inputTooLong = state === "input-too-long";
   const turnActive = updating || thinking;
   const toolCalls =
     state === "long-tool-call"
@@ -898,6 +905,7 @@ export function ConversationPanel({
     () => () => {
       localAttachmentUrls.current.forEach((url) => URL.revokeObjectURL(url));
       if (copyResetTimerRef.current) window.clearTimeout(copyResetTimerRef.current);
+      if (overflowCopyResetTimerRef.current) window.clearTimeout(overflowCopyResetTimerRef.current);
     },
     [],
   );
@@ -938,6 +946,15 @@ export function ConversationPanel({
     if (copyResetTimerRef.current) window.clearTimeout(copyResetTimerRef.current);
     copyResetTimerRef.current = window.setTimeout(() => setCopiedResponse(false), 1400);
   };
+  const copyOverflowMessage = async () => {
+    await navigator.clipboard?.writeText(overflowUserMessage);
+    setCopiedOverflowMessage(true);
+    if (overflowCopyResetTimerRef.current) window.clearTimeout(overflowCopyResetTimerRef.current);
+    overflowCopyResetTimerRef.current = window.setTimeout(
+      () => setCopiedOverflowMessage(false),
+      1400,
+    );
+  };
   return (
     <section
       className={`workspace-conversation ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""} workspace-conversation-${state}`}
@@ -958,30 +975,44 @@ export function ConversationPanel({
       )}
       {hasContent && (
         <>
-          <div className="workspace-message workspace-message-user">
-            {sentAttachments.length > 0 && (
-              <div
-                className="workspace-message-attachments"
-                aria-label="Images sent with this message"
-              >
-                {sentAttachments.map((attachment) => (
-                  <button
-                    type="button"
-                    className="workspace-message-attachment"
-                    key={attachment.id}
-                    onClick={() => setPreviewAttachment(attachment)}
-                    aria-label={`View ${attachment.name}`}
-                    title="View image"
-                  >
-                    <img src={attachment.url} alt={attachment.name} />
-                  </button>
-                ))}
-              </div>
-            )}
-            <span>
-              Add the Workspace surface to the design system, but keep each major area independently
-              reachable.
-            </span>
+          <div className={inputTooLong ? "workspace-message-overflow-row" : undefined}>
+            <div className="workspace-message workspace-message-user">
+              {sentAttachments.length > 0 && (
+                <div
+                  className="workspace-message-attachments"
+                  aria-label="Images sent with this message"
+                >
+                  {sentAttachments.map((attachment) => (
+                    <button
+                      type="button"
+                      className="workspace-message-attachment"
+                      key={attachment.id}
+                      onClick={() => setPreviewAttachment(attachment)}
+                      aria-label={`View ${attachment.name}`}
+                      title="View image"
+                    >
+                      <img src={attachment.url} alt={attachment.name} />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <span className={inputTooLong ? "workspace-message-overflow-text" : undefined}>
+                {inputTooLong
+                  ? overflowUserMessage
+                  : "Add the Workspace surface to the design system, but keep each major area independently reachable."}
+              </span>
+              {inputTooLong && (
+                <button
+                  type="button"
+                  className="workspace-message-view-more"
+                  onClick={() => setOverflowMessageOpen(true)}
+                  aria-label="View full message"
+                  title="View full message"
+                >
+                  <Icon name="eye" size={14} />
+                </button>
+              )}
+            </div>
           </div>
           <div className="workspace-process">
             <button
@@ -1259,6 +1290,37 @@ export function ConversationPanel({
           />
           <div className="workspace-composer-modal-footer">
             <strong aria-live="polite">{messageCharacters} characters</strong>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        open={overflowMessageOpen}
+        onClose={() => setOverflowMessageOpen(false)}
+        className="workspace-overflow-message-modal"
+        hideTitle
+        ariaLabel="Full user message"
+        hideClose
+        actions={
+          <button type="button" className="btn" onClick={() => setOverflowMessageOpen(false)}>
+            Close
+          </button>
+        }
+      >
+        <div className="workspace-overflow-message-modal-content">
+          <div className="workspace-overflow-message-modal-body" role="document" aria-label="Full user message">
+            {overflowUserMessage}
+          </div>
+          <div className="workspace-overflow-message-modal-footer">
+            <button
+              type="button"
+              className={`workspace-copy ${copiedOverflowMessage ? "is-copied" : ""}`.trim()}
+              aria-label={copiedOverflowMessage ? "Copied message" : "Copy message"}
+              title={copiedOverflowMessage ? "Copied" : "Copy message"}
+              onClick={copyOverflowMessage}
+            >
+              <Icon name={copiedOverflowMessage ? "check" : "copy"} size={13} />
+            </button>
+            <span>{Array.from(overflowUserMessage).length} characters</span>
           </div>
         </div>
       </Modal>

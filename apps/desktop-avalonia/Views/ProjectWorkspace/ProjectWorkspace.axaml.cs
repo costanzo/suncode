@@ -291,7 +291,14 @@ public sealed partial class ProjectWorkspace : UserControl
     {
         ChatArea.SetComposerText(_expandedComposerDraft);
         ExpandedComposerModal.IsOpen = false;
-        if (ViewModel.CanSubmit) await ViewModel.SubmitTurnAsync();
+        if (!ViewModel.CanSubmit) return;
+
+        await ViewModel.SubmitTurnAsync();
+        if (string.IsNullOrEmpty(ViewModel.ComposerText))
+        {
+            ChatArea.ClearComposerText();
+            _expandedComposerDraft = string.Empty;
+        }
     }
 
     private void OpenSettings(object? sender, RoutedEventArgs e) => Owner?.ShowSettings();

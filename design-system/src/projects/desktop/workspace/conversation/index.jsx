@@ -52,6 +52,7 @@ const conversationGuides = {
       style: [
         "User messages use a raised surface, 1px border, and 14px corner radius.",
         "Assistant Markdown uses 14px type with a 1.6 line-height for comfortable reading.",
+        "User and assistant message rows keep a stable background on hover; only controls inside them show hover feedback.",
         "Tool rows are compact 34px controls with ellipsized operation names.",
       ],
       logic: [
@@ -70,6 +71,7 @@ const conversationGuides = {
       ],
       style: [
         "The running indicator uses three 5px dots with staggered .12s delays.",
+        "Each dot bounces in sequence beneath the conversation while the session is updating.",
         "The process area stays compact and uses muted monospace metadata.",
         "The composer remains visually present while send is disabled during the active state.",
       ],
@@ -137,6 +139,25 @@ const conversationGuides = {
       ],
     },
   },
+  inputTooLong: {
+    tabs: {
+      actions: [
+        "Read the first five lines of the long user message in the conversation timeline.",
+        "Choose the eye icon to inspect the complete message without editing it.",
+        "Use the copy control in the read-only dialog to copy the full message text.",
+      ],
+      style: [
+        "Long user messages are clamped to five lines and use an ellipsis to preserve the timeline rhythm.",
+        "A small eye icon sits inside the message bubble immediately after the truncated ellipsis as the only expansion affordance.",
+        "The full-message dialog uses the expanded composer surface language with read-only text and a left-aligned character count.",
+      ],
+      logic: [
+        "This state represents a submitted user message that exceeds the compact conversation reading measure.",
+        "The collapsed preview never edits or truncates the canonical message; View more reveals the complete content.",
+        "Copying the full message provides the same confirmation feedback as copying an assistant response.",
+      ],
+    },
+  },
   immersiveComposer: {
     tabs: {
       actions: [
@@ -147,7 +168,8 @@ const conversationGuides = {
       style: [
         "The expanded composer keeps the graphite dialog language and a quieter title treatment than a destructive modal.",
         "The large textarea uses the same UI type as the compact composer, but grows into an immersive drafting surface.",
-        "Character feedback stays attached to the drafting area instead of adding extra chrome to the compact composer.",
+        "With the title and close affordance hidden, the drafting surface starts at the same 20px inset as the modal's horizontal edges.",
+        "The live character count sits below the drafting field on the left, aligned with its content edge.",
       ],
       logic: [
         "The modal edits the same draft as the compact composer so closing it does not lose work.",
@@ -272,6 +294,13 @@ export function WorkspaceConversationPage() {
           onViewChanges={viewChanges}
         />
       ),
+    },
+    {
+      id: "inputTooLong",
+      title: "Input too long",
+      description: "A long submitted message is clamped in the timeline and opens as read-only content.",
+      side: "right",
+      content: <ConversationPanel standalone state="input-too-long" onViewChanges={viewChanges} />,
     },
     {
       id: "immersiveComposer",

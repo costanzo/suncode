@@ -163,6 +163,12 @@ public sealed partial class ChatInput : UserControl
         ViewModel.ComposerText = text;
     }
 
+    internal void ClearComposerText()
+    {
+        _expandedDraft = string.Empty;
+        ComposerInput.Text = string.Empty;
+    }
+
     private void ModelSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (ModelSelector.SelectedItem?.Value is not ModelItem selected) return;

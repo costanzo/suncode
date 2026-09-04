@@ -35,6 +35,8 @@ public sealed partial class ChatArea : UserControl
 
     internal void SetComposerText(string text) => ChatInput.SetComposerText(text);
 
+    internal void ClearComposerText() => ChatInput.ClearComposerText();
+
     private void ForwardExpandedComposerRequested(object? sender, EventArgs e) =>
         ExpandedComposerRequested?.Invoke(this, EventArgs.Empty);
 

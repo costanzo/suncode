@@ -273,12 +273,13 @@
     <controls:SCModal x:Name="ExpandedComposerModal"
                       DialogWidth="860"
                       IsOpen="False"
+                      HideClose="True"
                       PrimaryButtonText="Send message"
                       SecondaryButtonText="Close"
                       PrimaryAction="SubmitExpandedComposer"
                       SecondaryAction="CloseExpandedComposer"
                       CloseRequested="CloseExpandedComposer">
-      <Grid RowDefinitions="*,Auto" MinHeight="420">
+      <Grid RowDefinitions="*,Auto" MinHeight="420" Margin="0,4,0,0">
         <TextBox x:Name="ExpandedComposerInput"
                  Classes="expanded-composer-input"
                  AcceptsReturn="True"
@@ -297,8 +298,8 @@
         </TextBox>
         <TextBlock x:Name="ExpandedComposerCount"
                    Grid.Row="1"
-                   HorizontalAlignment="Right"
-                   Margin="0,8,2,0"
+                   HorizontalAlignment="Left"
+                   Margin="0,8,0,0"
                    Classes="mono"
                    FontSize="11"
                    Foreground="{DynamicResource TextSecondaryBrush}" />
