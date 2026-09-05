@@ -119,44 +119,7 @@
                          RenderTransformOrigin="50%,50%" />
               </Grid>
             </Button>
-            <StackPanel x:Name="ProviderNavigation" Margin="30,0,0,0" Spacing="3">
-              <Button Classes="navigation provider" Tag="deepseek" Click="ShowProvider">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="DeepSeek" />
-                  <Ellipse Classes="provider-nav-status" />
-                </Grid>
-              </Button>
-              <Button Classes="navigation provider" Tag="zhipu" Click="ShowProvider">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="Zhipu GLM" />
-                  <Ellipse Classes="provider-nav-status" />
-                </Grid>
-              </Button>
-              <Button Classes="navigation provider" Tag="openai" Click="ShowProvider">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="OpenAI" />
-                  <Ellipse Classes="provider-nav-status" />
-                </Grid>
-              </Button>
-              <Button Classes="navigation provider" Tag="kimi" Click="ShowProvider">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="Kimi" />
-                  <Ellipse Classes="provider-nav-status" />
-                </Grid>
-              </Button>
-              <Button Classes="navigation provider" Tag="claude" Click="ShowProvider">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="Claude" />
-                  <Ellipse Classes="provider-nav-status" />
-                </Grid>
-              </Button>
-              <Button Classes="navigation provider" Tag="gemini" Click="ShowProvider">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="Gemini" />
-                  <Ellipse Classes="provider-nav-status" />
-                </Grid>
-              </Button>
-            </StackPanel>
+            <StackPanel x:Name="ProviderNavigation" Margin="30,0,0,0" Spacing="3" />
           </StackPanel>
         </ScrollViewer>
       </Border>

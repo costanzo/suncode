@@ -187,9 +187,9 @@ public sealed partial class SCModelProvider : UserControl
             return;
         }
 
-        var metadata = SCProviderCatalog.GetOrDefault(selectedId!);
-        ProviderTitleText.Text = metadata.Title;
-        ProviderDescriptionText.Text = metadata.Description;
+        var provider = Providers?.FirstOrDefault(item => item.Id == selectedId);
+        ProviderTitleText.Text = provider?.DisplayName ?? selectedId;
+        ProviderDescriptionText.Text = "Configure the provider URL and credential used by the local agent.";
 
         _syncingEndpoint = true;
         EndpointInput.Text = EndpointText ?? string.Empty;
@@ -199,7 +199,7 @@ public sealed partial class SCModelProvider : UserControl
         ApiKeyInput.Text = ApiKeyText ?? string.Empty;
         _syncingApiKey = false;
 
-        ApiKeyInput.PlaceholderText = ApiKeyPlaceholderText ?? metadata.ApiKeyPlaceholder;
+        ApiKeyInput.PlaceholderText = ApiKeyPlaceholderText ?? $"Paste {provider?.DisplayName ?? selectedId} API key";
         EndpointStatusTextBlock.Text = EndpointStatusText ?? string.Empty;
         EndpointStatusTextBlock.Foreground = EndpointStatusBrush ?? this.FindResource("TextSecondaryBrush") as IBrush;
         var models = ProviderModels?.Where(model => !string.IsNullOrWhiteSpace(model.Display)).ToArray() ?? [];
