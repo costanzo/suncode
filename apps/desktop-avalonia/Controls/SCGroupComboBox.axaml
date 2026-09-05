@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SunCode.Desktop.Controls"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Controls.SCGroupComboBox"
              x:Name="SunCode"
@@ -10,8 +11,7 @@
           HorizontalContentAlignment="Stretch"
           Foreground="{DynamicResource TextBrush}"
           Click="OpenGroupedMenu">
-    <Grid ColumnDefinitions="*,12"
-          ColumnSpacing="6">
+    <Grid ColumnDefinitions="*,12" ColumnSpacing="6">
       <TextBlock x:Name="GroupedLabel"
                  Foreground="{DynamicResource TextBrush}"
                  MinWidth="1"
@@ -19,14 +19,36 @@
                  VerticalAlignment="Center"
                  HorizontalAlignment="Stretch"
                  TextTrimming="CharacterEllipsis" />
-      <svg:Svg Grid.Column="1"
-               Width="9"
-               Height="9"
-               Path="/Assets/icons/chevron-right.svg"
-               Css="{DynamicResource IconSvgCss}"
-               RenderTransformOrigin="50%,50%"
-               RenderTransform="rotate(90deg)"
-               VerticalAlignment="Center" />
+      <svg:Svg Grid.Column="1" Width="9" Height="9" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" RenderTransformOrigin="50%,50%" RenderTransform="rotate(90deg)" VerticalAlignment="Center" />
     </Grid>
+    <Button.Flyout>
+      <Flyout Placement="TopEdgeAlignedRight" ShowMode="Standard" FlyoutPresenterClasses="sc-combo-flyout">
+        <Border Width="340" Padding="4">
+          <Grid ColumnDefinitions="148,1,*">
+            <ItemsControl x:Name="GroupItemsControl" Grid.Column="0">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="controls:SCComboBoxGroupOption">
+                  <Button Classes="sc-combo-menu-item" Classes.active="{Binding IsActive}" Height="28" MinHeight="28" Padding="8,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="SelectGroup">
+                    <Grid ColumnDefinitions="*,12"><TextBlock Text="{Binding Label}" Classes.mono="{Binding UseMonospace}" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Text="›" HorizontalAlignment="Right" VerticalAlignment="Center" /></Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0" />
+            <ItemsControl x:Name="ItemItemsControl" Grid.Column="2" Margin="4,0,0,0">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="controls:SCComboBoxItemOption">
+                  <Button Classes="sc-combo-menu-item" Classes.active="{Binding IsSelected}" Height="28" MinHeight="28" Padding="8,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" IsEnabled="{Binding IsEnabled}" Click="SelectItem">
+                    <Grid ColumnDefinitions="*,16"><TextBlock Text="{Binding Label}" Classes.mono="{Binding UseMonospace}" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Text="✓" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding IsSelected}" /></Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Grid>
+        </Border>
+      </Flyout>
+    </Button.Flyout>
   </Button>
 </UserControl>

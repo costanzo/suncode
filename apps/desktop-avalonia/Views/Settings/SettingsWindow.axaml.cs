@@ -1,7 +1,6 @@
 using System.Collections.Specialized;
 using System.Linq;
 using Avalonia.Controls;
-using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -81,7 +80,6 @@ public sealed partial class SettingsWindow : Window
             LoggingPage.ImageDirectoryStatusText.Text = "Local settings";
             ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
             ShowProviderPanel(null);
-            RefreshProviderNavigation();
             _ready = true;
         };
     }
@@ -319,43 +317,10 @@ public sealed partial class SettingsWindow : Window
         ProviderManager.CanRemoveCredential = configured;
         ProviderManager.CanSaveCredential = !string.IsNullOrWhiteSpace(ProviderManager.ApiKeyText);
         RefreshProviderEndpointActions();
-        RefreshProviderNavigation();
         ProviderManager.ProviderModels = ViewModel.Models
             .Where(item => item.Provider == _provider)
             .Select(item => new ProviderModelItem(item.Display, configured))
             .ToArray();
-    }
-
-    private void RefreshProviderNavigation()
-    {
-        var warning = this.FindResource("WarningBrush") as IBrush;
-        var success = this.FindResource("SuccessBrush") as IBrush;
-        ProviderNavigation.Children.Clear();
-        foreach (var provider in ViewModel.Providers)
-        {
-            var dot = new Ellipse
-            {
-                Width = 6,
-                Height = 6,
-                Fill = provider.Configured ? success : warning,
-                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
-            };
-            var content = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-            content.Children.Add(new TextBlock { Text = provider.DisplayName });
-            Grid.SetColumn(dot, 1);
-            content.Children.Add(dot);
-            var button = new Button
-            {
-                Tag = provider.Id,
-                Content = content,
-                HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Stretch
-            };
-            button.Classes.Add("navigation");
-            button.Classes.Add("provider");
-            button.Click += ShowProvider;
-            ProviderNavigation.Children.Add(button);
-        }
-        ProviderNavigation.IsVisible = _providersExpanded;
     }
 
     private void RefreshProviderEndpointActions()
@@ -386,7 +351,6 @@ public sealed partial class SettingsWindow : Window
     private void ModelsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         RefreshModelSelector();
-        RefreshProviderNavigation();
         if (!string.IsNullOrWhiteSpace(ProviderManager.SelectedProviderId))
         {
             RefreshProvider();

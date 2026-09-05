@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="using:SunCode.Desktop.Controls"
+        xmlns:models="using:SunCode.Desktop.Models"
         xmlns:settings="using:SunCode.Desktop.Views.Settings.Controls"
         xmlns:vm="using:SunCode.Desktop.ViewModels"
         xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
@@ -15,6 +16,19 @@
   <Window.Styles>
     <Style Selector="Button.navigation">
       <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Width" Value="200" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="CornerRadius" Value="5" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.Navigation2Style">
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Width" Value="170" />
       <Setter Property="Padding" Value="10,0" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="FontSize" Value="12" />
@@ -120,7 +134,43 @@
                          RenderTransformOrigin="50%,50%" />
               </Grid>
             </Button>
-            <StackPanel x:Name="ProviderNavigation" Margin="30,0,0,0" Spacing="3" />
+            <ItemsControl x:Name="ProviderNavigation"
+                          Margin="30,0,0,0"
+                          ItemsSource="{Binding Providers}">
+              <ItemsControl.Styles>
+                <Style Selector="ContentPresenter">
+                  <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                </Style>
+              </ItemsControl.Styles>
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Spacing="3" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:ProviderItem">
+                  <Button Classes="Navigation2Style provider"
+                          Tag="{Binding Id}"
+                          Click="ShowProvider"
+                          AutomationProperties.Name="{Binding DisplayName, StringFormat=Open {0} provider settings}">
+                    <Grid ColumnDefinitions="*,13" ColumnSpacing="9">
+                      <Ellipse Grid.Column="1"
+                               Classes="provider-nav-status"
+                               Fill="{DynamicResource WarningBrush}"
+                               IsVisible="{Binding !Configured}" />
+                      <Ellipse Grid.Column="1"
+                               Classes="provider-nav-status"
+                               Fill="{DynamicResource SuccessBrush}"
+                               IsVisible="{Binding Configured}" />
+                      <TextBlock Grid.Column="0"
+                                 Text="{Binding DisplayName}"
+                                 VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </StackPanel>
         </ScrollViewer>
       </Border>
