@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SunCode.Desktop.Controls"
+             x:Class="SunCode.Desktop.Controls.SCFlatComboBox"
+             x:Name="SunCode"
+             x:CompileBindings="False">
+  <Grid>
+    <ComboBox x:Name="FlatCombo">
+      <ComboBox.ItemTemplate>
+        <DataTemplate x:DataType="controls:SCComboBoxItem">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{Binding Label}"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding SecondaryText}"
+                       Classes="sc-text-hint"
+                       FontSize="10"
+                       IsVisible="{Binding HasSecondaryText}" />
+          </StackPanel>
+        </DataTemplate>
+      </ComboBox.ItemTemplate>
+    </ComboBox>
+    <TextBlock x:Name="PlaceholderLabel"
+               IsVisible="False"
+               IsHitTestVisible="False"
+               Margin="8,0,28,0"
+               VerticalAlignment="Center"
+               TextTrimming="CharacterEllipsis"
+               Foreground="{DynamicResource TextMutedBrush}" />
+  </Grid>
+</UserControl>

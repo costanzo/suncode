@@ -138,7 +138,7 @@
                   <TextBlock Classes="settings-row-title" Text="Model" />
                   <TextBlock Classes="settings-row-hint" Text="Only models registered by the local agent appear here." />
                 </StackPanel>
-                <controls:SCComboBox x:Name="DefaultModelSelector"
+                <controls:SCFlatComboBox x:Name="DefaultModelSelector"
                                      Grid.Column="1"
                                      HorizontalAlignment="Stretch"
                                      PlaceholderText="Choose a model"
@@ -187,7 +187,7 @@
                   <TextBlock Classes="settings-row-title" Text="Color theme" />
                   <TextBlock Classes="settings-row-hint" Text="Changes apply immediately." />
                 </StackPanel>
-                <controls:SCComboBox x:Name="ThemeSelector"
+                <controls:SCFlatComboBox x:Name="ThemeSelector"
                                      Grid.Column="1"
                                      HorizontalAlignment="Stretch"
                                      PlaceholderText="Choose theme"
@@ -210,7 +210,7 @@
                   <TextBlock Classes="settings-row-title" Text="Minimum level" />
                   <TextBlock Classes="settings-row-hint" Text="Lower levels include more diagnostic detail." />
                 </StackPanel>
-                <controls:SCComboBox x:Name="LogLevelSelector"
+                <controls:SCFlatComboBox x:Name="LogLevelSelector"
                                      Grid.Column="1"
                                      HorizontalAlignment="Stretch"
                                      UseMonospace="True"

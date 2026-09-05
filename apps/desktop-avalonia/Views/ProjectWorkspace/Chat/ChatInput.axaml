@@ -60,7 +60,7 @@
       <Setter Property="CornerRadius" Value="5" />
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     </Style>
-    <Style Selector="controls|SCComboBox.composer-option ComboBox">
+    <Style Selector="controls|SCFlatComboBox.composer-option ComboBox">
       <Setter Property="Height" Value="24" />
       <Setter Property="MinHeight" Value="24" />
       <Setter Property="Padding" Value="8,0" />
@@ -72,7 +72,7 @@
       <Setter Property="CornerRadius" Value="5" />
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     </Style>
-    <Style Selector="controls|SCComboBox.composer-option Button">
+    <Style Selector="controls|SCGroupComboBox.composer-option Button">
       <Setter Property="Height" Value="24" />
       <Setter Property="MinHeight" Value="24" />
       <Setter Property="Padding" Value="8,0" />
@@ -215,19 +215,18 @@
                   Grid.Column="1"
                   Orientation="Horizontal"
                   Spacing="6">
-        <controls:SCComboBox x:Name="ModelSelector"
+        <controls:SCGroupComboBox x:Name="ModelSelector"
                              Width="136"
                              Height="24"
                              MinHeight="24"
                              Classes="mono composer-option"
-                             IsHierarchical="True"
                              UseMonospace="True"
                              PlaceholderText="Choose model"
                              IsEnabled="{Binding CanChooseModel}"
                              ToolTip.Tip="Choose model"
                              SelectionChanged="ModelSelectionChanged" />
 
-        <controls:SCComboBox x:Name="ReasoningSelector"
+        <controls:SCFlatComboBox x:Name="ReasoningSelector"
                              Width="76"
                              Height="24"
                              MinHeight="24"
