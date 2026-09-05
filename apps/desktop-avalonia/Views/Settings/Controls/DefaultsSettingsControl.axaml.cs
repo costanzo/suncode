@@ -10,7 +10,7 @@ public sealed partial class DefaultsSettingsControl : UserControl
     public event EventHandler<RoutedEventArgs>? SaveToolCallLimitRequested;
 
     public SCFlatComboBox ModelSelector => DefaultModelSelector;
-    public NumericUpDown ToolCallLimit => ToolCallLimitInput;
+    public SCNumericInput ToolCallLimit => ToolCallLimitInput;
     public Button SaveToolCallLimitButtonControl => SaveToolCallLimitButton;
     public TextBlock ToolCallLimitScopeText => ToolCallLimitScope;
     public TextBlock ToolCallLimitStatusText => ToolCallLimitStatus;

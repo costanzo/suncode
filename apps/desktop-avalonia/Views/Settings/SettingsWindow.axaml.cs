@@ -68,9 +68,8 @@ public sealed partial class SettingsWindow : Window
                 : "Open a project to configure this setting.";
             LoggingPage.LogDirectoryInputControl.Text = ViewModel.EffectiveLogDirectory;
             LoggingPage.ImageDirectoryInputControl.Text = ViewModel.EffectiveImageDirectory;
-            LoggingPage.LogMaxMegabytesInputControl.Text = Math.Max(1, ViewModel.LogMaxBytes / (1024 * 1024))
-                .ToString(System.Globalization.CultureInfo.InvariantCulture);
-            LoggingPage.LogRetentionInputControl.Text = ViewModel.LogRetention.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            LoggingPage.LogMaxMegabytesInputControl.Value = Math.Max(1, ViewModel.LogMaxBytes / (1024 * 1024));
+            LoggingPage.LogRetentionInputControl.Value = ViewModel.LogRetention;
             NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked = ViewModel.VerifyHttpsCertificates;
             NetworkPage.UseSystemCertificatesToggleControl.IsChecked = ViewModel.UseSystemCertificates;
             NetworkPage.CertificatePathInputControl.Text = ViewModel.CertificatePath;
@@ -186,18 +185,22 @@ public sealed partial class SettingsWindow : Window
     private async void SaveLogging(object? sender, RoutedEventArgs e)
     {
         var level = LoggingPage.LogLevelSelectorControl.SelectedItem?.Value as string ?? ViewModel.LogLevel;
-        if (!long.TryParse(LoggingPage.LogMaxMegabytesInputControl.Text?.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var megabytes)
-            || megabytes is < 1 or > 1000)
+        if (LoggingPage.LogMaxMegabytesInputControl.Value is not { } megabytesValue
+            || megabytesValue is < 1 or > 1000
+            || decimal.Truncate(megabytesValue) != megabytesValue
+            || LoggingPage.LogRetentionInputControl.Value is not { } retentionValue
+            || retentionValue is < 0 or > 100
+            || decimal.Truncate(retentionValue) != retentionValue)
         {
-            LoggingPage.LoggingStatusText.Text = "Maximum log size must be between 1 and 1000 MB";
+            LoggingPage.LoggingStatusText.Text = "Log size must be 1–1000 MB and retained backups must be 0–100";
             LoggingPage.LoggingStatusText.Foreground = this.FindResource("DangerBrush") as IBrush;
             return;
         }
         var saved = await ViewModel.SaveLoggingSettingsAsync(
             level,
             LoggingPage.LogDirectoryInputControl.Text,
-            checked(megabytes * 1024 * 1024).ToString(System.Globalization.CultureInfo.InvariantCulture),
-            LoggingPage.LogRetentionInputControl.Text ?? string.Empty);
+            checked(decimal.ToInt64(megabytesValue) * 1024 * 1024).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            decimal.ToInt32(retentionValue).ToString(System.Globalization.CultureInfo.InvariantCulture));
         LoggingPage.LoggingStatusText.Text = ViewModel.StatusText;
         LoggingPage.LoggingStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
     }

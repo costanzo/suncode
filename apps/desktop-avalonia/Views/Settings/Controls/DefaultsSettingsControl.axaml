@@ -30,14 +30,13 @@
             <TextBlock Classes="settings-row-title" Text="Tool-call limit" />
             <TextBlock Classes="settings-row-hint" Text="Maximum number of tool calls allowed in one turn." />
           </StackPanel>
-          <NumericUpDown x:Name="ToolCallLimitInput"
-                         Grid.Column="1"
-                         Classes="sc-numeric-input"
-                         HorizontalAlignment="Stretch"
-                         Minimum="1"
-                         Maximum="256"
-                         Increment="1"
-                         FormatString="0" />
+          <controls:SCNumericInput x:Name="ToolCallLimitInput"
+                                   Grid.Column="1"
+                                   HorizontalAlignment="Stretch"
+                                   Minimum="1"
+                                   Maximum="256"
+                                   Increment="1"
+                                   FormatString="0" />
         </Grid>
       </StackPanel>
       <StackPanel Classes="settings-actions">

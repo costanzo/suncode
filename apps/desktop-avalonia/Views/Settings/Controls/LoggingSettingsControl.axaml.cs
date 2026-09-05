@@ -12,8 +12,8 @@ public sealed partial class LoggingSettingsControl : UserControl
     public SCFlatComboBox LogLevelSelectorControl => LogLevelSelector;
     public SCFileSelector LogDirectoryInputControl => LogDirectoryInput;
     public SCFileSelector ImageDirectoryInputControl => ImageDirectoryInput;
-    public TextBox LogMaxMegabytesInputControl => LogMaxMegabytesInput;
-    public TextBox LogRetentionInputControl => LogRetentionInput;
+    public SCNumericInput LogMaxMegabytesInputControl => LogMaxMegabytesInput;
+    public SCNumericInput LogRetentionInputControl => LogRetentionInput;
     public TextBlock LoggingStatusText => LoggingStatus;
     public TextBlock ImageDirectoryStatusText => ImageDirectoryStatus;
     public LoggingSettingsControl() => InitializeComponent();

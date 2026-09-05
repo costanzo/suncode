@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="SunCode.Desktop.Controls.SCNumericInput"
+             x:CompileBindings="False">
+  <NumericUpDown x:Name="Input"
+                 Classes="sc-numeric-input-inner"
+                 HorizontalContentAlignment="Left"
+                 VerticalContentAlignment="Center">
+    <NumericUpDown.InnerRightContent>
+      <TextBlock x:Name="UnitText"
+                 FontFamily="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace"
+                 FontSize="9"
+                 Foreground="{DynamicResource TextMutedBrush}"
+                 VerticalAlignment="Center"
+                 Margin="0,0,10,0"
+                 IsHitTestVisible="False" />
+    </NumericUpDown.InnerRightContent>
+  </NumericUpDown>
+</UserControl>
