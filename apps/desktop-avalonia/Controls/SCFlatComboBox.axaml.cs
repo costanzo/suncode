@@ -24,6 +24,7 @@ public sealed partial class SCFlatComboBox : UserControl
         AvaloniaProperty.RegisterDirect<SCFlatComboBox, string>(nameof(DisplayText), control => control.DisplayText);
 
     private string _displayText = string.Empty;
+    private bool _syncingSelection;
 
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
 
@@ -69,16 +70,31 @@ public sealed partial class SCFlatComboBox : UserControl
             || change.Property == PlaceholderTextProperty
             || change.Property == UseMonospaceProperty)
         {
-            SyncView();
+            SyncView(change.Property);
         }
     }
 
-    private void SyncView()
+    private void SyncView(AvaloniaProperty? changedProperty = null)
     {
         if (FlatCombo is null || PlaceholderLabel is null) return;
 
-        FlatCombo.ItemsSource = ItemsSource;
-        FlatCombo.SelectedItem = SelectedItem;
+        var syncItems = changedProperty is null || changedProperty == ItemsSourceProperty;
+        var syncSelected = syncItems || changedProperty == SelectedItemProperty;
+        if (syncItems || syncSelected)
+        {
+            _syncingSelection = true;
+            try
+            {
+                if (syncItems)
+                    FlatCombo.ItemsSource = ItemsSource;
+                if (syncSelected)
+                    FlatCombo.SelectedItem = SelectedItem;
+            }
+            finally
+            {
+                _syncingSelection = false;
+            }
+        }
         FlatCombo.Classes.Set("mono", UseMonospace);
 
         var previousText = _displayText;
@@ -94,6 +110,8 @@ public sealed partial class SCFlatComboBox : UserControl
 
     private void FlatSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        if (_syncingSelection) return;
+
         if (FlatCombo.SelectedItem is SCComboBoxItem item)
         {
             SelectedItem = item;

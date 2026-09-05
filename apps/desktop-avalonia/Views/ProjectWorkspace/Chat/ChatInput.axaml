@@ -234,7 +234,7 @@
                              MinHeight="24"
                              Classes="mono composer-option"
                              UseMonospace="True"
-                             PlaceholderText="Effort"
+                             PlaceholderText=""
                              IsEnabled="{Binding CanChooseReasoningEffort}"
                              ToolTip.Tip="Reasoning effort"
                              SelectionChanged="ReasoningSelectionChanged" />
