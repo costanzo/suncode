@@ -1,6 +1,11 @@
 <Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="using:SunCode.Desktop.Controls">
   <Style Selector="controls|SCFlatComboBox ComboBox">
+    <!-- Fluent's default focus adorner is a dark outer outline. The
+         component owns its semantic accent focus border below, so disable
+         the duplicate adorner. -->
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
     <Setter Property="Height" Value="36" />
     <Setter Property="MinHeight" Value="36" />
     <Setter Property="Padding" Value="10,0" />
@@ -25,13 +30,24 @@
     <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
   </Style>
   <Style Selector="controls|SCFlatComboBox ComboBox:focus /template/ Border#Background">
-    <Setter Property="Background" Value="{DynamicResource FieldFocusBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
   </Style>
   <Style Selector="controls|SCFlatComboBox ComboBox:focus">
-    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <!-- Fluent adds a second focus layer inside its template. It is rendered
+       above the background border and appears as the unwanted dark outline
+       after a pointer click, so keep it transparent and hidden. -->
+  <Style Selector="controls|SCFlatComboBox ComboBox:focus-visible /template/ Border#HighlightBackground">
+    <Setter Property="IsVisible" Value="False" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox ComboBox /template/ Border#HighlightBackground">
+    <Setter Property="IsVisible" Value="False" />
+    <Setter Property="BorderBrush" Value="Transparent" />
   </Style>
   <Style Selector="controls|SCFlatComboBox ComboBox:disabled /template/ Border#Background">
     <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />

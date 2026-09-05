@@ -1,9 +1,90 @@
 <Styles xmlns="https://github.com/avaloniaui">
   <Style Selector="ToggleSwitch.sc-toggle-switch">
+    <!--
+      The Fluent template remains the interaction and accessibility base, but
+      its default switch is 40x20 with a 10x10 knob. The design-system toggle
+      is a 34x20 track with a 14x14 knob and semantic SunCode colors.
+    -->
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     <Setter Property="OnContent" Value="On" />
     <Setter Property="OffContent" Value="Off" />
   </Style>
+
+  <!-- Resting track and checked track. -->
+  <Style Selector="ToggleSwitch.sc-toggle-switch /template/ Border#OuterBorder">
+    <Setter Property="Width" Value="34" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch /template/ Border#SwitchKnobBounds">
+    <Setter Property="Width" Value="34" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+
+  <!-- A 14-DIP canvas gives Avalonia's ToggleSwitch the exact 14-DIP travel. -->
+  <Style Selector="ToggleSwitch.sc-toggle-switch /template/ Canvas#PART_SwitchKnob">
+    <Setter Property="Width" Value="14" />
+    <Setter Property="Height" Value="20" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch /template/ Grid#PART_MovingKnobs">
+    <!-- Keep the 20-DIP knob host so the 14-DIP ellipse can sit 3 DIPs in. -->
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch /template/ Ellipse#SwitchKnobOff">
+    <Setter Property="Width" Value="14" />
+    <Setter Property="Height" Value="14" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Fill" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch /template/ Ellipse#SwitchKnobOn">
+    <Setter Property="Width" Value="14" />
+    <Setter Property="Height" Value="14" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Fill" Value="{DynamicResource AccentInkBrush}" />
+  </Style>
+
+  <!-- Keep Fluent's state transitions, but use design-system colors in every state. -->
+  <Style Selector="ToggleSwitch.sc-toggle-switch:pointerover /template/ Border#OuterBorder">
+    <Setter Property="Background" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch:pointerover /template/ Border#SwitchKnobBounds">
+    <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch:pointerover /template/ Ellipse#SwitchKnobOff">
+    <Setter Property="Fill" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch:pointerover /template/ Ellipse#SwitchKnobOn">
+    <Setter Property="Fill" Value="{DynamicResource AccentInkBrush}" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch:pressed /template/ Border#OuterBorder">
+    <Setter Property="Background" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch:pressed /template/ Border#SwitchKnobBounds">
+    <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch:pressed /template/ Ellipse#SwitchKnobOff">
+    <Setter Property="Fill" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch:pressed /template/ Ellipse#SwitchKnobOn">
+    <Setter Property="Fill" Value="{DynamicResource AccentInkBrush}" />
+  </Style>
+
   <Style Selector="ToggleSwitch.sc-toggle-switch:disabled">
     <Setter Property="Opacity" Value="0.72" />
   </Style>

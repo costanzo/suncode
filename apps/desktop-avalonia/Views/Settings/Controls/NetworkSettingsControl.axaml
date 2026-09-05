@@ -17,7 +17,7 @@
             <TextBlock Classes="settings-row-hint"
                        Text="Validate certificate chains and hostnames for model provider and WebFetch requests." />
           </StackPanel>
-          <ToggleSwitch x:Name="VerifyHttpsCertificatesToggle" Grid.Column="1" Classes="settings-switch" OnContent="On"
+          <ToggleSwitch x:Name="VerifyHttpsCertificatesToggle" Grid.Column="1" Classes="sc-toggle-switch" OnContent="On"
                         OffContent="Off" HorizontalAlignment="Right" VerticalAlignment="Center"
                         Click="OnHttpsCertificateVerificationChanged" />
         </Grid>
@@ -30,7 +30,7 @@
                 <TextBlock Classes="settings-row-hint"
                            Text="Trust the operating system certificate store for provider and WebFetch HTTPS requests." />
               </StackPanel>
-              <ToggleSwitch x:Name="UseSystemCertificatesToggle" Grid.Column="1" Classes="settings-switch"
+              <ToggleSwitch x:Name="UseSystemCertificatesToggle" Grid.Column="1" Classes="sc-toggle-switch"
                             OnContent="On" OffContent="Off" IsChecked="True" HorizontalAlignment="Right"
                             VerticalAlignment="Center" Click="OnSystemCertificatesChanged" />
             </Grid>

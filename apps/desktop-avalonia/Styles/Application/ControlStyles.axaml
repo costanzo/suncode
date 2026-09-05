@@ -4,6 +4,7 @@
         xmlns:controls="using:SunCode.Desktop.Controls">
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/ButtonStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SCFlatComboBoxStyles.axaml" />
+  <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SCFileSelectorStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SCGroupComboBoxStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/TextStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SettingsStyles.axaml" />
