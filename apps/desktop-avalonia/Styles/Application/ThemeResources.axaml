@@ -27,6 +27,12 @@
       <Color x:Key="TextControlSelectionHighlightColor">#65717d</Color>
       <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#d9e0e6" />
       <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#d9e0e6" />
+      <!-- Fluent resolves the popup in a separate PopupRoot, so these
+           resources are the reliable theme bridge for SCFlatComboBox. -->
+      <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#121519" />
+      <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#46505b" />
+      <Thickness x:Key="ComboBoxDropdownBorderPadding">4</Thickness>
+      <Thickness x:Key="ComboBoxDropdownContentMargin">0</Thickness>
       <x:String x:Key="IconSvgCss">[stroke='#000'] { stroke: #a7afb9; } [fill='#000'] { fill: #a7afb9; } [stroke='currentColor'] { stroke: #a7afb9; }</x:String>
       <x:String x:Key="GutterIconHoverSvgCss">[stroke='#000'] { stroke: #edf0f3; stroke-width: 2.4; } [fill='#000'] { fill: #edf0f3; } [stroke='currentColor'] { stroke: #edf0f3; stroke-width: 2.4; }</x:String>
       <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #d9e0e6; } [fill='#000'] { fill: #d9e0e6; } [stroke='currentColor'] { stroke: #d9e0e6; }</x:String>
@@ -93,6 +99,12 @@
       <Color x:Key="TextControlSelectionHighlightColor">#aab8c4</Color>
       <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#2c3742" />
       <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#2c3742" />
+      <!-- Fluent resolves the popup in a separate PopupRoot, so these
+           resources are the reliable theme bridge for SCFlatComboBox. -->
+      <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#ffffff" />
+      <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#bac6d0" />
+      <Thickness x:Key="ComboBoxDropdownBorderPadding">4</Thickness>
+      <Thickness x:Key="ComboBoxDropdownContentMargin">0</Thickness>
       <x:String x:Key="IconSvgCss">[stroke='#000'] { stroke: #44515e; } [fill='#000'] { fill: #44515e; } [stroke='currentColor'] { stroke: #44515e; }</x:String>
       <x:String x:Key="GutterIconHoverSvgCss">[stroke='#000'] { stroke: #17202a; stroke-width: 2.4; } [fill='#000'] { fill: #17202a; } [stroke='currentColor'] { stroke: #17202a; stroke-width: 2.4; }</x:String>
       <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #2c3742; } [fill='#000'] { fill: #2c3742; } [stroke='currentColor'] { stroke: #2c3742; }</x:String>

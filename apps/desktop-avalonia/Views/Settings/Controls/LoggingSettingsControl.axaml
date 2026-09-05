@@ -15,7 +15,7 @@
             <TextBlock Classes="settings-row-hint" Text="Lower levels include more diagnostic detail." />
           </StackPanel>
           <controls:SCFlatComboBox x:Name="LogLevelSelector" Grid.Column="1" HorizontalAlignment="Stretch"
-                                   UseMonospace="True" SelectionChanged="OnLogLevelChanged" />
+                                   SelectionChanged="OnLogLevelChanged" />
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">

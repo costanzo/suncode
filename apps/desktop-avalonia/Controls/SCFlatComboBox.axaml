@@ -8,12 +8,14 @@
     <ComboBox x:Name="FlatCombo">
       <ComboBox.ItemTemplate>
         <DataTemplate x:DataType="controls:SCComboBoxItem">
-          <StackPanel Spacing="2">
+          <StackPanel Spacing="2" HorizontalAlignment="Stretch" VerticalAlignment="Center">
             <TextBlock Text="{Binding Label}"
+                       VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis" />
             <TextBlock Text="{Binding SecondaryText}"
                        Classes="sc-text-hint"
                        FontSize="10"
+                       VerticalAlignment="Center"
                        IsVisible="{Binding HasSecondaryText}" />
           </StackPanel>
         </DataTemplate>
@@ -22,7 +24,7 @@
     <TextBlock x:Name="PlaceholderLabel"
                IsVisible="False"
                IsHitTestVisible="False"
-               Margin="8,0,28,0"
+               Margin="10,0,28,0"
                VerticalAlignment="Center"
                TextTrimming="CharacterEllipsis"
                Foreground="{DynamicResource TextMutedBrush}" />

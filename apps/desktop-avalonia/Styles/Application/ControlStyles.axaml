@@ -19,6 +19,74 @@
   <Style Selector="Button.sc-combo-trigger">
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
+  <!--
+    SCFlatComboBox is the Avalonia implementation of the design-system
+    single-level dropdown. Keep its native ComboBox template on the same
+    semantic surfaces as the web specimen instead of relying on Fluent's
+    default template brushes (or page-local overrides).
+  -->
+  <Style Selector="controls|SCFlatComboBox ComboBox">
+    <Setter Property="Height" Value="36" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="FontFamily" Value="Noto Sans, Noto Sans CJK SC, Noto Sans SC, PingFang SC, Helvetica Neue, Arial, sans-serif" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="Regular" />
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox ComboBox /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox ComboBox:pointerover /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox ComboBox:focus /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource FieldFocusBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox ComboBox:focus">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox ComboBox:disabled /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox.composer-option ComboBox">
+    <Setter Property="Height" Value="24" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="Padding" Value="7,0" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontWeight" Value="Regular" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox.composer-option ComboBox /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox ComboBox /template/ Border#PopupBorder">
+    <Setter Property="Margin" Value="0,6,0,0" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox.composer-option ComboBox /template/ Border#PopupBorder">
+    <Setter Property="Margin" Value="0,0,0,6" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox.composer-option TextBlock#PlaceholderLabel">
+    <Setter Property="Margin" Value="7,0,28,0" />
+  </Style>
   <Style Selector="ComboBox:pointerover /template/ Border#Background">
     <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
@@ -49,6 +117,22 @@
   <Style Selector="ComboBoxItem:selected /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <!-- The Fluent item template defaults its content presenter to top
+       alignment. SCFlatComboBox items must center their one- or two-line
+       template vertically inside the design-system row height. -->
+  <Style Selector="controls|SCFlatComboBox ComboBoxItem">
+    <Setter Property="Height" Value="28" />
+    <Setter Property="MinHeight" Value="28" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox ComboBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox ComboBox /template/ ContentControl#ContentPresenter">
+    <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
   <Style Selector="Button.sc-combo-menu-item">
     <Setter Property="Background" Value="Transparent" />
