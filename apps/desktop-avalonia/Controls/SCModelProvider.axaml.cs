@@ -211,8 +211,6 @@ public sealed partial class SCModelProvider : UserControl
             : "No API key configured";
         CredentialWarningDot.IsVisible = !CredentialConfigured;
         CredentialSuccessDot.IsVisible = CredentialConfigured;
-        CredentialStoredBorder.IsVisible = CredentialConfigured;
-        CredentialMissingHint.IsVisible = !CredentialConfigured;
         ProviderUnconfiguredBanner.IsVisible = !CredentialConfigured;
         ProviderUnconfiguredTitle.Text = "Add an API key to use this provider";
         SaveCredentialButton.Content = CredentialConfigured ? "Replace key" : "Save key";

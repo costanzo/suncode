@@ -171,22 +171,6 @@
                          MinHeight="16"
                          VerticalAlignment="Top"
                          TextWrapping="Wrap" />
-              <Border x:Name="CredentialStoredBorder"
-                      Padding="8,6"
-                      HorizontalAlignment="Left"
-                      Background="{DynamicResource FieldBrush}"
-                      BorderBrush="{DynamicResource BorderBrush}"
-                      BorderThickness="1"
-                      CornerRadius="5"
-                      IsVisible="False">
-                <TextBlock Text="Stored in the local agent"
-                           Classes="mono"
-                           FontSize="11" />
-              </Border>
-              <TextBlock x:Name="CredentialMissingHint"
-                         Text="Add a key to enable this provider."
-                         Classes="settings-row-hint"
-                         IsVisible="True" />
             </StackPanel>
           </Grid>
           <Border x:Name="ProviderUnconfiguredBanner"

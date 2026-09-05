@@ -146,10 +146,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         foreach (var group in Models.GroupBy(model => model.Provider, StringComparer.Ordinal))
         {
             var first = group.First();
+            var configuredByCredential = Credentials.Any(item => item.Provider == group.Key && item.Configured);
             Providers.Add(new ProviderItem(
                 group.Key,
                 string.IsNullOrWhiteSpace(first.ProviderLabel) ? group.Key : first.ProviderLabel,
-                group.Any(model => model.Configured),
+                configuredByCredential || group.Any(model => model.Configured),
                 first.ApiBase,
                 first.DefaultApiBase));
         }
@@ -177,6 +178,18 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         foreach (var item in result.Array("credentials").OfType<JsonObject>())
         {
             Credentials.Add(new CredentialItem(item.String("provider"), item.Bool("configured")));
+        }
+        RefreshProviderConfigurationStates();
+    }
+
+    private void RefreshProviderConfigurationStates()
+    {
+        foreach (var provider in Providers.ToArray())
+        {
+            var configured = Credentials.Any(item => item.Provider == provider.Id && item.Configured);
+            if (configured == provider.Configured) continue;
+            var index = Providers.IndexOf(provider);
+            if (index >= 0) Providers[index] = provider with { Configured = configured };
         }
     }
 
