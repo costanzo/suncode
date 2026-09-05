@@ -67,7 +67,7 @@ const settingsGuide = {
       "Choose Defaults, Appearance, Network, or Logging from the left navigation.",
       "Use the chevron beside Model providers to collapse or expand its provider links.",
       "Select a provider to edit its OpenAI-compatible URL or credential.",
-      "Zhipu GLM is shown without a stored key so its recovery path and available models can be reviewed.",
+      "A provider is shown without a stored key so its recovery path and available models can be reviewed.",
       "Use Reset default to restore a provider's built-in URL.",
       "Use Network to review certificate verification, system trust, and custom certificate-path states.",
       "Use the folder buttons in Logging to choose log and image storage directories.",
@@ -654,13 +654,13 @@ function ProviderPanel({ providerId, onSave, endpoint, onEndpointChange }) {
         {!configured && (
           <div className="settings-provider-unconfigured" role="status">
             <div>
-              <strong>Try Zhipu GLM after adding a key</strong>
+              <strong>Add an API key to use this provider</strong>
               <span>
-                The GLM models stay visible for selection, but sending is paused until this provider
+                The models stay visible for selection, but sending is paused until this provider
                 has a credential.
               </span>
             </div>
-            <code>glm-5.3</code>
+            <code>API key required</code>
           </div>
         )}
         <input

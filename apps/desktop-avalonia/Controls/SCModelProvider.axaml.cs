@@ -206,17 +206,15 @@ public sealed partial class SCModelProvider : UserControl
         ProviderModelsItemsControl.ItemsSource = models;
         ProviderModelsItemsControl.IsVisible = models.Length > 0;
         NoProviderModelsText.IsVisible = models.Length == 0;
-        CredentialStatusTextBlock.Text = CredentialStatusText ?? string.Empty;
-        CredentialStatusTextBlock.Foreground = this.FindResource("TextBrush") as IBrush;
+        CredentialStatusTextBlock.Text = CredentialConfigured
+            ? "API key configured"
+            : "No API key configured";
         CredentialWarningDot.IsVisible = !CredentialConfigured;
         CredentialSuccessDot.IsVisible = CredentialConfigured;
         CredentialStoredBorder.IsVisible = CredentialConfigured;
         CredentialMissingHint.IsVisible = !CredentialConfigured;
-        var isZhipu = string.Equals(selectedId, "zhipu", StringComparison.Ordinal);
-        ProviderUnconfiguredBanner.IsVisible = isZhipu && !CredentialConfigured;
-        ProviderUnconfiguredTitle.Text = isZhipu
-            ? "Try Zhipu GLM after adding a key"
-            : "Add an API key to use this provider";
+        ProviderUnconfiguredBanner.IsVisible = !CredentialConfigured;
+        ProviderUnconfiguredTitle.Text = "Add an API key to use this provider";
         SaveCredentialButton.Content = CredentialConfigured ? "Replace key" : "Save key";
         SaveEndpointButton.IsEnabled = CanSaveEndpoint;
         ResetEndpointButton.IsEnabled = CanResetEndpoint;

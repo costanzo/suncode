@@ -198,15 +198,15 @@
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
               <StackPanel Spacing="4">
                 <TextBlock x:Name="ProviderUnconfiguredTitle"
-                           Text="Try Zhipu GLM after adding a key"
+                           Text="Add an API key to use this provider"
                            FontSize="12"
                            FontWeight="SemiBold" />
-                <TextBlock Text="The GLM models stay visible for selection, but sending is paused until this provider has a credential."
+                <TextBlock Text="The models stay visible for selection, but sending is paused until this provider has a credential."
                            Classes="settings-row-hint"
                            TextWrapping="Wrap" />
               </StackPanel>
-              <TextBlock Grid.Column="1"
-                         Text="glm-5.3"
+                <TextBlock Grid.Column="1"
+                         Text="API key required"
                          Classes="mono"
                          FontSize="11"
                          VerticalAlignment="Center" />

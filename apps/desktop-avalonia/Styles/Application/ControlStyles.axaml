@@ -126,7 +126,7 @@
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
   <Style Selector="TextBox.sc-secret-input">
-    <Setter Property="PasswordChar" Value="●" />
+    <Setter Property="PasswordChar" Value="•" />
   </Style>
   <Style Selector="TextBox.sc-secret-input, TextBox.sc-secret-input:focus">
     <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
