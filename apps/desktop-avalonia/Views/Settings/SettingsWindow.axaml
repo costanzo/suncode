@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="using:SunCode.Desktop.Controls"
+        xmlns:settings="using:SunCode.Desktop.Views.Settings.Controls"
         xmlns:vm="using:SunCode.Desktop.ViewModels"
         xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
         x:Class="SunCode.Desktop.Views.Settings.SettingsWindow"
@@ -125,163 +126,11 @@
       </Border>
 
       <Grid Grid.Column="1" Background="{DynamicResource SurfaceBrush}">
-        <ScrollViewer x:Name="DefaultsPage" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Classes="settings-panel-content">
-            <StackPanel Classes="settings-panel-heading">
-              <TextBlock Text="Defaults" Classes="sc-text-title" />
-              <TextBlock Classes="settings-hint" Text="Configure model and turn defaults." />
-            </StackPanel>
-            <StackPanel Classes="settings-panel-section">
-              <TextBlock Classes="section-label" Text="DEFAULT MODEL" />
-              <Grid Classes="settings-row" ColumnDefinitions="*,220">
-                <StackPanel Classes="settings-row-copy">
-                  <TextBlock Classes="settings-row-title" Text="Model" />
-                  <TextBlock Classes="settings-row-hint" Text="Only models registered by the local agent appear here." />
-                </StackPanel>
-                <controls:SCFlatComboBox x:Name="DefaultModelSelector"
-                                     Grid.Column="1"
-                                     HorizontalAlignment="Stretch"
-                                     PlaceholderText="Choose a model"
-                                     SelectionChanged="DefaultModelChanged" />
-              </Grid>
-            </StackPanel>
-            <Border Classes="settings-divider" />
-            <StackPanel Classes="settings-panel-section">
-              <TextBlock Classes="section-label" Text="TURN EXECUTION" />
-              <Grid Classes="settings-row" ColumnDefinitions="*,220">
-                <StackPanel Classes="settings-row-copy">
-                  <TextBlock Classes="settings-row-title" Text="Tool-call limit" />
-                  <TextBlock Classes="settings-row-hint" Text="Maximum number of tool calls allowed in one turn." />
-                </StackPanel>
-                <NumericUpDown x:Name="ToolCallLimitInput"
-                               Grid.Column="1"
-                               Classes="sc-numeric-input"
-                               HorizontalAlignment="Stretch"
-                               Minimum="1"
-                               Maximum="256"
-                               Increment="1"
-                               FormatString="0" />
-              </Grid>
-            </StackPanel>
-            <StackPanel Classes="settings-actions">
-              <Button x:Name="SaveToolCallLimitButton"
-                      Classes="compact primary sc-button"
-                      Content="Save project limit"
-                      Click="SaveToolCallLimit" />
-              <TextBlock x:Name="ToolCallLimitScope" Classes="sc-text-status" VerticalAlignment="Center" />
-              <TextBlock x:Name="ToolCallLimitStatus" Classes="sc-text-status" VerticalAlignment="Center" />
-            </StackPanel>
-          </StackPanel>
-        </ScrollViewer>
+        <settings:DefaultsSettingsControl x:Name="DefaultsPage" />
 
-        <ScrollViewer x:Name="AppearancePage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Classes="settings-panel-content">
-            <StackPanel Classes="settings-panel-heading">
-              <TextBlock Text="Appearance" Classes="sc-text-title" />
-              <TextBlock Classes="settings-hint" Text="Adjust how SunCode looks across every open window." />
-            </StackPanel>
-            <StackPanel Classes="settings-panel-section">
-              <TextBlock Classes="section-label" Text="THEME" />
-              <Grid Classes="settings-row" ColumnDefinitions="*,220">
-                <StackPanel Classes="settings-row-copy">
-                  <TextBlock Classes="settings-row-title" Text="Color theme" />
-                  <TextBlock Classes="settings-row-hint" Text="Changes apply immediately." />
-                </StackPanel>
-                <controls:SCFlatComboBox x:Name="ThemeSelector"
-                                     Grid.Column="1"
-                                     HorizontalAlignment="Stretch"
-                                     PlaceholderText="Choose theme"
-                                     SelectionChanged="ThemeChanged" />
-              </Grid>
-            </StackPanel>
-          </StackPanel>
-        </ScrollViewer>
+        <settings:AppearanceSettingsControl x:Name="AppearancePage" IsVisible="False" />
 
-        <ScrollViewer x:Name="LoggingPage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Classes="settings-panel-content">
-            <StackPanel Classes="settings-panel-heading">
-              <TextBlock Text="Logging" Classes="sc-text-title" />
-              <TextBlock Classes="settings-hint" Text="Control diagnostic detail and how long local log files are kept." />
-            </StackPanel>
-            <StackPanel Classes="settings-panel-section">
-              <TextBlock Classes="section-label" Text="DIAGNOSTIC OUTPUT" />
-              <Grid Classes="settings-row" ColumnDefinitions="*,220">
-                <StackPanel Classes="settings-row-copy">
-                  <TextBlock Classes="settings-row-title" Text="Minimum level" />
-                  <TextBlock Classes="settings-row-hint" Text="Lower levels include more diagnostic detail." />
-                </StackPanel>
-                <controls:SCFlatComboBox x:Name="LogLevelSelector"
-                                     Grid.Column="1"
-                                     HorizontalAlignment="Stretch"
-                                     UseMonospace="True"
-                                     SelectionChanged="LogLevelChanged" />
-              </Grid>
-              <Grid Classes="settings-row" ColumnDefinitions="*,220">
-                <StackPanel Classes="settings-row-copy">
-                  <TextBlock Classes="settings-row-title" Text="Log directory" />
-                  <TextBlock Classes="settings-row-hint" Text="Agent and desktop log files are written to this folder." />
-                </StackPanel>
-                <controls:SCFileSelector x:Name="LogDirectoryInput"
-                                         Grid.Column="1"
-                                         PlaceholderText="Default logs folder"
-                                         DialogTitle="Choose log directory"
-                                         SelectionMode="Folder" />
-              </Grid>
-              <Grid Classes="settings-row" ColumnDefinitions="*,220">
-                <StackPanel Classes="settings-row-copy">
-                  <TextBlock Classes="settings-row-title" Text="Maximum file size" />
-                  <TextBlock Classes="settings-row-hint" Text="Rotate each log file when it reaches this size." />
-                </StackPanel>
-                <Grid Grid.Column="1" ColumnDefinitions="*,Auto">
-                  <TextBox x:Name="LogMaxMegabytesInput"
-                           Grid.ColumnSpan="2"
-                           Classes="mono"
-                           Padding="12,7,42,7"
-                           PlaceholderText="10"
-                           AutomationProperties.Name="Maximum file size in megabytes" />
-                  <TextBlock Grid.Column="1"
-                             Text="MB"
-                             FontSize="9"
-                             FontFamily="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace"
-                             Foreground="{DynamicResource TextMutedBrush}"
-                             Margin="0,0,10,0"
-                             VerticalAlignment="Center"
-                             IsHitTestVisible="False" />
-                </Grid>
-              </Grid>
-              <Grid Classes="settings-row" ColumnDefinitions="*,220">
-                <StackPanel Classes="settings-row-copy">
-                  <TextBlock Classes="settings-row-title" Text="Retained backups" />
-                  <TextBlock Classes="settings-row-hint" Text="Number of rotated backups to keep, from 0 to 100." />
-                </StackPanel>
-                <TextBox x:Name="LogRetentionInput" Grid.Column="1" Classes="mono" PlaceholderText="5" />
-              </Grid>
-            </StackPanel>
-            <StackPanel Classes="settings-actions">
-              <Button Classes="compact primary sc-button" Content="Save logging settings" Click="SaveLogging" />
-              <TextBlock x:Name="LoggingStatus" Classes="sc-text-status" VerticalAlignment="Center" />
-            </StackPanel>
-            <Border Classes="settings-divider" />
-            <StackPanel Classes="settings-panel-section">
-              <TextBlock Classes="section-label" Text="IMAGE STORAGE" />
-              <Grid Classes="settings-row" ColumnDefinitions="*,220">
-                <StackPanel Classes="settings-row-copy">
-                  <TextBlock Classes="settings-row-title" Text="Image directory" />
-                  <TextBlock Classes="settings-row-hint" Text="Directory for saving images." />
-                </StackPanel>
-                <controls:SCFileSelector x:Name="ImageDirectoryInput"
-                                         Grid.Column="1"
-                                         PlaceholderText="Default images folder"
-                                         DialogTitle="Choose image directory"
-                                         SelectionMode="Folder" />
-              </Grid>
-            </StackPanel>
-            <StackPanel Classes="settings-actions">
-              <Button Classes="compact primary sc-button" Content="Save image location" Click="SaveImageDirectory" />
-              <TextBlock x:Name="ImageDirectoryStatus" Classes="sc-text-status" VerticalAlignment="Center" />
-            </StackPanel>
-          </StackPanel>
-        </ScrollViewer>
+        <settings:LoggingSettingsControl x:Name="LoggingPage" IsVisible="False" />
 
         <Grid x:Name="ProvidersPage" IsVisible="False">
           <controls:SCModelProvider x:Name="ProviderManager"
@@ -297,92 +146,7 @@
                                     RemoveCredentialRequested="RemoveCredential" />
         </Grid>
 
-        <ScrollViewer x:Name="NetworkPage" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Classes="settings-panel-content">
-            <StackPanel Classes="settings-panel-heading">
-              <TextBlock Text="Network" Classes="sc-text-title" />
-              <TextBlock Classes="settings-hint" Text="Configure how Rust HTTPS clients establish secure connections." />
-            </StackPanel>
-            <StackPanel Classes="settings-panel-section">
-              <TextBlock Classes="section-label" Text="HTTPS SECURITY" />
-              <Grid Classes="settings-row" ColumnDefinitions="*,220">
-                <StackPanel Classes="settings-row-copy">
-                  <TextBlock Classes="settings-row-title" Text="Verify server certificates" />
-                  <TextBlock Classes="settings-row-hint" Text="Validate certificate chains and hostnames for model provider and WebFetch requests." />
-                </StackPanel>
-                <ToggleSwitch x:Name="VerifyHttpsCertificatesToggle"
-                              Grid.Column="1"
-                              Classes="settings-switch"
-                              OnContent="On"
-                              OffContent="Off"
-                              HorizontalAlignment="Right"
-                              VerticalAlignment="Center"
-                              Click="HttpsCertificateVerificationChanged" />
-              </Grid>
-              <Border x:Name="CertificateTrustSection" Classes="settings-subsection">
-                <StackPanel Spacing="14">
-                  <TextBlock Text="CERTIFICATE TRUST SOURCE" Classes="section-label" />
-                  <Grid Classes="settings-row" ColumnDefinitions="*,220">
-                    <StackPanel Classes="settings-row-copy">
-                      <TextBlock Classes="settings-row-title" Text="Use system certificates" />
-                      <TextBlock Classes="settings-row-hint" Text="Trust the operating system certificate store for provider and WebFetch HTTPS requests." />
-                    </StackPanel>
-                    <ToggleSwitch x:Name="UseSystemCertificatesToggle"
-                                  Grid.Column="1"
-                                  Classes="settings-switch"
-                                  OnContent="On"
-                                  OffContent="Off"
-                                  IsChecked="True"
-                                  HorizontalAlignment="Right"
-                                  VerticalAlignment="Center"
-                                  Click="SystemCertificatesChanged" />
-                  </Grid>
-                  <Grid Classes="settings-row" ColumnDefinitions="*,220">
-                    <StackPanel Classes="settings-row-copy">
-                      <TextBlock Classes="settings-row-title" Text="Certificate path" />
-                      <TextBlock x:Name="CertificatePathHint"
-                                 Classes="settings-row-hint"
-                                 Text="Disable system certificates to provide a custom certificate file." />
-                    </StackPanel>
-                    <controls:SCFileSelector x:Name="CertificatePathInput"
-                                             Grid.Column="1"
-                                             Text="{Binding CertificatePath, Mode=TwoWay}"
-                                             IsEnabled="{Binding !UseSystemCertificates}"
-                                             PlaceholderText="Using system certificates"
-                                             DialogTitle="Choose certificate file"
-                                             FileTypeName="Certificates"
-                                             AllowedExtensions="pem,crt,cer,der"
-                                             SelectionMode="File" />
-                  </Grid>
-                </StackPanel>
-              </Border>
-              <Border x:Name="HttpsCertificateWarning"
-                      IsVisible="False"
-                      Background="{DynamicResource WarningSurfaceBrush}"
-                      BorderBrush="{DynamicResource WarningBorderBrush}"
-                      BorderThickness="1"
-                      Classes="settings-warning">
-                <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
-                  <svg:Svg Width="16"
-                           Height="16"
-                           Path="/Assets/icons/platform.svg"
-                           Css="{DynamicResource IconSvgCss}"
-                           VerticalAlignment="Top" />
-                  <StackPanel Grid.Column="1" Spacing="3">
-                    <TextBlock Text="Certificate verification is off" FontSize="12" FontWeight="SemiBold" />
-                    <TextBlock Classes="settings-row-hint"
-                               Foreground="{DynamicResource TextSecondaryBrush}"
-                               Text="SunCode will accept invalid certificates and hostnames, similar to curl -k. This can expose provider credentials and fetched content to man-in-the-middle attacks." />
-                  </StackPanel>
-                </Grid>
-              </Border>
-            </StackPanel>
-            <StackPanel Classes="settings-actions">
-              <Button Classes="compact primary sc-button" Content="Save HTTPS setting" Click="SaveHttpsCertificateVerification" />
-              <TextBlock x:Name="HttpsCertificateStatus" Classes="sc-text-status" VerticalAlignment="Center" />
-            </StackPanel>
-          </StackPanel>
-        </ScrollViewer>
+        <settings:NetworkSettingsControl x:Name="NetworkPage" IsVisible="False" />
       </Grid>
     </Grid>
   </Grid>

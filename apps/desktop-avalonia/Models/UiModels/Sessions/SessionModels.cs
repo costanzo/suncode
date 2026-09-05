@@ -40,7 +40,7 @@ public sealed record SessionItem(string SessionId, string Title, string LastActi
     };
 }
 
-public sealed record ProviderItem(string Id, string DisplayName, bool Configured, string ApiBase = "")
+public sealed record ProviderItem(string Id, string DisplayName, bool Configured, string ApiBase = "", string DefaultApiBase = "")
 {
     public string Display => Configured ? DisplayName : $"{DisplayName} (needs key)";
     public string StatusText => Configured ? "Ready" : "API key needed";
@@ -59,6 +59,7 @@ public sealed record ModelItem(
     bool SupportsReasoningEffort,
     bool SupportsVision = false,
     string ApiBase = "",
+    string DefaultApiBase = "",
     IReadOnlyList<string>? ReasoningEfforts = null)
 {
     public bool Configured => Availability == "configured";

@@ -328,6 +328,7 @@ fn provider_models(
             id: model.model_id,
             wire_model: model.request_model,
             api_base: provider.endpoint.clone(),
+            default_api_base: provider.default_endpoint.clone(),
             capabilities: ModelCapabilities {
                 streaming: model.supports_streaming,
                 tool_use: model.supports_tool_use,
@@ -393,6 +394,7 @@ fn registry_from_store(
                 id: model.model_id.clone(),
                 wire_model: model.request_model.clone(),
                 api_base: provider.endpoint.clone(),
+                default_api_base: provider.default_endpoint.clone(),
                 capabilities: ModelCapabilities {
                     streaming: model.supports_streaming,
                     tool_use: model.supports_tool_use,
@@ -846,6 +848,7 @@ impl AgentSdk {
                 provider_id: &provider.provider_id,
                 display_name: &provider.display_name,
                 endpoint: &provider.endpoint,
+                default_endpoint: &provider.default_endpoint,
                 adapter_type: &provider.adapter_type,
                 enabled: provider.enabled,
                 sort_order: provider.sort_order,

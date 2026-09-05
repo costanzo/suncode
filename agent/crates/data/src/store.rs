@@ -1017,9 +1017,9 @@ impl Store {
     ) -> Result<Vec<LlmModelProviderRecord>, BusinessError> {
         let mut c = lock(&self.connection)?;
         let sql = if enabled_only {
-            "SELECT provider_id,display_name,endpoint,adapter_type,(api_key IS NOT NULL AND length(api_key)>0) AS api_key_configured,enabled,sort_order,created_at,updated_at FROM llm_model_provider WHERE enabled=1 ORDER BY sort_order,provider_id"
+            "SELECT provider_id,display_name,endpoint,default_endpoint,adapter_type,(api_key IS NOT NULL AND length(api_key)>0) AS api_key_configured,enabled,sort_order,created_at,updated_at FROM llm_model_provider WHERE enabled=1 ORDER BY sort_order,provider_id"
         } else {
-            "SELECT provider_id,display_name,endpoint,adapter_type,(api_key IS NOT NULL AND length(api_key)>0) AS api_key_configured,enabled,sort_order,created_at,updated_at FROM llm_model_provider ORDER BY sort_order,provider_id"
+            "SELECT provider_id,display_name,endpoint,default_endpoint,adapter_type,(api_key IS NOT NULL AND length(api_key)>0) AS api_key_configured,enabled,sort_order,created_at,updated_at FROM llm_model_provider ORDER BY sort_order,provider_id"
         };
         sql_query(sql)
             .load::<ProviderRow>(&mut *c)
@@ -1035,9 +1035,11 @@ impl Store {
         let provider = input.provider_id.trim();
         let name = input.display_name.trim();
         let endpoint = input.endpoint.trim().trim_end_matches('/');
+        let default_endpoint = input.default_endpoint.trim().trim_end_matches('/');
         if provider.is_empty()
             || name.is_empty()
             || endpoint.is_empty()
+            || default_endpoint.is_empty()
             || input.adapter_type.trim() != "openai"
             || input.sort_order < 0
         {
@@ -1045,7 +1047,7 @@ impl Store {
         }
         let mut c = lock(&self.connection)?;
         let t = now();
-        sql_query("INSERT INTO llm_model_provider(provider_id,display_name,endpoint,adapter_type,api_key,enabled,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(provider_id) DO UPDATE SET display_name=excluded.display_name,endpoint=excluded.endpoint,adapter_type=excluded.adapter_type,enabled=excluded.enabled,sort_order=excluded.sort_order,updated_at=excluded.updated_at").bind::<Text,_>(provider).bind::<Text,_>(name).bind::<Text,_>(endpoint).bind::<Text,_>("openai").bind::<Nullable<Text>,_>(None::<String>).bind::<Integer,_>(input.enabled as i32).bind::<Integer,_>(input.sort_order as i32).bind::<Text,_>(&t).bind::<Text,_>(&t).execute(&mut *c).map_err(crate::database_error)?;
+        sql_query("INSERT INTO llm_model_provider(provider_id,display_name,endpoint,default_endpoint,adapter_type,api_key,enabled,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(provider_id) DO UPDATE SET display_name=excluded.display_name,endpoint=excluded.endpoint,default_endpoint=excluded.default_endpoint,adapter_type=excluded.adapter_type,enabled=excluded.enabled,sort_order=excluded.sort_order,updated_at=excluded.updated_at").bind::<Text,_>(provider).bind::<Text,_>(name).bind::<Text,_>(endpoint).bind::<Text,_>(default_endpoint).bind::<Text,_>("openai").bind::<Nullable<Text>,_>(None::<String>).bind::<Integer,_>(input.enabled as i32).bind::<Integer,_>(input.sort_order as i32).bind::<Text,_>(&t).bind::<Text,_>(&t).execute(&mut *c).map_err(crate::database_error)?;
         Ok(())
     }
     pub fn llm_models(&self, enabled_only: bool) -> Result<Vec<LlmModelRecord>, BusinessError> {
@@ -1409,6 +1411,13 @@ fn initialize(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
                 .batch_execute(script)
                 .map_err(crate::database_error)?;
         }
+        if !schema::llm_model_provider_includes_default_endpoint(connection)? {
+            connection
+                .batch_execute(
+                    "ALTER TABLE llm_model_provider ADD COLUMN default_endpoint TEXT NOT NULL DEFAULT ''; UPDATE llm_model_provider SET default_endpoint=CASE provider_id WHEN 'deepseek' THEN 'https://api.deepseek.com' WHEN 'zhipu' THEN 'https://open.bigmodel.cn/api/paas/v4' WHEN 'openai' THEN 'https://api.openai.com/v1' WHEN 'kimi' THEN 'https://api.moonshot.ai/v1' WHEN 'claude' THEN 'https://api.anthropic.com/v1' WHEN 'gemini' THEN 'https://generativelanguage.googleapis.com/v1beta/openai' ELSE endpoint END WHERE default_endpoint='';",
+                )
+                .map_err(crate::database_error)?;
+        }
         let actual = schema::table_names(connection)?;
         if actual.iter().map(String::as_str).collect::<Vec<_>>() != sqlite::TABLE_NAMES {
             return Err(BusinessError::invalid(format!(
@@ -1548,6 +1557,7 @@ fn provider_from_row(row: ProviderRow) -> Result<LlmModelProviderRecord, Busines
         provider_id: row.provider_id,
         display_name: row.display_name,
         endpoint: row.endpoint,
+        default_endpoint: row.default_endpoint,
         adapter_type: row.adapter_type,
         api_key_configured: row.api_key_configured != 0,
         enabled: row.enabled != 0,

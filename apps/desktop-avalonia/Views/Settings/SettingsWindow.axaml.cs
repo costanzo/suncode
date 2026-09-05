@@ -38,6 +38,15 @@ public sealed partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+        DefaultsPage.DefaultModelChanged += DefaultModelChanged;
+        DefaultsPage.SaveToolCallLimitRequested += SaveToolCallLimit;
+        AppearancePage.ThemeChanged += ThemeChanged;
+        LoggingPage.LogLevelChanged += LogLevelChanged;
+        LoggingPage.SaveLoggingRequested += SaveLogging;
+        LoggingPage.SaveImageDirectoryRequested += SaveImageDirectory;
+        NetworkPage.HttpsCertificateVerificationChanged += HttpsCertificateVerificationChanged;
+        NetworkPage.SystemCertificatesChanged += SystemCertificatesChanged;
+        NetworkPage.SaveHttpsCertificateVerificationRequested += SaveHttpsCertificateVerification;
         WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
@@ -47,29 +56,29 @@ public sealed partial class SettingsWindow : Window
             RebindViewModelSubscriptions();
             await ViewModel.LoadProjectToolCallLimitAsync();
             RefreshModelSelector();
-            ThemeSelector.ItemsSource = ThemeOptions;
-            ThemeSelector.SelectedItem = ThemeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ThemeMode));
-            LogLevelSelector.ItemsSource = LogLevelOptions;
-            LogLevelSelector.SelectedItem = LogLevelOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.LogLevel));
-            ToolCallLimitInput.Value = ViewModel.ToolCallLimit;
-            ToolCallLimitInput.IsEnabled = ViewModel.IsProjectOpen;
-            SaveToolCallLimitButton.IsEnabled = ViewModel.IsProjectOpen;
-            ToolCallLimitScope.Text = ViewModel.SelectedProject is { } project
+            AppearancePage.ThemeSelectorControl.ItemsSource = ThemeOptions;
+            AppearancePage.ThemeSelectorControl.SelectedItem = ThemeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ThemeMode));
+            LoggingPage.LogLevelSelectorControl.ItemsSource = LogLevelOptions;
+            LoggingPage.LogLevelSelectorControl.SelectedItem = LogLevelOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.LogLevel));
+            DefaultsPage.ToolCallLimit.Value = ViewModel.ToolCallLimit;
+            DefaultsPage.ToolCallLimit.IsEnabled = ViewModel.IsProjectOpen;
+            DefaultsPage.SaveToolCallLimitButtonControl.IsEnabled = ViewModel.IsProjectOpen;
+            DefaultsPage.ToolCallLimitScopeText.Text = ViewModel.SelectedProject is { } project
                 ? $"Project: {project.DisplayName}"
                 : "Open a project to configure this setting.";
-            LogDirectoryInput.Text = ViewModel.LogDirectory;
-            ImageDirectoryInput.Text = ViewModel.ImageDirectory;
-            LogMaxMegabytesInput.Text = Math.Max(1, ViewModel.LogMaxBytes / (1024 * 1024))
+            LoggingPage.LogDirectoryInputControl.Text = ViewModel.LogDirectory;
+            LoggingPage.ImageDirectoryInputControl.Text = ViewModel.ImageDirectory;
+            LoggingPage.LogMaxMegabytesInputControl.Text = Math.Max(1, ViewModel.LogMaxBytes / (1024 * 1024))
                 .ToString(System.Globalization.CultureInfo.InvariantCulture);
-            LogRetentionInput.Text = ViewModel.LogRetention.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            VerifyHttpsCertificatesToggle.IsChecked = ViewModel.VerifyHttpsCertificates;
-            UseSystemCertificatesToggle.IsChecked = ViewModel.UseSystemCertificates;
-            CertificatePathInput.Text = ViewModel.CertificatePath;
-            CertificatePathInput.IsEnabled = ViewModel.UseSystemCertificates == false;
+            LoggingPage.LogRetentionInputControl.Text = ViewModel.LogRetention.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked = ViewModel.VerifyHttpsCertificates;
+            NetworkPage.UseSystemCertificatesToggleControl.IsChecked = ViewModel.UseSystemCertificates;
+            NetworkPage.CertificatePathInputControl.Text = ViewModel.CertificatePath;
+            NetworkPage.CertificatePathInputControl.IsEnabled = ViewModel.UseSystemCertificates == false;
             RefreshHttpsCertificateWarning();
             RefreshCertificateTrustPresentation();
-            LoggingStatus.Text = "Local settings";
-            ImageDirectoryStatus.Text = "Local settings";
+            LoggingPage.LoggingStatusText.Text = "Local settings";
+            LoggingPage.ImageDirectoryStatusText.Text = "Local settings";
             ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
             ShowProviderPanel(null);
             RefreshProviderNavigation();
@@ -162,12 +171,12 @@ public sealed partial class SettingsWindow : Window
 
     private async void DefaultModelChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (_ready && DefaultModelSelector.SelectedItem?.Value is ModelItem model) await ViewModel.SaveDefaultModelAsync(model);
+        if (_ready && DefaultsPage.ModelSelector.SelectedItem?.Value is ModelItem model) await ViewModel.SaveDefaultModelAsync(model);
     }
 
     private async void ThemeChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (!_ready || ThemeSelector.SelectedItem?.Value is not string mode) return;
+        if (!_ready || AppearancePage.ThemeSelectorControl.SelectedItem?.Value is not string mode) return;
         await ViewModel.SaveThemeAsync(mode);
     }
 
@@ -177,28 +186,28 @@ public sealed partial class SettingsWindow : Window
 
     private async void SaveLogging(object? sender, RoutedEventArgs e)
     {
-        var level = LogLevelSelector.SelectedItem?.Value as string ?? ViewModel.LogLevel;
-        if (!long.TryParse(LogMaxMegabytesInput.Text?.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var megabytes)
+        var level = LoggingPage.LogLevelSelectorControl.SelectedItem?.Value as string ?? ViewModel.LogLevel;
+        if (!long.TryParse(LoggingPage.LogMaxMegabytesInputControl.Text?.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var megabytes)
             || megabytes is < 1 or > 1000)
         {
-            LoggingStatus.Text = "Maximum log size must be between 1 and 1000 MB";
-            LoggingStatus.Foreground = this.FindResource("DangerBrush") as IBrush;
+            LoggingPage.LoggingStatusText.Text = "Maximum log size must be between 1 and 1000 MB";
+            LoggingPage.LoggingStatusText.Foreground = this.FindResource("DangerBrush") as IBrush;
             return;
         }
         var saved = await ViewModel.SaveLoggingSettingsAsync(
             level,
-            LogDirectoryInput.Text,
+            LoggingPage.LogDirectoryInputControl.Text,
             checked(megabytes * 1024 * 1024).ToString(System.Globalization.CultureInfo.InvariantCulture),
-            LogRetentionInput.Text ?? string.Empty);
-        LoggingStatus.Text = ViewModel.StatusText;
-        LoggingStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
+            LoggingPage.LogRetentionInputControl.Text ?? string.Empty);
+        LoggingPage.LoggingStatusText.Text = ViewModel.StatusText;
+        LoggingPage.LoggingStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
     }
 
     private async void SaveImageDirectory(object? sender, RoutedEventArgs e)
     {
-        var saved = await ViewModel.SaveImageDirectoryAsync(ImageDirectoryInput.Text);
-        ImageDirectoryStatus.Text = ViewModel.StatusText;
-        ImageDirectoryStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
+        var saved = await ViewModel.SaveImageDirectoryAsync(LoggingPage.ImageDirectoryInputControl.Text);
+        LoggingPage.ImageDirectoryStatusText.Text = ViewModel.StatusText;
+        LoggingPage.ImageDirectoryStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
     }
 
     private void HttpsCertificateVerificationChanged(object? sender, RoutedEventArgs e) =>
@@ -206,40 +215,40 @@ public sealed partial class SettingsWindow : Window
 
     private void SystemCertificatesChanged(object? sender, RoutedEventArgs e)
     {
-        ViewModel.UseSystemCertificates = UseSystemCertificatesToggle.IsChecked == true;
-        CertificatePathInput.IsEnabled = !ViewModel.UseSystemCertificates;
+        ViewModel.UseSystemCertificates = NetworkPage.UseSystemCertificatesToggleControl.IsChecked == true;
+        NetworkPage.CertificatePathInputControl.IsEnabled = !ViewModel.UseSystemCertificates;
         RefreshCertificateTrustPresentation();
     }
 
     private async void SaveHttpsCertificateVerification(object? sender, RoutedEventArgs e)
     {
-        var enabled = VerifyHttpsCertificatesToggle.IsChecked == true;
+        var enabled = NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked == true;
         var saved = await ViewModel.SaveHttpsCertificateVerificationAsync(enabled);
-        saved = await ViewModel.SaveCertificateTrustAsync(UseSystemCertificatesToggle.IsChecked == true, CertificatePathInput.Text) && saved;
-        HttpsCertificateStatus.Text = ViewModel.StatusText;
-        HttpsCertificateStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
+        saved = await ViewModel.SaveCertificateTrustAsync(NetworkPage.UseSystemCertificatesToggleControl.IsChecked == true, NetworkPage.CertificatePathInputControl.Text) && saved;
+        NetworkPage.HttpsCertificateStatusText.Text = ViewModel.StatusText;
+        NetworkPage.HttpsCertificateStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
         if (!saved)
         {
-            VerifyHttpsCertificatesToggle.IsChecked = ViewModel.VerifyHttpsCertificates;
+            NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked = ViewModel.VerifyHttpsCertificates;
         }
         RefreshHttpsCertificateWarning();
     }
 
     private void RefreshHttpsCertificateWarning()
     {
-        var verify = VerifyHttpsCertificatesToggle.IsChecked == true;
-        HttpsCertificateWarning.IsVisible = !verify;
-        CertificateTrustSection.IsVisible = verify;
+        var verify = NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked == true;
+        NetworkPage.HttpsCertificateWarningControl.IsVisible = !verify;
+        NetworkPage.CertificateTrustSectionControl.IsVisible = verify;
     }
 
     private void RefreshCertificateTrustPresentation()
     {
-        var useSystemCertificates = UseSystemCertificatesToggle.IsChecked == true;
-        CertificatePathHint.Text = useSystemCertificates
+        var useSystemCertificates = NetworkPage.UseSystemCertificatesToggleControl.IsChecked == true;
+        NetworkPage.CertificatePathHintText.Text = useSystemCertificates
             ? "Disable system certificates to provide a custom certificate file."
             : "Choose a PEM, CRT, CER, or DER certificate file for custom trust.";
         RefreshHttpsCertificateWarning();
-        HttpsCertificateStatus.Text = VerifyHttpsCertificatesToggle.IsChecked == true
+        NetworkPage.HttpsCertificateStatusText.Text = NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked == true
             ? useSystemCertificates
                 ? "System trust store"
                 : "Custom certificate required"
@@ -248,10 +257,10 @@ public sealed partial class SettingsWindow : Window
 
     private async void SaveToolCallLimit(object? sender, RoutedEventArgs e)
     {
-        if (ToolCallLimitInput.Value is not { } value) return;
+        if (DefaultsPage.ToolCallLimit.Value is not { } value) return;
         var saved = await ViewModel.SaveProjectToolCallLimitAsync(decimal.ToInt32(value));
-        ToolCallLimitStatus.Text = ViewModel.StatusText;
-        ToolCallLimitStatus.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
+        DefaultsPage.ToolCallLimitStatusText.Text = ViewModel.StatusText;
+        DefaultsPage.ToolCallLimitStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
     }
 
     private async void SaveCredential(object? sender, RoutedEventArgs e)
@@ -280,7 +289,7 @@ public sealed partial class SettingsWindow : Window
 
     private async void ResetProviderEndpoint(object? sender, RoutedEventArgs e)
     {
-        var defaultEndpoint = SCProviderCatalog.GetOrDefault(_provider).DefaultEndpoint;
+        var defaultEndpoint = ViewModel.Providers.FirstOrDefault(item => item.Id == _provider)?.DefaultApiBase ?? string.Empty;
         if (string.IsNullOrWhiteSpace(defaultEndpoint))
         {
             defaultEndpoint = ProviderManager.EndpointText?.Trim() ?? string.Empty;
@@ -353,7 +362,7 @@ public sealed partial class SettingsWindow : Window
     {
         var endpoint = ProviderManager.EndpointText?.Trim() ?? string.Empty;
         var savedEndpoint = ViewModel.ProviderEndpoint(_provider).Trim();
-        var defaultEndpoint = SCProviderCatalog.GetOrDefault(_provider).DefaultEndpoint;
+        var defaultEndpoint = ViewModel.Providers.FirstOrDefault(item => item.Id == _provider)?.DefaultApiBase ?? string.Empty;
         ProviderManager.CanSaveEndpoint = endpoint.Length > 0
             && !string.Equals(endpoint, savedEndpoint, StringComparison.Ordinal);
         ProviderManager.CanResetEndpoint = defaultEndpoint.Length > 0
@@ -388,7 +397,7 @@ public sealed partial class SettingsWindow : Window
     {
         if (DataContext is not DesktopViewModel viewModel) return;
         var items = viewModel.Models.Select(model => new SCComboBoxItem(model.Id, model)).ToArray();
-        DefaultModelSelector.ItemsSource = items;
-        DefaultModelSelector.SelectedItem = items.FirstOrDefault(item => item.Value is ModelItem model && model.Id == viewModel.SelectedModel?.Id);
+        DefaultsPage.ModelSelector.ItemsSource = items;
+        DefaultsPage.ModelSelector.SelectedItem = items.FirstOrDefault(item => item.Value is ModelItem model && model.Id == viewModel.SelectedModel?.Id);
     }
 }

@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SunCode.Desktop.Controls"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.LoggingSettingsControl">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Classes="settings-panel-content">
+      <StackPanel Classes="settings-panel-heading">
+        <TextBlock Text="Logging" Classes="sc-text-title" />
+        <TextBlock Classes="settings-hint" Text="Control diagnostic detail and how long local log files are kept." />
+      </StackPanel>
+      <StackPanel Classes="settings-panel-section">
+        <TextBlock Classes="section-label" Text="DIAGNOSTIC OUTPUT" />
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Minimum level" />
+            <TextBlock Classes="settings-row-hint" Text="Lower levels include more diagnostic detail." />
+          </StackPanel>
+          <controls:SCFlatComboBox x:Name="LogLevelSelector" Grid.Column="1" HorizontalAlignment="Stretch"
+                                   UseMonospace="True" SelectionChanged="OnLogLevelChanged" />
+        </Grid>
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Log directory" />
+            <TextBlock Classes="settings-row-hint" Text="Agent and desktop log files are written to this folder." />
+          </StackPanel>
+          <controls:SCFileSelector x:Name="LogDirectoryInput" Grid.Column="1" PlaceholderText="Default logs folder"
+                                   DialogTitle="Choose log directory" SelectionMode="Folder" />
+        </Grid>
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Maximum file size" />
+            <TextBlock Classes="settings-row-hint" Text="Rotate each log file when it reaches this size." />
+          </StackPanel>
+          <Grid Grid.Column="1" ColumnDefinitions="*,Auto">
+            <TextBox x:Name="LogMaxMegabytesInput" Grid.ColumnSpan="2" Classes="mono" Padding="12,7,42,7"
+                     PlaceholderText="10" AutomationProperties.Name="Maximum file size in megabytes" />
+            <TextBlock Grid.Column="1" Text="MB" FontSize="9"
+                       FontFamily="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace"
+                       Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,10,0" VerticalAlignment="Center"
+                       IsHitTestVisible="False" />
+          </Grid>
+        </Grid>
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Retained backups" />
+            <TextBlock Classes="settings-row-hint" Text="Number of rotated backups to keep, from 0 to 100." />
+          </StackPanel>
+          <TextBox x:Name="LogRetentionInput" Grid.Column="1" Classes="mono" PlaceholderText="5" />
+        </Grid>
+      </StackPanel>
+      <StackPanel Classes="settings-actions">
+        <Button Classes="compact primary sc-button" Content="Save logging settings" Click="OnSaveLogging" />
+        <TextBlock x:Name="LoggingStatus" Classes="sc-text-status" VerticalAlignment="Center" />
+      </StackPanel>
+      <Border Classes="settings-divider" />
+      <StackPanel Classes="settings-panel-section">
+        <TextBlock Classes="section-label" Text="IMAGE STORAGE" />
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Image directory" />
+            <TextBlock Classes="settings-row-hint" Text="Directory for saving images." />
+          </StackPanel>
+          <controls:SCFileSelector x:Name="ImageDirectoryInput" Grid.Column="1" PlaceholderText="Default images folder"
+                                   DialogTitle="Choose image directory" SelectionMode="Folder" />
+        </Grid>
+      </StackPanel>
+      <StackPanel Classes="settings-actions">
+        <Button Classes="compact primary sc-button" Content="Save image location" Click="OnSaveImageDirectory" />
+        <TextBlock x:Name="ImageDirectoryStatus" Classes="sc-text-status" VerticalAlignment="Center" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -68,3 +68,19 @@ pub(crate) fn session_call_includes_provider_ids(
             .iter()
             .any(|column| column.name == "provider_response_id"))
 }
+
+pub(crate) fn llm_model_provider_includes_default_endpoint(
+    connection: &mut SqliteConnection,
+) -> Result<bool, crate::BusinessError> {
+    #[derive(diesel::QueryableByName)]
+    struct ColumnRow {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        name: String,
+    }
+    let columns = sql_query("PRAGMA table_info(llm_model_provider)")
+        .load::<ColumnRow>(connection)
+        .map_err(crate::database_error)?;
+    Ok(columns
+        .iter()
+        .any(|column| column.name == "default_endpoint"))
+}

@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SunCode.Desktop.Controls"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.AppearanceSettingsControl">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Classes="settings-panel-content">
+      <StackPanel Classes="settings-panel-heading">
+        <TextBlock Text="Appearance" Classes="sc-text-title" />
+        <TextBlock Classes="settings-hint" Text="Adjust how SunCode looks across every open window." />
+      </StackPanel>
+      <StackPanel Classes="settings-panel-section">
+        <TextBlock Classes="section-label" Text="THEME" />
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Color theme" />
+            <TextBlock Classes="settings-row-hint" Text="Changes apply immediately." />
+          </StackPanel>
+          <controls:SCFlatComboBox x:Name="ThemeSelector"
+                                   Grid.Column="1"
+                                   HorizontalAlignment="Stretch"
+                                   PlaceholderText="Choose theme"
+                                   SelectionChanged="OnThemeChanged" />
+        </Grid>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

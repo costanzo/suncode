@@ -137,6 +137,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 item.Object("capabilities").Bool("reasoning_effort"),
                 item.Object("capabilities").Bool("vision"),
                 item.String("apiBase", "api_base"),
+                item.String("defaultApiBase", "default_api_base"),
                 item.Array("reasoningEfforts", "reasoning_efforts")
                     .Select(value => value?.GetValue<string>() ?? string.Empty)
                     .Where(value => !string.IsNullOrWhiteSpace(value))
@@ -149,7 +150,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 group.Key,
                 string.IsNullOrWhiteSpace(first.ProviderLabel) ? group.Key : first.ProviderLabel,
                 group.Any(model => model.Configured),
-                first.ApiBase));
+                first.ApiBase,
+                first.DefaultApiBase));
         }
         SelectedModel = Models.FirstOrDefault(item => item.Id == selectedId) ?? Models.FirstOrDefault();
         if (SelectedModel is null)

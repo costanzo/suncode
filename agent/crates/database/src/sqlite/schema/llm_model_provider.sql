@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS llm_model_provider (
     provider_id TEXT PRIMARY KEY CHECK(length(provider_id) > 0),
     display_name TEXT NOT NULL CHECK(length(display_name) > 0),
     endpoint TEXT NOT NULL CHECK(length(endpoint) > 0),
+    default_endpoint TEXT NOT NULL CHECK(length(default_endpoint) > 0),
     adapter_type TEXT NOT NULL DEFAULT 'openai' CHECK(adapter_type IN ('openai')),
     api_key TEXT,
     enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),

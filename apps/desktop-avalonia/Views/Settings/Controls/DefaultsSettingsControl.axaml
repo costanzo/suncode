@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SunCode.Desktop.Controls"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.DefaultsSettingsControl">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Classes="settings-panel-content">
+      <StackPanel Classes="settings-panel-heading">
+        <TextBlock Text="Defaults" Classes="sc-text-title" />
+        <TextBlock Classes="settings-hint" Text="Configure model and turn defaults." />
+      </StackPanel>
+      <StackPanel Classes="settings-panel-section">
+        <TextBlock Classes="section-label" Text="DEFAULT MODEL" />
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Model" />
+            <TextBlock Classes="settings-row-hint" Text="Only models registered by the local agent appear here." />
+          </StackPanel>
+          <controls:SCFlatComboBox x:Name="DefaultModelSelector"
+                                   Grid.Column="1"
+                                   HorizontalAlignment="Stretch"
+                                   PlaceholderText="Choose a model"
+                                   SelectionChanged="OnDefaultModelChanged" />
+        </Grid>
+      </StackPanel>
+      <Border Classes="settings-divider" />
+      <StackPanel Classes="settings-panel-section">
+        <TextBlock Classes="section-label" Text="TURN EXECUTION" />
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Tool-call limit" />
+            <TextBlock Classes="settings-row-hint" Text="Maximum number of tool calls allowed in one turn." />
+          </StackPanel>
+          <NumericUpDown x:Name="ToolCallLimitInput"
+                         Grid.Column="1"
+                         Classes="sc-numeric-input"
+                         HorizontalAlignment="Stretch"
+                         Minimum="1"
+                         Maximum="256"
+                         Increment="1"
+                         FormatString="0" />
+        </Grid>
+      </StackPanel>
+      <StackPanel Classes="settings-actions">
+        <Button x:Name="SaveToolCallLimitButton"
+                Classes="compact primary sc-button"
+                Content="Save project limit"
+                Click="OnSaveToolCallLimit" />
+        <TextBlock x:Name="ToolCallLimitScope" Classes="sc-text-status" VerticalAlignment="Center" />
+        <TextBlock x:Name="ToolCallLimitStatus" Classes="sc-text-status" VerticalAlignment="Center" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -256,6 +256,7 @@ mod tests {
             id: id.into(),
             wire_model: "company-model-v1".into(),
             api_base: "https://llm.example.invalid/v1".into(),
+            default_api_base: "https://llm.example.invalid/v1".into(),
             capabilities: ModelCapabilities {
                 streaming: true,
                 tool_use: true,

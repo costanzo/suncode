@@ -87,6 +87,7 @@ diesel::table! {
         provider_id -> Text,
         display_name -> Text,
         endpoint -> Text,
+        default_endpoint -> Text,
         adapter_type -> Text,
         api_key -> Nullable<Text>,
         enabled -> Integer,

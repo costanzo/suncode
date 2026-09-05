@@ -11,6 +11,8 @@ pub(crate) struct ProviderRow {
     #[diesel(sql_type = Text)]
     pub endpoint: String,
     #[diesel(sql_type = Text)]
+    pub default_endpoint: String,
+    #[diesel(sql_type = Text)]
     pub adapter_type: String,
     #[diesel(sql_type = Integer)]
     pub api_key_configured: i32,

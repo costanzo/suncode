@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SunCode.Desktop.Controls"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.NetworkSettingsControl" x:DataType="vm:DesktopViewModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Classes="settings-panel-content">
+      <StackPanel Classes="settings-panel-heading">
+        <TextBlock Text="Network" Classes="sc-text-title" />
+        <TextBlock Classes="settings-hint" Text="Configure how Rust HTTPS clients establish secure connections." />
+      </StackPanel>
+      <StackPanel Classes="settings-panel-section">
+        <TextBlock Classes="section-label" Text="HTTPS SECURITY" />
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Verify server certificates" />
+            <TextBlock Classes="settings-row-hint"
+                       Text="Validate certificate chains and hostnames for model provider and WebFetch requests." />
+          </StackPanel>
+          <ToggleSwitch x:Name="VerifyHttpsCertificatesToggle" Grid.Column="1" Classes="settings-switch" OnContent="On"
+                        OffContent="Off" HorizontalAlignment="Right" VerticalAlignment="Center"
+                        Click="OnHttpsCertificateVerificationChanged" />
+        </Grid>
+        <Border x:Name="CertificateTrustSection" Classes="settings-subsection">
+          <StackPanel Spacing="14">
+            <TextBlock Text="CERTIFICATE TRUST SOURCE" Classes="section-label" />
+            <Grid Classes="settings-row" ColumnDefinitions="*,220">
+              <StackPanel Classes="settings-row-copy">
+                <TextBlock Classes="settings-row-title" Text="Use system certificates" />
+                <TextBlock Classes="settings-row-hint"
+                           Text="Trust the operating system certificate store for provider and WebFetch HTTPS requests." />
+              </StackPanel>
+              <ToggleSwitch x:Name="UseSystemCertificatesToggle" Grid.Column="1" Classes="settings-switch"
+                            OnContent="On" OffContent="Off" IsChecked="True" HorizontalAlignment="Right"
+                            VerticalAlignment="Center" Click="OnSystemCertificatesChanged" />
+            </Grid>
+            <Grid Classes="settings-row" ColumnDefinitions="*,220">
+              <StackPanel Classes="settings-row-copy">
+                <TextBlock Classes="settings-row-title" Text="Certificate path" />
+                <TextBlock x:Name="CertificatePathHint" Classes="settings-row-hint"
+                           Text="Disable system certificates to provide a custom certificate file." />
+              </StackPanel>
+              <controls:SCFileSelector x:Name="CertificatePathInput" Grid.Column="1"
+                                       Text="{Binding CertificatePath, Mode=TwoWay}"
+                                       IsEnabled="{Binding !UseSystemCertificates}"
+                                       PlaceholderText="Using system certificates"
+                                       DialogTitle="Choose certificate file" FileTypeName="Certificates"
+                                       AllowedExtensions="pem,crt,cer,der" SelectionMode="File" />
+            </Grid>
+          </StackPanel>
+        </Border>
+        <Border x:Name="HttpsCertificateWarning" IsVisible="False" Background="{DynamicResource WarningSurfaceBrush}"
+                BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" Classes="settings-warning">
+          <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
+            <svg:Svg Width="16" Height="16" Path="/Assets/icons/platform.svg" Css="{DynamicResource IconSvgCss}"
+                     VerticalAlignment="Top" />
+            <StackPanel Grid.Column="1" Spacing="3">
+              <TextBlock Text="Certificate verification is off" FontSize="12" FontWeight="SemiBold" />
+              <TextBlock Classes="settings-row-hint" Foreground="{DynamicResource TextSecondaryBrush}"
+                         Text="SunCode will accept invalid certificates and hostnames, similar to curl -k. This can expose provider credentials and fetched content to man-in-the-middle attacks." />
+            </StackPanel>
+          </Grid>
+        </Border>
+      </StackPanel>
+      <StackPanel Classes="settings-actions">
+        <Button Classes="compact primary sc-button" Content="Save HTTPS setting"
+                Click="OnSaveHttpsCertificateVerification" />
+        <TextBlock x:Name="HttpsCertificateStatus" Classes="sc-text-status" VerticalAlignment="Center" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

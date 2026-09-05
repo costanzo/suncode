@@ -434,6 +434,7 @@ mod tests {
                 id: model_id.into(),
                 wire_model: model_id.into(),
                 api_base: format!("http://{address}"),
+                default_api_base: format!("http://{address}"),
                 capabilities: ModelCapabilities {
                     streaming: true,
                     tool_use: true,
