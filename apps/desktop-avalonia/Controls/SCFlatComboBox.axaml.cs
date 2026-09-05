@@ -90,9 +90,6 @@ public sealed partial class SCFlatComboBox : UserControl
 
         PlaceholderLabel.Text = _displayText;
         PlaceholderLabel.IsVisible = SelectedItem is null;
-        PlaceholderLabel.Foreground = SelectedItem is null
-            ? this.FindResource("TextMutedBrush") as Avalonia.Media.IBrush
-            : this.FindResource("TextBrush") as Avalonia.Media.IBrush;
     }
 
     private void FlatSelectionChanged(object? sender, SelectionChangedEventArgs e)

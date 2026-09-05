@@ -217,6 +217,8 @@
                   Spacing="6">
         <controls:SCGroupComboBox x:Name="ModelSelector"
                              Width="136"
+                             MinWidth="136"
+                             MaxWidth="136"
                              Height="24"
                              MinHeight="24"
                              Classes="mono composer-option"

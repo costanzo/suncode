@@ -229,8 +229,5 @@ public sealed partial class SCGroupComboBox : UserControl
             RaisePropertyChanged(DisplayTextProperty, previousText, nextText);
 
         GroupedLabel.Text = nextText;
-        GroupedLabel.Foreground = SelectedItem is null
-            ? this.FindResource("TextMutedBrush") as Avalonia.Media.IBrush
-            : this.FindResource("TextBrush") as Avalonia.Media.IBrush;
     }
 }

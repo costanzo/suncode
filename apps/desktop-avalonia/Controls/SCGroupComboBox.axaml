@@ -6,6 +6,7 @@
              x:CompileBindings="False">
   <Button x:Name="GroupedButton"
           Classes="sc-button sc-combo-trigger"
+          HorizontalAlignment="Stretch"
           HorizontalContentAlignment="Stretch"
           Foreground="{DynamicResource TextBrush}"
           Click="OpenGroupedMenu">
@@ -15,7 +16,6 @@
                  Foreground="{DynamicResource TextBrush}"
                  MinWidth="1"
                  FontSize="10"
-                 ZIndex="1000"
                  VerticalAlignment="Center"
                  HorizontalAlignment="Stretch"
                  TextTrimming="CharacterEllipsis" />
