@@ -308,6 +308,12 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public string LogLevel { get => _logLevel; private set => SetProperty(ref _logLevel, value); }
     public string LogDirectory { get => _logDirectory; private set => SetProperty(ref _logDirectory, value); }
     public string ImageDirectory { get => _imageDirectory; private set => SetProperty(ref _imageDirectory, value); }
+    public string EffectiveLogDirectory => string.IsNullOrWhiteSpace(LogDirectory)
+        ? AppDataPaths.DefaultLogDirectory
+        : LogDirectory;
+    public string EffectiveImageDirectory => string.IsNullOrWhiteSpace(ImageDirectory)
+        ? AppDataPaths.DefaultImageDirectory
+        : ImageDirectory;
     public long LogMaxBytes { get => _logMaxBytes; private set => SetProperty(ref _logMaxBytes, value); }
     public int LogRetention { get => _logRetention; private set => SetProperty(ref _logRetention, value); }
     public bool VerifyHttpsCertificates { get => _verifyHttpsCertificates; private set => SetProperty(ref _verifyHttpsCertificates, value); }

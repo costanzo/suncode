@@ -71,6 +71,7 @@
   <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
@@ -94,6 +95,7 @@
   <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}" />
     <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}" />
   </Style>
   <Style Selector="Button.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}" />
@@ -161,16 +163,17 @@
     <Setter Property="Padding" Value="12,7" />
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <Style Selector="TextBox:focus">
     <Setter Property="Background" Value="{DynamicResource FieldFocusBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderThickness" Value="1" />
   </Style>
   <Style Selector="ComboBox:focus">
     <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderThickness" Value="1" />
   </Style>
   <Style Selector="Border.card">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />

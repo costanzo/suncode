@@ -26,12 +26,12 @@
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     </Style>
-    <Style Selector="Button.Navigation2Style">
-      <Setter Property="MinHeight" Value="32" />
+    <Style Selector="Button.navigation.provider">
+      <Setter Property="MinHeight" Value="30" />
       <Setter Property="Width" Value="170" />
       <Setter Property="Padding" Value="10,0" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontSize" Value="11" />
       <Setter Property="FontWeight" Value="Normal" />
       <Setter Property="CornerRadius" Value="5" />
       <Setter Property="Background" Value="Transparent" />
@@ -41,19 +41,21 @@
     <Style Selector="Button.navigation:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
       <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     </Style>
-    <Style Selector="Button.navigation:selected">
+    <Style Selector="Button.navigation.selected">
       <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
       <Setter Property="FontWeight" Value="Bold" />
     </Style>
+    <Style Selector="Button.navigation.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
     <Style Selector="Button.navigation:focus /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
-    </Style>
-    <Style Selector="Button.navigation.provider">
-      <Setter Property="MinHeight" Value="30" />
-      <Setter Property="FontSize" Value="11" />
     </Style>
     <Style Selector="Ellipse.provider-nav-status">
       <Setter Property="Width" Value="6" />
@@ -148,7 +150,7 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="models:ProviderItem">
-                  <Button Classes="Navigation2Style provider"
+                  <Button Classes="navigation provider"
                           Tag="{Binding Id}"
                           Click="ShowProvider"
                           AutomationProperties.Name="{Binding DisplayName, StringFormat=Open {0} provider settings}">

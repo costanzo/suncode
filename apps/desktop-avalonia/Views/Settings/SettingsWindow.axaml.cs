@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using SunCode.Desktop.Controls;
+using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
@@ -65,8 +66,8 @@ public sealed partial class SettingsWindow : Window
             DefaultsPage.ToolCallLimitScopeText.Text = ViewModel.SelectedProject is { } project
                 ? $"Project: {project.DisplayName}"
                 : "Open a project to configure this setting.";
-            LoggingPage.LogDirectoryInputControl.Text = ViewModel.LogDirectory;
-            LoggingPage.ImageDirectoryInputControl.Text = ViewModel.ImageDirectory;
+            LoggingPage.LogDirectoryInputControl.Text = ViewModel.EffectiveLogDirectory;
+            LoggingPage.ImageDirectoryInputControl.Text = ViewModel.EffectiveImageDirectory;
             LoggingPage.LogMaxMegabytesInputControl.Text = Math.Max(1, ViewModel.LogMaxBytes / (1024 * 1024))
                 .ToString(System.Globalization.CultureInfo.InvariantCulture);
             LoggingPage.LogRetentionInputControl.Text = ViewModel.LogRetention.ToString(System.Globalization.CultureInfo.InvariantCulture);

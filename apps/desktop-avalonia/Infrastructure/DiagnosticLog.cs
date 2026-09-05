@@ -124,15 +124,7 @@ internal static class DiagnosticLog
     };
 
     private static string DefaultLogDirectory()
-    {
-        var dataDirectory = Environment.GetEnvironmentVariable("SUNCODE_DATA_DIRECTORY");
-        if (string.IsNullOrWhiteSpace(dataDirectory))
-        {
-            dataDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".suncode");
-        }
-        return Path.Combine(dataDirectory, "logs");
-    }
+        => AppDataPaths.DefaultLogDirectory;
 
     private static StreamWriter OpenFile(string path) => new(new FileStream(
         path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite), Encoding.UTF8)

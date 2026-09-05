@@ -250,6 +250,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
         level = level.Trim().ToUpperInvariant();
         directory = directory?.Trim() ?? string.Empty;
+        if (string.Equals(directory, AppDataPaths.DefaultLogDirectory, StringComparison.Ordinal))
+        {
+            directory = string.Empty;
+        }
         if (level is not ("TRACE" or "DEBUG" or "INFO" or "WARN" or "ERROR" or "OFF"))
         {
             StatusText = "Choose a valid logging level";
@@ -300,6 +304,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     {
         if (!EnsureSdk()) return false;
         directory = directory?.Trim() ?? string.Empty;
+        if (string.Equals(directory, AppDataPaths.DefaultImageDirectory, StringComparison.Ordinal))
+        {
+            directory = string.Empty;
+        }
         IsBusy = true;
         try
         {

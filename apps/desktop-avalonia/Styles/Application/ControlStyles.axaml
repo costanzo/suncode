@@ -19,6 +19,37 @@
   <Style Selector="Button.sc-combo-trigger">
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
+  <Style Selector="ComboBox:pointerover /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+  </Style>
+  <Style Selector="ComboBox /template/ Border#PopupBorder">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="ComboBoxItem">
+    <Setter Property="MinHeight" Value="28" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="Regular" />
+    <Setter Property="CornerRadius" Value="4" />
+  </Style>
+  <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="ComboBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
   <Style Selector="Button.sc-combo-menu-item">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="Transparent" />
@@ -137,11 +168,12 @@
     <Setter Property="Padding" Value="12,7" />
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <Style Selector="NumericUpDown.sc-numeric-input:focus">
     <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderThickness" Value="1" />
   </Style>
   <Style Selector="NumericUpDown.sc-numeric-input Button">
     <Setter Property="MinHeight" Value="16" />
