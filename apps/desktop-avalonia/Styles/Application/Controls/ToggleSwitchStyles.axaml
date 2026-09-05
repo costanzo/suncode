@@ -1,0 +1,10 @@
+<Styles xmlns="https://github.com/avaloniaui">
+  <Style Selector="ToggleSwitch.sc-toggle-switch">
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="OnContent" Value="On" />
+    <Setter Property="OffContent" Value="Off" />
+  </Style>
+  <Style Selector="ToggleSwitch.sc-toggle-switch:disabled">
+    <Setter Property="Opacity" Value="0.72" />
+  </Style>
+</Styles>

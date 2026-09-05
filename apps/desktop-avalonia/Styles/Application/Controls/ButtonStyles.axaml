@@ -1,0 +1,16 @@
+<Styles xmlns="https://github.com/avaloniaui">
+  <Style Selector="Button.sc-button">
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="14,6" />
+  </Style>
+  <Style Selector="Button.sc-button.compact">
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="10,4" />
+  </Style>
+  <Style Selector="Button.sc-button.icon-only">
+    <Setter Property="Width" Value="30" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="6" />
+  </Style>
+</Styles>
