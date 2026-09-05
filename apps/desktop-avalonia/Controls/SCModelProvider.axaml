@@ -22,7 +22,7 @@
     </Style>
     <Style Selector="Border.provider-model-chip">
       <Setter Property="Padding" Value="9,7" />
-      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
@@ -58,7 +58,7 @@
                         Tag="{Binding Id}"
                         Click="SelectProvider"
                         AutomationProperties.Name="{Binding DisplayName, StringFormat=Open {0} provider settings}">
-                  <Grid ColumnDefinitions="8,*,16" ColumnSpacing="11">
+                  <Grid ColumnDefinitions="8,*,Auto,16" ColumnSpacing="11">
                     <Ellipse Width="7"
                              Height="7"
                              Fill="{DynamicResource WarningBrush}"
@@ -76,7 +76,19 @@
                                  FontSize="10"
                                  TextTrimming="CharacterEllipsis" />
                     </StackPanel>
-                    <svg:Svg Grid.Column="2"
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding StatusText}"
+                               Foreground="{DynamicResource WarningBrush}"
+                               FontSize="10"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding !Configured}" />
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding StatusText}"
+                               Foreground="{DynamicResource SuccessBrush}"
+                               FontSize="10"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding Configured}" />
+                    <svg:Svg Grid.Column="3"
                              Width="14"
                              Height="14"
                              Path="/Assets/icons/chevron-right.svg"
@@ -152,8 +164,12 @@
                      IsVisible="False" />
             <StackPanel Grid.Column="1" Spacing="5">
               <TextBlock x:Name="CredentialStatusTextBlock"
+                         Text="No API key configured"
                          FontSize="12"
                          FontWeight="SemiBold"
+                         Foreground="{DynamicResource TextBrush}"
+                         MinHeight="16"
+                         VerticalAlignment="Top"
                          TextWrapping="Wrap" />
               <Border x:Name="CredentialStoredBorder"
                       Padding="8,6"
@@ -169,9 +185,33 @@
               </Border>
               <TextBlock x:Name="CredentialMissingHint"
                          Text="Add a key to enable this provider."
-                         Classes="settings-row-hint" />
+                         Classes="settings-row-hint"
+                         IsVisible="True" />
             </StackPanel>
           </Grid>
+          <Border x:Name="ProviderUnconfiguredBanner"
+                  Classes="settings-provider-status"
+                  Background="{DynamicResource WarningSurfaceBrush}"
+                  BorderBrush="{DynamicResource WarningBorderBrush}"
+                  BorderThickness="1"
+                  IsVisible="False">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
+              <StackPanel Spacing="4">
+                <TextBlock x:Name="ProviderUnconfiguredTitle"
+                           Text="Try Zhipu GLM after adding a key"
+                           FontSize="12"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="The GLM models stay visible for selection, but sending is paused until this provider has a credential."
+                           Classes="settings-row-hint"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBlock Grid.Column="1"
+                         Text="glm-5.3"
+                         Classes="mono"
+                         FontSize="11"
+                         VerticalAlignment="Center" />
+            </Grid>
+          </Border>
           <TextBox x:Name="ApiKeyInput"
                    Classes="mono sc-secret-input settings-provider-input"
                    TextChanged="ApiKeyInputChanged" />
@@ -199,9 +239,23 @@
               </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
-              <DataTemplate>
+              <DataTemplate x:DataType="models:ProviderModelItem">
                 <Border Classes="provider-model-chip">
-                  <TextBlock Text="{Binding}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <TextBlock Text="{Binding Display}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding StatusText}"
+                               FontSize="10"
+                               Foreground="{DynamicResource WarningBrush}"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding !Configured}" />
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding StatusText}"
+                               FontSize="10"
+                               Foreground="{DynamicResource SuccessBrush}"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding Configured}" />
+                  </Grid>
                 </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>

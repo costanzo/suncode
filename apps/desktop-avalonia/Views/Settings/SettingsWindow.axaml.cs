@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -71,6 +72,7 @@ public sealed partial class SettingsWindow : Window
             ImageDirectoryStatus.Text = "Local settings";
             ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
             ShowProviderPanel(null);
+            RefreshProviderNavigationStatuses();
             _ready = true;
         };
     }
@@ -303,10 +305,23 @@ public sealed partial class SettingsWindow : Window
         ProviderManager.CanRemoveCredential = configured;
         ProviderManager.CanSaveCredential = !string.IsNullOrWhiteSpace(ProviderManager.ApiKeyText);
         RefreshProviderEndpointActions();
+        RefreshProviderNavigationStatuses();
         ProviderManager.ProviderModels = ViewModel.Models
             .Where(item => item.Provider == _provider)
-            .Select(item => item.Display)
+            .Select(item => new ProviderModelItem(item.Display, configured))
             .ToArray();
+    }
+
+    private void RefreshProviderNavigationStatuses()
+    {
+        var warning = this.FindResource("WarningBrush") as IBrush;
+        var success = this.FindResource("SuccessBrush") as IBrush;
+        foreach (var button in this.GetVisualDescendants().OfType<Button>())
+        {
+            if (button.Tag is not string providerId || !button.Classes.Contains("provider")) continue;
+            var dot = button.GetVisualDescendants().OfType<Ellipse>().FirstOrDefault();
+            if (dot is not null) dot.Fill = ViewModel.IsProviderConfigured(providerId) ? success : warning;
+        }
     }
 
     private void RefreshProviderEndpointActions()

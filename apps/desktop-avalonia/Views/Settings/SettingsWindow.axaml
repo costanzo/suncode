@@ -40,6 +40,12 @@
       <Setter Property="MinHeight" Value="30" />
       <Setter Property="FontSize" Value="11" />
     </Style>
+    <Style Selector="Ellipse.provider-nav-status">
+      <Setter Property="Width" Value="6" />
+      <Setter Property="Height" Value="6" />
+      <Setter Property="Fill" Value="{DynamicResource WarningBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
     <Style Selector="ToggleSwitch.settings-switch">
       <Setter Property="MinHeight" Value="30" />
       <Setter Property="FontSize" Value="11" />
@@ -114,12 +120,42 @@
               </Grid>
             </Button>
             <StackPanel x:Name="ProviderNavigation" Margin="30,0,0,0" Spacing="3">
-              <Button Classes="navigation provider" Content="DeepSeek" Tag="deepseek" Click="ShowProvider" />
-              <Button Classes="navigation provider" Content="Zhipu GLM" Tag="zhipu" Click="ShowProvider" />
-              <Button Classes="navigation provider" Content="OpenAI" Tag="openai" Click="ShowProvider" />
-              <Button Classes="navigation provider" Content="Kimi" Tag="kimi" Click="ShowProvider" />
-              <Button Classes="navigation provider" Content="Claude" Tag="claude" Click="ShowProvider" />
-              <Button Classes="navigation provider" Content="Gemini" Tag="gemini" Click="ShowProvider" />
+              <Button Classes="navigation provider" Tag="deepseek" Click="ShowProvider">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="DeepSeek" />
+                  <Ellipse Classes="provider-nav-status" />
+                </Grid>
+              </Button>
+              <Button Classes="navigation provider" Tag="zhipu" Click="ShowProvider">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="Zhipu GLM" />
+                  <Ellipse Classes="provider-nav-status" />
+                </Grid>
+              </Button>
+              <Button Classes="navigation provider" Tag="openai" Click="ShowProvider">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="OpenAI" />
+                  <Ellipse Classes="provider-nav-status" />
+                </Grid>
+              </Button>
+              <Button Classes="navigation provider" Tag="kimi" Click="ShowProvider">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="Kimi" />
+                  <Ellipse Classes="provider-nav-status" />
+                </Grid>
+              </Button>
+              <Button Classes="navigation provider" Tag="claude" Click="ShowProvider">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="Claude" />
+                  <Ellipse Classes="provider-nav-status" />
+                </Grid>
+              </Button>
+              <Button Classes="navigation provider" Tag="gemini" Click="ShowProvider">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="Gemini" />
+                  <Ellipse Classes="provider-nav-status" />
+                </Grid>
+              </Button>
             </StackPanel>
           </StackPanel>
         </ScrollViewer>

@@ -19,7 +19,9 @@ const providerCatalog = {
     label: "Zhipu GLM",
     endpoint: "https://open.bigmodel.cn/api/paas/v4",
     placeholder: "Paste Zhipu API key",
-    keyPreview: "zhip••••••••M8qR",
+    // Keep one provider unconfigured in the review surface so the recovery path
+    // is visible without needing a seeded secret.
+    keyPreview: "",
     models: ["glm-5.2", "glm-5.3"],
   },
   openai: {
@@ -65,6 +67,7 @@ const settingsGuide = {
       "Choose Defaults, Appearance, Network, or Logging from the left navigation.",
       "Use the chevron beside Model providers to collapse or expand its provider links.",
       "Select a provider to edit its OpenAI-compatible URL or credential.",
+      "Zhipu GLM is shown without a stored key so its recovery path and available models can be reviewed.",
       "Use Reset default to restore a provider's built-in URL.",
       "Use Network to review certificate verification, system trust, and custom certificate-path states.",
       "Use the folder buttons in Logging to choose log and image storage directories.",
@@ -80,6 +83,7 @@ const settingsGuide = {
       "Provider URL changes and default resets are persisted and applied to subsequent requests without changing credentials or models.",
       "Certificate-source controls are subordinate to HTTPS verification and switch between system trust and custom certificate-file input.",
       "Provider credentials are masked; only the first and last four characters are shown for recognition.",
+      "A provider without a key keeps its model catalog visible but pauses sending until the key is saved.",
       "Saving updates local configuration state and does not grant new machine authority.",
     ],
   },
@@ -146,6 +150,10 @@ function SettingsNav({ page, setPage, providersExpanded, setProvidersExpanded })
                     onClick={() => setPage(`provider:${id}`)}
                   >
                     <span>{provider.label}</span>
+                    <span
+                      className={`settings-nav-provider-status ${provider.keyPreview ? "is-configured" : ""}`}
+                      aria-label={provider.keyPreview ? "API key configured" : "API key needed"}
+                    />
                   </button>
                 ))}
               </div>
@@ -543,6 +551,9 @@ function ProvidersPanel({ onSelect, endpoints }) {
               <strong>{provider.label}</strong>
               <code>{endpoints[id]}</code>
             </span>
+            <small className={provider.keyPreview ? "is-configured" : ""}>
+              {provider.keyPreview ? "Ready" : "API key needed"}
+            </small>
             <Icon name="arrow" size={14} />
           </button>
         ))}
@@ -640,6 +651,18 @@ function ProviderPanel({ providerId, onSave, endpoint, onEndpointChange }) {
             )}
           </div>
         </div>
+        {!configured && (
+          <div className="settings-provider-unconfigured" role="status">
+            <div>
+              <strong>Try Zhipu GLM after adding a key</strong>
+              <span>
+                The GLM models stay visible for selection, but sending is paused until this provider
+                has a credential.
+              </span>
+            </div>
+            <code>glm-5.3</code>
+          </div>
+        )}
         <input
           className="field settings-key mono"
           type="password"
@@ -663,7 +686,10 @@ function ProviderPanel({ providerId, onSave, endpoint, onEndpointChange }) {
         <span className="settings-section-label">Available models</span>
         <div className="settings-model-list">
           {provider.models.map((model) => (
-            <code key={model}>{model}</code>
+            <div key={model} className={`settings-model-item ${configured ? "is-ready" : ""}`}>
+              <code>{model}</code>
+              <span>{configured ? "Ready to use" : "Add API key to use"}</span>
+            </div>
           ))}
         </div>
       </div>

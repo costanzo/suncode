@@ -29,8 +29,8 @@ public sealed partial class SCModelProvider : UserControl
     public static readonly StyledProperty<string?> ApiKeyTextProperty =
         AvaloniaProperty.Register<SCModelProvider, string?>(nameof(ApiKeyText), defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
 
-    public static readonly StyledProperty<IEnumerable<string>?> ProviderModelsProperty =
-        AvaloniaProperty.Register<SCModelProvider, IEnumerable<string>?>(nameof(ProviderModels));
+    public static readonly StyledProperty<IEnumerable<ProviderModelItem>?> ProviderModelsProperty =
+        AvaloniaProperty.Register<SCModelProvider, IEnumerable<ProviderModelItem>?>(nameof(ProviderModels));
 
     public static readonly StyledProperty<IBrush?> EndpointStatusBrushProperty =
         AvaloniaProperty.Register<SCModelProvider, IBrush?>(nameof(EndpointStatusBrush));
@@ -109,7 +109,7 @@ public sealed partial class SCModelProvider : UserControl
         set => SetValue(ApiKeyTextProperty, value);
     }
 
-    public IEnumerable<string>? ProviderModels
+    public IEnumerable<ProviderModelItem>? ProviderModels
     {
         get => GetValue(ProviderModelsProperty);
         set => SetValue(ProviderModelsProperty, value);
@@ -202,7 +202,7 @@ public sealed partial class SCModelProvider : UserControl
         ApiKeyInput.PlaceholderText = ApiKeyPlaceholderText ?? metadata.ApiKeyPlaceholder;
         EndpointStatusTextBlock.Text = EndpointStatusText ?? string.Empty;
         EndpointStatusTextBlock.Foreground = EndpointStatusBrush ?? this.FindResource("TextSecondaryBrush") as IBrush;
-        var models = ProviderModels?.Where(model => !string.IsNullOrWhiteSpace(model)).ToArray() ?? [];
+        var models = ProviderModels?.Where(model => !string.IsNullOrWhiteSpace(model.Display)).ToArray() ?? [];
         ProviderModelsItemsControl.ItemsSource = models;
         ProviderModelsItemsControl.IsVisible = models.Length > 0;
         NoProviderModelsText.IsVisible = models.Length == 0;
@@ -212,6 +212,11 @@ public sealed partial class SCModelProvider : UserControl
         CredentialSuccessDot.IsVisible = CredentialConfigured;
         CredentialStoredBorder.IsVisible = CredentialConfigured;
         CredentialMissingHint.IsVisible = !CredentialConfigured;
+        var isZhipu = string.Equals(selectedId, "zhipu", StringComparison.Ordinal);
+        ProviderUnconfiguredBanner.IsVisible = isZhipu && !CredentialConfigured;
+        ProviderUnconfiguredTitle.Text = isZhipu
+            ? "Try Zhipu GLM after adding a key"
+            : "Add an API key to use this provider";
         SaveCredentialButton.Content = CredentialConfigured ? "Replace key" : "Save key";
         SaveEndpointButton.IsEnabled = CanSaveEndpoint;
         ResetEndpointButton.IsEnabled = CanResetEndpoint;

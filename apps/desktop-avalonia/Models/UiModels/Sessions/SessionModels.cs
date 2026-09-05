@@ -43,6 +43,12 @@ public sealed record SessionItem(string SessionId, string Title, string LastActi
 public sealed record ProviderItem(string Id, string DisplayName, bool Configured, string ApiBase = "")
 {
     public string Display => Configured ? DisplayName : $"{DisplayName} (needs key)";
+    public string StatusText => Configured ? "Ready" : "API key needed";
+}
+
+public sealed record ProviderModelItem(string Display, bool Configured)
+{
+    public string StatusText => Configured ? "Ready to use" : "Add API key to use";
 }
 
 public sealed record ModelItem(
