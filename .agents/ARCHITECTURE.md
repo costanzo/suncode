@@ -16,6 +16,8 @@ The architecture favors explicit ownership, reviewable authority, and one author
 
 ```text
 .NET 10 Avalonia desktop
+    | ProjectReference to the managed C# SDK
+`sdks/csharp` typed managed binding
     | P/Invoke over C ABI
 `sdks/c` native binding
     |
@@ -130,7 +132,8 @@ agent/crates/data/      Diesel ORM, persistence DTOs, and data operations
 agent/crates/llm/       provider-neutral LLM contracts, catalog, registry, and adapters
 agent/crates/tools/      `suncode-tool` package for built-in definitions and audited in-process machine operations
 sdks/rust/                typed Rust SDK facade over the agent harness
-sdks/c/                   stable C ABI/native library for Avalonia
+    sdks/c/                   stable C ABI/native library
+    sdks/csharp/              typed managed SDK and native integration for Avalonia
 sdks/                     native language binding packaging surfaces
 .agents/                  durable product and engineering knowledge
 ```

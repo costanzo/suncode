@@ -21,3 +21,5 @@
 
 - Update repository architecture, SDK layout, and Avalonia build documentation.
 - Document the Rust SDK source organization in `sdks/rust/README.md`.
+- Add `sdks/csharp`, a managed SDK layer that owns P/Invoke, native-library build integration, typed DTOs, and JSON envelope adaptation for Avalonia.
+- Change Avalonia to reference `sdks/csharp` instead of owning the native Cargo build and P/Invoke declarations.

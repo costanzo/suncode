@@ -2,7 +2,7 @@
 
 Status: Implemented.
 
-The SunCode agent is a native library embedded in its host process. It does not accept inbound HTTP, expose REST paths, publish a loopback endpoint, or support cross-process attach. The .NET Avalonia client calls the stable C ABI through P/Invoke. The typed Rust facade lives in `sdks/rust`, and the C ABI implementation lives in `sdks/c`; future TypeScript and Python packages wrap the same Rust facade through native bindings.
+The SunCode agent is a native library embedded in its host process. It does not accept inbound HTTP, expose REST paths, publish a loopback endpoint, or support cross-process attach. The .NET Avalonia client references the managed C# SDK in `sdks/csharp`, which owns P/Invoke and typed DTOs over the stable C ABI. The typed Rust facade lives in `sdks/rust`, and the C ABI implementation lives in `sdks/c`; future TypeScript and Python packages wrap the same Rust facade through native bindings.
 
 Provider adapters may make outbound HTTPS requests to configured model providers. That network behavior is internal to the Rust agent and is not a client transport.
 
@@ -149,4 +149,4 @@ Provider API keys remain Rust-owned plaintext values in `llm_model_provider.api_
 
 ## Language bindings
 
-Avalonia uses a hand-written C# P/Invoke wrapper over the C ABI and keeps native calls off the UI thread. The `sdks/c` crate emits a `cdylib` beside the managed executable. Future TypeScript and Python SDKs expose idiomatic async APIs over the same Rust methods and subscription semantics. They do not open SQLite, call providers, or implement agent behavior independently.
+Avalonia references the hand-written `sdks/csharp` C# SDK and keeps native calls off the UI thread. The managed SDK owns typed request/response models, native handle lifetime, UTF-8 conversion, JSON envelope parsing, and the Cargo build integration for `sdks/c`. The C binding crate emits a `cdylib` beside the managed executable. Future TypeScript and Python SDKs expose idiomatic async APIs over the same Rust methods and subscription semantics. They do not open SQLite, call providers, or implement agent behavior independently.

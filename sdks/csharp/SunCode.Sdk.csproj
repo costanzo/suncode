@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>SunCode.Sdk</RootNamespace>
+    <AssemblyName>SunCode.Sdk</AssemblyName>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <Target Name="BuildSunCodeNative" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <SunCodeRepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../..'))</SunCodeRepositoryRoot>
+      <SunCodeSdkCDirectory>$(SunCodeRepositoryRoot)/sdks/c</SunCodeSdkCDirectory>
+      <SunCodeCargoProfileArgument Condition="'$(Configuration)' == 'Release'">--release</SunCodeCargoProfileArgument>
+    </PropertyGroup>
+    <Exec Command="cargo build --manifest-path &quot;$(SunCodeSdkCDirectory)/Cargo.toml&quot; $(SunCodeCargoProfileArgument)" />
+  </Target>
+
+  <Target Name="CopySunCodeNativeToSdkOutput" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <SunCodeNativeProfile Condition="'$(Configuration)' == 'Release'">release</SunCodeNativeProfile>
+      <SunCodeNativeProfile Condition="'$(SunCodeNativeProfile)' == ''">debug</SunCodeNativeProfile>
+      <SunCodeNativeDirectory>$(MSBuildProjectDirectory)/../c/target/$(SunCodeNativeProfile)</SunCodeNativeDirectory>
+    </PropertyGroup>
+    <ItemGroup>
+      <SunCodeNativeLibrary Include="$(SunCodeNativeDirectory)/libsuncode_agent.dylib" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+      <SunCodeNativeLibrary Include="$(SunCodeNativeDirectory)/libsuncode_agent.so" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+      <SunCodeNativeLibrary Include="$(SunCodeNativeDirectory)/suncode_agent.dll" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SunCodeNativeLibrary)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

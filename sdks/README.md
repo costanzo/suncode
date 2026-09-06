@@ -10,6 +10,7 @@ Planned layout:
 sdks/
   rust/         # typed Rust SDK facade over the agent harness
   c/            # stable C ABI and native library for Avalonia
+  csharp/       # managed, strongly typed C# SDK and native integration for Avalonia
   typescript/   # N-API native binding and TypeScript API (placeholder)
   python/       # PyO3 native binding and Python API (placeholder)
 ```

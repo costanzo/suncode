@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace SunCode.Desktop.Agent;
+namespace SunCode.Sdk;
 
 internal static class NativeMethods
 {
@@ -35,6 +35,7 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_rename_session(IntPtr handle, IntPtr sessionId, IntPtr title);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_archive_session(IntPtr handle, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_set_session_pinned(IntPtr handle, IntPtr sessionId, byte pinned);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_reopen_session(IntPtr handle, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_session_images(IntPtr handle, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_add_session_image(IntPtr handle, IntPtr sessionId, IntPtr imageJson);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_remove_session_image(IntPtr handle, IntPtr sessionId, IntPtr imageId);
@@ -43,12 +44,14 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_provider_exchanges(IntPtr handle, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_provider_exchange(IntPtr handle, IntPtr sessionId, IntPtr exchangeId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_checkpoints(IntPtr handle, IntPtr sessionId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_checkpoint_manifest(IntPtr handle, IntPtr manifestId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_restore_checkpoint(IntPtr handle, IntPtr manifestId, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_submit_turn(IntPtr handle, IntPtr sessionId, IntPtr input, IntPtr idempotencyKey, IntPtr model, IntPtr reasoningEffort);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_submit_turn_with_attachments(IntPtr handle, IntPtr sessionId, IntPtr input, IntPtr idempotencyKey, IntPtr model, IntPtr reasoningEffort, IntPtr imageIdsJson);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_cancel_turn(IntPtr handle, IntPtr sessionId, IntPtr turnId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_retry_last_turn(IntPtr handle, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_resolve_approval(IntPtr handle, IntPtr approvalId, IntPtr decision);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_get_approval(IntPtr handle, IntPtr approvalId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_reply_question(IntPtr handle, IntPtr requestId, IntPtr answersJson);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_reject_question(IntPtr handle, IntPtr requestId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_subscribe_session(IntPtr handle, IntPtr sessionId, long after, EventCallback callback, IntPtr userData, out IntPtr errorOut);

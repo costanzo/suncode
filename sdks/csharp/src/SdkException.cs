@@ -1,4 +1,4 @@
-namespace SunCode.Desktop.Agent;
+namespace SunCode.Sdk;
 
 public sealed class SdkException(string code, string message) : Exception(message)
 {

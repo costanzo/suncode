@@ -2,11 +2,9 @@ using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using SunCode.Desktop.Infrastructure;
+namespace SunCode.Sdk;
 
-namespace SunCode.Desktop.Agent;
-
-public sealed class AgentSdk : IDisposable
+public sealed partial class AgentSdk : IDisposable
 {
     private const uint AbiVersion = 4;
     private static readonly object SharedHandleLock = new();
@@ -28,26 +26,26 @@ public sealed class AgentSdk : IDisposable
                     var version = NativeMethods.suncode_agent_sdk_abi_version();
                     if (version != AbiVersion)
                     {
-                        DiagnosticLog.Error("sdk.open", $"operation=open abi={version} expected={AbiVersion}");
+                        SdkDiagnosticLog.Error("sdk.open", $"operation=open abi={version} expected={AbiVersion}");
                         throw new SdkException("abi_mismatch", $"Agent ABI {version} is not supported; expected {AbiVersion}");
                     }
 
                     _sharedHandle = NativeMethods.suncode_agent_sdk_open_default(out var error);
                     if (_sharedHandle == IntPtr.Zero)
                     {
-                        DiagnosticLog.Error("sdk.open", "operation=open native_handle=null");
+                        SdkDiagnosticLog.Error("sdk.open", "operation=open native_handle=null");
                         throw new SdkException("agent_unavailable", TakeString(error, true) ?? "SunCode agent could not be started");
                     }
                 }
 
                 _sharedHandleReferences++;
-                DiagnosticLog.Debug("sdk.open", $"operation=open references={_sharedHandleReferences}");
+                SdkDiagnosticLog.Debug("sdk.open", $"operation=open references={_sharedHandleReferences}");
                 return new AgentSdk(_sharedHandle);
             }
         }
         catch (Exception exception)
         {
-            DiagnosticLog.Error("sdk.open", exception, "operation=open");
+            SdkDiagnosticLog.Error("sdk.open", exception, "operation=open");
             throw;
         }
     });
@@ -185,7 +183,7 @@ public sealed class AgentSdk : IDisposable
     public IDisposable Subscribe(string sessionId, long after, Action<string> onEvent)
     {
         ThrowIfDisposed();
-        DiagnosticLog.Debug("sdk.subscribe", $"begin session={sessionId} after={after}");
+        SdkDiagnosticLog.Debug("sdk.subscribe", $"begin session={sessionId} after={after}");
         return new Subscription(_handle, sessionId, after, onEvent);
     }
 
@@ -198,7 +196,7 @@ public sealed class AgentSdk : IDisposable
         }
         catch (Exception exception)
         {
-            DiagnosticLog.Error("sdk.call", exception, $"operation={operation}");
+            SdkDiagnosticLog.Error("sdk.call", exception, $"operation={operation}");
             throw;
         }
     });
@@ -226,7 +224,7 @@ public sealed class AgentSdk : IDisposable
         }
         catch (Exception exception)
         {
-            DiagnosticLog.Error("sdk.call", exception, $"operation={operation}");
+            SdkDiagnosticLog.Error("sdk.call", exception, $"operation={operation}");
             throw;
         }
     });
@@ -270,7 +268,7 @@ public sealed class AgentSdk : IDisposable
                 if (_sharedHandleReferences == 0)
                 {
                     NativeMethods.suncode_agent_sdk_close(_sharedHandle);
-                    DiagnosticLog.Info("sdk.close", "native_handle closed");
+                    SdkDiagnosticLog.Info("sdk.close", "native_handle closed");
                     _sharedHandle = IntPtr.Zero;
                 }
             }
@@ -296,12 +294,12 @@ public sealed class AgentSdk : IDisposable
                 if (_subscription == IntPtr.Zero)
                 {
                     var message = TakeString(error, true) ?? "Session events could not be subscribed";
-                    DiagnosticLog.Error("sdk.subscribe", $"failed session={sessionId} error={message}");
+                    SdkDiagnosticLog.Error("sdk.subscribe", $"failed session={sessionId} error={message}");
                     _callbackHandle.Free();
                     throw new SdkException("subscription_failed", message);
                 }
 
-                DiagnosticLog.Info("sdk.subscribe", $"ready session={sessionId}");
+                SdkDiagnosticLog.Info("sdk.subscribe", $"ready session={sessionId}");
             }
             finally
             {
@@ -324,21 +322,21 @@ public sealed class AgentSdk : IDisposable
                 }
                 catch (Exception exception)
                 {
-                    DiagnosticLog.Error("sdk.subscription.callback", exception, "native_callback=true");
+                    SdkDiagnosticLog.Error("sdk.subscription.callback", exception, "native_callback=true");
                 }
             }
         }
 
         public void Dispose()
         {
-            DiagnosticLog.Debug("sdk.subscription", $"dispose begin session={_sessionId} native={_subscription != IntPtr.Zero}");
+            SdkDiagnosticLog.Debug("sdk.subscription", $"dispose begin session={_sessionId} native={_subscription != IntPtr.Zero}");
             if (_subscription != IntPtr.Zero)
             {
                 NativeMethods.suncode_agent_sdk_subscription_close(_subscription);
                 _subscription = IntPtr.Zero;
             }
             if (_callbackHandle.IsAllocated) _callbackHandle.Free();
-            DiagnosticLog.Debug("sdk.subscription", $"dispose end session={_sessionId}");
+            SdkDiagnosticLog.Debug("sdk.subscription", $"dispose end session={_sessionId}");
         }
     }
 }

@@ -17,6 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../sdks/csharp/SunCode.Sdk.csproj" />
     <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
@@ -32,26 +33,6 @@
   </ItemGroup>
 
 
-  <PropertyGroup>
-    <SunCodeRepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../..'))</SunCodeRepositoryRoot>
-    <SunCodeAgentDirectory>$(SunCodeRepositoryRoot)/agent</SunCodeAgentDirectory>
-    <SunCodeSdkCDirectory>$(SunCodeRepositoryRoot)/sdks/c</SunCodeSdkCDirectory>
-    <SunCodeAgentProfile Condition="'$(Configuration)' == 'Release'">release</SunCodeAgentProfile>
-    <SunCodeAgentProfile Condition="'$(SunCodeAgentProfile)' == ''">debug</SunCodeAgentProfile>
-    <SunCodeCargoProfileArgument Condition="'$(Configuration)' == 'Release'">--release</SunCodeCargoProfileArgument>
-    <SunCodeAgentOutput>$(SunCodeSdkCDirectory)/target/$(SunCodeAgentProfile)</SunCodeAgentOutput>
-  </PropertyGroup>
-
-  <Target Name="BuildSunCodeAgent" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true'">
-    <Exec Command="cargo build --manifest-path &quot;$(SunCodeSdkCDirectory)/Cargo.toml&quot; $(SunCodeCargoProfileArgument)" />
-    <ItemGroup>
-      <SunCodeNativeLibrary Include="$(SunCodeAgentOutput)/libsuncode_agent.dylib" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
-      <SunCodeNativeLibrary Include="$(SunCodeAgentOutput)/libsuncode_agent.so" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
-      <SunCodeNativeLibrary Include="$(SunCodeAgentOutput)/suncode_agent.dll" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
-    </ItemGroup>
-    <Copy SourceFiles="@(SunCodeNativeLibrary)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-  </Target>
-
   <Target Name="CreateMacOSAppBundle" AfterTargets="Publish" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
     <PropertyGroup>
       <SunCodeAppBundle>$(PublishDir)SunCode.app</SunCodeAppBundle>
@@ -59,11 +40,23 @@
     <MakeDir Directories="$(SunCodeAppBundle)/Contents/MacOS;$(SunCodeAppBundle)/Contents/Resources" />
     <ItemGroup>
       <SunCodePublishedFiles Include="$(PublishDir)*" Exclude="$(SunCodeAppBundle)/**" />
-      <SunCodeMacOSNativeLibrary Include="$(SunCodeAgentOutput)/libsuncode_agent.dylib" />
+      <SunCodeMacOSNativeLibrary Include="$(MSBuildProjectDirectory)/../../sdks/c/target/$(Configuration)/libsuncode_agent.dylib" />
     </ItemGroup>
     <Copy SourceFiles="@(SunCodePublishedFiles)" DestinationFolder="$(SunCodeAppBundle)/Contents/MacOS/%(RecursiveDir)" />
     <Copy SourceFiles="@(SunCodeMacOSNativeLibrary)" DestinationFolder="$(SunCodeAppBundle)/Contents/MacOS" SkipUnchangedFiles="true" />
     <Copy SourceFiles="Info.plist" DestinationFolder="$(SunCodeAppBundle)/Contents" />
     <Copy SourceFiles="Assets/suncode-desktop.icns" DestinationFolder="$(SunCodeAppBundle)/Contents/Resources" />
+  </Target>
+
+  <Target Name="CopySunCodeNativeFromSdk" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <SunCodeSdkManagedOutput>$(MSBuildProjectDirectory)/../../sdks/csharp/bin/$(Configuration)/net10.0</SunCodeSdkManagedOutput>
+    </PropertyGroup>
+    <ItemGroup>
+      <SunCodeNativeLibrary Include="$(SunCodeSdkManagedOutput)/libsuncode_agent.dylib" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+      <SunCodeNativeLibrary Include="$(SunCodeSdkManagedOutput)/libsuncode_agent.so" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+      <SunCodeNativeLibrary Include="$(SunCodeSdkManagedOutput)/suncode_agent.dll" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SunCodeNativeLibrary)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
   </Target>
 </Project>

@@ -24,4 +24,6 @@ Results:
 - `cargo clippy --manifest-path sdks/rust/Cargo.toml --all-targets -- -D warnings` — passed.
 - `cargo test --manifest-path sdks/c/Cargo.toml --lib` — passed (1 test).
 - `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore` — passed.
+- `dotnet build sdks/csharp/SunCode.Sdk.csproj --no-restore` — passed.
+- `dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj --no-restore` — passed (58 tests).
 - `git diff --check` — passed.

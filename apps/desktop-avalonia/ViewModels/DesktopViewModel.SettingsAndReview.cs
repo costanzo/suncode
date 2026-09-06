@@ -8,7 +8,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
-using SunCode.Desktop.Agent;
+using SunCode.Sdk;
 
 namespace SunCode.Desktop.ViewModels;
 
