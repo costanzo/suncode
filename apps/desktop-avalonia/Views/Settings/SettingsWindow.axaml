@@ -67,12 +67,6 @@
       <Setter Property="FontSize" Value="11" />
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     </Style>
-    <!-- Provider fields match the specimen's resting border after a pointer click. -->
-    <Style Selector="TextBox.settings-provider-input:focus">
-      <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-    </Style>
   </Window.Styles>
 
   <Grid RowDefinitions="58,*" Background="{DynamicResource SurfaceBrush}">

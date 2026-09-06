@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 
 namespace SunCode.Desktop.Controls;
 
@@ -136,7 +137,41 @@ public sealed partial class SCNumericInput : UserControl
         if (Input is not null && change.Property == NumericUpDown.ValueProperty)
         {
             SetCurrentValue(ValueProperty, Input.Value);
+            UpdateSpinButtonState();
         }
+    }
+
+    private void OnIncreaseClick(object? sender, RoutedEventArgs e)
+    {
+        StepValue(1);
+    }
+
+    private void OnDecreaseClick(object? sender, RoutedEventArgs e)
+    {
+        StepValue(-1);
+    }
+
+    private void StepValue(int direction)
+    {
+        if (!AllowSpin || IsReadOnly || direction == 0)
+        {
+            return;
+        }
+
+        var current = Input.Value ?? Math.Clamp(0m, Minimum, Maximum);
+        decimal next;
+
+        try
+        {
+            next = checked(current + (Increment * direction));
+        }
+        catch (OverflowException)
+        {
+            next = direction > 0 ? Maximum : Minimum;
+        }
+
+        Input.Value = Math.Clamp(next, Minimum, Maximum);
+        Input.Focus();
     }
 
     private void SyncInput()
@@ -151,8 +186,21 @@ public sealed partial class SCNumericInput : UserControl
         Input.PlaceholderText = PlaceholderText;
         Input.IsReadOnly = IsReadOnly;
         Input.AllowSpin = AllowSpin;
-        Input.ShowButtonSpinner = ShowButtonSpinner;
+        Input.ShowButtonSpinner = false;
         UnitText.Text = Unit;
         UnitText.IsVisible = !string.IsNullOrWhiteSpace(Unit);
+        Stepper.IsVisible = ShowButtonSpinner && AllowSpin && !IsReadOnly;
+        UpdateSpinButtonState();
+    }
+
+    private void UpdateSpinButtonState()
+    {
+        if (Input is null || IncreaseButton is null || DecreaseButton is null)
+        {
+            return;
+        }
+
+        IncreaseButton.IsEnabled = AllowSpin && !IsReadOnly && (!Input.Value.HasValue || Input.Value.Value < Maximum);
+        DecreaseButton.IsEnabled = AllowSpin && !IsReadOnly && (!Input.Value.HasValue || Input.Value.Value > Minimum);
     }
 }

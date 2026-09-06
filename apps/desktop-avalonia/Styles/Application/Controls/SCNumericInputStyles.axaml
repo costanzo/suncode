@@ -3,57 +3,101 @@
         xmlns:controls="using:SunCode.Desktop.Controls">
   <Style Selector="controls|SCNumericInput">
     <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Height" Value="36" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
   </Style>
-  <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner">
+  <Style Selector="controls|SCNumericInput Border.sc-numeric-chrome">
     <Setter Property="MinHeight" Value="36" />
     <Setter Property="Height" Value="36" />
     <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="12,7" />
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="controls|SCNumericInput:pointerover Border.sc-numeric-chrome">
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+  </Style>
+  <Style Selector="controls|SCNumericInput:focus-within Border.sc-numeric-chrome">
+    <Setter Property="Background" Value="{DynamicResource FieldFocusBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+  </Style>
+  <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner">
+    <Setter Property="MinHeight" Value="34" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Padding" Value="11,7" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     <Setter Property="FontSize" Value="11" />
     <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
   </Style>
-  <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner:pointerover">
-    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
-  </Style>
-  <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner:pointerover /template/ ButtonSpinner#PART_Spinner">
-    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
-  </Style>
-  <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner:pointerover /template/ ButtonSpinner#PART_Spinner /template/ Border">
-    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
-  </Style>
-  <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner:focus">
-    <Setter Property="Background" Value="{DynamicResource FieldFocusBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-  </Style>
   <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner ButtonSpinner#PART_Spinner">
-    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
   </Style>
   <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner /template/ ButtonSpinner#PART_Spinner /template/ Border">
-    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
   </Style>
-  <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner /template/ RepeatButton">
+  <Style Selector="controls|SCNumericInput Border.sc-numeric-stepper">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+  </Style>
+  <Style Selector="controls|SCNumericInput:pointerover Border.sc-numeric-stepper">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="IsHitTestVisible" Value="True" />
+  </Style>
+  <Style Selector="controls|SCNumericInput:focus-within Border.sc-numeric-stepper">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="IsHitTestVisible" Value="True" />
+  </Style>
+  <Style Selector="controls|SCNumericInput RepeatButton.sc-numeric-step-button">
+    <Setter Property="MinWidth" Value="26" />
+    <Setter Property="MinHeight" Value="14" />
+    <Setter Property="Width" Value="26" />
+    <Setter Property="Height" Value="14" />
+    <Setter Property="Padding" Value="0" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
   </Style>
-  <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner /template/ RepeatButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+  <Style Selector="controls|SCNumericInput RepeatButton.sc-numeric-step-button:pointerover">
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="controls|SCNumericInput RepeatButton.sc-numeric-step-button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource FieldFocusBrush}" />
     <Setter Property="BorderBrush" Value="Transparent" />
   </Style>
+  <Style Selector="controls|SCNumericInput RepeatButton.sc-numeric-step-button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="controls|SCNumericInput TextBlock.sc-numeric-unit">
+    <Setter Property="Margin" Value="10,0,10,0" />
+    <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontSize" Value="9" />
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
   <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner /template/ TextBox#PART_TextBox">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
+  </Style>
+  <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
   </Style>
   <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner /template/ TextBox#PART_TextBox:pointerover /template/ Border#PART_BorderElement">
     <Setter Property="Background" Value="Transparent" />

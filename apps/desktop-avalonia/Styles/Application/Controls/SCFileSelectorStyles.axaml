@@ -1,6 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:controls="using:SunCode.Desktop.Controls">
+        xmlns:controls="using:SunCode.Desktop.Controls"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia">
   <Style Selector="controls|SCFileSelector TextBox">
     <Setter Property="FontSize" Value="11" />
     <Setter Property="FontWeight" Value="Regular" />
@@ -12,6 +13,9 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
+  </Style>
+  <Style Selector="controls|SCFileSelector svg|Svg">
+    <Setter Property="Css" Value="{DynamicResource IconSvgCss}" />
   </Style>
   <!-- Design-system fields lift their border slightly on hover. Override
        Fluent's pointer-over token while keeping the same one-pixel geometry. -->
@@ -35,6 +39,43 @@
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
   </Style>
+  <!-- Disabled file selectors keep the design-system field surface and
+       readable muted text. Fluent's default disabled template otherwise
+       replaces both with a darker surface and reduced opacity. -->
+  <Style Selector="controls|SCFileSelector:disabled TextBox">
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="controls|SCFileSelector:disabled TextBox /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="controls|SCFileSelector:disabled TextBox /template/ TextBlock#PART_Placeholder">
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="controls|SCFileSelector:disabled TextBox /template/ TextBlock#PART_FloatingPlaceholder">
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="controls|SCFileSelector:disabled Button.quiet">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="controls|SCFileSelector:disabled Button.quiet /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="controls|SCFileSelector:disabled svg|Svg">
+    <Setter Property="Css" Value="{DynamicResource DisabledIconSvgCss}" />
+  </Style>
   <!-- The browse button is an icon-only quiet action; no Fluent hover border. -->
   <Style Selector="controls|SCFileSelector Button.quiet">
     <Setter Property="BorderBrush" Value="Transparent" />
@@ -51,6 +92,13 @@
     <Setter Property="BorderThickness" Value="0" />
   </Style>
   <Style Selector="controls|SCFileSelector Button.quiet:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <!-- Disabled browse actions must stay transparent even while the pointer
+       is over the button; this mirrors the design-system not-allowed state. -->
+  <Style Selector="controls|SCFileSelector:disabled Button.quiet:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
   </Style>

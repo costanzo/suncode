@@ -2,18 +2,46 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="SunCode.Desktop.Controls.SCNumericInput"
              x:CompileBindings="False">
-  <NumericUpDown x:Name="Input"
-                 Classes="sc-numeric-input-inner"
-                 HorizontalContentAlignment="Left"
-                 VerticalContentAlignment="Center">
-    <NumericUpDown.InnerRightContent>
+  <Border Classes="sc-numeric-chrome">
+    <Grid ColumnDefinitions="*,Auto,Auto">
+      <NumericUpDown x:Name="Input"
+                     Grid.Column="0"
+                     Classes="sc-numeric-input-inner"
+                     ShowButtonSpinner="False"
+                     HorizontalContentAlignment="Left"
+                     VerticalContentAlignment="Center" />
+
+      <Border x:Name="Stepper"
+              Grid.Column="1"
+              Classes="sc-numeric-stepper"
+              Width="26"
+              Height="28"
+              VerticalAlignment="Center">
+        <Grid RowDefinitions="*,*">
+          <RepeatButton x:Name="IncreaseButton"
+                        Grid.Row="0"
+                        Classes="sc-numeric-step-button increase"
+                        Focusable="False"
+                        IsTabStop="False"
+                        Click="OnIncreaseClick">
+            <PathIcon Width="8" Height="4" Data="M 0,4 L 4,0 L 8,4 Z" />
+          </RepeatButton>
+          <RepeatButton x:Name="DecreaseButton"
+                        Grid.Row="1"
+                        Classes="sc-numeric-step-button decrease"
+                        Focusable="False"
+                        IsTabStop="False"
+                        Click="OnDecreaseClick">
+            <PathIcon Width="8" Height="4" Data="M 0,0 L 4,4 L 8,0 Z" />
+          </RepeatButton>
+        </Grid>
+      </Border>
+
       <TextBlock x:Name="UnitText"
-                 FontFamily="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace"
-                 FontSize="9"
-                 Foreground="{DynamicResource TextMutedBrush}"
+                 Grid.Column="2"
+                 Classes="sc-numeric-unit"
                  VerticalAlignment="Center"
-                 Margin="0,0,10,0"
                  IsHitTestVisible="False" />
-    </NumericUpDown.InnerRightContent>
-  </NumericUpDown>
+    </Grid>
+  </Border>
 </UserControl>

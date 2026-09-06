@@ -18,8 +18,7 @@
             VerticalAlignment="Center">
       <svg:Svg Width="16"
                Height="16"
-               Path="/Assets/icons/folder.svg"
-               Css="{DynamicResource IconSvgCss}" />
+               Path="/Assets/icons/folder.svg" />
     </Button>
   </Grid>
 </UserControl>
