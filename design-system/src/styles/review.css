@@ -128,13 +128,16 @@ select {
   cursor: pointer;
 }
 button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 .workspace-composer textarea:focus,
 .workspace-composer textarea:focus-visible,
@@ -626,11 +629,16 @@ h3 {
 .field:hover {
   border-color: var(--border-strong);
 }
-.field:focus {
-  background: var(--surface-raised);
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring);
+.field:focus,
+.field:focus-visible {
+  background: var(--surface-inset);
+  border-color: var(--border);
+  box-shadow: none;
   outline: none;
+}
+.field.field-error:focus,
+.field.field-error:focus-visible {
+  border-color: var(--danger);
 }
 textarea.field {
   min-height: 92px;
@@ -676,6 +684,10 @@ select.field {
   height: 16px;
   margin: 0;
   accent-color: var(--accent);
+}
+.checkbox:has(input:focus-visible),
+.radio:has(input:focus-visible) {
+  color: var(--text);
 }
 .toggle input {
   position: absolute;
@@ -1288,7 +1300,7 @@ select.field {
   transform: translateX(14px);
 }
 .settings-switch input:focus-visible + .settings-switch-track {
-  box-shadow: var(--focus-ring);
+  box-shadow: none;
 }
 .settings-warning {
   display: grid;
@@ -3639,7 +3651,7 @@ select.field {
 }
 .workspace-question-option:has(.workspace-question-radio:focus-visible) {
   border-color: var(--accent-border);
-  box-shadow: var(--focus-ring);
+  box-shadow: none;
   outline: 0;
 }
 .workspace-question-option > span:nth-child(2) {
@@ -3669,9 +3681,10 @@ select.field {
 .workspace-question-custom::placeholder {
   color: var(--text-muted);
 }
-.workspace-question-custom:focus {
-  border-color: var(--accent-border);
-  box-shadow: var(--focus-ring);
+.workspace-question-custom:focus,
+.workspace-question-custom:focus-visible {
+  border-color: var(--border);
+  box-shadow: none;
   outline: 0;
 }
 .workspace-question-actions {

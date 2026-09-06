@@ -828,8 +828,9 @@ body {
   border-color: var(--border-strong);
 }
 .dropdown-trigger:focus-visible {
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring);
+  background: var(--surface-inset);
+  border-color: var(--border);
+  box-shadow: none;
   outline: 0;
 }
 .dropdown-trigger > .ds-icon {

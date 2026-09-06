@@ -76,7 +76,7 @@ The interface is intentionally restrained. A cool silver/charcoal accent is rese
 - Independently collapsible side bays
 - Semantic state color, used sparingly
 - Tonal layering over drop shadows
-- Native Avalonia controls with visible focus
+- Native Avalonia controls with quiet, component-appropriate focus feedback
 
 ## Colors
 
@@ -144,7 +144,7 @@ SunCode primarily uses tonal layering rather than app-drawn shadows. The canvas,
 
 ## Shapes
 
-Controls use a compact 6px radius. Utility containers and approval surfaces use 10px. The undo dialog uses 14px. Internal borders are one DIP at rest and two DIPs only for keyboard focus; top-level window border shape belongs to the platform. There are no pill-shaped cards or oversized rounded containers.
+Controls use a compact 6px radius. Utility containers and approval surfaces use 10px. The undo dialog uses 14px. Internal borders are one DIP; keyboard focus may add a focus ring to actions, but input fields keep their one-DIP border without an outer outline. Top-level window border shape belongs to the platform. There are no pill-shaped cards or oversized rounded containers.
 
 ## Components
 
@@ -167,7 +167,8 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 ### Inputs / Fields
 
 - **Style:** Field graphite background, 6px radius, one-pixel border, 36px height.
-- **Focus:** Two-pixel control-silver border and slightly lifted field background.
+- **Hover:** Keep the one-pixel border and strengthen its color slightly.
+- **Focus:** Keep the resting one-pixel border and field background without an additional dark border or outer focus ring. Validation colors remain visible while focused.
 - **Disabled:** Muted text and canvas-level contrast; the control remains recognizable but clearly unavailable.
 
 ### Conversation Composer And Tool Inspection
@@ -245,7 +246,7 @@ The same semantic inventory must be present in dark and light pages. Theme chang
 - **Do** keep the conversation and composer visually dominant.
 - **Do** use the control-silver accent only for actions, focus, and active work.
 - **Do** make approval scope and undo limitations explicit.
-- **Do** preserve native keyboard focus and familiar Avalonia control behavior.
+- **Do** preserve familiar Avalonia control behavior and component-appropriate keyboard feedback; text-entry fields must not add a dark focus outline.
 - **Do** collapse supporting panels when the user needs room to think.
 
 ### Don't:
