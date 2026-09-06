@@ -18,7 +18,6 @@ impl CredentialStore {
         Self { store }
     }
 
-    #[cfg(test)]
     pub fn memory(
         deepseek: Option<&str>,
         zhipu: Option<&str>,

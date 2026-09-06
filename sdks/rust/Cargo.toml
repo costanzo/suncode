@@ -1,25 +1,24 @@
 [package]
-name = "suncode-agent"
+name = "suncode-sdk"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "suncode_agent"
+name = "suncode_sdk"
 path = "src/lib.rs"
 
 [dependencies]
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
-futures-util = "0.3"
 fs2 = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sha2 = "0.10"
-suncode-tool = { path = "../tools" }
-suncode-common = { path = "../common" }
-suncode-config = { path = "../config" }
-suncode-data = { path = "../data" }
-suncode-llm = { path = "../llm" }
+suncode-agent = { path = "../../agent/crates/core" }
+suncode-common = { path = "../../agent/crates/common" }
+suncode-config = { path = "../../agent/crates/config" }
+suncode-data = { path = "../../agent/crates/data" }
+suncode-llm = { path = "../../agent/crates/llm" }
+suncode-tool = { path = "../../agent/crates/tools" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
 tokio-util = "0.7"
 uuid = { version = "1", features = ["v4", "serde"] }

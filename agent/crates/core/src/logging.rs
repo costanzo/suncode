@@ -10,7 +10,7 @@ use std::{
 use suncode_common::BusinessError;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub(crate) enum Level {
+pub enum Level {
     Trace = 0,
     Debug = 1,
     Info = 2,
@@ -57,14 +57,14 @@ struct Logger {
 
 static LOGGER: OnceLock<Arc<Logger>> = OnceLock::new();
 
-pub(crate) struct Config<'a> {
+pub struct Config<'a> {
     pub level: &'a str,
     pub directory: Option<&'a str>,
     pub max_bytes: u64,
     pub retention: usize,
 }
 
-pub(crate) fn configure(data_dir: &Path, config: Config<'_>) {
+pub fn configure(data_dir: &Path, config: Config<'_>) {
     let directory = config
         .directory
         .filter(|value| !value.trim().is_empty())
@@ -89,7 +89,7 @@ pub(crate) fn configure(data_dir: &Path, config: Config<'_>) {
     }
 }
 
-pub(crate) fn write(level: Level, component: &str, message: impl Display) {
+pub fn write(level: Level, component: &str, message: impl Display) {
     let Some(logger) = LOGGER.get() else {
         eprintln!("[suncode][{}][{}] {}", level.name(), component, message);
         return;
@@ -130,7 +130,7 @@ pub(crate) fn write(level: Level, component: &str, message: impl Display) {
     eprintln!("{line}");
 }
 
-pub(crate) fn write_business_error(
+pub fn write_business_error(
     component: &str,
     operation: &str,
     error: &BusinessError,

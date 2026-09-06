@@ -25,15 +25,18 @@ Sensitive operations pass through Rust policy evaluation and an audited dispatch
         |
         | P/Invoke over the hand-written C ABI
         v
-Embedded Rust SDK (suncode-agent)
+`sdks/c` native binding
         |
+`sdks/rust` typed facade
+        |
+Rust SunCode agent core
         +-- suncode-llm       provider contracts and adapters
         +-- suncode-tool      audited filesystem, Git, process, and web operations
         +-- suncode-data      Diesel persistence and table operations
         `-- suncode-database  SQLite schema, manifests, and seed data
 ```
 
-The agent uses one local SQLite database under the user data directory. The current schema is initialized transactionally and rejects incompatible databases rather than silently converting them. Streaming events are live notifications; normalized session tables are the durable source of truth.
+The typed Rust facade in `sdks/rust` uses one local SQLite database under the user data directory through the agent harness. The current schema is initialized transactionally and rejects incompatible databases rather than silently converting them. Streaming events are live notifications; normalized session tables are the durable source of truth.
 
 The native SDK is embedded and method-oriented. There is no client-facing HTTP server, loopback endpoint, standalone agent service, or production TypeScript runtime. Future language SDKs are planned as native bindings over the same Rust implementation.
 
@@ -52,7 +55,7 @@ dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj
 dotnet run --project apps/desktop-avalonia/SunCode.Desktop.csproj
 ```
 
-The desktop build invokes Cargo for `suncode-agent` and copies the resulting native library beside the managed executable.
+The desktop build invokes Cargo for `sdks/c` (which links the typed `sdks/rust` facade and the `suncode-agent` harness) and copies the resulting native library beside the managed executable.
 
 To run the desktop tests:
 
@@ -64,6 +67,8 @@ To run the Rust workspace tests independently:
 
 ```sh
 cargo test --manifest-path agent/Cargo.toml --workspace --all-targets
+cargo test --manifest-path sdks/rust/Cargo.toml --lib
+cargo test --manifest-path sdks/c/Cargo.toml --lib
 ```
 
 For a release publish on Apple Silicon macOS:
@@ -83,7 +88,7 @@ open apps/desktop-avalonia/bin/Release/net10.0/osx-arm64/publish/SunCode.app
 | `contracts/` | Hand-written SDK, persistence, and SQLite contracts |
 | `DESIGN.md` | Repository-wide design authority |
 | `design-system/` | Executable React design-review surface and resource catalog (tooling only) |
-| `sdks/` | Planned native TypeScript and Python binding surfaces |
+| `sdks/` | Typed Rust facade, Avalonia C ABI, and planned TypeScript/Python binding surfaces |
 | `.agents/` | Product, architecture, decisions, features, and current specifications |
 
 ## Documentation

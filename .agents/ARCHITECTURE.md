@@ -17,10 +17,11 @@ The architecture favors explicit ownership, reviewable authority, and one author
 ```text
 .NET 10 Avalonia desktop
     | P/Invoke over C ABI
-Embedded Rust SDK facade
+`sdks/c` native binding
+    |
+`sdks/rust` typed facade
     |
 Rust SunCode agent core
-    |- typed SDK services and subscriptions
     |- agent loop using the suncode-llm provider layer
     |- context, policy, approvals, and scheduling
     |- SQLite, settings, events, and credentials
@@ -47,7 +48,7 @@ The Rust agent packages own:
 - built-in model provider integrations and canonical provider messages
 - context construction, turn scheduling, budgets, cancellation, and the agent loop
 - tool registration, policy evaluation, and durable approvals
-- typed SDK methods, normalized snapshots, and live subscription delivery
+- harness services used by the typed SDK facade
 - SQLite initialization, transactions, projections, settings, and local event streams through the database package
 - provider credentials and model catalog through SQLite-owned LLM provider/model records
 - global, project, and session configuration through the unified `configuration` table
@@ -121,13 +122,15 @@ Startup marks non-recoverable in-memory turn execution interrupted, discovers ad
 ```text
 apps/desktop-avalonia/    .NET 10 Avalonia desktop client
 contracts/                hand-written protocols and contract documentation
-agent/crates/core/      agent core and embedded Rust SDK facade
+agent/crates/core/      agent harness and core services
 agent/crates/config/    Rust-owned bootstrap configuration crate
 agent/crates/common/    shared Rust business errors and cross-crate contracts
 agent/crates/database/  backend-specific SQL resources and database setup
 agent/crates/data/      Diesel ORM, persistence DTOs, and data operations
 agent/crates/llm/       provider-neutral LLM contracts, catalog, registry, and adapters
 agent/crates/tools/      `suncode-tool` package for built-in definitions and audited in-process machine operations
+sdks/rust/                typed Rust SDK facade over the agent harness
+sdks/c/                   stable C ABI/native library for Avalonia
 sdks/                     native language binding packaging surfaces
 .agents/                  durable product and engineering knowledge
 ```

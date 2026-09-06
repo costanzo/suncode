@@ -2,7 +2,7 @@
 
 **Status:** Implemented and focused-tested
 
-The Phase 1 agent is an embedded Rust SDK. It owns provider access, turn orchestration, policy, approvals, durable state, credentials, recovery, undo, and the native SDK surface. It runs in-process with the .NET 10 Avalonia client; there is no client-facing server, loopback transport, or production TypeScript runtime.
+The Phase 1 agent is an embedded Rust harness consumed through the typed facade in `sdks/rust` and the Avalonia C ABI in `sdks/c`. It owns provider access, turn orchestration, policy, approvals, durable state, credentials, recovery, and undo. It runs in-process with the .NET 10 Avalonia client; there is no client-facing server, loopback transport, or production TypeScript runtime.
 
 Turn submission supports a compatibility text-only method and an attachment-aware method accepting up to three persisted same-session image IDs. Core validates ownership, uniqueness, file bounds, format, and the selected model's vision capability; user messages persist `image_ref` parts, provider calls receive transient data URLs, and provider traces retain redacted attachment markers. Image-bearing submissions are not queued behind an active turn.
 
@@ -19,7 +19,7 @@ The `suncode-llm` package owns provider-neutral messages, tool schemas, completi
 
 Configuration uses global, project, and session overlays. `tool_call_limit` is project-only, defaults to 64, and accepts 1-256. `full_control` is session-scoped and only skips repeat interactive approval for known risks; validation, scope checks, audited dispatch, checkpoints, cancellation, and unknown-tool denial still apply. Global `verify_https_certificates` defaults to `true`; disabling it makes subsequent built-in provider and WebFetch requests accept invalid certificates and hostnames, equivalent to `curl -k`, without bypassing other network controls. Provider API keys are loaded exclusively from plaintext SQLite values; environment-variable credentials are ignored. Keys never appear in DTOs, events, diagnostics, or logs.
 
-The Rust agent writes rotating `agent.log` diagnostics. SDK FFI errors and panics, startup/close, event serialization failures, subscription lag/channel termination, and background turn failures are logged at the owning boundary with operation, session/turn, error code, retryability, and provider request ID where available. Sensitive request and response content is excluded from diagnostics.
+The Rust agent writes rotating `agent.log` diagnostics. SDK facade and C binding errors and panics, startup/close, event serialization failures, subscription lag/channel termination, and background turn failures are logged at the owning boundary with operation, session/turn, error code, retryability, and provider request ID where available. Sensitive request and response content is excluded from diagnostics.
 
 ## Authority and recovery
 

@@ -1,23 +1,15 @@
-mod agent;
+pub mod agent;
 mod agent_lock;
 mod context;
 mod credentials;
-mod domain;
-mod logging;
+pub mod domain;
+pub mod logging;
 mod policy;
-mod sdk;
-
-pub use sdk::{
-    AgentSdk, ApprovalOutcome, CancellationOutcome, CheckpointDetails, CheckpointsResult,
-    CredentialUpdate, CredentialsResult, DependencyRemoval, DiagnosticsResult, HealthResult,
-    ModelsResult, ProjectDependenciesResult, ProjectDependencyDto, ProjectsResult, RecoveryStatus,
-    RestoreOutcome, SdkResult, SessionImageRemoval, SessionImagesResult, SessionSnapshot,
-    SessionUsageResult, SessionsResult, SettingUpdate, SettingsResult, SunCodeEventCallback,
-    SUNCODE_AGENT_SDK_ABI_VERSION,
-};
 
 pub use agent::TurnResponse;
+pub use agent_lock::AgentLock;
 pub use credentials::CredentialState;
+pub use credentials::CredentialStore;
 pub use domain::{
     ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectDependencyRecord,
     ProjectRecord, SessionEvent, SessionImageRecord, SessionRecord, SettingRecord,
