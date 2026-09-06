@@ -1,0 +1,15 @@
+/* Workspace composition dimensions mirror the Avalonia project window defaults. */
+:root {
+  --workspace-navigation-width: 272px;
+  --workspace-session-height: 788px;
+  --workspace-review-width: 312px;
+  --workspace-conversation-min-width: 300px;
+  --workspace-conversation-width: 745px;
+  --workspace-content-height: 788px;
+  --workspace-composer-height: 126px;
+  --workspace-drawer-width: 1337px;
+  --workspace-git-height: 340px;
+  --workspace-git-min-height: 240px;
+  --workspace-trace-height: 360px;
+  --workspace-trace-min-height: 300px;
+}

@@ -1,0 +1,5 @@
+/* Desktop project surface dimensions. Visual values still resolve through shared semantic tokens. */
+:root {
+  --desktop-project-toolbar-height: 62px;
+  --desktop-settings-nav-width: 238px;
+}

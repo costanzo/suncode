@@ -1,0 +1,101 @@
+.dialog-backdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4, 7, 10, 0.58);
+}
+.review-dialog {
+  width: min(460px, 100%);
+  padding: 20px;
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+}
+.dialog-title {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.dialog-title h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+.dialog-title p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.modal-field-label {
+  display: block;
+  margin: 18px 0 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.review-dialog > .field {
+  display: block;
+  width: 100%;
+}
+.dialog-list {
+  display: grid;
+  margin: 18px 0;
+  border-top: 1px solid var(--border);
+}
+.dialog-list span {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.dialog-list code {
+  color: var(--text-secondary);
+  font: 11px var(--font-mono);
+}
+.dialog-list strong {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.confirmation-dialog {
+  width: min(430px, 100%);
+}
+.confirmation-dialog-content {
+  margin-top: 18px;
+}
+.confirmation-dialog-target {
+  display: grid;
+  gap: 4px;
+  padding: 12px 13px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.confirmation-dialog-target span {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.confirmation-dialog-target strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.confirmation-dialog .dialog-actions {
+  margin-top: 18px;
+}

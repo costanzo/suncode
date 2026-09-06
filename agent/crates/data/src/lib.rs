@@ -1,8 +1,12 @@
 mod domain;
 mod model;
 mod operations;
+mod rows;
 mod schema;
 mod store;
+
+#[cfg(test)]
+mod tests;
 
 use diesel::result::Error as DieselError;
 

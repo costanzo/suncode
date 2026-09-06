@@ -1,0 +1,83 @@
+/* project-hub page styles migrated from review.css. */
+.project-hub-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 62px;
+  min-height: 62px;
+  padding: 0 22px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.project-hub-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.project-hub-brand strong {
+  font-size: 18px;
+}
+.project-hub-logo {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: var(--accent);
+  background: var(--surface-accent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.project-hub-actions {
+  display: flex;
+  gap: 8px;
+}
+.project-hub-content {
+  margin: 24px;
+  padding: 18px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.project-hub-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 14px;
+  padding: 0 2px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.project-hub-list {
+  display: grid;
+  gap: 8px;
+}
+.project-hub-project {
+  width: 100%;
+  min-height: 70px;
+  padding: 0 14px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.project-hub-project:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.project-hub-project:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.project-hub-empty-preview {
+  margin-top: 14px;
+}
+.project-hub-empty {
+  min-height: 130px;
+  padding: 18px;
+  background: var(--surface);
+}
+
+.project-hub-project .ds-icon {
+  color: var(--text-muted);
+}

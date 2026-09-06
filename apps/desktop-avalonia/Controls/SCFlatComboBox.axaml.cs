@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
+using Avalonia.Media;
 
 namespace SunCode.Desktop.Controls;
 
@@ -25,6 +27,7 @@ public sealed partial class SCFlatComboBox : UserControl
 
     private string _displayText = string.Empty;
     private bool _syncingSelection;
+    private PathIcon? _dropDownChevron;
 
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
 
@@ -32,6 +35,8 @@ public sealed partial class SCFlatComboBox : UserControl
     {
         InitializeComponent();
         FlatCombo.SelectionChanged += FlatSelectionChanged;
+        FlatCombo.PropertyChanged += FlatComboPropertyChanged;
+        FlatCombo.TemplateApplied += FlatComboTemplateApplied;
         Loaded += (_, _) => SyncView();
         SyncView();
     }
@@ -96,6 +101,7 @@ public sealed partial class SCFlatComboBox : UserControl
             }
         }
         FlatCombo.Classes.Set("mono", UseMonospace);
+        SyncDropDownState();
 
         var previousText = _displayText;
         _displayText = SelectedItem?.Label ?? PlaceholderText ?? string.Empty;
@@ -106,6 +112,27 @@ public sealed partial class SCFlatComboBox : UserControl
 
         PlaceholderLabel.Text = _displayText;
         PlaceholderLabel.IsVisible = SelectedItem is null;
+    }
+
+    private void FlatComboPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == ComboBox.IsDropDownOpenProperty)
+            SyncDropDownState();
+    }
+
+    private void SyncDropDownState()
+    {
+        if (_dropDownChevron is null || FlatCombo is null) return;
+        if (_dropDownChevron.RenderTransform is RotateTransform rotation)
+            rotation.Angle = FlatCombo.IsDropDownOpen ? 180 : 0;
+        else
+            _dropDownChevron.RenderTransform = new RotateTransform(FlatCombo.IsDropDownOpen ? 180 : 0);
+    }
+
+    private void FlatComboTemplateApplied(object? sender, TemplateAppliedEventArgs e)
+    {
+        _dropDownChevron = e.NameScope.Find<PathIcon>("DropDownGlyph");
+        SyncDropDownState();
     }
 
     private void FlatSelectionChanged(object? sender, SelectionChangedEventArgs e)

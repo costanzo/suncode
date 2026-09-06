@@ -1,0 +1,12 @@
+/* Review entrypoint for universal component styles. Ownership stays colocated. */
+@import "../components/universal/button/button.css";
+@import "../components/universal/input/input.css";
+@import "../components/universal/card/card.css";
+@import "../components/universal/dropdown/dropdown.css";
+@import "../components/universal/modal/modal.css";
+@import "../components/universal/feedback/feedback.css";
+@import "../components/universal/data-table/data-table.css";
+@import "../components/universal/tooltip/tooltip.css";
+@import "../components/universal/badge/badge.css";
+@import "../components/universal/avatar/avatar.css";
+@import "../components/universal/navigation/navigation.css";

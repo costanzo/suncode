@@ -1,0 +1,123 @@
+/* Text, select, checkbox, radio, and toggle field states. */
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.field {
+  width: 100%;
+  min-height: var(--control-md);
+  padding: 0 12px;
+  color: var(--text);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.field::placeholder {
+  color: var(--text-muted);
+}
+.field:hover {
+  border-color: var(--border-strong);
+}
+.field:focus,
+.field:focus-visible {
+  background: var(--surface-inset);
+  border-color: var(--border);
+  box-shadow: none;
+  outline: none;
+}
+.field.field-error:focus,
+.field.field-error:focus-visible {
+  border-color: var(--danger);
+}
+textarea.field {
+  min-height: 92px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+.field-error {
+  border-color: var(--danger);
+}
+.field-help {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.field-help.error {
+  color: var(--danger);
+}
+select.field {
+  appearance: none;
+  padding-right: 34px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) 15px,
+    calc(100% - 11px) 15px;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.checkbox,
+.radio,
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 30px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.checkbox input,
+.radio input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.checkbox:has(input:focus-visible),
+.radio:has(input:focus-visible) {
+  color: var(--text);
+}
+.toggle input {
+  position: absolute;
+  opacity: 0;
+}
+.toggle-track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 20px;
+  background: var(--border-strong);
+}
+.toggle-track::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  content: "";
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease;
+}
+.toggle input:checked + .toggle-track {
+  background: var(--accent);
+}
+.toggle input:checked + .toggle-track::after {
+  background: var(--accent-ink);
+  transform: translateX(14px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggle-track::after {
+    transition: none;
+  }
+}

@@ -1,0 +1,220 @@
+/* Core review page styles migrated from review.css. */
+.shell {
+  width: min(var(--review-content), calc(100% - 64px));
+  margin: 0 auto;
+  padding: 42px 0 72px;
+}
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+  gap: 52px;
+  align-items: end;
+  padding-bottom: 42px;
+  scroll-margin-top: 76px;
+}
+.hero p {
+  max-width: 690px;
+  margin-bottom: 0;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.65;
+}
+.hero-note {
+  padding-left: 18px;
+  color: var(--text-secondary);
+  border-left: 1px solid var(--accent);
+}
+.hero-note strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.hero-note code {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.section {
+  padding: 34px 0;
+  border-top: 1px solid var(--border);
+  scroll-margin-top: 76px;
+}
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 28px;
+  margin-bottom: 18px;
+}
+.section-heading p {
+  max-width: 520px;
+  margin-bottom: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.section-heading code {
+  color: var(--text-muted);
+  font: 11px var(--font-mono);
+}
+.swatch {
+  min-height: 112px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.swatch-color {
+  height: 68px;
+  background: var(--swatch);
+}
+.swatch-meta {
+  padding: 9px 10px;
+  background: var(--surface);
+}
+.swatch-meta strong,
+.swatch-meta code {
+  display: block;
+}
+.swatch-meta strong {
+  font-size: 12px;
+}
+.swatch-meta code {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font: 10px var(--font-mono);
+}
+.swatch-group {
+  display: grid;
+  gap: 10px;
+}
+.swatch-group h3 {
+  color: var(--text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+.type-display {
+  font-size: 34px;
+  line-height: 1.1;
+}
+.type-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+.type-body {
+  font-size: 14px;
+}
+.type-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.type-caption {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.type-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.type-table td {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.type-table td:first-child {
+  width: 150px;
+  color: var(--text-muted);
+  font: 11px var(--font-mono);
+}
+.token-list {
+  display: grid;
+  gap: 8px;
+}
+.token-row {
+  display: grid;
+  grid-template-columns: 150px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.token-row:last-child {
+  border-bottom: 0;
+}
+.token-row code {
+  color: var(--text-muted);
+  font: 11px var(--font-mono);
+}
+.token-value {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.token-chip {
+  width: 28px;
+  height: 20px;
+  background: var(--swatch);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.footer {
+  padding-top: 30px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+.footer a {
+  color: var(--accent);
+}
+@media (max-width: 1100px) {
+  .shell {
+    width: calc(100% - 40px);
+  }
+  .hero {
+    gap: 28px;
+  }
+}
+@media (max-width: 860px) {
+  .shell {
+    width: calc(100% - 32px);
+    padding-top: 34px;
+  }
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .hero-note {
+    max-width: 560px;
+  }
+}
+@media (max-width: 620px) {
+  .shell {
+    width: calc(100% - 24px);
+    padding: 28px 0 48px;
+  }
+  .hero {
+    padding-bottom: 32px;
+  }
+  .section-heading {
+    display: block;
+  }
+  .section-heading p {
+    margin-top: 8px;
+  }
+  .section-heading code {
+    display: block;
+    margin-top: 10px;
+  }
+  .section {
+    padding: 28px 0;
+  }
+  .token-row {
+    grid-template-columns: 1fr auto;
+  }
+  .token-row .token-value {
+    grid-column: 1 / -1;
+  }
+}

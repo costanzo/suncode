@@ -1,0 +1,120 @@
+.feedback-stack {
+  margin-top: 16px;
+}
+.activity .ds-icon {
+  color: var(--accent);
+}
+.alert .ds-icon {
+  width: 17px;
+  margin-top: 1px;
+}
+.empty .ds-icon {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 9px;
+  color: var(--text-muted);
+}
+.empty {
+  display: grid;
+  min-height: 170px;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+}
+.empty strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.empty span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.progress {
+  height: 6px;
+  overflow: hidden;
+  background: var(--surface-inset);
+  border-radius: 4px;
+}
+.progress span {
+  display: block;
+  width: 62%;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+}
+.skeleton {
+  height: 12px;
+  background: var(--surface-hover);
+  border-radius: 3px;
+}
+.skeleton.short {
+  width: 42%;
+}
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.alert.success {
+  color: var(--success);
+  background: var(--success-surface);
+  border-color: transparent;
+}
+.alert.warning {
+  color: var(--warning);
+  background: var(--warning-surface);
+  border-color: var(--warning-border);
+}
+.alert.danger {
+  color: var(--danger);
+  background: var(--danger-surface);
+  border-color: var(--danger-border);
+}
+.alert strong {
+  display: block;
+  color: var(--text);
+  font-size: 12px;
+}
+.alert span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* feedback styles migrated from review.css. */
+.activity {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  gap: 10px;
+  align-items: start;
+}
+.activity small {
+  color: var(--text-muted);
+  font: 11px var(--font-mono);
+}
+.approval {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 12px;
+}
+.approval-mark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--warning);
+  background: var(--warning-surface);
+  border: 1px solid var(--warning-border);
+  border-radius: 50%;
+}
+.approval-actions {
+  grid-column: 2;
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}

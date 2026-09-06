@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 
 namespace SunCode.Desktop.Controls;
 
@@ -17,7 +18,17 @@ public sealed partial class SCGroupComboBox : UserControl
     private SCComboBoxGroup? _activeGroup;
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
 
-    public SCGroupComboBox() { InitializeComponent(); Loaded += (_, _) => SyncView(); SyncView(); }
+    public SCGroupComboBox()
+    {
+        InitializeComponent();
+        if (GroupedButton.Flyout is Flyout flyout)
+        {
+            flyout.Opened += (_, _) => SetDropDownOpen(true);
+            flyout.Closed += (_, _) => SetDropDownOpen(false);
+        }
+        Loaded += (_, _) => SyncView();
+        SyncView();
+    }
     public IEnumerable<SCComboBoxGroup>? GroupSource { get => GetValue(GroupSourceProperty); set => SetValue(GroupSourceProperty, value); }
     public SCComboBoxItem? SelectedItem { get => GetValue(SelectedItemProperty); set => SetValue(SelectedItemProperty, value); }
     public string? PlaceholderText { get => GetValue(PlaceholderTextProperty); set => SetValue(PlaceholderTextProperty, value); }
@@ -49,6 +60,15 @@ public sealed partial class SCGroupComboBox : UserControl
         if ((GroupSource ?? []).All(group => group.Items.Count == 0)) return;
         _activeGroup ??= GroupSource!.First(group => group.Items.Count > 0);
         SyncMenuItems();
+    }
+
+    private void SetDropDownOpen(bool isOpen)
+    {
+        if (DropDownChevron is null) return;
+        if (DropDownChevron.RenderTransform is RotateTransform rotation)
+            rotation.Angle = isOpen ? 180 : 0;
+        else
+            DropDownChevron.RenderTransform = new RotateTransform(isOpen ? 180 : 0);
     }
 
     private void SelectGroup(object? sender, RoutedEventArgs e)

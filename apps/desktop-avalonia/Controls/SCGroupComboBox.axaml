@@ -5,13 +5,13 @@
              x:Class="SunCode.Desktop.Controls.SCGroupComboBox"
              x:Name="SunCode"
              x:CompileBindings="False">
-  <Button x:Name="GroupedButton"
+    <Button x:Name="GroupedButton"
           Classes="sc-button sc-combo-trigger"
           HorizontalAlignment="Stretch"
           HorizontalContentAlignment="Stretch"
           Foreground="{DynamicResource TextBrush}"
           Click="OpenGroupedMenu">
-    <Grid ColumnDefinitions="*,12" ColumnSpacing="6">
+    <Grid ColumnDefinitions="*,16" ColumnSpacing="7">
       <TextBlock x:Name="GroupedLabel"
                  Foreground="{DynamicResource TextBrush}"
                  MinWidth="1"
@@ -19,7 +19,25 @@
                  VerticalAlignment="Center"
                  HorizontalAlignment="Stretch"
                  TextTrimming="CharacterEllipsis" />
-      <svg:Svg Grid.Column="1" Width="9" Height="9" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" RenderTransformOrigin="50%,50%" RenderTransform="rotate(90deg)" VerticalAlignment="Center" />
+      <PathIcon x:Name="DropDownChevron"
+                Grid.Column="1"
+                Width="12"
+                Height="12"
+                Data="M4.8,8.3 L6.1,7 L12,12.9 L17.9,7 L19.2,8.3 L12,15.5 Z"
+                Foreground="{DynamicResource TextMutedBrush}"
+                RenderTransformOrigin="50%,50%"
+                IsHitTestVisible="False"
+                VerticalAlignment="Center">
+        <PathIcon.RenderTransform>
+          <RotateTransform Angle="0">
+            <RotateTransform.Transitions>
+              <Transitions>
+                <DoubleTransition Property="Angle" Duration="0:0:0.16" />
+              </Transitions>
+            </RotateTransform.Transitions>
+          </RotateTransform>
+        </PathIcon.RenderTransform>
+      </PathIcon>
     </Grid>
     <Button.Flyout>
       <Flyout Placement="TopEdgeAlignedRight" ShowMode="Standard" FlyoutPresenterClasses="sc-combo-flyout">
@@ -30,7 +48,10 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="controls:SCComboBoxGroupOption">
                   <Button Classes="sc-combo-menu-item" Classes.active="{Binding IsActive}" Height="28" MinHeight="28" Padding="8,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="SelectGroup">
-                    <Grid ColumnDefinitions="*,12"><TextBlock Text="{Binding Label}" Classes.mono="{Binding UseMonospace}" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Text="›" HorizontalAlignment="Right" VerticalAlignment="Center" /></Grid>
+                    <Grid ColumnDefinitions="*,12">
+                      <TextBlock Text="{Binding Label}" Classes.mono="{Binding UseMonospace}" VerticalAlignment="Center" />
+                      <svg:Svg Grid.Column="1" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Center" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
+                    </Grid>
                   </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -41,7 +62,10 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="controls:SCComboBoxItemOption">
                   <Button Classes="sc-combo-menu-item" Classes.active="{Binding IsSelected}" Height="28" MinHeight="28" Padding="8,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" IsEnabled="{Binding IsEnabled}" Click="SelectItem">
-                    <Grid ColumnDefinitions="*,16"><TextBlock Text="{Binding Label}" Classes.mono="{Binding UseMonospace}" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Text="✓" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding IsSelected}" /></Grid>
+                    <Grid ColumnDefinitions="*,16">
+                      <TextBlock Text="{Binding Label}" Classes.mono="{Binding UseMonospace}" VerticalAlignment="Center" />
+                      <svg:Svg Grid.Column="1" Width="13" Height="13" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding IsSelected}" Path="/Assets/icons/check.svg" Css="{DynamicResource AccentSvgCss}" />
+                    </Grid>
                   </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>

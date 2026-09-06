@@ -25,7 +25,28 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="6" />
   </Style>
+  <Style Selector="controls|SCFlatComboBox ComboBox /template/ PathIcon#DropDownGlyph">
+    <Setter Property="Width" Value="12" />
+    <Setter Property="Height" Value="12" />
+    <Setter Property="Margin" Value="0,0,10,0" />
+    <Setter Property="Data" Value="M4.8,8.3 L6.1,7 L12,12.9 L17.9,7 L19.2,8.3 L12,15.5 Z" />
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform">
+      <RotateTransform Angle="0">
+        <RotateTransform.Transitions>
+          <Transitions>
+            <DoubleTransition Property="Angle" Duration="0:0:0.16" />
+          </Transitions>
+        </RotateTransform.Transitions>
+      </RotateTransform>
+    </Setter>
+  </Style>
   <Style Selector="controls|SCFlatComboBox ComboBox:pointerover /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox ComboBox:focus:pointerover /template/ Border#Background">
     <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
   </Style>
@@ -68,6 +89,10 @@
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
     <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="controls|SCFlatComboBox.composer-option ComboBox:pointerover /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
   </Style>
   <Style Selector="controls|SCFlatComboBox ComboBox /template/ Border#PopupBorder">
     <Setter Property="Margin" Value="0,6,0,0" />

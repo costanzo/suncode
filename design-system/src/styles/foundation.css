@@ -1,0 +1,57 @@
+/* Global document behavior shared by every review route. */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--canvas);
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  color: var(--text);
+  background: var(--canvas);
+  font: 14px/1.45 var(--font-ui);
+  letter-spacing: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  letter-spacing: 0;
+}
+
+button,
+select {
+  cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.workspace-composer textarea:focus,
+.workspace-composer textarea:focus-visible,
+.workspace-composer-modal-content textarea:focus,
+.workspace-composer-modal-content textarea:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
+.page {
+  min-height: 100vh;
+}

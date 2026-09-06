@@ -1,0 +1,64 @@
+.card {
+  padding: 16px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.card[href] {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+}
+.card[href]:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.card.inset {
+  background: var(--surface-inset);
+}
+.card.accent {
+  background: var(--surface-accent);
+  border-color: var(--accent-border);
+}
+.card.warning {
+  background: var(--warning-surface);
+  border-color: var(--warning-border);
+}
+.card.danger {
+  background: var(--danger-surface);
+  border-color: var(--danger-border);
+}
+.card h3 {
+  margin-bottom: 8px;
+}
+.card p {
+  margin-bottom: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.project-card {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.project-mark {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: var(--accent);
+  background: var(--surface-accent);
+  border-radius: 8px;
+  font-weight: 800;
+}
+.project-card strong,
+.project-card small {
+  display: block;
+}
+.project-card small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font: 11px var(--font-mono);
+}

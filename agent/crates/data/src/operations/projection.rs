@@ -1,5 +1,13 @@
 //! Cross-table event projection into normalized table-owned rows.
 
+use crate::operations::{
+    session_message::load_messages, session_tool_use::load_tool_uses, session_turn_todo::load_todos,
+};
+use crate::{
+    domain::{SessionConversationTurn, SessionEvent},
+    rows::TurnRow,
+    store::{business_transaction, lock, now, Store},
+};
 use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::{Integer, Nullable, Text};
@@ -247,4 +255,60 @@ fn usage_i64(usage: &Value, field: &str) -> Result<i32, BusinessError> {
         .ok_or_else(|| BusinessError::invalid(format!("usage event has invalid {field}")))?;
     i32::try_from(value)
         .map_err(|_| BusinessError::invalid(format!("usage event {field} exceeds SQLite")))
+}
+
+impl Store {
+    pub fn append_content(
+        &self,
+        session_id: &str,
+        event_type: &str,
+        payload: &Value,
+    ) -> Result<SessionEvent, BusinessError> {
+        append_content(self, session_id, event_type, payload)
+    }
+    pub fn session_conversation_turns(
+        &self,
+        session_id: &str,
+    ) -> Result<Vec<SessionConversationTurn>, BusinessError> {
+        let mut c = lock(&self.connection)?;
+        let turns=sql_query("SELECT turn_id,session_id,state,model_id,created_at,updated_at,started_at,completed_at,error_code,input_tokens,output_tokens,total_tokens FROM session_turn WHERE session_id=? ORDER BY created_at,turn_id").bind::<Text,_>(session_id).load::<TurnRow>(&mut *c).map_err(crate::database_error)?;
+        let mut out = Vec::new();
+        for t in turns {
+            out.push(SessionConversationTurn {
+                turn_id: t.turn_id.clone(),
+                state: t.state,
+                created_at: t.created_at,
+                messages: load_messages(&mut c, session_id, &t.turn_id)?,
+                tool_uses: load_tool_uses(&mut c, &t.turn_id)?,
+                todos: load_todos(&mut c, &t.turn_id)?,
+            })
+        }
+        Ok(out)
+    }
+}
+
+pub(crate) fn append_content(
+    store: &Store,
+    session_id: &str,
+    event_type: &str,
+    payload: &Value,
+) -> Result<SessionEvent, BusinessError> {
+    let mut c = lock(&store.connection)?;
+    let occurred = now();
+    business_transaction(&mut c, |c| {
+        apply(c, session_id, &occurred, event_type, payload)?;
+        sql_query("UPDATE session SET updated_at=?,last_activity_at=? WHERE session_id=?")
+            .bind::<Text, _>(&occurred)
+            .bind::<Text, _>(&occurred)
+            .bind::<Text, _>(session_id)
+            .execute(c)
+            .map_err(crate::database_error)?;
+        Ok::<_, BusinessError>(())
+    })?;
+    Ok(SessionEvent {
+        session_id: session_id.into(),
+        occurred_at: occurred,
+        event_type: event_type.into(),
+        payload: payload.clone(),
+    })
 }

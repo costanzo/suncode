@@ -1,0 +1,97 @@
+/* Shared Desktop page styles migrated from review.css. */
+.project-card {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.project-mark {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: var(--accent);
+  background: var(--surface-accent);
+  border-radius: 8px;
+  font-weight: 800;
+}
+.project-card strong,
+.project-card small {
+  display: block;
+}
+.project-card small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font: 11px var(--font-mono);
+}
+.traffic-lights {
+  position: absolute;
+  left: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.traffic-light {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 2px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+}
+.traffic-light:hover,
+.traffic-light:active {
+  background: transparent;
+}
+.traffic-light:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
+.traffic-light img {
+  display: block;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  user-select: none;
+}
+.project-card-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.project-card-copy strong,
+.project-card-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.window-size-note {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 34px;
+  margin: -18px 0 8px;
+  padding: 0 11px;
+  gap: 9px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.window-size-note span {
+  font-size: 11px;
+  font-weight: 600;
+}
+.window-size-note code {
+  color: var(--text);
+  font: 11px var(--font-mono);
+}
+.window-size-note small {
+  padding-left: 9px;
+  color: var(--text-muted);
+  border-left: 1px solid var(--border);
+  font-size: 10px;
+}

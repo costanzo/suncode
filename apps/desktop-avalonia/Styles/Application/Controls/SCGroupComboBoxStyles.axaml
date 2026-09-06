@@ -3,6 +3,17 @@
   <Style Selector="controls|SCGroupComboBox Button.sc-combo-trigger">
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
+  <Style Selector="controls|SCGroupComboBox Button.sc-combo-trigger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="controls|SCGroupComboBox Button.sc-combo-trigger:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+  </Style>
+  <Style Selector="controls|SCGroupComboBox Button.sc-combo-trigger:disabled PathIcon#DropDownChevron">
+    <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
+  </Style>
   <Style Selector="controls|SCGroupComboBox Button.sc-combo-menu-item">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="Transparent" />

@@ -1,0 +1,87 @@
+/* Small layout primitives used by specimens and page compositions. */
+.row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.split {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.grid {
+  display: grid;
+  gap: 14px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.specimen-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.specimen-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.specimen-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sample {
+  min-width: 0;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.sample-label {
+  margin-bottom: 14px;
+  color: var(--text-muted);
+  font: 11px var(--font-mono);
+  text-transform: uppercase;
+}
+
+.sample-note {
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 1100px) {
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .grid-2,
+  .grid-3,
+  .grid-4,
+  .specimen-grid-2,
+  .specimen-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
