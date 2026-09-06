@@ -12,15 +12,7 @@ impl Agent {
             for (index, call) in calls.iter().enumerate() {
                 self.emit(
                     &context.session_id,
-                    "tool.requested",
-                    json!({
-                        "turn_id": context.turn_id,
-                        "call_id": context.active_call_id,
-                        "tool_call_id": call.call_id,
-                        "name": call.name,
-                        "arguments": call.arguments,
-                        "ordinal": index
-                    }),
+                    EventPayload::ToolRequested(ToolRequestedPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), name: call.name.clone(), arguments: call.arguments.clone(), ordinal: index }),
                 )?;
                 self.tool_state(context, call, "failed", Some("tool_budget_exceeded"))?;
             }
@@ -38,7 +30,7 @@ impl Agent {
         context.tool_calls = next_tool_calls;
         let mut allowed_calls = Vec::new();
         for (index, call) in calls.iter().enumerate() {
-            self.emit(&context.session_id, "tool.requested", json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"name":call.name,"arguments":call.arguments,"ordinal":index}))?;
+            self.emit(&context.session_id, EventPayload::ToolRequested(ToolRequestedPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), name: call.name.clone(), arguments: call.arguments.clone(), ordinal: index }))?;
             let signature = tool_signature(call);
             if context.last_tool_signature.as_deref() == Some(signature.as_str()) {
                 context.repeated_tool_stalls += 1;
@@ -97,7 +89,7 @@ impl Agent {
                 })?;
                 self.store
                     .create_question(&request_id, &context.turn_id, &snapshot)?;
-                self.emit(&context.session_id, "question.asked", json!({"request_id":request_id,"turn_id":context.turn_id,"tool_call_id":call.call_id,"questions":call.arguments["questions"]}))?;
+                self.emit(&context.session_id, EventPayload::QuestionAsked(QuestionAskedPayload { request_id: request_id.clone(), turn_id: context.turn_id.clone(), tool_call_id: call.call_id.clone(), questions: call.arguments["questions"].clone() }))?;
                 return Err(BusinessError::new("question_required", "The user must answer the question tool").details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"request_id":request_id})));
             }
             if call.name == "todowrite" {
@@ -160,7 +152,7 @@ impl Agent {
                         arguments: &call.arguments,
                         snapshot: &snapshot,
                     })?;
-                    self.emit(&context.session_id,"approval.requested",json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id,"operation":call.name,"arguments":call.arguments}))?;
+                    self.emit(&context.session_id, EventPayload::ApprovalRequested(ApprovalRequestedPayload { turn_id: context.turn_id.clone(), tool_call_id: call.call_id.clone(), approval_id: approval.approval_id.clone(), operation: call.name.clone(), arguments: call.arguments.clone() }))?;
                     return Err(BusinessError::new("approval_required",format!("Tool call requires approval: {}",call.name)).details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id})));
                 }
                 Decision::Allow => allowed_calls.push(call.clone()),
@@ -222,13 +214,7 @@ impl Agent {
                     let call_id = context.active_call_id.clone();
                     let tool_call_id = call.call_id.clone();
                     Some(std::sync::Arc::new(move |stream: &str, chunk: &[u8]| {
-                        agent.emit_live(&session_id, "tool.output", json!({
-                            "turn_id": turn_id,
-                            "call_id": call_id,
-                            "tool_call_id": tool_call_id,
-                            "stream": stream,
-                            "chunk_base64": STANDARD.encode(chunk),
-                        }));
+                        agent.emit_live(&session_id, EventPayload::ToolOutput(ToolOutputPayload { turn_id: turn_id.clone(), call_id: call_id.clone(), tool_call_id: tool_call_id.clone(), stream: stream.to_owned(), chunk_base64: STANDARD.encode(chunk) }));
                     }) as suncode_tool::ProcessOutputCallback)
                 };
                 futures.push(async move {
@@ -266,15 +252,13 @@ impl Agent {
         context.todos = todos.clone();
         self.emit(
             &context.session_id,
-            "todo.updated",
-            json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"todos":todos}),
+            EventPayload::TodoUpdated(TodoUpdatedPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), todos: todos.into_iter().map(|todo| TodoEventItem { content: todo.content, status: todo.status, priority: todo.priority }).collect() }),
         )?;
         self.tool_state(context, call, "succeeded", None)?;
         let result = json!({"todos": context.todos});
         self.emit(
             &context.session_id,
-            "tool.result",
-            json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"result":result}),
+            EventPayload::ToolResult(ToolResultPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), result: result.clone() }),
         )?;
         let mut tool = Message::text(
             "tool",
@@ -284,8 +268,7 @@ impl Agent {
         context.messages.push(tool.clone());
         self.emit(
             &context.session_id,
-            "message.tool",
-            json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"message":tool}),
+            EventPayload::MessageTool(MessageToolPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: tool }),
         )?;
         Ok(())
     }
@@ -324,13 +307,7 @@ impl Agent {
                 let call_id = context.active_call_id.clone();
                 let tool_call_id = call.call_id.clone();
                 Some(std::sync::Arc::new(move |stream: &str, chunk: &[u8]| {
-                    agent.emit_live(&session_id, "tool.output", json!({
-                        "turn_id": turn_id,
-                        "call_id": call_id,
-                        "tool_call_id": tool_call_id,
-                        "stream": stream,
-                        "chunk_base64": STANDARD.encode(chunk),
-                    }));
+                    agent.emit_live(&session_id, EventPayload::ToolOutput(ToolOutputPayload { turn_id: turn_id.clone(), call_id: call_id.clone(), tool_call_id: tool_call_id.clone(), stream: stream.to_owned(), chunk_base64: STANDARD.encode(chunk) }));
                 }) as suncode_tool::ProcessOutputCallback)
             })
             .await
@@ -368,13 +345,7 @@ impl Agent {
         });
         self.emit(
             &context.session_id,
-            "tool.result",
-            json!({
-                "turn_id": context.turn_id,
-                "call_id": context.active_call_id,
-                "tool_call_id": call.call_id,
-                "result": result,
-            }),
+            EventPayload::ToolResult(ToolResultPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), result: result.clone() }),
         )?;
         let mut tool = Message::text(
             "tool",
@@ -384,13 +355,7 @@ impl Agent {
         context.messages.push(tool.clone());
         self.emit(
             &context.session_id,
-            "message.tool",
-            json!({
-                "turn_id": context.turn_id,
-                "call_id": context.active_call_id,
-                "tool_call_id": call.call_id,
-                "message": tool,
-            }),
+            EventPayload::MessageTool(MessageToolPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: tool }),
         )?;
         Ok(true)
     }
@@ -427,13 +392,7 @@ impl Agent {
         )?;
         self.emit(
             &context.session_id,
-            "tool.result",
-            json!({
-                "turn_id": context.turn_id,
-                "call_id": context.active_call_id,
-                "tool_call_id": call.call_id,
-                "result": normalized_result,
-            }),
+            EventPayload::ToolResult(ToolResultPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), result: normalized_result.clone() }),
         )?;
         let checkpoint_ids = result
             .get("checkpoint_ids")
@@ -458,7 +417,7 @@ impl Agent {
                     result.get("to")
                 }
                 .and_then(Value::as_str);
-                self.emit(&context.session_id,"checkpoint.captured",json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"manifest_id":manifest.manifest_id,"checkpoint_id":id,"path":path,"ordinal":existing+index as i64}))?;
+                self.emit(&context.session_id, EventPayload::CheckpointCaptured(CheckpointCapturedPayload { turn_id: context.turn_id.clone(), tool_call_id: call.call_id.clone(), manifest_id: manifest.manifest_id.clone(), checkpoint_id: (*id).to_owned(), path: path.map(str::to_owned), ordinal: existing + index as i64 }))?;
             }
         }
         let mut tool = Message::text(
@@ -469,8 +428,7 @@ impl Agent {
         context.messages.push(tool.clone());
         self.emit(
             &context.session_id,
-            "message.tool",
-            json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"message":tool}),
+            EventPayload::MessageTool(MessageToolPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: tool }),
         )?;
         Ok(())
     }

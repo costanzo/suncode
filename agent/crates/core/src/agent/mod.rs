@@ -22,6 +22,9 @@ use tokio::sync::{broadcast, mpsc, Mutex as AsyncMutex};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
+pub mod events;
+use events::*;
+
 const DEFAULT_TOOL_CALL_LIMIT: u32 = 64;
 const MAX_INSTRUCTION_FILE_BYTES: u64 = 32 * 1024;
 const MAX_NEARBY_INSTRUCTION_FILES: usize = 16;

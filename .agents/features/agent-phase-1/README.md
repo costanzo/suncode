@@ -27,6 +27,8 @@ Every machine-affecting call passes argument validation, declared-risk policy ev
 
 Startup acquires a single-instance data-directory lock, opens the current SQLite schema, reconciles interrupted work, and reports unknown completion instead of replaying blindly. Live events are in-memory notifications; lagged subscribers receive `resync.required` and reload a normalized snapshot.
 
+Core event producers construct `EventPayload` enum variants with named Rust payload structs. The variant selects the stable dotted event type, preventing event-name/payload mismatches before projection; native bindings continue to serialize the established SDK event envelope.
+
 ## Contracts and verification
 
 The public native contract is [`contracts/agent-sdk/README.md`](../../../contracts/agent-sdk/README.md). Persistence rules are in [`contracts/persistence.md`](../../../contracts/persistence.md) and [`contracts/sqlite-schema.md`](../../../contracts/sqlite-schema.md). Focused Rust tests cover the agent, LLM, data, database, and operations crates.

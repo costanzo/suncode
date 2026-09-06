@@ -13,8 +13,7 @@ impl Agent {
             })?;
         self.emit(
             &continuation.session_id,
-            "approval.resolved",
-            json!({"approval_id":approval_id,"turn_id":continuation.turn_id,"decision":decision}),
+            EventPayload::ApprovalResolved(ApprovalResolvedPayload { approval_id: approval_id.to_owned(), turn_id: continuation.turn_id.clone(), decision: decision.to_owned() }),
         )?;
         if decision == "deny" {
             self.clear_queued_messages(&continuation.session_id);
@@ -127,15 +126,11 @@ impl Agent {
             .as_ref()
             .ok_or_else(|| BusinessError::new("agent_unavailable", "question call is missing"))?;
         let event = if rejected {
-            "question.rejected"
+            EventPayload::QuestionRejected(QuestionAnsweredPayload { request_id: request_id.to_owned(), turn_id: continuation.turn_id.clone(), tool_call_id: call.call_id.clone(), answers })
         } else {
-            "question.replied"
+            EventPayload::QuestionReplied(QuestionAnsweredPayload { request_id: request_id.to_owned(), turn_id: continuation.turn_id.clone(), tool_call_id: call.call_id.clone(), answers })
         };
-        self.emit(
-            &continuation.session_id,
-            event,
-            json!({"request_id":request_id,"turn_id":continuation.turn_id,"tool_call_id":call.call_id,"answers":answers}),
-        )?;
+        self.emit(&continuation.session_id, event)?;
         let token = CancellationToken::new();
         self.cancellations
             .lock()
@@ -217,14 +212,14 @@ impl Agent {
             let answers = continuation.question_answers.take().unwrap_or_default();
             let result = json!({"answers": answers, "rejected": continuation.question_rejected});
             self.tool_state(continuation, &call, "succeeded", None)?;
-            self.emit(&continuation.session_id, "tool.result", json!({"turn_id":continuation.turn_id,"call_id":continuation.active_call_id,"tool_call_id":call.call_id,"result":result}))?;
+            self.emit(&continuation.session_id, EventPayload::ToolResult(ToolResultPayload { turn_id: continuation.turn_id.clone(), call_id: continuation.active_call_id.clone(), tool_call_id: call.call_id.clone(), result: result.clone() }))?;
             let mut tool = Message::text(
                 "tool",
                 serde_json::to_string(&result).unwrap_or_else(|_| "{}".into()),
             );
             tool.tool_call_id = Some(call.call_id.clone());
             continuation.messages.push(tool.clone());
-            self.emit(&continuation.session_id, "message.tool", json!({"turn_id":continuation.turn_id,"call_id":continuation.active_call_id,"tool_call_id":call.call_id,"message":tool}))?;
+            self.emit(&continuation.session_id, EventPayload::MessageTool(MessageToolPayload { turn_id: continuation.turn_id.clone(), call_id: continuation.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: tool }))?;
         }
         let siblings = std::mem::take(&mut continuation.remaining_calls);
         self.resolve_calls(continuation, siblings, token.clone())

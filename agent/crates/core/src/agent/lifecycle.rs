@@ -2,22 +2,24 @@ impl Agent {
     fn emit(
         &self,
         session_id: &str,
-        event_type: &str,
-        payload: Value,
+        event: EventPayload,
     ) -> Result<(), BusinessError> {
+        let event_type = event.event_type();
+        let payload = event.into_value();
         let event = self
             .store
-            .append_content(session_id, event_type, &payload)?;
+            .append_content(session_id, event_type.as_str(), &payload)?;
         let _ = self.events.send(event);
         Ok(())
     }
 
-    fn emit_live(&self, session_id: &str, event_type: &str, payload: Value) {
+    fn emit_live(&self, session_id: &str, event: EventPayload) {
+        let event_type = event.event_type();
         let event = SessionEvent {
             session_id: session_id.to_string(),
             occurred_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-            event_type: event_type.to_string(),
-            payload,
+            event_type: event_type.as_str().to_string(),
+            payload: event.into_value(),
         };
         let _ = self.events.send(event);
     }
@@ -27,7 +29,7 @@ impl Agent {
         state: &str,
         reason: Option<&str>,
     ) -> Result<(), BusinessError> {
-        self.emit(&context.session_id,"turn.state",json!({"turn_id":context.turn_id,"state":state,"model_id":context.model,"submission_idempotency_key":context.submission_key,"reason":reason}))
+        self.emit(&context.session_id, EventPayload::TurnState(TurnStatePayload { turn_id: context.turn_id.clone(), state: state.to_owned(), model_id: Some(context.model.clone()), submission_idempotency_key: Some(context.submission_key.clone()), reason: reason.map(str::to_owned) }))
     }
     fn tool_state(
         &self,
@@ -36,7 +38,7 @@ impl Agent {
         state: &str,
         reason: Option<&str>,
     ) -> Result<(), BusinessError> {
-        self.emit(&context.session_id,"tool.state",json!({"turn_id":context.turn_id,"call_id":context.active_call_id,"tool_call_id":call.call_id,"name":call.name,"state":state,"reason":reason}))
+        self.emit(&context.session_id, EventPayload::ToolState(ToolStatePayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), name: call.name.clone(), state: state.to_owned(), reason: reason.map(str::to_owned) }))
     }
     fn fail_context<T>(
         &self,

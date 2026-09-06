@@ -12,8 +12,7 @@ impl Agent {
             context.messages.push(message.clone());
             self.emit(
                 &context.session_id,
-                "message.user",
-                json!({"message_id":Uuid::new_v4(),"turn_id":context.turn_id,"message":message}),
+                EventPayload::MessageUser(MessageUserPayload { message_id: Uuid::new_v4().to_string(), turn_id: context.turn_id.clone(), queued_id: None, queued_idempotency_key: None, message }),
             )?;
         }
         self.turn_state(&context, "preparing", None)?;
@@ -45,22 +44,7 @@ impl Agent {
                 let compaction_id = Uuid::new_v4().to_string();
                 self.emit(
                     &context.session_id,
-                    "context.compacted",
-                    json!({
-                        "exchange_id": compaction_id,
-                        "turn_id": context.turn_id,
-                        "provider": "SunCode",
-                        "model_id": "context-compaction",
-                        "wire_model": "internal",
-                        "iteration": context.iterations,
-                        "started_at": chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                        "original_characters": prompt.original_characters,
-                        "retained_characters": prompt.retained_characters,
-                        "original_tokens": prompt.original_tokens,
-                        "retained_tokens": prompt.retained_tokens,
-                        "dropped_messages": prompt.dropped_messages,
-                        "summary": prompt.summary,
-                    }),
+                    EventPayload::ContextCompacted(ContextCompactedPayload { exchange_id: compaction_id, turn_id: context.turn_id.clone(), provider: "SunCode".into(), model_id: "context-compaction".into(), wire_model: "internal".into(), iteration: context.iterations, started_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true), original_characters: prompt.original_characters, retained_characters: prompt.retained_characters, original_tokens: prompt.original_tokens, retained_tokens: prompt.retained_tokens, dropped_messages: prompt.dropped_messages, summary: prompt.summary.map(|s| ContextSummaryPayload { objective: s.objective, important_constraints: s.important_constraints, completed_work: s.completed_work, active_work: s.active_work, blockers: s.blockers, next_action: s.next_action }) }),
                 )?;
             }
             if prompt.compacted {
@@ -88,16 +72,7 @@ impl Agent {
                 .collect::<Vec<_>>();
             self.emit(
                 &context.session_id,
-                "provider.exchange.started",
-                json!({
-                    "exchange_id": exchange_id,
-                    "turn_id": context.turn_id,
-                    "provider": provider.provider_id,
-                    "model_id": context.model,
-                    "wire_model": provider.wire_model,
-                    "iteration": context.iterations,
-                    "input_messages": trace_messages,
-                }),
+                EventPayload::ProviderExchangeStarted(ProviderExchangeStartedPayload { exchange_id: exchange_id.clone(), turn_id: context.turn_id.clone(), provider: provider.provider_id.clone(), model_id: context.model.clone(), wire_model: provider.wire_model.clone(), iteration: context.iterations, input_messages: trace_messages }),
             )?;
             let result = {
                 let (delta_sender, mut delta_receiver) = mpsc::unbounded_channel();
@@ -124,15 +99,14 @@ impl Agent {
                     tokio::select! {
                         value = &mut provider_call => break value,
                         Some(delta) = delta_receiver.recv() => {
-                            self.emit_live(&context.session_id, "assistant.delta", json!({"turn_id":context.turn_id,"text":delta}));
+                            self.emit_live(&context.session_id, EventPayload::AssistantDelta(AssistantDeltaPayload { turn_id: context.turn_id.clone(), text: delta }));
                         }
                     }
                 };
                 while let Ok(delta) = delta_receiver.try_recv() {
                     self.emit_live(
                         &context.session_id,
-                        "assistant.delta",
-                        json!({"turn_id":context.turn_id,"text":delta}),
+                        EventPayload::AssistantDelta(AssistantDeltaPayload { turn_id: context.turn_id.clone(), text: delta }),
                     );
                 }
                 result
@@ -142,17 +116,7 @@ impl Agent {
                 Err(error) => {
                     self.emit(
                         &context.session_id,
-                        "provider.exchange.failed",
-                        json!({
-                            "exchange_id": exchange_id,
-                            "turn_id": context.turn_id,
-                            "error": {
-                                "code": error.code,
-                                "message": error.message.clone(),
-                                "retryable": error.retryable,
-                            },
-                            "provider_request_id": error.provider_request_id,
-                        }),
+                        EventPayload::ProviderExchangeFailed(ProviderExchangeFailedPayload { exchange_id: exchange_id.clone(), turn_id: context.turn_id.clone(), error: ProviderErrorPayload { code: error.code.clone(), message: error.message.clone(), retryable: error.retryable }, provider_request_id: error.provider_request_id.clone() }),
                     )?;
                     return Err(error);
                 }
@@ -198,8 +162,7 @@ impl Agent {
                 context.usage.add(usage);
                 self.emit(
                     &context.session_id,
-                    "usage.updated",
-                    json!({"turn_id":context.turn_id,"usage":context.usage}),
+                    EventPayload::UsageUpdated(UsageUpdatedPayload { turn_id: context.turn_id.clone(), usage: context.usage.clone() }),
                 )?;
             }
             let assistant = Message {
@@ -214,35 +177,17 @@ impl Agent {
             };
             self.emit(
                 &context.session_id,
-                "provider.exchange.completed",
-                json!({
-                    "exchange_id": exchange_id,
-                    "turn_id": context.turn_id,
-                    "output_message": assistant,
-                    "tool_calls": tool_calls.clone(),
-                    "usage": usage.as_ref().map(|usage| json!({
-                        "input_tokens": usage.input_tokens,
-                        "output_tokens": usage.output_tokens,
-                        "total_tokens": usage.total_tokens,
-                        "cache_read_tokens": cache_read_tokens,
-                        "cache_miss_tokens": cache_miss_tokens,
-                        "cache_write_tokens": cache_write_tokens,
-                        "reasoning_tokens": reasoning_tokens,
-                    })),
-                    "provider_request_id": result.provider_request_id,
-                    "provider_response_id": result.provider_response_id,
-                    "finish_reason": result.finish_reason.clone(),
-                }),
+                EventPayload::ProviderExchangeCompleted(ProviderExchangeCompletedPayload { exchange_id: exchange_id.clone(), turn_id: context.turn_id.clone(), output_message: assistant.clone(), tool_calls: tool_calls.clone(), usage: usage.as_ref().map(|usage| suncode_llm::Usage { input_tokens: usage.input_tokens, output_tokens: usage.output_tokens, total_tokens: usage.total_tokens, cache_read_tokens, cache_miss_tokens, cache_write_tokens, reasoning_tokens }), provider_request_id: result.provider_request_id.clone(), provider_response_id: result.provider_response_id.clone(), finish_reason: result.finish_reason.clone() }),
             )?;
             context.messages.push(assistant.clone());
-            self.emit(&context.session_id, "message.assistant", json!({"message_id":Uuid::new_v4(),"turn_id":context.turn_id,"call_id":context.active_call_id,"message":assistant,"usage":context.usage,"finish_reason":result.finish_reason}))?;
+            self.emit(&context.session_id, EventPayload::MessageAssistant(MessageAssistantPayload { message_id: Uuid::new_v4().to_string(), turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), message: assistant.clone(), usage: context.usage.clone(), finish_reason: result.finish_reason.clone() }))?;
             if tool_calls.is_empty() {
                 if self.drain_queued_messages(&mut context)? {
                     self.turn_state(&context, "preparing", None)?;
                     continue;
                 }
                 self.turn_state(&context, "completed", None)?;
-                self.emit(&context.session_id, "turn.completed", json!({"turn_id":context.turn_id,"usage":context.usage,"iterations":context.iterations,"tool_calls":context.tool_calls}))?;
+                self.emit(&context.session_id, EventPayload::TurnCompleted(TurnCompletedPayload { turn_id: context.turn_id.clone(), usage: context.usage.clone(), iterations: context.iterations, tool_calls: context.tool_calls }))?;
                 let response = TurnResponse::Completed {
                     turn_id: context.turn_id.clone(),
                     message: assistant,
@@ -290,14 +235,7 @@ impl Agent {
             context.messages.push(message.clone());
             self.emit(
                 &context.session_id,
-                "message.user",
-                json!({
-                    "message_id": Uuid::new_v4(),
-                    "turn_id": context.turn_id,
-                    "queued_id": item.queued_id,
-                    "queued_idempotency_key": item.idempotency_key,
-                    "message": message
-                }),
+                EventPayload::MessageUser(MessageUserPayload { message_id: Uuid::new_v4().to_string(), turn_id: context.turn_id.clone(), queued_id: Some(item.queued_id), queued_idempotency_key: Some(item.idempotency_key), message }),
             )?;
         }
         Ok(true)

@@ -6,6 +6,7 @@ pub mod domain;
 pub mod logging;
 mod policy;
 
+pub use agent::events::*;
 pub use agent::TurnResponse;
 pub use agent_lock::AgentLock;
 pub use credentials::CredentialState;

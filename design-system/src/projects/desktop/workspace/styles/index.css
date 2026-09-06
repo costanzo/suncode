@@ -1,4 +1,6 @@
-/* workspace page styles migrated from review.css. */
+@import "./tokens.css";
+
+/* Workspace page styles migrated from review.css. */
 .settings-guide-state > .workspace-guide.is-right,
 .project-hub-guide-state > .workspace-guide.is-right,
 .about-guide-state > .workspace-guide.is-right {
@@ -2494,21 +2496,6 @@
   }
 }
 
-/* Standalone panel geometry is invariant on the Explorer and Sessions review routes. */
-@media (min-width: 621px) {
-  .workspace-explorer-state-grid > .workspace-guide-state,
-  .workspace-session-state-grid > .workspace-session-state {
-    width: var(--workspace-navigation-width);
-  }
-
-  .workspace-explorer-state-grid .workspace-panel.is-standalone,
-  .workspace-session-state-grid .workspace-panel.is-standalone {
-    width: 100%;
-    height: 524px;
-    min-height: 524px;
-  }
-}
-
 .workspace-titlebar > .traffic-lights,
 .workspace-focused-titlebar > .traffic-lights {
   position: static;
@@ -2980,7 +2967,7 @@
   .workspace-panel.is-standalone,
   .workspace-review.is-standalone {
     width: 100%;
-    height: 464px;
+    height: auto;
     min-height: 464px;
   }
   .workspace-conversation.is-standalone {

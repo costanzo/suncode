@@ -288,8 +288,7 @@ impl Agent {
         drop(queues);
         self.emit(
             session_id,
-            "turn.queued",
-            json!({"queued_id": queued_id, "active_turn_id": active_turn_id, "position": position}),
+            EventPayload::TurnQueued(TurnQueuedPayload { queued_id: queued_id.clone(), active_turn_id: active_turn_id.clone(), position }),
         )?;
         Ok(TurnResponse::Queued {
             queued_id,

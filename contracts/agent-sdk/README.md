@@ -129,6 +129,8 @@ Panics are contained at native binding boundaries and converted to `agent_unavai
 
 Session events are live-only in-memory notifications. Normalized messages, turns, calls, tools, approvals, and checkpoints are the durable source of truth. Events do not carry a durable sequence.
 
+Inside the Rust agent, event emission is strongly typed: `EventPayload` is an enum whose variants carry named payload structs, and each variant determines its `EventType`. Agent code cannot independently pair an arbitrary event-name string with an unrelated JSON object. At the native SDK boundary these types retain the existing `{ session_id, occurred_at, event_type, payload }` JSON envelope and dotted event names for C and C# compatibility.
+
 Provider exchange lifecycle events are durable: `provider.exchange.started`, `provider.exchange.completed`, and `provider.exchange.failed`. They project into the provider-exchange query surface and may be used by clients to refresh an open trace drawer.
 
 Question events are live notifications with normalized snapshot support: `question.asked` contains `request_id`, `turn_id`, `tool_call_id`, and ordered prompts; `question.replied` contains the same correlation plus ordered answer arrays; `question.rejected` contains the request correlation and an unanswered result. A session snapshot includes `pendingQuestion` while a request is waiting.

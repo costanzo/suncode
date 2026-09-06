@@ -63,7 +63,7 @@ function ProjectHubWindow({ projects = [] }) {
     <NativeWindowFrame
       platform="macos"
       title="Welcome to SunCode"
-      width="980px"
+      width="var(--project-hub-window-width)"
       className="project-hub-frame"
     >
       <div className="project-hub-toolbar">
