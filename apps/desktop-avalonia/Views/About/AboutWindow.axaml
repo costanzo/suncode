@@ -10,7 +10,14 @@
   <StackPanel Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
     <Image Width="64" Height="64" Source="/Assets/logo/suncode-logo-64.png" Stretch="Uniform" />
     <TextBlock Text="SunCode" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" TextAlignment="Center" />
-    <TextBlock x:Name="VersionText" Classes="mono" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" TextAlignment="Center" />
+    <Border Width="220" Padding="12,9" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="6">
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="Desktop" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+        <TextBlock Grid.Row="0" Grid.Column="1" x:Name="DesktopVersionText" Classes="mono" FontSize="12" Foreground="{DynamicResource TextBrush}" />
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="Agent SDK" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+        <TextBlock Grid.Row="1" Grid.Column="1" x:Name="AgentSdkVersionText" Classes="mono" FontSize="12" Foreground="{DynamicResource TextBrush}" />
+      </Grid>
+    </Border>
     <TextBlock Text="General-purpose coding agent" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
   </StackPanel>
 </Window>

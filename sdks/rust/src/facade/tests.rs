@@ -70,6 +70,7 @@ fn test_state(directory: &std::path::Path) -> AgentState {
 fn named_sdk_methods_serve_project_session_and_model_dtos() {
     let directory = tempfile::tempdir().unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    assert_eq!(AgentSdk::version().version, suncode_agent::version());
     assert!(sdk.health().unwrap().ok);
     assert_eq!(sdk.list_credentials().unwrap().credentials.len(), 6);
     assert_eq!(sdk.list_models().unwrap().models.len(), 12);

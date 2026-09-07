@@ -15,3 +15,15 @@ pub use domain::{
 pub use suncode_common::BusinessError;
 pub use suncode_config::Config;
 pub use suncode_llm::{ModelCapabilities, ModelDescriptor, ModelLimits};
+
+pub const fn version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn version_matches_the_agent_core_package() {
+        assert_eq!(super::version(), env!("CARGO_PKG_VERSION"));
+    }
+}

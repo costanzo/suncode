@@ -43,7 +43,7 @@ export function DesktopProjectPage() {
             to="/projects/desktop/about"
             icon="components"
             title="About"
-            description="Product identity and installed application version."
+            description="Product identity plus installed Desktop and Agent SDK versions."
             path="Default 420 × 320 DIP"
           />
         </div>

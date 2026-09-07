@@ -1,6 +1,12 @@
 use super::*;
 
 impl AgentSdk {
+    pub fn version() -> VersionResult {
+        VersionResult {
+            version: suncode_agent::version(),
+        }
+    }
+
     pub fn open_default() -> SdkResult<Self> {
         Self::open_default_with_providers(|_| Ok(()))
     }

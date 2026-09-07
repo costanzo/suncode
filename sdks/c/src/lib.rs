@@ -26,6 +26,16 @@ pub extern "C" fn suncode_agent_sdk_abi_version() -> u32 {
 }
 
 #[no_mangle]
+pub extern "C" fn suncode_agent_sdk_version() -> *mut c_char {
+    match catch_unwind(AgentSdk::version) {
+        Ok(version) => result_envelope::<_>(Ok(version)),
+        Err(_) => result_envelope::<suncode_sdk::VersionResult>(Err(BusinessError::unavailable(
+            "SDK version query panicked",
+        ))),
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_open_default(
     error_out: *mut *mut c_char,
 ) -> *mut SunCodeAgentHandle {
@@ -680,5 +690,19 @@ mod tests {
     #[test]
     fn exposes_the_current_abi_version() {
         assert_eq!(suncode_agent_sdk_abi_version(), 4);
+    }
+
+    #[test]
+    fn exposes_the_agent_core_version() {
+        let expected = AgentSdk::version().version;
+        let pointer = suncode_agent_sdk_version();
+        assert!(!pointer.is_null());
+        let response = unsafe { CStr::from_ptr(pointer) }
+            .to_str()
+            .unwrap()
+            .to_owned();
+        unsafe { suncode_agent_sdk_string_free(pointer) };
+        let response: Value = serde_json::from_str(&response).unwrap();
+        assert_eq!(response["body"]["version"], expected);
     }
 }

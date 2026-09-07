@@ -14,6 +14,11 @@ pub type SdkResult<T> = Result<T, BusinessError>;
 pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
 
 #[derive(Debug, Serialize)]
+pub struct VersionResult {
+    pub version: &'static str,
+}
+
+#[derive(Debug, Serialize)]
 pub struct HealthResult {
     pub ok: bool,
     pub agent: &'static str,

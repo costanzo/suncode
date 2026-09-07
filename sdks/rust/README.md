@@ -2,6 +2,8 @@
 
 This crate is the typed Rust SDK facade over the `suncode-agent` harness. It owns the host-facing Rust methods, DTOs, lifecycle, and subscription API. The Avalonia-facing C ABI is implemented separately by [`../c`](../c).
 
+The `version` method returns the embedded `suncode-agent` core package version without opening agent state. Client bindings use it for About-window component version display.
+
 It does not open a second database or implement provider/tool behavior independently; those remain owned by the Rust agent crates.
 
 ## Source layout

@@ -15,6 +15,19 @@ public sealed partial class AgentSdk : IDisposable
 
     private AgentSdk(IntPtr handle) => _handle = handle;
 
+    public static Task<JsonObject> VersionAsync() => Task.Run(() =>
+    {
+        try
+        {
+            return ParseEnvelope(NativeMethods.suncode_agent_sdk_version());
+        }
+        catch (Exception exception)
+        {
+            SdkDiagnosticLog.Error("sdk.call", exception, "operation=VersionAsync");
+            throw;
+        }
+    });
+
     public static Task<AgentSdk> OpenAsync() => Task.Run(() =>
     {
         try

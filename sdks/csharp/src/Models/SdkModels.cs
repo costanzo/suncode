@@ -3,6 +3,8 @@ using System.Text.Json.Serialization;
 
 namespace SunCode.Sdk.Models;
 
+public sealed record VersionResult(string Version);
+
 public sealed record HealthResult(bool Ok, string Agent, JsonElement Database);
 
 public sealed record RecoveryStatus(

@@ -20,6 +20,7 @@ public sealed partial class AgentSdk
     private static async Task<T> Typed<T>(Task<JsonObject> operation)
         => Deserialize<T>(await operation.ConfigureAwait(false));
 
+    public static Task<VersionResult> GetVersionAsync() => Typed<VersionResult>(VersionAsync());
     public Task<HealthResult> GetHealthAsync() => Typed<HealthResult>(HealthAsync());
     public Task<DiagnosticsResult> GetDiagnosticsAsync() => Typed<DiagnosticsResult>(DiagnosticsAsync());
     public Task<ModelsResult> GetModelsAsync() => Typed<ModelsResult>(ListModelsAsync());

@@ -1,10 +1,19 @@
 using System.Text.Json;
+using SunCode.Sdk;
 using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.Tests;
 
 public sealed class SdkTypedModelTests
 {
+    [Fact]
+    public async Task VersionComesFromTheRustAgentCore()
+    {
+        var version = await AgentSdk.GetVersionAsync();
+
+        Assert.Equal("0.1.0", version.Version);
+    }
+
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true,

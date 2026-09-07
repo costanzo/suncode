@@ -20,6 +20,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 
 | SDK method | Purpose |
 | --- | --- |
+| `version` | Read the Rust agent core package version without opening agent state |
 | `health` | Read agent and database health |
 | `diagnostics` | Read redacted agent, recovery, credential, and active-project diagnostics |
 | `list_models` | List stable models and credential-derived availability |

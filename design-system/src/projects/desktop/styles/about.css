@@ -26,6 +26,30 @@
   color: var(--text-secondary);
   font: 13px/1.2 var(--font-mono);
 }
+.about-versions {
+  display: grid;
+  width: min(220px, 100%);
+  gap: 6px;
+  padding: 9px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.about-version-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: baseline;
+}
+.about-version-row span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.about-version-row code {
+  color: var(--text);
+  font-size: 12px;
+}
 .about-window span {
   color: var(--text-muted);
   font-size: 14px;
