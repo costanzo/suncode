@@ -12,4 +12,6 @@
   --workspace-git-min-height: 240px;
   --workspace-trace-height: 360px;
   --workspace-trace-min-height: 300px;
+  --workspace-tool-height: 360px;
+  --workspace-tool-min-height: 300px;
 }

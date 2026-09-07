@@ -64,19 +64,18 @@ const conversationGuides = {
   waiting: {
     tabs: {
       actions: [
-        "Read the user and assistant messages in chronological order.",
-        "Expand a tool operation to inspect its request and result modal.",
+        "Read assistant responses in chronological order.",
+        "Hover or focus a turn marker to preview the submitted user message.",
         "Click the changes summary to open Source Control for the turn diff.",
       ],
       style: [
-        "User messages use a raised surface, 1px border, and 14px corner radius.",
         "Assistant Markdown uses 14px type with a 1.6 line-height for comfortable reading.",
-        "User and assistant message rows keep a stable background on hover; only controls inside them show hover feedback.",
-        "Tool rows are compact 34px controls with ellipsized operation names.",
+        "Turn markers use a quiet rule, compact identifier, and bounded hover preview.",
+        "Historical tool calls stay in Tool activity instead of the conversation timeline.",
       ],
       logic: [
         "The session has content and is waiting for the next user submission.",
-        "Completed tool calls remain visible as auditable turn activity.",
+        "The conversation keeps assistant responses and turn boundaries while user bodies move into marker previews.",
         "Turn changes summarize added, deleted, and edited files and link to the diff.",
       ],
     },
@@ -85,18 +84,18 @@ const conversationGuides = {
     tabs: {
       actions: [
         "Watch the live work indicator while the current turn is executing.",
-        "Inspect tool calls as they complete without leaving the conversation.",
+        "Select the active tool row to open its Tool activity detail.",
         "Wait for the assistant response before starting another turn.",
       ],
       style: [
         "The running indicator uses three 5px dots with staggered .12s delays.",
         "Each dot bounces in sequence beneath the conversation while the session is updating.",
-        "The process area stays compact and uses muted monospace metadata.",
+        "Only the most recent running tool appears as a compact actionable row.",
         "The composer remains visually present while send is disabled during the active state.",
       ],
       logic: [
         "The current session has content and an active turn is updating it.",
-        "Live tool activity is shown in sequence and may add turn changes.",
+        "Historical tool activity is available in the dedicated bottom drawer.",
         "The final assistant message arrives when the turn completes.",
       ],
     },
@@ -120,25 +119,6 @@ const conversationGuides = {
       ],
     },
   },
-  compacted: {
-    tabs: {
-      actions: [
-        "Use the event marker to confirm that the conversation has been compacted.",
-        "Continue reading the current turn normally after the summary is applied.",
-        "Open Provider trace when the exact model-call sequence needs inspection.",
-      ],
-      style: [
-        "The completed event uses a static 7px steel point with no pulse or outer aura.",
-        "The row uses the same 8px vertical and 10px horizontal rhythm as active compaction.",
-        "A muted secondary line explains the result without adding another card or tool row.",
-      ],
-      logic: [
-        "A previous context.compacted event has been received for this session.",
-        "Earlier messages were summarized and the resulting context is now being used.",
-        "This marker is historical feedback; it does not mean the agent is currently running.",
-      ],
-    },
-  },
   attachments: {
     tabs: {
       actions: [
@@ -149,31 +129,12 @@ const conversationGuides = {
       style: [
         "Attachment thumbnails are 96px by 64px with a 7px radius and 6px gap.",
         "Thumbnails use cover cropping and a strong border on hover.",
-        "Sent images appear above the user message with a 10px bottom margin.",
+        "Submitted images remain associated with the hidden user message and provider context.",
       ],
       logic: [
         "Only models that advertise image input enable the attachment control; the illustrative specimen model is not a seeded runtime model.",
         "Pending attachments stay local to the composer until send.",
-        "Sent attachments become part of the user message and can be previewed again.",
-      ],
-    },
-  },
-  inputTooLong: {
-    tabs: {
-      actions: [
-        "Read the first five lines of the long user message in the conversation timeline.",
-        "Choose View more to inspect the complete message without editing it.",
-        "Use the copy control in the read-only dialog to copy the full message text.",
-      ],
-      style: [
-        "Long user messages are clamped to five lines and use an ellipsis to preserve the timeline rhythm.",
-        "View more sits inside the message bubble immediately after the truncated ellipsis as the only expansion affordance.",
-        "The full-message dialog uses the expanded composer surface language with read-only text and a left-aligned character count.",
-      ],
-      logic: [
-        "This state represents a submitted user message that exceeds the compact conversation reading measure.",
-        "The collapsed preview never edits or truncates the canonical message; View more reveals the complete content.",
-        "Copying the full message provides the same confirmation feedback as copying an assistant response.",
+        "Sent attachments become part of the durable user message even though the timeline stays assistant-first.",
       ],
     },
   },
@@ -197,41 +158,22 @@ const conversationGuides = {
       ],
     },
   },
-  longTool: {
-    tabs: {
-      actions: [
-        "Read the truncated operation title to identify the active tool.",
-        "Open the operation modal for the complete request and result.",
-        "Use the status text to distinguish a long call from a failed call.",
-      ],
-      style: [
-        "Long operation names are clipped with ellipsis inside a max-width row.",
-        "The row keeps status and chevron controls visible at the right edge.",
-        "The operation modal provides scrollable monospace request and result blocks.",
-      ],
-      logic: [
-        "A long tool call is still one operation in the current turn.",
-        "The list preserves full data in the modal while keeping the timeline compact.",
-        "Tool completion state is independent from the assistant message that follows.",
-      ],
-    },
-  },
   liveToolStream: {
     tabs: {
       actions: [
-        "Open the running tool row to inspect the command while it is still executing.",
-        "Read the live output region in the modal to follow long operations such as compile commands.",
-        "Use the request and status details to understand what is still running without leaving the conversation.",
+        "Open the running tool row while it is still executing.",
+        "Follow the live output in the selected Tool activity detail.",
+        "Return to the conversation without losing the selected call.",
       ],
       style: [
         "The running tool row keeps the timeline compact and shows a warm live status instead of a completed success tone.",
-        "The modal adds a dedicated output viewport with monospace lines and vertical scrolling.",
-        "Request, live output, and completion summary stay in one raised dialog rather than splitting the user into multiple panes.",
+        "The Tool activity drawer owns the bounded monospace output viewport.",
+        "Request, live output, and completion summary stay in one detail pane.",
       ],
       logic: [
         "Long-running process tools can surface incremental output before the assistant reply completes.",
-        "The live-output modal is inspection-only and keeps the main conversation readable.",
-        "Completed tools still use the same modal shell, but the live pane becomes a historical output record.",
+        "The Tool activity detail is inspection-only and keeps the main conversation readable.",
+        "Completed tools stay in the turn tree while the conversation removes their rows.",
       ],
     },
   },
@@ -305,13 +247,6 @@ export function WorkspaceConversationPage() {
       content: <ConversationPanel standalone state="content-thinking" />,
     },
     {
-      id: "compacted",
-      title: "Context compacted",
-      description: "A completed context compaction is recorded in the conversation timeline.",
-      side: "left",
-      content: <ConversationPanel standalone state="context-compacted" />,
-    },
-    {
       id: "attachments",
       title: "Two images attached",
       description: "A specimen-only image-capable model holds two thumbnails before sending.",
@@ -327,27 +262,6 @@ export function WorkspaceConversationPage() {
       ),
     },
     {
-      id: "attachments",
-      title: "Two images sent",
-      description: "The user message includes two sent image thumbnails.",
-      side: "left",
-      content: (
-        <ConversationPanel
-          standalone
-          state="content-waiting"
-          initialSentAttachments={sampleConversationAttachments}
-          onViewChanges={viewChanges}
-        />
-      ),
-    },
-    {
-      id: "inputTooLong",
-      title: "Input too long",
-      description: "A long submitted message is clamped in the timeline and opens as read-only content.",
-      side: "right",
-      content: <ConversationPanel standalone state="input-too-long" onViewChanges={viewChanges} />,
-    },
-    {
       id: "immersiveComposer",
       title: "Expanded composer",
       description: "A large drafting modal opens from the compact composer when requested.",
@@ -355,16 +269,9 @@ export function WorkspaceConversationPage() {
       content: <ConversationPanel standalone state="immersive-composer" onViewChanges={viewChanges} />,
     },
     {
-      id: "longTool",
-      title: "Long tool call",
-      description: "A long operation title is compacted while its details remain available.",
-      side: "right",
-      content: <ConversationPanel standalone state="long-tool-call" onViewChanges={viewChanges} />,
-    },
-    {
       id: "liveToolStream",
       title: "Live tool output",
-      description: "Click a running command to open its streaming output modal while the turn is still active.",
+      description: "Click the single running command to open its detail in Tool activity.",
       side: "right",
       content: <ConversationPanel standalone state="live-tool-stream" />,
     },
@@ -380,7 +287,7 @@ export function WorkspaceConversationPage() {
     <>
       <PageHeader
         title="Conversation"
-        description="User messages, agent work, tool activity, final responses, and the turn composer."
+        description="Assistant responses, lightweight turn boundaries, the current tool, and the turn composer."
       />
       <Section id="conversation-panel" title="Active conversation">
         <div className="workspace-state-grid workspace-conversation-state-grid">

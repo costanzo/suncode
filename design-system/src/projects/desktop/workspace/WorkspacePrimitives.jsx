@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/universal/button/index.js";
 import { ModelDropdown, SingleDropdown } from "../../../components/universal/dropdown/index.js";
 import { Modal } from "../../../components/universal/modal/index.js";
@@ -264,26 +264,6 @@ const workspaceModelGroups = [
   { id: "deepseek", label: "DeepSeek", models: ["deepseek-v4-flash", "deepseek-v4-pro"] },
 ];
 
-const conversationToolCalls = [
-  {
-    icon: "activity",
-    title: "Read ProjectWorkspace.axaml",
-    state: "Succeeded",
-    tone: "success",
-    request: "apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml",
-    result: "218 lines read",
-    error: "",
-  },
-  {
-    icon: "files",
-    title: "Updated workspace routes and modules",
-    state: "Succeeded",
-    tone: "success",
-    request: "workspace route modules",
-    result: "8 modules updated",
-    error: "",
-  },
-];
 const runningConversationToolCalls = [
   {
     icon: "terminal",
@@ -306,27 +286,6 @@ const runningConversationToolCalls = [
       "transforming modules...",
       "rendering chunks...",
     ],
-    error: "",
-  },
-  {
-    icon: "files",
-    title: "Updated workspace routes and modules",
-    state: "Succeeded",
-    tone: "success",
-    request: "workspace route modules",
-    result: "8 modules updated",
-    error: "",
-  },
-];
-const longConversationToolCalls = [
-  {
-    icon: "activity",
-    title:
-      "Read apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml and inspect workspace layout constraints",
-    state: "Succeeded",
-    tone: "success",
-    request: "apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml",
-    result: "218 lines read",
     error: "",
   },
   {
@@ -825,47 +784,33 @@ export const sampleConversationAttachments = [
   createSampleAttachment("settings-reference.svg", "Settings", "8a919b"),
 ];
 
-const overflowUserMessage =
-  "Please review the current Workspace conversation implementation and refactor the layout so each major area remains independently reachable. Preserve the existing attachment behavior, keep the visual language aligned with Quiet Control Desk, and make sure the conversation stays calm and readable when a prompt spans several paragraphs.\n\nAlso document the interaction states, verify the responsive behavior at compact widths, and summarize any tradeoffs in the final response so I can review the result without opening every file individually.";
-
 export function ConversationPanel({
   compact = false,
   standalone = false,
   state = "content-waiting",
   initialAttachments = [],
-  initialSentAttachments = [],
   imageInputEnabled = false,
   onViewChanges,
+  onOpenToolActivity,
 }) {
   const [message, setMessage] = useState(
     state === "immersive-composer"
       ? "Please refactor the conversation layout into focused review states, preserve the existing attachment behavior, and keep the visual language aligned with Quiet Control Desk. I want the resulting specimen to stay calm even when the prompt is several paragraphs long.\n\nAlso add a clearer tool-inspection state so long-running commands can be observed without leaving the conversation surface."
       : "",
   );
-  const [processOpen, setProcessOpen] = useState(true);
-  const [toolPreview, setToolPreview] = useState(null);
   const [attachments, setAttachments] = useState(initialAttachments);
-  const [sentAttachments, setSentAttachments] = useState(initialSentAttachments);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [composerExpanded, setComposerExpanded] = useState(false);
-  const [overflowMessageOpen, setOverflowMessageOpen] = useState(false);
   const [copiedResponse, setCopiedResponse] = useState(false);
-  const [copiedOverflowMessage, setCopiedOverflowMessage] = useState(false);
-  const [visibleToolOutputLines, setVisibleToolOutputLines] = useState(0);
-  const [overflowActionStyle, setOverflowActionStyle] = useState(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(state === "scrolled-up");
   const conversationScrollRef = useRef(null);
   const attachmentInputRef = useRef(null);
   const localAttachmentUrls = useRef(new Set());
   const copyResetTimerRef = useRef(null);
-  const overflowCopyResetTimerRef = useRef(null);
-  const overflowTextRef = useRef(null);
   const hasSession = state !== "no-session";
   const hasContent = state !== "new-session" && hasSession;
   const updating = state === "content-updating" || state === "live-tool-stream";
   const thinking = state === "content-thinking";
-  const compacted = state === "context-compacted";
-  const inputTooLong = state === "input-too-long";
   const modelUnavailable = state === "model-unavailable";
   const turnActive = updating || thinking;
   const scrollToBottom = () => {
@@ -875,12 +820,9 @@ export function ConversationPanel({
     });
     setShowScrollToBottom(false);
   };
-  const toolCalls =
-    state === "long-tool-call"
-      ? longConversationToolCalls
-      : updating
-        ? runningConversationToolCalls
-        : conversationToolCalls;
+  const activeTool = updating
+    ? runningConversationToolCalls.find((tool) => tool.tone === "running")
+    : null;
   const messageCharacters = Array.from(message).length;
   const handleAttachmentChange = (event) => {
     if (!imageInputEnabled) return;
@@ -917,64 +859,11 @@ export function ConversationPanel({
     () => () => {
       localAttachmentUrls.current.forEach((url) => URL.revokeObjectURL(url));
       if (copyResetTimerRef.current) window.clearTimeout(copyResetTimerRef.current);
-      if (overflowCopyResetTimerRef.current) window.clearTimeout(overflowCopyResetTimerRef.current);
     },
     [],
   );
-  useEffect(() => {
-    if (toolPreview === null) {
-      setVisibleToolOutputLines(0);
-      return undefined;
-    }
-    const activeTool = toolCalls[toolPreview];
-    if (!activeTool?.liveOutput?.length) {
-      setVisibleToolOutputLines(0);
-      return undefined;
-    }
-    setVisibleToolOutputLines(Math.min(3, activeTool.liveOutput.length));
-    const intervalId = window.setInterval(() => {
-      setVisibleToolOutputLines((current) => {
-        if (current >= activeTool.liveOutput.length) {
-          window.clearInterval(intervalId);
-          return current;
-        }
-        return current + 1;
-      });
-    }, 540);
-    return () => window.clearInterval(intervalId);
-  }, [toolCalls, toolPreview, state]);
-  useLayoutEffect(() => {
-    if (!inputTooLong || !overflowTextRef.current) {
-      setOverflowActionStyle(null);
-      return undefined;
-    }
-    const textElement = overflowTextRef.current;
-    const container = textElement.parentElement;
-    if (!container) return undefined;
-
-    const updateActionPosition = () => {
-      const containerRect = container.getBoundingClientRect();
-      const visibleBottom = containerRect.bottom + 1;
-      const range = document.createRange();
-      range.selectNodeContents(textElement);
-      const lastVisibleRect = [...range.getClientRects()]
-        .filter((rect) => rect.width > 0 && rect.bottom <= visibleBottom)
-        .at(-1);
-      if (!lastVisibleRect) return;
-      setOverflowActionStyle({
-        left: `${Math.max(0, lastVisibleRect.right - containerRect.left + 10)}px`,
-        top: `${Math.max(0, lastVisibleRect.top - containerRect.top + (lastVisibleRect.height - 18) / 2)}px`,
-      });
-    };
-
-    updateActionPosition();
-    const observer = new ResizeObserver(updateActionPosition);
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [inputTooLong]);
   const sendMessage = () => {
     if (!message.trim() && !attachments.length) return;
-    if (attachments.length) setSentAttachments((current) => [...current, ...attachments]);
     setAttachments([]);
     setMessage("");
     setComposerExpanded(false);
@@ -986,15 +875,6 @@ export function ConversationPanel({
     setCopiedResponse(true);
     if (copyResetTimerRef.current) window.clearTimeout(copyResetTimerRef.current);
     copyResetTimerRef.current = window.setTimeout(() => setCopiedResponse(false), 1400);
-  };
-  const copyOverflowMessage = async () => {
-    await navigator.clipboard?.writeText(overflowUserMessage);
-    setCopiedOverflowMessage(true);
-    if (overflowCopyResetTimerRef.current) window.clearTimeout(overflowCopyResetTimerRef.current);
-    overflowCopyResetTimerRef.current = window.setTimeout(
-      () => setCopiedOverflowMessage(false),
-      1400,
-    );
   };
   return (
     <section
@@ -1026,89 +906,17 @@ export function ConversationPanel({
               );
             }}
           >
-          <div className={inputTooLong ? "workspace-message-overflow-row" : undefined}>
-            <div className="workspace-message workspace-message-user">
-              {sentAttachments.length > 0 && (
-                <div
-                  className="workspace-message-attachments"
-                  aria-label="Images sent with this message"
-                >
-                  {sentAttachments.map((attachment) => (
-                    <button
-                      type="button"
-                      className="workspace-message-attachment"
-                      key={attachment.id}
-                      onClick={() => setPreviewAttachment(attachment)}
-                      aria-label={`View ${attachment.name}`}
-                      title="View image"
-                    >
-                      <img src={attachment.url} alt={attachment.name} />
-                    </button>
-                  ))}
-                </div>
-              )}
-              {inputTooLong && (
-                <span className="workspace-message-overflow-content">
-                  <span ref={overflowTextRef} className="workspace-message-overflow-text">
-                    {overflowUserMessage}
-                  </span>
-                  <button
-                    type="button"
-                    className="workspace-message-view-more"
-                    style={overflowActionStyle ?? undefined}
-                    onClick={() => setOverflowMessageOpen(true)}
-                    aria-label="View full message"
-                    title="View full message"
-                  >
-                    View more
-                  </button>
-                </span>
-              )}
-              {!inputTooLong && (
-                <span>
-                  Add the Workspace surface to the design system, but keep each major area independently reachable.
-                </span>
-              )}
-            </div>
+          <div className="workspace-turn-marker" tabIndex="0">
+            <span>Turn 0198e82c</span>
+            <small>Worked for 42s</small>
+            <span className="workspace-turn-preview">Add the Workspace surface to the design system, but keep each major area…</span>
           </div>
-          <div className="workspace-process">
-            <button
-              type="button"
-              className="workspace-process-toggle"
-              aria-expanded={processOpen}
-              onClick={() => setProcessOpen(!processOpen)}
-            >
-              <Icon name="chevron-right" className={processOpen ? "is-open" : ""} size={12} />{" "}
-              Worked for 42s
-              {compacted && (
-                <span className="workspace-process-compaction-note"> · Context compacted</span>
-              )}
-            </button>
-            {processOpen &&
-              toolCalls.map((tool, index) => (
-                <button
-                  key={tool.title}
-                  type="button"
-                  className={`workspace-tool-row ${tool.tone === "running" ? "is-running" : ""}`.trim()}
-                  aria-haspopup="dialog"
-                  onClick={() => setToolPreview(index)}
-                >
-                  <Icon name={tool.icon} size={14} />
-                  <span>{tool.title}</span>
-                  <small>{tool.state}</small>
-                  <Icon name="chevron-right" size={12} />
-                </button>
-              ))}
-            {processOpen && compacted && (
-              <div className="workspace-context-compaction is-complete" role="status">
-                <i aria-hidden="true" />
-                <span>
-                  <strong>Context compacted</strong>
-                  <small>Earlier messages were summarized for the next model call</small>
-                </span>
-              </div>
-            )}
-          </div>
+          {activeTool && <button type="button" className="workspace-active-tool" onClick={() => onOpenToolActivity ? onOpenToolActivity("0198e82c", 1) : window.location.hash = "/projects/desktop/workspace/tool-activity"}>
+            <Icon name={activeTool.icon} size={14} />
+            <span>{activeTool.title}</span>
+            <small>Running · View in Tool activity</small>
+            <Icon name="arrow" size={12} />
+          </button>}
           {!turnActive ? (
             <div className="workspace-message workspace-message-assistant">
               <p>
@@ -1285,54 +1093,6 @@ export function ConversationPanel({
         </div>
       )}
       <Modal
-        open={toolPreview !== null}
-        title="Operation details"
-        onClose={() => setToolPreview(null)}
-        className="workspace-tool-modal"
-        actions={
-          <button type="button" className="btn btn-sm" onClick={() => setToolPreview(null)}>
-            Close
-          </button>
-        }
-      >
-        {toolPreview !== null && (
-          <div className="workspace-tool-modal-content">
-            <div className="workspace-tool-modal-heading">
-              <strong>{toolCalls[toolPreview].title}</strong>
-              <span className={`workspace-tool-badge is-${toolCalls[toolPreview].tone ?? "success"}`}>
-                {toolCalls[toolPreview].state}
-              </span>
-            </div>
-            <div className="workspace-tool-modal-section">
-              <span>Request</span>
-              <code>{toolCalls[toolPreview].request}</code>
-            </div>
-            {toolCalls[toolPreview].liveOutput && (
-              <div className="workspace-tool-modal-section">
-                <span>{toolCalls[toolPreview].liveLabel ?? "Live output"}</span>
-                <pre className="workspace-tool-live-output" aria-live="polite">
-                  <code>
-                    {toolCalls[toolPreview].liveOutput
-                      .slice(0, visibleToolOutputLines || toolCalls[toolPreview].liveOutput.length)
-                      .join("\n")}
-                  </code>
-                </pre>
-              </div>
-            )}
-            <div className="workspace-tool-modal-section">
-              <span>{toolCalls[toolPreview].liveOutput ? "Latest status" : "Result"}</span>
-              <code>{toolCalls[toolPreview].result}</code>
-            </div>
-            {toolCalls[toolPreview].error && (
-              <div className="workspace-tool-modal-section is-error">
-                <span>Error</span>
-                <code>{toolCalls[toolPreview].error}</code>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
-      <Modal
         open={Boolean(previewAttachment)}
         title={previewAttachment?.name ?? "Image preview"}
         onClose={() => setPreviewAttachment(null)}
@@ -1374,37 +1134,6 @@ export function ConversationPanel({
           />
           <div className="workspace-composer-modal-footer">
             <strong aria-live="polite">{messageCharacters} characters</strong>
-          </div>
-        </div>
-      </Modal>
-      <Modal
-        open={overflowMessageOpen}
-        onClose={() => setOverflowMessageOpen(false)}
-        className="workspace-overflow-message-modal"
-        hideTitle
-        ariaLabel="Full user message"
-        hideClose
-        actions={
-          <button type="button" className="btn" onClick={() => setOverflowMessageOpen(false)}>
-            Close
-          </button>
-        }
-      >
-        <div className="workspace-overflow-message-modal-content">
-          <div className="workspace-overflow-message-modal-body" role="document" aria-label="Full user message">
-            {overflowUserMessage}
-          </div>
-          <div className="workspace-overflow-message-modal-footer">
-            <button
-              type="button"
-              className={`workspace-copy ${copiedOverflowMessage ? "is-copied" : ""}`.trim()}
-              aria-label={copiedOverflowMessage ? "Copied message" : "Copy message"}
-              title={copiedOverflowMessage ? "Copied" : "Copy message"}
-              onClick={copyOverflowMessage}
-            >
-              <Icon name={copiedOverflowMessage ? "check" : "copy"} size={13} />
-            </button>
-            <span>{Array.from(overflowUserMessage).length} characters</span>
           </div>
         </div>
       </Modal>
@@ -2088,10 +1817,102 @@ export function ProviderTracePanel({ onClose, standalone = false, state = "expan
   );
 }
 
+const toolActivityTurns = [
+  {
+    id: "0198e82c",
+    title: "Turn 0198e82c",
+    preview: "Add the Workspace surface to the design system, but keep each major area…",
+    status: "Running",
+    tools: [
+      { title: "Read ProjectWorkspace.axaml", state: "Completed", tone: "success", request: "apps/desktop-avalonia/Views/ProjectWorkspace/ProjectWorkspace.axaml", result: "218 lines read" },
+      { title: "Run mvn compile for the workspace shell specimen", state: "Running", tone: "running", request: "mvn -pl design-system compile", result: "Command still running", live: ["[INFO] Scanning for projects...", "[INFO] Building design-system 0.0.0-review", "> vite build", "transforming modules...", "rendering chunks..."] },
+      { title: "Update workspace routes and modules", state: "Queued", tone: "queued", request: "design-system/src/app/navigation.js", result: "Waiting for the running compile command to finish" },
+      { title: "Read missing workspace manifest", state: "Failed", tone: "danger", request: "design-system/src/projects/desktop/workspace/manifest.json", result: "The file could not be found", error: "file_not_found" },
+    ],
+  },
+];
+
+const completedToolActivityTurns = [
+  {
+    id: "0198e7f1",
+    title: "Turn 0198e7f1",
+    preview: "Review the current Avalonia workspace layout and summarize the supporting bays…",
+    status: "Completed",
+    tools: [
+      { title: "List design-system files", state: "Completed", tone: "success", request: "design-system/src/projects/desktop/workspace", result: "42 files found" },
+      { title: "Search provider trace bindings", state: "Completed", tone: "success", request: "rg ProviderTrace apps/desktop-avalonia", result: "14 provider trace bindings found" },
+      { title: "Read ProviderTraceViewer.axaml", state: "Completed", tone: "success", request: "apps/desktop-avalonia/Views/ProjectWorkspace/Review/ProviderTraceViewer.axaml", result: "302 lines read" },
+    ],
+  },
+];
+
+export function ToolActivityPanel({ onClose, standalone = false, state = "running" }) {
+  const empty = state === "empty";
+  const turns = empty
+    ? []
+    : state === "completed"
+      ? completedToolActivityTurns
+      : toolActivityTurns;
+  const initialTurn = 0;
+  const initialTool = state === "running" ? 1 : 0;
+  const [selectedTurn, setSelectedTurn] = useState(initialTurn);
+  const [selectedTool, setSelectedTool] = useState(initialTool);
+  const [expandedTurns, setExpandedTurns] = useState(() => new Set([initialTurn]));
+  const [visibleOutputLines, setVisibleOutputLines] = useState(2);
+  const turn = turns[selectedTurn] ?? turns[0];
+  const tool = turn?.tools[selectedTool] ?? turn?.tools[0];
+  useEffect(() => {
+    setVisibleOutputLines(2);
+    if (!tool?.live) return undefined;
+    const timer = window.setInterval(() => setVisibleOutputLines((current) => {
+      if (current >= tool.live.length) {
+        window.clearInterval(timer);
+        return current;
+      }
+      return current + 1;
+    }), 680);
+    return () => window.clearInterval(timer);
+  }, [selectedTurn, selectedTool, tool?.live]);
+  return <section className={`workspace-drawer workspace-tool-activity ${standalone ? "is-standalone" : ""}`}>
+    <header>
+      <Icon name="activity" size={16} />
+      <strong>Tool activity</strong>
+      <span>{empty ? "0 turns" : `${turns.length} turn · ${turns.reduce((sum, item) => sum + item.tools.length, 0)} calls`}</span>
+      <div />
+      <div className="workspace-tool-activity-actions">
+        <IconButton icon="copy" label="Copy tool activity" onClick={() => navigator.clipboard?.writeText("Tool activity preview")} />
+        <IconButton icon="close" label="Close tool activity" onClick={onClose} disabled={!onClose} />
+      </div>
+    </header>
+    {empty ? <div className="workspace-tool-empty"><Icon name="activity" size={24} /><strong>No turns yet</strong><span>Tool calls will appear here after the agent starts its first turn.</span></div> : <div className="workspace-tool-body">
+      <div className="workspace-tool-tree">
+        <div className="workspace-drawer-label">CURRENT SESSION</div>
+        {turns.map((item, turnIndex) => <div key={item.id}>
+          <button type="button" className={`workspace-tool-turn ${selectedTurn === turnIndex ? "is-selected" : ""}`} aria-expanded={expandedTurns.has(turnIndex)} onClick={() => { setSelectedTurn(turnIndex); setSelectedTool(0); setExpandedTurns((current) => { const next = new Set(current); if (next.has(turnIndex)) next.delete(turnIndex); else next.add(turnIndex); return next; }); }}>
+            <Icon name="chevron-right" className={expandedTurns.has(turnIndex) ? "is-open" : ""} size={11} />
+            <span><strong>{item.title}</strong><small>{item.preview}</small></span><b>{item.tools.length}</b>
+          </button>
+          {expandedTurns.has(turnIndex) && <div className="workspace-tool-children">{item.tools.map((entry, toolIndex) => <button type="button" key={entry.title} className={`workspace-tool-tree-row is-${entry.tone} ${selectedTurn === turnIndex && selectedTool === toolIndex ? "is-selected" : ""}`} onClick={() => { setSelectedTurn(turnIndex); setSelectedTool(toolIndex); }}>
+            <Icon name={entry.tone === "running" ? "terminal" : "activity"} size={13} /><span><strong>{entry.title}</strong></span>{entry.tone !== "success" && entry.tone !== "danger" && <i className={`is-${entry.tone}`} aria-label={entry.state} />}
+          </button>)}</div>}
+        </div>)}
+      </div>
+      <div className="workspace-tool-detail">
+        <div className="workspace-tool-detail-heading"><div><code>{turn.title} · {tool.state.toUpperCase()}</code><h3>{tool.title}</h3></div><span className={`workspace-tool-state is-${tool.tone}`}>{tool.state}</span></div>
+        <div className="workspace-tool-meta"><span>TOOL CALL</span><code>{turn.id} · {selectedTool + 1} of {turn.tools.length}</code><span>STATUS</span><code>{tool.state}</code></div>
+        <div className="workspace-tool-detail-section"><span>Request</span><code>{tool.request}</code></div>
+        {tool.live && <div className="workspace-tool-detail-section"><div className="workspace-tool-live-heading"><span>Live output</span><small>Following tail · {visibleOutputLines} lines</small></div><pre className="workspace-tool-live-output" aria-live="polite"><code>{tool.live.slice(0, visibleOutputLines).join("\n")}</code></pre></div>}
+        <div className="workspace-tool-detail-section"><span>{tool.live ? "Latest status" : "Result"}</span><code>{tool.result}</code></div>
+        {tool.error && <div className="workspace-tool-detail-section is-error"><span>Error</span><code>{tool.error}</code></div>}
+      </div>
+    </div>}
+  </section>;
+}
+
 export function WorkspaceWindow() {
   const [navigation, setNavigation] = useState("sessions");
   const [reviewVisible, setReviewVisible] = useState(true);
-  const [drawer, setDrawer] = useState(null);
+  const [drawer, setDrawer] = useState("tools");
   const [archiveRequest, setArchiveRequest] = useState(null);
   const toggleDrawer = (next) => setDrawer((current) => (current === next ? null : next));
   return (
@@ -2139,6 +1960,12 @@ export function WorkspaceWindow() {
               active={drawer === "trace"}
               onClick={() => toggleDrawer("trace")}
             />
+            <IconButton
+              icon="terminal"
+              label="Show tool activity"
+              active={drawer === "tools"}
+              onClick={() => toggleDrawer("tools")}
+            />
           </div>
         </aside>
         <div className="workspace-main-stack">
@@ -2147,7 +1974,7 @@ export function WorkspaceWindow() {
               <SessionPanel compact onArchiveRequest={setArchiveRequest} />
             )}
             {navigation === "explorer" && <ExplorerPanel compact />}
-            <ConversationPanel compact onViewChanges={() => setDrawer("git")} />
+            <ConversationPanel compact state="content-updating" onViewChanges={() => setDrawer("git")} onOpenToolActivity={() => setDrawer("tools")} />
             {reviewVisible && <ReviewPanel compact />}
           </div>
           {drawer === "git" && (
@@ -2157,6 +1984,7 @@ export function WorkspaceWindow() {
             />
           )}
           {drawer === "trace" && <ProviderTracePanel onClose={() => setDrawer(null)} />}
+          {drawer === "tools" && <ToolActivityPanel onClose={() => setDrawer(null)} />}
         </div>
         <aside className="workspace-gutter workspace-gutter-right">
           <IconButton

@@ -260,6 +260,11 @@ export const primaryModules = [
                 label: "Provider trace",
                 keywords: "model calls tokens cache duration request response",
               },
+              {
+                path: "/projects/desktop/workspace/tool-activity",
+                label: "Tool activity",
+                keywords: "tool calls progress live output turns operations details",
+              },
             ],
           },
         ],

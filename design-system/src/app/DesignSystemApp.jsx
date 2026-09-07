@@ -44,6 +44,7 @@ import { WorkspaceConversationPage } from "../projects/desktop/workspace/convers
 import { WorkspaceReviewPage } from "../projects/desktop/workspace/review/index.jsx";
 import { WorkspaceSourceControlPage } from "../projects/desktop/workspace/source-control/index.jsx";
 import { WorkspaceProviderTracePage } from "../projects/desktop/workspace/provider-trace/index.jsx";
+import { WorkspaceToolActivityPage } from "../projects/desktop/workspace/tool-activity/index.jsx";
 import { Icon } from "../shared/Icon.jsx";
 import { RouteLink } from "../shared/PagePrimitives.jsx";
 import compactLogoUrl from "../assets/logos/suncode-logo-small.svg";
@@ -106,6 +107,7 @@ const routes = {
   "/projects/desktop/workspace/review": WorkspaceReviewPage,
   "/projects/desktop/workspace/source-control": WorkspaceSourceControlPage,
   "/projects/desktop/workspace/provider-trace": WorkspaceProviderTracePage,
+  "/projects/desktop/workspace/tool-activity": WorkspaceToolActivityPage,
 };
 
 function readTheme() {
