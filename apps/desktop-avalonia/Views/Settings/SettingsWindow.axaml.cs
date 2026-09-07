@@ -96,6 +96,7 @@ public sealed partial class SettingsWindow : Window
     private void CloseSettings(object? sender, RoutedEventArgs e) => Close();
     private void ShowDefaults(object? sender, RoutedEventArgs e) => SelectPage("defaults", sender as Button);
     private void ShowAppearance(object? sender, RoutedEventArgs e) => SelectPage("appearance", sender as Button);
+    private void ShowShortcuts(object? sender, RoutedEventArgs e) => SelectPage("shortcuts", sender as Button);
     private void ShowNetwork(object? sender, RoutedEventArgs e) => SelectPage("network", sender as Button);
     private void ShowLogging(object? sender, RoutedEventArgs e) => SelectPage("logging", sender as Button);
 
@@ -155,6 +156,7 @@ public sealed partial class SettingsWindow : Window
     {
         DefaultsPage.IsVisible = page == "defaults";
         AppearancePage.IsVisible = page == "appearance";
+        ShortcutsPage.IsVisible = page == "shortcuts";
         NetworkPage.IsVisible = page == "network";
         LoggingPage.IsVisible = page == "logging";
         ProvidersPage.IsVisible = page == "providers";
@@ -162,6 +164,7 @@ public sealed partial class SettingsWindow : Window
             button.Classes.Set("selected", button == selected);
         if (page == "defaults") DefaultsNavigation.Classes.Set("selected", true);
         if (page == "appearance") AppearanceNavigation.Classes.Set("selected", true);
+        if (page == "shortcuts") ShortcutsNavigation.Classes.Set("selected", true);
         if (page == "network") NetworkNavigation.Classes.Set("selected", true);
         if (page == "logging") LoggingNavigation.Classes.Set("selected", true);
         if (page == "providers" && selected is null) ProvidersNavigation.Classes.Set("selected", true);

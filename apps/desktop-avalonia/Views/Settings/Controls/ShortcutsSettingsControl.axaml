@@ -1,0 +1,86 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.ShortcutsSettingsControl">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Classes="settings-panel-content">
+      <Grid Classes="settings-panel-heading settings-shortcuts-heading" ColumnDefinitions="*,Auto">
+        <StackPanel Grid.Column="0" Classes="settings-panel-heading-copy">
+          <TextBlock Text="Keyboard shortcuts" Classes="sc-text-title" />
+          <TextBlock Classes="settings-hint" Text="View the shortcuts available throughout the desktop application." />
+        </StackPanel>
+        <Border Grid.Column="1" Classes="settings-read-only-badge">
+          <TextBlock Text="READ-ONLY" />
+        </Border>
+      </Grid>
+
+      <Border Classes="settings-read-only-note" Margin="0,0,0,26">
+        <Grid ColumnDefinitions="16,*" ColumnSpacing="9">
+          <svg:Svg Width="16" Height="16" Path="/Assets/icons/keyboard.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Top" />
+          <TextBlock Grid.Column="1"
+                     Classes="settings-row-hint"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     Text="Shortcut customization is not available yet. Editing will be added in a future release. The preview uses macOS notation; Windows and Linux use Ctrl where applicable."
+                     TextWrapping="Wrap" />
+        </Grid>
+      </Border>
+
+      <StackPanel Classes="settings-panel-section">
+        <TextBlock Classes="section-label" Text="AVAILABLE SHORTCUTS" />
+        <StackPanel Classes="settings-shortcut-list">
+          <Border Classes="settings-shortcut-row">
+            <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="settings-shortcut-action" Text="Open Settings" />
+            <StackPanel Grid.Column="1" Classes="settings-key-chord">
+              <Border Classes="settings-keycap"><TextBlock x:Name="OpenSettingsModifier" Classes="mono" Text="⌘" /></Border>
+              <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="," /></Border>
+            </StackPanel>
+            </Grid>
+          </Border>
+          <Border Classes="settings-shortcut-row">
+            <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="settings-shortcut-action" Text="Toggle project navigation" />
+            <StackPanel Grid.Column="1" Classes="settings-key-chord">
+              <Border Classes="settings-keycap"><TextBlock x:Name="ToggleNavigationModifier" Classes="mono" Text="⌘" /></Border>
+              <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="1" /></Border>
+            </StackPanel>
+            </Grid>
+          </Border>
+          <Border Classes="settings-shortcut-row">
+            <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="settings-shortcut-action" Text="Toggle Git viewer" />
+            <StackPanel Grid.Column="1" Classes="settings-key-chord">
+              <Border Classes="settings-keycap"><TextBlock x:Name="ToggleGitModifier" Classes="mono" Text="⌘" /></Border>
+              <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="9" /></Border>
+            </StackPanel>
+            </Grid>
+          </Border>
+          <Border Classes="settings-shortcut-row">
+            <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="settings-shortcut-action" Text="Send message" />
+            <StackPanel Grid.Column="1" Classes="settings-key-chord">
+              <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="Enter" /></Border>
+            </StackPanel>
+            </Grid>
+          </Border>
+          <Border Classes="settings-shortcut-row">
+            <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="settings-shortcut-action" Text="Submit session dialog" />
+            <StackPanel Grid.Column="1" Classes="settings-key-chord">
+              <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="Enter" /></Border>
+            </StackPanel>
+            </Grid>
+          </Border>
+          <Border Classes="settings-shortcut-row">
+            <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="settings-shortcut-action" Text="Stop current turn" />
+            <StackPanel Grid.Column="1" Classes="settings-key-chord">
+              <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="Escape" /></Border>
+            </StackPanel>
+            </Grid>
+          </Border>
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

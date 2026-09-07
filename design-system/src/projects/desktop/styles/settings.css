@@ -119,6 +119,82 @@
   font-size: 12px;
   line-height: 1.55;
 }
+.settings-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.settings-read-only-badge {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  padding: 4px 7px;
+  color: var(--text-muted);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: 10px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.settings-read-only-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 26px;
+  padding: 11px 12px;
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.settings-read-only-note .ds-icon {
+  flex: 0 0 auto;
+  color: var(--accent);
+  margin-top: 1px;
+}
+.settings-shortcut-list {
+  display: grid;
+  border-top: 1px solid var(--border);
+}
+.settings-shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 52px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-shortcut-action {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.settings-key-chord {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  gap: 5px;
+}
+.settings-key-chord kbd {
+  display: inline-flex;
+  min-width: 28px;
+  min-height: 26px;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 7px;
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font: 11px/1 var(--font-mono);
+  white-space: nowrap;
+}
 .settings-panel-section {
   display: grid;
   gap: 16px;
@@ -511,6 +587,10 @@
   }
   .settings-panel-content {
     padding: 24px 18px 30px;
+  }
+  .settings-heading-row {
+    display: grid;
+    gap: 12px;
   }
   .settings-subsection {
     padding-left: 14px;

@@ -103,6 +103,12 @@
                 <TextBlock Grid.Column="1" Text="Appearance" VerticalAlignment="Center" />
               </Grid>
             </Button>
+            <Button x:Name="ShortcutsNavigation" Classes="navigation" Click="ShowShortcuts">
+              <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/keyboard.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="Keyboard shortcuts" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
             <Button x:Name="NetworkNavigation" Classes="navigation" Click="ShowNetwork">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/platform.svg" Css="{DynamicResource IconSvgCss}" />
@@ -174,6 +180,8 @@
         <settings:DefaultsSettingsControl x:Name="DefaultsPage" />
 
         <settings:AppearanceSettingsControl x:Name="AppearancePage" IsVisible="False" />
+
+        <settings:ShortcutsSettingsControl x:Name="ShortcutsPage" IsVisible="False" />
 
         <settings:LoggingSettingsControl x:Name="LoggingPage" IsVisible="False" />
 

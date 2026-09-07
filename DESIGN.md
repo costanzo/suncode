@@ -196,6 +196,13 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Custom certificates:** Turning off system certificates enables a file-selector field for a custom certificate path. Leaving system certificates on disables that path field rather than hiding it, so the dependency remains visible.
 - **Path selector:** Certificate path selection uses the same field-plus-browse-button language as other path selectors, but in file mode rather than folder mode.
 
+### Keyboard Shortcut Settings
+
+- **Placement:** Keyboard shortcuts is a first-level child page in the Settings navigation, alongside Defaults, Appearance, Network, and Logging.
+- **Current scope:** The page is a read-only catalog. It must not present editable fields, save actions, or affordances that imply shortcut customization is currently supported.
+- **Rows:** Each row places the operation name on the left and a right-aligned combination of compact `<kbd>` keycaps on the right. Use the existing mono data font, raised surface, hairline border, and compact 4px keycap radius.
+- **Platform note:** The review surface may use macOS notation for the specimen, but the page should state that Windows and Linux use `Ctrl` where applicable. The catalog should describe shortcuts that are actually implemented by the desktop client.
+
 ### Confirmation Dialogs
 
 - **Shared pattern:** Consequential actions use the reusable confirmation dialog rather than implementing page-specific modal structure or performing the action immediately.

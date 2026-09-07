@@ -57,6 +57,7 @@ const providerCatalog = {
 const navItems = [
   { id: "defaults", label: "Defaults", icon: "foundation" },
   { id: "appearance", label: "Appearance", icon: "sun" },
+  { id: "shortcuts", label: "Keyboard shortcuts", icon: "keyboard" },
   { id: "network", label: "Network", icon: "platform" },
   { id: "logging", label: "Logging", icon: "assets" },
 ];
@@ -64,7 +65,7 @@ const navItems = [
 const settingsGuide = {
   tabs: {
     actions: [
-      "Choose Defaults, Appearance, Network, or Logging from the left navigation.",
+      "Choose Defaults, Appearance, Keyboard shortcuts, Network, or Logging from the left navigation.",
       "Use the chevron beside Model providers to collapse or expand its provider links.",
       "Select a provider to edit its OpenAI-compatible URL or credential.",
       "A provider is shown without a stored key so its recovery path and available models can be reviewed.",
@@ -72,6 +73,7 @@ const settingsGuide = {
       "Use Network to review certificate verification, system trust, and custom certificate-path states.",
       "Use the folder buttons in Logging to choose log and image storage directories.",
       "Edit a control and use its save action; use Done to return to ProjectHub.",
+      "Keyboard shortcuts are shown as read-only key combinations; customization is reserved for a future release.",
     ],
     style: [
       "The operating system owns the title bar and window controls; the client toolbar is 58px high with 22px horizontal padding.",
@@ -79,7 +81,7 @@ const settingsGuide = {
       "Rows use 12px labels, 11px hints, 36px controls, 24px column gaps, and 16px section gaps.",
     ],
     logic: [
-      "Settings are local to the embedded agent and are grouped by defaults, appearance, network, logging, and providers.",
+      "Settings are local to the embedded agent and are grouped by defaults, appearance, keyboard shortcuts, network, logging, and providers.",
       "Provider URL changes and default resets are persisted and applied to subsequent requests without changing credentials or models.",
       "Certificate-source controls are subordinate to HTTPS verification and switch between system trust and custom certificate-file input.",
       "Provider credentials are masked; only the first and last four characters are shown for recognition.",
@@ -100,6 +102,15 @@ function SettingRow({ label, hint, children, className = "" }) {
     </div>
   );
 }
+
+const shortcutCatalog = [
+  { action: "Open Settings", keys: ["⌘", ","], ariaLabel: "Command comma" },
+  { action: "Toggle project navigation", keys: ["⌘", "1"], ariaLabel: "Command 1" },
+  { action: "Toggle Git viewer", keys: ["⌘", "9"], ariaLabel: "Command 9" },
+  { action: "Send message", keys: ["Enter"], ariaLabel: "Enter" },
+  { action: "Submit session dialog", keys: ["Enter"], ariaLabel: "Enter" },
+  { action: "Cancel current turn or close dialog", keys: ["Escape"], ariaLabel: "Escape" },
+];
 
 function SettingsNav({ page, setPage, providersExpanded, setProvidersExpanded }) {
   return (
@@ -245,6 +256,44 @@ function AppearancePanel({ onSave }) {
             className="settings-dropdown"
           />
         </SettingRow>
+      </div>
+    </div>
+  );
+}
+
+function ShortcutsPanel() {
+  return (
+    <div className="settings-panel-content">
+      <div className="settings-panel-heading">
+        <div className="settings-heading-row">
+          <div>
+            <h2>Keyboard shortcuts</h2>
+            <p>View the shortcuts available throughout the desktop application.</p>
+          </div>
+          <span className="settings-read-only-badge">Read-only</span>
+        </div>
+      </div>
+      <div className="settings-read-only-note" role="note">
+        <Icon name="keyboard" size={16} />
+        <span>
+          Shortcut customization is not available yet. Editing will be added in a future release.
+          The preview uses macOS notation; Windows and Linux use Ctrl where applicable.
+        </span>
+      </div>
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Available shortcuts</span>
+        <div className="settings-shortcut-list" aria-label="Available keyboard shortcuts">
+          {shortcutCatalog.map((shortcut) => (
+            <div className="settings-shortcut-row" key={shortcut.action}>
+              <span className="settings-shortcut-action">{shortcut.action}</span>
+              <span className="settings-key-chord" aria-label={shortcut.ariaLabel}>
+                {shortcut.keys.map((key) => (
+                  <kbd key={key}>{key}</kbd>
+                ))}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -656,8 +705,8 @@ function ProviderPanel({ providerId, onSave, endpoint, onEndpointChange }) {
             <div>
               <strong>Add an API key to use this provider</strong>
               <span>
-                The models stay visible for selection, but sending is paused until this provider
-                has a credential.
+                The models stay visible for selection, but sending is paused until this provider has
+                a credential.
               </span>
             </div>
             <code>API key required</code>
@@ -713,6 +762,7 @@ export function SettingsPage() {
   const save = () => setStatus("Saved to the local agent.");
   const renderPanel = () => {
     if (page === "appearance") return <AppearancePanel onSave={save} />;
+    if (page === "shortcuts") return <ShortcutsPanel />;
     if (page === "network") return <NetworkPanel onSave={save} />;
     if (page === "logging") return <LoggingPanel onSave={save} />;
     if (page === "providers")
@@ -745,7 +795,7 @@ export function SettingsPage() {
     <>
       <PageHeader
         title="Settings"
-        description="The Avalonia desktop settings window for local defaults, security, diagnostics, and provider credentials."
+        description="The Avalonia desktop settings window for local defaults, keyboard shortcuts, security, diagnostics, and provider credentials."
         path="projects/desktop/settings/"
       />
       <WindowSizeNote width="900" height="672" minimumWidth="720" minimumHeight="552" />
@@ -757,7 +807,7 @@ export function SettingsPage() {
         <WorkspaceGuideState
           className="settings-guide-state"
           title="Settings controls"
-          description="Navigate local defaults, security, diagnostics, and provider credentials."
+          description="Navigate local defaults, keyboard shortcuts, security, diagnostics, and provider credentials."
           guide={settingsGuide}
           side="right"
           open={guideOpen}

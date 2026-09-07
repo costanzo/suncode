@@ -8,6 +8,70 @@
     <Setter Property="Spacing" Value="4" />
     <Setter Property="Margin" Value="0,0,0,26" />
   </Style>
+  <Style Selector="Grid.settings-shortcuts-heading">
+    <Setter Property="ColumnSpacing" Value="18" />
+  </Style>
+  <Style Selector="StackPanel.settings-panel-heading-copy">
+    <Setter Property="Spacing" Value="4" />
+  </Style>
+  <Style Selector="Border.settings-read-only-badge">
+    <Setter Property="Margin" Value="0,2,0,0" />
+    <Setter Property="Padding" Value="7,4" />
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+  <Style Selector="Border.settings-read-only-badge TextBlock">
+    <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="Border.settings-read-only-note">
+    <Setter Property="Padding" Value="11,10" />
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="StackPanel.settings-shortcut-list">
+    <Setter Property="Spacing" Value="0" />
+  </Style>
+  <Style Selector="Border.settings-shortcut-row">
+    <Setter Property="MinHeight" Value="52" />
+    <Setter Property="Padding" Value="4,8" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+  </Style>
+  <Style Selector="TextBlock.settings-shortcut-action">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="StackPanel.settings-key-chord">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="5" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.settings-keycap">
+    <Setter Property="MinWidth" Value="28" />
+    <Setter Property="MinHeight" Value="26" />
+    <Setter Property="Padding" Value="7,3" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="BorderThickness" Value="1,1,1,2" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.settings-keycap TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
   <Style Selector="StackPanel.settings-panel-section">
     <Setter Property="Spacing" Value="16" />
   </Style>
