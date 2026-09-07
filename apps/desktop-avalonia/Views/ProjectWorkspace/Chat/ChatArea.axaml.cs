@@ -19,10 +19,9 @@ public sealed partial class ChatArea : UserControl
     private bool _followTail = true;
     private object? _messageSource;
     private ScrollViewer? _conversationScroller;
-    private Control? _dialogReturnFocus;
-
     public event EventHandler? ExpandedComposerRequested;
     public event Action<MessageItem>? LongUserMessageRequested;
+    public event Action<MessageItem>? ToolDetailRequested;
 
     public ChatArea()
     {
@@ -174,29 +173,7 @@ public sealed partial class ChatArea : UserControl
     private void OpenToolDetail(object? sender, RoutedEventArgs e)
     {
         if ((sender as Control)?.DataContext is not MessageItem message) return;
-
-        ToolDetailTitle.Text = message.ToolSummaryText;
-        ToolDetailState.Text = message.ToolStateText;
-        ToolDetailRequest.Text = message.ToolRequest;
-        ToolDetailResult.Text = message.ToolResult;
-        ToolDetailOutput.Text = message.ToolOutput;
-        ToolDetailResultLabel.Text = message.ToolName == "bash" ? "Command output" : "Result";
-        ToolDetailError.Text = message.ToolErrorText;
-        ToolDetailRequestPanel.IsVisible = message.HasToolRequest;
-        ToolDetailResultPanel.IsVisible = message.HasToolResult;
-        ToolDetailOutputPanel.IsVisible = message.HasToolOutput;
-        ToolDetailErrorPanel.IsVisible = message.HasToolError;
-        _dialogReturnFocus = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control;
-        ToolDetailOverlay.IsVisible = true;
-        Dispatcher.UIThread.Post(() => ToolDetailCloseButton.Focus(), DispatcherPriority.Input);
-    }
-
-    private void CloseToolDetail(object? sender, RoutedEventArgs e)
-    {
-        ToolDetailOverlay.IsVisible = false;
-        var target = _dialogReturnFocus;
-        _dialogReturnFocus = null;
-        if (target is not null) Dispatcher.UIThread.Post(() => target.Focus(), DispatcherPriority.Input);
+        ToolDetailRequested?.Invoke(message);
     }
 
     private async void PreviewMessageAttachment(object? sender, RoutedEventArgs e)

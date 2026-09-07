@@ -337,6 +337,55 @@
         </Grid>
       </Grid>
     </controls:SCModal>
+
+    <controls:SCModal x:Name="ToolDetailModal"
+                      DialogWidth="560"
+                      IsOpen="False"
+                      PrimaryButtonText=""
+                      HidePrimaryButton="True"
+                      SecondaryButtonText="Close"
+                      SecondaryAction="CloseToolDetail"
+                      CloseRequested="CloseToolDetail">
+      <StackPanel Spacing="12">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="Operation details" Classes="eyebrow" />
+          <TextBlock x:Name="ToolDetailState"
+                     Grid.Column="1"
+                     FontSize="11"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     VerticalAlignment="Center" />
+        </Grid>
+
+        <StackPanel x:Name="ToolDetailErrorPanel" Spacing="5" IsVisible="False">
+          <TextBlock Text="Error" Classes="eyebrow" Foreground="{DynamicResource DangerBrush}" />
+          <Border Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+            <TextBlock x:Name="ToolDetailError" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" />
+          </Border>
+        </StackPanel>
+        <StackPanel x:Name="ToolDetailRequestPanel" Spacing="5" IsVisible="False">
+          <TextBlock Text="Request" Classes="eyebrow" />
+          <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+            <SelectableTextBlock x:Name="ToolDetailRequest" Classes="mono" FontSize="11" TextWrapping="Wrap" />
+          </Border>
+        </StackPanel>
+        <StackPanel x:Name="ToolDetailResultPanel" Spacing="5" IsVisible="False">
+          <TextBlock x:Name="ToolDetailResultLabel" Text="Result" Classes="eyebrow" />
+          <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" MaxHeight="220">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+              <SelectableTextBlock x:Name="ToolDetailResult" Classes="mono" FontSize="11" TextWrapping="Wrap" />
+            </ScrollViewer>
+          </Border>
+        </StackPanel>
+        <StackPanel x:Name="ToolDetailOutputPanel" Spacing="5" IsVisible="False">
+          <TextBlock Text="Live output" Classes="eyebrow" />
+          <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" MaxHeight="260">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+              <SelectableTextBlock x:Name="ToolDetailOutput" Classes="mono" FontSize="11" TextWrapping="Wrap" />
+            </ScrollViewer>
+          </Border>
+        </StackPanel>
+      </StackPanel>
+    </controls:SCModal>
     <TextBlock x:Name="LongUserMessageAnnouncement" IsVisible="False" AutomationProperties.LiveSetting="Polite" />
   </Grid>
 </UserControl>
