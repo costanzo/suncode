@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia;
+using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
@@ -29,6 +30,16 @@ public sealed partial class ChatArea : UserControl
         AttachedToVisualTree += (_, _) => QueueAttachConversationScroller();
         Loaded += (_, _) => QueueAttachConversationScroller();
         ConversationList.TemplateApplied += (_, _) => QueueAttachConversationScroller();
+        ConversationList.AddHandler(
+            InputElement.PointerWheelChangedEvent,
+            ConversationPointerWheelChanged,
+            RoutingStrategies.Tunnel | RoutingStrategies.Bubble,
+            handledEventsToo: true);
+        ConversationList.AddHandler(
+            InputElement.PointerPressedEvent,
+            ConversationPointerPressed,
+            RoutingStrategies.Tunnel | RoutingStrategies.Bubble,
+            handledEventsToo: true);
         ChatInput.ExpandedComposerRequested += ForwardExpandedComposerRequested;
     }
 
@@ -81,12 +92,11 @@ public sealed partial class ChatArea : UserControl
             // ListBox and the conversation's bottom clearance. Set the
             // ScrollViewer to its actual maximum offset instead.
             SetConversationOffsetToBottom();
-            _followTail = true;
             // A second pass handles the extent update produced by virtualization
             // after the first offset assignment.
             Dispatcher.UIThread.Post(() =>
             {
-                SetConversationOffsetToBottom();
+                if (_followTail) SetConversationOffsetToBottom();
                 _scrollingToEnd = false;
             }, DispatcherPriority.Background);
         }, DispatcherPriority.Background);
@@ -107,9 +117,18 @@ public sealed partial class ChatArea : UserControl
     {
         var scroller = ConversationList.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
         if (ReferenceEquals(scroller, _conversationScroller) || scroller is null) return;
-        if (_conversationScroller is not null) _conversationScroller.ScrollChanged -= ConversationScrollChanged;
+        if (_conversationScroller is not null)
+        {
+            _conversationScroller.ScrollChanged -= ConversationScrollChanged;
+            _conversationScroller.RemoveHandler(InputElement.PointerPressedEvent, ConversationPointerPressed);
+            _conversationScroller.RemoveHandler(InputElement.PointerWheelChangedEvent, ConversationPointerWheelChanged);
+            _conversationScroller.RemoveHandler(InputElement.KeyDownEvent, ConversationKeyDown);
+        }
         _conversationScroller = scroller;
         _conversationScroller.ScrollChanged += ConversationScrollChanged;
+        _conversationScroller.AddHandler(InputElement.PointerPressedEvent, ConversationPointerPressed, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
+        _conversationScroller.AddHandler(InputElement.PointerWheelChangedEvent, ConversationPointerWheelChanged, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
+        _conversationScroller.AddHandler(InputElement.KeyDownEvent, ConversationKeyDown, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
     }
 
     private void QueueAttachConversationScroller()
@@ -133,6 +152,25 @@ public sealed partial class ChatArea : UserControl
         }
         ScrollToBottomButton.IsVisible = !atBottom && distanceFromBottom > 1;
         if (_followTail && e.ExtentDelta.Y > 0.1) QueueScrollToEnd();
+    }
+
+    private void ConversationPointerPressed(object? sender, PointerPressedEventArgs e) =>
+        CancelAutoScrollFromUserInput();
+
+    private void ConversationPointerWheelChanged(object? sender, PointerWheelEventArgs e) =>
+        CancelAutoScrollFromUserInput();
+
+    private void ConversationKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Home or Key.End or Key.PageUp or Key.PageDown or Key.Up or Key.Down)
+            CancelAutoScrollFromUserInput();
+    }
+
+    private void CancelAutoScrollFromUserInput()
+    {
+        _followTail = false;
+        _forceScrollPending = false;
+        ScrollToBottomButton.IsVisible = true;
     }
 
     private void ScrollToBottom(object? sender, RoutedEventArgs e)
