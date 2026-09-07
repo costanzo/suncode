@@ -6,49 +6,49 @@ using SunCode.Desktop.Models;
 
 namespace SunCode.Desktop.Views.Settings.Controls;
 
-public sealed partial class SCModelProvider : UserControl
+public sealed partial class ModelProviderSettingsControl : UserControl
 {
     public static readonly StyledProperty<IEnumerable<ProviderItem>?> ProvidersProperty =
-        AvaloniaProperty.Register<SCModelProvider, IEnumerable<ProviderItem>?>(nameof(Providers));
+        AvaloniaProperty.Register<ModelProviderSettingsControl, IEnumerable<ProviderItem>?>(nameof(Providers));
 
     public static readonly StyledProperty<string?> SelectedProviderIdProperty =
-        AvaloniaProperty.Register<SCModelProvider, string?>(nameof(SelectedProviderId));
+        AvaloniaProperty.Register<ModelProviderSettingsControl, string?>(nameof(SelectedProviderId));
 
     public static readonly StyledProperty<string?> EndpointTextProperty =
-        AvaloniaProperty.Register<SCModelProvider, string?>(nameof(EndpointText), defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
+        AvaloniaProperty.Register<ModelProviderSettingsControl, string?>(nameof(EndpointText), defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
 
     public static readonly StyledProperty<string?> EndpointStatusTextProperty =
-        AvaloniaProperty.Register<SCModelProvider, string?>(nameof(EndpointStatusText));
+        AvaloniaProperty.Register<ModelProviderSettingsControl, string?>(nameof(EndpointStatusText));
 
     public static readonly StyledProperty<string?> CredentialStatusTextProperty =
-        AvaloniaProperty.Register<SCModelProvider, string?>(nameof(CredentialStatusText));
+        AvaloniaProperty.Register<ModelProviderSettingsControl, string?>(nameof(CredentialStatusText));
 
     public static readonly StyledProperty<string?> ApiKeyPlaceholderTextProperty =
-        AvaloniaProperty.Register<SCModelProvider, string?>(nameof(ApiKeyPlaceholderText));
+        AvaloniaProperty.Register<ModelProviderSettingsControl, string?>(nameof(ApiKeyPlaceholderText));
 
     public static readonly StyledProperty<string?> ApiKeyTextProperty =
-        AvaloniaProperty.Register<SCModelProvider, string?>(nameof(ApiKeyText), defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
+        AvaloniaProperty.Register<ModelProviderSettingsControl, string?>(nameof(ApiKeyText), defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
 
     public static readonly StyledProperty<IEnumerable<ProviderModelItem>?> ProviderModelsProperty =
-        AvaloniaProperty.Register<SCModelProvider, IEnumerable<ProviderModelItem>?>(nameof(ProviderModels));
+        AvaloniaProperty.Register<ModelProviderSettingsControl, IEnumerable<ProviderModelItem>?>(nameof(ProviderModels));
 
     public static readonly StyledProperty<IBrush?> EndpointStatusBrushProperty =
-        AvaloniaProperty.Register<SCModelProvider, IBrush?>(nameof(EndpointStatusBrush));
+        AvaloniaProperty.Register<ModelProviderSettingsControl, IBrush?>(nameof(EndpointStatusBrush));
 
     public static readonly StyledProperty<bool> CanSaveEndpointProperty =
-        AvaloniaProperty.Register<SCModelProvider, bool>(nameof(CanSaveEndpoint));
+        AvaloniaProperty.Register<ModelProviderSettingsControl, bool>(nameof(CanSaveEndpoint));
 
     public static readonly StyledProperty<bool> CanResetEndpointProperty =
-        AvaloniaProperty.Register<SCModelProvider, bool>(nameof(CanResetEndpoint));
+        AvaloniaProperty.Register<ModelProviderSettingsControl, bool>(nameof(CanResetEndpoint));
 
     public static readonly StyledProperty<bool> CanSaveCredentialProperty =
-        AvaloniaProperty.Register<SCModelProvider, bool>(nameof(CanSaveCredential));
+        AvaloniaProperty.Register<ModelProviderSettingsControl, bool>(nameof(CanSaveCredential));
 
     public static readonly StyledProperty<bool> CanRemoveCredentialProperty =
-        AvaloniaProperty.Register<SCModelProvider, bool>(nameof(CanRemoveCredential));
+        AvaloniaProperty.Register<ModelProviderSettingsControl, bool>(nameof(CanRemoveCredential));
 
     public static readonly StyledProperty<bool> CredentialConfiguredProperty =
-        AvaloniaProperty.Register<SCModelProvider, bool>(nameof(CredentialConfigured));
+        AvaloniaProperty.Register<ModelProviderSettingsControl, bool>(nameof(CredentialConfigured));
 
     public event EventHandler<string>? ProviderSelected;
     public event EventHandler<RoutedEventArgs>? SaveEndpointRequested;
@@ -61,7 +61,7 @@ public sealed partial class SCModelProvider : UserControl
     private bool _syncingEndpoint;
     private bool _syncingApiKey;
 
-    public SCModelProvider()
+    public ModelProviderSettingsControl()
     {
         InitializeComponent();
         SyncView();
