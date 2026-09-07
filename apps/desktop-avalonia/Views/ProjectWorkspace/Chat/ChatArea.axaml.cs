@@ -158,12 +158,6 @@ public sealed partial class ChatArea : UserControl
         if (ViewModel.SelectedSession is { } session) await ViewModel.SelectSessionAsync(session);
     }
 
-    private void ToggleTurnProcess(object? sender, RoutedEventArgs e)
-    {
-        if ((sender as Control)?.DataContext is MessageItem message)
-            ViewModel.ToggleTurnProcess(message);
-    }
-
     private void ViewLongUserMessage(object? sender, RoutedEventArgs e)
     {
         if ((sender as Control)?.DataContext is MessageItem message)

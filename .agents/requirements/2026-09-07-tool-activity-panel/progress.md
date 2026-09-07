@@ -1,6 +1,6 @@
 # Progress
 
-- Status: Design review
+- Status: Implemented
 - Last updated: 2026-09-07
 
 ## Completed
@@ -12,7 +12,7 @@
 
 ## In progress
 
-- Awaiting user review before Avalonia implementation.
+- None.
 
 ## Blocked
 
@@ -20,6 +20,7 @@
 
 ## Log
 
-### YYYY-MM-DD
+### 2026-09-07
 
-- Requirement initialized.
+- Implemented the Avalonia Tool activity drawer, grouped turn/tool projection, live output buffer, compact conversation tool jump, and turn preview marker.
+- Verified the Avalonia client build and focused desktop tests.

@@ -1,7 +1,7 @@
 # Tool activity panel
 
 - Date: 2026-09-07
-- Status: Approved for design review
+- Status: Implemented
 - Related features: desktop workspace, conversation, provider trace
 - Related specifications:
 - Related decisions:

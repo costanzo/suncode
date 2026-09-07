@@ -146,12 +146,12 @@ public sealed class SessionSnapshotProjectionTests
         }
         """)!.AsObject();
 
-        var message = Assert.Single(DesktopViewModel.ProjectSnapshot(snapshot).Messages);
+        var tool = Assert.Single(DesktopViewModel.ProjectSnapshot(snapshot).ToolActivityTurns.Single().Tools);
 
-        Assert.Contains("&&", message.ToolRequest);
-        Assert.Contains("&&", message.ToolResult);
-        Assert.DoesNotContain("\\u0026", message.ToolRequest);
-        Assert.DoesNotContain("\\u0026", message.ToolResult);
+        Assert.Contains("&&", tool.Request);
+        Assert.Contains("&&", tool.Result);
+        Assert.DoesNotContain("\\u0026", tool.Request);
+        Assert.DoesNotContain("\\u0026", tool.Result);
     }
 
     [Fact]
@@ -512,25 +512,10 @@ public sealed class SessionSnapshotProjectionTests
 
         viewModel.ApplyEvent(TurnState("turn-1", "completed"), live: true);
 
-        Assert.Collection(viewModel.Messages,
-            message => Assert.True(message.IsUser),
-            message =>
-            {
-                Assert.Equal("working", message.Text);
-                Assert.True(message.IsProcess);
-                Assert.True(message.IsVisible);
-                Assert.False(message.ProcessContentVisible);
-                Assert.True(message.ShowProcessToggle);
-                Assert.Equal(1, message.ProcessItemCount);
-                Assert.False(message.ShowCopy);
-            },
-            message =>
-            {
-                Assert.Equal("final summary", message.Text);
-                Assert.True(message.IsFinalAssistant);
-                Assert.True(message.ShowCopy);
-                Assert.False(message.ShowProcessToggle);
-            });
+        Assert.Equal(3, viewModel.Messages.Count);
+        Assert.False(viewModel.Messages[0].IsVisible);
+        Assert.True(viewModel.Messages[2].IsFinalAssistant);
+        Assert.True(viewModel.Messages[2].ShowCopy);
     }
 
     [Fact]
@@ -698,25 +683,18 @@ public sealed class SessionSnapshotProjectionTests
             message =>
             {
                 Assert.Equal("reading", message.Text);
-                Assert.True(message.IsProcess);
-                Assert.True(message.IsVisible);
-                Assert.False(message.ProcessContentVisible);
-                Assert.True(message.ShowProcessToggle);
-                Assert.Equal(2, message.ProcessItemCount);
-            },
-            message =>
-            {
-                Assert.True(message.IsTool);
-                Assert.Equal("tool-1", message.ToolCallId);
-                Assert.False(message.IsVisible);
-                Assert.False(message.ProcessContentVisible);
+                Assert.True(message.IsAssistant);
             },
             message =>
             {
                 Assert.Equal("done", message.Text);
                 Assert.True(message.IsFinalAssistant);
-                Assert.False(message.ShowProcessToggle);
-            });
+            },
+            message => Assert.True(message.IsTool));
+        var activityTurn = Assert.Single(projection.ToolActivityTurns);
+        var tool = Assert.Single(activityTurn.Tools);
+        Assert.Equal("tool-1", tool.ToolCallId);
+        Assert.True(tool.IsSucceeded);
     }
 
     [Fact]
@@ -760,23 +738,16 @@ public sealed class SessionSnapshotProjectionTests
             message =>
             {
                 Assert.Equal("I will inspect it.", message.Text);
-                Assert.True(message.IsProcess);
-                Assert.True(message.IsVisible);
-                Assert.False(message.ProcessContentVisible);
-                Assert.True(message.ShowProcessToggle);
+                Assert.True(message.IsAssistant);
                 Assert.False(message.IsFinalAssistant);
-            },
-            message =>
-            {
-                Assert.True(message.IsTool);
-                Assert.False(message.IsVisible);
             },
             message =>
             {
                 Assert.Equal("Inspection complete.", message.Text);
                 Assert.True(message.IsFinalAssistant);
-                Assert.False(message.ShowProcessToggle);
-            });
+            },
+            message => Assert.True(message.IsTool));
+        Assert.Single(projection.ToolActivityTurns.Single().Tools);
     }
 
     [Fact]
@@ -802,40 +773,53 @@ public sealed class SessionSnapshotProjectionTests
 
         viewModel.ApplyEvent(TurnState("turn-1", "resolving_calls"), live: true);
 
-        Assert.All(viewModel.Messages, message => Assert.True(message.IsVisible));
-        Assert.All(viewModel.Messages, message => Assert.True(message.IsProcess));
-        Assert.All(viewModel.Messages, message => Assert.False(message.ShowCopy));
-        Assert.All(viewModel.Messages, message => Assert.False(message.ShowProcessToggle));
+        Assert.Single(viewModel.ToolActivityTurns);
+        Assert.True(viewModel.ToolActivityTurns.Single().IsActive);
+        Assert.Single(viewModel.Messages, message => message.IsTool);
     }
 
     [Fact]
-    public void ToggleTurnProcessChangesVisibilityWithoutRemovingItems()
+    public void ToolActivityKeepsLiveOutputWithTheOwningTurn()
     {
         var viewModel = new DesktopViewModel();
-        viewModel.ApplyEvent(UserMessage("user-1", "turn-1", "question"), live: true);
-        viewModel.ApplyEvent(AssistantMessage("assistant-1", "turn-1", "working"), live: true);
-        viewModel.ApplyEvent(ToolEvent("tool.requested", "turn-1", "tool-1", "read", "requested"), live: true);
-        viewModel.ApplyEvent(AssistantMessage("assistant-2", "turn-1", "done"), live: true);
-        viewModel.ApplyEvent(TurnState("turn-1", "completed"), live: true);
-        var toggle = viewModel.Messages.Single(message => message.ShowProcessToggle);
-        var count = viewModel.Messages.Count;
+        viewModel.ApplyEvent(TurnState("turn-1", "resolving_calls"), live: true);
+        viewModel.ApplyEvent(ToolEvent("tool.requested", "turn-1", "tool-1", "bash", "requested"), live: true);
+        viewModel.ApplyEvent(JsonNode.Parse("""
+        {"event_type":"tool.output","payload":{"turn_id":"turn-1","tool_call_id":"tool-1","chunk_base64":"aGVsbG8="}}
+        """)!.AsObject(), live: true);
 
-        viewModel.ToggleTurnProcess(toggle);
+        var turn = Assert.Single(viewModel.ToolActivityTurns);
+        var tool = Assert.Single(turn.Tools);
+        Assert.Equal("hello", tool.Output);
+        Assert.Same(tool, viewModel.SelectedToolActivity);
+        Assert.Single(viewModel.Messages, message => message.IsTool);
+    }
 
-        Assert.Equal(count, viewModel.Messages.Count);
-        Assert.True(toggle.ProcessExpanded);
-        Assert.All(viewModel.Messages.Where(message => message.IsProcess), message => Assert.True(message.IsVisible));
-        Assert.All(viewModel.Messages.Where(message => message.IsProcess), message => Assert.True(message.ProcessContentVisible));
+    [Fact]
+    public void ToolActivityProjectionUsesCompactStatesAndUserPreview()
+    {
+        var snapshot = JsonNode.Parse("""
+        {
+          "conversationTurns":[{
+            "turnId":"turn-1","state":"resolving_calls",
+            "messages":[{"role":"user","message":{"content":[{"type":"text","text":"This is a deliberately long prompt which should be bounded when it appears as a turn preview in Tool activity."}]}}],
+            "toolUses":[
+              {"toolCallId":"tool-1","name":"read","state":"succeeded"},
+              {"toolCallId":"tool-2","name":"bash","state":"executing"},
+              {"toolCallId":"tool-3","name":"read","state":"failed","errorCode":"scope_denied"}
+            ]
+          }]
+        }
+        """)!.AsObject();
 
-        viewModel.ToggleTurnProcess(toggle);
+        var turn = Assert.Single(DesktopViewModel.ProjectSnapshot(snapshot).ToolActivityTurns);
 
-        Assert.Equal(count, viewModel.Messages.Count);
-        Assert.False(toggle.ProcessExpanded);
-        Assert.True(toggle.IsVisible);
-        Assert.False(toggle.ProcessContentVisible);
-        Assert.All(
-            viewModel.Messages.Where(message => message.IsProcess && message != toggle),
-            message => Assert.False(message.IsVisible));
+        Assert.True(turn.IsActive);
+        Assert.EndsWith("...", turn.Preview);
+        Assert.True(turn.Tools[0].IsSucceeded);
+        Assert.True(turn.Tools[1].IsActive);
+        Assert.True(turn.Tools[2].IsFailed);
+        Assert.Equal("Read file", turn.Tools[2].DisplayName);
     }
 
     [Fact]
@@ -852,6 +836,7 @@ public sealed class SessionSnapshotProjectionTests
         };
         var projection = new SessionSnapshotProjection(
             [new() { Role = "assistant", Text = "new session", ContentSequence = 1 }],
+            [],
             [],
             [],
             [],

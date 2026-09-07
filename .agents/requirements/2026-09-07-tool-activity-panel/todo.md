@@ -9,8 +9,8 @@
 
 ## Implementation
 
-- [ ] Make Avalonia/Rust source changes after design approval.
-- [ ] Add production focused tests after design approval.
+- [x] Make Avalonia/Rust source changes after design approval.
+- [x] Add production focused tests after design approval.
 
 ## Verification
 
@@ -19,5 +19,5 @@
 
 ## Closeout
 
-- [ ] Update features and specifications.
+- [x] Update features and specifications.
 - [ ] Record important decisions.

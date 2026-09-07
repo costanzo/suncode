@@ -17,6 +17,12 @@
       <Setter Property="CornerRadius" Value="6" />
       <Setter Property="Padding" Value="10,8" />
     </Style>
+    <Style Selector="Border.turn-marker">
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="Padding" Value="2,0" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
     <Style Selector="Button.tool-card:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
@@ -86,109 +92,31 @@
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
           <DataTemplate x:DataType="models:MessageItem">
-            <Grid Margin="12,8" HorizontalAlignment="Stretch" IsVisible="{Binding IsVisible}">
-              <Border IsVisible="{Binding IsUser}" HorizontalAlignment="Right" MaxWidth="480" Padding="12,10" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="8">
-                  <ItemsControl ItemsSource="{Binding Attachments}" IsVisible="{Binding HasAttachments}">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="7" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="models:ComposerAttachment">
-                        <Button Width="96" Height="64" Padding="0" Classes="quiet" Click="PreviewMessageAttachment" AutomationProperties.Name="{Binding Name, StringFormat=View attached image {0}}">
-                          <Image Source="{Binding Preview}" Stretch="UniformToFill" />
-                        </Button>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <SelectableTextBlock Text="{Binding Text}"
-                                       FontSize="12"
-                                       TextWrapping="Wrap"
-                                       LineHeight="19"
-                                       IsVisible="{Binding !IsLongUserMessage}" />
-                  <TextBlock FontSize="12"
-                             TextWrapping="Wrap"
-                             LineHeight="19"
-                             MaxHeight="114"
-                             IsVisible="{Binding IsLongUserMessage}">
-                    <Run Text="{Binding UserPreviewText}" />
-                    <documents:InlineUIContainer>
-                      <Button Classes="quiet view-more"
-                              Padding="0"
-                              Margin="8,0,0,0"
-                              VerticalAlignment="Center"
-                              Click="ViewLongUserMessage"
-                              ToolTip.Tip="View full message"
-                              AutomationProperties.Name="View full message">
-                        <TextBlock Text="View more"
-                                   FontSize="11"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AccentBrush}" />
-                      </Button>
-                    </documents:InlineUIContainer>
-                  </TextBlock>
+            <StackPanel Margin="12,8" HorizontalAlignment="Stretch" Spacing="5" IsVisible="{Binding IsVisible}">
+              <Border Classes="turn-marker" IsVisible="{Binding ShowTurnMarker}" Focusable="True" ToolTip.Tip="{Binding TurnPreview}" AutomationProperties.Name="{Binding TurnPreview}">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}" />
+                  <TextBlock Text="{Binding TurnTitle}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
                 </StackPanel>
               </Border>
 
-              <StackPanel IsVisible="{Binding IsProcess}" HorizontalAlignment="Stretch" Spacing="5">
-                <Border IsVisible="{Binding IsCompaction}"
-                        Padding="10,8"
-                        Background="{DynamicResource SurfaceRaisedBrush}"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="6">
-                  <TextBlock Text="{Binding Text}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-                </Border>
-                <Button Classes="quiet"
-                        MinHeight="26"
-                        Padding="4,3"
-                        Margin="-5,0,0,2"
-                        HorizontalAlignment="Left"
-                        Click="ToggleTurnProcess"
-                        IsVisible="{Binding ShowProcessToggle}"
-                        ToolTip.Tip="Show or hide this turn's work"
-                        AutomationProperties.Name="{Binding ProcessToggleText}">
-                  <StackPanel Orientation="Horizontal" Spacing="5">
-                    <svg:Svg Width="12"
-                             Height="12"
-                             Path="/Assets/icons/chevron-right.svg"
-                             Css="{DynamicResource IconSvgCss}"
-                             IsVisible="{Binding ProcessCollapsed}" />
-                    <svg:Svg Width="12"
-                             Height="12"
-                             Path="/Assets/icons/chevron-right.svg"
-                             Css="{DynamicResource IconSvgCss}"
-                             IsVisible="{Binding ProcessExpanded}"
-                             RenderTransformOrigin="50%,50%">
-                      <svg:Svg.RenderTransform>
-                        <RotateTransform Angle="90" />
-                      </svg:Svg.RenderTransform>
-                    </svg:Svg>
-                    <TextBlock Text="{Binding ProcessToggleText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+              <Button Classes="tool-card"
+                      IsVisible="{Binding IsTool}"
+                      Click="OpenToolDetail"
+                      ToolTip.Tip="View in Tool activity"
+                      AutomationProperties.Name="{Binding ToolSummaryText, StringFormat=View {0} in Tool activity}">
+                <Grid ColumnDefinitions="18,*,Auto,16">
+                  <svg:Svg Grid.Column="0" Width="13" Height="13" Margin="0,1,0,0" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" />
+                  <TextBlock Grid.Column="1" Text="{Binding ToolSummaryText}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="{Binding ToolStateText}" FontSize="10" Foreground="{DynamicResource WarningBrush}" />
+                    <Ellipse Width="6" Height="6" Fill="{DynamicResource WarningBrush}" VerticalAlignment="Center" />
                   </StackPanel>
-                </Button>
+                  <svg:Svg Grid.Column="3" Width="12" Height="12" HorizontalAlignment="Right" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
+                </Grid>
+              </Button>
 
-                <StackPanel IsVisible="{Binding ProcessContentVisible}" Spacing="5">
-                  <Grid IsVisible="{Binding IsAssistant}">
-                    <controls:MarkdownText Markdown="{Binding Text}" FontSize="14" HorizontalAlignment="Stretch" />
-                  </Grid>
-
-                  <Button Classes="tool-card"
-                          IsVisible="{Binding IsTool}"
-                          Click="OpenToolDetail"
-                          ToolTip.Tip="View operation details"
-                          AutomationProperties.Name="{Binding ToolSummaryText, StringFormat=View operation details for {0}}">
-                    <Grid ColumnDefinitions="18,*,Auto,16">
-                      <svg:Svg Grid.Row="0" Grid.Column="0" Width="13" Height="13" Margin="0,1,0,0" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" />
-                      <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ToolSummaryText}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ToolStateText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsToolSucceeded}" />
-                      <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ToolStateText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsToolFailed}" />
-                      <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ToolStateText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsToolActive}" />
-                      <svg:Svg Grid.Row="0" Grid.Column="3" Width="12" Height="12" HorizontalAlignment="Right" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
-                    </Grid>
-                  </Button>
-                </StackPanel>
-              </StackPanel>
-
-              <StackPanel IsVisible="{Binding IsFinalAssistant}" HorizontalAlignment="Stretch" Spacing="4">
+              <StackPanel IsVisible="{Binding IsConversationAssistant}" HorizontalAlignment="Stretch" Spacing="4">
                 <Grid>
                   <controls:MarkdownText Markdown="{Binding Text}" FontSize="14" HorizontalAlignment="Stretch" />
                 </Grid>
@@ -196,7 +124,7 @@
                   <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
                 </Button>
               </StackPanel>
-            </Grid>
+            </StackPanel>
           </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>

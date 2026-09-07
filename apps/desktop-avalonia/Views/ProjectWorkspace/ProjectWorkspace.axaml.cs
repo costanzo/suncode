@@ -29,7 +29,7 @@ public sealed partial class ProjectWorkspace : UserControl
         InitializeComponent();
         ChatArea.ExpandedComposerRequested += ShowExpandedComposer;
         ChatArea.LongUserMessageRequested += ShowLongUserMessage;
-        ChatArea.ToolDetailRequested += ShowToolDetail;
+        ChatArea.ToolDetailRequested += ShowToolActivity;
     }
 
     private WorkspaceWindow? Owner => TopLevel.GetTopLevel(this) as WorkspaceWindow;
@@ -46,12 +46,6 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal bool HandleEscape()
     {
-        if (ToolDetailModal.IsOpen)
-        {
-            HideToolDetail();
-            return true;
-        }
-
         if (ExpandedComposerModal.IsOpen)
         {
             HideExpandedComposer();
@@ -151,6 +145,7 @@ public sealed partial class ProjectWorkspace : UserControl
         if (ViewModel.GitVisible)
         {
             ViewModel.ProviderTraceVisible = false;
+            ViewModel.ToolActivityVisible = false;
             _ = ViewModel.RefreshGitAsync();
         }
     }
@@ -163,8 +158,17 @@ public sealed partial class ProjectWorkspace : UserControl
         if (ViewModel.ProviderTraceVisible)
         {
             ViewModel.GitVisible = false;
+            ViewModel.ToolActivityVisible = false;
             _ = ViewModel.RefreshProviderTracesAsync();
         }
+    }
+
+    private void ToggleToolActivity(object? sender, RoutedEventArgs e)
+    {
+        ViewModel.ToolActivityVisible = !ViewModel.ToolActivityVisible;
+        if (!ViewModel.ToolActivityVisible) return;
+        ViewModel.GitVisible = false;
+        ViewModel.ProviderTraceVisible = false;
     }
 
     private void LayoutResizePressed(object? sender, PointerPressedEventArgs e)
@@ -291,25 +295,8 @@ public sealed partial class ProjectWorkspace : UserControl
         _longUserMessage = null;
     }
 
-    private void ShowToolDetail(MessageItem message)
-    {
-        ToolDetailModal.Title = message.ToolSummaryText;
-        ToolDetailState.Text = message.ToolStateText;
-        ToolDetailRequest.Text = message.ToolRequest;
-        ToolDetailResult.Text = message.ToolResult;
-        ToolDetailOutput.Text = message.ToolOutput;
-        ToolDetailResultLabel.Text = message.ToolName == "bash" ? "Command output" : "Result";
-        ToolDetailError.Text = message.ToolErrorText;
-        ToolDetailRequestPanel.IsVisible = message.HasToolRequest;
-        ToolDetailResultPanel.IsVisible = message.HasToolResult;
-        ToolDetailOutputPanel.IsVisible = message.HasToolOutput;
-        ToolDetailErrorPanel.IsVisible = message.HasToolError;
-        ToolDetailModal.IsOpen = true;
-    }
-
-    private void CloseToolDetail(object? sender, RoutedEventArgs e) => HideToolDetail();
-
-    private void HideToolDetail() => ToolDetailModal.IsOpen = false;
+    private void ShowToolActivity(MessageItem message) =>
+        ViewModel.ShowToolActivity(message.TurnId, message.ToolCallId);
 
     private async void CopyLongUserMessage(object? sender, RoutedEventArgs e)
     {

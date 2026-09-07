@@ -64,6 +64,7 @@ public sealed class MessageItem : ObservableObject, IDisposable
     private bool _processContentVisible = true;
     private bool _processExpanded;
     private int _processItemCount;
+    private bool _showTurnMarker;
 
     public string MessageId { get => _messageId; set => SetProperty(ref _messageId, value); }
     public required string Role { get; init; }
@@ -80,6 +81,10 @@ public sealed class MessageItem : ObservableObject, IDisposable
     public required long ContentSequence { get; set; }
     public string TurnId { get; init; } = string.Empty;
     public string Kind { get; init; } = "message";
+    public int TurnSequence { get; init; }
+    public string TurnPreview { get; init; } = string.Empty;
+    public bool ShowTurnMarker { get => _showTurnMarker; set => SetProperty(ref _showTurnMarker, value); }
+    public string TurnTitle => TurnSequence > 0 ? $"Turn {TurnSequence}" : "Turn";
     public string ToolCallId { get; init; } = string.Empty;
     public string ToolName { get; init; } = string.Empty;
     public string ToolState { get; init; } = string.Empty;
@@ -95,6 +100,8 @@ public sealed class MessageItem : ObservableObject, IDisposable
     public bool IsUser => Role == "user";
     public bool IsAssistant => Role == "assistant";
     public bool IsTool => Kind == "tool";
+    public bool IsTurnMarker => Kind == "turn_marker";
+    public bool IsConversationAssistant => IsAssistant && !IsTurnMarker && !IsCompaction;
     public bool IsCompaction => Kind == "context.compacted";
     public string Author => IsUser ? "You" : "SunCode";
     // Keep the timeline compact for unusually large submitted prompts while
@@ -203,6 +210,150 @@ public sealed class MessageItem : ObservableObject, IDisposable
         "process_start_failed" => "The process could not be started.",
         "webfetch_failed" => "The web request could not be completed.",
         _ => ToolError.Replace('_', ' ')
+    };
+}
+
+public sealed class ToolActivityTurnItem : ObservableObject
+{
+    private bool _isExpanded;
+
+    public ToolActivityTurnItem(string turnId, int sequence, string state, string preview, string createdAt)
+    {
+        TurnId = turnId;
+        Sequence = sequence;
+        State = state;
+        Preview = preview;
+        CreatedAt = createdAt;
+    }
+
+    public string TurnId { get; }
+    public int Sequence { get; }
+    public string State { get; private set; }
+    public string Preview { get; private set; }
+    public string CreatedAt { get; }
+    public ObservableCollection<ToolActivityItem> Tools { get; } = [];
+    public bool IsExpanded { get => _isExpanded; set => SetProperty(ref _isExpanded, value); }
+    public string Title => $"Turn {Sequence}";
+    public string IdentifierText => TurnId.Length <= 8 ? TurnId : TurnId[..8];
+    public string ToolCountText => $"{Tools.Count} {(Tools.Count == 1 ? "call" : "calls")}";
+    public string StateText => State.Replace('_', ' ');
+    public bool IsActive => State is "admitted" or "queued" or "preparing" or "calling_model" or "resolving_calls" or "compacting";
+
+    public void Update(string state, string? preview = null)
+    {
+        State = state;
+        if (!string.IsNullOrWhiteSpace(preview)) Preview = preview;
+        OnPropertyChanged(nameof(State));
+        OnPropertyChanged(nameof(IsActive));
+    }
+}
+
+public sealed class ToolActivityItem : ObservableObject
+{
+    private string _name;
+    private string _state;
+    private string _request;
+    private string _result;
+    private string _output;
+    private string _error;
+
+    public ToolActivityItem(
+        string turnId,
+        string toolCallId,
+        string name,
+        string state,
+        string request,
+        string result,
+        string output,
+        string error,
+        string createdAt)
+    {
+        TurnId = turnId;
+        ToolCallId = toolCallId;
+        _name = name;
+        _state = state;
+        _request = request;
+        _result = result;
+        _output = output;
+        _error = error;
+        CreatedAt = createdAt;
+    }
+
+    public string TurnId { get; }
+    public string ToolCallId { get; }
+    public string CreatedAt { get; }
+    public string Name { get => _name; private set => SetProperty(ref _name, value); }
+    public string State { get => _state; private set => SetProperty(ref _state, value); }
+    public string Request { get => _request; private set => SetProperty(ref _request, value); }
+    public string Result { get => _result; private set => SetProperty(ref _result, value); }
+    public string Output { get => _output; private set => SetProperty(ref _output, value); }
+    public string Error { get => _error; private set => SetProperty(ref _error, value); }
+    public string DisplayName => ToolSummary(Name);
+    public string StateText => State switch
+    {
+        "requested" or "validating" or "policy_check" or "authorized" => "Preparing",
+        "executing" => "Running",
+        "awaiting_approval" => "Waiting for approval",
+        "awaiting_question" => "Waiting for an answer",
+        "succeeded" => "Completed",
+        "denied" => "Denied",
+        "failed" => "Failed",
+        "timed_out" => "Timed out",
+        "unknown_completion" or "reconciling" => "Checking result",
+        _ => State
+    };
+    public bool IsSucceeded => State == "succeeded";
+    public bool IsFailed => State is "failed" or "denied" or "timed_out" or "unknown_completion";
+    public bool IsActive => !IsSucceeded && !IsFailed;
+    public bool HasRequest => !string.IsNullOrWhiteSpace(Request);
+    public bool HasResult => !string.IsNullOrWhiteSpace(Result);
+    public bool HasOutput => !string.IsNullOrWhiteSpace(Output);
+    public bool ShowOutput => HasOutput || IsActive;
+    public bool HasError => !string.IsNullOrWhiteSpace(Error);
+    public string ErrorText => Error switch
+    {
+        "invalid_arguments" => "The operation arguments were invalid.",
+        "authorization_denied" => "The operation was not authorized.",
+        "scope_denied" => "The operation was outside the project scope.",
+        "process_executable_not_found" => "The executable could not be found.",
+        "process_start_failed" => "The process could not be started.",
+        "webfetch_failed" => "The web request could not be completed.",
+        _ => Error.Replace('_', ' ')
+    };
+
+    public void Update(string? name = null, string? state = null, string? request = null, string? result = null, string? output = null, string? error = null)
+    {
+        if (!string.IsNullOrWhiteSpace(name)) Name = name;
+        if (!string.IsNullOrWhiteSpace(state)) State = state;
+        if (request is not null) Request = request;
+        if (result is not null) Result = result;
+        if (output is not null) Output = output;
+        if (error is not null) Error = error;
+        OnPropertyChanged(nameof(DisplayName));
+        OnPropertyChanged(nameof(StateText));
+        OnPropertyChanged(nameof(IsSucceeded));
+        OnPropertyChanged(nameof(IsFailed));
+        OnPropertyChanged(nameof(IsActive));
+        OnPropertyChanged(nameof(HasRequest));
+        OnPropertyChanged(nameof(HasResult));
+        OnPropertyChanged(nameof(HasOutput));
+        OnPropertyChanged(nameof(ShowOutput));
+        OnPropertyChanged(nameof(HasError));
+        OnPropertyChanged(nameof(ErrorText));
+    }
+
+    private static string ToolSummary(string name) => name switch
+    {
+        "bash" => "Run shell command",
+        "webfetch" => "Fetch web content",
+        "read" => "Read file",
+        "glob" => "Find files",
+        "grep" => "Search files",
+        "question" => "Ask a question",
+        "todowrite" => "Update turn todos",
+        "write" => "Write file",
+        "edit" => "Edit file",
+        _ => string.IsNullOrWhiteSpace(name) ? "Run operation" : name
     };
 }
 

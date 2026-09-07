@@ -289,6 +289,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     internal static SessionSnapshotProjection ProjectSnapshot(JsonObject snapshot)
     {
         var messages = new List<MessageItem>();
+        var toolActivityTurns = new List<ToolActivityTurnItem>();
         var activities = new List<ActivityItem>();
         IReadOnlyList<TodoItem> currentTodos = [];
         var changedPaths = new List<string>();
@@ -315,8 +316,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             ?? string.Empty;
         if (conversationTurns.Length > 0)
         {
-            foreach (var turn in conversationTurns)
+            for (var turnIndex = 0; turnIndex < conversationTurns.Length; turnIndex++)
             {
+                var turn = conversationTurns[turnIndex];
                 var turnId = turn.String("turnId", "turn_id");
                 var state = turn.String("state");
                 if (!IsTerminalTurnState(state)) activeTurnId = turnId;
@@ -324,12 +326,28 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 var toolUses = turn.Array("toolUses").OfType<JsonObject>().ToArray();
                 if (turnId == todoTurnId)
                     currentTodos = ParseTodos(turn["todos"]);
-                var toolsById = toolUses
-                    .Where(item => item.String("toolCallId", "tool_call_id").Length > 0)
-                    .ToDictionary(item => item.String("toolCallId", "tool_call_id"), StringComparer.Ordinal);
-                var projectedToolIds = new HashSet<string>(StringComparer.Ordinal);
-                foreach (var item in turn.Array("messages").OfType<JsonObject>()
-                    .OrderBy(item => item.String("createdAt", "created_at"), StringComparer.Ordinal))
+                var turnMessages = turn.Array("messages").OfType<JsonObject>()
+                    .OrderBy(item => item.String("createdAt", "created_at"), StringComparer.Ordinal)
+                    .ToArray();
+                var userPreview = turnMessages
+                    .Where(item => item.String("role") == "user")
+                    .Select(item => MessageText(item.Object("message")))
+                    .FirstOrDefault(text => !string.IsNullOrWhiteSpace(text)) ?? string.Empty;
+                var activityTurn = new ToolActivityTurnItem(
+                    turnId,
+                    turnIndex + 1,
+                    state,
+                    BoundedPreview(userPreview),
+                    turn.String("createdAt", "created_at"))
+                {
+                    IsExpanded = !IsTerminalTurnState(state)
+                };
+                foreach (var toolUse in toolUses.OrderBy(item => item.String("createdAt", "created_at"), StringComparer.Ordinal).ThenBy(item => item.Int("ordinal")))
+                {
+                    activityTurn.Tools.Add(ToolActivityItemFromJson(toolUse, turnId));
+                }
+                toolActivityTurns.Add(activityTurn);
+                foreach (var item in turnMessages)
                 {
                     var role = item.String("role");
                     var message = item.Object("message");
@@ -343,28 +361,23 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                             Text = text,
                             ContentSequence = messages.Count + 1,
                             TurnId = turnId,
-                            Attachments = MessageAttachments(message, imagePayloads),
-                            IsProcess = role == "assistant",
-                            CanBeFinalAssistant = role == "assistant" && message.Array("tool_calls").Count == 0
+                            Attachments = role == "user" ? MessageAttachments(message, imagePayloads) : [],
+                            CanBeFinalAssistant = role == "assistant" && message.Array("tool_calls").Count == 0,
+                            IsFinalAssistant = role == "assistant" && message.Array("tool_calls").Count == 0,
+                            IsVisible = role == "assistant",
+                            TurnSequence = turnIndex + 1,
+                            TurnPreview = BoundedPreview(userPreview)
                         });
                     }
-
-                    foreach (var call in message.Array("tool_calls").OfType<JsonObject>())
-                    {
-                        var toolCallId = call.String("call_id", "toolCallId", "tool_call_id");
-                        if (toolCallId.Length == 0 || !projectedToolIds.Add(toolCallId) ||
-                            !toolsById.TryGetValue(toolCallId, out var toolUse)) continue;
-                        messages.Add(ToolMessageItem(toolUse, turnId, messages.Count + 1));
-                    }
                 }
-                foreach (var item in toolUses
-                    .Where(item => !projectedToolIds.Contains(item.String("toolCallId", "tool_call_id")))
-                    .OrderBy(item => item.String("createdAt", "created_at"), StringComparer.Ordinal)
-                    .ThenBy(item => item.Int("ordinal")))
+                var firstAssistant = messages.FirstOrDefault(item => item.TurnId == turnId && item.IsAssistant);
+                if (firstAssistant is not null) firstAssistant.ShowTurnMarker = true;
+                foreach (var toolUse in toolUses.OrderBy(item => item.String("createdAt", "created_at"), StringComparer.Ordinal).ThenBy(item => item.Int("ordinal")))
                 {
-                    messages.Add(ToolMessageItem(item, turnId, messages.Count + 1));
+                    var toolMessage = ToolMessageItem(toolUse, turnId, messages.Count + 1);
+                    toolMessage.IsVisible = false;
+                    messages.Add(toolMessage);
                 }
-                ConfigureTurnPresentation(messages, turnId, state, expanded: !IsTerminalTurnState(state));
             }
         }
         else
@@ -380,7 +393,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                     Role = role,
                     Text = text,
                     ContentSequence = messages.Count + 1,
-                    Attachments = MessageAttachments(item, imagePayloads),
+                    IsVisible = role == "assistant",
+                    Attachments = role == "user" ? MessageAttachments(item, imagePayloads) : [],
                     IsFinalAssistant = role == "assistant",
                     CanBeFinalAssistant = role == "assistant"
                 });
@@ -428,7 +442,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             }
         }
 
-        return new SessionSnapshotProjection(messages, activities, changedPaths, currentTodos, pendingApproval, pendingQuestion, activeTurnId, activeTurnState);
+        return new SessionSnapshotProjection(messages, toolActivityTurns, activities, changedPaths, currentTodos, pendingApproval, pendingQuestion, activeTurnId, activeTurnState);
     }
 
     internal void ApplySnapshot(SessionSnapshotProjection projection)
@@ -440,6 +454,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
         DisposeMessages();
         Messages = new BulkObservableCollection<MessageItem>(projection.Messages);
+        ToolActivityTurns.Clear();
+        foreach (var turn in projection.ToolActivityTurns) ToolActivityTurns.Add(turn);
+        SelectDefaultToolActivity();
+        SyncActiveToolRow();
         Activities.ReplaceAll(projection.Activities);
         ChangedPaths.ReplaceAll(projection.ChangedPaths);
         OnPropertyChanged(nameof(HasChangedPaths));
@@ -452,6 +470,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ActiveTurnState = projection.ActiveTurnState;
         OnPropertyChanged(nameof(HasMessages));
         OnPropertyChanged(nameof(HasActivities));
+        OnPropertyChanged(nameof(HasToolActivityTurns));
+        OnPropertyChanged(nameof(ToolActivitySummary));
         OnPropertyChanged(nameof(HasCurrentTodos));
         OnPropertyChanged(nameof(LatestActivityText));
         ConversationChanged?.Invoke();
@@ -506,12 +526,16 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             {
                 if (delta.Length > 0)
                 {
+                    var activityTurn = EnsureToolActivityTurn(turnId);
                     Messages.Add(new MessageItem
                     {
                         Role = "assistant",
                         Text = delta,
                         ContentSequence = Messages.Count + 1,
                         TurnId = turnId,
+                        TurnSequence = activityTurn.Sequence,
+                        TurnPreview = activityTurn.Preview,
+                        ShowTurnMarker = !Messages.Any(message => message.TurnId == turnId && message.IsAssistant),
                         Streaming = true,
                         IsProcess = true,
                         CanBeFinalAssistant = false
@@ -540,6 +564,20 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             {
                 DiagnosticLog.Debug("session.message", $"duplicate ignored type={type} message={messageId} turn={turnId}");
             }
+            else if (type == "message.user")
+            {
+                EnsureToolActivityTurn(turnId, text);
+                Messages.Add(new MessageItem
+                {
+                    MessageId = messageId,
+                    Role = "user",
+                    Text = text,
+                    ContentSequence = Messages.Count + 1,
+                    TurnId = turnId,
+                    IsVisible = false
+                });
+                changed = true;
+            }
             else if (!string.IsNullOrWhiteSpace(text))
             {
                 if (streaming is not null)
@@ -551,16 +589,19 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 }
                 else
                 {
+                    var activityTurn = EnsureToolActivityTurn(turnId);
                     Messages.Add(new MessageItem
                     {
                         MessageId = messageId,
-                        Role = type == "message.user" ? "user" : "assistant",
+                        Role = "assistant",
                         Text = text,
                         ContentSequence = Messages.Count + 1,
                         TurnId = turnId,
-                        Attachments = type == "message.user" ? PendingMessageAttachments(message) : [],
-                        IsProcess = type == "message.assistant",
-                        CanBeFinalAssistant = canBeFinalAssistant
+                        CanBeFinalAssistant = canBeFinalAssistant,
+                        IsFinalAssistant = canBeFinalAssistant,
+                        ShowTurnMarker = !Messages.Any(item => item.TurnId == turnId && item.IsAssistant),
+                        TurnSequence = activityTurn.Sequence,
+                        TurnPreview = activityTurn.Preview
                     });
                 }
                 changed = true;
@@ -647,7 +688,16 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             }
             ActiveTurnId = IsTerminalTurnState(state) ? string.Empty : turnId;
             ActiveTurnState = state;
-            ConfigureTurnPresentation(Messages, turnId, state, expanded: !IsTerminalTurnState(state));
+            var activityTurn = EnsureToolActivityTurn(turnId);
+            activityTurn.Update(state);
+            if (!IsTerminalTurnState(state)) activityTurn.IsExpanded = true;
+            if (IsTerminalTurnState(state))
+            {
+                var finalAssistant = Messages.LastOrDefault(item => item.TurnId == turnId && item.IsAssistant && item.CanBeFinalAssistant);
+                if (finalAssistant is not null) finalAssistant.IsFinalAssistant = true;
+            }
+            SyncActiveToolRow();
+            OnPropertyChanged(nameof(ToolActivitySummary));
             ConversationChanged?.Invoke();
         }
         if (live && type.StartsWith("checkpoint.", StringComparison.Ordinal)) _ = LoadCheckpointsAsync();
@@ -656,79 +706,45 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (live && (type.StartsWith("checkpoint.", StringComparison.Ordinal) || pathAdded)) _ = RefreshGitAsync();
     }
 
-    public void ToggleTurnProcess(MessageItem toggleItem)
-    {
-        if (!toggleItem.ShowProcessToggle) return;
-        toggleItem.ProcessExpanded = !toggleItem.ProcessExpanded;
-        foreach (var item in Messages.Where(item =>
-            item.TurnId == toggleItem.TurnId && item.IsProcess))
-        {
-            item.IsVisible = item == toggleItem || toggleItem.ProcessExpanded;
-            item.ProcessContentVisible = toggleItem.ProcessExpanded;
-        }
-    }
-
     private void ApplyToolEvent(JsonObject payload, string eventType)
     {
         var turnId = payload.String("turn_id");
         var toolCallId = payload.String("tool_call_id");
         if (turnId.Length == 0 || toolCallId.Length == 0) return;
-        var existing = Messages.LastOrDefault(message =>
-            message.IsTool && message.TurnId == turnId && message.ToolCallId == toolCallId);
+        var turn = EnsureToolActivityTurn(turnId);
+        var existing = turn.Tools.FirstOrDefault(tool => tool.ToolCallId == toolCallId);
         var state = eventType == "tool.state"
             ? payload.String("state")
-            : existing?.ToolState ?? "requested";
+            : existing?.State ?? "requested";
         var name = payload.String("name");
-        if (name.Length == 0) name = existing?.ToolName ?? "tool";
+        if (name.Length == 0) name = existing?.Name ?? "tool";
         var request = eventType == "tool.requested"
             ? Pretty(payload["arguments"])
-            : existing?.ToolRequest ?? string.Empty;
+            : existing?.Request ?? string.Empty;
         var result = eventType == "tool.result"
             ? Pretty(payload["result"])
-            : existing?.ToolResult ?? string.Empty;
+            : existing?.Result ?? string.Empty;
         var output = eventType == "tool.output"
-            ? AppendBoundedOutput(existing?.ToolOutput ?? string.Empty, DecodeOutputChunk(payload))
-            : existing?.ToolOutput ?? string.Empty;
+            ? AppendBoundedOutput(existing?.Output ?? string.Empty, DecodeOutputChunk(payload))
+            : existing?.Output ?? string.Empty;
         var error = eventType == "tool.state"
             ? payload.String("reason")
-            : existing?.ToolError ?? string.Empty;
-        var replacement = new MessageItem
+            : existing?.Error ?? string.Empty;
+        if (existing is null)
         {
-            Role = "tool",
-            Kind = "tool",
-            Text = name,
-            ContentSequence = existing?.ContentSequence ?? Messages.Count + 1,
-            TurnId = turnId,
-            ToolCallId = toolCallId,
-            ToolName = name,
-            ToolState = state,
-            ToolDetail = output.Length > 0 ? output : (result.Length > 0 ? result : request),
-            ToolRequest = request,
-            ToolResult = result,
-            ToolOutput = output,
-            ToolError = error,
-            IsProcess = true
-        };
-        if (existing is null) Messages.Add(replacement);
-        else Messages[Messages.IndexOf(existing)] = replacement;
+            existing = new ToolActivityItem(turnId, toolCallId, name, state, request, result, output, error, string.Empty);
+            turn.Tools.Add(existing);
+            OnPropertyChanged(nameof(ToolActivitySummary));
+            OnPropertyChanged(nameof(HasToolActivityTurns));
+        }
+        else
+        {
+            existing.Update(name, state, request, result, output, error);
+        }
+        if (SelectedToolActivity is null || (SelectedToolActivityTurn?.IsActive == true && existing.IsActive))
+            SelectToolActivity(turn, existing);
+        SyncActiveToolRow();
     }
-
-    private static MessageItem ToolMessageItem(JsonObject item, string turnId, long sequence) => new()
-    {
-        Role = "tool",
-        Kind = "tool",
-        Text = item.String("name"),
-        ContentSequence = sequence,
-        TurnId = turnId,
-        ToolCallId = item.String("toolCallId", "tool_call_id"),
-        ToolName = item.String("name"),
-        ToolState = item.String("state"),
-        ToolDetail = Pretty(item["result"] ?? item["request"]),
-        ToolRequest = Pretty(item["request"]),
-        ToolResult = Pretty(item["result"]),
-        ToolError = item.String("errorCode", "error_code"),
-        IsProcess = true
-    };
 
     private static string DecodeOutputChunk(JsonObject payload)
     {
@@ -746,62 +762,129 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         return existing + (chunk.Length <= remaining ? chunk : chunk[..remaining]);
     }
 
+    public void SelectToolActivity(ToolActivityTurnItem turn, ToolActivityItem tool)
+    {
+        turn.IsExpanded = true;
+        SelectedToolActivityTurn = turn;
+        SelectedToolActivity = tool;
+    }
+
+    public void SelectToolActivityTurn(ToolActivityTurnItem turn)
+    {
+        turn.IsExpanded = !turn.IsExpanded;
+        SelectedToolActivityTurn = turn;
+        if (SelectedToolActivity is null || SelectedToolActivity.TurnId != turn.TurnId)
+            SelectedToolActivity = turn.Tools.FirstOrDefault();
+    }
+
+    public void ShowToolActivity(string turnId, string toolCallId)
+    {
+        var turn = ToolActivityTurns.FirstOrDefault(item => item.TurnId == turnId);
+        var tool = turn?.Tools.FirstOrDefault(item => item.ToolCallId == toolCallId);
+        if (turn is null || tool is null) return;
+        SelectToolActivity(turn, tool);
+        ToolActivityVisible = true;
+        GitVisible = false;
+        ProviderTraceVisible = false;
+    }
+
+    private void SelectDefaultToolActivity()
+    {
+        var turn = ToolActivityTurns.LastOrDefault(item => item.IsActive && item.Tools.Any(tool => tool.IsActive))
+            ?? ToolActivityTurns.LastOrDefault(item => item.Tools.Count > 0);
+        var tool = turn?.Tools.LastOrDefault(item => item.IsActive) ?? turn?.Tools.FirstOrDefault();
+        if (turn is null || tool is null)
+        {
+            SelectedToolActivityTurn = null;
+            SelectedToolActivity = null;
+            return;
+        }
+        SelectToolActivity(turn, tool);
+    }
+
+    private ToolActivityTurnItem EnsureToolActivityTurn(string turnId, string preview = "")
+    {
+        var existing = ToolActivityTurns.FirstOrDefault(item => item.TurnId == turnId);
+        if (existing is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(preview)) existing.Update(existing.State, BoundedPreview(preview));
+            return existing;
+        }
+        var created = new ToolActivityTurnItem(turnId, ToolActivityTurns.Count + 1, "admitted", BoundedPreview(preview), string.Empty)
+        {
+            IsExpanded = true
+        };
+        ToolActivityTurns.Add(created);
+        OnPropertyChanged(nameof(HasToolActivityTurns));
+        OnPropertyChanged(nameof(ToolActivitySummary));
+        return created;
+    }
+
+    private void SyncActiveToolRow()
+    {
+        foreach (var row in Messages.Where(item => item.IsTool).ToArray()) Messages.Remove(row);
+        var activeTurn = ToolActivityTurns.LastOrDefault(turn => turn.IsActive);
+        var activeTool = activeTurn?.Tools.LastOrDefault(tool => tool.IsActive);
+        if (activeTurn is null || activeTool is null) return;
+        Messages.Add(new MessageItem
+        {
+            Role = "tool",
+            Kind = "tool",
+            Text = activeTool.DisplayName,
+            ContentSequence = Messages.Count + 1,
+            TurnId = activeTurn.TurnId,
+            ToolCallId = activeTool.ToolCallId,
+            ToolName = activeTool.Name,
+            ToolState = activeTool.State,
+            ToolRequest = activeTool.Request,
+            ToolResult = activeTool.Result,
+            ToolOutput = activeTool.Output,
+            ToolError = activeTool.Error
+        });
+    }
+
+    private static ToolActivityItem ToolActivityItemFromJson(JsonObject item, string turnId) => new(
+        turnId,
+        item.String("toolCallId", "tool_call_id"),
+        item.String("name"),
+        item.String("state"),
+        Pretty(item["request"]),
+        Pretty(item["result"]),
+        string.Empty,
+        item.String("errorCode", "error_code"),
+        item.String("createdAt", "created_at"));
+
+    private static MessageItem ToolMessageItem(JsonObject item, string turnId, long sequence) => new()
+    {
+        Role = "tool",
+        Kind = "tool",
+        Text = item.String("name"),
+        ContentSequence = sequence,
+        TurnId = turnId,
+        ToolCallId = item.String("toolCallId", "tool_call_id"),
+        ToolName = item.String("name"),
+        ToolState = item.String("state"),
+        ToolDetail = Pretty(item["result"] ?? item["request"]),
+        ToolRequest = Pretty(item["request"]),
+        ToolResult = Pretty(item["result"]),
+        ToolError = item.String("errorCode", "error_code"),
+        IsProcess = true,
+        IsVisible = false
+    };
+
+    private static string BoundedPreview(string text)
+    {
+        const int previewLength = 72;
+        var compact = string.Join(" ", text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return compact.Length <= previewLength ? compact : compact[..previewLength].TrimEnd() + "...";
+    }
+
     private static IReadOnlyList<TodoItem> ParseTodos(JsonNode? value) =>
         (value as JsonArray)?.OfType<JsonObject>()
             .Select(TodoItem.FromPayload)
             .Where(item => item is not null)
             .Select(item => item!)
             .ToArray() ?? [];
-
-    private static void ConfigureTurnPresentation(
-        IEnumerable<MessageItem> source,
-        string turnId,
-        string state,
-        bool expanded)
-    {
-        var turnItems = source.Where(item => item.TurnId == turnId).ToArray();
-        var assistants = turnItems.Where(item => item.Role == "assistant").ToArray();
-        foreach (var assistant in assistants)
-        {
-            assistant.IsFinalAssistant = false;
-            assistant.IsProcess = true;
-        }
-        foreach (var item in turnItems)
-        {
-            item.ShowProcessToggle = false;
-            item.ProcessContentVisible = item.IsProcess;
-        }
-        var terminal = IsTerminalTurnState(state);
-        if (!terminal)
-        {
-            foreach (var item in turnItems) item.IsVisible = true;
-            return;
-        }
-
-        var final = assistants.LastOrDefault(item => item.CanBeFinalAssistant);
-        if (final is null)
-        {
-            foreach (var item in turnItems) item.IsVisible = true;
-            return;
-        }
-
-        final.IsFinalAssistant = true;
-        final.IsProcess = false;
-        var processItems = turnItems.Where(item => item.IsProcess).ToArray();
-        var toggleItem = processItems.FirstOrDefault();
-        if (toggleItem is not null)
-        {
-            toggleItem.ShowProcessToggle = true;
-            toggleItem.ProcessItemCount = processItems.Length;
-            toggleItem.ProcessExpanded = expanded;
-        }
-        foreach (var item in processItems)
-        {
-            item.IsVisible = item == toggleItem || expanded;
-            item.ProcessContentVisible = expanded;
-        }
-        final.IsVisible = true;
-    }
 
     private static bool IsTerminalTurnState(string state) =>
         state is "completed" or "failed" or "cancelled" or "interrupted";

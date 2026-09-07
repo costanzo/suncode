@@ -85,6 +85,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private bool _explorerVisible;
     private bool _gitVisible;
     private bool _providerTraceVisible;
+    private bool _toolActivityVisible;
+    private ToolActivityTurnItem? _selectedToolActivityTurn;
+    private ToolActivityItem? _selectedToolActivity;
     private double _layoutWidth = 1440;
     private double _navigationPaneWidth = 272;
     private double _reviewPaneWidth = 312;
@@ -130,6 +133,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public ObservableCollection<ProviderTraceItem> ProviderTraces { get; } = [];
     public ObservableCollection<ProviderTraceTurnItem> ProviderTraceTurns { get; } = [];
     public ObservableCollection<ProviderTraceTurnItem> FilteredProviderTraceTurns { get; } = [];
+    public ObservableCollection<ToolActivityTurnItem> ToolActivityTurns { get; } = [];
 
     public ProjectItem? SelectedProject
     {
@@ -389,6 +393,28 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool NavigationPinned { get => _navigationPinned; set => SetProperty(ref _navigationPinned, value); }
     public bool GitVisible { get => _gitVisible; set { if (SetProperty(ref _gitVisible, value)) NotifyDrawerLayoutChanged(nameof(EffectiveGitVisible)); } }
     public bool ProviderTraceVisible { get => _providerTraceVisible; set { if (SetProperty(ref _providerTraceVisible, value)) NotifyDrawerLayoutChanged(nameof(EffectiveProviderTraceVisible)); } }
+    public bool ToolActivityVisible { get => _toolActivityVisible; set { if (SetProperty(ref _toolActivityVisible, value)) NotifyDrawerLayoutChanged(nameof(EffectiveToolActivityVisible)); } }
+    public ToolActivityTurnItem? SelectedToolActivityTurn
+    {
+        get => _selectedToolActivityTurn;
+        private set
+        {
+            if (SetProperty(ref _selectedToolActivityTurn, value))
+                OnPropertyChanged(nameof(SelectedToolActivityTitle));
+        }
+    }
+    public ToolActivityItem? SelectedToolActivity
+    {
+        get => _selectedToolActivity;
+        private set
+        {
+            if (SetProperty(ref _selectedToolActivity, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedToolActivity));
+                OnPropertyChanged(nameof(SelectedToolActivityTitle));
+            }
+        }
+    }
     public double NavigationPaneWidth { get => _navigationPaneWidth; set { if (SetProperty(ref _navigationPaneWidth, value)) OnPropertyChanged(nameof(NavigationWidth)); } }
     public double ReviewPaneWidth { get => _reviewPaneWidth; set { if (SetProperty(ref _reviewPaneWidth, value)) OnPropertyChanged(nameof(ReviewWidth)); } }
     public double BottomDrawerHeight { get => _bottomDrawerHeight; set => SetProperty(ref _bottomDrawerHeight, value); }
@@ -419,12 +445,13 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool EffectiveReviewVisible => ReviewVisible && _layoutWidth > ReviewPaneBreakpoint;
     public bool EffectiveGitVisible => GitVisible && _layoutWidth > CompactWorkspaceBreakpoint;
     public bool EffectiveProviderTraceVisible => ProviderTraceVisible && _layoutWidth > CompactWorkspaceBreakpoint;
+    public bool EffectiveToolActivityVisible => ToolActivityVisible && _layoutWidth > CompactWorkspaceBreakpoint;
     public bool WorkspaceGuttersVisible => _layoutWidth > CompactWorkspaceBreakpoint;
     public GridLength WorkspaceGutterWidth => WorkspaceGuttersVisible ? new GridLength(26) : new GridLength(0);
     public GridLength WorkspaceGutterGap => WorkspaceGuttersVisible ? new GridLength(4) : new GridLength(0);
     public GridLength NavigationGap => EffectiveNavigationVisible ? new GridLength(4) : new GridLength(0);
     public GridLength ReviewGap => EffectiveReviewVisible ? new GridLength(4) : new GridLength(0);
-    public GridLength BottomDrawerGap => EffectiveGitVisible || EffectiveProviderTraceVisible ? new GridLength(4) : new GridLength(0);
+    public GridLength BottomDrawerGap => EffectiveGitVisible || EffectiveProviderTraceVisible || EffectiveToolActivityVisible ? new GridLength(4) : new GridLength(0);
     public bool WorkspaceStatusDetailsVisible => _layoutWidth > CompactWorkspaceBreakpoint;
     public bool HasSessions => Sessions.Count > 0;
     public bool HasMessages => Messages.Count > 0;
@@ -434,6 +461,12 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool HasFilteredGitFiles => FilteredGitFiles.Count > 0;
     public bool HasProviderTraces => ProviderTraces.Count > 0;
     public bool HasFilteredProviderTraces => FilteredProviderTraceTurns.Count > 0;
+    public bool HasToolActivityTurns => ToolActivityTurns.Count > 0;
+    public bool HasSelectedToolActivity => SelectedToolActivity is not null;
+    public string ToolActivitySummary => $"{ToolActivityTurns.Count} {(ToolActivityTurns.Count == 1 ? "turn" : "turns")} · {ToolActivityTurns.Sum(turn => turn.Tools.Count)} calls";
+    public string SelectedToolActivityTitle => SelectedToolActivity is null || SelectedToolActivityTurn is null
+        ? "Select a tool call"
+        : $"{SelectedToolActivityTurn.Title} · {SelectedToolActivity.StateText}";
     public bool HasSelectedProviderTrace => SelectedProviderTraceDetails is not null;
     public bool HasSelectedProviderTraceContent => SelectedProviderTraceContent is not null;
     public bool ShowSelectedProviderTraceOverview => HasSelectedProviderTrace && !HasSelectedProviderTraceContent;

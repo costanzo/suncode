@@ -2,9 +2,13 @@
 
 ## Scope
 
-Design-system route and interaction verification only.
+Design-system review and Avalonia desktop projection, drawer, and live-event behavior.
 
 ## Unit tests
+
+- Snapshot projection groups tools by turn and retains bounded user-message previews.
+- Live `tool.output` chunks append to the selected tool activity item.
+- Compact tool states distinguish succeeded, active, and failed calls.
 
 ## Integration and conformance tests
 
@@ -25,7 +29,9 @@ Design-system route and interaction verification only.
 - `git diff --check`: passed.
 - Browser console warning/error check: passed with no entries.
 - Responsive inspection at 1280px and 620px: passed without horizontal overflow.
+- `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore`: passed.
+- `dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj --no-restore`: passed, 59 tests.
 
 ## Residual risks
 
-- Production Avalonia projection, event buffering, focus transfer, and drawer restoration remain intentionally unimplemented pending design approval.
+- Live output is best-effort by contract and may be absent after a snapshot resync; the terminal result remains authoritative.

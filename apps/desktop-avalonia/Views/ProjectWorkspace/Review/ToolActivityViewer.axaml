@@ -1,0 +1,150 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.ProjectWorkspace.Review.ToolActivityViewer"
+             x:DataType="vm:DesktopViewModel"
+             Height="440"
+             MinHeight="300">
+  <UserControl.Styles>
+    <Style Selector="TreeView.tool-tree">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="4,2" />
+    </Style>
+    <Style Selector="TreeView.tool-tree TreeViewItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded, Mode=TwoWay}" />
+    </Style>
+    <Style Selector="TreeView.tool-tree TreeViewItem /template/ Border#PART_LayoutRoot">
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="TreeView.tool-tree TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource AccentSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Ellipse.tool-pulse">
+      <Setter Property="Width" Value="6" />
+      <Setter Property="Height" Value="6" />
+      <Setter Property="Fill" Value="{DynamicResource WarningBrush}" />
+      <Style.Animations>
+        <Animation Duration="0:0:1.1" IterationCount="INFINITE">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
+          <KeyFrame Cue="50%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="card" BorderThickness="0" ClipToBounds="True">
+    <Grid RowDefinitions="38,1,*">
+      <Grid Grid.Row="0" Margin="12,0,8,0" ColumnDefinitions="Auto,8,Auto,8,*,Auto,8,26,8,26">
+        <svg:Svg Grid.Column="0" Width="16" Height="16" Path="/Assets/icons/activity.svg" Css="{DynamicResource AccentSvgCss}" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="2" Text="Tool activity" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <Border Grid.Column="4" />
+        <TextBlock Grid.Column="5" Text="{Binding ToolActivitySummary}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+        <Button Grid.Column="7" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CopyToolActivity" IsEnabled="{Binding HasSelectedToolActivity}" ToolTip.Tip="Copy selected tool details" AutomationProperties.Name="Copy selected tool details">
+          <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
+        <Button Grid.Column="9" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CloseToolActivity" ToolTip.Tip="Close Tool activity" AutomationProperties.Name="Close Tool activity">
+          <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
+      </Grid>
+      <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
+
+      <Grid Grid.Row="2" ColumnDefinitions="260,1,*">
+        <Grid Grid.Column="0" Background="{DynamicResource SidebarBrush}" RowDefinitions="32,1,*">
+          <TextBlock Grid.Row="0" Margin="12,0" Text="CURRENT SESSION" Classes="eyebrow" VerticalAlignment="Center" />
+          <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
+          <Grid Grid.Row="2">
+            <TreeView x:Name="ToolTree" Classes="tool-tree" ItemsSource="{Binding ToolActivityTurns}" SelectionChanged="ToolSelected">
+              <TreeView.DataTemplates>
+                <TreeDataTemplate DataType="models:ToolActivityTurnItem" ItemsSource="{Binding Tools}">
+                  <Grid Height="48" ColumnDefinitions="12,*,Auto" Margin="2,0,8,0" ToolTip.Tip="{Binding Preview}">
+                    <Ellipse Grid.Column="0" Width="6" Height="6" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsActive}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                      <StackPanel Orientation="Horizontal" Spacing="7">
+                        <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding IdentifierText}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+                      </StackPanel>
+                      <TextBlock Text="{Binding Preview}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="{Binding ToolCountText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                  </Grid>
+                </TreeDataTemplate>
+                <DataTemplate DataType="models:ToolActivityItem">
+                  <Grid Height="34" ColumnDefinitions="10,*,10" Margin="2,0,8,0">
+                    <Border Grid.Column="0" Width="1" Height="22" Background="{DynamicResource BorderBrush}" HorizontalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Classes="mono" FontSize="10" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsFailed}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Classes="mono" FontSize="10" IsVisible="{Binding !IsFailed}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <Ellipse Grid.Column="2" Classes="tool-pulse" IsVisible="{Binding IsActive}" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </TreeView.DataTemplates>
+            </TreeView>
+            <StackPanel Width="240" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !HasToolActivityTurns}">
+              <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
+              <TextBlock Text="No turns yet" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+              <TextBlock Text="Tool calls will appear here after the agent starts its first turn." FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" />
+            </StackPanel>
+          </Grid>
+        </Grid>
+        <Border Grid.Column="1" Background="{DynamicResource BorderBrush}" />
+
+        <Grid Grid.Column="2" Background="{DynamicResource WorkspaceBrush}">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasSelectedToolActivity}">
+            <StackPanel Margin="16,14,18,20" Spacing="14">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="{Binding SelectedToolActivityTitle}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+                  <TextBlock Text="{Binding SelectedToolActivity.DisplayName}" FontSize="15" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding SelectedToolActivity.ToolCallId}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{Binding SelectedToolActivity.StateText}" Classes="mono" FontSize="11" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding SelectedToolActivity.IsFailed}" VerticalAlignment="Top" />
+                <TextBlock Grid.Column="1" Text="{Binding SelectedToolActivity.StateText}" Classes="mono" FontSize="11" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding SelectedToolActivity.IsActive}" VerticalAlignment="Top" />
+              </Grid>
+
+              <StackPanel Spacing="5" IsVisible="{Binding SelectedToolActivity.HasRequest}">
+                <TextBlock Text="Request" Classes="eyebrow" />
+                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                  <SelectableTextBlock Text="{Binding SelectedToolActivity.Request}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
+                </Border>
+              </StackPanel>
+
+              <StackPanel Spacing="5" IsVisible="{Binding SelectedToolActivity.ShowOutput}">
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Live output" Classes="eyebrow" /><TextBlock Grid.Column="1" Text="Following tail" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding SelectedToolActivity.IsActive}" /></Grid>
+                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" MinHeight="120" MaxHeight="280">
+                  <ScrollViewer x:Name="OutputScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <SelectableTextBlock Text="{Binding SelectedToolActivity.Output}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
+                  </ScrollViewer>
+                </Border>
+              </StackPanel>
+
+              <StackPanel Spacing="5" IsVisible="{Binding SelectedToolActivity.HasResult}">
+                <TextBlock Text="Result" Classes="eyebrow" />
+                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" MaxHeight="240">
+                  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"><SelectableTextBlock Text="{Binding SelectedToolActivity.Result}" Classes="mono" FontSize="10" TextWrapping="Wrap" /></ScrollViewer>
+                </Border>
+              </StackPanel>
+
+              <StackPanel Spacing="5" IsVisible="{Binding SelectedToolActivity.HasError}">
+                <TextBlock Text="Error" Classes="eyebrow" Foreground="{DynamicResource DangerBrush}" />
+                <Border Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10"><SelectableTextBlock Text="{Binding SelectedToolActivity.ErrorText}" Classes="mono" FontSize="10" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" /></Border>
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+          <StackPanel Width="320" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !HasSelectedToolActivity}">
+            <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
+            <TextBlock Text="Select a tool call" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Text="Choose a call from a turn to inspect its request, output, and terminal result." FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" />
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

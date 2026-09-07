@@ -108,7 +108,7 @@
           </Grid.ColumnDefinitions>
           <Border Grid.Column="0" Background="#01000000" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
           <Border Grid.Column="4" Background="#01000000" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
-          <Grid Grid.Column="0" RowDefinitions="Auto,6,Auto,*,Auto,6,Auto" Margin="0,7" IsVisible="{Binding WorkspaceGuttersVisible}">
+          <Grid Grid.Column="0" RowDefinitions="Auto,6,Auto,*,Auto,6,Auto,6,Auto" Margin="0,7" IsVisible="{Binding WorkspaceGuttersVisible}">
             <Button Grid.Row="0" Classes="icon gutter" Classes.active="{Binding SessionSidebarVisible}" Click="ToggleNavigation" ToolTip.Tip="Show sessions" AutomationProperties.Name="Show or hide sessions">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-left.svg" IsVisible="{Binding !SessionSidebarVisible}" />
@@ -127,7 +127,13 @@
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/git-branch.svg" IsVisible="{Binding GitVisible}" />
               </Grid>
             </Button>
-            <Button Grid.Row="6" Classes="icon gutter" Classes.active="{Binding ProviderTraceVisible}" Click="ToggleProviderTrace" ToolTip.Tip="Show or hide provider trace" AutomationProperties.Name="Show or hide provider trace">
+            <Button Grid.Row="6" Classes="icon gutter" Classes.active="{Binding ToolActivityVisible}" Click="ToggleToolActivity" ToolTip.Tip="Show or hide Tool activity" AutomationProperties.Name="Show or hide Tool activity">
+              <Grid>
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding !ToolActivityVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding ToolActivityVisible}" />
+              </Grid>
+            </Button>
+            <Button Grid.Row="8" Classes="icon gutter" Classes.active="{Binding ProviderTraceVisible}" Click="ToggleProviderTrace" ToolTip.Tip="Show or hide provider trace" AutomationProperties.Name="Show or hide provider trace">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding !ProviderTraceVisible}" />
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding ProviderTraceVisible}" />
@@ -166,10 +172,12 @@
 
             <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveGitVisible}" />
             <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveProviderTraceVisible}" />
+            <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveToolActivityVisible}" />
 
             <Grid Grid.Row="2">
               <review:GitViewer x:Name="GitViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding EffectiveGitVisible}" />
               <review:ProviderTraceViewer x:Name="ProviderTraceViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding EffectiveProviderTraceVisible}" />
+              <review:ToolActivityViewer x:Name="ToolActivityViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding EffectiveToolActivityVisible}" />
             </Grid>
           </Grid>
 
@@ -338,54 +346,6 @@
       </Grid>
     </controls:SCModal>
 
-    <controls:SCModal x:Name="ToolDetailModal"
-                      DialogWidth="560"
-                      IsOpen="False"
-                      PrimaryButtonText=""
-                      HidePrimaryButton="True"
-                      SecondaryButtonText="Close"
-                      SecondaryAction="CloseToolDetail"
-                      CloseRequested="CloseToolDetail">
-      <StackPanel Spacing="12">
-        <Grid ColumnDefinitions="*,Auto">
-          <TextBlock Text="Operation details" Classes="eyebrow" />
-          <TextBlock x:Name="ToolDetailState"
-                     Grid.Column="1"
-                     FontSize="11"
-                     Foreground="{DynamicResource TextSecondaryBrush}"
-                     VerticalAlignment="Center" />
-        </Grid>
-
-        <StackPanel x:Name="ToolDetailErrorPanel" Spacing="5" IsVisible="False">
-          <TextBlock Text="Error" Classes="eyebrow" Foreground="{DynamicResource DangerBrush}" />
-          <Border Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
-            <TextBlock x:Name="ToolDetailError" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" />
-          </Border>
-        </StackPanel>
-        <StackPanel x:Name="ToolDetailRequestPanel" Spacing="5" IsVisible="False">
-          <TextBlock Text="Request" Classes="eyebrow" />
-          <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
-            <SelectableTextBlock x:Name="ToolDetailRequest" Classes="mono" FontSize="11" TextWrapping="Wrap" />
-          </Border>
-        </StackPanel>
-        <StackPanel x:Name="ToolDetailResultPanel" Spacing="5" IsVisible="False">
-          <TextBlock x:Name="ToolDetailResultLabel" Text="Result" Classes="eyebrow" />
-          <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" MaxHeight="220">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-              <SelectableTextBlock x:Name="ToolDetailResult" Classes="mono" FontSize="11" TextWrapping="Wrap" />
-            </ScrollViewer>
-          </Border>
-        </StackPanel>
-        <StackPanel x:Name="ToolDetailOutputPanel" Spacing="5" IsVisible="False">
-          <TextBlock Text="Live output" Classes="eyebrow" />
-          <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" MaxHeight="260">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-              <SelectableTextBlock x:Name="ToolDetailOutput" Classes="mono" FontSize="11" TextWrapping="Wrap" />
-            </ScrollViewer>
-          </Border>
-        </StackPanel>
-      </StackPanel>
-    </controls:SCModal>
     <TextBlock x:Name="LongUserMessageAnnouncement" IsVisible="False" AutomationProperties.LiveSetting="Polite" />
   </Grid>
 </UserControl>
