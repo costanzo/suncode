@@ -6,7 +6,28 @@
     <RootNamespace>SunCode.Sdk</RootNamespace>
     <AssemblyName>SunCode.Sdk</AssemblyName>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <SunCodeNativeProfile Condition="'$(Configuration)' == 'Release'">release</SunCodeNativeProfile>
+    <SunCodeNativeProfile Condition="'$(SunCodeNativeProfile)' == ''">debug</SunCodeNativeProfile>
+    <SunCodeNativeDirectory>$(MSBuildProjectDirectory)/../c/target/$(SunCodeNativeProfile)</SunCodeNativeDirectory>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(SunCodeNativeDirectory)/libsuncode_agent.dylib"
+          Link="libsuncode_agent.dylib"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest"
+          Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+    <None Include="$(SunCodeNativeDirectory)/libsuncode_agent.so"
+          Link="libsuncode_agent.so"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest"
+          Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+    <None Include="$(SunCodeNativeDirectory)/suncode_agent.dll"
+          Link="suncode_agent.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest"
+          Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+  </ItemGroup>
 
   <Target Name="BuildSunCodeNative" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true'">
     <PropertyGroup>
@@ -15,19 +36,5 @@
       <SunCodeCargoProfileArgument Condition="'$(Configuration)' == 'Release'">--release</SunCodeCargoProfileArgument>
     </PropertyGroup>
     <Exec Command="cargo build --manifest-path &quot;$(SunCodeSdkCDirectory)/Cargo.toml&quot; $(SunCodeCargoProfileArgument)" />
-  </Target>
-
-  <Target Name="CopySunCodeNativeToSdkOutput" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
-    <PropertyGroup>
-      <SunCodeNativeProfile Condition="'$(Configuration)' == 'Release'">release</SunCodeNativeProfile>
-      <SunCodeNativeProfile Condition="'$(SunCodeNativeProfile)' == ''">debug</SunCodeNativeProfile>
-      <SunCodeNativeDirectory>$(MSBuildProjectDirectory)/../c/target/$(SunCodeNativeProfile)</SunCodeNativeDirectory>
-    </PropertyGroup>
-    <ItemGroup>
-      <SunCodeNativeLibrary Include="$(SunCodeNativeDirectory)/libsuncode_agent.dylib" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
-      <SunCodeNativeLibrary Include="$(SunCodeNativeDirectory)/libsuncode_agent.so" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
-      <SunCodeNativeLibrary Include="$(SunCodeNativeDirectory)/suncode_agent.dll" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
-    </ItemGroup>
-    <Copy SourceFiles="@(SunCodeNativeLibrary)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
   </Target>
 </Project>

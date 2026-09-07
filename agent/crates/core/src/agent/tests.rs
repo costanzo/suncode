@@ -1,12 +1,19 @@
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::credentials::CredentialStore;
     use axum::{http::header, response::IntoResponse, routing::post, Json, Router};
     use suncode_llm::{
-        ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
+        ApiKeyResolver, ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
         OpenAiCompatibleProvider,
     };
+
+    struct TestApiKey;
+
+    impl ApiKeyResolver for TestApiKey {
+        fn api_key(&self, provider_id: &str) -> Option<String> {
+            (provider_id == "deepseek").then(|| "test-key".to_string())
+        }
+    }
 
     #[test]
     fn bash_translation_uses_opencode_command_and_millisecond_timeout() {
@@ -410,19 +417,11 @@ mod tests {
         let operations =
             Arc::new(suncode_tool::Operations::new(directory.join(".operations")).unwrap());
         let (events, _) = broadcast::channel(64);
-        let credentials = Arc::new(CredentialStore::memory(
-            Some("test-key"),
-            None,
-            None,
-            None,
-            None,
-            None,
-        ));
         let provider = Arc::new(OpenAiCompatibleProvider::new(
             "deepseek",
             "DeepSeek",
             format!("http://{address}"),
-            credentials,
+            Arc::new(TestApiKey),
         ));
         let mut registry = ModelProviderRegistry::new();
         let models = ["deepseek-v4-flash", "deepseek-v4-pro"]

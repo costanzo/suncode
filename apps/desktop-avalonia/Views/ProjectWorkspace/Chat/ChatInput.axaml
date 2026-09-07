@@ -17,7 +17,7 @@
       <Setter Property="BorderThickness" Value="0" />
     </Style>
     <Style Selector="TextBox.composer-input">
-      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontSize" Value="14" />
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
       <Setter Property="MinHeight" Value="52" />
       <Setter Property="VerticalContentAlignment" Value="Top" />

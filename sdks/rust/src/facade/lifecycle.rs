@@ -50,7 +50,7 @@ impl AgentSdk {
                 status: "ready",
                 pending_operations: 0,
             },
-            credentials: self.state.credentials.state(),
+            credentials: credential_states(&self.state.store)?,
             active_project_id: self
                 .state
                 .active_project
@@ -62,8 +62,12 @@ impl AgentSdk {
 
     pub fn list_models(&self) -> SdkResult<ModelsResult> {
         let mut models = self.state.providers.models();
+        let credentials = credential_states(&self.state.store)?;
         for model in &mut models {
-            model.availability = if self.state.credentials.configured(&model.provider) {
+            model.availability = if credentials
+                .iter()
+                .any(|state| state.provider == model.provider && state.configured)
+            {
                 "configured".into()
             } else {
                 "unconfigured".into()
@@ -74,25 +78,19 @@ impl AgentSdk {
 
     pub fn list_credentials(&self) -> SdkResult<CredentialsResult> {
         Ok(CredentialsResult {
-            credentials: self.state.credentials.state(),
+            credentials: credential_states(&self.state.store)?,
         })
     }
 
     pub fn set_credential(&self, provider: &str, api_key: &str) -> SdkResult<CredentialUpdate> {
-        if !self
-            .state
-            .credentials
-            .state()
-            .iter()
-            .any(|state| state.provider == provider)
-        {
+        if !provider_exists(&self.state.store, provider)? {
             return Err(BusinessError::invalid("provider is not supported"));
         }
         let provider = provider.to_string();
         self.state
-            .credentials
-            .set(&provider, api_key)
-            .map_err(|error| BusinessError::new("credential_unavailable", error))?;
+            .store
+            .set_llm_provider_api_key(&provider, api_key)
+            .map_err(|error| BusinessError::new("credential_unavailable", error.to_string()))?;
         Ok(CredentialUpdate {
             provider,
             configured: true,
@@ -100,20 +98,14 @@ impl AgentSdk {
     }
 
     pub fn remove_credential(&self, provider: &str) -> SdkResult<CredentialUpdate> {
-        if !self
-            .state
-            .credentials
-            .state()
-            .iter()
-            .any(|state| state.provider == provider)
-        {
+        if !provider_exists(&self.state.store, provider)? {
             return Err(BusinessError::invalid("provider is not supported"));
         }
         let provider = provider.to_string();
         self.state
-            .credentials
-            .delete(&provider)
-            .map_err(|error| BusinessError::new("credential_unavailable", error))?;
+            .store
+            .delete_llm_provider_api_key(&provider)
+            .map_err(|error| BusinessError::new("credential_unavailable", error.to_string()))?;
         Ok(CredentialUpdate {
             provider,
             configured: false,
@@ -144,7 +136,9 @@ impl AgentSdk {
         }
         let adapter = openai_provider(
             &provider,
-            Arc::new(self.state.credentials.clone()),
+            Arc::new(SqliteApiKeyResolver {
+                store: self.state.store.clone(),
+            }),
             self.state.verify_https_certificates.clone(),
             self.state.use_system_certificates.clone(),
             self.state.certificate_path.clone(),

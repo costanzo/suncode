@@ -6,7 +6,6 @@
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SCFlatComboBoxStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SCFileSelectorStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SCGroupComboBoxStyles.axaml" />
-  <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SCModelProviderStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/TextStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SettingsStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/NumericUpDownStyles.axaml" />

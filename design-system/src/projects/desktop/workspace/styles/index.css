@@ -1100,7 +1100,7 @@
   background: transparent;
   border: 0;
   outline: 0;
-  font: 11px var(--font-ui);
+  font: 14px var(--font-ui);
 }
 .workspace-composer textarea::placeholder {
   color: var(--text-muted);

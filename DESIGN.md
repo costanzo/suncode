@@ -176,7 +176,7 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Assistant-first history:** The conversation timeline renders assistant messages rather than repeating durable user and tool payloads. Assistant rows are reading surfaces, so pointer hover does not change their background.
 - **Turn boundaries:** A lightweight turn marker separates assistant responses. Hover or keyboard focus reveals a bounded preview of the corresponding submitted user message; the timeline does not render the full user body.
 
-- **Compact composer:** The default conversation composer remains a compact floating surface anchored to the bottom of the conversation region.
+- **Compact composer:** The default conversation composer remains a compact floating surface anchored to the bottom of the conversation region. Its draft text uses the 14px body size so compact and expanded drafting have the same readable text scale.
 - **Expanded drafting:** The composer exposes an explicit expand action that opens a raised modal with a large multi-paragraph drafting textarea and minimal chrome. The modal edits the same draft as the compact composer rather than creating a second independent buffer.
 - **Expanded drafting spacing:** When the expanded drafting modal hides its title and close affordance, the textarea begins at the same 20px inset as the dialog's horizontal edges so the editor does not carry an empty header band.
 - **Expanded character feedback:** The live character count sits below the drafting field on the left, aligned with the field's content edge.

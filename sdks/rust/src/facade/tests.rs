@@ -30,12 +30,16 @@ fn test_state(directory: &std::path::Path) -> AgentState {
         )
         .unwrap(),
     );
-    let credentials = CredentialStore::memory(Some("test-key"), None, None, None, None, None);
+    store
+        .set_llm_provider_api_key("deepseek", "test-key")
+        .unwrap();
     let (events, _) = broadcast::channel(16);
     let providers = Arc::new(
         registry_from_store(
             &store,
-            Arc::new(credentials.clone()),
+            Arc::new(SqliteApiKeyResolver {
+                store: store.clone(),
+            }),
             verify_https_certificates.clone(),
             Arc::new(AtomicBool::new(true)),
             Arc::new(RwLock::new(None)),
@@ -54,7 +58,6 @@ fn test_state(directory: &std::path::Path) -> AgentState {
         operations,
         active_project: Arc::new(Mutex::new(None)),
         events,
-        credentials,
         verify_https_certificates,
         use_system_certificates: Arc::new(AtomicBool::new(true)),
         certificate_path: Arc::new(RwLock::new(None)),

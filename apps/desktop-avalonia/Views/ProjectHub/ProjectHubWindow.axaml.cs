@@ -31,7 +31,17 @@ public sealed partial class ProjectHubWindow : Window
         ViewModel.UpdateLayoutWidth(Bounds.Width);
     }
 
-    internal async Task OpenProjectPickerAsync()
+    private async void OpenProject(object? sender, RoutedEventArgs e) => await OpenProjectPickerAsync();
+
+    private async void ProjectClicked(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is ProjectItem project)
+            await OpenProjectAsync(project);
+    }
+
+    private void OpenSettings(object? sender, RoutedEventArgs e) => ShowSettings();
+
+    private async Task OpenProjectPickerAsync()
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
@@ -48,12 +58,12 @@ public sealed partial class ProjectHubWindow : Window
         if (Application.Current is App app) await app.OpenProjectPathAsync(path);
     }
 
-    internal async Task OpenProjectAsync(ProjectItem project)
+    private async Task OpenProjectAsync(ProjectItem project)
     {
         if (Application.Current is App app) await app.OpenProjectWindowAsync(project);
     }
 
-    internal void ShowSettings()
+    private void ShowSettings()
     {
         if (Application.Current is App app) app.ShowSettings(this);
     }

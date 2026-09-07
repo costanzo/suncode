@@ -40,23 +40,9 @@
     <MakeDir Directories="$(SunCodeAppBundle)/Contents/MacOS;$(SunCodeAppBundle)/Contents/Resources" />
     <ItemGroup>
       <SunCodePublishedFiles Include="$(PublishDir)*" Exclude="$(SunCodeAppBundle)/**" />
-      <SunCodeMacOSNativeLibrary Include="$(MSBuildProjectDirectory)/../../sdks/c/target/$(Configuration)/libsuncode_agent.dylib" />
     </ItemGroup>
     <Copy SourceFiles="@(SunCodePublishedFiles)" DestinationFolder="$(SunCodeAppBundle)/Contents/MacOS/%(RecursiveDir)" />
-    <Copy SourceFiles="@(SunCodeMacOSNativeLibrary)" DestinationFolder="$(SunCodeAppBundle)/Contents/MacOS" SkipUnchangedFiles="true" />
     <Copy SourceFiles="Info.plist" DestinationFolder="$(SunCodeAppBundle)/Contents" />
     <Copy SourceFiles="Assets/suncode-desktop.icns" DestinationFolder="$(SunCodeAppBundle)/Contents/Resources" />
-  </Target>
-
-  <Target Name="CopySunCodeNativeFromSdk" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
-    <PropertyGroup>
-      <SunCodeSdkManagedOutput>$(MSBuildProjectDirectory)/../../sdks/csharp/bin/$(Configuration)/net10.0</SunCodeSdkManagedOutput>
-    </PropertyGroup>
-    <ItemGroup>
-      <SunCodeNativeLibrary Include="$(SunCodeSdkManagedOutput)/libsuncode_agent.dylib" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
-      <SunCodeNativeLibrary Include="$(SunCodeSdkManagedOutput)/libsuncode_agent.so" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
-      <SunCodeNativeLibrary Include="$(SunCodeSdkManagedOutput)/suncode_agent.dll" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
-    </ItemGroup>
-    <Copy SourceFiles="@(SunCodeNativeLibrary)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
   </Target>
 </Project>

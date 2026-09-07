@@ -9,7 +9,7 @@ use std::{
     },
 };
 use suncode_agent::logging::{self, Level};
-use suncode_agent::{agent::Agent, domain::SessionEvent, AgentLock, CredentialStore};
+use suncode_agent::{agent::Agent, domain::SessionEvent, AgentLock};
 use suncode_common::BusinessError;
 use suncode_config::Config;
 use suncode_data::{LlmModelProviderInput, LlmModelProviderRecord, Store};
@@ -41,12 +41,42 @@ struct AgentState {
     operations: Arc<suncode_tool::Operations>,
     active_project: Arc<Mutex<Option<String>>>,
     events: broadcast::Sender<SessionEvent>,
-    credentials: CredentialStore,
     verify_https_certificates: Arc<AtomicBool>,
     use_system_certificates: Arc<AtomicBool>,
     certificate_path: Arc<RwLock<Option<PathBuf>>>,
     agent: Agent,
     providers: Arc<ModelProviderRegistry>,
+}
+
+#[derive(Clone)]
+struct SqliteApiKeyResolver {
+    store: Store,
+}
+
+impl suncode_llm::ApiKeyResolver for SqliteApiKeyResolver {
+    fn api_key(&self, provider_id: &str) -> Option<String> {
+        self.store.llm_provider_api_key(provider_id).ok().flatten()
+    }
+}
+
+fn credential_states(store: &Store) -> SdkResult<Vec<CredentialState>> {
+    store
+        .llm_model_providers(false)?
+        .into_iter()
+        .map(|provider| {
+            Ok(CredentialState {
+                configured: store.llm_provider_api_key(&provider.provider_id)?.is_some(),
+                provider: provider.provider_id,
+            })
+        })
+        .collect()
+}
+
+fn provider_exists(store: &Store, provider_id: &str) -> SdkResult<bool> {
+    Ok(store
+        .llm_model_providers(false)?
+        .iter()
+        .any(|provider| provider.provider_id == provider_id))
 }
 
 fn provider_models(
@@ -199,10 +229,11 @@ where
         certificate_path.read().ok().and_then(|path| path.clone()),
     );
     let (events, _) = broadcast::channel(256);
-    let credentials = CredentialStore::load(store.clone());
     let mut providers = registry_from_store(
         &store,
-        Arc::new(credentials.clone()),
+        Arc::new(SqliteApiKeyResolver {
+            store: store.clone(),
+        }),
         verify_https_certificates.clone(),
         use_system_certificates.clone(),
         certificate_path.clone(),
@@ -222,7 +253,6 @@ where
         operations,
         active_project: Arc::new(Mutex::new(None)),
         events,
-        credentials,
         verify_https_certificates,
         use_system_certificates,
         certificate_path,

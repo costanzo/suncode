@@ -4,7 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using SunCode.Desktop.Models;
 
-namespace SunCode.Desktop.Controls;
+namespace SunCode.Desktop.Views.Settings.Controls;
 
 public sealed partial class SCModelProvider : UserControl
 {

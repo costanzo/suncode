@@ -1,6 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:controls="using:SunCode.Desktop.Controls">
+             xmlns:controls="using:SunCode.Desktop.Views.Settings.Controls">
   <Style Selector="controls|SCModelProvider TextBox.settings-provider-input">
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />

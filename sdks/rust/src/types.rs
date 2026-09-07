@@ -6,7 +6,6 @@ use suncode_agent::domain::{
     ProviderExchange, SessionCallMessage, SessionCallToolUse, SessionImageRecord, SessionRecord,
     SessionTraceTurn, SettingRecord,
 };
-use suncode_agent::CredentialState;
 use suncode_common::BusinessError;
 use suncode_llm::ModelDescriptor;
 
@@ -38,6 +37,12 @@ pub struct DiagnosticsResult {
 #[derive(Debug, Serialize)]
 pub struct ModelsResult {
     pub models: Vec<ModelDescriptor>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CredentialState {
+    pub provider: String,
+    pub configured: bool,
 }
 
 #[derive(Debug, Serialize)]

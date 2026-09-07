@@ -1,6 +1,5 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:controls="using:SunCode.Desktop.Controls"
         xmlns:models="using:SunCode.Desktop.Models"
         xmlns:settings="using:SunCode.Desktop.Views.Settings.Controls"
         xmlns:vm="using:SunCode.Desktop.ViewModels"
@@ -14,6 +13,7 @@
         WindowDecorations="Full"
         WindowStartupLocation="CenterOwner">
   <Window.Styles>
+    <StyleInclude Source="avares://SunCode/Views/Settings/Controls/SCModelProviderStyles.axaml" />
     <Style Selector="Button.navigation">
       <Setter Property="MinHeight" Value="32" />
       <Setter Property="Width" Value="200" />
@@ -178,7 +178,7 @@
         <settings:LoggingSettingsControl x:Name="LoggingPage" IsVisible="False" />
 
         <Grid x:Name="ProvidersPage" IsVisible="False">
-          <controls:SCModelProvider x:Name="ProviderManager"
+          <settings:SCModelProvider x:Name="ProviderManager"
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Stretch"
                                     Providers="{Binding Providers}"

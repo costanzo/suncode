@@ -61,7 +61,7 @@ Provider and orchestration modules cannot perform project operations directly. T
 
 ### 3.3 LLM providers
 
-The `suncode-llm` package owns provider-neutral messages, tool schemas, completion results, provider errors, model metadata, model routing, and OpenAI-compatible HTTP/SSE behavior. It has no database, agent-core, SDK, desktop, or machine-operation dependency. Core loads the seeded or custom database catalog, converts its rows into LLM descriptors, and supplies credentials through the `ApiKeyResolver` trait at the agent boundary.
+The `suncode-llm` package owns provider-neutral messages, tool schemas, completion results, provider errors, model metadata, model routing, and OpenAI-compatible HTTP/SSE behavior. It has no database, agent-core, SDK, desktop, or machine-operation dependency. The Rust SDK facade loads the seeded or custom database catalog, converts its rows into LLM descriptors, and supplies credentials through a private SQLite-backed implementation of the `ApiKeyResolver` trait at the agent composition boundary. There is no separate credential store alongside SQLite.
 
 The registry accepts trusted in-process Rust implementations of `LlmProvider` with owned provider and model identifiers. Enterprise OpenAI-compatible gateways can use the built-in adapter with a custom endpoint; other trusted integrations can implement the trait. Rust hosts can extend the built-in registry during `AgentSdk` construction. This is library composition inside the host process, not dynamic plugin loading or an isolation boundary.
 
@@ -149,7 +149,7 @@ The old `typescript/` packages and retired `rust/` workspace were migration sour
 - Cross-crate business failures use `suncode-common::BusinessError`; lower-level Diesel, HTTP, Git, and OS errors are converted before crossing their owning crate boundary.
 - The agent core depends on the database crate for durable state and persistence DTOs.
 - The LLM crate does not depend on the database, agent core, SDK, desktop, or tools crates.
-- The agent core supplies credentials and tool schemas to the LLM crate through provider-neutral interfaces and request DTOs.
+- The Rust SDK composition supplies credentials to the LLM crate through its provider-neutral resolver interface; the agent core supplies tool schemas through provider-neutral request DTOs.
 - Tools do not depend on agent, provider, persistence projections, or client DTOs.
 - No production TypeScript or Node.js process remains in Phase 1.
 
