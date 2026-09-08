@@ -32,6 +32,7 @@ public sealed partial class ProjectWorkspace : UserControl
         ChatArea.ToolDetailRequested += ShowToolActivity;
         ProjectSwitcherControl.OpenProjectRequested += OpenProjectRequested;
         ProjectSwitcherControl.ProjectRequested += ProjectRequested;
+        ContentSwitcherControl.ContentRequested += ContentRequested;
     }
 
     private WorkspaceWindow? Owner => TopLevel.GetTopLevel(this) as WorkspaceWindow;
@@ -48,6 +49,8 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal bool HandleEscape()
     {
+        if (ContentSwitcherControl.CloseFlyout()) return true;
+
         if (ExpandedComposerModal.IsOpen)
         {
             HideExpandedComposer();
@@ -370,6 +373,13 @@ public sealed partial class ProjectWorkspace : UserControl
     private async void ProjectRequested(ProjectItem project)
     {
         if (Owner is { } owner) await owner.OpenProjectAsync(project);
+    }
+    private async void ContentRequested(RecentContentItem item)
+    {
+        if (item.File is { } file)
+            await ViewModel.SelectExplorerFileAsync(file);
+        else if (item.Session is { } session)
+            await ViewModel.SelectSessionAsync(session);
     }
     private void CloseProjectWindow(object? sender, RoutedEventArgs e) => Owner?.Close();
     private void MinimizeWindow(object? sender, RoutedEventArgs e) => Owner?.MinimizeWindow();

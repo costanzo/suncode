@@ -41,6 +41,8 @@
       <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #9fb3c3; } [fill='#000'] { fill: #9fb3c3; } [stroke='currentColor'] { stroke: #9fb3c3; }</x:String>
       <x:String x:Key="WarningSvgCss">[stroke='#000'] { stroke: #d5ad6f; } [fill='#000'] { fill: #d5ad6f; } [stroke='currentColor'] { stroke: #d5ad6f; }</x:String>
       <x:String x:Key="CopySuccessSvgCss">[stroke='#000'] { stroke: #78c99b; } [fill='#000'] { fill: #78c99b; } [stroke='currentColor'] { stroke: #78c99b; }</x:String>
+      <x:String x:Key="ContentSessionSvgCss">[stroke='#000'] { stroke: #aeb4ed; } [fill='#000'] { fill: #aeb4ed; } [stroke='currentColor'] { stroke: #aeb4ed; }</x:String>
+      <x:String x:Key="ContentFileSvgCss">[stroke='#000'] { stroke: #91c9b8; } [fill='#000'] { fill: #91c9b8; } [stroke='currentColor'] { stroke: #91c9b8; }</x:String>
       <SolidColorBrush x:Key="CanvasBrush" Color="#0d0f12" />
       <SolidColorBrush x:Key="SurfaceBrush" Color="#121519" />
       <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#181c21" />
@@ -73,6 +75,10 @@
       <SolidColorBrush x:Key="DangerBrush" Color="#e68a83" />
       <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#2a1919" />
       <SolidColorBrush x:Key="DangerBorderBrush" Color="#633735" />
+      <SolidColorBrush x:Key="ContentSessionBrush" Color="#aeb4ed" />
+      <SolidColorBrush x:Key="ContentSessionSurfaceBrush" Color="#272a3e" />
+      <SolidColorBrush x:Key="ContentFileBrush" Color="#91c9b8" />
+      <SolidColorBrush x:Key="ContentFileSurfaceBrush" Color="#1d2d29" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
       <Color x:Key="BorderColor">#d5dde4</Color>
@@ -114,6 +120,8 @@
       <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #4f6d82; } [fill='#000'] { fill: #4f6d82; } [stroke='currentColor'] { stroke: #4f6d82; }</x:String>
       <x:String x:Key="WarningSvgCss">[stroke='#000'] { stroke: #9a6a28; } [fill='#000'] { fill: #9a6a28; } [stroke='currentColor'] { stroke: #9a6a28; }</x:String>
       <x:String x:Key="CopySuccessSvgCss">[stroke='#000'] { stroke: #27845b; } [fill='#000'] { fill: #27845b; } [stroke='currentColor'] { stroke: #27845b; }</x:String>
+      <x:String x:Key="ContentSessionSvgCss">[stroke='#000'] { stroke: #6269a8; } [fill='#000'] { fill: #6269a8; } [stroke='currentColor'] { stroke: #6269a8; }</x:String>
+      <x:String x:Key="ContentFileSvgCss">[stroke='#000'] { stroke: #347866; } [fill='#000'] { fill: #347866; } [stroke='currentColor'] { stroke: #347866; }</x:String>
       <SolidColorBrush x:Key="CanvasBrush" Color="#f3f5f7" />
       <SolidColorBrush x:Key="SurfaceBrush" Color="#ffffff" />
       <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#f8fafc" />
@@ -146,6 +154,10 @@
       <SolidColorBrush x:Key="DangerBrush" Color="#b6463f" />
       <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#fae6e4" />
       <SolidColorBrush x:Key="DangerBorderBrush" Color="#dda09b" />
+      <SolidColorBrush x:Key="ContentSessionBrush" Color="#6269a8" />
+      <SolidColorBrush x:Key="ContentSessionSurfaceBrush" Color="#eceefa" />
+      <SolidColorBrush x:Key="ContentFileBrush" Color="#347866" />
+      <SolidColorBrush x:Key="ContentFileSurfaceBrush" Color="#e5f2ed" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 </ResourceDictionary>

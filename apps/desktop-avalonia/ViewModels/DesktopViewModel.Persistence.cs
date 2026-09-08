@@ -104,6 +104,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             var sessionId = item.String("sessionId");
             Sessions.Add(new SessionItem(sessionId, item.String("title"), item.String("lastActivityAt"), !string.IsNullOrWhiteSpace(item.String("pinAt", "pin_at")), sessionStates.String(sessionId)));
         }
+        RefreshRecentSessionReferences();
         OnPropertyChanged(nameof(HasSessions));
         var session = Sessions.FirstOrDefault(item => item.SessionId == preferredSessionId)
             ?? Sessions.FirstOrDefault(item => item.SessionId == SelectedSession?.SessionId)

@@ -62,6 +62,175 @@
   justify-self: end;
   gap: 2px;
 }
+.content-switcher {
+  position: relative;
+  z-index: 35;
+  grid-column: 2;
+  min-width: 0;
+  max-width: 100%;
+  justify-self: center;
+}
+.content-switcher-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  max-width: 280px;
+  height: 28px;
+  padding: 0 7px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+}
+.content-switcher-trigger:hover,
+.content-switcher-trigger.is-open {
+  color: var(--text);
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+.content-switcher-trigger:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
+.content-switcher-trigger > .ds-icon:first-child {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+.content-switcher-trigger > strong {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.content-switcher-chevron {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  transform: rotate(90deg);
+  transition: transform 0.16s ease-out;
+}
+.content-switcher-trigger.is-open .content-switcher-chevron {
+  transform: rotate(-90deg);
+}
+.content-switcher-menu {
+  position: absolute;
+  top: 33px;
+  left: 50%;
+  display: grid;
+  width: min(372px, calc(100vw - 32px));
+  max-height: min(488px, calc(100vh - 84px));
+  padding: 6px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+  transform: translateX(-50%);
+  animation: workspace-content-switcher-in 0.14s ease-out both;
+}
+.content-switcher-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  padding: 2px 8px 3px;
+  color: var(--text-muted);
+  font: 9px var(--font-mono);
+  letter-spacing: 0.08em;
+}
+.content-switcher-heading small {
+  color: var(--text-disabled);
+  font: 9px var(--font-mono);
+  letter-spacing: 0;
+}
+.content-switcher-list {
+  display: grid;
+  gap: 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.content-switcher-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 5px 8px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+}
+.content-switcher-item:hover,
+.content-switcher-item:focus-visible {
+  color: var(--text);
+  background: var(--surface-hover);
+  border-color: var(--border);
+  outline: 0;
+}
+.content-switcher-item > .ds-icon:first-child {
+  width: 24px;
+  height: 24px;
+  padding: 5px;
+  border-radius: var(--radius-sm);
+}
+.content-switcher-item.is-session > .ds-icon:first-child {
+  color: var(--content-session);
+  background: var(--content-session-surface);
+}
+.content-switcher-item.is-file > .ds-icon:first-child {
+  color: var(--content-file);
+  background: var(--content-file-surface);
+}
+.content-switcher-item > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.content-switcher-item strong,
+.content-switcher-item small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.content-switcher-item strong {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+}
+.content-switcher-item small {
+  color: var(--text-muted);
+  font: 10px var(--font-mono);
+}
+.content-switcher-item small b {
+  font: 600 9px var(--font-mono);
+  letter-spacing: 0.04em;
+}
+.content-switcher-item.is-session small b {
+  color: var(--content-session);
+}
+.content-switcher-item.is-file small b {
+  color: var(--content-file);
+}
+.content-switcher-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+@keyframes workspace-content-switcher-in {
+  from { opacity: 0; transform: translate(-50%, -3px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
 .workspace-project-title {
   position: absolute;
   left: 90px;
@@ -221,6 +390,8 @@
   to { opacity: 1; transform: translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
+  .content-switcher-chevron,
+  .content-switcher-menu,
   .project-switcher-chevron,
   .project-switcher-menu {
     animation: none;
@@ -2880,6 +3051,12 @@
   .project-switcher-menu {
     left: -34px;
     width: min(300px, calc(100vw - 24px));
+  }
+  .content-switcher-trigger {
+    max-width: min(220px, calc(100vw - 250px));
+  }
+  .content-switcher-menu {
+    width: min(340px, calc(100vw - 24px));
   }
   .workspace-window-body {
     min-height: 480px;

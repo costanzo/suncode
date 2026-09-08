@@ -11,13 +11,24 @@ export { TrafficLights } from "../../../shared/TrafficLights.jsx";
 
 const sessions = [
   {
+    id: "workspace-information-architecture",
     title: "Workspace information architecture",
     time: "2 min ago",
     pinned: true,
     status: "running",
   },
-  { title: "Provider migration review", time: "Yesterday", status: "approval" },
-  { title: "Desktop navigation polish", time: "Aug 26", status: "idle" },
+  {
+    id: "provider-migration-review",
+    title: "Provider migration review",
+    time: "Yesterday",
+    status: "approval",
+  },
+  {
+    id: "desktop-navigation-polish",
+    title: "Desktop navigation polish",
+    time: "Aug 26",
+    status: "idle",
+  },
 ];
 
 const workspaceRecentProjects = [
@@ -464,6 +475,7 @@ export function SessionPanel({
   compact = false,
   standalone = false,
   initialSessions = sessions,
+  selectedSessionId,
   onArchiveRequest,
   onSelectSession,
 }) {
@@ -532,7 +544,15 @@ export function SessionPanel({
           <div className="workspace-session-wrap" key={`${session.title}-${index}`}>
             <button
               type="button"
-              className={`workspace-session ${selected === index ? "is-selected" : ""}`}
+              className={`workspace-session ${
+                selectedSessionId
+                  ? (session.id ?? session.title) === selectedSessionId
+                    ? "is-selected"
+                    : ""
+                  : selected === index
+                    ? "is-selected"
+                    : ""
+              }`}
               onClick={() => {
                 setSelected(index);
                 onSelectSession?.(session);
@@ -2201,19 +2221,182 @@ export function ProjectSwitcher({ projects = workspaceRecentProjects }) {
   );
 }
 
+const initialRecentContent = [
+  {
+    id: "session:workspace-information-architecture",
+    kind: "session",
+    title: "Workspace information architecture",
+    detail: "2 min ago",
+    session: sessions[0],
+  },
+  {
+    id: "file:workspace-file",
+    kind: "file",
+    title: "ProjectWorkspace.axaml",
+    detail: "apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml",
+    file: { id: "workspace-file", name: "ProjectWorkspace.axaml" },
+  },
+  {
+    id: "session:provider-migration-review",
+    kind: "session",
+    title: "Provider migration review",
+    detail: "Yesterday",
+    session: sessions[1],
+  },
+  {
+    id: "file:shared-readme",
+    kind: "file",
+    title: "README.md",
+    detail: "../shared-ui/README.md",
+    file: { id: "shared-readme", name: "README.md" },
+  },
+  {
+    id: "session:desktop-navigation-polish",
+    kind: "session",
+    title: "Desktop navigation polish",
+    detail: "Aug 26",
+    session: sessions[2],
+  },
+];
+
+const contentItemForSession = (session) => ({
+  id: `session:${session.id ?? session.title}`,
+  kind: "session",
+  title: session.title,
+  detail: session.time ?? "Recently viewed",
+  session,
+});
+
+const contentItemForFile = (file) => {
+  const document = editorDocuments[file.id] ?? {
+    name: file.name,
+    path: file.path,
+  };
+  return {
+    id: `file:${file.id ?? file.path}`,
+    kind: "file",
+    title: document.name ?? file.name,
+    detail: document.path ?? file.path,
+    file,
+  };
+};
+
+export function ContentSwitcher({
+  currentItem,
+  items = initialRecentContent,
+  onSelect,
+  initialOpen = false,
+}) {
+  const [open, setOpen] = useState(initialOpen);
+  const switcherRef = useRef(null);
+  const recentItems = items
+    .filter((item) => item.id !== currentItem.id)
+    .slice(0, 20);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handlePointerDown = (event) => {
+      if (!switcherRef.current?.contains(event.target)) setOpen(false);
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="content-switcher" ref={switcherRef}>
+      <button
+        type="button"
+        className={`content-switcher-trigger ${open ? "is-open" : ""}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Current ${currentItem.kind}: ${currentItem.title}. Show recently viewed content`}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Icon name={currentItem.kind === "file" ? "file-text" : "message"} size={13} />
+        <strong>{currentItem.title}</strong>
+        <Icon name="chevron-right" size={11} className="content-switcher-chevron" />
+      </button>
+      {open && (
+        <div
+          className="content-switcher-menu"
+          role="menu"
+          aria-label="Recently viewed files and sessions"
+        >
+          <div className="content-switcher-heading">
+            <span>RECENTLY VIEWED</span>
+            <small>{recentItems.length} / 20</small>
+          </div>
+          {recentItems.length ? (
+            <div className="content-switcher-list">
+              {recentItems.map((item) => (
+                <button
+                  type="button"
+                  className={`content-switcher-item is-${item.kind}`}
+                  role="menuitem"
+                  key={item.id}
+                  onClick={() => {
+                    onSelect?.(item);
+                    setOpen(false);
+                  }}
+                >
+                  <Icon name={item.kind === "file" ? "file-text" : "message"} size={14} />
+                  <span>
+                    <strong>{item.title}</strong>
+                    <small title={`${item.kind === "file" ? "File" : "Session"} · ${item.detail}`}>
+                      <b>{item.kind === "file" ? "FILE" : "SESSION"}</b>
+                      <span> · {item.detail}</span>
+                    </small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="content-switcher-empty">
+              <Icon name="activity" size={18} />
+              <span>No recently viewed files or sessions</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProjects }) {
   const [navigation, setNavigation] = useState("sessions");
   const [activeFile, setActiveFile] = useState(null);
+  const [activeSessionId, setActiveSessionId] = useState(sessions[0].id);
+  const [currentContent, setCurrentContent] = useState(() => contentItemForSession(sessions[0]));
+  const [recentContent, setRecentContent] = useState(initialRecentContent);
   const [reviewVisible, setReviewVisible] = useState(true);
   const [drawer, setDrawer] = useState("tools");
   const [archiveRequest, setArchiveRequest] = useState(null);
   const toggleDrawer = (next) => setDrawer((current) => (current === next ? null : next));
+  const selectContent = (item) => {
+    setCurrentContent(item);
+    setActiveFile(item.kind === "file" ? item.file : null);
+    if (item.kind === "session") setActiveSessionId(item.session?.id ?? item.session?.title);
+    setRecentContent((current) =>
+      [item, ...current.filter((entry) => entry.id !== item.id)].slice(0, 20),
+    );
+  };
   return (
     <div className="workspace-window">
       <div className="workspace-titlebar">
         <TrafficLights />
         <ProjectSwitcher projects={projectSwitcherProjects} />
-        <span>Workspace information architecture</span>
+        <ContentSwitcher
+          currentItem={currentContent}
+          items={recentContent}
+          onSelect={selectContent}
+        />
         <div className="workspace-titlebar-actions">
           <IconButton
             icon="settings"
@@ -2266,15 +2449,16 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
             {navigation === "sessions" && (
               <SessionPanel
                 compact
+                selectedSessionId={activeSessionId}
                 onArchiveRequest={setArchiveRequest}
-                onSelectSession={() => setActiveFile(null)}
+                onSelectSession={(session) => selectContent(contentItemForSession(session))}
               />
             )}
             {navigation === "explorer" && (
               <ExplorerPanel
                 compact
-                selectedFileId={activeFile?.id}
-                onFileSelect={setActiveFile}
+                selectedFileId={activeFile?.id ?? ""}
+                onFileSelect={(file) => selectContent(contentItemForFile(file))}
               />
             )}
             {activeFile ? (

@@ -74,6 +74,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (SelectedProject?.ProjectId == project.ProjectId || !await EnsureSdkReadyAsync()) return;
         CloseSubscription();
         ClearSession();
+        ClearRecentContents();
         await RunAsync(async () =>
         {
             await _sdk!.SelectProjectAsync(project.ProjectId);
@@ -223,6 +224,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (SelectedSession?.SessionId == session.SessionId
             && (_loadedSessionId == session.SessionId || IsSessionLoading))
         {
+            RememberRecentSession(session);
             var reason = _loadedSessionId == session.SessionId ? "already_loaded" : "already_loading";
             LogSession(operationId, session.SessionId, $"select.return reason={reason} version={_sessionLoadVersion}");
             return;
@@ -237,6 +239,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         // that the resulting selection callback cannot start a second load and subscription.
         IsSessionLoading = true;
         SelectedSession = session;
+        RememberRecentSession(session);
         LogSession(operationId, session.SessionId, $"select.selected updated={SelectedSession.SessionId}");
         StatusText = "Loading session...";
         var sessionId = session.SessionId;

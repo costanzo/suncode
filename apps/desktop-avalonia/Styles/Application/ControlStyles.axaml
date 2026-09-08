@@ -13,4 +13,5 @@
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/ToggleSwitchStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SCModalStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/ProjectSwitcherStyles.axaml" />
+  <StyleInclude Source="avares://SunCode/Styles/Application/Controls/ContentSwitcherStyles.axaml" />
 </Styles>

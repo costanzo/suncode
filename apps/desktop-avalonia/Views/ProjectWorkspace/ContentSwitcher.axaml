@@ -1,0 +1,164 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.ProjectWorkspace.ContentSwitcher"
+             x:DataType="vm:DesktopViewModel">
+  <Button x:Name="ContentSwitcherButton"
+          Classes="content-switcher-trigger"
+          MaxWidth="280"
+          IsVisible="{Binding HasCurrentContent}"
+          AutomationProperties.Name="Show recently viewed files and sessions">
+    <Grid ColumnDefinitions="14,5,*,5,11" VerticalAlignment="Center">
+      <Grid Grid.Column="0" Width="14" Height="14">
+        <svg:Svg Width="13"
+                 Height="13"
+                 Path="/Assets/icons/message.svg"
+                 Css="{DynamicResource IconSvgCss}"
+                 IsVisible="{Binding CurrentContentIsSession}"
+                 IsHitTestVisible="False" />
+        <svg:Svg Width="13"
+                 Height="13"
+                 Path="{Binding CurrentContentIconPath}"
+                 Css="{DynamicResource IconSvgCss}"
+                 IsVisible="{Binding CurrentContentIsFile}"
+                 IsHitTestVisible="False" />
+      </Grid>
+      <TextBlock Grid.Column="2"
+                 Text="{Binding CurrentContentTitle}"
+                 FontSize="12"
+                 FontWeight="SemiBold"
+                 TextTrimming="CharacterEllipsis"
+                 VerticalAlignment="Center" />
+      <svg:Svg x:Name="ContentSwitcherChevron"
+               Grid.Column="4"
+               Width="11"
+               Height="11"
+               Path="/Assets/icons/chevron-right.svg"
+               Css="{DynamicResource IconSvgCss}"
+               RenderTransformOrigin="50%,50%"
+               IsHitTestVisible="False">
+        <svg:Svg.RenderTransform>
+          <RotateTransform Angle="90" />
+        </svg:Svg.RenderTransform>
+      </svg:Svg>
+    </Grid>
+    <Button.Flyout>
+      <Flyout Placement="Bottom"
+              ShowMode="Standard"
+              FlyoutPresenterClasses="content-switcher-flyout"
+              Opened="ContentFlyoutOpened"
+              Closed="ContentFlyoutClosed">
+        <Border Width="372" Padding="6">
+          <Grid RowDefinitions="28,*">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="8,0">
+              <TextBlock Grid.Column="0"
+                         Classes="eyebrow"
+                         Text="RECENTLY VIEWED"
+                         VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1"
+                         Text="{Binding RecentContentCountText}"
+                         Classes="mono"
+                         FontSize="9"
+                         Foreground="{DynamicResource TextDisabledBrush}"
+                         VerticalAlignment="Center" />
+            </Grid>
+
+            <Grid Grid.Row="1">
+              <ScrollViewer MaxHeight="440"
+                            HorizontalContentAlignment="Stretch"
+                            HorizontalScrollBarVisibility="Disabled"
+                            VerticalScrollBarVisibility="Auto"
+                            IsVisible="{Binding HasRecentContentOptions}">
+                <ItemsControl ItemsSource="{Binding RecentContentOptions}"
+                              HorizontalAlignment="Stretch">
+                  <ItemsControl.Styles>
+                    <Style Selector="ContentPresenter">
+                      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    </Style>
+                  </ItemsControl.Styles>
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel HorizontalAlignment="Stretch" Spacing="2" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="models:RecentContentItem">
+                      <Button Classes="content-switcher-menu-item"
+                              MinHeight="44"
+                              Padding="8,5"
+                              HorizontalAlignment="Stretch"
+                              HorizontalContentAlignment="Stretch"
+                              CommandParameter="{Binding}"
+                              Click="OpenRecentContent">
+                        <Grid ColumnDefinitions="24,8,*" HorizontalAlignment="Stretch">
+                          <Grid Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center">
+                            <Border Background="{DynamicResource ContentSessionSurfaceBrush}"
+                                    CornerRadius="6"
+                                    IsVisible="{Binding IsSession}">
+                              <svg:Svg Width="14"
+                                       Height="14"
+                                       Path="/Assets/icons/message.svg"
+                                       Css="{DynamicResource ContentSessionSvgCss}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                            </Border>
+                            <Border Background="{DynamicResource ContentFileSurfaceBrush}"
+                                    CornerRadius="6"
+                                    IsVisible="{Binding IsFile}">
+                              <svg:Svg Width="14"
+                                       Height="14"
+                                       Path="{Binding IconPath}"
+                                       Css="{DynamicResource ContentFileSvgCss}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                            </Border>
+                          </Grid>
+                          <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" />
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                              <TextBlock Text="SESSION"
+                                         Classes="mono"
+                                         FontSize="9"
+                                         FontWeight="SemiBold"
+                                         Foreground="{DynamicResource ContentSessionBrush}"
+                                         IsVisible="{Binding IsSession}" />
+                              <TextBlock Text="FILE"
+                                         Classes="mono"
+                                         FontSize="9"
+                                         FontWeight="SemiBold"
+                                         Foreground="{DynamicResource ContentFileBrush}"
+                                         IsVisible="{Binding IsFile}" />
+                              <TextBlock Text="·" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+                              <TextBlock Text="{Binding Detail}"
+                                         Classes="mono"
+                                         FontSize="10"
+                                         Foreground="{DynamicResource TextMutedBrush}"
+                                         TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                          </StackPanel>
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+
+              <StackPanel Margin="8,10" Orientation="Horizontal" Spacing="8" IsVisible="{Binding !HasRecentContentOptions}">
+                <svg:Svg Width="18" Height="18" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Text="No recently viewed files or sessions"
+                           FontSize="11"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           VerticalAlignment="Center" />
+              </StackPanel>
+            </Grid>
+          </Grid>
+        </Border>
+      </Flyout>
+    </Button.Flyout>
+  </Button>
+</UserControl>

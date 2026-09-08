@@ -81,14 +81,11 @@
                                      HorizontalAlignment="Left"
                                      VerticalAlignment="Center"
                                      Margin="84,0,0,0" />
-          <TextBlock Grid.Column="1"
-                     Classes="window-title"
-                     Text="{Binding SessionTitle}"
-                     TextTrimming="CharacterEllipsis"
-                     HorizontalAlignment="Center"
-                     VerticalAlignment="Center"
-                     MaxWidth="260"
-                     IsVisible="{Binding HasSelectedSession}" />
+          <workspace:ContentSwitcher x:Name="ContentSwitcherControl"
+                                     Grid.Column="1"
+                                     MaxWidth="280"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center" />
           <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="2" Margin="0,0,6,0">
             <Button Classes="titlebar" Width="26" Height="28" Click="OpenSettings" ToolTip.Tip="Open settings" AutomationProperties.Name="Open settings">
               <svg:Svg Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />

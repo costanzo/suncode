@@ -35,5 +35,9 @@
   --editor-syntax-number: #a14b45;
   --editor-syntax-comment: #77828c;
   --editor-syntax-punctuation: #53616d;
+  --content-session: #6269a8;
+  --content-session-surface: #eceefa;
+  --content-file: #347866;
+  --content-file-surface: #e5f2ed;
   --shadow-popover: 0 16px 36px rgba(22, 38, 52, 0.14);
 }

@@ -157,6 +157,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             _selectedSession = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SessionTitle));
+            NotifyCurrentContentChanged();
             OnPropertyChanged(nameof(CanSubmit));
             OnPropertyChanged(nameof(CanCompose));
             OnPropertyChanged(nameof(CanChooseModel));

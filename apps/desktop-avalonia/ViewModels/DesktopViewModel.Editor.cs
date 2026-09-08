@@ -24,6 +24,7 @@ public sealed partial class DesktopViewModel
             OnPropertyChanged(nameof(EditorPath));
             OnPropertyChanged(nameof(EditorLanguageLabel));
             OnPropertyChanged(nameof(EditorIconPath));
+            NotifyCurrentContentChanged();
         }
     }
 
@@ -74,6 +75,7 @@ public sealed partial class DesktopViewModel
         var projectId = SelectedProject.ProjectId;
         var loadVersion = Interlocked.Increment(ref _editorLoadVersion);
         SelectedEditorFile = node;
+        RememberRecentFile(node);
         EditorContent = string.Empty;
         EditorError = string.Empty;
         EditorState = "loading";

@@ -63,6 +63,12 @@ const paths = {
       <path d="M14 3v5h4" />
     </>
   ),
+  message: (
+    <>
+      <path d="M4 5h16v11H9l-5 4v-4Z" />
+      <path d="M8 9h8M8 12h5" />
+    </>
+  ),
   "file-code": (
     <>
       <path d="M6 3h8l4 4v14H6z" />
