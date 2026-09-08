@@ -86,12 +86,17 @@ public sealed partial class App : Application
 
     internal async Task OpenProjectWindowAsync(ProjectItem project)
     {
-        if (_projectWindows.TryGetValue(project.ProjectId, out var existing))
+        var disposition = ResolveProjectWindowDisposition(
+            _projectWindows.ContainsKey(project.ProjectId),
+            _openingProjects.Contains(project.ProjectId));
+        if (disposition == ProjectWindowDisposition.ActivateExisting &&
+            _projectWindows.TryGetValue(project.ProjectId, out var existing))
         {
             existing.Show();
             existing.Activate();
             return;
         }
+        if (disposition == ProjectWindowDisposition.AwaitOpening) return;
         if (!_openingProjects.Add(project.ProjectId)) return;
 
         var viewModel = new DesktopViewModel();
@@ -193,7 +198,10 @@ public sealed partial class App : Application
         NativeMenu.SetMenu(this, menu);
     }
 
-    internal bool IsProjectOpen(string projectId) => _projectWindows.ContainsKey(projectId);
+    internal static ProjectWindowDisposition ResolveProjectWindowDisposition(bool isOpen, bool isOpening) =>
+        isOpen
+            ? ProjectWindowDisposition.ActivateExisting
+            : isOpening ? ProjectWindowDisposition.AwaitOpening : ProjectWindowDisposition.OpenNew;
 
     private void SetOtherWindowsEnabled(Window owner, bool enabled)
     {
@@ -215,4 +223,11 @@ public sealed partial class App : Application
             _hubWindow.Activate();
         }
     }
+}
+
+internal enum ProjectWindowDisposition
+{
+    OpenNew,
+    ActivateExisting,
+    AwaitOpening
 }

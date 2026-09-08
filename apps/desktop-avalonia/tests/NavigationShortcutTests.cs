@@ -49,4 +49,11 @@ public sealed class NavigationShortcutTests
     {
         Assert.Equal(expected, WorkspaceWindow.UsesMaximizedStateForTitleBarDoubleTap(isMacOS));
     }
+
+    [Fact]
+    public void ProjectSwitcherButtonDoesNotStartTitleBarDragging()
+    {
+        Assert.True(WorkspaceWindow.OriginatesFromButton(new Button()));
+        Assert.False(WorkspaceWindow.OriginatesFromButton(new Border()));
+    }
 }

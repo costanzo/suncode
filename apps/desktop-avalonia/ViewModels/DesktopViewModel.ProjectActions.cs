@@ -63,6 +63,12 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
+    public async Task RefreshProjectsAsync()
+    {
+        if (!await EnsureSdkReadyAsync()) return;
+        await RunAsync(LoadProjectsAsync);
+    }
+
     public async Task SelectProjectAsync(ProjectItem project)
     {
         if (SelectedProject?.ProjectId == project.ProjectId || !await EnsureSdkReadyAsync()) return;

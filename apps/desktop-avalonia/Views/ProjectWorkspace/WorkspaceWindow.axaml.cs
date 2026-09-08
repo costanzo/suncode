@@ -153,8 +153,7 @@ public sealed partial class WorkspaceWindow : Window
         {
             var recent = new NativeMenuItem
             {
-                Header = string.IsNullOrWhiteSpace(project.DisplayName) ? project.CanonicalRoot : project.DisplayName,
-                IsEnabled = Application.Current is not App app || !app.IsProjectOpen(project.ProjectId)
+                Header = string.IsNullOrWhiteSpace(project.DisplayName) ? project.CanonicalRoot : project.DisplayName
             };
             recent.Click += (_, _) =>
             {
@@ -248,7 +247,7 @@ public sealed partial class WorkspaceWindow : Window
 
     internal static bool UsesMaximizedStateForTitleBarDoubleTap(bool isMacOS) => isMacOS;
 
-    private static bool OriginatesFromButton(object? source) =>
+    internal static bool OriginatesFromButton(object? source) =>
         source is Button || source is Visual visual && visual.FindAncestorOfType<Button>() is not null;
 
     internal void MinimizeWindow() => WindowState = WindowState.Minimized;

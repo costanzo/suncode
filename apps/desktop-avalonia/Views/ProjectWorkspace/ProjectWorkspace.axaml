@@ -5,6 +5,7 @@
              xmlns:chat="using:SunCode.Desktop.Views.ProjectWorkspace.Chat"
              xmlns:navigation="using:SunCode.Desktop.Views.ProjectWorkspace.Navigation"
              xmlns:review="using:SunCode.Desktop.Views.ProjectWorkspace.Review"
+             xmlns:workspace="using:SunCode.Desktop.Views.ProjectWorkspace"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.ProjectWorkspace"
              x:DataType="vm:DesktopViewModel">
@@ -73,16 +74,12 @@
               <svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" />
             </Button>
           </StackPanel>
-          <TextBlock Grid.Column="0"
-                     Text="{Binding ProjectTitle}"
-                     FontSize="12"
-                     FontWeight="SemiBold"
-                     Foreground="{DynamicResource TextSecondaryBrush}"
-                     MaxWidth="180"
-                     TextTrimming="CharacterEllipsis"
-                     HorizontalAlignment="Left"
-                     VerticalAlignment="Center"
-                     Margin="90,0,0,0" />
+          <workspace:ProjectSwitcher x:Name="ProjectSwitcherControl"
+                                     Grid.Column="0"
+                                     MaxWidth="200"
+                                     HorizontalAlignment="Left"
+                                     VerticalAlignment="Center"
+                                     Margin="84,0,0,0" />
           <TextBlock Grid.Column="1"
                      Classes="window-title"
                      Text="{Binding SessionTitle}"

@@ -30,6 +30,8 @@ public sealed partial class ProjectWorkspace : UserControl
         ChatArea.ExpandedComposerRequested += ShowExpandedComposer;
         ChatArea.LongUserMessageRequested += ShowLongUserMessage;
         ChatArea.ToolDetailRequested += ShowToolActivity;
+        ProjectSwitcherControl.OpenProjectRequested += OpenProjectRequested;
+        ProjectSwitcherControl.ProjectRequested += ProjectRequested;
     }
 
     private WorkspaceWindow? Owner => TopLevel.GetTopLevel(this) as WorkspaceWindow;
@@ -361,6 +363,14 @@ public sealed partial class ProjectWorkspace : UserControl
     }
 
     private void OpenSettings(object? sender, RoutedEventArgs e) => Owner?.ShowSettings();
+    private async void OpenProjectRequested(object? sender, EventArgs e)
+    {
+        if (Owner is { } owner) await owner.OpenProjectPickerAsync();
+    }
+    private async void ProjectRequested(ProjectItem project)
+    {
+        if (Owner is { } owner) await owner.OpenProjectAsync(project);
+    }
     private void CloseProjectWindow(object? sender, RoutedEventArgs e) => Owner?.Close();
     private void MinimizeWindow(object? sender, RoutedEventArgs e) => Owner?.MinimizeWindow();
     private void ToggleFullScreen(object? sender, RoutedEventArgs e) => Owner?.ToggleFullScreen();
