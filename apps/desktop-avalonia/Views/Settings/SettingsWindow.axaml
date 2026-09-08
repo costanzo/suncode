@@ -115,6 +115,12 @@
                 <TextBlock Grid.Column="1" Text="Network" VerticalAlignment="Center" />
               </Grid>
             </Button>
+            <Button x:Name="McpNavigation" Classes="navigation" Click="ShowMcp">
+              <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/server.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="MCP servers" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
             <Button x:Name="LoggingNavigation" Classes="navigation" Click="ShowLogging">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/assets.svg" Css="{DynamicResource IconSvgCss}" />
@@ -184,6 +190,8 @@
         <settings:ShortcutsSettingsControl x:Name="ShortcutsPage" IsVisible="False" />
 
         <settings:LoggingSettingsControl x:Name="LoggingPage" IsVisible="False" />
+
+        <settings:McpServersSettingsControl x:Name="McpPage" IsVisible="False" />
 
         <Grid x:Name="ProvidersPage" IsVisible="False">
           <settings:ModelProviderSettingsControl x:Name="ProviderManager"

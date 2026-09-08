@@ -15,13 +15,21 @@ public sealed partial class DialogWindow : Window
         SetIcon();
     }
 
-    public DialogWindow(string title, string description, string target, Action confirm)
+    public DialogWindow(
+        string title,
+        string description,
+        string target,
+        Action confirm,
+        string targetLabel = "SESSION",
+        string confirmLabel = "Archive session")
     {
         InitializeComponent();
         _confirm = confirm;
         TitleText.Text = title;
         DescriptionText.Text = description;
         TargetText.Text = target;
+        TargetLabelText.Text = targetLabel;
+        ConfirmButton.Content = confirmLabel;
         SetIcon();
     }
 

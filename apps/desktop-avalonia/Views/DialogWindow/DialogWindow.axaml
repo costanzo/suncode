@@ -16,7 +16,7 @@
       <TextBlock x:Name="DescriptionText" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
       <Border Padding="12,10" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
         <StackPanel Spacing="4">
-          <TextBlock Text="SESSION" Classes="eyebrow" />
+          <TextBlock x:Name="TargetLabelText" Text="SESSION" Classes="eyebrow" />
           <TextBlock x:Name="TargetText" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" />
         </StackPanel>
       </Border>

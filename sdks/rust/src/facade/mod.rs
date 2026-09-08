@@ -24,6 +24,7 @@ use crate::types::*;
 
 mod checkpoints;
 mod lifecycle;
+mod mcp;
 mod project_sessions;
 mod projects;
 mod sessions;
@@ -241,12 +242,13 @@ where
     configure_providers(&mut providers)
         .map_err(|error| BusinessError::new("provider_registration_failed", error.to_string()))?;
     let providers = Arc::new(providers);
-    let agent = Agent::new(
+    let agent = Agent::new_with_mcp_configuration(
         store.clone(),
         providers.clone(),
         operations.clone(),
         events.clone(),
         config.non_interactive,
+        config.data_dir.clone(),
     );
     let state = AgentState {
         store,

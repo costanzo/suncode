@@ -20,6 +20,16 @@ const sessions = [
   { title: "Desktop navigation polish", time: "Aug 26", status: "idle" },
 ];
 
+const workspaceRecentProjects = [
+  { id: "suncode", name: "suncode", path: "~/Projects/suncode", current: true },
+  {
+    id: "avalonia-desktop",
+    name: "Avalonia desktop",
+    path: "~/Projects/suncode/apps/desktop-avalonia",
+  },
+  { id: "shared-ui", name: "shared-ui", path: "~/Projects/shared-ui" },
+];
+
 const sessionStatusLabels = {
   running: "Agent running",
   approval: "Waiting for approval",
@@ -455,6 +465,7 @@ export function SessionPanel({
   standalone = false,
   initialSessions = sessions,
   onArchiveRequest,
+  onSelectSession,
 }) {
   const [selected, setSelected] = useState(0);
   const [items, setItems] = useState(initialSessions);
@@ -522,7 +533,10 @@ export function SessionPanel({
             <button
               type="button"
               className={`workspace-session ${selected === index ? "is-selected" : ""}`}
-              onClick={() => setSelected(index)}
+              onClick={() => {
+                setSelected(index);
+                onSelectSession?.(session);
+              }}
             >
               <span className="workspace-session-pin">
                 {session.pinned && <Icon name="pin" size={12} />}
@@ -651,6 +665,8 @@ export function ExplorerPanel({
   standalone = false,
   hasDependency = true,
   constrained = false,
+  onFileSelect,
+  selectedFileId,
 }) {
   const roots = constrained
     ? [constrainedProjectRoot, constrainedDependencyRoot]
@@ -682,6 +698,10 @@ export function ExplorerPanel({
           : ["project-root", "apps", "desktop", "views", "dependencies", "shared"],
       ),
   );
+  const [localSelectedFileId, setLocalSelectedFileId] = useState(
+    () => nodes.find((node) => node.kind === "file" && node.selected)?.id ?? null,
+  );
+  const activeFileId = selectedFileId ?? localSelectedFileId;
   const visibleNodes = nodes.filter((node) => {
     let parentId = node.parent;
     while (parentId) {
@@ -732,9 +752,9 @@ export function ExplorerPanel({
               ? "project"
               : node.kind === "dependencies"
                 ? "dependencies"
-                : isContainer
-                  ? "folder"
-                  : fileIcon;
+              : isContainer
+                ? "folder"
+                : fileIcon;
           return (
             <button
               key={node.id}
@@ -742,10 +762,17 @@ export function ExplorerPanel({
               role="treeitem"
               aria-level={node.depth + 1}
               aria-expanded={isContainer ? expanded.has(node.id) : undefined}
-              aria-selected={node.selected || undefined}
-              className={`workspace-tree-row ${node.selected ? "is-selected" : ""} ${isDependencyNode ? "is-dependency" : ""} ${node.kind === "dependencies" ? "is-dependency-root" : ""} ${node.kind === "workspace" ? "is-workspace-root" : ""}`}
+              aria-selected={activeFileId === node.id || undefined}
+              className={`workspace-tree-row ${activeFileId === node.id ? "is-selected" : ""} ${isDependencyNode ? "is-dependency" : ""} ${node.kind === "dependencies" ? "is-dependency-root" : ""} ${node.kind === "workspace" ? "is-workspace-root" : ""}`}
               style={{ "--tree-depth": node.depth }}
-              onClick={() => toggleNode(node)}
+              onClick={() => {
+                if (isContainer) {
+                  toggleNode(node);
+                  return;
+                }
+                setLocalSelectedFileId(node.id);
+                onFileSelect?.(node);
+              }}
             >
               {isContainer ? (
                 <Icon
@@ -766,6 +793,196 @@ export function ExplorerPanel({
         })}
       </div>
     </aside>
+  );
+}
+
+const editorDocuments = {
+  "workspace-file": {
+    name: "ProjectWorkspace.axaml",
+    path: "apps/desktop-avalonia/Views/Projects/ProjectWorkspace.axaml",
+    language: "AXAML",
+  },
+  "shared-readme": {
+    name: "README.md",
+    path: "../shared-ui/README.md",
+    language: "Markdown",
+  },
+  "stress-dropdown": {
+    name: "ModelProviderDropdown.jsx",
+    path: "frontend/components/selection/ModelProviderDropdown.jsx",
+    language: "JavaScript JSX",
+  },
+};
+
+const editorCodeLines = [
+  [
+    ["punctuation", "<"],
+    ["keyword", "UserControl"],
+    ["punctuation", " "],
+    ["type", "xmlns"],
+    ["punctuation", "=\""],
+    ["string", "https://github.com/avaloniaui"],
+    ["punctuation", "\""],
+    ["punctuation", ">"],
+  ],
+  [
+    ["punctuation", "  <"],
+    ["keyword", "Grid"],
+    ["punctuation", " "],
+    ["type", "RowDefinitions"],
+    ["punctuation", "=\""],
+    ["string", "36,*,20"],
+    ["punctuation", "\" />"],
+  ],
+  [["comment", "  <!-- Conversation and editor share this content slot. -->"]],
+  [
+    ["punctuation", "  <"],
+    ["keyword", "Grid"],
+    ["punctuation", " "],
+    ["type", "Grid.Row"],
+    ["punctuation", "=\""],
+    ["number", "1"],
+    ["punctuation", "\">"],
+  ],
+  [
+    ["punctuation", "    <"],
+    ["keyword", "chat:ChatArea"],
+    ["punctuation", " "],
+    ["type", "IsVisible"],
+    ["punctuation", "=\""],
+    ["string", "{Binding IsConversationVisible}"],
+    ["punctuation", " />"],
+  ],
+  [
+    ["punctuation", "    <"],
+    ["keyword", "editor:ReadOnlyEditor"],
+    ["punctuation", " "],
+    ["type", "IsVisible"],
+    ["punctuation", "=\""],
+    ["string", "{Binding IsEditorVisible}"],
+    ["punctuation", " />"],
+  ],
+  [["punctuation", "  </"], ["keyword", "Grid"], ["punctuation", ">"]],
+  [
+    ["punctuation", "  <"],
+    ["keyword", "TextBlock"],
+    ["punctuation", " "],
+    ["type", "Text"],
+    ["punctuation", "=\""],
+    ["string", "READ ONLY"],
+    ["punctuation", "\" />"],
+  ],
+  [["punctuation", "</"], ["keyword", "UserControl"], ["punctuation", ">"]],
+];
+
+const markdownEditorLines = [
+  [["keyword", "# Shared UI"]],
+  [],
+  [["punctuation", "This package contains the "], ["type", "desktop component foundations"], ["punctuation", "."]],
+  [],
+  [["keyword", "## Usage"]],
+  [],
+  [["punctuation", "- "], ["string", "Import semantic tokens from the shared theme."]],
+  [["punctuation", "- "], ["string", "Keep project files read-only when opened as dependencies."]],
+];
+
+const jsxEditorLines = [
+  [["keyword", "export function"], ["punctuation", " "], ["type", "ModelProviderDropdown"], ["punctuation", "({ models }) {"]],
+  [["keyword", "  const"], ["punctuation", " enabled = models.filter((model) => model.enabled);"]],
+  [["keyword", "  return"], ["punctuation", " ("]],
+  [["punctuation", "    <"], ["type", "SingleDropdown"], ["punctuation", " options={enabled} ariaLabel="], ["string", "\"Model provider\""], ["punctuation", " />"]],
+  [["punctuation", "  );"]],
+  [["punctuation", "}"]],
+];
+
+export function EditorPanel({
+  file,
+  state = "ready",
+  compact = false,
+  standalone = false,
+  constrained = false,
+}) {
+  const document = editorDocuments[file?.id] ?? editorDocuments["workspace-file"];
+  const documentLines =
+    document.language === "Markdown"
+      ? markdownEditorLines
+      : document.language === "JavaScript JSX"
+        ? jsxEditorLines
+        : editorCodeLines;
+  const stateLabel =
+    state === "loading"
+      ? "Loading file"
+      : state === "error"
+        ? "Unable to read file"
+        : state === "empty"
+          ? "Empty document"
+          : "Read-only document";
+  return (
+    <section
+      className={`workspace-panel workspace-editor ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""} ${constrained ? "is-constrained" : ""} is-${state}`}
+      aria-label="Read-only file editor"
+    >
+      <header className="workspace-editor-header">
+        <div className="workspace-editor-file">
+          <Icon
+            name={
+              state === "error"
+                ? "file-text"
+                : document.language === "AXAML"
+                  ? "file-config"
+                  : document.language === "Markdown"
+                    ? "file-markdown"
+                    : "file-code"
+            }
+            size={16}
+          />
+          <span>
+            <strong>{document.name}</strong>
+            <small title={document.path}>{document.path}</small>
+          </span>
+        </div>
+        <div className="workspace-editor-meta">
+          <span>{document.language}</span>
+          <b>READ ONLY</b>
+        </div>
+      </header>
+      {state === "ready" && (
+        <pre
+          className="workspace-editor-document"
+          aria-label={`${document.name} source`}
+          aria-readonly="true"
+          tabIndex="0"
+        >
+          <code>
+            {documentLines.map((line, index) => (
+              <span className="workspace-editor-line" key={`${document.name}-${index + 1}`}>
+                <span className="workspace-editor-line-number">{index + 1}</span>
+                <span className="workspace-editor-line-code">
+                  {line.map(([tone, text], tokenIndex) => (
+                    <span className={`workspace-editor-token is-${tone}`} key={`${index}-${tokenIndex}`}>
+                      {text}
+                    </span>
+                  ))}
+                </span>
+              </span>
+            ))}
+          </code>
+        </pre>
+      )}
+      {state !== "ready" && (
+        <div className={`workspace-editor-state is-${state}`} role={state === "error" ? "alert" : "status"}>
+          <Icon name={state === "error" ? "close" : state === "empty" ? "file-text" : "activity"} size={24} />
+          <strong>{stateLabel}</strong>
+          <span>
+            {state === "loading"
+              ? "Reading the selected project file..."
+              : state === "error"
+                ? "The file could not be read within the project boundary."
+                : "This file contains no text to display."}
+          </span>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1909,8 +2126,84 @@ export function ToolActivityPanel({ onClose, standalone = false, state = "runnin
   </section>;
 }
 
-export function WorkspaceWindow() {
+export function ProjectSwitcher({ projects = workspaceRecentProjects }) {
+  const [open, setOpen] = useState(true);
+  const switcherRef = useRef(null);
+  const currentProject = projects.find((project) => project.current) ?? projects[0] ?? { name: "No project", path: "" };
+
+  const closeMenu = () => setOpen(false);
+  useEffect(() => {
+    if (!open) return undefined;
+    const handlePointerDown = (event) => {
+      if (!switcherRef.current?.contains(event.target)) closeMenu();
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") closeMenu();
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="project-switcher" ref={switcherRef}>
+      <button
+        type="button"
+        className={`project-switcher-trigger ${open ? "is-open" : ""}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Current project: ${currentProject.name}. Switch project`}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Icon name="folder" size={14} />
+        <strong>{currentProject.name}</strong>
+        <Icon name="chevron-right" size={12} className="project-switcher-chevron" />
+      </button>
+      {open && (
+        <div className="project-switcher-menu" role="menu" aria-label="Project actions">
+          <button type="button" className="project-switcher-action" role="menuitem" onClick={closeMenu}>
+            <Icon name="folder" size={14} />
+            <span>
+              <strong>Open project</strong>
+              <small>Choose a local folder…</small>
+            </span>
+            <Icon name="arrow" size={13} />
+          </button>
+          <div className="project-switcher-divider" role="separator" />
+          <div className="project-switcher-label">RECENT PROJECTS</div>
+          {projects.length ? (
+            <div className="project-switcher-list">
+              {projects.map((project) => (
+                <button
+                  type="button"
+                  className="project-switcher-project"
+                  role="menuitem"
+                  key={project.id}
+                  onClick={closeMenu}
+                >
+                  <Icon name="project" size={14} />
+                  <span>
+                    <strong>{project.name}</strong>
+                    <small>{project.path}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="project-switcher-empty">No recent projects</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProjects }) {
   const [navigation, setNavigation] = useState("sessions");
+  const [activeFile, setActiveFile] = useState(null);
   const [reviewVisible, setReviewVisible] = useState(true);
   const [drawer, setDrawer] = useState("tools");
   const [archiveRequest, setArchiveRequest] = useState(null);
@@ -1919,7 +2212,7 @@ export function WorkspaceWindow() {
     <div className="workspace-window">
       <div className="workspace-titlebar">
         <TrafficLights />
-        <strong className="workspace-project-title">suncode</strong>
+        <ProjectSwitcher projects={projectSwitcherProjects} />
         <span>Workspace information architecture</span>
         <div className="workspace-titlebar-actions">
           <IconButton
@@ -1971,10 +2264,29 @@ export function WorkspaceWindow() {
         <div className="workspace-main-stack">
           <div className="workspace-main-row">
             {navigation === "sessions" && (
-              <SessionPanel compact onArchiveRequest={setArchiveRequest} />
+              <SessionPanel
+                compact
+                onArchiveRequest={setArchiveRequest}
+                onSelectSession={() => setActiveFile(null)}
+              />
             )}
-            {navigation === "explorer" && <ExplorerPanel compact />}
-            <ConversationPanel compact state="content-updating" onViewChanges={() => setDrawer("git")} onOpenToolActivity={() => setDrawer("tools")} />
+            {navigation === "explorer" && (
+              <ExplorerPanel
+                compact
+                selectedFileId={activeFile?.id}
+                onFileSelect={setActiveFile}
+              />
+            )}
+            {activeFile ? (
+              <EditorPanel compact file={activeFile} />
+            ) : (
+              <ConversationPanel
+                compact
+                state="content-updating"
+                onViewChanges={() => setDrawer("git")}
+                onOpenToolActivity={() => setDrawer("tools")}
+              />
+            )}
             {reviewVisible && <ReviewPanel compact />}
           </div>
           {drawer === "git" && (

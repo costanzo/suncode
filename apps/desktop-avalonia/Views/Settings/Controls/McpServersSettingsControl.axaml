@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.McpServersSettingsControl"
+             x:DataType="vm:DesktopViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.mcp-note">
+      <Setter Property="Padding" Value="11,10" />
+      <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Border.mcp-row">
+      <Setter Property="MinHeight" Value="72" />
+      <Setter Property="Padding" Value="4,10" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="Button.mcp-action">
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Padding" Value="6" />
+    </Style>
+  </UserControl.Styles>
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Classes="settings-panel-content" MaxWidth="820">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18" Margin="0,0,0,4">
+        <StackPanel Spacing="4">
+          <TextBlock Text="MCP servers" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="Manage local and remote tools available to the embedded agent."
+                     FontSize="12" Foreground="{DynamicResource TextMutedBrush}" />
+        </StackPanel>
+        <Button Grid.Column="1" Classes="compact primary sc-button" Click="AddClicked">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <svg:Svg Width="14" Height="14" Path="/Assets/icons/plus.svg" Css="{DynamicResource AccentInkSvgCss}" />
+            <TextBlock Text="Add server" />
+          </StackPanel>
+        </Button>
+      </Grid>
+      <TextBlock Text="{Binding McpProjectContext}" Classes="mono" FontSize="10"
+                 Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,14" />
+      <Border Classes="mcp-note" Margin="0,0,0,20">
+        <Grid ColumnDefinitions="16,*" ColumnSpacing="9">
+          <svg:Svg Width="15" Height="15" Path="/Assets/icons/refresh.svg" Css="{DynamicResource AccentSvgCss}" />
+          <TextBlock Grid.Column="1"
+                     Text="Changes update existing sessions. The next model request uses the effective tool list."
+                     FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+        </Grid>
+      </Border>
+
+      <StackPanel IsVisible="{Binding McpHasServers}">
+        <Grid ColumnDefinitions="*,108,72,94" ColumnSpacing="12" MinHeight="31" Margin="4,0">
+          <TextBlock Text="SERVER" Classes="eyebrow" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Text="STATUS" Classes="eyebrow" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="2" Text="ENABLED" Classes="eyebrow" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="3" Text="ACTIONS" Classes="eyebrow" VerticalAlignment="Center" HorizontalAlignment="Right" />
+        </Grid>
+        <ItemsControl ItemsSource="{Binding McpServers}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="models:McpServerItem">
+              <Border Classes="mcp-row">
+                <Grid ColumnDefinitions="*,108,72,94" ColumnSpacing="12">
+                  <StackPanel Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding EndpointSummary}" Classes="mono" FontSize="10"
+                               Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Error}" FontSize="10" Foreground="{DynamicResource DangerBrush}"
+                               TextWrapping="Wrap" MaxLines="2" IsVisible="{Binding HasError}" />
+                  </StackPanel>
+                  <Grid Grid.Column="1" ColumnDefinitions="7,*" ColumnSpacing="7" VerticalAlignment="Center">
+                    <Ellipse Width="6" Height="6" Fill="{DynamicResource SuccessBrush}" IsVisible="{Binding IsConnected}" />
+                    <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsConnecting}" />
+                    <Ellipse Width="6" Height="6" Fill="{DynamicResource DangerBrush}" IsVisible="{Binding IsFailed}" />
+                    <Ellipse Width="6" Height="6" Fill="{DynamicResource TextMutedBrush}" IsVisible="{Binding IsInactive}" />
+                    <StackPanel Grid.Column="1" Spacing="3">
+                      <TextBlock Text="{Binding StatusLabel}" FontSize="10" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding StatusDetail}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+                    </StackPanel>
+                  </Grid>
+                  <ToggleSwitch Grid.Column="2" Classes="sc-toggle-switch settings-switch"
+                                IsChecked="{Binding Enabled, Mode=OneWay}"
+                                OnContent="On" OffContent="Off"
+                                IsEnabled="{Binding !IsPending}"
+                                Tag="{Binding}" Click="ToggleClicked" />
+                  <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Classes="mcp-action quiet" Tag="{Binding}" Click="RetryClicked"
+                            IsVisible="{Binding CanRetry}" ToolTip.Tip="Retry connection">
+                      <svg:Svg Width="14" Height="14" Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
+                    </Button>
+                    <Button Classes="mcp-action quiet" Tag="{Binding}" Click="EditClicked"
+                            IsEnabled="{Binding !IsPending}" ToolTip.Tip="Edit server">
+                      <svg:Svg Width="14" Height="14" Path="/Assets/icons/pencil.svg" Css="{DynamicResource IconSvgCss}" />
+                    </Button>
+                    <Button Classes="mcp-action quiet" Tag="{Binding}" Click="DeleteClicked"
+                            IsEnabled="{Binding !IsPending}" ToolTip.Tip="Delete server">
+                      <svg:Svg Width="14" Height="14" Path="/Assets/icons/trash-2.svg" Css="{DynamicResource IconSvgCss}" />
+                    </Button>
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+
+      <Border IsVisible="{Binding McpHasNoServers}" Padding="24" Margin="0,8,0,0"
+              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+        <StackPanel Spacing="7" HorizontalAlignment="Center">
+          <svg:Svg Width="22" Height="22" Path="/Assets/icons/server.svg" Css="{DynamicResource IconSvgCss}" />
+          <TextBlock Text="No MCP servers configured" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <TextBlock Text="Add a local process or remote endpoint to make its tools available."
+                     FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextAlignment="Center" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Margin="0,24,0,0" Padding="0,16,0,0">
+        <Grid ColumnDefinitions="17,*" ColumnSpacing="9">
+          <svg:Svg Width="15" Height="15" Path="/Assets/icons/lock.svg" Css="{DynamicResource WarningSvgCss}" />
+          <StackPanel Grid.Column="1" Spacing="4">
+            <TextBlock Text="MCP tools run outside SunCode's undo boundary" FontSize="11" FontWeight="SemiBold" />
+            <TextBlock Text="Tool calls still require policy approval, but changes made by an MCP server may not be reversible by SunCode."
+                       FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Grid>
+      </Border>
+      <TextBlock Text="{Binding McpStatusText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
+                 TextWrapping="Wrap" Margin="0,14,0,0" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

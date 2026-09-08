@@ -43,6 +43,8 @@ The React routes are the visual contract for review. The upper-right navigation 
 
 Feature views must consume semantic resources such as `AccentBrush`, `SurfaceRaisedBrush`, `TextSecondaryBrush`, `WarningSurfaceBrush`, and `DangerBorderBrush`. A view should not introduce a new raw color, shadow, radius, or control height without first adding it to the design tokens and both review pages.
 
+Desktop Workspace additionally exposes an Editor child route for Explorer file selection, read-only syntax highlighting, session-based return to Conversation, and loading, empty, failure, and constrained states.
+
 ## Asset Rules
 
 - Put source-imported product images, logos, illustrations, and reusable icons in `src/assets/`.

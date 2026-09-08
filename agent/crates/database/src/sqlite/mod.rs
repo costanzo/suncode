@@ -11,6 +11,7 @@ pub const TABLE_NAMES: &[&str] = &[
     "configuration",
     "llm_model",
     "llm_model_provider",
+    "mcp_server",
     "project",
     "project_dependency",
     "session",
@@ -38,6 +39,7 @@ const SCHEMA_SCRIPTS: &[&str] = &[
     include_str!("schema/session_image.sql"),
     include_str!("schema/llm_model_provider.sql"),
     include_str!("schema/llm_model.sql"),
+    include_str!("schema/mcp_server.sql"),
 ];
 
 const DATA_SCRIPTS: &[&str] = &[

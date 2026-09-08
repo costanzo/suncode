@@ -3,7 +3,7 @@ import { Icon } from "../../../../shared/Icon.jsx";
 import { TrafficLights } from "../../../../shared/TrafficLights.jsx";
 import "./titlebar.css";
 
-function WindowsWindowControls() {
+function WindowsWindowControls({ onClose }) {
   return (
     <div className="windows-window-controls" aria-label="Window controls">
       <button type="button" aria-label="Minimize window" title="Minimize">
@@ -17,6 +17,7 @@ function WindowsWindowControls() {
         className="windows-window-close"
         aria-label="Close window"
         title="Close"
+        onClick={onClose}
       >
         <Icon name="close" size={12} />
       </button>
@@ -24,11 +25,11 @@ function WindowsWindowControls() {
   );
 }
 
-export function NativeTitlebar({ platform, title, applicationName = "SunCode" }) {
+export function NativeTitlebar({ platform, title, applicationName = "SunCode", onClose }) {
   if (platform === "macos") {
     return (
       <div className="native-titlebar native-titlebar-macos">
-        <TrafficLights />
+        <TrafficLights onClose={onClose} />
         <strong>{title}</strong>
         <span className="native-titlebar-spacer" aria-hidden="true" />
       </div>
@@ -42,7 +43,7 @@ export function NativeTitlebar({ platform, title, applicationName = "SunCode" })
         <strong>{title}</strong>
         <span>{applicationName}</span>
       </div>
-      <WindowsWindowControls />
+      <WindowsWindowControls onClose={onClose} />
     </div>
   );
 }
@@ -53,6 +54,7 @@ export function NativeWindowFrame({
   applicationName,
   width,
   height,
+  onClose,
   children,
   className = "",
 }) {
@@ -65,7 +67,12 @@ export function NativeWindowFrame({
       className={`native-window-frame is-${platform} ${height ? "has-fixed-height" : ""} ${className}`}
       style={frameStyle}
     >
-      <NativeTitlebar platform={platform} title={title} applicationName={applicationName} />
+      <NativeTitlebar
+        platform={platform}
+        title={title}
+        applicationName={applicationName}
+        onClose={onClose}
+      />
       <div className="native-window-client">{children}</div>
     </div>
   );

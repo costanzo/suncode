@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::os::raw::{c_char, c_void};
 use suncode_agent::domain::{
     CheckpointItem, CheckpointManifest, Message, ProjectDependencyRecord, ProjectRecord,
@@ -9,7 +10,7 @@ use suncode_agent::domain::{
 use suncode_common::BusinessError;
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 4;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 5;
 pub type SdkResult<T> = Result<T, BusinessError>;
 pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
 
@@ -79,6 +80,90 @@ pub struct SettingUpdate {
     pub key: String,
     pub scope: String,
     pub scope_id: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpSecretChanges {
+    #[serde(default)]
+    pub set: BTreeMap<String, String>,
+    #[serde(default)]
+    pub remove: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum McpTransportRequest {
+    Stdio {
+        command: String,
+        #[serde(default)]
+        arguments: Vec<String>,
+        working_directory: suncode_data::McpWorkingDirectory,
+        #[serde(default)]
+        environment: Option<McpSecretChanges>,
+        startup_timeout_seconds: u64,
+        request_timeout_seconds: u64,
+    },
+    StreamableHttp {
+        url: String,
+        #[serde(default)]
+        headers: Option<McpSecretChanges>,
+        startup_timeout_seconds: u64,
+        request_timeout_seconds: u64,
+    },
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServerWriteRequest {
+    pub display_name: String,
+    pub transport: McpTransportRequest,
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub sort_order: i64,
+}
+
+fn default_enabled() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServerDto {
+    pub mcp_server_id: String,
+    pub display_name: String,
+    pub tool_prefix: String,
+    pub transport_type: String,
+    pub command: Option<String>,
+    pub arguments: Vec<String>,
+    pub working_directory: Option<suncode_data::McpWorkingDirectory>,
+    pub url: Option<String>,
+    pub environment_keys: Vec<String>,
+    pub header_keys: Vec<String>,
+    pub startup_timeout_seconds: u64,
+    pub request_timeout_seconds: u64,
+    pub enabled: bool,
+    pub sort_order: i64,
+    pub revision: u64,
+    pub runtime_status: suncode_agent::agent::McpRuntimeState,
+    pub tool_count: usize,
+    pub error: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServersResult {
+    pub servers: Vec<McpServerDto>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServerDeleteResult {
+    pub mcp_server_id: String,
+    pub removed: bool,
 }
 
 #[derive(Debug, Serialize)]

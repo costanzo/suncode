@@ -6,6 +6,9 @@ impl Agent {
         token: CancellationToken,
         provider: ModelRoute,
     ) -> Result<TurnResponse, BusinessError> {
+        self.mcp
+            .activate_project(&context.project_id, Path::new(&context.project_root))
+            .await?;
         let started = Instant::now();
         if let Some(message) = user_input {
             self.turn_state(&context, "admitted", None)?;
@@ -76,7 +79,7 @@ impl Agent {
             )?;
             let result = {
                 let (delta_sender, mut delta_receiver) = mpsc::unbounded_channel();
-                let tool_definitions = suncode_tool::definitions::all()
+                let mut tool_definitions = suncode_tool::definitions::all()
                     .into_iter()
                     .map(|definition| suncode_llm::ToolDefinition {
                         name: definition.name.into(),
@@ -84,6 +87,7 @@ impl Agent {
                         parameters: definition.parameters,
                     })
                     .collect::<Vec<_>>();
+                tool_definitions.extend(self.mcp.catalog(&context.project_id).await);
                 let provider_call = provider.provider.complete(
                     CompletionRequest {
                         messages: &llm_messages,

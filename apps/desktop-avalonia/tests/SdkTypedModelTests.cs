@@ -42,4 +42,27 @@ public sealed class SdkTypedModelTests
         Assert.Equal("project-1", project.ProjectId);
         Assert.Equal("Project", project.DisplayName);
     }
+
+    [Fact]
+    public void Serializes_mcp_transport_with_rust_discriminator_and_camel_case_fields()
+    {
+        var request = new McpServerWriteRequest(
+            "Local MCP",
+            new McpStdioTransportRequest(
+                "uvx",
+                ["mcp-server"],
+                "project",
+                new McpSecretChanges(
+                    new Dictionary<string, string> { ["TOKEN"] = "secret" },
+                    Array.Empty<string>())));
+
+        var json = JsonSerializer.Serialize(request, Options);
+        using var document = JsonDocument.Parse(json);
+        var transport = document.RootElement.GetProperty("transport");
+
+        Assert.Equal("stdio", transport.GetProperty("kind").GetString());
+        Assert.Equal("uvx", transport.GetProperty("command").GetString());
+        Assert.Equal("project", transport.GetProperty("workingDirectory").GetString());
+        Assert.Equal(15UL, transport.GetProperty("startupTimeoutSeconds").GetUInt64());
+    }
 }

@@ -8,7 +8,7 @@ const explorerGuides = {
     tabs: {
       actions: [
         "Expand the project root to browse the active project tree.",
-        "Select a file to focus it and inspect its path.",
+        "Select a file to open it in the Workspace read-only editor.",
         "Use the dependency root even when it contains no entries.",
       ],
       style: [
@@ -19,7 +19,7 @@ const explorerGuides = {
       logic: [
         "The project root is the opened directory and is always the first root.",
         "A dependency root is present even when no dependency is registered.",
-        "Only read-oriented tree navigation is represented in this surface.",
+        "File selection replaces Conversation with the read-only editor; folder selection only expands the tree.",
       ],
     },
   },
@@ -28,7 +28,7 @@ const explorerGuides = {
       actions: [
         "Expand Dependencies to inspect each registered read-only root.",
         "Use the path subtitle on a root row to identify its absolute location.",
-        "Select files in either the project or dependency tree for context.",
+        "Select files in either the project or dependency tree to inspect them in the editor.",
       ],
       style: [
         "Dependency rows use a lightly tinted background distinct from project rows.",

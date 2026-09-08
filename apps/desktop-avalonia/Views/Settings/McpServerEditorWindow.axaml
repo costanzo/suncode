@@ -1,0 +1,113 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SunCode.Desktop.Views.Settings.McpServerEditorWindow"
+        Title="Add MCP server"
+        Width="620" Height="610"
+        MinWidth="520" MinHeight="520"
+        Background="{DynamicResource SurfaceBrush}"
+        WindowDecorations="Full"
+        WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="StackPanel.mcp-field">
+      <Setter Property="Spacing" Value="6" />
+    </Style>
+    <Style Selector="StackPanel.mcp-field TextBlock.label">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBox.mono-input">
+      <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="FontSize" Value="11" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,*,Auto">
+    <StackPanel Margin="28,24,28,18" Spacing="4">
+      <TextBlock x:Name="HeadingText" Text="Add MCP server" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="Changes are persisted locally and reconciled with the embedded agent immediately."
+                 FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+      <Grid Margin="28,0,28,20" ColumnDefinitions="*,*" ColumnSpacing="18" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="16">
+        <StackPanel Classes="mcp-field">
+          <TextBlock Classes="label" Text="Server name" />
+          <TextBox x:Name="ServerNameInput" PlaceholderText="GitHub" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Classes="mcp-field">
+          <TextBlock Classes="label" Text="Transport" />
+          <ComboBox x:Name="TransportSelector" SelectionChanged="TransportChanged">
+            <ComboBoxItem Content="Local process (stdio)" Tag="stdio" />
+            <ComboBoxItem Content="Remote (Streamable HTTP)" Tag="streamable_http" />
+          </ComboBox>
+        </StackPanel>
+
+        <StackPanel x:Name="StdioCommandField" Grid.Row="1" Grid.ColumnSpan="2" Classes="mcp-field">
+          <TextBlock Classes="label" Text="Executable" />
+          <TextBox x:Name="CommandInput" Classes="mono-input" PlaceholderText="uvx" />
+        </StackPanel>
+        <StackPanel x:Name="HttpUrlField" Grid.Row="1" Grid.ColumnSpan="2" Classes="mcp-field" IsVisible="False">
+          <TextBlock Classes="label" Text="Server URL" />
+          <TextBox x:Name="UrlInput" Classes="mono-input" PlaceholderText="https://mcp.example.com/v1" />
+        </StackPanel>
+
+        <StackPanel x:Name="WorkingDirectoryField" Grid.Row="2" Classes="mcp-field">
+          <TextBlock Classes="label" Text="Working directory" />
+          <ComboBox x:Name="WorkingDirectorySelector">
+            <ComboBoxItem Content="Project directory" Tag="project" />
+            <ComboBoxItem Content="Application data directory" Tag="application_data" />
+          </ComboBox>
+        </StackPanel>
+        <StackPanel x:Name="ArgumentsField" Grid.Row="2" Grid.Column="1" Classes="mcp-field">
+          <TextBlock Classes="label" Text="Arguments" />
+          <TextBox x:Name="ArgumentsInput" Classes="mono-input" AcceptsReturn="True" Height="72"
+                   TextWrapping="NoWrap" PlaceholderText="One argument per line" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Classes="mcp-field">
+          <TextBlock x:Name="SecretsLabel" Classes="label" Text="Environment" />
+          <TextBox x:Name="SecretsInput" Classes="mono-input" AcceptsReturn="True" Height="74"
+                   TextWrapping="NoWrap" PlaceholderText="NAME=value" />
+          <TextBlock x:Name="StoredKeysText" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
+                     TextWrapping="Wrap" IsVisible="False" />
+          <TextBlock Text="Values are stored locally and hidden after saving. Use -NAME to remove a stored key."
+                     FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="4" Classes="mcp-field">
+          <TextBlock Classes="label" Text="Startup timeout (seconds)" />
+          <TextBox x:Name="StartupTimeoutInput" Classes="mono-input" Text="30" />
+        </StackPanel>
+        <StackPanel Grid.Row="4" Grid.Column="1" Classes="mcp-field">
+          <TextBlock Classes="label" Text="Request timeout (seconds)" />
+          <TextBox x:Name="RequestTimeoutInput" Classes="mono-input" Text="60" />
+        </StackPanel>
+
+        <Border Grid.Row="5" Grid.ColumnSpan="2" Padding="0,14,0,0"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Enable server" FontSize="11" FontWeight="SemiBold" />
+              <TextBlock x:Name="EnableHintText" Text="Starts a local process with your user authority."
+                         FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch x:Name="EnabledToggle" Grid.Column="1" Classes="sc-toggle-switch settings-switch"
+                          IsChecked="True" OnContent="On" OffContent="Off" />
+          </Grid>
+        </Border>
+      </Grid>
+    </ScrollViewer>
+
+    <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"
+            Background="{DynamicResource SurfaceBrush}" Padding="28,14">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+        <TextBlock x:Name="ValidationText" FontSize="10" Foreground="{DynamicResource DangerBrush}"
+                   VerticalAlignment="Center" TextWrapping="Wrap" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button Classes="compact" Content="Cancel" Click="CancelClicked" />
+          <Button x:Name="SaveButton" Classes="compact primary sc-button" Content="Add server" Click="SaveClicked" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

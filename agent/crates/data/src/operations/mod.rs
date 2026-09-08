@@ -6,6 +6,7 @@ pub(crate) mod checkpoint_manifest;
 pub(crate) mod configuration;
 pub(crate) mod llm_model;
 pub(crate) mod llm_model_provider;
+pub(crate) mod mcp_server;
 pub(crate) mod project;
 pub(crate) mod project_dependency;
 pub(crate) mod session;

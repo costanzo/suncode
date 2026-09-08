@@ -1,5 +1,27 @@
 use super::*;
+use diesel::{connection::SimpleConnection, Connection, SqliteConnection};
 use serde_json::json;
+use std::collections::BTreeMap;
+
+#[test]
+fn existing_fifteen_table_database_receives_additive_mcp_table() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("agent.sqlite3");
+    let mut connection = SqliteConnection::establish(path.to_str().unwrap()).unwrap();
+    for script in suncode_database::sqlite::schema_scripts()
+        .iter()
+        .filter(|script| !script.contains("CREATE TABLE IF NOT EXISTS mcp_server"))
+    {
+        connection.batch_execute(script).unwrap();
+    }
+    for script in suncode_database::sqlite::data_scripts() {
+        connection.batch_execute(script).unwrap();
+    }
+    drop(connection);
+
+    let store = Store::open(&path).unwrap();
+    assert!(store.mcp_servers().unwrap().is_empty());
+}
 
 #[test]
 fn diesel_store_round_trips_project_and_session() {
@@ -193,4 +215,79 @@ fn session_ui_state_tracks_running_failure_and_idle_turns() {
         )
         .unwrap();
     assert_eq!(store.session_ui_state(&session.session_id).unwrap(), "idle");
+}
+
+#[test]
+fn mcp_server_crud_preserves_prefix_and_enforces_revisions() {
+    let store = Store::open_memory().unwrap();
+    let input = McpServerInput {
+        display_name: "Local Files".into(),
+        transport: McpTransportConfig::Stdio {
+            version: 1,
+            command: "mcp-files".into(),
+            arguments: vec!["--stdio".into()],
+            working_directory: McpWorkingDirectory::Project,
+            environment: BTreeMap::from([("TOKEN".into(), "secret".into())]),
+            startup_timeout_seconds: 30,
+            request_timeout_seconds: 60,
+        },
+        enabled: true,
+        sort_order: 0,
+    };
+    let created = store.create_mcp_server("mcp-1", &input).unwrap();
+    assert_eq!(created.tool_prefix, "local_files");
+    assert_eq!(created.revision, 1);
+    assert_eq!(store.create_mcp_server("mcp-1", &input).unwrap(), created);
+
+    let mut update = input.clone();
+    update.display_name = "Renamed Files".into();
+    let updated = store.update_mcp_server("mcp-1", 1, &update).unwrap();
+    assert_eq!(updated.tool_prefix, "local_files");
+    assert_eq!(updated.revision, 2);
+    let error = store.update_mcp_server("mcp-1", 1, &input).unwrap_err();
+    assert_eq!(error.code, "mcp_server_revision_conflict");
+
+    let disabled = store.set_mcp_server_enabled("mcp-1", 2, false).unwrap();
+    assert!(!disabled.enabled);
+    assert_eq!(disabled.revision, 3);
+    assert_eq!(store.mcp_servers().unwrap(), vec![disabled.clone()]);
+    assert!(store.delete_mcp_server("mcp-1", 3).unwrap());
+    assert!(!store.delete_mcp_server("mcp-1", 3).unwrap());
+}
+
+#[test]
+fn mcp_server_rejects_duplicate_names_prefixes_and_insecure_remote_urls() {
+    let store = Store::open_memory().unwrap();
+    let input = |name: &str, url: &str| McpServerInput {
+        display_name: name.into(),
+        transport: McpTransportConfig::StreamableHttp {
+            version: 1,
+            url: url.into(),
+            headers: BTreeMap::new(),
+            startup_timeout_seconds: 30,
+            request_timeout_seconds: 60,
+        },
+        enabled: true,
+        sort_order: 0,
+    };
+    store
+        .create_mcp_server("mcp-1", &input("GitHub MCP", "https://example.com/mcp"))
+        .unwrap();
+    assert_eq!(
+        store
+            .create_mcp_server("mcp-2", &input("github mcp", "https://example.org/mcp"))
+            .unwrap_err()
+            .code,
+        "mcp_server_conflict"
+    );
+    assert_eq!(
+        store
+            .create_mcp_server("mcp-3", &input("Other", "http://example.org/mcp"))
+            .unwrap_err()
+            .code,
+        "invalid_arguments"
+    );
+    store
+        .create_mcp_server("mcp-4", &input("Loopback", "http://127.0.0.1:3000/mcp"))
+        .unwrap();
 }

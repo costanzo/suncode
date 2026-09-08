@@ -131,6 +131,7 @@ agent/crates/database/  backend-specific SQL resources and database setup
 agent/crates/data/      Diesel ORM, persistence DTOs, and data operations
 agent/crates/llm/       provider-neutral LLM contracts, catalog, registry, and adapters
 agent/crates/tools/      `suncode-tool` package for built-in definitions and audited in-process machine operations
+agent/crates/mcp/        bounded MCP client transports, discovery, invocation, and result normalization
 sdks/rust/                typed Rust SDK facade over the agent harness
     sdks/c/                   stable C ABI/native library
     sdks/csharp/              typed managed SDK and native integration for Avalonia
@@ -155,4 +156,4 @@ The old `typescript/` packages and retired `rust/` workspace were migration sour
 
 ## 12. Deferred Scope
 
-Phase 1 defers TypeScript and Python package implementation, CLI/TUI/Web clients, cross-process IPC, executable or dynamically loaded provider plugins, MCP servers, client creation/removal of custom provider and model catalog entries, PTY interaction, hosted execution, collaboration, telemetry, filesystem indexing/watchers, Git mutations and remote operations, other VCS-aware semantic operations, and cross-platform OS sandbox profiles. Settings may edit the endpoint of an existing provider through the Rust-owned SDK, but broader catalog management remains deferred. Adding executable third-party code requires a separate isolation design.
+Phase 1 defers TypeScript and Python package implementation, CLI/TUI/Web clients, cross-process IPC, executable or dynamically loaded provider plugins, MCP prompts/resources/OAuth, client creation/removal of custom provider and model catalog entries, PTY interaction, hosted execution, collaboration, telemetry, filesystem indexing/watchers, Git mutations and remote operations, other VCS-aware semantic operations, and cross-platform OS sandbox profiles. Settings may manage tools-only MCP servers over local stdio and remote Streamable HTTP through the Rust-owned SDK. Local MCP processes are lifecycle-contained and policy-mediated but are not OS-sandboxed; the client and approval surfaces state that authority and undo limitation explicitly.

@@ -312,11 +312,21 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20260807-trusted-runtime-extension-isolation
 
 - Date: 2026-08-07
-- Status: Accepted
+- Status: Accepted; MCP exclusion superseded by `ADR-20260908-mcp-server-runtime`
 - Context: Treating third-party dependencies and extensions as isolated while they run in the trusted runtime would overstate the security boundary. A worker thread or child process without an OS sandbox still runs with the user's authority. The product needs a small, implementable Phase 1 before adding extension isolation and secret handoff machinery.
 - Decision: Phase 1 excludes plugins, MCP servers, and third-party provider adapters from execution. Skills are data and instructions only. When third-party extensions are introduced, they must run in independent child processes and through a Rust-mediated, platform-specific OS sandbox with explicitly reported enforcement. Extension-originated requests carry an extension identity and are re-authorized at the runtime and Rust boundaries.
 - Consequences: Extension IPC, sandbox profiles, scoped secret delivery, lifecycle, and failure recovery become prerequisites before third-party extensions are enabled. Built-in providers remain trusted runtime code; the trusted runtime is an explicit threat-model assumption, not an OS-enforced sandbox.
 - Details: `ARCHITECTURE.md` sections 3.4, 9.5, and 14.1
+
+## ADR-20260908-mcp-server-runtime
+
+- Date: 2026-09-08
+- Status: Accepted
+- Supersedes: the MCP exclusion and mandatory precondition portion of `ADR-20260807-trusted-runtime-extension-isolation`; plugin and third-party provider-adapter exclusions remain accepted
+- Context: Users need tools from local and remote MCP servers to become available to existing sessions immediately. Requiring a cross-platform OS sandbox first would prevent the feature, while describing an ordinary child process as isolated would be incorrect.
+- Decision: Phase 1 supports MCP tools over structured local stdio processes and remote Streamable HTTP. Rust owns global desired configuration in SQLite and project-scoped live clients. Every exposed tool is namespaced, enters the existing external-tool policy and audit path, and requires interactive approval unless Full Control is active. Local processes use no shell and receive a bounded baseline environment plus configured values, but run with the user's OS authority. Settings and approvals explicitly state that MCP side effects may be outside SunCode's undo boundary. Prompts, resources, OAuth, executable plugins, and third-party provider adapters remain deferred.
+- Consequences: Existing sessions receive a rebuilt MCP catalog before their next provider request; configuration mutations retire stale generations immediately. Connection state is not a trust signal. Secret values remain Rust-owned plaintext SQLite data and never enter read DTOs or logs. A future OS sandbox can strengthen local execution without changing the SDK ownership boundary.
+- Details: `requirements/2026-09-08-mcp-server-support/`, `contracts/agent-sdk/README.md`, `contracts/persistence.md`
 
 ## ADR-20260807-durable-stream-separation
 

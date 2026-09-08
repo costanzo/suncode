@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "../../../components/universal/button/index.js";
 import { SingleDropdown } from "../../../components/universal/dropdown/index.js";
+import { ConfirmationDialog } from "../../../components/universal/modal/index.js";
 import { Icon } from "../../../shared/Icon.jsx";
 import { PageHeader, Section } from "../../../shared/PagePrimitives.jsx";
 import { NativeWindowFrame } from "../../../platforms/desktop/components/titlebar/index.js";
@@ -59,19 +60,21 @@ const navItems = [
   { id: "appearance", label: "Appearance", icon: "sun" },
   { id: "shortcuts", label: "Keyboard shortcuts", icon: "keyboard" },
   { id: "network", label: "Network", icon: "platform" },
+  { id: "mcp", label: "MCP servers", icon: "server" },
   { id: "logging", label: "Logging", icon: "assets" },
 ];
 
 const settingsGuide = {
   tabs: {
     actions: [
-      "Choose Defaults, Appearance, Keyboard shortcuts, Network, or Logging from the left navigation.",
+      "Choose Defaults, Appearance, Keyboard shortcuts, Network, MCP servers, or Logging from the left navigation.",
       "Use the chevron beside Model providers to collapse or expand its provider links.",
       "Select a provider to edit its OpenAI-compatible URL or credential.",
       "A provider is shown without a stored key so its recovery path and available models can be reviewed.",
       "Use Reset default to restore a provider's built-in URL.",
       "Use Network to review certificate verification, system trust, and custom certificate-path states.",
       "Use the folder buttons in Logging to choose log and image storage directories.",
+      "Use MCP servers to add, edit, delete, enable, disable, and retry local or remote servers.",
       "Edit a control and use its save action; use Done to return to ProjectHub.",
       "Keyboard shortcuts are shown as read-only key combinations; customization is reserved for a future release.",
     ],
@@ -87,6 +90,9 @@ const settingsGuide = {
       "Provider credentials are masked; only the first and last four characters are shown for recognition.",
       "A provider without a key keeps its model catalog visible but pauses sending until the key is saved.",
       "Saving updates local configuration state and does not grant new machine authority.",
+      "MCP configuration is persisted by the embedded Rust agent; the effective tool catalog is refreshed without starting a new session.",
+      "Connected, connecting, failed, and disabled are runtime states. Enabled is the persisted desired state.",
+      "MCP server definitions are global, while the status shown belongs to the current project connection.",
     ],
   },
 };
@@ -585,6 +591,563 @@ function LoggingPanel({ onSave }) {
   );
 }
 
+const initialMcpServers = [
+  {
+    id: "mcp_filesystem",
+    name: "Project filesystem",
+    transport: "stdio",
+    command: "uvx",
+    arguments: "mcp-server-filesystem\n.",
+    workingDirectory: "Project directory",
+    enabled: true,
+    status: "connected",
+    toolCount: 11,
+  },
+  {
+    id: "mcp_github",
+    name: "GitHub",
+    transport: "http",
+    url: "https://mcp.github.example/v1",
+    enabled: true,
+    status: "failed",
+    toolCount: 0,
+    error: "Authentication failed. Replace the Authorization header and retry.",
+  },
+  {
+    id: "mcp_postgres",
+    name: "Local Postgres",
+    transport: "stdio",
+    command: "docker",
+    arguments: "run\n--rm\nmcp/postgres",
+    workingDirectory: "Project directory",
+    enabled: false,
+    status: "disabled",
+    toolCount: 0,
+  },
+];
+
+const emptyMcpDraft = {
+  name: "",
+  transport: "stdio",
+  command: "",
+  url: "",
+  workingDirectory: "Project directory",
+  arguments: "",
+  secrets: "",
+  startupTimeout: "30",
+  requestTimeout: "60",
+  enabled: true,
+};
+
+const mcpStatusLabels = {
+  connected: "Connected",
+  connecting: "Connecting",
+  failed: "Failed",
+  disabled: "Disabled",
+};
+
+function McpSwitch({ server, onToggle }) {
+  const pending = server.status === "connecting";
+  return (
+    <label className="settings-switch mcp-server-switch">
+      <input
+        type="checkbox"
+        checked={server.enabled}
+        disabled={pending}
+        onChange={(event) => onToggle(server.id, event.target.checked)}
+        aria-label={`${server.enabled ? "Disable" : "Enable"} ${server.name}`}
+      />
+      <span className="settings-switch-track">
+        <span />
+      </span>
+      <b>{server.enabled ? "On" : "Off"}</b>
+    </label>
+  );
+}
+
+function McpServerEditorWindow({ open, server, onClose, onSubmit }) {
+  const windowRef = useRef(null);
+  const descriptionId = useId();
+  const [draft, setDraft] = useState(() =>
+    server
+      ? {
+          ...emptyMcpDraft,
+          name: server.name,
+          transport: server.transport,
+          command: server.command ?? "",
+          arguments: server.arguments ?? "",
+          url: server.url ?? "",
+          workingDirectory: server.workingDirectory ?? "Project directory",
+          enabled: server.enabled,
+        }
+      : emptyMcpDraft,
+  );
+  const editing = Boolean(server);
+
+  const update = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
+  const valid =
+    draft.name.trim() && (draft.transport === "stdio" ? draft.command.trim() : draft.url.trim());
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const priorFocus = document.activeElement;
+    windowRef.current?.querySelector("input, button, textarea")?.focus();
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+      if (event.key !== "Tab") return;
+      const focusable = [
+        ...windowRef.current.querySelectorAll("button, input, textarea, [href]"),
+      ].filter((element) => !element.disabled);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      priorFocus?.focus();
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="mcp-editor-window-shell">
+      <NativeWindowFrame
+        platform="macos"
+        title={editing ? "Edit MCP server" : "Add MCP server"}
+        width="620px"
+        height="610px"
+        onClose={onClose}
+        className="mcp-editor-window"
+      >
+        <div
+          ref={windowRef}
+          className="mcp-editor-window-client"
+          role="dialog"
+          aria-modal="false"
+          aria-label={editing ? "Edit MCP server" : "Add MCP server"}
+          aria-describedby={descriptionId}
+        >
+          <header className="mcp-editor-heading">
+            <h2>{editing ? "Edit MCP server" : "Add MCP server"}</h2>
+            <p id={descriptionId}>
+              Changes are persisted locally and reconciled with the embedded agent immediately.
+            </p>
+          </header>
+          <div className="mcp-editor-scroll">
+            <div className="mcp-server-form">
+              <label className="mcp-form-field">
+                <span>Server name</span>
+                <input
+                  className="field"
+                  value={draft.name}
+                  onChange={(event) => update("name", event.target.value)}
+                  placeholder="GitHub"
+                  aria-label="MCP server name"
+                />
+              </label>
+              <label className="mcp-form-field">
+                <span>Transport</span>
+                <SingleDropdown
+                  options={[
+                    { value: "stdio", label: "Local process (stdio)" },
+                    { value: "http", label: "Remote (Streamable HTTP)" },
+                  ]}
+                  value={draft.transport}
+                  onChange={(value) => update("transport", value)}
+                  ariaLabel="MCP transport"
+                  className="settings-dropdown"
+                />
+              </label>
+              {draft.transport === "stdio" ? (
+                <>
+                  <label className="mcp-form-field mcp-form-wide">
+                    <span>Executable</span>
+                    <input
+                      className="field mono"
+                      value={draft.command}
+                      onChange={(event) => update("command", event.target.value)}
+                      placeholder="uvx"
+                      spellCheck="false"
+                      aria-label="Local MCP executable"
+                    />
+                  </label>
+                  <label className="mcp-form-field">
+                    <span>Working directory</span>
+                    <SingleDropdown
+                      options={["Project directory", "Application data directory"]}
+                      value={draft.workingDirectory}
+                      onChange={(value) => update("workingDirectory", value)}
+                      ariaLabel="MCP working directory"
+                      className="settings-dropdown"
+                    />
+                  </label>
+                  <label className="mcp-form-field">
+                    <span>Arguments</span>
+                    <textarea
+                      className="field mono"
+                      value={draft.arguments}
+                      onChange={(event) => update("arguments", event.target.value)}
+                      placeholder="One argument per line"
+                      aria-label="MCP command arguments"
+                    />
+                  </label>
+                </>
+              ) : (
+                <label className="mcp-form-field mcp-form-wide">
+                  <span>Server URL</span>
+                  <input
+                    className="field mono"
+                    type="url"
+                    value={draft.url}
+                    onChange={(event) => update("url", event.target.value)}
+                    placeholder="https://mcp.example.com/v1"
+                    spellCheck="false"
+                    aria-label="Remote MCP server URL"
+                  />
+                </label>
+              )}
+              <label className="mcp-form-field mcp-form-wide">
+                <span>{draft.transport === "stdio" ? "Environment" : "HTTP headers"}</span>
+                <textarea
+                  className="field mono"
+                  value={draft.secrets}
+                  onChange={(event) => update("secrets", event.target.value)}
+                  placeholder={
+                    editing
+                      ? "NAME=value replaces; -NAME removes; other stored values remain unchanged"
+                      : draft.transport === "stdio"
+                        ? "NAME=value"
+                        : "Authorization=Bearer ..."
+                  }
+                  aria-label={
+                    draft.transport === "stdio" ? "MCP environment entries" : "MCP HTTP headers"
+                  }
+                />
+                <small>Values are stored locally and hidden after saving. Use -NAME to remove a stored key.</small>
+              </label>
+              <label className="mcp-form-field">
+                <span>Startup timeout</span>
+                <span className="settings-unit-field">
+                  <input
+                    className="field mono"
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={draft.startupTimeout}
+                    onChange={(event) => update("startupTimeout", event.target.value)}
+                    aria-label="MCP startup timeout in seconds"
+                  />
+                  <span>SEC</span>
+                </span>
+              </label>
+              <label className="mcp-form-field">
+                <span>Request timeout</span>
+                <span className="settings-unit-field">
+                  <input
+                    className="field mono"
+                    type="number"
+                    min="1"
+                    max="600"
+                    value={draft.requestTimeout}
+                    onChange={(event) => update("requestTimeout", event.target.value)}
+                    aria-label="MCP request timeout in seconds"
+                  />
+                  <span>SEC</span>
+                </span>
+              </label>
+              <div className="mcp-form-enable mcp-form-wide">
+                <div>
+                  <strong>Enable server</strong>
+                  <span>
+                    {draft.transport === "stdio"
+                      ? "Starts a local process with your user authority."
+                      : "Connects to the remote endpoint after saving."}
+                  </span>
+                </div>
+                <label className="settings-switch">
+                  <input
+                    type="checkbox"
+                    checked={draft.enabled}
+                    onChange={(event) => update("enabled", event.target.checked)}
+                    aria-label="Enable MCP server after saving"
+                  />
+                  <span className="settings-switch-track">
+                    <span />
+                  </span>
+                  <b>{draft.enabled ? "On" : "Off"}</b>
+                </label>
+              </div>
+            </div>
+          </div>
+          <footer className="mcp-editor-actions">
+            <Button size="sm" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={!valid}
+              onClick={() => onSubmit({ ...draft, id: server?.id })}
+            >
+              {editing ? "Save changes" : "Add server"}
+            </Button>
+          </footer>
+        </div>
+      </NativeWindowFrame>
+    </div>
+  );
+}
+
+function McpServersPanel({ servers, setServers, onSave }) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const editingServer = servers.find((server) => server.id === editingId);
+  const deletingServer = servers.find((server) => server.id === deletingId);
+
+  const setTemporaryStatus = (id, finalStatus = "connected") => {
+    setServers((current) =>
+      current.map((server) =>
+        server.id === id
+          ? { ...server, enabled: true, status: "connecting", error: undefined, toolCount: 0 }
+          : server,
+      ),
+    );
+    window.setTimeout(() => {
+      setServers((current) =>
+        current.map((server) =>
+          server.id === id
+            ? {
+                ...server,
+                status: finalStatus,
+                toolCount: finalStatus === "connected" ? server.toolCount || 6 : 0,
+              }
+            : server,
+        ),
+      );
+    }, 650);
+  };
+
+  const toggleServer = (id, enabled) => {
+    if (!enabled) {
+      setServers((current) =>
+        current.map((server) =>
+          server.id === id
+            ? { ...server, enabled: false, status: "disabled", toolCount: 0, error: undefined }
+            : server,
+        ),
+      );
+      onSave("Server disabled. Its tools are no longer available to new calls.");
+      return;
+    }
+    setTemporaryStatus(id);
+    onSave("Server configuration saved. Connecting now.");
+  };
+
+  const saveServer = (draft) => {
+    if (draft.id) {
+      setServers((current) =>
+        current.map((server) =>
+          server.id === draft.id
+            ? {
+                ...server,
+                name: draft.name.trim(),
+                transport: draft.transport,
+                command: draft.transport === "stdio" ? draft.command.trim() : undefined,
+                arguments: draft.transport === "stdio" ? draft.arguments.trim() : undefined,
+                url: draft.transport === "http" ? draft.url.trim() : undefined,
+                workingDirectory: draft.workingDirectory,
+                enabled: draft.enabled,
+                status: draft.enabled ? "connecting" : "disabled",
+                toolCount: 0,
+                error: undefined,
+              }
+            : server,
+        ),
+      );
+      if (draft.enabled) setTemporaryStatus(draft.id);
+    } else {
+      const id = `mcp_${Date.now()}`;
+      const next = {
+        id,
+        name: draft.name.trim(),
+        transport: draft.transport,
+        command: draft.transport === "stdio" ? draft.command.trim() : undefined,
+        arguments: draft.transport === "stdio" ? draft.arguments.trim() : undefined,
+        url: draft.transport === "http" ? draft.url.trim() : undefined,
+        workingDirectory: draft.workingDirectory,
+        enabled: draft.enabled,
+        status: draft.enabled ? "connecting" : "disabled",
+        toolCount: 0,
+      };
+      setServers((current) => [...current, next]);
+      if (draft.enabled) setTemporaryStatus(id);
+    }
+    setDialogOpen(false);
+    setEditingId(null);
+    onSave(draft.enabled ? "Saved to SQLite. Connecting now." : "Saved to SQLite as disabled.");
+  };
+
+  const deleteServer = () => {
+    if (!deletingServer) return;
+    setServers((current) => current.filter((server) => server.id !== deletingServer.id));
+    setDeletingId(null);
+    onSave("Server deleted. Its tools were removed from new model requests.");
+  };
+
+  return (
+    <div className="settings-panel-content settings-mcp-content">
+      <div className="settings-panel-heading settings-heading-row">
+        <div>
+          <h2>MCP servers</h2>
+          <p>Manage local and remote tools available to the embedded agent.</p>
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          icon="plus"
+          onClick={() => {
+            setEditingId(null);
+            setDialogOpen(true);
+          }}
+        >
+          Add server
+        </Button>
+      </div>
+      <span className="mcp-project-context">Project connection: suncode</span>
+      <div className="mcp-runtime-note" role="note">
+        <Icon name="refresh" size={15} />
+        <span>
+          Changes update existing sessions. The next model request uses the effective tool list.
+        </span>
+      </div>
+      {servers.length ? (
+        <div className="mcp-server-list" aria-label="Configured MCP servers">
+          <div className="mcp-server-list-header" aria-hidden="true">
+            <span>Server</span>
+            <span>Status</span>
+            <span>Enabled</span>
+            <span>Actions</span>
+          </div>
+          {servers.map((server) => (
+            <div className={`mcp-server-row is-${server.status}`} key={server.id}>
+              <div className="mcp-server-identity">
+                <strong>{server.name}</strong>
+                <code>
+                  {server.transport === "stdio"
+                    ? [server.command, server.arguments?.replaceAll("\n", " ")]
+                        .filter(Boolean)
+                        .join(" ")
+                    : server.url}
+                </code>
+                {server.error && <span className="mcp-server-error">{server.error}</span>}
+              </div>
+              <div className={`mcp-server-status is-${server.status}`}>
+                <span className="settings-status-dot" />
+                <div>
+                  <strong>{mcpStatusLabels[server.status]}</strong>
+                  <span>
+                    {server.status === "connected"
+                      ? `${server.toolCount} tools`
+                      : server.status === "connecting"
+                        ? "Discovering tools"
+                        : server.status === "failed"
+                          ? "No tools available"
+                          : "Not running"}
+                  </span>
+                </div>
+              </div>
+              <McpSwitch server={server} onToggle={toggleServer} />
+              <div className="mcp-server-actions">
+                {server.status === "failed" && (
+                  <button
+                    type="button"
+                    className="btn btn-icon btn-quiet"
+                    aria-label={`Retry ${server.name}`}
+                    title="Retry connection"
+                    onClick={() => setTemporaryStatus(server.id)}
+                  >
+                    <Icon name="refresh" size={14} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-icon btn-quiet"
+                  aria-label={`Edit ${server.name}`}
+                  title="Edit server"
+                  onClick={() => {
+                    setEditingId(server.id);
+                    setDialogOpen(true);
+                  }}
+                >
+                  <Icon name="edit" size={14} />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-icon btn-quiet mcp-delete-button"
+                  aria-label={`Delete ${server.name}`}
+                  title="Delete server"
+                  onClick={() => setDeletingId(server.id)}
+                >
+                  <Icon name="trash" size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mcp-empty-state">
+          <Icon name="server" size={22} />
+          <strong>No MCP servers configured</strong>
+          <span>Add a local process or remote endpoint to make its tools available.</span>
+        </div>
+      )}
+      <div className="mcp-authority-note">
+        <Icon name="lock" size={15} />
+        <div>
+          <strong>MCP tools run outside SunCode's undo boundary</strong>
+          <span>
+            Tool calls still require policy approval, but changes made by an MCP server may not be
+            reversible by SunCode.
+          </span>
+        </div>
+      </div>
+      <McpServerEditorWindow
+        key={`${editingId ?? "new"}:${dialogOpen}`}
+        open={dialogOpen}
+        server={editingServer}
+        onClose={() => {
+          setDialogOpen(false);
+          setEditingId(null);
+        }}
+        onSubmit={saveServer}
+      />
+      <ConfirmationDialog
+        open={Boolean(deletingServer)}
+        title="Delete MCP server?"
+        description="Its tools will be removed from new model requests. An already executing call may finish."
+        confirmLabel="Delete server"
+        onCancel={() => setDeletingId(null)}
+        onConfirm={deleteServer}
+      >
+        <div className="confirmation-dialog-target">
+          <span>MCP SERVER</span>
+          <strong>{deletingServer?.name}</strong>
+        </div>
+      </ConfirmationDialog>
+    </div>
+  );
+}
+
 function ProvidersPanel({ onSelect, endpoints }) {
   return (
     <div className="settings-panel-content">
@@ -755,15 +1318,18 @@ export function SettingsPage() {
     ),
   );
   const [status, setStatus] = useState("");
+  const [mcpServers, setMcpServers] = useState(initialMcpServers);
   const [guideOpen, setGuideOpen] = useState(false);
   const navigateBack = () => {
     window.location.hash = "/projects/desktop/project-hub";
   };
-  const save = () => setStatus("Saved to the local agent.");
+  const save = (message = "Saved to the local agent.") => setStatus(message);
   const renderPanel = () => {
     if (page === "appearance") return <AppearancePanel onSave={save} />;
     if (page === "shortcuts") return <ShortcutsPanel />;
     if (page === "network") return <NetworkPanel onSave={save} />;
+    if (page === "mcp")
+      return <McpServersPanel servers={mcpServers} setServers={setMcpServers} onSave={save} />;
     if (page === "logging") return <LoggingPanel onSave={save} />;
     if (page === "providers")
       return (
@@ -795,7 +1361,7 @@ export function SettingsPage() {
     <>
       <PageHeader
         title="Settings"
-        description="The Avalonia desktop settings window for local defaults, keyboard shortcuts, security, diagnostics, and provider credentials."
+        description="The Avalonia desktop settings window for local defaults, keyboard shortcuts, security, MCP servers, diagnostics, and provider credentials."
         path="projects/desktop/settings/"
       />
       <WindowSizeNote width="900" height="672" minimumWidth="720" minimumHeight="552" />
@@ -807,14 +1373,20 @@ export function SettingsPage() {
         <WorkspaceGuideState
           className="settings-guide-state"
           title="Settings controls"
-          description="Navigate local defaults, keyboard shortcuts, security, diagnostics, and provider credentials."
+          description="Navigate local defaults, keyboard shortcuts, security, MCP servers, diagnostics, and provider credentials."
           guide={settingsGuide}
           side="right"
           open={guideOpen}
           onToggle={() => setGuideOpen((open) => !open)}
           onClose={() => setGuideOpen(false)}
         >
-          <NativeWindowFrame platform="macos" title="Settings" className="settings-window">
+          <NativeWindowFrame
+            platform="macos"
+            title="Settings"
+            width="900px"
+            height="672px"
+            className="settings-window"
+          >
             <div className="settings-toolbar">
               <strong>Settings</strong>
               <Button variant="primary" size="sm" onClick={navigateBack}>

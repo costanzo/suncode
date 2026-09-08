@@ -4,11 +4,13 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SunCode.Desktop.Controls;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
+using ConfirmationWindow = SunCode.Desktop.Views.DialogWindow.DialogWindow;
 
 namespace SunCode.Desktop.Views.Settings;
 
@@ -34,6 +36,8 @@ public sealed partial class SettingsWindow : Window
     private bool _providersExpanded = true;
     private string _provider = string.Empty;
     private DesktopViewModel? _subscribedViewModel;
+    private McpServerEditorWindow? _mcpEditorWindow;
+    private readonly DispatcherTimer _mcpPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
 
     public SettingsWindow()
     {
@@ -47,6 +51,10 @@ public sealed partial class SettingsWindow : Window
         NetworkPage.HttpsCertificateVerificationChanged += HttpsCertificateVerificationChanged;
         NetworkPage.SystemCertificatesChanged += SystemCertificatesChanged;
         NetworkPage.SaveHttpsCertificateVerificationRequested += SaveHttpsCertificateVerification;
+        McpPage.AddRequested += AddMcpServer;
+        McpPage.EditRequested += EditMcpServer;
+        McpPage.DeleteRequested += DeleteMcpServer;
+        _mcpPollTimer.Tick += McpPollTick;
         WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
@@ -82,6 +90,11 @@ public sealed partial class SettingsWindow : Window
             ShowProviderPanel(null);
             _ready = true;
         };
+        Closed += (_, _) =>
+        {
+            _mcpPollTimer.Stop();
+            _mcpEditorWindow?.Close();
+        };
     }
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
@@ -98,6 +111,7 @@ public sealed partial class SettingsWindow : Window
     private void ShowAppearance(object? sender, RoutedEventArgs e) => SelectPage("appearance", sender as Button);
     private void ShowShortcuts(object? sender, RoutedEventArgs e) => SelectPage("shortcuts", sender as Button);
     private void ShowNetwork(object? sender, RoutedEventArgs e) => SelectPage("network", sender as Button);
+    private void ShowMcp(object? sender, RoutedEventArgs e) => SelectPage("mcp", sender as Button);
     private void ShowLogging(object? sender, RoutedEventArgs e) => SelectPage("logging", sender as Button);
 
     private void ShowProviders(object? sender, RoutedEventArgs e)
@@ -159,7 +173,17 @@ public sealed partial class SettingsWindow : Window
         ShortcutsPage.IsVisible = page == "shortcuts";
         NetworkPage.IsVisible = page == "network";
         LoggingPage.IsVisible = page == "logging";
+        McpPage.IsVisible = page == "mcp";
         ProvidersPage.IsVisible = page == "providers";
+        if (page == "mcp")
+        {
+            _ = ViewModel.LoadMcpServersAsync();
+            _mcpPollTimer.Start();
+        }
+        else
+        {
+            _mcpPollTimer.Stop();
+        }
         foreach (var button in this.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("navigation")))
             button.Classes.Set("selected", button == selected);
         if (page == "defaults") DefaultsNavigation.Classes.Set("selected", true);
@@ -167,7 +191,47 @@ public sealed partial class SettingsWindow : Window
         if (page == "shortcuts") ShortcutsNavigation.Classes.Set("selected", true);
         if (page == "network") NetworkNavigation.Classes.Set("selected", true);
         if (page == "logging") LoggingNavigation.Classes.Set("selected", true);
+        if (page == "mcp") McpNavigation.Classes.Set("selected", true);
         if (page == "providers" && selected is null) ProvidersNavigation.Classes.Set("selected", true);
+    }
+
+    private async void McpPollTick(object? sender, EventArgs e)
+    {
+        if (McpPage.IsVisible) await ViewModel.LoadMcpServersAsync();
+    }
+
+    private void AddMcpServer() => OpenMcpEditor(null);
+
+    private void EditMcpServer(McpServerItem server) => OpenMcpEditor(server);
+
+    private void OpenMcpEditor(McpServerItem? server)
+    {
+        if (_mcpEditorWindow is not null)
+        {
+            _mcpEditorWindow.Activate();
+            return;
+        }
+        _mcpEditorWindow = new McpServerEditorWindow(ViewModel, server);
+        _mcpEditorWindow.Closed += (_, _) =>
+        {
+            _mcpEditorWindow = null;
+            McpNavigation.Focus();
+        };
+        _mcpEditorWindow.Show(this);
+    }
+
+    private void DeleteMcpServer(McpServerItem server)
+    {
+        var dialog = new ConfirmationWindow(
+            "Delete MCP server?",
+            "Its tools will be removed from new model requests. An already executing call may finish.",
+            server.DisplayName,
+            () => _ = ViewModel.DeleteMcpServerAsync(server),
+            "MCP SERVER",
+            "Delete server");
+        IsEnabled = false;
+        dialog.Closed += (_, _) => IsEnabled = true;
+        _ = dialog.ShowDialog(this);
     }
 
     private async void DefaultModelChanged(object? sender, SelectionChangedEventArgs e)

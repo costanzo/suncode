@@ -77,6 +77,94 @@ public sealed record ProjectRecord(
 
 public sealed record ProjectsResult(IReadOnlyList<ProjectRecord> Projects);
 
+public sealed record McpServer(
+    string McpServerId,
+    string DisplayName,
+    string ToolPrefix,
+    string TransportType,
+    string? Command,
+    IReadOnlyList<string> Arguments,
+    string? WorkingDirectory,
+    string? Url,
+    IReadOnlyList<string> EnvironmentKeys,
+    IReadOnlyList<string> HeaderKeys,
+    ulong StartupTimeoutSeconds,
+    ulong RequestTimeoutSeconds,
+    bool Enabled,
+    long SortOrder,
+    ulong Revision,
+    string RuntimeStatus,
+    int ToolCount,
+    string? Error,
+    string CreatedAt,
+    string UpdatedAt);
+
+public sealed record McpServersResult(IReadOnlyList<McpServer> Servers);
+
+public sealed record McpServerDeleteResult(string McpServerId, bool Removed);
+
+public sealed record McpSecretChanges(
+    IReadOnlyDictionary<string, string> Set,
+    IReadOnlyList<string> Remove)
+{
+    public static McpSecretChanges Empty { get; } = new(
+        new Dictionary<string, string>(),
+        Array.Empty<string>());
+}
+
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
+[JsonDerivedType(typeof(McpStdioTransportRequest), "stdio")]
+[JsonDerivedType(typeof(McpStreamableHttpTransportRequest), "streamable_http")]
+public abstract record McpTransportRequest(
+    ulong StartupTimeoutSeconds,
+    ulong RequestTimeoutSeconds);
+
+public sealed record McpStdioTransportRequest(
+    string Command,
+    IReadOnlyList<string> Arguments,
+    string WorkingDirectory,
+    McpSecretChanges? Environment,
+    ulong StartupTimeoutSeconds = 15,
+    ulong RequestTimeoutSeconds = 60)
+    : McpTransportRequest(StartupTimeoutSeconds, RequestTimeoutSeconds);
+
+public sealed record McpStreamableHttpTransportRequest(
+    string Url,
+    McpSecretChanges? Headers,
+    ulong StartupTimeoutSeconds = 15,
+    ulong RequestTimeoutSeconds = 60)
+    : McpTransportRequest(StartupTimeoutSeconds, RequestTimeoutSeconds);
+
+public sealed record McpServerWriteRequest(
+    string DisplayName,
+    McpTransportRequest Transport,
+    bool Enabled = true,
+    long SortOrder = 0);
+
+public sealed record CreateMcpServerRequest(
+    string? ProjectId,
+    string IdempotencyKey,
+    McpServerWriteRequest Server);
+
+public sealed record UpdateMcpServerRequest(
+    string? ProjectId,
+    string ServerId,
+    ulong ExpectedRevision,
+    string IdempotencyKey,
+    McpServerWriteRequest Server);
+
+public sealed record SetMcpServerEnabledRequest(
+    string? ProjectId,
+    string ServerId,
+    ulong ExpectedRevision,
+    string IdempotencyKey,
+    bool Enabled);
+
+public sealed record DeleteMcpServerRequest(
+    string ServerId,
+    ulong ExpectedRevision,
+    string IdempotencyKey);
+
 public sealed record ProjectDependency(
     string DependencyId,
     string ProjectId,

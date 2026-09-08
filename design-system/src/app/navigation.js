@@ -248,6 +248,11 @@ export const primaryModules = [
                 keywords: "messages tools composer model reasoning",
               },
               {
+                path: "/projects/desktop/workspace/editor",
+                label: "Editor",
+                keywords: "read-only file viewer avaloniaedit textmate syntax highlighting line numbers",
+              },
+              {
                 path: "/projects/desktop/workspace/review",
                 label: "Review",
                 keywords: "agent process approvals questions checkpoints undo",

@@ -5,7 +5,7 @@ use crate::{
     policy::{evaluate, tool_risk, Decision, Risk},
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
-use futures_util::future::join_all;
+use futures_util::{future::join_all, stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
@@ -24,6 +24,9 @@ use uuid::Uuid;
 
 pub mod events;
 use events::*;
+mod mcp;
+use mcp::McpManager;
+pub use mcp::{McpRuntimeState, McpRuntimeStatus};
 
 const DEFAULT_TOOL_CALL_LIMIT: u32 = 64;
 const MAX_INSTRUCTION_FILE_BYTES: u64 = 32 * 1024;
@@ -87,6 +90,8 @@ struct Continuation {
     tool_call_limit: u32,
     usage: Usage,
     pending_call: Option<ToolCall>,
+    #[serde(default)]
+    pending_mcp_generation: Option<u64>,
     remaining_calls: Vec<ToolCall>,
     #[serde(default)]
     context_compacted: bool,
@@ -125,6 +130,7 @@ pub struct Agent {
     queued_messages: Arc<Mutex<HashMap<String, VecDeque<QueuedMessage>>>>,
     non_interactive: bool,
     session_locks: Arc<AsyncMutex<HashMap<String, Arc<AsyncMutex<()>>>>>,
+    mcp: McpManager,
 }
 
 include!("submission.rs");

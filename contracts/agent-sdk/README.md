@@ -4,15 +4,15 @@ Status: Implemented.
 
 The SunCode agent is a native library embedded in its host process. It does not accept inbound HTTP, expose REST paths, publish a loopback endpoint, or support cross-process attach. The .NET Avalonia client references the managed C# SDK in `sdks/csharp`, which owns P/Invoke and typed DTOs over the stable C ABI. The typed Rust facade lives in `sdks/rust`, and the C ABI implementation lives in `sdks/c`; future TypeScript and Python packages wrap the same Rust facade through native bindings.
 
-Provider adapters may make outbound HTTPS requests to configured model providers. That network behavior is internal to the Rust agent and is not a client transport.
+Provider adapters may make outbound HTTPS requests to configured model providers, and remote MCP clients may connect to configured Streamable HTTP endpoints. That network behavior is internal to the Rust agent and is not a client transport.
 
 ## Lifecycle
 
-`open_default` loads configuration, acquires the data-directory lock, opens and initializes the current SQLite schema, initializes operations and providers, performs recovery, and returns an opaque agent handle. A second process opening the same data directory receives `agent_already_active`. An incompatible database is rejected; the agent does not migrate it.
+`open_default` loads configuration, acquires the data-directory lock, opens and initializes the current SQLite schema, initializes operations and providers, performs recovery, and returns an opaque agent handle. A second process opening the same data directory receives `agent_already_active`. An incompatible database is rejected; the only additive compatibility path creates `mcp_server` when opening the immediately preceding valid 15-table schema.
 
 The agent handle owns the Tokio runtime and all agent services. Host wrappers may share one handle inside a process. Subscriptions must be closed before the final agent handle is released. Closing a subscription stops callback delivery before returning.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 4. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 5. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
 ## Methods
 
@@ -30,6 +30,12 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `set_credential` | Store or replace one provider API key |
 | `remove_credential` | Remove one provider API key |
 | `set_provider_endpoint` | Validate, persist, and apply one provider API base URL |
+| `list_mcp_servers` | List global MCP definitions with the selected project's runtime status and redacted secret key names |
+| `create_mcp_server` | Validate, persist, and reconcile one stdio or Streamable HTTP server |
+| `update_mcp_server` | Replace one server definition using an optimistic revision and secret patch |
+| `set_mcp_server_enabled` | Persist enabled state and immediately start or retire project-scoped clients |
+| `delete_mcp_server` | Delete one definition and retire its clients and tools from subsequent requests |
+| `retry_mcp_server` | Retry one enabled server for an active project |
 | `list_projects` | List known active projects |
 | `open_project` | Canonicalize and open a project |
 | `select_project` | Select a known project and reopen its canonical root |
@@ -66,6 +72,10 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `subscribe_session` | Deliver subsequent live events; lagged subscribers must reload `session_snapshot` |
 
 Rust-generated project, session, turn, approval, checkpoint, event, and message identifiers remain authoritative. Hosts do not manufacture IDs except idempotency keys.
+
+MCP definitions are global desired state. Live clients and runtime states are keyed by server and project; `list_mcp_servers` accepts an optional project ID and reports `not_started`, `disabled`, `connecting`, `connected`, or `failed`. Read DTOs include only configured environment/header key names, never values. Create derives a stable opaque server ID from its idempotency key. Update, enable, and delete require both an idempotency key and the expected revision. Secret patches use `{ set, remove }`: omitted patches preserve existing values, `set` replaces named values, and `remove` deletes named values.
+
+Local transports receive a structured executable and argument list and are started without a shell. Their working directory is either the selected project's canonical root or the application data directory. Remote endpoints require HTTPS except loopback HTTP and follow the global certificate settings. Successful mutations persist before runtime reconciliation and retire old catalog generations immediately. Existing sessions snapshot the current connected MCP definitions before every provider call, so the next model request observes create, edit, enable, disable, delete, and tool-list changes without reopening the session.
 
 `tool_call_limit` is a project-only integer setting from 1 through 256. A project without that row uses 64. Turn admission snapshots the resolved value, so changing Settings affects later turns but not an active or approval-suspended turn. If one provider response would cross the limit, all calls in that response are retained as failed with `tool_budget_exceeded`, and none enters policy or execution.
 
@@ -122,7 +132,7 @@ An SDK error contains:
 }
 ```
 
-Messages and details are bounded and redacted. Important codes include `invalid_arguments`, `agent_already_active`, `agent_unavailable`, `project_not_found`, `session_not_found`, `model_unavailable`, `provider_unconfigured`, `approval_required`, `authorization_denied`, `checkpoint_unavailable`, `restore_conflict`, `conflict`, `scope_denied`, `not_git_repository`, `unsupported_git_repository`, `git_read_failed`, `git_diff_not_found`, `iteration_budget_exceeded`, `tool_budget_exceeded`, `cancelled`, and `resync_required`.
+Messages and details are bounded and redacted. Important codes include `invalid_arguments`, `agent_already_active`, `agent_unavailable`, `project_not_found`, `session_not_found`, `model_unavailable`, `provider_unconfigured`, `approval_required`, `authorization_denied`, `checkpoint_unavailable`, `restore_conflict`, `conflict`, `scope_denied`, `mcp_server_conflict`, `mcp_server_revision_conflict`, `mcp_tool_unavailable`, `not_git_repository`, `unsupported_git_repository`, `git_read_failed`, `git_diff_not_found`, `iteration_budget_exceeded`, `tool_budget_exceeded`, `cancelled`, and `resync_required`.
 
 Panics are contained at native binding boundaries and converted to `agent_unavailable`; they never unwind into a host language.
 
@@ -149,6 +159,8 @@ Callbacks run on an SDK-owned thread. Hosts must copy the callback payload and m
 Embedding removes transport authentication because the host is inside the agent process trust boundary. It does not remove project/session ownership checks, policy evaluation, approval, operation auditing, canonical path validation, checkpoint conflict checks, or credential redaction.
 
 Provider API keys remain Rust-owned plaintext values in `llm_model_provider.api_key`, which is their exclusive runtime source. Provider credential environment variables are ignored. Key values never appear in SDK results, events, diagnostics, or logs.
+
+MCP calls have `ExternalTool` risk. Interactive policy requires approval unless the session has Full Control; non-interactive policy denies them by default. Approval records retain stable server and remote-tool identity but not configured secret values. MCP processes and remote services can make changes outside SunCode's checkpoint and undo boundary. A local stdio process runs with the user's OS authority and is not made trustworthy or OS-sandboxed by the Rust protocol boundary.
 
 ## Language bindings
 

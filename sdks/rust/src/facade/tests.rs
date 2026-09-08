@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::BTreeMap;
 use std::{
     ffi::CStr,
     os::raw::{c_char, c_void},
@@ -134,6 +135,133 @@ fn named_sdk_methods_serve_project_session_and_model_dtos() {
     assert_eq!(
         sdk.session_usage("missing-session").unwrap_err().code,
         "session_not_found"
+    );
+}
+
+#[test]
+fn mcp_sdk_redacts_secrets_and_enforces_idempotency_and_revisions() {
+    let directory = tempfile::tempdir().unwrap();
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    let create = McpServerWriteRequest {
+        display_name: "Local MCP".into(),
+        transport: McpTransportRequest::Stdio {
+            command: "mcp-test".into(),
+            arguments: vec!["--stdio".into()],
+            working_directory: suncode_data::McpWorkingDirectory::Project,
+            environment: Some(McpSecretChanges {
+                set: BTreeMap::from([
+                    ("KEEP".into(), "preserved".into()),
+                    ("TOKEN".into(), "private-value".into()),
+                ]),
+                remove: Vec::new(),
+            }),
+            startup_timeout_seconds: 15,
+            request_timeout_seconds: 60,
+        },
+        enabled: false,
+        sort_order: 0,
+    };
+
+    let created = sdk
+        .create_mcp_server(None, "stable-create-key", create.clone())
+        .unwrap();
+    assert_eq!(
+        created.runtime_status,
+        suncode_agent::agent::McpRuntimeState::Disabled
+    );
+    assert_eq!(created.environment_keys, ["KEEP", "TOKEN"]);
+    let serialized = serde_json::to_string(&created).unwrap();
+    assert!(!serialized.contains("private-value"));
+    assert_eq!(
+        sdk.create_mcp_server(None, "stable-create-key", create)
+            .unwrap()
+            .mcp_server_id,
+        created.mcp_server_id
+    );
+
+    let update = McpServerWriteRequest {
+        display_name: "Local MCP".into(),
+        transport: McpTransportRequest::Stdio {
+            command: "mcp-test".into(),
+            arguments: vec!["--stdio".into()],
+            working_directory: suncode_data::McpWorkingDirectory::Project,
+            environment: Some(McpSecretChanges {
+                set: BTreeMap::from([("NEW".into(), "replacement".into())]),
+                remove: vec!["TOKEN".into()],
+            }),
+            startup_timeout_seconds: 15,
+            request_timeout_seconds: 60,
+        },
+        enabled: false,
+        sort_order: 0,
+    };
+    let updated = sdk
+        .update_mcp_server(
+            None,
+            &created.mcp_server_id,
+            created.revision,
+            "stable-update-key",
+            update.clone(),
+        )
+        .unwrap();
+    assert_eq!(updated.environment_keys, ["KEEP", "NEW"]);
+    let stored = sdk
+        .state
+        .store
+        .mcp_server_by_id(&created.mcp_server_id)
+        .unwrap()
+        .unwrap();
+    let suncode_data::McpTransportConfig::Stdio { environment, .. } = stored.transport else {
+        panic!("expected stdio transport");
+    };
+    assert_eq!(
+        environment.get("KEEP").map(String::as_str),
+        Some("preserved")
+    );
+    assert_eq!(
+        environment.get("NEW").map(String::as_str),
+        Some("replacement")
+    );
+    assert!(!environment.contains_key("TOKEN"));
+    assert_eq!(
+        sdk.update_mcp_server(
+            None,
+            &created.mcp_server_id,
+            created.revision,
+            "replayed-update-key",
+            update.clone(),
+        )
+        .unwrap()
+        .revision,
+        updated.revision
+    );
+    let mut stale_update = update;
+    stale_update.display_name = "Conflicting change".into();
+    assert_eq!(
+        sdk.update_mcp_server(
+            None,
+            &created.mcp_server_id,
+            created.revision,
+            "stale-update-key",
+            stale_update,
+        )
+        .unwrap_err()
+        .code,
+        "mcp_server_revision_conflict"
+    );
+
+    let enabled = sdk
+        .set_mcp_server_enabled(
+            None,
+            &created.mcp_server_id,
+            updated.revision,
+            "enable-key",
+            true,
+        )
+        .unwrap();
+    assert_eq!(
+        enabled.runtime_status,
+        suncode_agent::agent::McpRuntimeState::NotStarted
     );
 }
 

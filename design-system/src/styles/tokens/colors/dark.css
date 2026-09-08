@@ -28,5 +28,12 @@
   --danger: #e68a83;
   --danger-surface: #2a1919;
   --danger-border: #633735;
+  --editor-line-number: #65717d;
+  --editor-syntax-keyword: #d5ad6f;
+  --editor-syntax-type: #8db7d8;
+  --editor-syntax-string: #9fc5a8;
+  --editor-syntax-number: #d8a4a0;
+  --editor-syntax-comment: #7f8994;
+  --editor-syntax-punctuation: #a7afb9;
   --shadow-popover: 0 16px 36px rgba(0, 0, 0, 0.26);
 }

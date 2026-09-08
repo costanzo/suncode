@@ -62,6 +62,8 @@ The visual review surface starts at [`design-system/index.html`](design-system/i
 
 `design-system/src/styles/tokens/` is the source token reference for the two themes. `foundation.css` owns document reset and focus behavior, `layout.css` owns small composition primitives, and `components.css` is the review entrypoint for colocated universal component styles. `browser.css` owns only the catalog shell and catalog-specific page composition. Desktop project styles live under `projects/desktop/styles/` and workspace styles under `projects/desktop/workspace/styles/`; `review.css` remains a compatibility entrypoint for the remaining shared review surface and legacy cross-surface rules. New component or page rules must not be added there. Avalonia resources in `apps/desktop-avalonia/App.axaml` are the runtime mapping and must retain the same semantic meanings. Feature views should consume named resources rather than add local raw colors, radii, shadows, or control heights.
 
+Desktop Workspace review children also include Editor and Tool activity. Editor owns the read-only file-viewing states described below and remains specification tooling rather than a production web editor.
+
 ## Overview
 
 **Creative North Star: “Quiet Control Desk”**
@@ -136,6 +138,8 @@ The desktop application has five top-level window roles: ProjectHub, Workspace, 
 
 Workspace is the only window with application-drawn title-bar content. It uses `WindowDecorations=BorderOnly`, lets the platform own the outer border and resize behavior, and places a 36px custom title bar above a three-region row with no horizontal separator beneath it. It does not add a transparent outer margin, rounded window frame, hairline border, clipping wrapper, or manual resize hit areas. On macOS, double-clicking an unoccupied title-bar region toggles the window between normal and maximized states rather than entering full screen; the green traffic light remains the explicit full-screen action. ProjectHub, Settings, and About use the platform's full system decorations and do not duplicate title bars or window controls inside the client area. The conversation region is fluid and receives the remaining width. Navigation is constrained to roughly 24% of the window (236–300px); review is constrained to roughly 27% (276–352px). Both side regions can collapse independently, leaving the conversation full width. Source control, provider trace, and Tool activity occupy one mutually exclusive bottom drawer beneath those regions; their gutter controls communicate active state and closing the drawer restores the full conversation height. In the review browser, each Workspace child route renders its panel as a standalone card without repeating the project-window chrome.
 
+The Workspace title bar's leading project title is an interactive project switcher: it shows the current project name and a trailing chevron, and opens a compact menu anchored below the title. `Open project` is always the first action and invokes the same local-folder picker flow as ProjectHub. A divider separates it from `Recent projects`, whose rows show only the project name and path; the menu does not expose window-open status. Selecting a recent project opens a new Workspace window when none exists; when that project already has a Workspace window, the action focuses that window instead. The menu supports keyboard focus, hover, pressed/open, empty recent-project, and constrained-width states without changing the title-bar geometry.
+
 Panel content uses 16px horizontal padding, 10–12px control gaps, and 24px separation around conversation content. The composer occupies a stable 126px footer of the conversation region. The project window supports a 620px compact minimum: supporting panels and drawers retreat, the title-bar panel menu remains available, labels elide, and the conversation stays usable.
 
 ## Elevation & Depth
@@ -189,6 +193,15 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Output presentation:** The selected running tool exposes best-effort live output in a bounded monospace viewport. Tail following pauses when the user scrolls away; the terminal result remains the authoritative history.
 - **Thinking feedback:** A dedicated thinking phase uses animated `Thinking` text that reveals from left to right and replaces the generic three-dot running marker during that phase.
 
+### Read-only Project Editor
+
+- **Entry:** Selecting a file row in Explorer opens the file in the central Workspace content region, replacing Conversation while leaving the project navigation and review bays intact. Selecting a session from the Sessions list clears the file selection and restores that session's Conversation.
+- **Frame:** The editor uses the same surface, border, radius, and spacing tokens as Conversation. Its header is a compact 44px band with the file icon/name, a monospace path, detected language, and an explicit `READ ONLY` status. It is a viewing surface, not a second window.
+- **Document:** AvaloniaEdit is configured read-only and exposes selectable text, line numbers, a stable monospace data font, and horizontal scrolling for long lines. No caret, typing affordance, save action, formatting toolbar, or mutation control is shown.
+- **Syntax:** TextMate supplies language-aware token colors. Keyword, type, string, number, comment, and punctuation roles use dedicated editor syntax tokens with equivalent contrast in light and dark themes; unsupported languages fall back to readable plain text.
+- **States:** The editor contract covers file loading, ready, empty document, bounded read failure, and constrained-width/long-line states. Loading and failure retain file identity and never present an editable field. Empty documents keep the header and read-only status visible.
+- **Geometry:** The standalone review specimen keeps a 745px reading viewport inside the 620px Workspace minimum behavior. At constrained widths, the editor yields supporting navigation before shrinking below a usable 300px content minimum; document overflow scrolls horizontally instead of wrapping identifiers.
+
 ### Network Certificate Settings
 
 - **Verification scope:** The HTTPS verification toggle remains the primary control for certificate-chain and hostname verification.
@@ -202,6 +215,17 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Current scope:** The page is a read-only catalog. It must not present editable fields, save actions, or affordances that imply shortcut customization is currently supported.
 - **Rows:** Each row places the operation name on the left and a right-aligned combination of compact `<kbd>` keycaps on the right. Use the existing mono data font, raised surface, hairline border, and compact 4px keycap radius.
 - **Platform note:** The review surface may use macOS notation for the specimen, but the page should state that Windows and Linux use `Ctrl` where applicable. The catalog should describe shortcuts that are actually implemented by the desktop client.
+
+### MCP Server Settings
+
+- **Placement:** MCP servers is a first-level Settings destination. Individual servers stay in the content list rather than becoming navigation children, so the navigation remains stable as the catalog grows.
+- **List:** Each row shows server identity, local-command or remote-URL summary, effective connection state, discovered tool count, an enabled toggle, and compact edit/delete actions. Status colors communicate real connected, connecting, failed, and disabled states only.
+- **Scope:** Server definitions are global, but connections and advertised roots are project-scoped. Settings labels the project whose runtime status is shown; without a current project it shows a not-started state.
+- **Create and edit:** One shared separate native window edits the server name, transport, transport-specific configuration, enabled state, and timeouts. It has no backdrop and never replaces the Settings content panel. Closing it discards unsaved edits. Local stdio and remote Streamable HTTP are the initial transport choices. Secret environment/header values are write-only and hidden after persistence; `NAME=value` sets or replaces a value and `-NAME` removes a stored key.
+- **Immediate application:** A pending mutation disables duplicate actions until SQLite persistence and runtime reconciliation finish. Success updates the row in place; failure remains visible on the affected row with an explicit retry action. No new session is required, and the next turn uses the effective catalog.
+- **Deletion:** Delete uses the shared confirmation dialog, names the exact server, and explains that its tools are removed from subsequent model requests while an already executing call may finish.
+- **Authority:** Enabling local stdio explicitly warns that it starts a process with the user's authority. MCP tool approvals state that remote side effects may not be undoable by SunCode; connection state must never imply sandboxing or trust.
+- **Responsive behavior:** At narrow widths, row metadata and actions wrap into stable bands without hiding the enable control or destructive action. The editor window uses a stable 620 × 610 DIP default with a 520 × 520 DIP minimum; long commands, URLs, and errors scroll or wrap without resizing the window.
 
 ### Confirmation Dialogs
 

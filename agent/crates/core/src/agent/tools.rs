@@ -56,12 +56,52 @@ impl Agent {
                 }
                 continue;
             }
-            if let Err(error) = self.validate_dependency_call(context, call) {
-                if !self.record_recoverable_call_error(context, call, &error)? {
-                    return Err(error);
+            if !mcp::is_mcp_tool(&call.name) {
+                if let Err(error) = self.validate_dependency_call(context, call) {
+                    if !self.record_recoverable_call_error(context, call, &error)? {
+                        return Err(error);
+                    }
+                    continue;
                 }
-                continue;
             }
+            let mut mcp_generation = None;
+            let (approval_operation, approval_arguments) = if mcp::is_mcp_tool(&call.name) {
+                match self
+                    .mcp
+                    .approval_target(&context.project_id, &call.name, &call.arguments)
+                    .await
+                {
+                    Ok(Some(target)) => {
+                        mcp_generation = Some(target.generation);
+                        (
+                            target.label,
+                        json!({
+                            "serverId": target.server_id,
+                            "toolName": target.remote_name,
+                            "arguments": call.arguments,
+                        }),
+                        )
+                    }
+                    Ok(None) => {
+                        let error = BusinessError::new(
+                            "mcp_tool_unavailable",
+                            "MCP tool is no longer available for this project",
+                        );
+                        if !self.record_recoverable_call_error(context, call, &error)? {
+                            return Err(error);
+                        }
+                        continue;
+                    }
+                    Err(error) => {
+                        if !self.record_recoverable_call_error(context, call, &error)? {
+                            return Err(error);
+                        }
+                        continue;
+                    }
+                }
+            } else {
+                (call.name.clone(), call.arguments.clone())
+            };
             if let Err(error) = validate_before_policy(&call.name, &call.arguments) {
                 if !self.record_recoverable_call_error(context, call, &error)? {
                     return Err(error);
@@ -136,6 +176,7 @@ impl Agent {
                         Some("risk_requires_approval"),
                     )?;
                     context.pending_call = Some(call.clone());
+                    context.pending_mcp_generation = mcp_generation;
                     context.remaining_calls = calls[index + 1..].to_vec();
                     let snapshot = serde_json::to_value(&*context).map_err(|_| {
                         BusinessError::new(
@@ -148,11 +189,11 @@ impl Agent {
                         session_id: &context.session_id,
                         turn_id: &context.turn_id,
                         tool_call_id: &call.call_id,
-                        operation: &call.name,
-                        arguments: &call.arguments,
+                        operation: &approval_operation,
+                        arguments: &approval_arguments,
                         snapshot: &snapshot,
                     })?;
-                    self.emit(&context.session_id, EventPayload::ApprovalRequested(ApprovalRequestedPayload { turn_id: context.turn_id.clone(), tool_call_id: call.call_id.clone(), approval_id: approval.approval_id.clone(), operation: call.name.clone(), arguments: call.arguments.clone() }))?;
+                    self.emit(&context.session_id, EventPayload::ApprovalRequested(ApprovalRequestedPayload { turn_id: context.turn_id.clone(), tool_call_id: call.call_id.clone(), approval_id: approval.approval_id.clone(), operation: approval_operation, arguments: call.arguments.clone() }))?;
                     return Err(BusinessError::new("approval_required",format!("Tool call requires approval: {}",call.name)).details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id})));
                 }
                 Decision::Allow => allowed_calls.push(call.clone()),
@@ -178,7 +219,8 @@ impl Agent {
                 .all(|call| tool_risk(&call.name) == Some(Risk::ReadOnly));
         if !parallel_read_only {
             for call in calls {
-                self.execute_call(context, &call, token.clone()).await?;
+                self.execute_call(context, &call, token.clone(), None)
+                    .await?;
             }
             return Ok(());
         }
@@ -278,9 +320,32 @@ impl Agent {
         context: &mut Continuation,
         call: &ToolCall,
         token: CancellationToken,
+        expected_mcp_generation: Option<u64>,
     ) -> Result<(), BusinessError> {
         self.tool_state(context, call, "authorized", None)?;
         self.tool_state(context, call, "executing", None)?;
+        if mcp::is_mcp_tool(&call.name) {
+            let result = match self
+                .mcp
+                .call(
+                    &context.project_id,
+                    &call.name,
+                    call.arguments.clone(),
+                    token,
+                    expected_mcp_generation,
+                )
+                .await
+            {
+                Ok(result) => result,
+                Err(error) => {
+                    if !self.record_recoverable_call_error(context, call, &error)? {
+                        return Err(error);
+                    }
+                    return Ok(());
+                }
+            };
+            return self.record_call_success(context, call, result);
+        }
         let (project_root, mut params) = match self.prepare_call(context, call) {
             Ok(prepared) => prepared,
             Err(error) => {
@@ -334,7 +399,9 @@ impl Agent {
             error.code.as_str(),
             "invalid_arguments" | "malformed_tool_call"
         ) {
-            return Ok(false);
+            if !error.code.starts_with("mcp_") {
+                return Ok(false);
+            }
         }
         let result = json!({
             "error": {
@@ -374,8 +441,10 @@ impl Agent {
             .map(|(dependency_id, _)| dependency_id);
         let mut normalized_result = normalize_result(&call.name, result.clone(), dependency_id);
         attach_nearby_instructions(context, call, &mut normalized_result);
-        let process_failed = call.name == "bash"
-            && normalized_result.get("success").and_then(Value::as_bool) == Some(false);
+        let process_failed = (call.name == "bash"
+            && normalized_result.get("success").and_then(Value::as_bool) == Some(false))
+            || (mcp::is_mcp_tool(&call.name)
+                && normalized_result.get("isError").and_then(Value::as_bool) == Some(true));
         self.tool_state(
             context,
             call,
@@ -385,7 +454,11 @@ impl Agent {
                 "succeeded"
             },
             if process_failed {
-                normalized_result.get("status").and_then(Value::as_str)
+                if mcp::is_mcp_tool(&call.name) {
+                    Some("mcp_server_error")
+                } else {
+                    normalized_result.get("status").and_then(Value::as_str)
+                }
             } else {
                 None
             },

@@ -9,7 +9,8 @@ use std::{
 use suncode_common::BusinessError;
 use suncode_sdk::logging_module::{self as logging, Level};
 use suncode_sdk::{
-    AgentSdk, AgentSubscription, SdkResult, SunCodeEventCallback, SUNCODE_AGENT_SDK_ABI_VERSION,
+    AgentSdk, AgentSubscription, McpServerWriteRequest, SdkResult, SunCodeEventCallback,
+    SUNCODE_AGENT_SDK_ABI_VERSION,
 };
 
 pub struct SunCodeAgentHandle {
@@ -85,6 +86,107 @@ ffi_no_args!(suncode_agent_sdk_diagnostics, diagnostics);
 ffi_no_args!(suncode_agent_sdk_list_models, list_models);
 ffi_no_args!(suncode_agent_sdk_list_credentials, list_credentials);
 ffi_no_args!(suncode_agent_sdk_list_projects, list_projects);
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_list_mcp_servers(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let project_id = optional_c_string(project_id, "project_id")?;
+        sdk.list_mcp_servers(project_id.as_deref())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_create_mcp_server(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+    idempotency_key: *const c_char,
+    request_json: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let project_id = optional_c_string(project_id, "project_id")?;
+        let request = typed_json_from_c::<McpServerWriteRequest>(request_json, "request_json")?;
+        sdk.create_mcp_server(
+            project_id.as_deref(),
+            &c_string(idempotency_key, "idempotency_key")?,
+            request,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_update_mcp_server(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+    server_id: *const c_char,
+    expected_revision: u64,
+    idempotency_key: *const c_char,
+    request_json: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let project_id = optional_c_string(project_id, "project_id")?;
+        sdk.update_mcp_server(
+            project_id.as_deref(),
+            &c_string(server_id, "server_id")?,
+            expected_revision,
+            &c_string(idempotency_key, "idempotency_key")?,
+            typed_json_from_c::<McpServerWriteRequest>(request_json, "request_json")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_set_mcp_server_enabled(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+    server_id: *const c_char,
+    expected_revision: u64,
+    idempotency_key: *const c_char,
+    enabled: u8,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let project_id = optional_c_string(project_id, "project_id")?;
+        sdk.set_mcp_server_enabled(
+            project_id.as_deref(),
+            &c_string(server_id, "server_id")?,
+            expected_revision,
+            &c_string(idempotency_key, "idempotency_key")?,
+            enabled != 0,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_delete_mcp_server(
+    handle: *mut SunCodeAgentHandle,
+    server_id: *const c_char,
+    expected_revision: u64,
+    idempotency_key: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.delete_mcp_server(
+            &c_string(server_id, "server_id")?,
+            expected_revision,
+            &c_string(idempotency_key, "idempotency_key")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_retry_mcp_server(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+    server_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.retry_mcp_server(
+            &c_string(project_id, "project_id")?,
+            &c_string(server_id, "server_id")?,
+        )
+    })
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_list_project_dependencies(
@@ -671,6 +773,15 @@ fn json_from_c(pointer: *const c_char, name: &str) -> SdkResult<Value> {
         .map_err(|error| BusinessError::invalid(format!("{name} is invalid: {error}")))
 }
 
+fn typed_json_from_c<T: serde::de::DeserializeOwned>(
+    pointer: *const c_char,
+    name: &str,
+) -> SdkResult<T> {
+    let value = c_string(pointer, name)?;
+    serde_json::from_str(&value)
+        .map_err(|error| BusinessError::invalid(format!("{name} is invalid: {error}")))
+}
+
 unsafe fn write_error_out(error_out: *mut *mut c_char, value: *mut c_char) {
     if !error_out.is_null() {
         *error_out = value;
@@ -689,7 +800,7 @@ mod tests {
 
     #[test]
     fn exposes_the_current_abi_version() {
-        assert_eq!(suncode_agent_sdk_abi_version(), 4);
+        assert_eq!(suncode_agent_sdk_abi_version(), 5);
     }
 
     #[test]

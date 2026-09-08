@@ -247,7 +247,13 @@ impl Agent {
         token: CancellationToken,
     ) -> Result<TurnResponse, BusinessError> {
         if let Some(call) = continuation.pending_call.take() {
-            self.execute_call(continuation, &call, token.clone())
+            let expected_mcp_generation = continuation.pending_mcp_generation.take();
+            self.execute_call(
+                continuation,
+                &call,
+                token.clone(),
+                expected_mcp_generation,
+            )
                 .await?;
         }
         let siblings = std::mem::take(&mut continuation.remaining_calls);

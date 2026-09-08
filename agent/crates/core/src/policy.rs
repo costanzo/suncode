@@ -4,6 +4,7 @@ pub enum Risk {
     ProjectWrite,
     ProcessExecution,
     NetworkAccess,
+    ExternalTool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,6 +25,9 @@ pub fn evaluate(risk: Option<Risk>, non_interactive: bool, full_control: bool) -
 }
 
 pub fn tool_risk(name: &str) -> Option<Risk> {
+    if name.starts_with("mcp__") {
+        return Some(Risk::ExternalTool);
+    }
     match name {
         "read" | "glob" | "grep" | "question" | "todowrite" => Some(Risk::ReadOnly),
         "webfetch" => Some(Risk::NetworkAccess),
@@ -53,6 +57,14 @@ mod tests {
         );
         assert_eq!(evaluate(tool_risk("write"), true, false), Decision::Deny);
         assert_eq!(evaluate(tool_risk("unknown"), false, false), Decision::Deny);
+        assert_eq!(
+            evaluate(tool_risk("mcp__github__search"), false, false),
+            Decision::ApprovalRequired
+        );
+        assert_eq!(
+            evaluate(tool_risk("mcp__github__search"), true, false),
+            Decision::Deny
+        );
     }
 
     #[test]

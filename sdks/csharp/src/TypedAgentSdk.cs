@@ -26,6 +26,18 @@ public sealed partial class AgentSdk
     public Task<ModelsResult> GetModelsAsync() => Typed<ModelsResult>(ListModelsAsync());
     public Task<CredentialsResult> GetCredentialsAsync() => Typed<CredentialsResult>(ListCredentialsAsync());
     public Task<ProjectsResult> GetProjectsAsync() => Typed<ProjectsResult>(ListProjectsAsync());
+    public Task<McpServersResult> GetMcpServersAsync(string? projectId = null) => Typed<McpServersResult>(ListMcpServersAsync(projectId));
+    public Task<McpServer> CreateMcpServerAsync(CreateMcpServerRequest request) => Typed<McpServer>(WithNullableUtf8Async(
+        [request.ProjectId, request.IdempotencyKey, JsonSerializer.Serialize(request.Server, TypedJsonOptions)],
+        values => NativeMethods.suncode_agent_sdk_create_mcp_server(_handle, values[0], values[1], values[2])));
+    public Task<McpServer> UpdateMcpServerAsync(UpdateMcpServerRequest request) => Typed<McpServer>(WithNullableUtf8Async(
+        [request.ProjectId, request.ServerId, request.IdempotencyKey, JsonSerializer.Serialize(request.Server, TypedJsonOptions)],
+        values => NativeMethods.suncode_agent_sdk_update_mcp_server(_handle, values[0], values[1], request.ExpectedRevision, values[2], values[3])));
+    public Task<McpServer> SetMcpServerEnabledAsync(SetMcpServerEnabledRequest request) => Typed<McpServer>(SetMcpServerEnabledAsync(
+        request.ProjectId, request.ServerId, request.ExpectedRevision, request.IdempotencyKey, request.Enabled));
+    public Task<McpServerDeleteResult> DeleteMcpServerAsync(DeleteMcpServerRequest request) => Typed<McpServerDeleteResult>(DeleteMcpServerAsync(
+        request.ServerId, request.ExpectedRevision, request.IdempotencyKey));
+    public Task<McpServer> RetryMcpServerTypedAsync(string projectId, string serverId) => Typed<McpServer>(RetryMcpServerAsync(projectId, serverId));
 
     public Task<SettingsResult> GetSettingsAsync(SettingScope scope) => Typed<SettingsResult>(
         scope.ProjectId is null && scope.SessionId is null

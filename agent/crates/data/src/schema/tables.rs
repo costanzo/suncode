@@ -98,6 +98,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    mcp_server (mcp_server_id) {
+        mcp_server_id -> Text,
+        display_name -> Text,
+        tool_prefix -> Text,
+        transport_type -> Text,
+        transport_config_json -> Text,
+        enabled -> Integer,
+        sort_order -> Integer,
+        revision -> Integer,
+        created_at -> Text,
+        updated_at -> Text,
+    }
+}
+
+diesel::table! {
     project (project_id) {
         project_id -> Text,
         canonical_root -> Text,
@@ -246,6 +261,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     configuration,
     llm_model,
     llm_model_provider,
+    mcp_server,
     project,
     project_dependency,
     session,

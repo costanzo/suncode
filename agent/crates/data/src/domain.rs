@@ -1,5 +1,92 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::BTreeMap;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum McpWorkingDirectory {
+    Project,
+    ApplicationData,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum McpTransportConfig {
+    Stdio {
+        version: u32,
+        command: String,
+        arguments: Vec<String>,
+        working_directory: McpWorkingDirectory,
+        environment: BTreeMap<String, String>,
+        startup_timeout_seconds: u64,
+        request_timeout_seconds: u64,
+    },
+    StreamableHttp {
+        version: u32,
+        url: String,
+        headers: BTreeMap<String, String>,
+        startup_timeout_seconds: u64,
+        request_timeout_seconds: u64,
+    },
+}
+
+impl McpTransportConfig {
+    pub fn transport_type(&self) -> &'static str {
+        match self {
+            Self::Stdio { .. } => "stdio",
+            Self::StreamableHttp { .. } => "streamable_http",
+        }
+    }
+
+    pub fn startup_timeout_seconds(&self) -> u64 {
+        match self {
+            Self::Stdio {
+                startup_timeout_seconds,
+                ..
+            }
+            | Self::StreamableHttp {
+                startup_timeout_seconds,
+                ..
+            } => *startup_timeout_seconds,
+        }
+    }
+
+    pub fn request_timeout_seconds(&self) -> u64 {
+        match self {
+            Self::Stdio {
+                request_timeout_seconds,
+                ..
+            }
+            | Self::StreamableHttp {
+                request_timeout_seconds,
+                ..
+            } => *request_timeout_seconds,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServerRecord {
+    pub mcp_server_id: String,
+    pub display_name: String,
+    pub tool_prefix: String,
+    pub transport: McpTransportConfig,
+    pub enabled: bool,
+    pub sort_order: i64,
+    pub revision: u64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServerInput {
+    pub display_name: String,
+    pub transport: McpTransportConfig,
+    pub enabled: bool,
+    pub sort_order: i64,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LlmModelProviderRecord {

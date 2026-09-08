@@ -6,7 +6,7 @@ namespace SunCode.Sdk;
 
 public sealed partial class AgentSdk : IDisposable
 {
-    private const uint AbiVersion = 4;
+    private const uint AbiVersion = 5;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -68,6 +68,29 @@ public sealed partial class AgentSdk : IDisposable
     public Task<JsonObject> ListModelsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_models);
     public Task<JsonObject> ListCredentialsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_credentials);
     public Task<JsonObject> ListProjectsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_projects);
+
+    public Task<JsonObject> ListMcpServersAsync(string? projectId = null) => WithNullableUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_list_mcp_servers(_handle, values[0]));
+
+    public Task<JsonObject> CreateMcpServerAsync(string? projectId, string idempotencyKey, JsonObject request) => WithNullableUtf8Async(
+        [projectId, idempotencyKey, request.ToJsonString()],
+        values => NativeMethods.suncode_agent_sdk_create_mcp_server(_handle, values[0], values[1], values[2]));
+
+    public Task<JsonObject> UpdateMcpServerAsync(string? projectId, string serverId, ulong expectedRevision, string idempotencyKey, JsonObject request) => WithNullableUtf8Async(
+        [projectId, serverId, idempotencyKey, request.ToJsonString()],
+        values => NativeMethods.suncode_agent_sdk_update_mcp_server(_handle, values[0], values[1], expectedRevision, values[2], values[3]));
+
+    public Task<JsonObject> SetMcpServerEnabledAsync(string? projectId, string serverId, ulong expectedRevision, string idempotencyKey, bool enabled) => WithNullableUtf8Async(
+        [projectId, serverId, idempotencyKey],
+        values => NativeMethods.suncode_agent_sdk_set_mcp_server_enabled(_handle, values[0], values[1], expectedRevision, values[2], enabled ? (byte)1 : (byte)0));
+
+    public Task<JsonObject> DeleteMcpServerAsync(string serverId, ulong expectedRevision, string idempotencyKey) => WithUtf8Async(
+        [serverId, idempotencyKey],
+        values => NativeMethods.suncode_agent_sdk_delete_mcp_server(_handle, values[0], expectedRevision, values[1]));
+
+    public Task<JsonObject> RetryMcpServerAsync(string projectId, string serverId) => WithUtf8Async(
+        [projectId, serverId],
+        values => NativeMethods.suncode_agent_sdk_retry_mcp_server(_handle, values[0], values[1]));
 
     public Task<JsonObject> ListSettingsAsync() => CallAsync(handle =>
         NativeMethods.suncode_agent_sdk_list_settings(handle, IntPtr.Zero, IntPtr.Zero));

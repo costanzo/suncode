@@ -9,6 +9,28 @@ impl Agent {
     where
         P: Into<Arc<ModelProviderRegistry>>,
     {
+        Self::new_with_mcp_configuration(
+            store,
+            providers,
+            operations,
+            events,
+            non_interactive,
+            std::env::temp_dir().join("suncode-mcp"),
+        )
+    }
+
+    pub fn new_with_mcp_configuration<P>(
+        store: Store,
+        providers: P,
+        operations: Arc<suncode_tool::Operations>,
+        events: broadcast::Sender<SessionEvent>,
+        non_interactive: bool,
+        application_data: PathBuf,
+    ) -> Self
+    where
+        P: Into<Arc<ModelProviderRegistry>>,
+    {
+        let mcp = McpManager::new(store.clone(), application_data);
         Self {
             store,
             providers: providers.into(),
@@ -19,6 +41,7 @@ impl Agent {
             queued_messages: Arc::new(Mutex::new(HashMap::new())),
             non_interactive,
             session_locks: Arc::new(AsyncMutex::new(HashMap::new())),
+            mcp,
         }
     }
 
@@ -161,6 +184,7 @@ impl Agent {
             tool_call_limit,
             usage: Usage::default(),
             pending_call: None,
+            pending_mcp_generation: None,
             remaining_calls: Vec::new(),
             context_compacted: false,
             last_tool_signature: None,

@@ -204,6 +204,25 @@ const paths = {
       <path d="M21 20v-6h-6" />
     </>
   ),
+  server: (
+    <>
+      <rect x="4" y="3" width="16" height="7" rx="2" />
+      <rect x="4" y="14" width="16" height="7" rx="2" />
+      <path d="M8 6.5h.01M8 17.5h.01M12 6.5h5M12 17.5h5" />
+    </>
+  ),
+  edit: (
+    <>
+      <path d="M4 20h4l11-11-4-4L4 16v4Z" />
+      <path d="m13.5 6.5 4 4" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14" />
+      <path d="M10 11v6M14 11v6" />
+    </>
+  ),
   expand: (
     <>
       <path d="M9 3H3v6M15 3h6v6M21 15v6h-6M3 15v6h6" />

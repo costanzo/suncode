@@ -47,4 +47,4 @@ CLI, TUI, web, mobile, and IDE-plugin surfaces are future directions. They are d
 
 ## Current status
 
-The architecture in `ARCHITECTURE.md` is approved. The agent core, Avalonia client, SQLite schema, and key SDK facade paths exist and have focused verification. Built-in provider support covers six providers with two static models each after focused verification. Describe a component as working only when source and focused verification exist.
+The architecture in `ARCHITECTURE.md` is approved. The agent core, Avalonia client, SQLite schema, and key SDK facade paths exist and have focused verification. Built-in provider support covers six providers with two static models each. Settings can manage tools-only MCP servers over local stdio and remote Streamable HTTP through the embedded Rust agent; these processes are policy-mediated but not presented as OS-sandboxed. Describe a component as working only when source and focused verification exist.
