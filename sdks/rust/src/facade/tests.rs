@@ -310,6 +310,7 @@ fn project_dependencies_are_read_only_and_browsed_on_demand() {
     std::fs::create_dir_all(project_root.join("src")).unwrap();
     std::fs::create_dir_all(dependency_root.join("lib")).unwrap();
     std::fs::create_dir_all(dependency_root.join("nested")).unwrap();
+    std::fs::write(project_root.join("src/main.rs"), "fn main() {}\n").unwrap();
     std::fs::write(dependency_root.join("lib/code.rs"), "pub fn shared() {}\n").unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
     let project = sdk
@@ -333,6 +334,27 @@ fn project_dependencies_are_read_only_and_browsed_on_demand() {
         .list_project_directory(&project.project_id, Some(&dependency.dependency_id), "lib")
         .unwrap();
     assert_eq!(nested["entries"][0]["name"], "code.rs");
+    let project_file = sdk
+        .read_project_file(&project.project_id, None, "src/main.rs")
+        .unwrap();
+    assert_eq!(project_file.content, "fn main() {}\n");
+    assert_eq!(project_file.path, "src/main.rs");
+    assert_eq!(project_file.dependency_id, None);
+    let dependency_file = sdk
+        .read_project_file(
+            &project.project_id,
+            Some(&dependency.dependency_id),
+            "lib/code.rs",
+        )
+        .unwrap();
+    assert_eq!(dependency_file.content, "pub fn shared() {}\n");
+    assert_eq!(
+        dependency_file.dependency_id.as_deref(),
+        Some(dependency.dependency_id.as_str())
+    );
+    assert!(sdk
+        .read_project_file(&project.project_id, None, "../dependency/lib/code.rs")
+        .is_err());
     assert!(sdk
         .add_project_dependency(&project.project_id, project_root.to_str().unwrap())
         .is_err());

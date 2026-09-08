@@ -8,18 +8,18 @@
 
 ## Implementation
 
-- [ ] Add AvaloniaEdit and TextMate packages after approval.
-- [ ] Connect Explorer file selection to bounded file reads.
-- [ ] Restore Conversation from session selection.
-- [ ] Add focused client tests.
+- [x] Add AvaloniaEdit and TextMate packages after approval.
+- [x] Connect Explorer file selection to bounded file reads.
+- [x] Restore Conversation from session selection.
+- [x] Add focused client tests.
 
 ## Verification
 
 - [x] Run design-system build and route review.
-- [ ] Run Avalonia focused tests after implementation.
+- [x] Run Avalonia focused tests after implementation.
 - [x] Run `git diff --check`.
 
 ## Closeout
 
-- [ ] Update features and specifications.
-- [ ] Record important decisions.
+- [x] Update features and specifications.
+- [x] Confirm no new architectural decision record is required.

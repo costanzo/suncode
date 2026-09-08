@@ -3,6 +3,7 @@
              xmlns:controls="using:SunCode.Desktop.Controls"
              xmlns:vm="using:SunCode.Desktop.ViewModels"
              xmlns:chat="using:SunCode.Desktop.Views.ProjectWorkspace.Chat"
+             xmlns:editor="using:SunCode.Desktop.Views.ProjectWorkspace.Editor"
              xmlns:navigation="using:SunCode.Desktop.Views.ProjectWorkspace.Navigation"
              xmlns:review="using:SunCode.Desktop.Views.ProjectWorkspace.Review"
              xmlns:workspace="using:SunCode.Desktop.Views.ProjectWorkspace"
@@ -160,7 +161,10 @@
 
               <Border Grid.Column="1" Background="#01000000" Cursor="SizeWestEast" Tag="Navigation" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveNavigationVisible}" />
 
-              <chat:ChatArea x:Name="ChatArea" Grid.Column="2" />
+              <Grid Grid.Column="2">
+                <chat:ChatArea x:Name="ChatArea" IsVisible="{Binding IsConversationVisible}" />
+                <editor:ReadOnlyEditor IsVisible="{Binding IsEditorVisible}" />
+              </Grid>
 
               <Border Grid.Column="3" Background="#01000000" Cursor="SizeWestEast" Tag="Review" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveReviewVisible}" />
 

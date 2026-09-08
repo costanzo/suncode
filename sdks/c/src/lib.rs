@@ -244,6 +244,23 @@ pub unsafe extern "C" fn suncode_agent_sdk_list_project_directory(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_read_project_file(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+    dependency_id: *const c_char,
+    path: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let dependency_id = optional_c_string(dependency_id, "dependency_id")?;
+        sdk.read_project_file(
+            &c_string(project_id, "project_id")?,
+            dependency_id.as_deref(),
+            &c_string(path, "path")?,
+        )
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_list_settings(
     handle: *mut SunCodeAgentHandle,
     project_id: *const c_char,

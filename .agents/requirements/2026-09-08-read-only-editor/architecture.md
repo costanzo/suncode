@@ -2,9 +2,9 @@
 
 ## Current state
 
-Avalonia Workspace renders Conversation as the central content surface and Explorer as a separate left navigation panel. File nodes currently have no content-selection action.
+Avalonia Workspace selects either Conversation or the read-only Editor as its central content surface. Explorer file nodes request bounded content through the Rust SDK facade; the desktop never reads project files directly.
 
-## Proposed design
+## Implemented design
 
 The desktop ViewModel owns the transient selected-file state. Explorer raises a file-selection event through the existing view boundary. Workspace chooses one central content mode at a time: selected session Conversation or selected file Editor. The Editor view owns only presentation and document viewport state; it does not read SQLite or providers directly.
 
@@ -35,6 +35,6 @@ The change is additive to Workspace navigation. Conversation remains the default
 
 The main risks are large-file memory use, unsupported language grammars, and accidental edit affordances. Keep file size/read bounds explicit, fall back to plain text highlighting, and set all editor input paths read-only. Rollback removes the editor route and selected-file mode without changing session persistence.
 
-## Open questions
+## Resolved questions
 
-- Which TextMate grammar package should be selected for the initial language set?
+- Production uses `Avalonia.AvaloniaEdit` 12.0.0 and `AvaloniaEdit.TextMate` 12.0.0. The latter supplies `TextMateSharp` and `TextMateSharp.Grammars` 2.0.3 transitively.

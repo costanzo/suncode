@@ -210,6 +210,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     public async Task SelectSessionAsync(SessionItem session)
     {
+        CloseEditor();
         var operationId = Guid.NewGuid().ToString("N")[..8];
         var operationTimer = Stopwatch.StartNew();
         LogSession(operationId, session.SessionId, $"select.begin selected={SelectedSession?.SessionId ?? "<none>"} loaded={_loadedSessionId ?? "<none>"} version={_sessionLoadVersion} loading={IsSessionLoading}");

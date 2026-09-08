@@ -103,6 +103,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     private void ClearSession(bool clearSelection = true)
     {
+        CloseEditor();
         Interlocked.Increment(ref _sessionLoadVersion);
         _loadedSessionId = null;
         IsSessionLoading = false;

@@ -188,6 +188,13 @@ public sealed record ProjectDirectoryResult(
     IReadOnlyList<DirectoryEntry> Entries,
     bool Truncated);
 
+public sealed record ProjectFileResult(
+    string ProjectId,
+    string? DependencyId,
+    string Path,
+    string Content,
+    ulong Bytes);
+
 public sealed record SessionRecord(
     string SessionId,
     string? ProjectId,

@@ -64,6 +64,7 @@ public sealed partial class AgentSdk
     public Task<ProjectDependenciesResult> ListProjectDependenciesTypedAsync(string projectId) => Typed<ProjectDependenciesResult>(ListProjectDependenciesAsync(projectId));
     public Task<DependencyRemoval> RemoveProjectDependencyTypedAsync(string projectId, string dependencyId) => Typed<DependencyRemoval>(RemoveProjectDependencyAsync(projectId, dependencyId));
     public Task<ProjectDirectoryResult> ListProjectDirectoryTypedAsync(string projectId, string? dependencyId, string path) => Typed<ProjectDirectoryResult>(ListProjectDirectoryAsync(projectId, dependencyId, path));
+    public Task<ProjectFileResult> ReadProjectFileTypedAsync(string projectId, string? dependencyId, string path) => Typed<ProjectFileResult>(ReadProjectFileAsync(projectId, dependencyId, path));
     public Task<SessionsResult> ListSessionsTypedAsync(string projectId) => Typed<SessionsResult>(ListSessionsAsync(projectId));
     public Task<GitStatusResult> GitStatusTypedAsync(string projectId) => Typed<GitStatusResult>(GitStatusAsync(projectId));
     public Task<GitDiffFileResult> GitDiffTypedAsync(string projectId, string scope, string path) => Typed<GitDiffFileResult>(GitDiffAsync(projectId, scope, path));

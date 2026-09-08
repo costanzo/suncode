@@ -171,4 +171,51 @@ impl AgentSdk {
         value["dependencyId"] = dependency_id.map_or(Value::Null, |value| json!(value));
         Ok(value)
     }
+
+    pub fn read_project_file(
+        &self,
+        project_id: &str,
+        dependency_id: Option<&str>,
+        path: &str,
+    ) -> SdkResult<ProjectFileResult> {
+        const EDITOR_FILE_LIMIT: usize = 1024 * 1024;
+        let root = if let Some(dependency_id) = dependency_id {
+            self.state
+                .store
+                .project_dependency_by_id(project_id, dependency_id)?
+                .ok_or_else(|| BusinessError::missing("dependency"))?
+                .canonical_root
+        } else {
+            self.state
+                .store
+                .project_by_id(project_id)?
+                .ok_or_else(|| BusinessError::missing("project"))?
+                .canonical_root
+        };
+        let value = self
+            .state
+            .operations
+            .read_text_file(Path::new(&root), path, EDITOR_FILE_LIMIT)
+            .map_err(operation_error)?;
+        let content = value
+            .get("content")
+            .and_then(Value::as_str)
+            .ok_or_else(|| BusinessError::unavailable("file read did not return content"))?;
+        let bytes = value
+            .get("bytes")
+            .and_then(Value::as_u64)
+            .ok_or_else(|| BusinessError::unavailable("file read did not return a byte count"))?;
+        let normalized_path = value
+            .get("path")
+            .and_then(Value::as_str)
+            .ok_or_else(|| BusinessError::unavailable("file read did not return a path"))?;
+        Ok(ProjectFileResult {
+            project_id: project_id.to_string(),
+            dependency_id: dependency_id.map(str::to_string),
+            path: normalized_path.to_string(),
+            content: content.to_string(),
+            bytes: usize::try_from(bytes)
+                .map_err(|_| BusinessError::unavailable("file byte count is invalid"))?,
+        })
+    }
 }

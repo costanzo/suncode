@@ -145,6 +145,9 @@ public sealed partial class AgentSdk : IDisposable
     public Task<JsonObject> ListProjectDirectoryAsync(string projectId, string? dependencyId, string path) => WithNullableUtf8Async(
         [projectId, dependencyId, path], values => NativeMethods.suncode_agent_sdk_list_project_directory(_handle, values[0], values[1], values[2]));
 
+    public Task<JsonObject> ReadProjectFileAsync(string projectId, string? dependencyId, string path) => WithNullableUtf8Async(
+        [projectId, dependencyId, path], values => NativeMethods.suncode_agent_sdk_read_project_file(_handle, values[0], values[1], values[2]));
+
     public Task<JsonObject> GitStatusAsync(string projectId) => WithUtf8Async(
         [projectId], values => NativeMethods.suncode_agent_sdk_git_status(_handle, values[0]));
 

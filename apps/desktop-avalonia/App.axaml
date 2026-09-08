@@ -6,6 +6,7 @@
              RequestedThemeVariant="Light">
   <Application.Styles>
     <FluentTheme DensityStyle="Compact" />
+    <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
     <StyleInclude Source="avares://SunCode/Styles/Application/FoundationStyles.axaml" />
     <StyleInclude Source="avares://SunCode/Styles/Application/ControlStyles.axaml" />
     <StyleInclude Source="avares://SunCode/Styles/Application/MarkdownStyles.axaml" />

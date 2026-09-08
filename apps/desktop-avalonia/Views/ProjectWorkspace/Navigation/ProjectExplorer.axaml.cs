@@ -23,6 +23,12 @@ public sealed partial class ProjectExplorer : UserControl
             await ViewModel.LoadExplorerChildrenAsync(node);
     }
 
+    private async void ExplorerSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (e.AddedItems.OfType<ExplorerNode>().FirstOrDefault() is { IsFile: true } node)
+            await ViewModel.SelectExplorerFileAsync(node);
+    }
+
     private async void AddDependency(object? sender, RoutedEventArgs e)
     {
         var topLevel = TopLevel.GetTopLevel(this);

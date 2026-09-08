@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::io;
+use std::io::{self, Read};
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -468,6 +468,82 @@ impl Operations {
         }))
     }
 
+    pub fn read_text_file(
+        &self,
+        root_path: &Path,
+        relative_path: &str,
+        max_bytes: usize,
+    ) -> Result<Value, Value> {
+        let canonical_root = root_path.canonicalize().map_err(|_| {
+            json!({"code":"project_unavailable","message":"file root is unavailable","retryable":false})
+        })?;
+        if !canonical_root.is_dir() {
+            return Err(
+                json!({"code":"project_unavailable","message":"file root is not a directory","retryable":false}),
+            );
+        }
+        let relative = safe_relative_path(relative_path).map_err(failure_value)?;
+        let candidate = canonical_root.join(&relative);
+        let metadata = fs::symlink_metadata(&candidate).map_err(|_| {
+            json!({"code":"path_unavailable","message":"file is unavailable","retryable":false})
+        })?;
+        if metadata.file_type().is_symlink() {
+            return Err(
+                json!({"code":"scope_denied","message":"symbolic links are not allowed","retryable":false}),
+            );
+        }
+        let canonical_file = candidate.canonicalize().map_err(|_| {
+            json!({"code":"path_unavailable","message":"file is unavailable","retryable":false})
+        })?;
+        if !canonical_file.starts_with(&canonical_root) {
+            return Err(
+                json!({"code":"scope_denied","message":"file must remain inside its root","retryable":false}),
+            );
+        }
+        if !metadata.is_file() {
+            return Err(
+                json!({"code":"not_a_file","message":"path is not a regular file","retryable":false}),
+            );
+        }
+        let limit = max_bytes.clamp(1, 4 * 1024 * 1024);
+        if metadata.len() > limit as u64 {
+            return Err(json!({
+                "code":"file_too_large",
+                "message":format!("file exceeds the {limit} byte viewer limit"),
+                "retryable":false
+            }));
+        }
+        let file = fs::File::open(&canonical_file).map_err(|_| {
+            json!({"code":"project_read_failed","message":"file could not be read","retryable":true})
+        })?;
+        let mut bytes = Vec::with_capacity(metadata.len().min(limit as u64) as usize);
+        file.take(limit as u64 + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|_| {
+                json!({"code":"project_read_failed","message":"file could not be read","retryable":true})
+            })?;
+        if bytes.len() > limit {
+            return Err(json!({
+                "code":"file_too_large",
+                "message":format!("file exceeds the {limit} byte viewer limit"),
+                "retryable":false
+            }));
+        }
+        if bytes.contains(&0) {
+            return Err(
+                json!({"code":"encoding_unsupported","message":"file is not UTF-8 text","retryable":false}),
+            );
+        }
+        let content = String::from_utf8(bytes).map_err(|_| {
+            json!({"code":"encoding_unsupported","message":"file is not valid UTF-8 text","retryable":false})
+        })?;
+        Ok(json!({
+            "path": relative.to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/"),
+            "bytes": content.len(),
+            "content": content
+        }))
+    }
+
     pub fn execute_in_project(
         &self,
         project_path: &Path,
@@ -623,6 +699,49 @@ mod tests {
             .unwrap()
             .iter()
             .all(|entry| entry["name"] != "linked-folder"));
+        cleanup(&root, &checkpoints);
+    }
+
+    #[test]
+    fn reads_bounded_utf8_files_without_following_symlinks() {
+        let (root, checkpoints) = temporary_roots("text-file-read");
+        fs::write(root.join("source.rs"), "pub fn main() {}\n").unwrap();
+        fs::write(root.join("large.txt"), "12345").unwrap();
+        fs::write(root.join("binary.bin"), [0xff, 0xfe]).unwrap();
+        fs::write(root.join("nul.bin"), b"text\0binary").unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(root.join("source.rs"), root.join("linked.rs")).unwrap();
+
+        let operations = Operations::new(checkpoints.clone()).unwrap();
+        let result = operations.read_text_file(&root, "source.rs", 1024).unwrap();
+        assert_eq!(result["path"], "source.rs");
+        assert_eq!(result["content"], "pub fn main() {}\n");
+        assert_eq!(result["bytes"], 17);
+        assert_eq!(
+            operations
+                .read_text_file(&root, "large.txt", 4)
+                .unwrap_err()["code"],
+            "file_too_large"
+        );
+        assert_eq!(
+            operations
+                .read_text_file(&root, "binary.bin", 1024)
+                .unwrap_err()["code"],
+            "encoding_unsupported"
+        );
+        assert_eq!(
+            operations
+                .read_text_file(&root, "nul.bin", 1024)
+                .unwrap_err()["code"],
+            "encoding_unsupported"
+        );
+        #[cfg(unix)]
+        assert_eq!(
+            operations
+                .read_text_file(&root, "linked.rs", 1024)
+                .unwrap_err()["code"],
+            "scope_denied"
+        );
         cleanup(&root, &checkpoints);
     }
 

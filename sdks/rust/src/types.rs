@@ -206,6 +206,16 @@ pub struct DependencyRemoval {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectFileResult {
+    pub project_id: String,
+    pub dependency_id: Option<String>,
+    pub path: String,
+    pub content: String,
+    pub bytes: usize,
+}
+
+#[derive(Debug, Serialize)]
 pub struct SessionsResult {
     pub project_id: String,
     pub sessions: Vec<SessionRecord>,

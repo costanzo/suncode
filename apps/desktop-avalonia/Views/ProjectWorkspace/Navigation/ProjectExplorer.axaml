@@ -91,6 +91,8 @@
                 Grid.Row="2"
                 Classes="explorer-tree"
                 ItemsSource="{Binding ExplorerRoots}"
+                SelectedItem="{Binding SelectedEditorFile, Mode=OneWay}"
+                SelectionChanged="ExplorerSelectionChanged"
                 ScrollViewer.HorizontalScrollBarVisibility="Auto">
         <TreeView.DataTemplates>
           <TreeDataTemplate DataType="models:ExplorerNode" ItemsSource="{Binding Children}">

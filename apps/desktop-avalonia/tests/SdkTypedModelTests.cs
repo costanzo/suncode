@@ -44,6 +44,19 @@ public sealed class SdkTypedModelTests
     }
 
     [Fact]
+    public void Deserializes_bounded_project_file_result()
+    {
+        const string json = "{\"projectId\":\"project-1\",\"dependencyId\":null,\"path\":\"src/main.rs\",\"content\":\"fn main() {}\\n\",\"bytes\":13}";
+        var file = JsonSerializer.Deserialize<ProjectFileResult>(json, Options);
+
+        Assert.NotNull(file);
+        Assert.Equal("project-1", file.ProjectId);
+        Assert.Equal("src/main.rs", file.Path);
+        Assert.Equal("fn main() {}\n", file.Content);
+        Assert.Equal((ulong)13, file.Bytes);
+    }
+
+    [Fact]
     public void Serializes_mcp_transport_with_rust_discriminator_and_camel_case_fields()
     {
         var request = new McpServerWriteRequest(
