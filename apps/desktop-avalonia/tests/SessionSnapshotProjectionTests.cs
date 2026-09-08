@@ -446,8 +446,6 @@ public sealed class SessionSnapshotProjectionTests
     public void LiveProjectionOmitsAssistantMessagesWithoutVisibleText()
     {
         var viewModel = new DesktopViewModel();
-        var changes = 0;
-        viewModel.ConversationChanged += () => changes++;
         var toolCallMessage = JsonNode.Parse("""
         {
           "event_type":"message.assistant",
@@ -465,7 +463,6 @@ public sealed class SessionSnapshotProjectionTests
         viewModel.ApplyEvent(toolCallMessage, live: true);
 
         Assert.Empty(viewModel.Messages);
-        Assert.Equal(0, changes);
     }
 
     [Fact]
@@ -823,13 +820,11 @@ public sealed class SessionSnapshotProjectionTests
     }
 
     [Fact]
-    public void ApplyingProjectionReplacesTheMessageSourceAndSignalsOnce()
+    public void ApplyingProjectionReplacesTheMessageSource()
     {
         var viewModel = new DesktopViewModel();
         var original = viewModel.Messages;
-        var changes = 0;
         var sourceChanges = 0;
-        viewModel.ConversationChanged += () => changes++;
         viewModel.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(DesktopViewModel.Messages)) sourceChanges++;
@@ -849,7 +844,6 @@ public sealed class SessionSnapshotProjectionTests
         Assert.NotSame(original, viewModel.Messages);
         Assert.Equal("new session", Assert.Single(viewModel.Messages).Text);
         Assert.Equal(1, sourceChanges);
-        Assert.Equal(1, changes);
     }
 
     private static JsonObject UserMessage(string messageId, string turnId, string text) =>

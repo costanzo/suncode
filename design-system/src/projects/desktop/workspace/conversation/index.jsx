@@ -190,8 +190,8 @@ const conversationGuides = {
         "The control appears only while the conversation is scrolled away from its latest message.",
       ],
       logic: [
-        "The conversation viewport tracks whether the user is near the latest message.",
-        "New content follows the tail only while the user remains at the bottom.",
+        "Entering a session positions the viewport at its latest message once.",
+        "Later assistant, tool, and layout updates preserve the current viewport instead of following new content.",
         "Activating the control scrolls to the newest message and hides the control.",
       ],
     },

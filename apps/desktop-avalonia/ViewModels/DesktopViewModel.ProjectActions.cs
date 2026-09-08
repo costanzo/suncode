@@ -211,6 +211,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public async Task SelectSessionAsync(SessionItem session)
     {
         CloseEditor();
+        var enteringSession = SelectedSession?.SessionId != session.SessionId;
         var operationId = Guid.NewGuid().ToString("N")[..8];
         var operationTimer = Stopwatch.StartNew();
         LogSession(operationId, session.SessionId, $"select.begin selected={SelectedSession?.SessionId ?? "<none>"} loaded={_loadedSessionId ?? "<none>"} version={_sessionLoadVersion} loading={IsSessionLoading}");
@@ -307,6 +308,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             StatusText = "Session loaded";
             ConnectionState = "connected";
             LogSession(operationId, sessionId, $"select.completed elapsed_ms={operationTimer.Elapsed.TotalMilliseconds:F1} version={loadVersion}");
+            if (enteringSession) SessionEntered?.Invoke();
         }
         catch (Exception exception)
         {

@@ -474,7 +474,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ToolActivitySummary));
         OnPropertyChanged(nameof(HasCurrentTodos));
         OnPropertyChanged(nameof(LatestActivityText));
-        ConversationChanged?.Invoke();
     }
 
     private void OnNativeEvent(string sessionId, string json) => Dispatcher.UIThread.Post(() =>
@@ -540,13 +539,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                         IsProcess = true,
                         CanBeFinalAssistant = false
                     });
-                    ConversationChanged?.Invoke();
                 }
             }
             else if (delta.Length > 0)
             {
                 assistant.Text += delta;
-                ConversationChanged?.Invoke();
             }
         }
         else if (type is "message.user" or "message.assistant")
@@ -616,7 +613,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             if (changed)
             {
                 OnPropertyChanged(nameof(HasMessages));
-                ConversationChanged?.Invoke();
             }
         }
         else if (type is "tool.requested" or "tool.state" or "tool.result" or "tool.output")
@@ -625,7 +621,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.String("state"), payload.String("name")));
             OnPropertyChanged(nameof(HasActivities));
             OnPropertyChanged(nameof(LatestActivityText));
-            ConversationChanged?.Invoke();
         }
         else if (type == "todo.updated")
         {
@@ -647,7 +642,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 IsProcess = true
             });
             OnPropertyChanged(nameof(HasMessages));
-            ConversationChanged?.Invoke();
         }
         else if (!type.StartsWith("provider.exchange.", StringComparison.Ordinal))
         {
@@ -698,7 +692,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             }
             SyncActiveToolRow();
             OnPropertyChanged(nameof(ToolActivitySummary));
-            ConversationChanged?.Invoke();
         }
         if (live && type.StartsWith("checkpoint.", StringComparison.Ordinal)) _ = LoadCheckpointsAsync();
         if (live && type == "usage.updated") _ = LoadSessionUsageAsync();

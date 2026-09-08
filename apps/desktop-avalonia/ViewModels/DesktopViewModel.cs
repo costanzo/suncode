@@ -98,7 +98,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private bool _disposed;
 
     public event Action<string>? ThemeChanged;
-    public event Action? ConversationChanged;
+    public event Action? SessionEntered;
 
     public ObservableCollection<ProjectItem> Projects { get; } = [];
     public ObservableCollection<SessionItem> Sessions { get; } = [];

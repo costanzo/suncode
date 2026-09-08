@@ -45,16 +45,15 @@ public sealed partial class WorkspaceWindow : Window
     {
         if (_initialized) return;
         _initialized = true;
-        ViewModel.ConversationChanged += ConversationChanged;
+        ViewModel.SessionEntered += SessionEntered;
         await ViewModel.InitializeAsync();
         ConfigureProjectWindow();
         UpdateNativeProjectMenu();
-        ProjectWorkspaceView.ScrollConversationToEnd();
     }
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
-        ViewModel.ConversationChanged -= ConversationChanged;
+        ViewModel.SessionEntered -= SessionEntered;
     }
 
     internal async Task OpenProjectPickerAsync()
@@ -163,8 +162,8 @@ public sealed partial class WorkspaceWindow : Window
         }
     }
 
-    private void ConversationChanged() =>
-        ProjectWorkspaceView.ScrollConversationToEnd();
+    private void SessionEntered() =>
+        ProjectWorkspaceView.ScrollConversationToEndForSessionEntry();
 
     private void WindowKeyDown(object? sender, KeyEventArgs e)
     {

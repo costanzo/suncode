@@ -37,8 +37,8 @@ public sealed partial class ProjectWorkspace : UserControl
     private WorkspaceWindow? Owner => TopLevel.GetTopLevel(this) as WorkspaceWindow;
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
 
-    internal void ScrollConversationToEnd() =>
-        ChatArea.ScrollConversationToEnd();
+    internal void ScrollConversationToEndForSessionEntry() =>
+        ChatArea.ScrollConversationToEndForSessionEntry();
 
     internal void ClampGitViewerHeight()
     {
