@@ -71,7 +71,7 @@ The implementation must preserve SunCode's existing ownership and authority boun
 4. MCP tool calls use the existing `session_tool_use` lifecycle and appear in Tool activity.
 5. MCP results are bounded before entering model context. Text and structured JSON are supported initially. Unsupported binary/audio content produces a recoverable tool error rather than being silently discarded.
 6. Cancellation propagates to the MCP request. Transport loss, protocol errors, server-declared errors, malformed schemas, and timeouts become redacted typed failures.
-7. Local processes receive a deliberate, documented environment rather than an automatic copy of every host environment variable.
+7. Local processes receive a deliberate, documented, OS-specific allowlist rather than an automatic copy of every host environment variable. The baseline supplies process launch, user/profile, locale, terminal/session, temporary-directory, working-directory, and standard toolchain lookup values; configured entries override it. Dynamic loader and runtime code-injection variables are not inherited implicitly.
 
 ## Edge cases
 

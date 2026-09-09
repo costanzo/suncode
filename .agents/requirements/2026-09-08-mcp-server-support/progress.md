@@ -41,3 +41,4 @@
 - Confirmed `rmcp` 3.2.0 supports the required client, child-process, and Streamable HTTP client features on the repository's Rust toolchain.
 - Completed the Rust persistence/runtime, SDK binding, and Avalonia implementation.
 - Aligned the production editor's default startup timeout with the 30-second design-system value.
+- Expanded MCP stdio startup to use an OS-specific allowlisted environment baseline with safe fallbacks, standard tool lookup paths, working-directory metadata, and explicit configured-variable overrides.

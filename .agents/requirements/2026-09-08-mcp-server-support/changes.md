@@ -18,6 +18,7 @@
 
 - Add the dedicated global `mcp_server` table and narrowly additive initialization support.
 - Store desired transport configuration and enabled state; keep runtime state in memory.
+- Launch local stdio servers with an OS-specific allowlisted default environment, deterministic runtime fallbacks, standard tool lookup paths, and explicit configured-entry overrides.
 
 ## Tests
 

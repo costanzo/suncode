@@ -39,7 +39,7 @@ Verify MCP desired-state persistence, transport lifecycle, hot catalog replaceme
 ## Commands and results
 
 - `cargo fmt --manifest-path agent/Cargo.toml --all`: passed.
-- `cargo test --workspace --manifest-path agent/Cargo.toml`: passed, including 36 core, 8 data, 1 database, 3 MCP adapter, and existing crate tests (93 unit tests total; doc tests also passed).
+- `cargo test --workspace --manifest-path agent/Cargo.toml`: passed, including 36 core, 8 data, 1 database, 5 MCP adapter, and existing crate tests (95 unit tests total; doc tests also passed).
 - `cargo fmt --manifest-path sdks/rust/Cargo.toml --all`: passed.
 - `cargo test --manifest-path sdks/rust/Cargo.toml --lib`: passed (14 tests).
 - `cargo fmt --manifest-path sdks/c/Cargo.toml --all`: passed.
@@ -47,6 +47,7 @@ Verify MCP desired-state persistence, transport lifecycle, hot catalog replaceme
 - `dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj`: passed (62 tests).
 - `npm run build` in `design-system/`: passed.
 - Browser review at 1280 px: light/dark render passed, `.dialog-backdrop` count was zero, Escape removed the editor, and document width did not overflow.
+- MCP environment tests verify the platform baseline contains launch/runtime values, working-directory metadata, and that configured variables override defaults without removing unrelated baseline values.
 
 ## Residual risks
 
