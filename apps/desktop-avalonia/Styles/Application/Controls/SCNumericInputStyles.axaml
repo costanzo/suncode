@@ -18,8 +18,8 @@
     <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
   </Style>
   <Style Selector="controls|SCNumericInput:focus-within Border.sc-numeric-chrome">
-    <Setter Property="Background" Value="{DynamicResource FieldFocusBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
   </Style>
   <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner">
     <Setter Property="MinHeight" Value="34" />

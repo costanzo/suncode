@@ -17,7 +17,9 @@
     </Style>
     <Style Selector="TextBox.mono-input">
       <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
-      <Setter Property="FontSize" Value="11" />
+      <!-- Keep machine-data fields aligned with Settings' .mono inputs and
+           the design-system field text size. -->
+      <Setter Property="FontSize" Value="14" />
     </Style>
   </Window.Styles>
 

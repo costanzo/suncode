@@ -25,8 +25,10 @@
       <Color x:Key="AccentColor">#d9e0e6</Color>
       <Color x:Key="AccentInkColor">#101317</Color>
       <Color x:Key="TextControlSelectionHighlightColor">#65717d</Color>
-      <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#d9e0e6" />
-      <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#d9e0e6" />
+      <!-- Design-system fields retain their semantic border while focused;
+           do not let Fluent replace it with the accent/black outline. -->
+      <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource BorderColor}" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="{DynamicResource BorderColor}" />
       <!-- Fluent resolves the popup in a separate PopupRoot, so these
            resources are the reliable theme bridge for SCFlatComboBox. -->
       <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#121519" />
@@ -104,8 +106,10 @@
       <Color x:Key="AccentColor">#2c3742</Color>
       <Color x:Key="AccentInkColor">#ffffff</Color>
       <Color x:Key="TextControlSelectionHighlightColor">#aab8c4</Color>
-      <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#2c3742" />
-      <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="#2c3742" />
+      <!-- Design-system fields retain their semantic border while focused;
+           do not let Fluent replace it with the accent/black outline. -->
+      <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource BorderColor}" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="{DynamicResource BorderColor}" />
       <!-- Fluent resolves the popup in a separate PopupRoot, so these
            resources are the reliable theme bridge for SCFlatComboBox. -->
       <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#ffffff" />
