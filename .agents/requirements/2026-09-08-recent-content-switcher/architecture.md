@@ -11,7 +11,7 @@ Workspace derives one current-content item from the active central view. A title
 ## Boundaries and dependencies
 
 - The design-system React implementation is review tooling only.
-- A future Avalonia implementation will own presentation and transient interaction state.
+- Avalonia owns presentation state. The 2026-09-09 UI state restoration delivery makes the bounded recent-content projection durable in a desktop-owned local JSON file.
 - Session and file identities must come through existing client/SDK contracts; the switcher does not access SQLite or the filesystem.
 
 ## Data and control flow
@@ -35,4 +35,4 @@ The main risks are ambiguous file/session identity and title-bar crowding. Typed
 
 ## Open questions
 
-- None. Recent content is transient ViewModel state for the current project window and is cleared when that ViewModel changes projects or is disposed.
+- None. The transient-only conclusion is superseded by `.agents/requirements/2026-09-09-ui-state-restoration/`; recent content is now restored per project.

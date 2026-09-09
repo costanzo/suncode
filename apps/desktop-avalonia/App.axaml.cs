@@ -17,6 +17,7 @@ namespace SunCode.Desktop;
 public sealed partial class App : Application
 {
     private DesktopViewModel? _viewModel;
+    private UiStateStore? _uiStateStore;
     private ProjectHubWindow? _hubWindow;
     private SettingsWindow? _settingsWindow;
     private AboutWindow? _aboutWindow;
@@ -36,7 +37,8 @@ public sealed partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             DiagnosticLog.Info("app.lifecycle", "framework_initialization begin");
-            _viewModel = new DesktopViewModel();
+            _uiStateStore = new UiStateStore();
+            _viewModel = new DesktopViewModel(_uiStateStore);
             MacOSDockIcon.Apply();
             _viewModel.ThemeChanged += ApplyTheme;
             _hubWindow = new ProjectHubWindow { DataContext = _viewModel };
@@ -49,6 +51,7 @@ public sealed partial class App : Application
                 _aboutWindow?.Close();
                 foreach (var window in _projectWindows.Values.ToArray()) window.Close();
                 _viewModel.Dispose();
+                _uiStateStore?.Dispose();
                 DiagnosticLog.Info("app.lifecycle", "exit end");
             };
         }
@@ -99,7 +102,7 @@ public sealed partial class App : Application
         if (disposition == ProjectWindowDisposition.AwaitOpening) return;
         if (!_openingProjects.Add(project.ProjectId)) return;
 
-        var viewModel = new DesktopViewModel();
+        var viewModel = new DesktopViewModel(_uiStateStore);
         viewModel.ThemeChanged += ApplyTheme;
         try
         {

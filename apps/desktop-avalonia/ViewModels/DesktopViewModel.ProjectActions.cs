@@ -81,6 +81,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             SelectedProject = project;
             await LoadProjectDependenciesAsync();
             ResetExplorerRoots();
+            RestoreProjectPresentationState();
             await LoadSessionsAsync();
             await RefreshGitAsync();
         }, "Project selected");

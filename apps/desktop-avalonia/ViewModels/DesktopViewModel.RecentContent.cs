@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 
 namespace SunCode.Desktop.ViewModels;
@@ -64,6 +65,13 @@ public sealed partial class DesktopViewModel
         foreach (var item in RecentContents) item.IsCurrent = ReferenceEquals(item, current);
         while (RecentContents.Count > RecentContentLimit)
             RecentContents.RemoveAt(RecentContents.Count - 1);
+        SaveProjectUiState(saved =>
+        {
+            saved.RecentContent = RecentContents.Select(item => item.IsSession
+                ? new UiRecentContentState { Kind = "session", SessionId = item.Session?.SessionId, LastViewedAt = DateTimeOffset.UtcNow }
+                : new UiRecentContentState { Kind = "file", DependencyId = item.File?.DependencyId, Path = item.File?.Path, LastViewedAt = DateTimeOffset.UtcNow }).ToList();
+            SaveCurrentContentState(saved);
+        });
         NotifyRecentContentChanged();
     }
 

@@ -87,7 +87,18 @@ public sealed partial class SettingsWindow : Window
             LoggingPage.LoggingStatusText.Text = "Local settings";
             LoggingPage.ImageDirectoryStatusText.Text = "Local settings";
             ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
-            ShowProviderPanel(null);
+            var savedNavigation = ViewModel.SavedSettingsNavigation;
+            SetProvidersExpanded(savedNavigation.ProvidersExpanded);
+            if (savedNavigation.Page == "providers")
+            {
+                ShowProviderPanel(savedNavigation.ProviderId);
+                SelectPage("providers", null);
+            }
+            else
+            {
+                ShowProviderPanel(null);
+                SelectPage(savedNavigation.Page, null);
+            }
             _ready = true;
         };
         Closed += (_, _) =>
@@ -126,6 +137,7 @@ public sealed partial class SettingsWindow : Window
         _providersExpanded = expanded;
         ProviderNavigation.IsVisible = _providersExpanded;
         ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
+        if (_ready) ViewModel.SaveSettingsNavigation(CurrentPage(), _provider, _providersExpanded);
     }
 
     private void ShowProvider(object? sender, RoutedEventArgs e)
@@ -193,7 +205,16 @@ public sealed partial class SettingsWindow : Window
         if (page == "logging") LoggingNavigation.Classes.Set("selected", true);
         if (page == "mcp") McpNavigation.Classes.Set("selected", true);
         if (page == "providers" && selected is null) ProvidersNavigation.Classes.Set("selected", true);
+        if (_ready) ViewModel.SaveSettingsNavigation(page, _provider, _providersExpanded);
     }
+
+    private string CurrentPage() => DefaultsPage.IsVisible ? "defaults"
+        : AppearancePage.IsVisible ? "appearance"
+        : ShortcutsPage.IsVisible ? "shortcuts"
+        : NetworkPage.IsVisible ? "network"
+        : McpPage.IsVisible ? "mcp"
+        : LoggingPage.IsVisible ? "logging"
+        : "providers";
 
     private async void McpPollTick(object? sender, EventArgs e)
     {

@@ -14,7 +14,7 @@ The Workspace title currently continues to show the selected session name after 
 
 - Editing files or changing the read-only editor contract.
 - Searching, pinning, removing, or manually ordering recent content.
-- Changing project switching, session persistence, or file-read authority.
+- Changing project switching, session persistence, or file-read authority. Desktop-only recent-content presentation state is persisted separately under the 2026-09-09 UI state restoration requirement.
 - Modifying the Avalonia production client before design approval.
 
 ## Requirements
@@ -45,4 +45,4 @@ The Workspace title currently continues to show the selected session name after 
 
 ## Open questions
 
-- None. The approved production behavior keeps recent content for the current project-window lifetime and does not persist it.
+- None. The original window-lifetime-only conclusion is superseded by `.agents/requirements/2026-09-09-ui-state-restoration/`, which persists the same bounded history per project without changing session or file authority.

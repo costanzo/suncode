@@ -106,9 +106,20 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
         RefreshRecentSessionReferences();
         OnPropertyChanged(nameof(HasSessions));
-        var session = Sessions.FirstOrDefault(item => item.SessionId == preferredSessionId)
+        var savedState = RestoreRecentContentState();
+        var savedSessionId = preferredSessionId
+            ?? (savedState.CurrentContentKind == "session" ? savedState.CurrentSessionId : savedState.LastSessionId);
+        var session = Sessions.FirstOrDefault(item => item.SessionId == savedSessionId)
             ?? Sessions.FirstOrDefault(item => item.SessionId == SelectedSession?.SessionId)
             ?? Sessions.FirstOrDefault();
+        if (preferredSessionId is null && savedState.CurrentContentKind == "file" && savedState.CurrentFilePath is { Length: > 0 } filePath && IsSafeRelativePath(filePath))
+        {
+            var file = new ExplorerNode(Path.GetFileName(filePath), filePath, "file", savedState.CurrentDependencyId);
+            RestoringSavedFile = true;
+            await SelectExplorerFileAsync(file);
+            RestoringSavedFile = false;
+            return;
+        }
         if (session is not null && session.SessionId != SelectedSession?.SessionId)
         {
             await SelectSessionAsync(session);

@@ -22,6 +22,7 @@ public sealed partial class WorkspaceWindow : Window
     private bool _isFullScreenTransition;
     private NativeMenuItem? _toggleNavigationMenuItem;
     private NativeMenu? _recentProjectsMenu;
+    private bool _restoringWindowGeometry;
 
     public WorkspaceWindow()
     {
@@ -35,7 +36,9 @@ public sealed partial class WorkspaceWindow : Window
         {
             ViewModel.UpdateLayoutWidth(Bounds.Width);
             ProjectWorkspaceView.ClampGitViewerHeight();
+            SaveWindowGeometry();
         };
+        PositionChanged += (_, _) => SaveWindowGeometry();
         ConfigureNativeProjectMenu();
     }
 
@@ -47,13 +50,62 @@ public sealed partial class WorkspaceWindow : Window
         _initialized = true;
         ViewModel.SessionEntered += SessionEntered;
         await ViewModel.InitializeAsync();
+        RestoreWindowGeometry();
         ConfigureProjectWindow();
         UpdateNativeProjectMenu();
     }
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
+        SaveWindowGeometry();
+        ViewModel.SavePanelGeometry();
+        ViewModel.SaveRegionState();
         ViewModel.SessionEntered -= SessionEntered;
+    }
+
+    private void RestoreWindowGeometry()
+    {
+        if (!ViewModel.IsProjectOpen) return;
+        var saved = ViewModel.SavedUiProjectState;
+        _restoringWindowGeometry = true;
+        try
+        {
+            var width = saved.WindowWidth is { } savedWidth ? Math.Clamp(savedWidth, MinWidth, 2400) : Width;
+            var height = saved.WindowHeight is { } savedHeight ? Math.Clamp(savedHeight, MinHeight, 1600) : Height;
+            Width = width;
+            Height = height;
+            if (saved.WindowX is { } x && saved.WindowY is { } y)
+            {
+                var area = Screens.Primary?.WorkingArea;
+                var px = (int)Math.Round(x);
+                var py = (int)Math.Round(y);
+                if (area is { } workArea)
+                {
+                    px = Math.Clamp(px, workArea.X, Math.Max(workArea.X, workArea.Right - (int)Math.Round(width)));
+                    py = Math.Clamp(py, workArea.Y, Math.Max(workArea.Y, workArea.Bottom - (int)Math.Round(height)));
+                }
+                Position = new PixelPoint(px, py);
+            }
+            WindowState = saved.WindowState switch
+            {
+                "maximized" => WindowState.Maximized,
+                "fullscreen" => WindowState.FullScreen,
+                _ => WindowState.Normal
+            };
+        }
+        finally { _restoringWindowGeometry = false; }
+    }
+
+    private void SaveWindowGeometry()
+    {
+        if (_restoringWindowGeometry || !ViewModel.IsProjectOpen || WindowState != WindowState.Normal) return;
+        ViewModel.SaveWindowGeometry(Position.X, Position.Y, Bounds.Width, Bounds.Height, "normal");
+    }
+
+    private void SaveWindowState(string state)
+    {
+        if (!ViewModel.IsProjectOpen) return;
+        ViewModel.SaveWindowGeometry(Position.X, Position.Y, Bounds.Width, Bounds.Height, state);
     }
 
     internal async Task OpenProjectPickerAsync()
@@ -249,12 +301,17 @@ public sealed partial class WorkspaceWindow : Window
     internal static bool OriginatesFromButton(object? source) =>
         source is Button || source is Visual visual && visual.FindAncestorOfType<Button>() is not null;
 
-    internal void MinimizeWindow() => WindowState = WindowState.Minimized;
+    internal void MinimizeWindow()
+    {
+        SaveWindowGeometry();
+        WindowState = WindowState.Minimized;
+    }
 
     internal void ToggleWindowMaximized()
     {
         if (_isFullScreen || _isFullScreenTransition) return;
         WindowState = GetTitleBarDoubleTapTargetState(WindowState);
+        SaveWindowState(WindowState == WindowState.Maximized ? "maximized" : "normal");
     }
 
     internal static WindowState GetTitleBarDoubleTapTargetState(WindowState currentState) =>
@@ -272,6 +329,7 @@ public sealed partial class WorkspaceWindow : Window
         _isFullScreenTransition = true;
         _isFullScreen = true;
         WindowState = WindowState.FullScreen;
+        SaveWindowState("fullscreen");
         await Task.Delay(900);
         _isFullScreenTransition = false;
     }
@@ -281,6 +339,7 @@ public sealed partial class WorkspaceWindow : Window
         _isFullScreenTransition = true;
         _isFullScreen = false;
         WindowState = WindowState.Normal;
+        SaveWindowState("normal");
         await Task.Delay(900);
         _isFullScreenTransition = false;
     }

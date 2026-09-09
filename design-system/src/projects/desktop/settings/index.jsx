@@ -93,6 +93,7 @@ const settingsGuide = {
       "MCP configuration is persisted by the embedded Rust agent; the effective tool catalog is refreshed without starting a new session.",
       "Connected, connecting, failed, and disabled are runtime states. Enabled is the persisted desired state.",
       "MCP server definitions are global, while the status shown belongs to the current project connection.",
+      "Settings reopens to the last valid destination, including the selected provider and its expanded navigation state.",
     ],
   },
 };

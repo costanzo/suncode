@@ -25,6 +25,7 @@ public sealed partial class DesktopViewModel
             OnPropertyChanged(nameof(EditorLanguageLabel));
             OnPropertyChanged(nameof(EditorIconPath));
             NotifyCurrentContentChanged();
+            SaveProjectUiState(saved => SaveCurrentContentState(saved));
         }
     }
 
@@ -97,6 +98,12 @@ public sealed partial class DesktopViewModel
             DiagnosticLog.Error(
                 "editor.read",
                 $"failed project={projectId} dependency={node.DependencyId ?? "none"} path={node.Path} type={exception.GetType().Name}");
+            if (RestoringSavedFile)
+            {
+                RestoringSavedFile = false;
+                var fallback = Sessions.FirstOrDefault();
+                if (fallback is not null) await SelectSessionAsync(fallback);
+            }
         }
     }
 
