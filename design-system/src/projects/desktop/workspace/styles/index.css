@@ -416,6 +416,7 @@
   min-width: 0;
   flex: 1 1 auto;
   gap: 4px;
+  min-height: 360px;
 }
 .workspace-main-stack > .workspace-drawer {
   overflow: hidden;
@@ -441,6 +442,10 @@
   flex-direction: column;
   justify-content: space-between;
   padding: 7px 0;
+}
+.workspace-gutter .ds-icon {
+  width: 15px;
+  height: 15px;
 }
 .workspace-gutter > div {
   display: grid;

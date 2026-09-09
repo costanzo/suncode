@@ -58,7 +58,7 @@ public sealed class ExplorerNode : ObservableObject
     public bool IsDirectory => Kind == "directory" || IsGroup;
     public bool IsFile => Kind == "file";
     public bool CanRemove => IsRoot && IsDependency;
-    public bool IsDependencyRoot => IsRoot && IsDependency;
+    public bool IsDependencyRoot => IsRoot && (IsDependency || IsGroup);
     public bool HasPathSubtitle => !string.IsNullOrWhiteSpace(Path) && Path != ".";
     public bool ShowPathSubtitle => IsDependency && HasPathSubtitle;
     public string PathSubtitle => ShowPathSubtitle ? Path : string.Empty;
@@ -66,8 +66,8 @@ public sealed class ExplorerNode : ObservableObject
     {
         get
         {
-            if (IsRoot && !IsDependency) return "/Assets/icons/sidebar-project.svg";
-            if (IsGroup) return "/Assets/icons/assets.svg";
+            if (IsRoot && !IsDependency) return "/Assets/icons/project.svg";
+            if (IsGroup) return "/Assets/icons/dependencies.svg";
             if (IsDirectory) return "/Assets/icons/folder.svg";
             if (!IsFile) return "/Assets/icons/files.svg";
 

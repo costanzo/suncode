@@ -34,7 +34,7 @@ public sealed partial class WorkspaceWindow : Window
         Closing += OnClosing;
         SizeChanged += (_, _) =>
         {
-            ViewModel.UpdateLayoutWidth(Bounds.Width);
+            ViewModel.UpdateLayoutSize(Bounds.Width, Bounds.Height);
             ProjectWorkspaceView.ClampGitViewerHeight();
             SaveWindowGeometry();
         };

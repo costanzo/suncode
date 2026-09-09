@@ -6,7 +6,7 @@
         x:DataType="vm:DesktopViewModel"
         Title="SunCode"
         Width="1440" Height="900"
-        MinWidth="620" MinHeight="620"
+        MinWidth="380" MinHeight="480"
         Background="{DynamicResource CanvasBrush}"
         WindowDecorations="BorderOnly">
   <workspace:ProjectWorkspace x:Name="ProjectWorkspaceView" />

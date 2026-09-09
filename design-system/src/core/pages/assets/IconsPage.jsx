@@ -16,6 +16,7 @@ const icons = [
   "plus",
   "refresh",
   "settings",
+  "tool",
 ];
 const iconModules = import.meta.glob("../../../assets/icons/*.svg", {
   eager: true,

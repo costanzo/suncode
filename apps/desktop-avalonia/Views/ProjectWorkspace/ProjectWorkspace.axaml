@@ -51,6 +51,14 @@
     <Style Selector="Button.icon.gutter.active:pointerover svg|Svg">
       <Setter Property="Css" Value="{DynamicResource AccentSvgCss}" />
     </Style>
+    <Style Selector="TextBlock.footer-status">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <!-- Monospace glyphs sit optically high even when their line box is mathematically centered. -->
+      <Setter Property="Margin" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="Border.footer-status-divider">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
   </UserControl.Styles>
 
   <Grid>
@@ -124,8 +132,8 @@
             </Button>
             <Button Grid.Row="6" Classes="icon gutter" Classes.active="{Binding ToolActivityVisible}" Click="ToggleToolActivity" ToolTip.Tip="Show or hide Tool activity" AutomationProperties.Name="Show or hide Tool activity">
               <Grid>
-                <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding !ToolActivityVisible}" />
-                <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding ToolActivityVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/tool.svg" IsVisible="{Binding !ToolActivityVisible}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/tool.svg" IsVisible="{Binding ToolActivityVisible}" />
               </Grid>
             </Button>
             <Button Grid.Row="8" Classes="icon gutter" Classes.active="{Binding ProviderTraceVisible}" Click="ToggleProviderTrace" ToolTip.Tip="Show or hide provider trace" AutomationProperties.Name="Show or hide provider trace">
@@ -142,7 +150,7 @@
               <RowDefinition Height="{Binding BottomDrawerGap}" />
               <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <Grid Grid.Row="0">
+            <Grid Grid.Row="0" MinHeight="360">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="{Binding NavigationWidth}" />
                 <ColumnDefinition Width="{Binding NavigationGap}" />
@@ -173,9 +181,15 @@
             <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveToolActivityVisible}" />
 
             <Grid Grid.Row="2">
-              <review:GitViewer x:Name="GitViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding EffectiveGitVisible}" />
-              <review:ProviderTraceViewer x:Name="ProviderTraceViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding EffectiveProviderTraceVisible}" />
-              <review:ToolActivityViewer x:Name="ToolActivityViewer" Height="{Binding BottomDrawerHeight}" IsVisible="{Binding EffectiveToolActivityVisible}" />
+              <Border Classes="card" Height="{Binding BottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding EffectiveGitVisible}">
+                <review:GitViewer x:Name="GitViewer" VerticalAlignment="Stretch" />
+              </Border>
+              <Border Classes="card" Height="{Binding BottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding EffectiveProviderTraceVisible}">
+                <review:ProviderTraceViewer x:Name="ProviderTraceViewer" VerticalAlignment="Stretch" />
+              </Border>
+              <Border Classes="card" Height="{Binding BottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding EffectiveToolActivityVisible}">
+                <review:ToolActivityViewer x:Name="ToolActivityViewer" VerticalAlignment="Stretch" />
+              </Border>
             </Grid>
           </Grid>
 
@@ -189,23 +203,23 @@
           </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="36,0,12,0">
-          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding IsProjectOpen}">
-            <TextBlock Text="{Binding GitFooterBranchText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" MaxWidth="180" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding WorkspaceStatusDetailsVisible}">
-              <TextBlock Text="{Binding GitChangeSummary}" Classes="mono" FontSize="9" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsGitClean}" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding GitChangeSummary}" Classes="mono" FontSize="9" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsGitDirty}" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding GitAdditions, StringFormat=+{0}}" Classes="mono" FontSize="9" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsGitReady}" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding GitDeletions, StringFormat=-{0}}" Classes="mono" FontSize="9" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsGitReady}" VerticalAlignment="Center" />
+        <Grid Grid.Row="2" Height="20" MinHeight="20" ColumnDefinitions="*,Auto" Margin="36,0,12,0" VerticalAlignment="Center">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding IsProjectOpen}" Height="20">
+            <TextBlock Text="{Binding GitFooterBranchText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" MaxWidth="180" TextTrimming="CharacterEllipsis" />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding WorkspaceStatusDetailsVisible}" Height="20" VerticalAlignment="Center">
+              <TextBlock Text="{Binding GitChangeSummary}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsGitClean}" />
+              <TextBlock Text="{Binding GitChangeSummary}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding IsGitDirty}" />
+              <TextBlock Text="{Binding GitAdditions, StringFormat=+{0}}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding IsGitReady}" />
+              <TextBlock Text="{Binding GitDeletions, StringFormat=-{0}}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsGitReady}" />
             </StackPanel>
           </StackPanel>
-          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasSelectedSession}" VerticalAlignment="Center">
-            <TextBlock Text="{Binding SelectedModelName}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" MaxWidth="180" TextTrimming="CharacterEllipsis" />
-            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding WorkspaceStatusDetailsVisible}">
-              <Border Width="1" Height="10" Background="{DynamicResource BorderBrush}" />
-              <TextBlock Text="{Binding SessionTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
-              <Border Width="1" Height="10" Background="{DynamicResource BorderBrush}" />
-              <TextBlock Text="{Binding ProviderTraceSummary}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasSelectedSession}" VerticalAlignment="Center" Height="20">
+            <TextBlock Text="{Binding SelectedModelName}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" MaxWidth="180" TextTrimming="CharacterEllipsis" />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding WorkspaceStatusDetailsVisible}" Height="20" VerticalAlignment="Center">
+              <Border Classes="footer-status-divider" Width="1" Height="10" Background="{DynamicResource BorderBrush}" />
+              <TextBlock Text="{Binding SessionTokenText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+              <Border Classes="footer-status-divider" Width="1" Height="10" Background="{DynamicResource BorderBrush}" />
+              <TextBlock Text="{Binding ProviderTraceSummary}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
             </StackPanel>
           </StackPanel>
         </Grid>

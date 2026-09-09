@@ -18,6 +18,15 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private const double ReviewPaneBreakpoint = 1100;
     private const double NavigationPaneBreakpoint = 860;
     private const double CompactWorkspaceBreakpoint = 620;
+    private const double MinimumWorkspaceHeight = 360;
+    // Keep supporting panes usable while allowing them to retreat before the
+    // conversation reaches its own minimum width/height.
+    internal const double DefaultNavigationPaneWidth = 272;
+    internal const double DefaultReviewPaneWidth = 312;
+    internal const double DefaultBottomDrawerHeight = 360;
+    internal const double MinimumNavigationPaneWidth = DefaultNavigationPaneWidth * 2d / 3d;
+    internal const double MinimumReviewPaneWidth = DefaultReviewPaneWidth * 2d / 3d;
+    internal const double MinimumBottomDrawerHeight = DefaultBottomDrawerHeight / 2d;
 
     private readonly object _initializationGate = new();
     private AgentSdk? _sdk;
@@ -89,9 +98,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private ToolActivityTurnItem? _selectedToolActivityTurn;
     private ToolActivityItem? _selectedToolActivity;
     private double _layoutWidth = 1440;
-    private double _navigationPaneWidth = 272;
-    private double _reviewPaneWidth = 312;
-    private double _bottomDrawerHeight = 360;
+    private double _layoutHeight = 900;
+    private double _navigationPaneWidth = DefaultNavigationPaneWidth;
+    private double _reviewPaneWidth = DefaultReviewPaneWidth;
+    private double _bottomDrawerHeight = DefaultBottomDrawerHeight;
     private bool _isBusy;
     private bool _isSessionLoading;
     private bool _isSessionLoadingVisible;
@@ -417,9 +427,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             }
         }
     }
-    public double NavigationPaneWidth { get => _navigationPaneWidth; set { if (SetProperty(ref _navigationPaneWidth, value)) { OnPropertyChanged(nameof(NavigationWidth)); SavePanelGeometry(); } } }
-    public double ReviewPaneWidth { get => _reviewPaneWidth; set { if (SetProperty(ref _reviewPaneWidth, value)) { OnPropertyChanged(nameof(ReviewWidth)); SavePanelGeometry(); } } }
-    public double BottomDrawerHeight { get => _bottomDrawerHeight; set { if (SetProperty(ref _bottomDrawerHeight, value)) SavePanelGeometry(); } }
+    public double NavigationPaneWidth { get => _navigationPaneWidth; set { if (SetProperty(ref _navigationPaneWidth, value)) { NotifyNavigationLayoutChanged(); SavePanelGeometry(); } } }
+    public double ReviewPaneWidth { get => _reviewPaneWidth; set { if (SetProperty(ref _reviewPaneWidth, value)) { NotifyReviewLayoutChanged(); SavePanelGeometry(); } } }
+    public double BottomDrawerHeight { get => _bottomDrawerHeight; set { if (SetProperty(ref _bottomDrawerHeight, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveGitVisible)); OnPropertyChanged(nameof(EffectiveProviderTraceVisible)); OnPropertyChanged(nameof(EffectiveToolActivityVisible)); SavePanelGeometry(); } } }
     public bool IsBusy { get => _isBusy; private set => SetProperty(ref _isBusy, value); }
     public bool IsSessionLoading
     {
@@ -441,13 +451,14 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool HasProjectDependencies => ProjectDependencies.Count > 0;
     public bool SessionSidebarVisible => NavigationVisible && !ExplorerVisible;
     public bool ExplorerSidebarVisible => NavigationVisible && ExplorerVisible;
-    public bool EffectiveNavigationVisible => NavigationVisible && _layoutWidth > NavigationPaneBreakpoint;
+    public bool EffectiveNavigationVisible => NavigationVisible && _layoutWidth > NavigationPaneBreakpoint && NavigationPaneWidth >= MinimumNavigationPaneWidth;
     public bool EffectiveSessionSidebarVisible => EffectiveNavigationVisible && !ExplorerVisible;
     public bool EffectiveExplorerSidebarVisible => EffectiveNavigationVisible && ExplorerVisible;
-    public bool EffectiveReviewVisible => ReviewVisible && _layoutWidth > ReviewPaneBreakpoint;
-    public bool EffectiveGitVisible => GitVisible && _layoutWidth > CompactWorkspaceBreakpoint;
-    public bool EffectiveProviderTraceVisible => ProviderTraceVisible && _layoutWidth > CompactWorkspaceBreakpoint;
-    public bool EffectiveToolActivityVisible => ToolActivityVisible && _layoutWidth > CompactWorkspaceBreakpoint;
+    public bool EffectiveReviewVisible => ReviewVisible && _layoutWidth > ReviewPaneBreakpoint && ReviewPaneWidth >= MinimumReviewPaneWidth;
+    public bool EffectiveGitVisible => GitVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
+    public bool EffectiveProviderTraceVisible => ProviderTraceVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
+    public bool EffectiveToolActivityVisible => ToolActivityVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
+    private bool CanShowBottomDrawer => BottomDrawerHeight >= MinimumBottomDrawerHeight;
     public bool WorkspaceGuttersVisible => _layoutWidth > CompactWorkspaceBreakpoint;
     public GridLength WorkspaceGutterWidth => WorkspaceGuttersVisible ? new GridLength(26) : new GridLength(0);
     public GridLength WorkspaceGutterGap => WorkspaceGuttersVisible ? new GridLength(4) : new GridLength(0);
@@ -589,16 +600,15 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool ScopeStaged => GitScope == "staged";
     public bool ScopeUnstaged => GitScope == "unstaged";
 
-    public void UpdateLayoutWidth(double width)
+    public void UpdateLayoutSize(double width, double height)
     {
         _layoutWidth = width;
-        if (EffectiveNavigationVisible)
-            NavigationPaneWidth = Math.Clamp(NavigationPaneWidth, 236, Math.Min(300, Math.Max(236, _layoutWidth - 560)));
-        if (EffectiveReviewVisible)
-            ReviewPaneWidth = Math.Clamp(ReviewPaneWidth, 276, Math.Min(352, Math.Max(276, _layoutWidth - 560)));
+        _layoutHeight = height;
         NotifyResponsiveLayoutChanged();
         OnPropertyChanged(nameof(GitFileListWidth));
     }
+
+    public void UpdateLayoutWidth(double width) => UpdateLayoutSize(width, _layoutHeight);
 
     private void NotifyNavigationLayoutChanged()
     {
@@ -624,6 +634,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         NotifyReviewLayoutChanged();
         OnPropertyChanged(nameof(EffectiveGitVisible));
         OnPropertyChanged(nameof(EffectiveProviderTraceVisible));
+        OnPropertyChanged(nameof(EffectiveToolActivityVisible));
         OnPropertyChanged(nameof(BottomDrawerGap));
         OnPropertyChanged(nameof(WorkspaceGuttersVisible));
         OnPropertyChanged(nameof(WorkspaceGutterWidth));

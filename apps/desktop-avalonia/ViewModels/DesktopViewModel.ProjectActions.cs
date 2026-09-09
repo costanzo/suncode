@@ -222,6 +222,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             LogSession(operationId, session.SessionId, "select.return reason=sdk_unavailable");
             return;
         }
+        if (!string.IsNullOrWhiteSpace(session.ModelId))
+            SelectedModel = Models.FirstOrDefault(model => model.Id == session.ModelId) ?? SelectedModel;
         if (SelectedSession?.SessionId == session.SessionId
             && (_loadedSessionId == session.SessionId || IsSessionLoading))
         {
@@ -240,6 +242,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         // that the resulting selection callback cannot start a second load and subscription.
         IsSessionLoading = true;
         SelectedSession = session;
+        // A session owns its model selection. Apply it immediately so the
+        // composer cannot briefly display the previous session's model.
         RememberRecentSession(session);
         LogSession(operationId, session.SessionId, $"select.selected updated={SelectedSession.SessionId}");
         StatusText = "Loading session...";
@@ -343,6 +347,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var text = ComposerText.Trim();
         if (!EnsureSdk() || SelectedSession is null || SelectedModel?.Configured != true || text.Length == 0 || IsTurnActive) return;
         var attachments = ComposerAttachments.ToArray();
+        // Clear before waiting for native turn admission so the composer is
+        // responsive even when the queue or provider is slow.
+        ComposerText = string.Empty;
+        ComposerAttachments.Clear();
         DisposeSubmittedAttachments();
         _submittedAttachments = attachments;
         IsBusy = true;
@@ -354,8 +362,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 SelectedModel.Id,
                 SelectedReasoningEffort,
                 attachments.Select(attachment => attachment.ImageId).ToArray());
-            ComposerText = string.Empty;
-            ComposerAttachments.Clear();
             StatusText = result.String("status") switch
             {
                 "queued" => "Message queued for this turn",
@@ -366,8 +372,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
         catch (Exception exception)
         {
-            // ComposerAttachments still owns any images that were not consumed by a live
-            // message.user event, so do not dispose them here.
+            ComposerText = text;
+            foreach (var attachment in attachments) ComposerAttachments.Add(attachment);
             _submittedAttachments = [];
             ReportError(exception);
         }

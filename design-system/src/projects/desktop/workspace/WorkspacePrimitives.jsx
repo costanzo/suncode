@@ -798,7 +798,7 @@ export function ExplorerPanel({
                 <Icon
                   name="chevron-right"
                   className={expanded.has(node.id) ? "is-open" : ""}
-                  size={10}
+                  size={8}
                 />
               ) : (
                 <span />
@@ -2112,7 +2112,7 @@ export function ToolActivityPanel({ onClose, standalone = false, state = "runnin
   }, [selectedTurn, selectedTool, tool?.live]);
   return <section className={`workspace-drawer workspace-tool-activity ${standalone ? "is-standalone" : ""}`}>
     <header>
-      <Icon name="activity" size={16} />
+      <Icon name="tool" size={16} />
       <strong>Tool activity</strong>
       <span>{empty ? "0 turns" : `${turns.length} turn · ${turns.reduce((sum, item) => sum + item.tools.length, 0)} calls`}</span>
       <div />
@@ -2121,7 +2121,7 @@ export function ToolActivityPanel({ onClose, standalone = false, state = "runnin
         <IconButton icon="close" label="Close tool activity" onClick={onClose} disabled={!onClose} />
       </div>
     </header>
-    {empty ? <div className="workspace-tool-empty"><Icon name="activity" size={24} /><strong>No turns yet</strong><span>Tool calls will appear here after the agent starts its first turn.</span></div> : <div className="workspace-tool-body">
+    {empty ? <div className="workspace-tool-empty"><Icon name="tool" size={24} /><strong>No turns yet</strong><span>Tool calls will appear here after the agent starts its first turn.</span></div> : <div className="workspace-tool-body">
       <div className="workspace-tool-tree">
         <div className="workspace-drawer-label">CURRENT SESSION</div>
         {turns.map((item, turnIndex) => <div key={item.id}>
@@ -2130,7 +2130,7 @@ export function ToolActivityPanel({ onClose, standalone = false, state = "runnin
             <span><strong>{item.title}</strong><small>{item.preview}</small></span><b>{item.tools.length}</b>
           </button>
           {expandedTurns.has(turnIndex) && <div className="workspace-tool-children">{item.tools.map((entry, toolIndex) => <button type="button" key={entry.title} className={`workspace-tool-tree-row is-${entry.tone} ${selectedTurn === turnIndex && selectedTool === toolIndex ? "is-selected" : ""}`} onClick={() => { setSelectedTurn(turnIndex); setSelectedTool(toolIndex); }}>
-            <Icon name={entry.tone === "running" ? "terminal" : "activity"} size={13} /><span><strong>{entry.title}</strong></span>{entry.tone !== "success" && entry.tone !== "danger" && <i className={`is-${entry.tone}`} aria-label={entry.state} />}
+            <Icon name={entry.tone === "running" ? "tool" : "activity"} size={13} /><span><strong>{entry.title}</strong></span>{entry.tone !== "success" && entry.tone !== "danger" && <i className={`is-${entry.tone}`} aria-label={entry.state} />}
           </button>)}</div>}
         </div>)}
       </div>
@@ -2437,7 +2437,7 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
               onClick={() => toggleDrawer("trace")}
             />
             <IconButton
-              icon="terminal"
+              icon="tool"
               label="Show tool activity"
               active={drawer === "tools"}
               onClick={() => toggleDrawer("tools")}

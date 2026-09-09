@@ -102,7 +102,13 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         foreach (var item in result.Array("sessions").OfType<JsonObject>())
         {
             var sessionId = item.String("sessionId");
-            Sessions.Add(new SessionItem(sessionId, item.String("title"), item.String("lastActivityAt"), !string.IsNullOrWhiteSpace(item.String("pinAt", "pin_at")), sessionStates.String(sessionId)));
+            Sessions.Add(new SessionItem(
+                sessionId,
+                item.String("title"),
+                item.String("lastActivityAt"),
+                !string.IsNullOrWhiteSpace(item.String("pinAt", "pin_at")),
+                sessionStates.String(sessionId),
+                item.String("modelId", "model_id")));
         }
         RefreshRecentSessionReferences();
         OnPropertyChanged(nameof(HasSessions));

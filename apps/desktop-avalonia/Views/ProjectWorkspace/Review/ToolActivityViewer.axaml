@@ -5,8 +5,7 @@
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Review.ToolActivityViewer"
              x:DataType="vm:DesktopViewModel"
-             Height="440"
-             MinHeight="300">
+             MinHeight="180">
   <UserControl.Styles>
     <Style Selector="TreeView.tool-tree">
       <Setter Property="Background" Value="Transparent" />
@@ -41,10 +40,10 @@
     </Style>
   </UserControl.Styles>
 
-  <Border Classes="card" BorderThickness="0" ClipToBounds="True">
+  <Border Background="Transparent" BorderThickness="0" ClipToBounds="True">
     <Grid RowDefinitions="38,1,*">
       <Grid Grid.Row="0" Margin="12,0,8,0" ColumnDefinitions="Auto,8,Auto,8,*,Auto,8,26,8,26">
-        <svg:Svg Grid.Column="0" Width="16" Height="16" Path="/Assets/icons/activity.svg" Css="{DynamicResource AccentSvgCss}" VerticalAlignment="Center" />
+        <svg:Svg Grid.Column="0" Width="16" Height="16" Path="/Assets/icons/tool.svg" Css="{DynamicResource AccentSvgCss}" VerticalAlignment="Center" />
         <TextBlock Grid.Column="2" Text="Tool activity" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
         <Border Grid.Column="4" />
         <TextBlock Grid.Column="5" Text="{Binding ToolActivitySummary}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
@@ -88,7 +87,7 @@
               </TreeView.DataTemplates>
             </TreeView>
             <StackPanel Width="240" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !HasToolActivityTurns}">
-              <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
+              <svg:Svg Width="22" Height="22" Path="/Assets/icons/tool.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
               <TextBlock Text="No turns yet" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
               <TextBlock Text="Tool calls will appear here after the agent starts its first turn." FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" />
             </StackPanel>
@@ -139,7 +138,7 @@
             </StackPanel>
           </ScrollViewer>
           <StackPanel Width="320" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !HasSelectedToolActivity}">
-            <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
+            <svg:Svg Width="22" Height="22" Path="/Assets/icons/tool.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
             <TextBlock Text="Select a tool call" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
             <TextBlock Text="Choose a call from a turn to inspect its request, output, and terminal result." FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" />
           </StackPanel>

@@ -72,9 +72,9 @@ public sealed partial class DesktopViewModel
             GitVisible = saved.BottomDrawer == "git";
             ProviderTraceVisible = saved.BottomDrawer == "providerTrace";
             ToolActivityVisible = saved.BottomDrawer == "toolActivity";
-            if (saved.NavigationWidth is { } navigationWidth) NavigationPaneWidth = Math.Clamp(navigationWidth, 236, 300);
-            if (saved.ReviewWidth is { } reviewWidth) ReviewPaneWidth = Math.Clamp(reviewWidth, 276, 352);
-            if (saved.BottomDrawerHeight is { } drawerHeight) BottomDrawerHeight = Math.Clamp(drawerHeight, 240, 720);
+            if (saved.NavigationWidth is { } navigationWidth) NavigationPaneWidth = Math.Max(0, navigationWidth);
+            if (saved.ReviewWidth is { } reviewWidth) ReviewPaneWidth = Math.Max(0, reviewWidth);
+            if (saved.BottomDrawerHeight is { } drawerHeight) BottomDrawerHeight = Math.Max(0, drawerHeight);
         }
         finally { _restoringUiState = false; }
     }

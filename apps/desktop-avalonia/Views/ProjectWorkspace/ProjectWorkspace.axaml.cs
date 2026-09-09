@@ -44,7 +44,7 @@ public sealed partial class ProjectWorkspace : UserControl
     internal void ClampGitViewerHeight()
     {
         if (TopLevel.GetTopLevel(this) is not Window window) return;
-        ViewModel.BottomDrawerHeight = Math.Clamp(ViewModel.BottomDrawerHeight, 240, Math.Max(240, window.Bounds.Height - 300));
+        ViewModel.UpdateLayoutSize(window.Bounds.Width, window.Bounds.Height);
     }
 
     internal bool HandleEscape()
@@ -120,6 +120,7 @@ public sealed partial class ProjectWorkspace : UserControl
 
     private void ToggleNavigation(object? sender, RoutedEventArgs e)
     {
+        if (ViewModel.NavigationPaneWidth < DesktopViewModel.MinimumNavigationPaneWidth) ViewModel.NavigationPaneWidth = DesktopViewModel.DefaultNavigationPaneWidth;
         if (ViewModel.NavigationVisible && !ViewModel.ExplorerVisible)
         {
             ViewModel.NavigationVisible = false;
@@ -131,6 +132,7 @@ public sealed partial class ProjectWorkspace : UserControl
 
     private async void ToggleExplorer(object? sender, RoutedEventArgs e)
     {
+        if (ViewModel.NavigationPaneWidth < DesktopViewModel.MinimumNavigationPaneWidth) ViewModel.NavigationPaneWidth = DesktopViewModel.DefaultNavigationPaneWidth;
         if (ViewModel.NavigationVisible && ViewModel.ExplorerVisible)
         {
             ViewModel.NavigationVisible = false;
@@ -141,14 +143,18 @@ public sealed partial class ProjectWorkspace : UserControl
         await ViewModel.LoadExplorerRootsAsync();
     }
 
-    private void ToggleReview(object? sender, RoutedEventArgs e) =>
+    private void ToggleReview(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.ReviewPaneWidth < DesktopViewModel.MinimumReviewPaneWidth) ViewModel.ReviewPaneWidth = DesktopViewModel.DefaultReviewPaneWidth;
         ViewModel.ReviewVisible = !ViewModel.ReviewVisible;
+    }
 
     internal void ToggleGitViewer()
     {
         ViewModel.GitVisible = !ViewModel.GitVisible;
         if (ViewModel.GitVisible)
         {
+            if (ViewModel.BottomDrawerHeight < DesktopViewModel.MinimumBottomDrawerHeight) ViewModel.BottomDrawerHeight = DesktopViewModel.DefaultBottomDrawerHeight;
             ViewModel.ProviderTraceVisible = false;
             ViewModel.ToolActivityVisible = false;
             _ = ViewModel.RefreshGitAsync();
@@ -162,6 +168,7 @@ public sealed partial class ProjectWorkspace : UserControl
         ViewModel.ProviderTraceVisible = !ViewModel.ProviderTraceVisible;
         if (ViewModel.ProviderTraceVisible)
         {
+            if (ViewModel.BottomDrawerHeight < DesktopViewModel.MinimumBottomDrawerHeight) ViewModel.BottomDrawerHeight = DesktopViewModel.DefaultBottomDrawerHeight;
             ViewModel.GitVisible = false;
             ViewModel.ToolActivityVisible = false;
             _ = ViewModel.RefreshProviderTracesAsync();
@@ -172,6 +179,7 @@ public sealed partial class ProjectWorkspace : UserControl
     {
         ViewModel.ToolActivityVisible = !ViewModel.ToolActivityVisible;
         if (!ViewModel.ToolActivityVisible) return;
+        if (ViewModel.BottomDrawerHeight < DesktopViewModel.MinimumBottomDrawerHeight) ViewModel.BottomDrawerHeight = DesktopViewModel.DefaultBottomDrawerHeight;
         ViewModel.GitVisible = false;
         ViewModel.ProviderTraceVisible = false;
     }
@@ -199,13 +207,22 @@ public sealed partial class ProjectWorkspace : UserControl
         switch (_layoutResizeTarget)
         {
             case "Navigation":
-                ViewModel.NavigationPaneWidth = ClampPaneWidth(_layoutResizeStartNavigationWidth + deltaX, window.Bounds.Width, 236, 300);
+                ViewModel.NavigationPaneWidth = Math.Max(0, _layoutResizeStartNavigationWidth + deltaX);
                 break;
             case "Review":
-                ViewModel.ReviewPaneWidth = ClampPaneWidth(_layoutResizeStartReviewWidth - deltaX, window.Bounds.Width, 276, 352);
+                ViewModel.ReviewPaneWidth = Math.Max(0, _layoutResizeStartReviewWidth - deltaX);
                 break;
             case "BottomDrawer":
-                ViewModel.BottomDrawerHeight = Math.Clamp(_layoutResizeStartBottomHeight - deltaY, 240, Math.Max(240, window.Bounds.Height - 300));
+                // Keep the central workspace usable while dragging upward. The
+                // drawer only retreats when it is deliberately pulled below
+                // its minimum height.
+                var maxDrawerHeight = Math.Max(
+                    DesktopViewModel.MinimumBottomDrawerHeight,
+                    window.Bounds.Height - 36 - 4 - 360 - 20);
+                ViewModel.BottomDrawerHeight = Math.Clamp(
+                    _layoutResizeStartBottomHeight - deltaY,
+                    0,
+                    maxDrawerHeight);
                 break;
         }
         e.Handled = true;
@@ -214,13 +231,20 @@ public sealed partial class ProjectWorkspace : UserControl
     private void LayoutResizeReleased(object? sender, PointerReleasedEventArgs e)
     {
         if (string.IsNullOrEmpty(_layoutResizeTarget)) return;
+        if (_layoutResizeTarget == "Navigation" && ViewModel.NavigationPaneWidth < DesktopViewModel.MinimumNavigationPaneWidth)
+            ViewModel.NavigationVisible = false;
+        else if (_layoutResizeTarget == "Review" && ViewModel.ReviewPaneWidth < DesktopViewModel.MinimumReviewPaneWidth)
+            ViewModel.ReviewVisible = false;
+        else if (_layoutResizeTarget == "BottomDrawer" && ViewModel.BottomDrawerHeight < DesktopViewModel.MinimumBottomDrawerHeight)
+        {
+            ViewModel.GitVisible = false;
+            ViewModel.ProviderTraceVisible = false;
+            ViewModel.ToolActivityVisible = false;
+        }
         _layoutResizeTarget = string.Empty;
         e.Pointer.Capture(null);
         e.Handled = true;
     }
-
-    private static double ClampPaneWidth(double width, double windowWidth, double min, double max) =>
-        Math.Clamp(width, min, Math.Min(max, Math.Max(min, windowWidth - 560)));
 
     private void SessionTitleChanged(object? sender, TextChangedEventArgs e) =>
         SessionDialogModal.PrimaryEnabled = !string.IsNullOrWhiteSpace(SessionTitleInput.Text);
