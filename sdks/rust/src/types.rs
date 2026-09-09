@@ -98,17 +98,22 @@ pub enum McpTransportRequest {
         command: String,
         #[serde(default)]
         arguments: Vec<String>,
+        #[serde(rename = "workingDirectory")]
         working_directory: suncode_data::McpWorkingDirectory,
         #[serde(default)]
         environment: Option<McpSecretChanges>,
+        #[serde(rename = "startupTimeoutSeconds")]
         startup_timeout_seconds: u64,
+        #[serde(rename = "requestTimeoutSeconds")]
         request_timeout_seconds: u64,
     },
     StreamableHttp {
         url: String,
         #[serde(default)]
         headers: Option<McpSecretChanges>,
+        #[serde(rename = "startupTimeoutSeconds")]
         startup_timeout_seconds: u64,
+        #[serde(rename = "requestTimeoutSeconds")]
         request_timeout_seconds: u64,
     },
 }

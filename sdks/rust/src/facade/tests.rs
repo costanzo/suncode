@@ -266,6 +266,68 @@ fn mcp_sdk_redacts_secrets_and_enforces_idempotency_and_revisions() {
 }
 
 #[test]
+fn mcp_write_requests_accept_csharp_camel_case_transport_fields() {
+    let stdio: McpServerWriteRequest = serde_json::from_value(json!({
+        "displayName": "Local MCP",
+        "transport": {
+            "kind": "stdio",
+            "command": "uvx",
+            "arguments": ["mcp-server"],
+            "workingDirectory": "project",
+            "environment": {
+                "set": {"TOKEN": "secret"},
+                "remove": []
+            },
+            "startupTimeoutSeconds": 30,
+            "requestTimeoutSeconds": 60
+        },
+        "enabled": true,
+        "sortOrder": 0
+    }))
+    .unwrap();
+    let McpTransportRequest::Stdio {
+        working_directory,
+        startup_timeout_seconds,
+        request_timeout_seconds,
+        ..
+    } = stdio.transport
+    else {
+        panic!("expected stdio transport");
+    };
+    assert_eq!(
+        working_directory,
+        suncode_data::McpWorkingDirectory::Project
+    );
+    assert_eq!(startup_timeout_seconds, 30);
+    assert_eq!(request_timeout_seconds, 60);
+
+    let http: McpServerWriteRequest = serde_json::from_value(json!({
+        "displayName": "Remote MCP",
+        "transport": {
+            "kind": "streamable_http",
+            "url": "https://mcp.example.com/v1",
+            "headers": {
+                "set": {"Authorization": "Bearer secret"},
+                "remove": []
+            },
+            "startupTimeoutSeconds": 15,
+            "requestTimeoutSeconds": 90
+        }
+    }))
+    .unwrap();
+    let McpTransportRequest::StreamableHttp {
+        startup_timeout_seconds,
+        request_timeout_seconds,
+        ..
+    } = http.transport
+    else {
+        panic!("expected Streamable HTTP transport");
+    };
+    assert_eq!(startup_timeout_seconds, 15);
+    assert_eq!(request_timeout_seconds, 90);
+}
+
+#[test]
 fn project_default_model_is_used_when_session_model_is_omitted() {
     let directory = tempfile::tempdir().unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
