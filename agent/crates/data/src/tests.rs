@@ -160,9 +160,13 @@ fn latest_failed_turn_input_returns_persisted_submission() {
             "key-1",
             "retry me",
             "model-x",
+            Some("high"),
             &["img-1".to_string()],
         )
         .unwrap();
+    let updated_session = store.session_by_id(&session.session_id).unwrap().unwrap();
+    assert_eq!(updated_session.model_id.as_deref(), Some("model-x"));
+    assert_eq!(updated_session.reasoning_effort.as_deref(), Some("high"));
     store
         .fail_turn(
             &session.session_id,

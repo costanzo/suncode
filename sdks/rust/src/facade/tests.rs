@@ -591,6 +591,7 @@ fn session_snapshot_associates_images_with_messages_and_protects_them() {
             "image-turn",
             "inspect",
             "gpt-5.5",
+            Some("high"),
             std::slice::from_ref(&image.image_id),
         )
         .unwrap();

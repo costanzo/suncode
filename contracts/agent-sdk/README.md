@@ -46,7 +46,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `read_project_file` | Read one bounded UTF-8 project or dependency file for the desktop viewer |
 | `git_status` | Read the bounded Git index/worktree status and aggregate change counts for a project |
 | `git_diff_file` | Read one bounded structured file diff for the all, staged, or unstaged scope |
-| `list_sessions` | List active sessions in a project |
+| `list_sessions` | List active sessions in a project, including the persisted model and reasoning-effort preference |
 | `create_session` | Create a session with an optional title and selected model |
 | `rename_session` | Rename a session |
 | `archive_session` | Recoverably archive a session |
@@ -62,8 +62,8 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `list_checkpoints` | List turn-level checkpoint manifests for a session |
 | `checkpoint_manifest` | Inspect one manifest and its items |
 | `restore_checkpoint` | Restore a manifest with ownership and post-image conflict checks |
-| `submit_turn` | Idempotently submit text-only input to a session and selected model, with an optional `reasoning_effort` accepted only when it appears in the selected model's advertised `reasoning_efforts` catalog |
-| `submit_turn_with_attachments` | Submit text plus up to three same-session image IDs to a model advertising image input |
+| `submit_turn` | Idempotently submit text-only input to a session and selected model, persist the selected model and effort on the session, and normalize an omitted effort to the selected model's first advertised effort |
+| `submit_turn_with_attachments` | Submit text plus up to three same-session image IDs to a model advertising image input, persisting the selected model and normalized effort on the session |
 | `cancel_turn` | Cooperatively cancel a running turn |
 | `retry_last_turn` | Re-submit the most recently failed turn in a session using its persisted input and model; creates a new turn with a fresh idempotency key |
 | `get_approval` | Read one approval state |
@@ -94,7 +94,7 @@ MCP stdio processes receive a Rust-owned, OS-specific environment allowlist on e
 
 Image upload accepts PNG, JPEG, GIF, WebP, BMP, and AVIF file extensions. Original files are bounded to 20 MiB and thumbnail payloads to 1 MiB. `submit_turn_with_attachments` accepts at most three unique IDs, verifies same-session ownership and file availability, and rejects models that do not advertise `capabilities.vision`. Accepted user messages persist `image_ref` content parts; provider requests resolve those references to data URLs only at call time, while provider trace input stores a redacted `[image attachment]` marker. Image-bearing submissions are rejected rather than queued behind an active turn so their files cannot be removed before admission. The original text-only ABI remains a compatibility wrapper with an empty image list.
 
-Models advertise `capabilities.reasoning_effort` and a `reasoning_efforts` catalog. Avalonia presents the selected model's advertised values beside the model selector; unsupported models disable that selector and omit the parameter. For OpenAI-compatible providers, a selected value is sent as the `reasoning_effort` request field and is retained in the in-memory turn continuation across approval or question suspension.
+Models advertise `capabilities.reasoning_effort` and a `reasoning_efforts` catalog. Avalonia presents the selected model's advertised values beside the model selector; unsupported models disable that selector and omit the parameter. When a turn omits effort, Rust selects the first advertised value when one exists. For OpenAI-compatible providers, a selected value is sent as the `reasoning_effort` request field, persisted with the session's selected model at turn admission, and retained in the in-memory turn continuation across approval or question suspension.
 
 Project dependency DTOs contain `dependencyId`, `projectId`, `displayName`, and `createdAt`, but never the canonical absolute root. `list_project_directory` selects the main project when `dependencyId` is null and a registered dependency otherwise. It returns at most 500 directories/files for one level, directories first, with root-relative slash-separated paths and a `truncated` flag. Symlinks and non-file entries are omitted. Adding a dependency rejects the project root, ancestors or descendants of the project, and roots that overlap another dependency.
 `read_project_file` applies the same project/dependency root selection and canonical scope checks. It accepts one root-relative regular-file path, rejects symbolic links, NUL-containing/binary content, and non-UTF-8 content, and returns at most 1 MiB for the read-only desktop viewer. Files above the bound fail with `file_too_large`; the SDK never returns a partial document or creates an artifact for this client read.

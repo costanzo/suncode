@@ -361,6 +361,7 @@ pub struct SessionRecord {
     pub project_id: Option<String>,
     pub title: Option<String>,
     pub model_id: Option<String>,
+    pub reasoning_effort: Option<String>,
     pub status: String,
     pub created_at: String,
     pub updated_at: String,

@@ -223,7 +223,13 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             return;
         }
         if (!string.IsNullOrWhiteSpace(session.ModelId))
+        {
             SelectedModel = Models.FirstOrDefault(model => model.Id == session.ModelId) ?? SelectedModel;
+            SelectedReasoningEffort = !string.IsNullOrWhiteSpace(session.ReasoningEffort)
+                && ReasoningEffortOptions.Contains(session.ReasoningEffort, StringComparer.Ordinal)
+                ? session.ReasoningEffort
+                : ReasoningEffortOptions.FirstOrDefault();
+        }
         if (SelectedSession?.SessionId == session.SessionId
             && (_loadedSessionId == session.SessionId || IsSessionLoading))
         {
@@ -362,12 +368,24 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 SelectedModel.Id,
                 SelectedReasoningEffort,
                 attachments.Select(attachment => attachment.ImageId).ToArray());
-            StatusText = result.String("status") switch
+            var submissionStatus = result.String("status");
+            StatusText = submissionStatus switch
             {
                 "queued" => "Message queued for this turn",
                 "awaiting_approval" => "Turn is awaiting approval",
                 _ => "Turn submitted"
             };
+            if (submissionStatus != "queued" && SelectedSession is { } session)
+            {
+                var updated = session with
+                {
+                    ModelId = SelectedModel?.Id ?? string.Empty,
+                    ReasoningEffort = SelectedReasoningEffort ?? string.Empty
+                };
+                var index = Sessions.IndexOf(session);
+                if (index >= 0) Sessions[index] = updated;
+                SelectedSession = updated;
+            }
             ConnectionState = "connected";
         }
         catch (Exception exception)

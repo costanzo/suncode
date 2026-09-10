@@ -4,7 +4,7 @@ use crate::operations::session::by_id as session_by_id;
 use crate::{
     domain::*,
     rows::{RetryInputRow, StringRow, SubmissionRow, TurnRow},
-    store::{lock, nonnegative, now, Store},
+    store::{business_transaction, lock, nonnegative, now, Store},
 };
 use diesel::prelude::*;
 use diesel::sql_query;
@@ -63,7 +63,7 @@ impl Store {
         input: &str,
         model: &str,
     ) -> Result<TurnAdmission, BusinessError> {
-        self.begin_turn_with_images(session_id, key, input, model, &[])
+        self.begin_turn_with_images(session_id, key, input, model, None, &[])
     }
 
     pub fn begin_turn_with_images(
@@ -72,41 +72,58 @@ impl Store {
         key: &str,
         input: &str,
         model: &str,
+        reasoning_effort: Option<&str>,
         image_ids: &[String],
     ) -> Result<TurnAdmission, BusinessError> {
         let mut c = lock(&self.connection)?;
-        let old=sql_query("SELECT state,turn_id,input_json,model_id,response_json FROM session_turn WHERE session_id=? AND submission_idempotency_key=?").bind::<Text,_>(session_id).bind::<Text,_>(key).get_result::<SubmissionRow>(&mut *c).optional().map_err(crate::database_error)?;
-        if let Some(r) = old {
-            let requested = serde_json::to_string(&json!({"input":input,"image_ids":image_ids}))?;
-            if r.input_json.as_deref() != Some(&requested) || r.model_id.as_deref() != Some(model) {
-                return Err(BusinessError::invalid(
-                    "idempotency key was reused with different turn input",
-                ));
+        business_transaction(&mut c, |c| {
+            let old=sql_query("SELECT state,turn_id,input_json,model_id,response_json FROM session_turn WHERE session_id=? AND submission_idempotency_key=?").bind::<Text,_>(session_id).bind::<Text,_>(key).get_result::<SubmissionRow>(c).optional().map_err(crate::database_error)?;
+            if let Some(r) = old {
+                let requested = serde_json::to_string(
+                    &json!({"input":input,"image_ids":image_ids,"reasoning_effort":reasoning_effort}),
+                )?;
+                if r.input_json.as_deref() != Some(&requested)
+                    || r.model_id.as_deref() != Some(model)
+                {
+                    return Err(BusinessError::invalid(
+                        "idempotency key was reused with different turn input",
+                    ));
+                }
+                return Ok(TurnAdmission {
+                    created: false,
+                    turn_id: r.turn_id,
+                    status: r.state,
+                    response: r
+                        .response_json
+                        .map(|v| serde_json::from_str(&v))
+                        .transpose()?,
+                });
             }
-            return Ok(TurnAdmission {
-                created: false,
-                turn_id: r.turn_id,
-                status: r.state,
-                response: r
-                    .response_json
-                    .map(|v| serde_json::from_str(&v))
-                    .transpose()?,
-            });
-        }
-        let s = session_by_id(&mut c, session_id)?
-            .ok_or_else(|| BusinessError::invalid("session not found"))?;
-        if s.status != "active" {
-            return Err(BusinessError::invalid("session is archived"));
-        }
-        let id = Uuid::new_v4().to_string();
-        let t = now();
-        let input_json = serde_json::to_string(&json!({"input":input,"image_ids":image_ids}))?;
-        sql_query("INSERT INTO session_turn(session_id,submission_idempotency_key,state,created_at,updated_at,turn_id,input_json,model_id,admitted_at) VALUES (?,?, 'admitted',?,?,?,?,?,?)").bind::<Text,_>(session_id).bind::<Text,_>(key).bind::<Text,_>(&t).bind::<Text,_>(&t).bind::<Text,_>(&id).bind::<Text,_>(&input_json).bind::<Text,_>(model).bind::<Text,_>(&t).execute(&mut *c).map_err(crate::database_error)?;
-        Ok(TurnAdmission {
-            created: true,
-            turn_id: id,
-            status: "pending".into(),
-            response: None,
+            let s = session_by_id(c, session_id)?
+                .ok_or_else(|| BusinessError::invalid("session not found"))?;
+            if s.status != "active" {
+                return Err(BusinessError::invalid("session is archived"));
+            }
+            let id = Uuid::new_v4().to_string();
+            let t = now();
+            let input_json = serde_json::to_string(
+                &json!({"input":input,"image_ids":image_ids,"reasoning_effort":reasoning_effort}),
+            )?;
+            sql_query("INSERT INTO session_turn(session_id,submission_idempotency_key,state,created_at,updated_at,turn_id,input_json,model_id,admitted_at) VALUES (?,?, 'admitted',?,?,?,?,?,?)").bind::<Text,_>(session_id).bind::<Text,_>(key).bind::<Text,_>(&t).bind::<Text,_>(&t).bind::<Text,_>(&id).bind::<Text,_>(&input_json).bind::<Text,_>(model).bind::<Text,_>(&t).execute(c).map_err(crate::database_error)?;
+            sql_query("UPDATE session SET model_id=?,reasoning_effort=?,updated_at=?,last_activity_at=? WHERE session_id=?")
+                .bind::<Text, _>(model)
+                .bind::<Nullable<Text>, _>(reasoning_effort)
+                .bind::<Text, _>(&t)
+                .bind::<Text, _>(&t)
+                .bind::<Text, _>(session_id)
+                .execute(c)
+                .map_err(crate::database_error)?;
+            Ok(TurnAdmission {
+                created: true,
+                turn_id: id,
+                status: "pending".into(),
+                response: None,
+            })
         })
     }
 

@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS session (
     project_id TEXT NOT NULL,
     title TEXT,
     model_id TEXT,
+    reasoning_effort TEXT,
     status TEXT NOT NULL CHECK(status IN ('active', 'archived')),
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,

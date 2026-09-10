@@ -108,7 +108,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 item.String("lastActivityAt"),
                 !string.IsNullOrWhiteSpace(item.String("pinAt", "pin_at")),
                 sessionStates.String(sessionId),
-                item.String("modelId", "model_id")));
+                item.String("modelId", "model_id"),
+                item.String("reasoningEffort", "reasoning_effort")));
         }
         RefreshRecentSessionReferences();
         OnPropertyChanged(nameof(HasSessions));

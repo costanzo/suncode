@@ -21,6 +21,8 @@ struct Row {
     title: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     model_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    reasoning_effort: Option<String>,
     #[diesel(sql_type = Text)]
     status: String,
     #[diesel(sql_type = Text)]
@@ -39,7 +41,7 @@ pub(crate) fn by_id(
     c: &mut SqliteConnection,
     id: &str,
 ) -> Result<Option<SessionRecord>, BusinessError> {
-    sql_query("SELECT session_id,project_id,title,model_id,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE session_id=?")
+    sql_query("SELECT session_id,project_id,title,model_id,reasoning_effort,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE session_id=?")
         .bind::<Text, _>(id).get_result::<Row>(c).optional().map_err(crate::database_error)?.map(to_record).transpose()
 }
 
@@ -49,6 +51,7 @@ fn to_record(row: Row) -> Result<SessionRecord, BusinessError> {
         project_id: Some(row.project_id),
         title: row.title,
         model_id: row.model_id,
+        reasoning_effort: row.reasoning_effort,
         status: row.status,
         created_at: row.created_at,
         updated_at: row.updated_at,
@@ -85,11 +88,12 @@ impl Store {
         }
         let id = Uuid::new_v4().to_string();
         let timestamp = now();
-        sql_query("INSERT INTO session(session_id,project_id,title,model_id,status,created_at,updated_at,last_activity_at,pin_at,archived_at) VALUES (?,?,?,?,?,?,?,?,NULL,NULL)")
+        sql_query("INSERT INTO session(session_id,project_id,title,model_id,reasoning_effort,status,created_at,updated_at,last_activity_at,pin_at,archived_at) VALUES (?,?,?,?,?,?,?,?,?,NULL,NULL)")
             .bind::<Text, _>(&id)
             .bind::<Text, _>(project_id)
             .bind::<Nullable<Text>, _>(title)
             .bind::<Nullable<Text>, _>(model_id)
+            .bind::<Nullable<Text>, _>(None::<&str>)
             .bind::<Text, _>("active")
             .bind::<Text, _>(&timestamp)
             .bind::<Text, _>(&timestamp)
@@ -133,9 +137,9 @@ impl Store {
     ) -> Result<Vec<SessionRecord>, BusinessError> {
         let mut connection = lock(&self.connection)?;
         let sql = if include_archived {
-            "SELECT session_id,project_id,title,model_id,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE project_id=? ORDER BY (pin_at IS NOT NULL) DESC,pin_at DESC,last_activity_at DESC,session_id"
+            "SELECT session_id,project_id,title,model_id,reasoning_effort,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE project_id=? ORDER BY (pin_at IS NOT NULL) DESC,pin_at DESC,last_activity_at DESC,session_id"
         } else {
-            "SELECT session_id,project_id,title,model_id,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE project_id=? AND status='active' ORDER BY (pin_at IS NOT NULL) DESC,pin_at DESC,last_activity_at DESC,session_id"
+            "SELECT session_id,project_id,title,model_id,reasoning_effort,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE project_id=? AND status='active' ORDER BY (pin_at IS NOT NULL) DESC,pin_at DESC,last_activity_at DESC,session_id"
         };
         sql_query(sql)
             .bind::<Text, _>(project_id)

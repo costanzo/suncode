@@ -41,6 +41,13 @@ public sealed class SdkTypedModelTests
         Assert.NotNull(project);
         Assert.Equal("project-1", project.ProjectId);
         Assert.Equal("Project", project.DisplayName);
+
+        const string sessionJson = "{\"sessionId\":\"session-1\",\"projectId\":\"project-1\",\"title\":\"Chat\",\"modelId\":\"gpt-5.5\",\"reasoningEffort\":\"high\",\"status\":\"active\",\"createdAt\":\"now\",\"updatedAt\":\"now\",\"lastActivityAt\":\"now\",\"archivedAt\":null,\"pinAt\":null}";
+        var session = JsonSerializer.Deserialize<SessionRecord>(sessionJson, Options);
+
+        Assert.NotNull(session);
+        Assert.Equal("gpt-5.5", session.ModelId);
+        Assert.Equal("high", session.ReasoningEffort);
     }
 
     [Fact]

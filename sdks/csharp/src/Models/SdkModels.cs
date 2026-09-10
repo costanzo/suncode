@@ -200,6 +200,7 @@ public sealed record SessionRecord(
     string? ProjectId,
     string? Title,
     string? ModelId,
+    string? ReasoningEffort,
     string Status,
     string CreatedAt,
     string UpdatedAt,

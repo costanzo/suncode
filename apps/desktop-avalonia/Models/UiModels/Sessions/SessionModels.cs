@@ -9,7 +9,7 @@ using SunCode.Desktop.Infrastructure;
 
 namespace SunCode.Desktop.Models;
 
-public sealed record SessionItem(string SessionId, string Title, string LastActivityAt, bool IsPinned, string AgentState = "idle", string ModelId = "")
+public sealed record SessionItem(string SessionId, string Title, string LastActivityAt, bool IsPinned, string AgentState = "idle", string ModelId = "", string ReasoningEffort = "")
 {
     public string DisplayTitle => string.IsNullOrWhiteSpace(Title) ? "Untitled session" : Title;
     public string RelativeActivity

@@ -140,6 +140,7 @@ diesel::table! {
         project_id -> Text,
         title -> Nullable<Text>,
         model_id -> Nullable<Text>,
+        reasoning_effort -> Nullable<Text>,
         status -> Text,
         created_at -> Text,
         updated_at -> Text,

@@ -89,21 +89,30 @@ impl Agent {
                 "model is not advertised",
             ));
         };
-        if reasoning_effort.is_some() && !self.providers.supports_reasoning_effort(&model) {
-            return Err(BusinessError::new(
-                "invalid_arguments",
-                "selected model does not support reasoning effort",
-            ));
-        }
-        if let Some(value) = reasoning_effort {
+        let reasoning_effort = reasoning_effort.filter(|value| !value.trim().is_empty());
+        let reasoning_effort = if self.providers.supports_reasoning_effort(&model) {
             let supported = self.providers.reasoning_efforts(&model);
-            if !supported.iter().any(|effort| effort == value) {
+            match reasoning_effort {
+                Some(value) => {
+                    if !supported.iter().any(|effort| effort == value) {
+                        return Err(BusinessError::new(
+                            "invalid_arguments",
+                            format!("reasoning_effort is not supported by model `{model}`"),
+                        ));
+                    }
+                    Some(value.to_owned())
+                }
+                None => supported.first().cloned(),
+            }
+        } else {
+            if reasoning_effort.is_some() {
                 return Err(BusinessError::new(
                     "invalid_arguments",
-                    format!("reasoning_effort is not supported by model `{model}`"),
+                    "selected model does not support reasoning effort",
                 ));
             }
-        }
+            None
+        };
         let images = self.validate_message_images(session_id, &model, image_ids)?;
         let user_message = message_with_image_refs(input, &images);
         let _guard = match session_lock.try_lock() {
@@ -144,7 +153,14 @@ impl Agent {
             .unwrap_or(DEFAULT_TOOL_CALL_LIMIT);
         let admission = self
             .store
-            .begin_turn_with_images(session_id, key, input, &model, image_ids)?;
+            .begin_turn_with_images(
+                session_id,
+                key,
+                input,
+                &model,
+                reasoning_effort.as_deref(),
+                image_ids,
+            )?;
         if !admission.created {
             if admission.status == "completed" {
                 let response = admission.response.ok_or_else(|| {
@@ -177,7 +193,7 @@ impl Agent {
             turn_id: admission.turn_id.clone(),
             submission_key: key.into(),
             model,
-            reasoning_effort: reasoning_effort.map(str::to_owned),
+            reasoning_effort,
             messages: self.store.context_messages(session_id)?,
             iterations: 0,
             tool_calls: 0,

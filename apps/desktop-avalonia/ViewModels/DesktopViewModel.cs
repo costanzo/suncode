@@ -192,9 +192,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 }
                 else if (SelectedReasoningEffort is null)
                 {
-                    SelectedReasoningEffort = ReasoningEffortOptions.Contains("medium")
-                        ? "medium"
-                        : ReasoningEffortOptions.FirstOrDefault();
+                    SelectedReasoningEffort = ReasoningEffortOptions.FirstOrDefault();
                 }
                 OnPropertyChanged(nameof(CanSubmit));
                 OnPropertyChanged(nameof(CanCompose));
