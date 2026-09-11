@@ -2499,6 +2499,7 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
           <i>−8</i>
         </div>
         <div>
+          <McpLoadingStatus settled={3} total={5} connected={2} failed={1} />
           <code>gpt-5.6-sol</code>
           <span>19.7k tokens</span>
           <span>3 calls · 4.2s</span>
@@ -2514,6 +2515,28 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
         }}
       />
     </div>
+  );
+}
+
+/**
+ * Compact IntelliJ-style MCP startup feedback for the workspace footer.
+ * `settled` includes both connected and terminally failed servers so the
+ * indicator can always reach completion even when one server is unavailable.
+ */
+export function McpLoadingStatus({ settled, total, connected = 0, failed = 0 }) {
+  if (total <= 0 || settled >= total) return null;
+  const progress = Math.min(100, Math.max(0, (settled / total) * 100));
+  const remaining = Math.max(0, total - settled);
+  const label = `MCP ${settled}/${total}`;
+  const detail = `${connected} connected${failed ? ` · ${failed} failed` : ""} · ${remaining} starting`;
+  return (
+    <span className={`workspace-mcp-status${failed ? " has-failures" : ""}`} title={detail} role="status" aria-label={`${label} · ${detail}`}>
+      <Icon name="server" size={11} />
+      <span className="workspace-mcp-status-label">{label}</span>
+      <span className="workspace-mcp-progress" aria-hidden="true">
+        <span style={{ width: `${progress}%` }} />
+      </span>
+    </span>
   );
 }
 

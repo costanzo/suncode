@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SvgControl = Avalonia.Svg.Skia.Svg;
 using SunCode.Desktop.Infrastructure;
@@ -13,6 +14,7 @@ namespace SunCode.Desktop.Views.ProjectWorkspace;
 
 public sealed partial class WorkspaceWindow : Window
 {
+    private readonly DispatcherTimer _mcpLoadTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private bool _initialized;
     private bool _windowDragActive;
     private bool _windowDragStarted;
@@ -32,6 +34,7 @@ public sealed partial class WorkspaceWindow : Window
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
         Opened += OnOpened;
         Closing += OnClosing;
+        _mcpLoadTimer.Tick += McpLoadTick;
         SizeChanged += (_, _) =>
         {
             ViewModel.UpdateLayoutSize(Bounds.Width, Bounds.Height);
@@ -50,6 +53,8 @@ public sealed partial class WorkspaceWindow : Window
         _initialized = true;
         ViewModel.SessionEntered += SessionEntered;
         await ViewModel.InitializeAsync();
+        await ViewModel.StartMcpProjectAsync();
+        if (ViewModel.IsMcpLoading) _mcpLoadTimer.Start();
         RestoreWindowGeometry();
         ConfigureProjectWindow();
         UpdateNativeProjectMenu();
@@ -57,10 +62,17 @@ public sealed partial class WorkspaceWindow : Window
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
+        _mcpLoadTimer.Stop();
         SaveWindowGeometry();
         ViewModel.SavePanelGeometry();
         ViewModel.SaveRegionState();
         ViewModel.SessionEntered -= SessionEntered;
+    }
+
+    private async void McpLoadTick(object? sender, EventArgs e)
+    {
+        await ViewModel.RefreshMcpLoadProgressAsync();
+        if (!ViewModel.IsMcpLoading) _mcpLoadTimer.Stop();
     }
 
     private void RestoreWindowGeometry()

@@ -12,7 +12,7 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 The agent handle owns the Tokio runtime and all agent services. Host wrappers may share one handle inside a process. Subscriptions must be closed before the final agent handle is released. Closing a subscription stops callback delivery before returning.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 5. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 6. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
 ## Methods
 
@@ -36,6 +36,8 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `set_mcp_server_enabled` | Persist enabled state and immediately start or retire project-scoped clients |
 | `delete_mcp_server` | Delete one definition and retire its clients and tools from subsequent requests |
 | `retry_mcp_server` | Retry one enabled server for an active project |
+| `start_mcp_project` | Start project-scoped MCP connections in the background and return initial progress |
+| `mcp_load_progress` | Read project-scoped MCP startup progress without waiting for connections |
 | `list_projects` | List known active projects |
 | `open_project` | Canonicalize and open a project |
 | `select_project` | Select a known project and reopen its canonical root |
@@ -74,7 +76,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 
 Rust-generated project, session, turn, approval, checkpoint, event, and message identifiers remain authoritative. Hosts do not manufacture IDs except idempotency keys.
 
-MCP definitions are global desired state. Live clients and runtime states are keyed by server and project; `list_mcp_servers` accepts an optional project ID and reports `not_started`, `disabled`, `connecting`, `connected`, or `failed`. Read DTOs include only configured environment/header key names, never values. Create derives a stable opaque server ID from its idempotency key. Update, enable, and delete require both an idempotency key and the expected revision. Secret patches use `{ set, remove }`: omitted patches preserve existing values, `set` replaces named values, and `remove` deletes named values.
+MCP definitions are global desired state. Live clients and runtime states are keyed by server and project; `list_mcp_servers` accepts an optional project ID and reports `not_started`, `disabled`, `connecting`, `connected`, or `failed`. Project activation is explicit: `start_mcp_project` schedules enabled server connections in the background and returns immediately; `mcp_load_progress` reports `total`, `settled`, `connected`, `failed`, and `loading`. Read DTOs include only configured environment/header key names, never values. Create derives a stable opaque server ID from its idempotency key. Update, enable, and delete require both an idempotency key and the expected revision. Secret patches use `{ set, remove }`: omitted patches preserve existing values, `set` replaces named values, and `remove` deletes named values.
 
 MCP write request JSON at the C ABI boundary uses camelCase field names to match the managed SDK: `displayName`, `transport`, `kind`, `workingDirectory`, `startupTimeoutSeconds`, and `requestTimeoutSeconds` (with `command`, `arguments`, `environment`, `url`, `headers`, `enabled`, and `sortOrder`). Rust's persistence-layer `McpTransportConfig` intentionally retains snake_case field names inside SQLite transport JSON and is not the native request wire shape.
 

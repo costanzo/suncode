@@ -6,7 +6,7 @@ namespace SunCode.Sdk;
 
 public sealed partial class AgentSdk : IDisposable
 {
-    private const uint AbiVersion = 5;
+    private const uint AbiVersion = 6;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -91,6 +91,12 @@ public sealed partial class AgentSdk : IDisposable
     public Task<JsonObject> RetryMcpServerAsync(string projectId, string serverId) => WithUtf8Async(
         [projectId, serverId],
         values => NativeMethods.suncode_agent_sdk_retry_mcp_server(_handle, values[0], values[1]));
+
+    public Task<JsonObject> StartMcpProjectAsync(string projectId) => WithUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_start_mcp_project(_handle, values[0]));
+
+    public Task<JsonObject> McpLoadProgressAsync(string projectId) => WithUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_mcp_load_progress(_handle, values[0]));
 
     public Task<JsonObject> ListSettingsAsync() => CallAsync(handle =>
         NativeMethods.suncode_agent_sdk_list_settings(handle, IntPtr.Zero, IntPtr.Zero));

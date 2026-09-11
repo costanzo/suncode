@@ -53,7 +53,7 @@ The implementation must preserve SunCode's existing ownership and authority boun
 
 ### Runtime behavior
 
-1. Enabled server definitions are loaded on agent startup. One connection instance is created per active project and reconciled when that project opens and after every mutation.
+1. Enabled server definitions are loaded from SQLite without starting transports. One connection instance is created per active project when its Workspace opens and after every mutation that affects an active project.
 2. A successful create, update, enable, disable, or delete does not require application restart or a new session.
 3. Disabling or deleting a server removes its definitions from new model requests immediately and prevents new invocations. A request already executing may finish; its result remains audited.
 4. Editing a server invalidates the old connection before the updated configuration can serve new calls. A failed replacement remains failed and does not silently keep using stale configuration.

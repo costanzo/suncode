@@ -26,6 +26,16 @@ pub struct McpRuntimeStatus {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct McpLoadProgress {
+    pub total: usize,
+    pub settled: usize,
+    pub connected: usize,
+    pub failed: usize,
+    pub loading: bool,
+}
+
 #[derive(Clone)]
 pub(super) struct McpManager {
     inner: Arc<Inner>,
@@ -106,15 +116,76 @@ impl McpManager {
             return Ok(());
         }
         let servers = self.inner.store.mcp_servers()?;
-        let results = stream::iter(servers)
-            .map(|server| self.reconcile_project_server(project_id.to_string(), Some(server)))
-            .buffer_unordered(MAX_CONCURRENT_CONNECTIONS)
-            .collect::<Vec<_>>()
-            .await;
-        for result in results {
-            result?;
-        }
+        let manager = self.clone();
+        let project_id = project_id.to_string();
+        tokio::spawn(async move {
+            let semaphore = Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_CONNECTIONS));
+            let tasks = servers
+                .into_iter()
+                .filter(|server| server.enabled)
+                .map(|server| {
+                    let manager = manager.clone();
+                    let semaphore = semaphore.clone();
+                    let project_id = project_id.clone();
+                    let server_id = server.mcp_server_id.clone();
+                    tokio::spawn(async move {
+                        let Ok(_permit) = semaphore.acquire_owned().await else {
+                            return;
+                        };
+                        if let Err(error) = manager
+                            .reconcile_project_server(project_id.clone(), Some(server))
+                            .await
+                        {
+                            manager
+                                .fail_current(&project_id, &server_id, error.to_string())
+                                .await;
+                        }
+                    })
+                })
+                .collect::<Vec<_>>();
+            for task in tasks {
+                let _ = task.await;
+            }
+        });
         Ok(())
+    }
+
+    pub(super) async fn progress(&self, project_id: &str) -> McpLoadProgress {
+        let total = self
+            .inner
+            .store
+            .mcp_servers()
+            .map(|servers| servers.into_iter().filter(|server| server.enabled).count())
+            .unwrap_or(0);
+        if total == 0 {
+            return McpLoadProgress {
+                total: 0,
+                settled: 0,
+                connected: 0,
+                failed: 0,
+                loading: false,
+            };
+        }
+        let projects = self.inner.projects.lock().await;
+        let mut connected = 0;
+        let mut failed = 0;
+        if let Some(project) = projects.get(project_id) {
+            for slot in project.slots.values() {
+                match slot.state {
+                    McpRuntimeState::Connected => connected += 1,
+                    McpRuntimeState::Failed => failed += 1,
+                    _ => {}
+                }
+            }
+        }
+        let settled = (connected + failed).min(total);
+        McpLoadProgress {
+            total,
+            settled,
+            connected,
+            failed,
+            loading: settled < total,
+        }
     }
 
     pub(super) async fn reconcile_all(&self, server_id: &str) -> Result<(), BusinessError> {
@@ -349,6 +420,20 @@ impl McpManager {
             .get_mut(project_id)
             .and_then(|project| project.slots.get_mut(server_id))
             .filter(|slot| slot.generation == generation)
+        {
+            slot.connection = None;
+            slot.tools.clear();
+            slot.state = McpRuntimeState::Failed;
+            slot.error = Some(message.chars().take(500).collect());
+        }
+    }
+
+    async fn fail_current(&self, project_id: &str, server_id: &str, message: String) {
+        let mut projects = self.inner.projects.lock().await;
+        if let Some(slot) = projects
+            .get_mut(project_id)
+            .and_then(|project| project.slots.get_mut(server_id))
+            .filter(|slot| slot.state == McpRuntimeState::Connecting)
         {
             slot.connection = None;
             slot.tools.clear();
@@ -695,6 +780,10 @@ impl Agent {
         server: &McpServerRecord,
     ) -> McpRuntimeStatus {
         self.mcp.status(project_id, server).await
+    }
+
+    pub async fn mcp_load_progress(&self, project_id: &str) -> McpLoadProgress {
+        self.mcp.progress(project_id).await
     }
 }
 

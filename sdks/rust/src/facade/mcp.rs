@@ -4,6 +4,32 @@ use std::collections::BTreeMap;
 use suncode_data::{McpServerInput, McpServerRecord, McpTransportConfig};
 
 impl AgentSdk {
+    pub fn start_mcp_project(&self, project_id: &str) -> SdkResult<McpLoadProgressResult> {
+        let project = self
+            .state
+            .store
+            .project_by_id(project_id)?
+            .ok_or_else(|| BusinessError::missing("project"))?;
+        self.runtime.block_on(self.state.agent.activate_mcp_project(
+            &project.project_id,
+            Path::new(&project.canonical_root),
+        ))?;
+        Ok(self.mcp_load_progress(project_id))
+    }
+
+    pub fn mcp_load_progress(&self, project_id: &str) -> McpLoadProgressResult {
+        let progress = self
+            .runtime
+            .block_on(self.state.agent.mcp_load_progress(project_id));
+        McpLoadProgressResult {
+            total: progress.total,
+            settled: progress.settled,
+            connected: progress.connected,
+            failed: progress.failed,
+            loading: progress.loading,
+        }
+    }
+
     pub fn list_mcp_servers(&self, project_id: Option<&str>) -> SdkResult<McpServersResult> {
         self.validate_mcp_project(project_id)?;
         let servers = self

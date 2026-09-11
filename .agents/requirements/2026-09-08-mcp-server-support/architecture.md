@@ -103,7 +103,7 @@ The Avalonia client never opens SQLite or creates MCP transports. `suncode-llm` 
 
 1. Rust validates/opens SQLite and loads all MCP rows.
 2. Disabled rows publish `disabled` runtime summaries without creating transports.
-3. When a project opens, its enabled rows enter `connecting`; connection tasks run with bounded concurrency and that project alone is advertised as the MCP root.
+3. When the project Workspace opens, its enabled rows enter `connecting`; connection tasks run in the background with bounded concurrency and that project alone is advertised as the MCP root.
 4. A successful handshake and tool list atomically install one catalog generation.
 5. Failures publish `failed` and install no tools; agent startup itself remains available.
 

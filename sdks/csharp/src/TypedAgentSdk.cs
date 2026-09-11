@@ -38,6 +38,8 @@ public sealed partial class AgentSdk
     public Task<McpServerDeleteResult> DeleteMcpServerAsync(DeleteMcpServerRequest request) => Typed<McpServerDeleteResult>(DeleteMcpServerAsync(
         request.ServerId, request.ExpectedRevision, request.IdempotencyKey));
     public Task<McpServer> RetryMcpServerTypedAsync(string projectId, string serverId) => Typed<McpServer>(RetryMcpServerAsync(projectId, serverId));
+    public Task<McpLoadProgress> StartMcpProjectTypedAsync(string projectId) => Typed<McpLoadProgress>(StartMcpProjectAsync(projectId));
+    public Task<McpLoadProgress> GetMcpLoadProgressAsync(string projectId) => Typed<McpLoadProgress>(McpLoadProgressAsync(projectId));
 
     public Task<SettingsResult> GetSettingsAsync(SettingScope scope) => Typed<SettingsResult>(
         scope.ProjectId is null && scope.SessionId is null

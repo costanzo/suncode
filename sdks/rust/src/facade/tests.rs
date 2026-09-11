@@ -266,6 +266,35 @@ fn mcp_sdk_redacts_secrets_and_enforces_idempotency_and_revisions() {
 }
 
 #[test]
+fn mcp_project_start_reports_initial_progress_without_waiting_for_connections() {
+    let directory = tempfile::tempdir().unwrap();
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    let project = sdk
+        .open_project(directory.path().to_str().unwrap(), None)
+        .unwrap();
+    let create = McpServerWriteRequest {
+        display_name: "Slow MCP".into(),
+        transport: McpTransportRequest::Stdio {
+            command: "missing-mcp-command".into(),
+            arguments: Vec::new(),
+            working_directory: suncode_data::McpWorkingDirectory::Project,
+            environment: None,
+            startup_timeout_seconds: 1,
+            request_timeout_seconds: 1,
+        },
+        enabled: true,
+        sort_order: 0,
+    };
+    sdk.create_mcp_server(None, "progress-create-enabled", create)
+        .unwrap();
+    let started = std::time::Instant::now();
+    let progress = sdk.start_mcp_project(&project.project_id).unwrap();
+    assert!(started.elapsed() < std::time::Duration::from_millis(500));
+    assert_eq!(progress.total, 1);
+    assert!(progress.loading || progress.failed == 1);
+}
+
+#[test]
 fn mcp_write_requests_accept_csharp_camel_case_transport_fields() {
     let stdio: McpServerWriteRequest = serde_json::from_value(json!({
         "displayName": "Local MCP",

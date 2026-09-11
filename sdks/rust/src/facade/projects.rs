@@ -27,11 +27,6 @@ impl AgentSdk {
         if let Ok(mut active) = self.state.active_project.lock() {
             *active = Some(project.project_id.clone());
         }
-        self.runtime.block_on(
-            self.state
-                .agent
-                .activate_mcp_project(&project.project_id, Path::new(&project.canonical_root)),
-        )?;
         Ok(project)
     }
 
@@ -48,11 +43,6 @@ impl AgentSdk {
         if let Ok(mut active) = self.state.active_project.lock() {
             *active = Some(project.project_id.clone());
         }
-        self.runtime.block_on(
-            self.state
-                .agent
-                .activate_mcp_project(&project.project_id, Path::new(&project.canonical_root)),
-        )?;
         Ok(project)
     }
 

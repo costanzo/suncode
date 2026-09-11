@@ -101,6 +101,13 @@ public sealed record McpServer(
 
 public sealed record McpServersResult(IReadOnlyList<McpServer> Servers);
 
+public sealed record McpLoadProgress(
+    int Total,
+    int Settled,
+    int Connected,
+    int Failed,
+    bool Loading);
+
 public sealed record McpServerDeleteResult(string McpServerId, bool Removed);
 
 public sealed record McpSecretChanges(

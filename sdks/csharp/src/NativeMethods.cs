@@ -29,6 +29,8 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_set_mcp_server_enabled(IntPtr handle, IntPtr projectId, IntPtr serverId, ulong expectedRevision, IntPtr idempotencyKey, byte enabled);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_delete_mcp_server(IntPtr handle, IntPtr serverId, ulong expectedRevision, IntPtr idempotencyKey);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_retry_mcp_server(IntPtr handle, IntPtr projectId, IntPtr serverId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_start_mcp_project(IntPtr handle, IntPtr projectId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_mcp_load_progress(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_open_project(IntPtr handle, IntPtr path, IntPtr displayName);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_select_project(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_project_dependencies(IntPtr handle, IntPtr projectId);

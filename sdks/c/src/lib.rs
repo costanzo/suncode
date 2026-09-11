@@ -189,6 +189,26 @@ pub unsafe extern "C" fn suncode_agent_sdk_retry_mcp_server(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_start_mcp_project(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.start_mcp_project(&c_string(project_id, "project_id")?)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_mcp_load_progress(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        Ok(sdk.mcp_load_progress(&c_string(project_id, "project_id")?))
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_list_project_dependencies(
     handle: *mut SunCodeAgentHandle,
     project_id: *const c_char,
@@ -817,7 +837,7 @@ mod tests {
 
     #[test]
     fn exposes_the_current_abi_version() {
-        assert_eq!(suncode_agent_sdk_abi_version(), 5);
+        assert_eq!(suncode_agent_sdk_abi_version(), 6);
     }
 
     #[test]

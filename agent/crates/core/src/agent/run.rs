@@ -6,9 +6,6 @@ impl Agent {
         token: CancellationToken,
         provider: ModelRoute,
     ) -> Result<TurnResponse, BusinessError> {
-        self.mcp
-            .activate_project(&context.project_id, Path::new(&context.project_root))
-            .await?;
         let started = Instant::now();
         if let Some(message) = user_input {
             self.turn_state(&context, "admitted", None)?;

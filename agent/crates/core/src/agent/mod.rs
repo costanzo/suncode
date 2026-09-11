@@ -5,7 +5,7 @@ use crate::{
     policy::{evaluate, tool_risk, Decision, Risk},
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
-use futures_util::{future::join_all, stream, StreamExt};
+use futures_util::future::join_all;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
@@ -26,7 +26,7 @@ pub mod events;
 use events::*;
 mod mcp;
 use mcp::McpManager;
-pub use mcp::{McpRuntimeState, McpRuntimeStatus};
+pub use mcp::{McpLoadProgress, McpRuntimeState, McpRuntimeStatus};
 
 const DEFAULT_TOOL_CALL_LIMIT: u32 = 64;
 const MAX_INSTRUCTION_FILE_BYTES: u64 = 32 * 1024;

@@ -8,6 +8,7 @@ public sealed partial class DesktopViewModel
 {
     private bool _mcpLoading;
     private string _mcpStatusText = string.Empty;
+    private McpLoadProgress? _mcpLoadProgress;
 
     public ObservableCollection<McpServerItem> McpServers { get; } = [];
     public bool McpHasServers => McpServers.Count > 0;
@@ -20,6 +21,47 @@ public sealed partial class DesktopViewModel
     {
         get => _mcpStatusText;
         private set => SetProperty(ref _mcpStatusText, value);
+    }
+
+    public bool IsMcpLoading => _mcpLoadProgress?.Loading == true;
+    public double McpLoadPercent => _mcpLoadProgress is { Total: > 0 } progress
+        ? progress.Settled * 100d / progress.Total
+        : 0d;
+    public string McpLoadText => _mcpLoadProgress is { } progress
+        ? $"MCP {progress.Settled}/{progress.Total}"
+        : string.Empty;
+    public string McpLoadDetails => _mcpLoadProgress is { } progress
+        ? $"{progress.Connected} connected{(progress.Failed > 0 ? $" · {progress.Failed} failed" : string.Empty)} · {Math.Max(0, progress.Total - progress.Settled)} starting"
+        : string.Empty;
+
+    public async Task StartMcpProjectAsync()
+    {
+        if (SelectedProject is null || !await EnsureSdkReadyAsync()) return;
+        try
+        {
+            _mcpLoadProgress = await _sdk!.StartMcpProjectTypedAsync(SelectedProject.ProjectId);
+            NotifyMcpProgressChanged();
+        }
+        catch (Exception exception)
+        {
+            McpStatusText = exception.Message;
+            ReportError(exception);
+        }
+    }
+
+    public async Task RefreshMcpLoadProgressAsync()
+    {
+        if (!IsMcpLoading || SelectedProject is null || !EnsureSdk()) return;
+        try
+        {
+            _mcpLoadProgress = await _sdk!.GetMcpLoadProgressAsync(SelectedProject.ProjectId);
+            NotifyMcpProgressChanged();
+        }
+        catch (Exception exception)
+        {
+            McpStatusText = exception.Message;
+            ReportError(exception);
+        }
     }
 
     public async Task LoadMcpServersAsync()
@@ -177,5 +219,13 @@ public sealed partial class DesktopViewModel
         OnPropertyChanged(nameof(McpHasNoServers));
         OnPropertyChanged(nameof(McpProjectContext));
         OnPropertyChanged(nameof(HasMcpProjectContext));
+    }
+
+    private void NotifyMcpProgressChanged()
+    {
+        OnPropertyChanged(nameof(IsMcpLoading));
+        OnPropertyChanged(nameof(McpLoadPercent));
+        OnPropertyChanged(nameof(McpLoadText));
+        OnPropertyChanged(nameof(McpLoadDetails));
     }
 }
