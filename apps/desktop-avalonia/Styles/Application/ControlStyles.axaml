@@ -15,4 +15,5 @@
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/ProjectSwitcherStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/ContentSwitcherStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/ProjectSidebarStyles.axaml" />
+  <StyleInclude Source="avares://SunCode/Styles/Application/Controls/TreeViewStyles.axaml" />
 </Styles>

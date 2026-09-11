@@ -26,18 +26,8 @@
       <Setter Property="MinHeight" Value="24" />
       <Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded, Mode=TwoWay}" />
     </Style>
-    <Style Selector="TreeView.explorer-tree TreeViewItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="TreeView.explorer-tree TreeViewItem /template/ ContentPresenter#PART_HeaderPresenter">
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    </Style>
-    <Style Selector="TreeView.explorer-tree TreeViewItem /template/ ToggleButton#PART_ExpandButton">
-      <Setter Property="Width" Value="13" />
-      <Setter Property="Height" Value="24" />
-      <Setter Property="MinWidth" Value="13" />
-      <Setter Property="MinHeight" Value="24" />
-      <Setter Property="Padding" Value="2" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
     </Style>
     <Style Selector="TreeView.explorer-tree TreeViewItem /template/ Border#PART_LayoutRoot">
       <Setter Property="CornerRadius" Value="4" />
@@ -63,7 +53,7 @@
     </Style>
     <Style Selector="Grid.explorer-row">
       <Setter Property="MinHeight" Value="22" />
-      <Setter Property="Margin" Value="0,1,6,1" />
+      <Setter Property="Margin" Value="-6,1,6,1" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
     </Style>
@@ -124,7 +114,7 @@
         <TreeView.DataTemplates>
           <TreeDataTemplate DataType="models:ExplorerNode" ItemsSource="{Binding Children}">
             <Border Classes="explorer-row-container" IsVisible="{Binding !IsPlaceholder}">
-            <Grid Classes="explorer-row" Classes.dependency="{Binding IsDependency}" Classes.root="{Binding IsRoot}" Classes.dependency-root="{Binding IsDependencyRoot}" ColumnDefinitions="16,*,24" ColumnSpacing="3" HorizontalAlignment="Stretch">
+            <Grid Classes="explorer-row" Classes.dependency="{Binding IsDependency}" Classes.root="{Binding IsRoot}" Classes.dependency-root="{Binding IsDependencyRoot}" ColumnDefinitions="12,*,24" ColumnSpacing="3" HorizontalAlignment="Stretch">
               <svg:Svg Grid.Column="0" Classes="explorer-icon" Width="14" Height="14" Path="{Binding IconPath}" Css="{DynamicResource IconSvgCss}" />
               <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
                 <TextBlock Classes="explorer-name" Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="None" VerticalAlignment="Center" />
