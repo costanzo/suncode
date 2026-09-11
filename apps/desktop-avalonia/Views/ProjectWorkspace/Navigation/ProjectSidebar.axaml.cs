@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
@@ -10,6 +11,8 @@ namespace SunCode.Desktop.Views.ProjectWorkspace.Navigation;
 
 public sealed partial class ProjectSidebar : UserControl
 {
+    private bool _suppressSessionSelection;
+
     public ProjectSidebar()
     {
         InitializeComponent();
@@ -25,6 +28,12 @@ public sealed partial class ProjectSidebar : UserControl
 
     private async void SessionSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        if (_suppressSessionSelection)
+        {
+            if (!ReferenceEquals(SessionList.SelectedItem, ViewModel.SelectedSession))
+                SessionList.SelectedItem = ViewModel.SelectedSession;
+            return;
+        }
         if (e.AddedItems.OfType<SessionItem>().FirstOrDefault() is not { } session)
             return;
 
@@ -34,6 +43,17 @@ public sealed partial class ProjectSidebar : UserControl
     private void SessionListPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var source = e.Source as Control;
+        if (source?.GetSelfAndVisualAncestors()
+                .OfType<Button>()
+                .Any(button => button.Classes.Contains("session-actions-trigger")) == true)
+        {
+            _suppressSessionSelection = true;
+            Dispatcher.UIThread.Post(() => 
+            {
+                _suppressSessionSelection = false;
+            }, DispatcherPriority.Background);
+            return;
+        }
         var session = source?.DataContext as SessionItem
             ?? source?.FindAncestorOfType<ListBoxItem>()?.DataContext as SessionItem;
         if (e.Handled || session is null) return;

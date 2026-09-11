@@ -40,7 +40,7 @@
                     <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsWaitingForAnswer}" />
                     <Ellipse Width="7" Height="7" Fill="{DynamicResource DangerBrush}" IsVisible="{Binding IsFailed}" />
                   </Grid>
-                  <Button Grid.Column="3" Classes="quiet" Width="28" Padding="6" ToolTip.Tip="Session actions" AutomationProperties.Name="{Binding DisplayTitle, StringFormat=Actions for {0}}">
+                  <Button Grid.Column="3" Classes="quiet session-actions-trigger" Width="28" Padding="6" ToolTip.Tip="Session actions" AutomationProperties.Name="{Binding DisplayTitle, StringFormat=Actions for {0}}">
                     <Button.Flyout>
                       <Flyout Placement="BottomEdgeAlignedRight" ShowMode="Standard" FlyoutPresenterClasses="session-actions-flyout">
                         <Border Width="94" Padding="4">
