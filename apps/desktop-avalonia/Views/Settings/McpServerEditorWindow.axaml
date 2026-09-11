@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:SunCode.Desktop.Controls"
         x:Class="SunCode.Desktop.Views.Settings.McpServerEditorWindow"
         Title="Add MCP server"
         Width="620" Height="610"
@@ -38,10 +39,7 @@
         </StackPanel>
         <StackPanel Grid.Column="1" Classes="mcp-field">
           <TextBlock Classes="label" Text="Transport" />
-          <ComboBox x:Name="TransportSelector" SelectionChanged="TransportChanged">
-            <ComboBoxItem Content="Local process (stdio)" Tag="stdio" />
-            <ComboBoxItem Content="Remote (Streamable HTTP)" Tag="streamable_http" />
-          </ComboBox>
+          <controls:SCFlatComboBox x:Name="TransportSelector" HorizontalAlignment="Stretch" SelectionChanged="TransportChanged" />
         </StackPanel>
 
         <StackPanel x:Name="StdioCommandField" Grid.Row="1" Grid.ColumnSpan="2" Classes="mcp-field">
@@ -55,10 +53,7 @@
 
         <StackPanel x:Name="WorkingDirectoryField" Grid.Row="2" Classes="mcp-field">
           <TextBlock Classes="label" Text="Working directory" />
-          <ComboBox x:Name="WorkingDirectorySelector">
-            <ComboBoxItem Content="Project directory" Tag="project" />
-            <ComboBoxItem Content="Application data directory" Tag="application_data" />
-          </ComboBox>
+          <controls:SCFlatComboBox x:Name="WorkingDirectorySelector" HorizontalAlignment="Stretch" />
         </StackPanel>
         <StackPanel x:Name="ArgumentsField" Grid.Row="2" Grid.Column="1" Classes="mcp-field">
           <TextBlock Classes="label" Text="Arguments" />

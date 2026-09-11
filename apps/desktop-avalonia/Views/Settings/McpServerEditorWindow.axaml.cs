@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using SunCode.Desktop.Controls;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 using SunCode.Sdk.Models;
@@ -9,6 +10,16 @@ namespace SunCode.Desktop.Views.Settings;
 
 public sealed partial class McpServerEditorWindow : Window
 {
+    private readonly SCComboBoxItem[] _transportItems =
+    [
+        new("Local process (stdio)", "stdio"),
+        new("Remote (Streamable HTTP)", "streamable_http")
+    ];
+    private readonly SCComboBoxItem[] _workingDirectoryItems =
+    [
+        new("Project directory", "project"),
+        new("Application data directory", "application_data")
+    ];
     private readonly DesktopViewModel? _viewModel;
     private readonly McpServerItem? _server;
 
@@ -17,12 +28,14 @@ public sealed partial class McpServerEditorWindow : Window
     public McpServerEditorWindow()
     {
         InitializeComponent();
+        InitializeSelectors();
         SetIcon();
     }
 
     public McpServerEditorWindow(DesktopViewModel viewModel, McpServerItem? server = null)
     {
         InitializeComponent();
+        InitializeSelectors();
         _viewModel = viewModel;
         _server = server;
         SetIcon();
@@ -31,7 +44,13 @@ public sealed partial class McpServerEditorWindow : Window
         Opened += (_, _) => ServerNameInput.Focus();
     }
 
-    private bool IsStdio => TransportSelector.SelectedIndex != 1;
+    private bool IsStdio => TransportSelector.SelectedItem?.Value as string != "streamable_http";
+
+    private void InitializeSelectors() 
+    {
+        TransportSelector.ItemsSource = _transportItems;
+        WorkingDirectorySelector.ItemsSource = _workingDirectoryItems;
+    }
 
     private void SetIcon() => Icon = new WindowIcon(
         Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
@@ -42,8 +61,8 @@ public sealed partial class McpServerEditorWindow : Window
         Title = editing ? "Edit MCP server" : "Add MCP server";
         HeadingText.Text = Title;
         SaveButton.Content = editing ? "Save changes" : "Add server";
-        TransportSelector.SelectedIndex = _server?.TransportType == "streamable_http" ? 1 : 0;
-        WorkingDirectorySelector.SelectedIndex = _server?.WorkingDirectory == "application_data" ? 1 : 0;
+        TransportSelector.SelectedItem = _server?.TransportType == "streamable_http" ? _transportItems[1] : _transportItems[0];
+        WorkingDirectorySelector.SelectedItem = _server?.WorkingDirectory == "application_data" ? _workingDirectoryItems[1] : _workingDirectoryItems[0];
         ServerNameInput.Text = _server?.DisplayName ?? string.Empty;
         CommandInput.Text = _server?.Command ?? string.Empty;
         ArgumentsInput.Text = _server is null ? string.Empty : string.Join(Environment.NewLine, _server.Arguments);
@@ -138,7 +157,7 @@ public sealed partial class McpServerEditorWindow : Window
             transport = new McpStdioTransportRequest(
                 command,
                 arguments,
-                WorkingDirectorySelector.SelectedIndex == 1 ? "application_data" : "project",
+                WorkingDirectorySelector.SelectedItem?.Value as string ?? "project",
                 secretChanges,
                 startupTimeout,
                 requestTimeout);

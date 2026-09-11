@@ -173,6 +173,8 @@
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
+
+  <!-- TextBox and ComboBox styles -->
   <Style Selector="TextBox, ComboBox">
     <!-- Match the design-system field contract. Fluent's default focus
          adorner and template focus brush otherwise render a dark outer
