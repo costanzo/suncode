@@ -283,7 +283,7 @@
                       PrimaryAction="SubmitExpandedComposer"
                       SecondaryAction="CloseExpandedComposer"
                       CloseRequested="CloseExpandedComposer">
-      <Grid RowDefinitions="*,Auto" MinHeight="420" Margin="0,4,0,0">
+      <Grid RowDefinitions="*,Auto" MinHeight="700" Margin="0,4,0,0">
         <TextBox x:Name="ExpandedComposerInput"
                  Classes="expanded-composer-input"
                  AcceptsReturn="True"

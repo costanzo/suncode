@@ -16,6 +16,21 @@
       <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
     </Style>
+    <Style Selector="TextBox.composer-input:focus /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TextBox.composer-input:pointerover">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TextBox.composer-input:pointerover /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
     <Style Selector="TextBox.composer-input">
       <Setter Property="FontSize" Value="14" />
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
@@ -137,7 +152,7 @@
 
     <Border Classes="composer-surface" Classes.unavailable="{Binding IsModelUnavailable}"
           Margin="24,14,24,10"
-          Padding="16,12,12,10"
+          Padding="16,12,12,5"
           CornerRadius="16"
           Background="{DynamicResource ComposerBrush}"
           BorderThickness="1"
@@ -155,6 +170,7 @@
                Grid.Row="0"
                Grid.ColumnSpan="2"
                Text="{Binding ComposerText}"
+               Margin="0,0,0,5"
                PlaceholderText="{Binding ComposerPlaceholder}"
                AcceptsReturn="True"
                TextWrapping="Wrap"
