@@ -2,6 +2,17 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="FileIconDefaultBrush" Color="#d4d7d6" />
+      <SolidColorBrush x:Key="FileIconBlueBrush" Color="#519aba" />
+      <SolidColorBrush x:Key="FileIconYellowBrush" Color="#cbcb41" />
+      <SolidColorBrush x:Key="FileIconMutedBrush" Color="#6d8086" />
+      <SolidColorBrush x:Key="FileIconGreenBrush" Color="#8dc149" />
+      <SolidColorBrush x:Key="FileIconPurpleBrush" Color="#a074c4" />
+      <SolidColorBrush x:Key="FileIconPinkBrush" Color="#f55385" />
+      <SolidColorBrush x:Key="FileIconRedBrush" Color="#cc3e44" />
+      <SolidColorBrush x:Key="FileIconOrangeBrush" Color="#e37933" />
+      <SolidColorBrush x:Key="FileIconInkBrush" Color="#41535b" />
+      <SolidColorBrush x:Key="FileIconTodoBrush" Color="#a7afb9" />
       <Color x:Key="BorderColor">#292f36</Color>
       <Color x:Key="ForegroundColor">#edf0f3</Color>
       <Color x:Key="CardBackgroundColor">#121519</Color>
@@ -83,6 +94,17 @@
       <SolidColorBrush x:Key="ContentFileSurfaceBrush" Color="#1d2d29" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="FileIconDefaultBrush" Color="#bfc2c1" />
+      <SolidColorBrush x:Key="FileIconBlueBrush" Color="#498ba7" />
+      <SolidColorBrush x:Key="FileIconYellowBrush" Color="#b7b73b" />
+      <SolidColorBrush x:Key="FileIconMutedBrush" Color="#627379" />
+      <SolidColorBrush x:Key="FileIconGreenBrush" Color="#7fae42" />
+      <SolidColorBrush x:Key="FileIconPurpleBrush" Color="#9068b0" />
+      <SolidColorBrush x:Key="FileIconPinkBrush" Color="#dd4b78" />
+      <SolidColorBrush x:Key="FileIconRedBrush" Color="#b8383d" />
+      <SolidColorBrush x:Key="FileIconOrangeBrush" Color="#cc6d2e" />
+      <SolidColorBrush x:Key="FileIconInkBrush" Color="#3b4b52" />
+      <SolidColorBrush x:Key="FileIconTodoBrush" Color="#44515e" />
       <Color x:Key="BorderColor">#d5dde4</Color>
       <Color x:Key="ForegroundColor">#17202a</Color>
       <Color x:Key="CardBackgroundColor">#ffffff</Color>

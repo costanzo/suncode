@@ -62,6 +62,19 @@ public sealed class ExplorerNode : ObservableObject
     public bool HasPathSubtitle => !string.IsNullOrWhiteSpace(Path) && Path != ".";
     public bool ShowPathSubtitle => IsDependency && HasPathSubtitle;
     public string PathSubtitle => ShowPathSubtitle ? Path : string.Empty;
+    public bool UseSetiFileIcon => IsFile;
+    public string FileIconGlyph => IsFile ? FileIconCatalog.Resolve(Name).Glyph : string.Empty;
+    public string FileIconColor => IsFile ? FileIconCatalog.Resolve(Name).Color : "default";
+    public bool IsFileIconBlue => FileIconColor == "blue";
+    public bool IsFileIconYellow => FileIconColor == "yellow";
+    public bool IsFileIconMuted => FileIconColor == "muted";
+    public bool IsFileIconGreen => FileIconColor == "green";
+    public bool IsFileIconPurple => FileIconColor == "purple";
+    public bool IsFileIconPink => FileIconColor == "pink";
+    public bool IsFileIconRed => FileIconColor == "red";
+    public bool IsFileIconOrange => FileIconColor == "orange";
+    public bool IsFileIconInk => FileIconColor == "ink";
+    public bool IsFileIconTodo => FileIconColor == "todo";
     public string IconPath
     {
         get
@@ -71,9 +84,7 @@ public sealed class ExplorerNode : ObservableObject
             if (IsDirectory) return "/Assets/icons/folder.svg";
             if (!IsFile) return "/Assets/icons/files.svg";
 
-            var extension = Name.Contains('.')
-                ? Name[(Name.LastIndexOf('.') + 1)..].ToLowerInvariant()
-                : string.Empty;
+            var extension = System.IO.Path.GetExtension(Name).ToLowerInvariant().TrimStart('.');
             return extension switch
             {
                 "md" or "markdown" => "/Assets/icons/file-markdown.svg",

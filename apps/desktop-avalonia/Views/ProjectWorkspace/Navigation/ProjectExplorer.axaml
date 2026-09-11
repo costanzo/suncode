@@ -73,6 +73,48 @@
     <Style Selector="Grid.explorer-row.dependency-root svg|Svg">
       <Setter Property="Css" Value="{DynamicResource WarningSvgCss}" />
     </Style>
+    <Style Selector="TextBlock.explorer-file-icon">
+      <Setter Property="FontFamily" Value="avares://SunCode/Assets/fonts#seti" />
+      <Setter Property="Width" Value="14" />
+      <Setter Property="Height" Value="14" />
+      <Setter Property="FontSize" Value="17.5" />
+      <Setter Property="LineHeight" Value="17.5" />
+      <Setter Property="Foreground" Value="{DynamicResource FileIconDefaultBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="RenderTransform" Value="translate(-2px, 0)" />
+    </Style>
+    <Style Selector="Grid.explorer-row.file-icon-blue TextBlock.explorer-file-icon">
+      <Setter Property="Foreground" Value="{DynamicResource FileIconBlueBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.file-icon-yellow TextBlock.explorer-file-icon">
+      <Setter Property="Foreground" Value="{DynamicResource FileIconYellowBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.file-icon-muted TextBlock.explorer-file-icon">
+      <Setter Property="Foreground" Value="{DynamicResource FileIconMutedBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.file-icon-green TextBlock.explorer-file-icon">
+      <Setter Property="Foreground" Value="{DynamicResource FileIconGreenBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.file-icon-purple TextBlock.explorer-file-icon">
+      <Setter Property="Foreground" Value="{DynamicResource FileIconPurpleBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.file-icon-pink TextBlock.explorer-file-icon">
+      <Setter Property="Foreground" Value="{DynamicResource FileIconPinkBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.file-icon-red TextBlock.explorer-file-icon">
+      <Setter Property="Foreground" Value="{DynamicResource FileIconRedBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.file-icon-orange TextBlock.explorer-file-icon">
+      <Setter Property="Foreground" Value="{DynamicResource FileIconOrangeBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.file-icon-ink TextBlock.explorer-file-icon">
+      <Setter Property="Foreground" Value="{DynamicResource FileIconInkBrush}" />
+    </Style>
+    <Style Selector="Grid.explorer-row.file-icon-todo TextBlock.explorer-file-icon">
+      <Setter Property="Foreground" Value="{DynamicResource FileIconTodoBrush}" />
+    </Style>
     <Style Selector="TextBlock.explorer-name">
       <Setter Property="FontSize" Value="10" />
       <Setter Property="FontWeight" Value="Medium" />
@@ -114,8 +156,35 @@
         <TreeView.DataTemplates>
           <TreeDataTemplate DataType="models:ExplorerNode" ItemsSource="{Binding Children}">
             <Border Classes="explorer-row-container" IsVisible="{Binding !IsPlaceholder}">
-            <Grid Classes="explorer-row" Classes.dependency="{Binding IsDependency}" Classes.root="{Binding IsRoot}" Classes.dependency-root="{Binding IsDependencyRoot}" ColumnDefinitions="12,*,24" ColumnSpacing="3" HorizontalAlignment="Stretch">
-              <svg:Svg Grid.Column="0" Classes="explorer-icon" Width="14" Height="14" Path="{Binding IconPath}" Css="{DynamicResource IconSvgCss}" />
+            <Grid Classes="explorer-row"
+                  Classes.dependency="{Binding IsDependency}"
+                  Classes.root="{Binding IsRoot}"
+                  Classes.dependency-root="{Binding IsDependencyRoot}"
+                  Classes.file-icon-blue="{Binding IsFileIconBlue}"
+                  Classes.file-icon-yellow="{Binding IsFileIconYellow}"
+                  Classes.file-icon-muted="{Binding IsFileIconMuted}"
+                  Classes.file-icon-green="{Binding IsFileIconGreen}"
+                  Classes.file-icon-purple="{Binding IsFileIconPurple}"
+                  Classes.file-icon-pink="{Binding IsFileIconPink}"
+                  Classes.file-icon-red="{Binding IsFileIconRed}"
+                  Classes.file-icon-orange="{Binding IsFileIconOrange}"
+                  Classes.file-icon-ink="{Binding IsFileIconInk}"
+                  Classes.file-icon-todo="{Binding IsFileIconTodo}"
+                  ColumnDefinitions="14,*,24"
+                  ColumnSpacing="6"
+                  HorizontalAlignment="Stretch">
+              <TextBlock Grid.Column="0"
+                         Classes="explorer-file-icon"
+                         Text="{Binding FileIconGlyph}"
+                         IsVisible="{Binding UseSetiFileIcon}"
+                         AutomationProperties.Name="{Binding Name, StringFormat=File type icon for {0}}" />
+              <svg:Svg Grid.Column="0"
+                       Classes="explorer-icon"
+                       Width="14"
+                       Height="14"
+                       Path="{Binding IconPath}"
+                       Css="{DynamicResource IconSvgCss}"
+                       IsVisible="{Binding !UseSetiFileIcon}" />
               <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
                 <TextBlock Classes="explorer-name" Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="None" VerticalAlignment="Center" />
                 <TextBlock Classes="explorer-path" Text="{Binding PathSubtitle}" IsVisible="{Binding ShowPathSubtitle}" TextWrapping="NoWrap" TextTrimming="None" />
