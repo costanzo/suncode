@@ -101,17 +101,13 @@
           </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="1" Margin="4">
+        <Grid Grid.Row="1" Margin="0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="{Binding WorkspaceGutterWidth}" />
-            <ColumnDefinition Width="{Binding WorkspaceGutterGap}" />
             <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="{Binding WorkspaceGutterGap}" />
             <ColumnDefinition Width="{Binding WorkspaceGutterWidth}" />
           </Grid.ColumnDefinitions>
-          <Border Grid.Column="0" Background="#01000000" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
-          <Border Grid.Column="4" Background="#01000000" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
-          <Grid Grid.Column="0" RowDefinitions="Auto,6,Auto,*,Auto,6,Auto,6,Auto" Margin="0,7" IsVisible="{Binding WorkspaceGuttersVisible}">
+          <Grid Grid.Column="0" RowDefinitions="Auto,6,Auto,*,Auto,6,Auto,6,Auto" Margin="4,7" IsVisible="{Binding WorkspaceGuttersVisible}">
             <Button Grid.Row="0" Classes="icon gutter" Classes.active="{Binding SessionSidebarVisible}" Click="ToggleNavigation" ToolTip.Tip="Show sessions" AutomationProperties.Name="Show or hide sessions">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-left.svg" IsVisible="{Binding !SessionSidebarVisible}" />
@@ -124,6 +120,7 @@
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/workspace-files.svg" IsVisible="{Binding ExplorerSidebarVisible}" />
               </Grid>
             </Button>
+            <Border Grid.Column="3" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
             <Button Grid.Row="4" Classes="icon gutter" Classes.active="{Binding GitVisible}" Click="ToggleGit" ToolTip.Tip="Show or hide source control" AutomationProperties.Name="Show or hide source control">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/git-branch.svg" IsVisible="{Binding !GitVisible}" />
@@ -144,7 +141,7 @@
             </Button>
           </Grid>
 
-          <Grid Grid.Column="2">
+          <Grid Grid.Column="1">
             <Grid.RowDefinitions>
               <RowDefinition Height="*" />
               <RowDefinition Height="{Binding BottomDrawerGap}" />
@@ -193,7 +190,7 @@
             </Grid>
           </Grid>
 
-          <StackPanel Grid.Column="4" Margin="0,7,0,0" IsVisible="{Binding WorkspaceGuttersVisible}">
+          <StackPanel Grid.Column="2" Margin="4,7" IsVisible="{Binding WorkspaceGuttersVisible}">
             <Button Classes="icon gutter" Classes.active="{Binding ReviewVisible}" Click="ToggleReview" ToolTip.Tip="Show or hide review" AutomationProperties.Name="Show or hide review">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-right.svg" IsVisible="{Binding !ReviewVisible}" />

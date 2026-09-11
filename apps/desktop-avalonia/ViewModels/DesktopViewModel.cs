@@ -458,7 +458,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool EffectiveToolActivityVisible => ToolActivityVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
     private bool CanShowBottomDrawer => BottomDrawerHeight >= MinimumBottomDrawerHeight;
     public bool WorkspaceGuttersVisible => _layoutWidth > CompactWorkspaceBreakpoint;
-    public GridLength WorkspaceGutterWidth => WorkspaceGuttersVisible ? new GridLength(26) : new GridLength(0);
+    public GridLength WorkspaceGutterWidth => WorkspaceGuttersVisible ? new GridLength(34) : new GridLength(0);
     public GridLength WorkspaceGutterGap => WorkspaceGuttersVisible ? new GridLength(4) : new GridLength(0);
     public GridLength NavigationGap => EffectiveNavigationVisible ? new GridLength(4) : new GridLength(0);
     public GridLength ReviewGap => EffectiveReviewVisible ? new GridLength(4) : new GridLength(0);
