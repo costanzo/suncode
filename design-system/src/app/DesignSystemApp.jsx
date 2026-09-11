@@ -4,6 +4,7 @@ import { ActionsPage } from "../components/universal/modules/actions/index.js";
 import { DataPage } from "../components/universal/modules/data/index.js";
 import { FeedbackPage } from "../components/universal/modules/feedback/index.js";
 import { FieldsPage } from "../components/universal/modules/fields/index.js";
+import { IconsModulePage } from "../components/universal/modules/icons/index.js";
 import { MarkdownPage } from "../components/universal/modules/markdown/index.js";
 import { NavigationPage } from "../components/universal/modules/navigation/index.js";
 import { OverlaysPage } from "../components/universal/modules/overlays/index.js";
@@ -70,6 +71,7 @@ const routes = {
   "/components/universal/surfaces": SurfacesPage,
   "/components/universal/overlays": OverlaysPage,
   "/components/universal/navigation": NavigationPage,
+  "/components/universal/icons": IconsModulePage,
   "/components/universal/feedback": FeedbackPage,
   "/components/universal/data": DataPage,
   "/components/universal/markdown": MarkdownPage,

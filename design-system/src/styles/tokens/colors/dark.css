@@ -39,5 +39,16 @@
   --content-session-surface: #272a3e;
   --content-file: #91c9b8;
   --content-file-surface: #1d2d29;
+  --file-icon-default: #d4d7d6;
+  --file-icon-blue: #519aba;
+  --file-icon-yellow: #cbcb41;
+  --file-icon-muted: #6d8086;
+  --file-icon-green: #8dc149;
+  --file-icon-purple: #a074c4;
+  --file-icon-pink: #f55385;
+  --file-icon-red: #cc3e44;
+  --file-icon-orange: #e37933;
+  --file-icon-ink: #41535b;
+  --file-icon-todo: var(--text-secondary);
   --shadow-popover: 0 16px 36px rgba(0, 0, 0, 0.26);
 }

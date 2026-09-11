@@ -20,6 +20,11 @@ const modules = [
     description: "Tabs, segmented views, and local context.",
   },
   {
+    path: "icons",
+    title: "Icons",
+    description: "File-type glyphs for compact technical resource lists.",
+  },
+  {
     path: "feedback",
     title: "Feedback",
     description: "Status, alerts, progress, loading, and empty states.",

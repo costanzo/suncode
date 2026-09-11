@@ -14,6 +14,8 @@ The `icons/` directory contains the approved interface icon set used by the Aval
 
 New icons should remain simple, 24px viewBox SVGs with a consistent stroke language. Add the icon to this catalog before using it in a client view.
 
+The `fonts/seti.woff` asset is the licensed Seti UI glyph font used only by the universal File Icon review component. Its MIT attribution and source path are recorded in `fonts/SETI-NOTICE.md`.
+
 ## Platform And Window Controls
 
 - `platform/suncode-desktop.icns` - macOS application icon source.

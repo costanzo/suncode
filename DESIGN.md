@@ -164,6 +164,13 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Danger:** Transparent at rest, red text and a red-tinted hover surface.
 - **Focus:** Two-pixel control-silver border, never removed.
 
+### File Icons
+
+- **Source and scope:** Technical resource lists use the VS Code default Seti file glyphs for supported file types. The shared `FileIcon` review component is the source inventory; folders remain part of the monochrome interface-icon family.
+- **Matching:** Exact file names take priority over compound extensions; compound extensions take priority over a detected language or the generic-file glyph. Matching is case-insensitive.
+- **Color:** A file glyph may use its Seti type color only to identify content class. It never communicates approval, health, warning, failure, or selection state, and its adjacent filename remains the primary identifier.
+- **Geometry:** File glyphs are 14px in Explorer rows and align to the fixed 24px row rhythm. The same glyph retains its color in rest, hover, focus, disabled, and selected rows.
+
 ### Cards / Containers
 
 - **Corner Style:** 10px for approval, checkpoint, and diagnostic containers.
