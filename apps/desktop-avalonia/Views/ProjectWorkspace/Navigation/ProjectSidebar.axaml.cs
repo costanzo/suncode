@@ -61,26 +61,46 @@ public sealed partial class ProjectSidebar : UserControl
 
     private void RenameSessionItem(object? sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem { CommandParameter: SessionItem session })
+        if (sender is Button { CommandParameter: SessionItem session })
+        {
+            CloseSessionActions(session);
             Workspace?.ShowSessionDialog("Rename session", session.DisplayTitle, "Save", session);
+        }
+            
     }
 
     private void ArchiveSessionItem(object? sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem { CommandParameter: SessionItem session })
+        if (sender is Button { CommandParameter: SessionItem session })
+        {
+            CloseSessionActions(session);
             Workspace?.ShowArchiveDialog(session);
+        }
     }
 
     private async void PinSessionItem(object? sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem { CommandParameter: SessionItem session })
+        if (sender is Button { CommandParameter: SessionItem session }) {
+            CloseSessionActions(session);
             await ViewModel.SetSessionPinnedAsync(session, true);
+        }
     }
 
     private async void UnpinSessionItem(object? sender, RoutedEventArgs e)
     {
         if (sender is MenuItem { CommandParameter: SessionItem session })
+        {
+            CloseSessionActions(session);
             await ViewModel.SetSessionPinnedAsync(session, false);
+        }
+    }
+
+    private void CloseSessionActions(SessionItem session)
+    {
+        var trigger = SessionList.GetVisualDescendants()
+            .OfType<Button>()
+            .FirstOrDefault(button => ReferenceEquals(button.DataContext, session) && button.Flyout?.IsOpen == true);
+        trigger?.Flyout?.Hide();
     }
 
     private async void NavigationPointerExited(object? sender, PointerEventArgs e)

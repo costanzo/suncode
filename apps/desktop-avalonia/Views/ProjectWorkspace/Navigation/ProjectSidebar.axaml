@@ -42,12 +42,16 @@
                   </Grid>
                   <Button Grid.Column="3" Classes="quiet" Width="28" Padding="6" ToolTip.Tip="Session actions" AutomationProperties.Name="{Binding DisplayTitle, StringFormat=Actions for {0}}">
                     <Button.Flyout>
-                      <MenuFlyout>
-                        <MenuItem Header="Pin" CommandParameter="{Binding}" Click="PinSessionItem" IsVisible="{Binding !IsPinned}" />
-                        <MenuItem Header="Unpin" CommandParameter="{Binding}" Click="UnpinSessionItem" IsVisible="{Binding IsPinned}" />
-                        <MenuItem Header="Rename" CommandParameter="{Binding}" Click="RenameSessionItem" />
-                        <MenuItem Header="Archive" CommandParameter="{Binding}" Click="ArchiveSessionItem" />
-                      </MenuFlyout>
+                      <Flyout Placement="BottomEdgeAlignedRight" ShowMode="Standard" FlyoutPresenterClasses="session-actions-flyout">
+                        <Border Width="94" Padding="4">
+                          <StackPanel>
+                            <Button Content="Rename" Classes="session-action" CommandParameter="{Binding}" Click="RenameSessionItem" />
+                            <Button Content="Pin" Classes="session-action" CommandParameter="{Binding}" Click="PinSessionItem" IsVisible="{Binding !IsPinned}" />
+                            <Button Content="Unpin" Classes="session-action" CommandParameter="{Binding}" Click="UnpinSessionItem" IsVisible="{Binding IsPinned}" />
+                            <Button Content="Archive" Classes="session-action" CommandParameter="{Binding}" Click="ArchiveSessionItem" />
+                          </StackPanel>
+                        </Border>
+                      </Flyout>
                     </Button.Flyout>
                     <svg:Svg Path="/Assets/icons/more-horizontal.svg" Css="{DynamicResource IconSvgCss}" />
                   </Button>
