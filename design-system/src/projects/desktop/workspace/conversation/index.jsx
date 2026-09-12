@@ -75,7 +75,7 @@ const conversationGuides = {
       ],
       logic: [
         "The session has content and is waiting for the next user submission.",
-        "The conversation keeps assistant responses and turn boundaries while user bodies move into marker previews.",
+        "The conversation keeps submitted user messages, assistant responses, and turn boundaries in chronological order.",
         "Turn changes summarize added, deleted, and edited files and link to the diff.",
       ],
     },
@@ -129,12 +129,12 @@ const conversationGuides = {
       style: [
         "Attachment thumbnails are 96px by 64px with a 7px radius and 6px gap.",
         "Thumbnails use cover cropping and a strong border on hover.",
-        "Submitted images remain associated with the hidden user message and provider context.",
+        "Submitted images remain associated with the visible user message and provider context.",
       ],
       logic: [
         "Only models that advertise image input enable the attachment control; the illustrative specimen model is not a seeded runtime model.",
         "Pending attachments stay local to the composer until send.",
-        "Sent attachments become part of the durable user message even though the timeline stays assistant-first.",
+        "Sent attachments become part of the durable user message and remain visible in its timeline row.",
       ],
     },
   },

@@ -383,7 +383,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                             Attachments = role == "user" ? MessageAttachments(message, imagePayloads) : [],
                             CanBeFinalAssistant = role == "assistant" && message.Array("tool_calls").Count == 0,
                             IsFinalAssistant = role == "assistant" && message.Array("tool_calls").Count == 0,
-                            IsVisible = role == "assistant",
+                            IsVisible = true,
                             TurnSequence = turnIndex + 1,
                             TurnPreview = BoundedPreview(userPreview)
                         });
@@ -412,7 +412,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                     Role = role,
                     Text = text,
                     ContentSequence = messages.Count + 1,
-                    IsVisible = role == "assistant",
+                    IsVisible = true,
                     Attachments = role == "user" ? MessageAttachments(item, imagePayloads) : [],
                     IsFinalAssistant = role == "assistant",
                     CanBeFinalAssistant = role == "assistant"
@@ -590,7 +590,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                     Text = text,
                     ContentSequence = Messages.Count + 1,
                     TurnId = turnId,
-                    IsVisible = false
+                    IsVisible = true,
+                    Attachments = PendingMessageAttachments(message)
                 });
                 changed = true;
             }

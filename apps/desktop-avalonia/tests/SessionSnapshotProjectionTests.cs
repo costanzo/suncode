@@ -510,7 +510,7 @@ public sealed class SessionSnapshotProjectionTests
         viewModel.ApplyEvent(TurnState("turn-1", "completed"), live: true);
 
         Assert.Equal(3, viewModel.Messages.Count);
-        Assert.False(viewModel.Messages[0].IsVisible);
+        Assert.True(viewModel.Messages[0].IsVisible);
         Assert.True(viewModel.Messages[2].IsFinalAssistant);
         Assert.True(viewModel.Messages[2].ShowCopy);
     }
@@ -676,7 +676,11 @@ public sealed class SessionSnapshotProjectionTests
         var projection = DesktopViewModel.ProjectSnapshot(snapshot);
 
         Assert.Collection(projection.Messages,
-            message => Assert.True(message.IsUser),
+            message =>
+            {
+                Assert.True(message.IsUser);
+                Assert.True(message.IsVisible);
+            },
             message =>
             {
                 Assert.Equal("reading", message.Text);

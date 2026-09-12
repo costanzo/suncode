@@ -8,7 +8,7 @@ Each turn can contain many tool calls and tool output. Rendering every call and 
 
 - Add a bottom drawer named **Tool activity** beside Source control and Provider trace.
 - Organize activity as Turn → tool call, with a selectable detail pane.
-- Keep the conversation assistant-first while retaining lightweight turn boundaries.
+- Keep the conversation chronological by showing submitted user messages and assistant responses while retaining lightweight turn boundaries.
 - Show the active tool inline and let users jump directly to its drawer detail.
 
 ## Non-goals
@@ -23,7 +23,7 @@ Each turn can contain many tool calls and tool output. Rendering every call and 
 3. The right detail pane shows status, timing, request, live output, result, error, and approval context as available.
 4. The active turn is expanded by default; the active tool is selected by default.
 5. Live output is visibly streaming and follows the tail until the user scrolls away.
-6. Conversation renders assistant messages and lightweight turn separators; historical tool calls and user message bodies are omitted from the main timeline.
+6. Conversation renders submitted user messages, assistant messages, and lightweight turn separators; historical tool calls remain in Tool activity.
 7. Hovering a turn separator reveals the first N characters of its user message in a tooltip/popover, with ellipsis when truncated.
 8. Conversation renders at most one compact active-tool row. Clicking it opens Tool activity and selects the corresponding turn/tool.
 9. The standalone Tool activity page represents exactly three primary states: no turns, one active turn with its tool list, and one completed turn with all tools completed. Tool-level errors and approvals remain detail variations rather than extra primary page states.

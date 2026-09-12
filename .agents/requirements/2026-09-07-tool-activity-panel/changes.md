@@ -3,7 +3,7 @@
 ## Source
 
 - Added Tool activity navigation, standalone specimens, and the Workspace bottom drawer composition.
-- Refined Conversation to show assistant messages, turn markers, hover/focus user-message previews, and one active-tool jump row.
+- Refined Conversation to show user and assistant messages, turn markers, hover/focus user-message previews, and one active-tool jump row.
 - Added the Avalonia `ToolActivityViewer` and a turn-grouped client projection sourced from existing snapshots and `tool.*` events.
 - Replaced the inline operation-detail modal with the mutually exclusive Tool activity bottom drawer.
 
@@ -24,4 +24,4 @@
 
 ## Documentation
 
-- Updated `DESIGN.md` with the assistant-first history and Tool activity interaction contract.
+- Updated `DESIGN.md` with the chronological message history and Tool activity interaction contract.

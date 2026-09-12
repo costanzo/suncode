@@ -6,7 +6,7 @@ Avalonia ChatArea currently renders tool rows inline and emits `ToolDetailReques
 
 ## Proposed design
 
-Add a ToolActivityViewer bound to a turn-grouped projection of existing tool activity. The conversation projection keeps assistant messages, turn markers, and one active-tool summary; the drawer owns detailed tool inspection.
+Add a ToolActivityViewer bound to a turn-grouped projection of existing tool activity. The conversation projection keeps user and assistant messages, turn markers, and one active-tool summary; the drawer owns detailed tool inspection.
 
 ## Boundaries and dependencies
 

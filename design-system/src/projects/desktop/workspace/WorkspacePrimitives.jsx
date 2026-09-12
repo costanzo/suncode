@@ -1148,6 +1148,9 @@ export function ConversationPanel({
             <small>Worked for 42s</small>
             <span className="workspace-turn-preview">Add the Workspace surface to the design system, but keep each major area…</span>
           </div>
+          <div className="workspace-message workspace-message-user">
+            <p>Review the conversation layout and keep the existing attachment behavior.</p>
+          </div>
           {activeTool && <button type="button" className="workspace-active-tool" onClick={() => onOpenToolActivity ? onOpenToolActivity("0198e82c", 1) : window.location.hash = "/projects/desktop/workspace/tool-activity"}>
             <Icon name={activeTool.icon} size={14} />
             <span>{activeTool.title}</span>

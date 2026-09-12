@@ -100,6 +100,63 @@
                 </StackPanel>
               </Border>
 
+              <Border IsVisible="{Binding IsUser}"
+                      HorizontalAlignment="Right"
+                      MaxWidth="480"
+                      Padding="12,10"
+                      CornerRadius="14"
+                      Background="{DynamicResource SurfaceHoverBrush}"
+                      BorderBrush="{DynamicResource BorderBrush}"
+                      BorderThickness="1">
+                <StackPanel Spacing="8">
+                  <ItemsControl ItemsSource="{Binding Attachments}" IsVisible="{Binding HasAttachments}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="7" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="models:ComposerAttachment">
+                        <Button Width="96"
+                                Height="64"
+                                Padding="0"
+                                Classes="quiet"
+                                Click="PreviewMessageAttachment"
+                                AutomationProperties.Name="{Binding Name, StringFormat=View attached image {0}}">
+                          <Image Source="{Binding Preview}" Stretch="UniformToFill" />
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <SelectableTextBlock Text="{Binding Text}"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       LineHeight="19"
+                                       IsVisible="{Binding !IsLongUserMessage}" />
+                  <TextBlock FontSize="12"
+                             TextWrapping="Wrap"
+                             LineHeight="19"
+                             MaxHeight="114"
+                             IsVisible="{Binding IsLongUserMessage}">
+                    <Run Text="{Binding UserPreviewText}" />
+                    <documents:InlineUIContainer>
+                      <Button Classes="quiet view-more"
+                              Padding="0"
+                              Margin="8,0,0,0"
+                              VerticalAlignment="Center"
+                              Click="ViewLongUserMessage"
+                              ToolTip.Tip="View full message"
+                              AutomationProperties.Name="View full message">
+                        <TextBlock Text="View more"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}" />
+                      </Button>
+                    </documents:InlineUIContainer>
+                  </TextBlock>
+                </StackPanel>
+              </Border>
+
               <Button Classes="tool-card"
                       IsVisible="{Binding IsTool}"
                       Click="OpenToolDetail"
