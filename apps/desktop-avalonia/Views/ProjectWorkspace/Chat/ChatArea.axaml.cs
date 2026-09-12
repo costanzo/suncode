@@ -23,7 +23,6 @@ public sealed partial class ChatArea : UserControl
         InitializeComponent();
         AttachedToVisualTree += (_, _) => QueueAttachConversationScroller();
         Loaded += (_, _) => QueueAttachConversationScroller();
-        ConversationList.TemplateApplied += (_, _) => QueueAttachConversationScroller();
         ChatInput.ExpandedComposerRequested += ForwardExpandedComposerRequested;
     }
 
@@ -64,7 +63,7 @@ public sealed partial class ChatArea : UserControl
 
     private void AttachConversationScroller()
     {
-        var scroller = ConversationList.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+        var scroller = ConversationScroller;
         if (ReferenceEquals(scroller, _conversationScroller) || scroller is null) return;
         if (_conversationScroller is not null) _conversationScroller.ScrollChanged -= ConversationScrollChanged;
         _conversationScroller = scroller;
@@ -73,9 +72,8 @@ public sealed partial class ChatArea : UserControl
 
     private void QueueAttachConversationScroller()
     {
-        // The ListBox's ScrollViewer is created by its template. Retry after
-        // layout so the control is available even when the view is initially
-        // loaded before the template or session content is realized.
+        // Retry after layout so the named ScrollViewer is available even when
+        // the view is initially loaded before session content is realized.
         Dispatcher.UIThread.Post(AttachConversationScroller, DispatcherPriority.Loaded);
     }
 
@@ -95,13 +93,6 @@ public sealed partial class ChatArea : UserControl
         AttachConversationScroller();
         SetConversationOffsetToBottom();
         Dispatcher.UIThread.Post(SetConversationOffsetToBottom, DispatcherPriority.Loaded);
-    }
-
-    private void ConversationSelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        // Conversation rows are not selectable actions. Clear incidental pointer/keyboard
-        // selection while retaining ListBox's recycling panel for long histories.
-        if (ConversationList.SelectedIndex >= 0) ConversationList.SelectedIndex = -1;
     }
 
     private async void RetrySession(object? sender, RoutedEventArgs e)
