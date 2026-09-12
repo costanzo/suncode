@@ -77,6 +77,11 @@
     <Setter Property="FontSize" Value="14" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
+  <Style Selector="md|MarkdownRenderer.secondary md|MarkdownTextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="LineHeight" Value="12" />
+  </Style>
 
   <!-- Code blocks follow the design-system inset surface: mono type, generous padding,
        no language strip, and horizontal scrolling for long identifiers. -->

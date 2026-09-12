@@ -30,6 +30,22 @@ public sealed class SessionSnapshotProjectionTests
     }
 
     [Fact]
+    public void IntermediateAssistantPresentationIsNotFinal()
+    {
+        var message = new MessageItem
+        {
+            Role = "assistant",
+            Text = "Inspecting the project structure.",
+            ContentSequence = 1
+        };
+
+        Assert.True(message.IsIntermediateAssistant);
+        Assert.False(message.IsFinalAssistant);
+        message.IsFinalAssistant = true;
+        Assert.False(message.IsIntermediateAssistant);
+    }
+
+    [Fact]
     public void SnapshotProjectsTurnTimingToTheFinalAssistantMessage()
     {
         var snapshot = JsonNode.Parse("""

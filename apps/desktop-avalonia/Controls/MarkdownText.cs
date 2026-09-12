@@ -9,6 +9,8 @@ public sealed class MarkdownText : ContentControl
 {
     public static readonly StyledProperty<string?> MarkdownProperty =
         AvaloniaProperty.Register<MarkdownText, string?>(nameof(Markdown));
+    public static readonly StyledProperty<bool> IsSecondaryProperty =
+        AvaloniaProperty.Register<MarkdownText, bool>(nameof(IsSecondary));
 
     private readonly ObservableStringBuilder _markdownBuilder = new();
     private readonly MarkdownRenderer _renderer = new();
@@ -19,6 +21,12 @@ public sealed class MarkdownText : ContentControl
     {
         get => GetValue(MarkdownProperty);
         set => SetValue(MarkdownProperty, value);
+    }
+
+    public bool IsSecondary
+    {
+        get => GetValue(IsSecondaryProperty);
+        set => SetValue(IsSecondaryProperty, value);
     }
 
     public MarkdownText()
@@ -37,6 +45,19 @@ public sealed class MarkdownText : ContentControl
     {
         base.OnPropertyChanged(change);
         if (change.Property == MarkdownProperty) Render(change.NewValue as string);
+        if (change.Property == IsSecondaryProperty) UpdatePresentation();
+    }
+
+    private void UpdatePresentation()
+    {
+        if (IsSecondary)
+        {
+            if (!_renderer.Classes.Contains("secondary")) _renderer.Classes.Add("secondary");
+        }
+        else
+        {
+            _renderer.Classes.Remove("secondary");
+        }
     }
 
     private void Render(string? value)
