@@ -77,12 +77,6 @@
     <Setter Property="FontSize" Value="14" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
-  <Style Selector="md|MarkdownRenderer.secondary md|MarkdownTextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="LineHeight" Value="12" />
-  </Style>
-
   <!-- Code blocks follow the design-system inset surface: mono type, generous padding,
        no language strip, and horizontal scrolling for long identifiers. -->
   <Style Selector="md|CodeBlock">
@@ -177,6 +171,21 @@
     <Setter Property="CornerRadius" Value="4" />
     <Setter Property="Padding" Value="2,0" />
     <Setter Property="Margin" Value="2,0" />
+  </Style>
+  <!-- CodeInline is a Run, so its line box comes from the containing MarkdownTextBlock. Keep
+       the intermediate message compact while sizing its mono glyphs explicitly. -->
+  <Style Selector="md|MarkdownRenderer.secondary md|MarkdownTextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="LineHeight" Value="16" />
+  </Style>
+  <Style Selector="md|MarkdownRenderer.secondary md|CodeInline">
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Padding" Value="0,0" />
+    <Setter Property="Margin" Value="0,0" />
   </Style>
   <Style Selector="md|Link">
     <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
