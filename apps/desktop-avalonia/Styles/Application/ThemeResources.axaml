@@ -84,6 +84,9 @@
       <SolidColorBrush x:Key="AccentInkBrush" Color="#101317" />
       <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#20262d" />
       <SolidColorBrush x:Key="AccentBorderBrush" Color="#65717d" />
+      <!-- Text selection follows the design-system's quiet neutral highlight,
+           rather than Fluent's high-saturation system accent blue. -->
+      <SolidColorBrush x:Key="TextSelectionBrush" Color="#65717d" />
       <SolidColorBrush x:Key="SuccessBrush" Color="#9fb3c3" />
       <SolidColorBrush x:Key="CopySuccessBrush" Color="#78c99b" />
       <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="#1e2730" />
@@ -181,6 +184,9 @@
       <SolidColorBrush x:Key="AccentInkBrush" Color="#ffffff" />
       <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#e7edf1" />
       <SolidColorBrush x:Key="AccentBorderBrush" Color="#aab8c4" />
+      <!-- Text selection follows the design-system's quiet neutral highlight,
+           rather than Fluent's high-saturation system accent blue. -->
+      <SolidColorBrush x:Key="TextSelectionBrush" Color="#aab8c4" />
       <SolidColorBrush x:Key="SuccessBrush" Color="#4f6d82" />
       <SolidColorBrush x:Key="CopySuccessBrush" Color="#27845b" />
       <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="#e8eef2" />

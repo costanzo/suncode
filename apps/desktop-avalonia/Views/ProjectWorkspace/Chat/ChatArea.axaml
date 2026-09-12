@@ -52,6 +52,21 @@
     <Style Selector="ListBox.conversation ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="Transparent" />
     </Style>
+    <!--
+      Conversation rows are not actions. Fluent's default ListBoxItem theme
+      applies SystemControlHighlightListMediumBrush to the template presenter
+      while the pointer is held (:pressed), which makes the whole row flash
+      gray during a drag. Keep the row surface transparent for that state too.
+    -->
+    <Style Selector="ListBox.conversation ListBoxItem:pressed">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.conversation ListBoxItem:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.conversation ListBoxItem:selected:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
     <Style Selector="Ellipse.running-dot">
       <Setter Property="Width" Value="5" />
       <Setter Property="Height" Value="5" />
