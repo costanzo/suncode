@@ -9,7 +9,11 @@ public sealed partial class DesktopViewModel
     private bool _restoringUiState;
     internal bool RestoringSavedFile { get; set; }
 
-    internal DesktopViewModel(UiStateStore? uiStateStore = null) => _uiStateStore = uiStateStore;
+    internal DesktopViewModel(UiStateStore? uiStateStore = null)
+    {
+        _uiStateStore = uiStateStore;
+        _conversationDurationTimer.Tick += ConversationDurationTick;
+    }
 
     internal UiProjectState SavedUiProjectState => SelectedProject is { } project
         ? _uiStateStore?.Project(project.ProjectId) ?? new UiProjectState()

@@ -7,6 +7,51 @@ namespace SunCode.Desktop.Tests;
 public sealed class SessionSnapshotProjectionTests
 {
     [Fact]
+    public void ConversationDurationUsesCompactMutedLabelText()
+    {
+        var message = new MessageItem
+        {
+            Role = "assistant",
+            Text = "done",
+            ContentSequence = 1,
+            IsFinalAssistant = true,
+            DurationText = "1.2 s"
+        };
+
+        Assert.True(message.ShowDuration);
+        Assert.Equal("Worked for 1.2 s", message.DurationLabel);
+        Assert.Equal("1.2 s", DesktopViewModel.FormatDuration(
+            "2026-09-12T00:00:00.000Z",
+            "2026-09-12T00:00:01.200Z",
+            "completed"));
+    }
+
+    [Fact]
+    public void SnapshotProjectsTurnTimingToTheFinalAssistantMessage()
+    {
+        var snapshot = JsonNode.Parse("""
+        {
+          "conversationTurns": [{
+            "turnId": "turn-1",
+            "state": "completed",
+            "createdAt": "2026-09-12T00:00:00.000Z",
+            "startedAt": "2026-09-12T00:00:00.000Z",
+            "completedAt": "2026-09-12T00:00:01.200Z",
+            "messages": [{
+              "messageId": "assistant-1",
+              "role": "assistant",
+              "message": {"content": [{"type": "text", "text": "done"}]}
+            }]
+          }]
+        }
+        """)!.AsObject();
+
+        var assistant = Assert.Single(DesktopViewModel.ProjectSnapshot(snapshot).Messages);
+        Assert.Equal("Worked for 1.2 s", assistant.DurationLabel);
+        Assert.True(assistant.ShowDuration);
+    }
+
+    [Fact]
     public void ProjectionExtractsMessageOwnedImageReferences()
     {
         var message = JsonNode.Parse("""

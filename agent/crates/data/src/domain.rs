@@ -314,6 +314,8 @@ pub struct SessionConversationTurn {
     pub turn_id: String,
     pub state: String,
     pub created_at: String,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
     pub messages: Vec<SessionCallMessage>,
     pub tool_uses: Vec<SessionCallToolUse>,
     pub todos: Vec<SessionTurnTodo>,

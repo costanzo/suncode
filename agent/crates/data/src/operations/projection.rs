@@ -278,6 +278,8 @@ impl Store {
                 turn_id: t.turn_id.clone(),
                 state: t.state,
                 created_at: t.created_at,
+                started_at: t.started_at,
+                completed_at: t.completed_at,
                 messages: load_messages(&mut c, session_id, &t.turn_id)?,
                 tool_uses: load_tool_uses(&mut c, &t.turn_id)?,
                 todos: load_todos(&mut c, &t.turn_id)?,

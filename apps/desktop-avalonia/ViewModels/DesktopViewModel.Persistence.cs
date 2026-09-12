@@ -340,6 +340,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 var turn = conversationTurns[turnIndex];
                 var turnId = turn.String("turnId", "turn_id");
                 var state = turn.String("state");
+                var startedAt = turn.String("startedAt", "started_at");
+                var completedAt = turn.String("completedAt", "completed_at");
                 if (!IsTerminalTurnState(state)) activeTurnId = turnId;
                 activeTurnState = state;
                 var toolUses = turn.Array("toolUses").OfType<JsonObject>().ToArray();
@@ -357,7 +359,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                     turnIndex + 1,
                     state,
                     BoundedPreview(userPreview),
-                    turn.String("createdAt", "created_at"))
+                    turn.String("createdAt", "created_at"),
+                    startedAt,
+                    completedAt)
                 {
                     IsExpanded = !IsTerminalTurnState(state)
                 };
@@ -389,8 +393,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                         });
                     }
                 }
-                var firstAssistant = messages.FirstOrDefault(item => item.TurnId == turnId && item.IsAssistant);
-                if (firstAssistant is not null) firstAssistant.ShowTurnMarker = true;
+                var finalAssistant = messages.LastOrDefault(item => item.TurnId == turnId && item.IsAssistant && item.CanBeFinalAssistant);
+                if (finalAssistant is not null)
+                {
+                    finalAssistant.DurationText = FormatDuration(activityTurn.StartedAt, activityTurn.CompletedAt, state);
+                }
                 foreach (var toolUse in toolUses.OrderBy(item => item.String("createdAt", "created_at"), StringComparer.Ordinal).ThenBy(item => item.Int("ordinal")))
                 {
                     var toolMessage = ToolMessageItem(toolUse, turnId, messages.Count + 1);
@@ -487,6 +494,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         PendingQuestion = projection.PendingQuestion;
         ActiveTurnId = projection.ActiveTurnId;
         ActiveTurnState = projection.ActiveTurnState;
+        var activeActivityTurn = ToolActivityTurns.LastOrDefault(item => item.TurnId == projection.ActiveTurnId);
+        UpdateActiveTurnTiming(projection.ActiveTurnId, activeActivityTurn?.StartedAt);
         OnPropertyChanged(nameof(HasMessages));
         OnPropertyChanged(nameof(HasActivities));
         OnPropertyChanged(nameof(HasToolActivityTurns));
@@ -553,7 +562,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                         TurnId = turnId,
                         TurnSequence = activityTurn.Sequence,
                         TurnPreview = activityTurn.Preview,
-                        ShowTurnMarker = !Messages.Any(message => message.TurnId == turnId && message.IsAssistant),
                         Streaming = true,
                         IsProcess = true,
                         CanBeFinalAssistant = false
@@ -616,7 +624,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                         TurnId = turnId,
                         CanBeFinalAssistant = canBeFinalAssistant,
                         IsFinalAssistant = canBeFinalAssistant,
-                        ShowTurnMarker = !Messages.Any(item => item.TurnId == turnId && item.IsAssistant),
                         TurnSequence = activityTurn.Sequence,
                         TurnPreview = activityTurn.Preview
                     });
@@ -703,12 +710,23 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             ActiveTurnId = IsTerminalTurnState(state) ? string.Empty : turnId;
             ActiveTurnState = state;
             var activityTurn = EnsureToolActivityTurn(turnId);
+            var occurredAt = value.String("occurred_at", "occurredAt");
+            activityTurn.SetTiming(
+                payload.String("started_at", "startedAt"),
+                IsTerminalTurnState(state) ? (payload.String("completed_at", "completedAt") is { Length: > 0 } completed ? completed : occurredAt) : null);
+            if (string.IsNullOrWhiteSpace(activityTurn.StartedAt) && state == "admitted")
+                activityTurn.SetTiming(occurredAt, null);
             activityTurn.Update(state);
+            UpdateActiveTurnTiming(turnId, activityTurn.StartedAt);
             if (!IsTerminalTurnState(state)) activityTurn.IsExpanded = true;
             if (IsTerminalTurnState(state))
             {
                 var finalAssistant = Messages.LastOrDefault(item => item.TurnId == turnId && item.IsAssistant && item.CanBeFinalAssistant);
-                if (finalAssistant is not null) finalAssistant.IsFinalAssistant = true;
+                if (finalAssistant is not null)
+                {
+                    finalAssistant.IsFinalAssistant = true;
+                    finalAssistant.DurationText = FormatDuration(activityTurn.StartedAt, activityTurn.CompletedAt, state);
+                }
             }
             SyncActiveToolRow();
             OnPropertyChanged(nameof(ToolActivitySummary));
@@ -852,8 +870,44 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             ToolRequest = activeTool.Request,
             ToolResult = activeTool.Result,
             ToolOutput = activeTool.Output,
-            ToolError = activeTool.Error
+            ToolError = activeTool.Error,
+            IsWorkingDuration = true,
+            DurationText = FormatDuration(activeTurn.StartedAt, string.Empty, activeTurn.State)
         });
+    }
+
+    private void UpdateActiveTurnTiming(string turnId, string? startedAt)
+    {
+        if (string.IsNullOrWhiteSpace(turnId) || IsTerminalTurnState(ActiveTurnState))
+        {
+            _activeTurnStartedAt = null;
+            _activeTurnTimingTurnId = string.Empty;
+            _conversationDurationTimer.Stop();
+        }
+        else if (_activeTurnStartedAt is null || !string.Equals(_activeTurnTimingTurnId, turnId, StringComparison.Ordinal))
+        {
+            _activeTurnStartedAt = DateTimeOffset.TryParse(startedAt, out var parsed) ? parsed : DateTimeOffset.Now;
+            _activeTurnTimingTurnId = turnId;
+            _conversationDurationTimer.Start();
+        }
+        else if (DateTimeOffset.TryParse(startedAt, out var updated))
+        {
+            _activeTurnStartedAt = updated;
+        }
+        OnPropertyChanged(nameof(ActiveTurnDurationText));
+        RefreshConversationDuration();
+    }
+
+    private void ConversationDurationTick(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(ActiveTurnDurationText));
+        RefreshConversationDuration();
+    }
+
+    private void RefreshConversationDuration()
+    {
+        var row = Messages.FirstOrDefault(item => item.IsWorkingDuration);
+        if (row is not null) row.DurationText = ActiveTurnDurationText;
     }
 
     private static ToolActivityItem ToolActivityItemFromJson(JsonObject item, string turnId) => new(
@@ -901,6 +955,20 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     private static bool IsTerminalTurnState(string state) =>
         state is "completed" or "failed" or "cancelled" or "interrupted";
+
+    internal static string FormatDuration(string startedAt, string completedAt, string state = "")
+    {
+        var startText = string.IsNullOrWhiteSpace(startedAt) ? string.Empty : startedAt;
+        if (!DateTimeOffset.TryParse(startText, out var started)) return string.Empty;
+        var hasCompleted = DateTimeOffset.TryParse(completedAt, out var completed);
+        if (IsTerminalTurnState(state) && !hasCompleted) return string.Empty;
+        var ended = hasCompleted ? completed : DateTimeOffset.Now;
+        if (ended < started) ended = started;
+        var elapsed = ended - started;
+        if (elapsed.TotalSeconds < 1) return $"{elapsed.TotalMilliseconds:0} ms";
+        if (elapsed.TotalMinutes < 1) return $"{elapsed.TotalSeconds:0.#} s";
+        return $"{elapsed.TotalMinutes:0.#} m";
+    }
 
     private static string EventText(string type, JsonObject payload)
     {

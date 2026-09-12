@@ -17,11 +17,11 @@
       <Setter Property="CornerRadius" Value="6" />
       <Setter Property="Padding" Value="10,8" />
     </Style>
-    <Style Selector="Border.turn-marker">
-      <Setter Property="MinHeight" Value="24" />
-      <Setter Property="Padding" Value="2,0" />
-      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-      <Setter Property="BorderThickness" Value="0,1,0,0" />
+    <Style Selector="TextBlock.assistant-duration">
+      <Setter Property="Margin" Value="0,2,0,0" />
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
     </Style>
     <Style Selector="Button.tool-card:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
@@ -87,18 +87,23 @@
                       ScrollViewer.VerticalScrollBarVisibility="Auto"
                       IsVisible="{Binding HasSelectedSession}"
                       Focusable="False">
+          <!--
+            Conversation rows have intentionally variable heights (Markdown,
+            long user messages, attachments and streaming updates). A
+            VirtualizingStackPanel estimates the extent from realized rows;
+            when an off-screen row is measured its correction can reset the
+            ScrollViewer offset to the top. Keep the conversation on a regular
+            StackPanel so its extent and offset remain stable while scrolling.
+          -->
           <ListBox.ItemsPanel>
-            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+            <ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate>
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
           <DataTemplate x:DataType="models:MessageItem">
             <StackPanel Margin="12,8" HorizontalAlignment="Stretch" Spacing="5" IsVisible="{Binding IsVisible}">
-              <Border Classes="turn-marker" IsVisible="{Binding ShowTurnMarker}" Focusable="True" ToolTip.Tip="{Binding TurnPreview}" AutomationProperties.Name="{Binding TurnPreview}">
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                  <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}" />
-                  <TextBlock Text="{Binding TurnTitle}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
-                </StackPanel>
-              </Border>
+              <TextBlock Classes="assistant-duration"
+                         Text="{Binding DurationLabel}"
+                         IsVisible="{Binding ShowDuration}" />
 
               <Border IsVisible="{Binding IsUser}"
                       HorizontalAlignment="Right"

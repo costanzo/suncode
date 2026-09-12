@@ -106,6 +106,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private bool _isSessionLoading;
     private bool _isSessionLoadingVisible;
     private bool _disposed;
+    private readonly DispatcherTimer _conversationDurationTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private DateTimeOffset? _activeTurnStartedAt;
+    private string _activeTurnTimingTurnId = string.Empty;
 
     public event Action<string>? ThemeChanged;
     public event Action? SessionEntered;
@@ -317,6 +320,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) OnPropertyChanged(nameof(CanSubmit)); } }
     public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); NotifyReviewPresentationChanged(); } } }
     public string ActiveTurnState { get => _activeTurnState; private set { if (SetProperty(ref _activeTurnState, value)) { OnPropertyChanged(nameof(IsTurnCompacting)); OnPropertyChanged(nameof(IsTurnThinking)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(HasFailedTurn)); NotifyReviewPresentationChanged(); } } }
+    public string ActiveTurnDurationText => _activeTurnStartedAt is { } started
+        ? FormatDuration(started.ToString("O"), string.Empty, ActiveTurnState)
+        : string.Empty;
     public string LastTurnId { get => _lastTurnId; private set => SetProperty(ref _lastTurnId, value); }
     public string ThemeMode { get => _themeMode; private set => SetProperty(ref _themeMode, value); }
     public string LogLevel { get => _logLevel; private set => SetProperty(ref _logLevel, value); }

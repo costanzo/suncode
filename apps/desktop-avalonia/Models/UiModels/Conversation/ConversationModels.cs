@@ -65,6 +65,8 @@ public sealed class MessageItem : ObservableObject, IDisposable
     private bool _processExpanded;
     private int _processItemCount;
     private bool _showTurnMarker;
+    private string _durationText = string.Empty;
+    private bool _isWorkingDuration;
 
     public string MessageId { get => _messageId; set => SetProperty(ref _messageId, value); }
     public required string Role { get; init; }
@@ -95,6 +97,21 @@ public sealed class MessageItem : ObservableObject, IDisposable
     public string ToolError { get; init; } = string.Empty;
     public IReadOnlyList<ComposerAttachment> Attachments { get; init; } = [];
     public bool HasAttachments => Attachments.Count > 0;
+    public string DurationText
+    {
+        get => _durationText;
+        set
+        {
+            if (SetProperty(ref _durationText, value)) OnPropertyChanged(nameof(DurationLabel));
+        }
+    }
+    public bool IsWorkingDuration
+    {
+        get => _isWorkingDuration;
+        init => _isWorkingDuration = value;
+    }
+    public bool ShowDuration => (IsWorkingDuration || IsFinalAssistant) && !string.IsNullOrWhiteSpace(DurationText);
+    public string DurationLabel => IsWorkingDuration ? $"Working for {DurationText}" : $"Worked for {DurationText}";
     public bool CanBeFinalAssistant { get => _canBeFinalAssistant; set => SetProperty(ref _canBeFinalAssistant, value); }
     public bool Streaming { get => _streaming; set => SetProperty(ref _streaming, value); }
     public bool IsUser => Role == "user";
@@ -126,7 +143,12 @@ public sealed class MessageItem : ObservableObject, IDisposable
         get => _isFinalAssistant;
         set
         {
-            if (SetProperty(ref _isFinalAssistant, value)) OnPropertyChanged(nameof(ShowCopy));
+            if (SetProperty(ref _isFinalAssistant, value))
+            {
+                OnPropertyChanged(nameof(ShowCopy));
+                OnPropertyChanged(nameof(ShowDuration));
+                OnPropertyChanged(nameof(DurationLabel));
+            }
         }
     }
     public bool ShowCopy => IsFinalAssistant;
@@ -217,13 +239,15 @@ public sealed class ToolActivityTurnItem : ObservableObject
 {
     private bool _isExpanded;
 
-    public ToolActivityTurnItem(string turnId, int sequence, string state, string preview, string createdAt)
+    public ToolActivityTurnItem(string turnId, int sequence, string state, string preview, string createdAt, string? startedAt = null, string? completedAt = null)
     {
         TurnId = turnId;
         Sequence = sequence;
         State = state;
         Preview = preview;
         CreatedAt = createdAt;
+        StartedAt = string.IsNullOrWhiteSpace(startedAt) ? createdAt : startedAt;
+        CompletedAt = completedAt ?? string.Empty;
     }
 
     public string TurnId { get; }
@@ -231,6 +255,8 @@ public sealed class ToolActivityTurnItem : ObservableObject
     public string State { get; private set; }
     public string Preview { get; private set; }
     public string CreatedAt { get; }
+    public string StartedAt { get; private set; }
+    public string CompletedAt { get; private set; }
     public ObservableCollection<ToolActivityItem> Tools { get; } = [];
     public bool IsExpanded { get => _isExpanded; set => SetProperty(ref _isExpanded, value); }
     public string Title => $"Turn {Sequence}";
@@ -245,6 +271,12 @@ public sealed class ToolActivityTurnItem : ObservableObject
         if (!string.IsNullOrWhiteSpace(preview)) Preview = preview;
         OnPropertyChanged(nameof(State));
         OnPropertyChanged(nameof(IsActive));
+    }
+
+    public void SetTiming(string? startedAt, string? completedAt)
+    {
+        if (!string.IsNullOrWhiteSpace(startedAt)) StartedAt = startedAt;
+        if (!string.IsNullOrWhiteSpace(completedAt)) CompletedAt = completedAt;
     }
 }
 
