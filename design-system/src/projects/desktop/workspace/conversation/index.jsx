@@ -71,7 +71,7 @@ const conversationGuides = {
       style: [
         "Assistant Markdown uses 14px type with a 1.6 line-height for comfortable reading.",
         "User rows use a right-aligned message surface while assistant rows stay quiet and readable.",
-        "The latest assistant row carries a muted duration label that distinguishes Working for from Worked for.",
+        "The active tool row carries a muted Working for duration label, while completed assistant output shows Worked for.",
         "Historical tool calls stay in Tool activity instead of the conversation timeline.",
       ],
       logic: [
@@ -250,7 +250,7 @@ export function WorkspaceConversationPage() {
     {
       id: "attachments",
       title: "Two images attached",
-      description: "A specimen-only image-capable model holds two thumbnails before sending.",
+      description: "A specimen-only image-capable model shows two thumbnails before and after sending.",
       side: "right",
       content: (
         <ConversationPanel
@@ -258,6 +258,20 @@ export function WorkspaceConversationPage() {
           state="content-waiting"
           initialAttachments={sampleConversationAttachments}
           imageInputEnabled
+          onViewChanges={viewChanges}
+        />
+      ),
+    },
+    {
+      id: "attachmentsSent",
+      title: "Attachments sent",
+      description: "A completed user message keeps its image attachments in conversation history.",
+      side: "right",
+      content: (
+        <ConversationPanel
+          standalone
+          state="content-waiting"
+          initialSentAttachments={sampleConversationAttachments}
           onViewChanges={viewChanges}
         />
       ),

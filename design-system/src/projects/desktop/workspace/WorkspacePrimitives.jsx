@@ -1026,6 +1026,7 @@ export function ConversationPanel({
   standalone = false,
   state = "content-waiting",
   initialAttachments = [],
+  initialSentAttachments = [],
   imageInputEnabled = false,
   onViewChanges,
   onOpenToolActivity,
@@ -1036,6 +1037,7 @@ export function ConversationPanel({
       : "",
   );
   const [attachments, setAttachments] = useState(initialAttachments);
+  const [sentAttachments, setSentAttachments] = useState(initialSentAttachments);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [composerExpanded, setComposerExpanded] = useState(false);
   const [copiedResponse, setCopiedResponse] = useState(false);
@@ -1101,6 +1103,7 @@ export function ConversationPanel({
   );
   const sendMessage = () => {
     if (!message.trim() && !attachments.length) return;
+    if (attachments.length) setSentAttachments((current) => [...current, ...attachments]);
     setAttachments([]);
     setMessage("");
     setComposerExpanded(false);
@@ -1144,8 +1147,25 @@ export function ConversationPanel({
             }}
           >
           <div className="workspace-message workspace-message-user">
+            {sentAttachments.length > 0 && (
+              <div className="workspace-message-attachments" aria-label="Images sent with this message">
+                {sentAttachments.map((attachment) => (
+                  <button
+                    type="button"
+                    className="workspace-message-attachment"
+                    key={attachment.id}
+                    onClick={() => setPreviewAttachment(attachment)}
+                    aria-label={`View ${attachment.name}`}
+                    title="View image"
+                  >
+                    <img src={attachment.url} alt={attachment.name} />
+                  </button>
+                ))}
+              </div>
+            )}
             <p>Review the conversation layout and keep the existing attachment behavior.</p>
           </div>
+          {activeTool && <div className="workspace-assistant-duration">Working for 18s</div>}
           {activeTool && <button type="button" className="workspace-active-tool" onClick={() => onOpenToolActivity ? onOpenToolActivity("0198e82c", 1) : window.location.hash = "/projects/desktop/workspace/tool-activity"}>
             <Icon name={activeTool.icon} size={14} />
             <span>{activeTool.title}</span>
@@ -1174,7 +1194,6 @@ export function ConversationPanel({
             </div>
           ) : (
             <div className="workspace-message workspace-message-assistant workspace-message-assistant-status">
-              <div className="workspace-assistant-duration">Working for 18s</div>
               <p>
                 Inspecting the workspace shell and keeping the long-running build visible in the
                 conversation timeline.

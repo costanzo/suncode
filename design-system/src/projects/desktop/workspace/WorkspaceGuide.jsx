@@ -20,11 +20,11 @@ export function WorkspaceGuideTitle({ title, open, onClick }) {
   );
 }
 
-export function WorkspaceGuide({ title, tabs, side = "right", onClose }) {
+export function WorkspaceGuide({ title, tabs, onClose }) {
   const [activeTab, setActiveTab] = useState("actions");
   const guideId = makeGuideId(title);
   return (
-    <aside className={`workspace-guide is-${side}`} aria-label={`${title} guide`}>
+    <aside className="workspace-guide" aria-label={`${title} guide`}>
       <header className="workspace-guide-header">
         <div>
           <span>MODULE GUIDE</span>
@@ -76,7 +76,6 @@ export function WorkspaceGuideState({
   title,
   description,
   guide,
-  side = "right",
   open,
   onToggle,
   onClose,
@@ -91,7 +90,6 @@ export function WorkspaceGuideState({
         <WorkspaceGuide
           title={guide.title ?? title}
           tabs={guide.tabs}
-          side={guide.side ?? side}
           onClose={onClose}
         />
       )}

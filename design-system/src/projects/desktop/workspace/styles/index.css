@@ -1,18 +1,6 @@
 @import "./tokens.css";
 
 /* Workspace page styles migrated from review.css. */
-.settings-guide-state > .workspace-guide.is-right,
-.project-hub-guide-state > .workspace-guide.is-right,
-.about-guide-state > .workspace-guide.is-right {
-  right: 0;
-  left: auto;
-}
-.settings-guide-state > .workspace-guide.is-left,
-.project-hub-guide-state > .workspace-guide.is-left,
-.about-guide-state > .workspace-guide.is-left {
-  right: auto;
-  left: 0;
-}
 .workspace-composer textarea:focus,
 .workspace-composer textarea:focus-visible,
 .workspace-composer-modal-content textarea:focus,
@@ -578,7 +566,8 @@
 .workspace-guide {
   position: absolute;
   z-index: 10;
-  top: 0;
+  bottom: calc(100% + 14px);
+  left: 0;
   display: grid;
   gap: 12px;
   width: min(360px, calc(100vw - 48px));
@@ -3375,20 +3364,6 @@
   height: var(--workspace-session-height);
   min-height: var(--workspace-session-height);
 }
-.workspace-guide.is-right {
-  left: calc(100% + 14px);
-}
-.workspace-guide.is-left {
-  right: calc(100% + 14px);
-}
-.workspace-drawer-state-grid .workspace-guide.is-right {
-  right: 0;
-  left: auto;
-}
-.workspace-drawer-state-grid .workspace-guide.is-left {
-  right: auto;
-  left: 0;
-}
 .workspace-guide-tabs button.is-active {
   color: var(--text);
   background: var(--surface);
@@ -3836,20 +3811,10 @@
     height: auto;
     min-height: 380px;
   }
-  .workspace-guide,
-  .workspace-guide.is-right,
-  .workspace-guide.is-left {
-    position: relative;
-    top: auto;
-    right: auto;
-    left: auto;
-    width: auto;
-    margin: 0 0 10px;
-  }
-  .workspace-drawer-state-grid .workspace-guide.is-right,
-  .workspace-drawer-state-grid .workspace-guide.is-left {
-    right: auto;
-    left: auto;
+  .workspace-guide {
+    bottom: calc(100% + 10px);
+    left: 0;
+    width: min(360px, calc(100vw - 32px));
   }
   .workspace-drawer-state-grid .workspace-drawer.is-standalone {
     overflow-x: hidden;
@@ -3863,11 +3828,11 @@
 @keyframes workspace-guide-in {
   from {
     opacity: 0;
-    transform: translateX(6px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 

@@ -146,6 +146,8 @@ Workspace presentation state resumes per project when its window is reopened. Th
 
 Panel content uses 16px horizontal padding, 10–12px control gaps, and 24px separation around conversation content. The composer occupies a stable 126px footer of the conversation region. The project window supports a 620px compact minimum: supporting panels and drawers retreat, the title-bar panel menu remains available, labels elide, and the conversation stays usable.
 
+Module guide cards open upward from their title control, align to its left edge, and keep the same placement across all modules and responsive states.
+
 ## Elevation & Depth
 
 SunCode primarily uses tonal layering rather than app-drawn shadows. The canvas, surface, raised surface, and active surface are close graphite steps separated by one-pixel borders. The conversation composer is the single floating internal surface and uses a soft downward shadow with enough surrounding layout space to render without clipping. Dialogs use a stronger border and a raised tonal surface. Top-level windows use the platform-provided outer border and shadow; clients do not draw a second window outline.
@@ -190,7 +192,7 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 
 - **Conversation history:** The conversation timeline renders submitted user messages and assistant responses in chronological order. User rows use the right-aligned message surface; assistant rows are reading surfaces, so pointer hover does not change their background. Tool payloads remain in Tool activity.
 - **Message flow:** User and assistant messages remain visible in chronological order without per-turn divider metadata. Turn and tool details remain available in the supporting activity surfaces.
-- **Assistant duration:** The latest assistant message shows a muted duration label immediately above its content. Active turns use `Working for 18s`-style copy; terminal turns use `Worked for 42s`-style copy.
+- **Turn duration:** The active tool row shows a muted duration label immediately above it, using `Working for 18s`-style copy. The latest terminal assistant message shows `Worked for 42s`-style copy immediately above its content.
 
 - **Compact composer:** The default conversation composer remains a compact floating surface anchored to the bottom of the conversation region. Its draft text uses the 14px body size so compact and expanded drafting have the same readable text scale.
 - **Expanded drafting:** The composer exposes an explicit expand action that opens a raised modal with a large multi-paragraph drafting textarea and minimal chrome. The modal edits the same draft as the compact composer rather than creating a second independent buffer.

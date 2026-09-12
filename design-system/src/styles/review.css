@@ -265,15 +265,6 @@ h3 {
   .state-strip {
     grid-template-columns: 1fr 1fr;
   }
-  .settings-guide-state > .workspace-guide.is-right,
-  .settings-guide-state > .workspace-guide.is-left,
-  .project-hub-guide-state > .workspace-guide.is-right,
-  .project-hub-guide-state > .workspace-guide.is-left,
-  .about-guide-state > .workspace-guide.is-right,
-  .about-guide-state > .workspace-guide.is-left {
-    right: auto;
-    left: auto;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
