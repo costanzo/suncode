@@ -394,8 +394,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                     }
                 }
                 var finalAssistant = messages.LastOrDefault(item => item.TurnId == turnId && item.IsAssistant && item.CanBeFinalAssistant);
+                foreach (var assistant in messages.Where(item => item.TurnId == turnId && item.IsAssistant))
+                    assistant.IsFinalAssistant = false;
                 if (finalAssistant is not null)
                 {
+                    finalAssistant.IsFinalAssistant = true;
                     finalAssistant.DurationText = FormatDuration(activityTurn.StartedAt, activityTurn.CompletedAt, state);
                     finalAssistant.CompletionTimeText = FormatCompletionTime(activityTurn.CompletedAt);
                 }
@@ -616,6 +619,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 else
                 {
                     var activityTurn = EnsureToolActivityTurn(turnId);
+                    foreach (var previous in Messages.Where(item => item.TurnId == turnId && item.IsAssistant))
+                        previous.IsFinalAssistant = false;
                     Messages.Add(new MessageItem
                     {
                         MessageId = messageId,
@@ -624,7 +629,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                         ContentSequence = Messages.Count + 1,
                         TurnId = turnId,
                         CanBeFinalAssistant = canBeFinalAssistant,
-                        IsFinalAssistant = canBeFinalAssistant,
+                        IsFinalAssistant = false,
                         TurnSequence = activityTurn.Sequence,
                         TurnPreview = activityTurn.Preview
                     });

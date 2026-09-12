@@ -29,6 +29,10 @@
       <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
+    <Style Selector="StackPanel.intermediate-assistant">
+      <Setter Property="MaxWidth" Value="620" />
+      <Setter Property="Opacity" Value="0.78" />
+    </Style>
     <Style Selector="Button.tool-card:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
@@ -184,7 +188,11 @@
                 </Grid>
               </Button>
 
-              <StackPanel IsVisible="{Binding IsConversationAssistant}" HorizontalAlignment="Stretch" Spacing="4">
+              <StackPanel IsVisible="{Binding IsIntermediateAssistant}" Classes="intermediate-assistant" HorizontalAlignment="Left" Spacing="3">
+                <controls:MarkdownText Markdown="{Binding Text}" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Stretch" />
+              </StackPanel>
+
+              <StackPanel IsVisible="{Binding IsFinalAssistant}" HorizontalAlignment="Stretch" Spacing="4">
                 <Grid>
                   <controls:MarkdownText Markdown="{Binding Text}" FontSize="14" HorizontalAlignment="Stretch" />
                 </Grid>

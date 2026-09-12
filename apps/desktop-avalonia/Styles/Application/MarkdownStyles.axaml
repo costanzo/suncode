@@ -152,16 +152,17 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
-    <Style Selector="^ /template/ Button#PART_CopyButton.copy-success">
-      <Setter Property="ToolTip.Tip" Value="Copied" />
-      <Setter Property="AutomationProperties.Name" Value="Code copied" />
-      <Style Selector="^ /template/ Viewbox#CopyGlyph">
-        <Setter Property="IsVisible" Value="False" />
-      </Style>
-      <Style Selector="^ /template/ Viewbox#CheckGlyph">
-        <Setter Property="IsVisible" Value="True" />
-      </Style>
-    </Style>
+  </Style>
+
+  <Style Selector="md|CodeBlock.copy-success /template/ Button#PART_CopyButton">
+    <Setter Property="ToolTip.Tip" Value="Copied" />
+    <Setter Property="AutomationProperties.Name" Value="Code copied" />
+  </Style>
+  <Style Selector="md|CodeBlock.copy-success /template/ Viewbox#CopyGlyph">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="md|CodeBlock.copy-success /template/ Viewbox#CheckGlyph">
+    <Setter Property="IsVisible" Value="True" />
   </Style>
 
   <Style Selector="md|CodeInline">

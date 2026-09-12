@@ -737,11 +737,14 @@ public sealed class SessionSnapshotProjectionTests
             {
                 Assert.Equal("reading", message.Text);
                 Assert.True(message.IsAssistant);
+                Assert.True(message.IsIntermediateAssistant);
+                Assert.False(message.IsFinalAssistant);
             },
             message =>
             {
                 Assert.Equal("done", message.Text);
                 Assert.True(message.IsFinalAssistant);
+                Assert.False(message.IsIntermediateAssistant);
             },
             message => Assert.True(message.IsTool));
         var activityTurn = Assert.Single(projection.ToolActivityTurns);

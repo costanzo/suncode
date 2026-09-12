@@ -129,6 +129,7 @@ public sealed class MessageItem : ObservableObject, IDisposable
     public bool IsTool => Kind == "tool";
     public bool IsTurnMarker => Kind == "turn_marker";
     public bool IsConversationAssistant => IsAssistant && !IsTurnMarker && !IsCompaction;
+    public bool IsIntermediateAssistant => IsConversationAssistant && !IsFinalAssistant;
     public bool IsCompaction => Kind == "context.compacted";
     public string Author => IsUser ? "You" : "SunCode";
     // Keep the timeline compact for unusually large submitted prompts while
@@ -158,6 +159,7 @@ public sealed class MessageItem : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(ShowCopy));
                 OnPropertyChanged(nameof(ShowDuration));
                 OnPropertyChanged(nameof(DurationLabel));
+                OnPropertyChanged(nameof(IsIntermediateAssistant));
             }
         }
     }
