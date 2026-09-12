@@ -57,7 +57,7 @@
       <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
 
       <Grid Grid.Row="2" ColumnDefinitions="260,1,*">
-        <Grid Grid.Column="0" Background="{DynamicResource SidebarBrush}" RowDefinitions="32,1,*">
+        <Grid Grid.Column="0" Background="{DynamicResource ToolTreeBrush}" RowDefinitions="32,1,*">
           <TextBlock Grid.Row="0" Margin="12,0" Text="CURRENT SESSION" Classes="eyebrow" VerticalAlignment="Center" />
           <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
           <Grid Grid.Row="2">

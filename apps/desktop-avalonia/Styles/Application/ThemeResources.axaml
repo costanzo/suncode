@@ -61,10 +61,15 @@
       <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#181c21" />
       <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#1e2329" />
       <SolidColorBrush x:Key="SurfaceActiveBrush" Color="#242a31" />
-      <SolidColorBrush x:Key="SidebarBrush" Color="#0b0e12" />
-      <SolidColorBrush x:Key="InspectorBrush" Color="#0c0f13" />
-      <SolidColorBrush x:Key="WorkspaceBrush" Color="#13171c" />
-      <SolidColorBrush x:Key="ComposerBrush" Color="#181d23" />
+      <!-- Workspace panels follow the design-system surface layer. -->
+      <SolidColorBrush x:Key="SidebarBrush" Color="#121519" />
+      <SolidColorBrush x:Key="InspectorBrush" Color="#121519" />
+      <SolidColorBrush x:Key="WorkspaceBrush" Color="#121519" />
+      <SolidColorBrush x:Key="ToolTreeBrush" Color="#15191e" />
+      <SolidColorBrush x:Key="GitSidebarBrush" Color="#0b0e12" />
+      <SolidColorBrush x:Key="GitWorkspaceBrush" Color="#13171c" />
+      <!-- Composer matches design-system surface-raised. -->
+      <SolidColorBrush x:Key="ComposerBrush" Color="#181c21" />
       <SolidColorBrush x:Key="FieldBrush" Color="#15191e" />
       <SolidColorBrush x:Key="FieldFocusBrush" Color="#191f24" />
       <SolidColorBrush x:Key="TextBrush" Color="#edf0f3" />
@@ -153,10 +158,15 @@
       <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#f8fafc" />
       <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#eef2f5" />
       <SolidColorBrush x:Key="SurfaceActiveBrush" Color="#e7edf1" />
-      <SolidColorBrush x:Key="SidebarBrush" Color="#e9eef2" />
-      <SolidColorBrush x:Key="InspectorBrush" Color="#edf1f4" />
-      <SolidColorBrush x:Key="WorkspaceBrush" Color="#f8fafb" />
-      <SolidColorBrush x:Key="ComposerBrush" Color="#ffffff" />
+      <!-- The light panel mix is effectively #fefefe (surface over canvas). -->
+      <SolidColorBrush x:Key="SidebarBrush" Color="#fefefe" />
+      <SolidColorBrush x:Key="InspectorBrush" Color="#fefefe" />
+      <SolidColorBrush x:Key="WorkspaceBrush" Color="#ffffff" />
+      <SolidColorBrush x:Key="ToolTreeBrush" Color="#f4f7f9" />
+      <SolidColorBrush x:Key="GitSidebarBrush" Color="#e9eef2" />
+      <SolidColorBrush x:Key="GitWorkspaceBrush" Color="#f8fafb" />
+      <!-- Composer matches design-system surface-raised. -->
+      <SolidColorBrush x:Key="ComposerBrush" Color="#f8fafc" />
       <SolidColorBrush x:Key="FieldBrush" Color="#f4f7f9" />
       <SolidColorBrush x:Key="FieldFocusBrush" Color="#ffffff" />
       <SolidColorBrush x:Key="TextBrush" Color="#17202a" />
