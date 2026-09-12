@@ -64,18 +64,19 @@ const conversationGuides = {
   waiting: {
     tabs: {
       actions: [
-        "Read assistant responses in chronological order.",
-        "Hover or focus a turn marker to preview the submitted user message.",
+        "Read user and assistant messages in chronological order.",
+        "Use the latest duration label to distinguish an active turn from a completed turn.",
         "Click the changes summary to open Source Control for the turn diff.",
       ],
       style: [
         "Assistant Markdown uses 14px type with a 1.6 line-height for comfortable reading.",
-        "Turn markers use a quiet rule, compact identifier, and bounded hover preview.",
+        "User rows use a right-aligned message surface while assistant rows stay quiet and readable.",
+        "The latest assistant row carries a muted duration label that distinguishes Working for from Worked for.",
         "Historical tool calls stay in Tool activity instead of the conversation timeline.",
       ],
       logic: [
         "The session has content and is waiting for the next user submission.",
-        "The conversation keeps submitted user messages, assistant responses, and turn boundaries in chronological order.",
+        "The conversation keeps submitted user messages and assistant responses in chronological order without per-turn divider metadata.",
         "Turn changes summarize added, deleted, and edited files and link to the diff.",
       ],
     },

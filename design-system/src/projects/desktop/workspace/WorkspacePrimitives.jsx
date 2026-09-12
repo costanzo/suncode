@@ -1143,11 +1143,6 @@ export function ConversationPanel({
               );
             }}
           >
-          <div className="workspace-turn-marker" tabIndex="0">
-            <span>Turn 0198e82c</span>
-            <small>Worked for 42s</small>
-            <span className="workspace-turn-preview">Add the Workspace surface to the design system, but keep each major area…</span>
-          </div>
           <div className="workspace-message workspace-message-user">
             <p>Review the conversation layout and keep the existing attachment behavior.</p>
           </div>
@@ -1159,6 +1154,7 @@ export function ConversationPanel({
           </button>}
           {!turnActive ? (
             <div className="workspace-message workspace-message-assistant">
+              <div className="workspace-assistant-duration">Worked for 42s</div>
               <p>
                 I split Workspace into a complete composition and focused pages for sessions,
                 explorer, conversation, review, source control, and provider trace.
@@ -1178,6 +1174,7 @@ export function ConversationPanel({
             </div>
           ) : (
             <div className="workspace-message workspace-message-assistant workspace-message-assistant-status">
+              <div className="workspace-assistant-duration">Working for 18s</div>
               <p>
                 Inspecting the workspace shell and keeping the long-running build visible in the
                 conversation timeline.

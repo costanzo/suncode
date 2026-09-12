@@ -189,7 +189,8 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 ### Conversation Composer And Tool Inspection
 
 - **Conversation history:** The conversation timeline renders submitted user messages and assistant responses in chronological order. User rows use the right-aligned message surface; assistant rows are reading surfaces, so pointer hover does not change their background. Tool payloads remain in Tool activity.
-- **Turn boundaries:** A lightweight turn marker separates turns and exposes a bounded preview of the submitted user message for activity navigation; the full user body remains available in its right-aligned timeline row.
+- **Message flow:** User and assistant messages remain visible in chronological order without per-turn divider metadata. Turn and tool details remain available in the supporting activity surfaces.
+- **Assistant duration:** The latest assistant message shows a muted duration label immediately above its content. Active turns use `Working for 18s`-style copy; terminal turns use `Worked for 42s`-style copy.
 
 - **Compact composer:** The default conversation composer remains a compact floating surface anchored to the bottom of the conversation region. Its draft text uses the 14px body size so compact and expanded drafting have the same readable text scale.
 - **Expanded drafting:** The composer exposes an explicit expand action that opens a raised modal with a large multi-paragraph drafting textarea and minimal chrome. The modal edits the same draft as the compact composer rather than creating a second independent buffer.

@@ -77,14 +77,78 @@
     <Setter Property="FontSize" Value="14" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
+
+  <!-- Code blocks follow the design-system inset surface: mono type, generous padding,
+       no language strip, and horizontal scrolling for long identifiers. -->
   <Style Selector="md|CodeBlock">
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
     <Setter Property="FontSize" Value="12" />
-    <Setter Property="Margin" Value="16,0" />
+    <Setter Property="Margin" Value="0,16" />
     <Setter Property="IsCodeWrapped" Value="False" />
     <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="md:CodeBlock">
+          <Border
+            Background="{TemplateBinding Background}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="16,14">
+            <Grid>
+              <ScrollViewer
+                x:Name="PART_ScrollViewer"
+                HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}"
+                VerticalScrollBarVisibility="Auto"
+                Margin="0,0,44,0">
+                <md:MarkdownTextBlock
+                  x:Name="PART_CodeTextBlock"
+                  FontFamily="{TemplateBinding FontFamily}"
+                  FontSize="{TemplateBinding FontSize}"
+                  Foreground="{TemplateBinding Foreground}"
+                  LineHeight="19.8"
+                  TextWrapping="{TemplateBinding TextWrapping}" />
+              </ScrollViewer>
+              <Button
+                x:Name="PART_CopyButton"
+                Width="30"
+                Height="30"
+                MinHeight="30"
+                Padding="0"
+                Margin="0,-8,-10,0"
+                CornerRadius="6"
+                Background="{DynamicResource SurfaceRaisedBrush}"
+                BorderBrush="{DynamicResource BorderStrongBrush}"
+                BorderThickness="1"
+                Foreground="{DynamicResource TextMutedBrush}"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Focusable="True"
+                ToolTip.Tip="Copy code"
+                AutomationProperties.Name="Copy code">
+                <Viewbox Width="14" Height="14">
+                  <Path Width="24" Height="24" Stroke="{DynamicResource TextMutedBrush}" StrokeThickness="2">
+                    <Path.Data>
+                      <GeometryGroup>
+                        <RectangleGeometry RadiusX="2" RadiusY="2" Rect="8,8,14,14" />
+                        <StreamGeometry>F1 M24,24z M0,0z M4,16C2.9,16,2,15.1,2,14L2,4C2,2.9,2.9,2,4,2L14,2C15.1,2,16,2.9,16,4</StreamGeometry>
+                      </GeometryGroup>
+                    </Path.Data>
+                  </Path>
+                </Viewbox>
+              </Button>
+              <!-- Required by LiveMarkdown's template contract; the design-system surface
+                   intentionally does not show a separate language header. -->
+              <TextBlock x:Name="PART_LanguageTextBlock" IsVisible="False" />
+            </Grid>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
+
   <Style Selector="md|CodeInline">
     <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
