@@ -564,20 +564,40 @@
   min-height: 0;
 }
 .workspace-guide {
-  position: absolute;
-  z-index: 10;
-  bottom: calc(100% + 14px);
+  position: fixed;
+  z-index: 70;
+  top: 0;
+  bottom: 0;
   left: 0;
   display: grid;
+  grid-template-rows: auto auto 1fr;
   gap: 12px;
-  width: min(360px, calc(100vw - 48px));
+  width: min(360px, calc(100vw - 24px));
+  max-width: 100vw;
+  min-height: 100dvh;
+  overflow-y: auto;
   padding: 15px;
   color: var(--text-secondary);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-popover);
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  box-shadow: 18px 0 34px rgba(0, 0, 0, 0.22);
   animation: workspace-guide-in 0.18s ease-out both;
+}
+.workspace-guide-scrim {
+  position: fixed;
+  z-index: 65;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: rgba(4, 7, 10, 0.42);
+  border: 0;
+  cursor: default;
+  animation: workspace-guide-scrim-in 0.18s ease-out both;
 }
 .workspace-guide-state {
   position: relative;
@@ -3830,11 +3850,6 @@
     height: auto;
     min-height: 380px;
   }
-  .workspace-guide {
-    bottom: calc(100% + 10px);
-    left: 0;
-    width: min(360px, calc(100vw - 32px));
-  }
   .workspace-drawer-state-grid .workspace-drawer.is-standalone {
     overflow-x: hidden;
   }
@@ -3847,11 +3862,20 @@
 @keyframes workspace-guide-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateX(-100%);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
+  }
+}
+
+@keyframes workspace-guide-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 

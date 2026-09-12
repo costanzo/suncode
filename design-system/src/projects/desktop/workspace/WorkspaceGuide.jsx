@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "../../../shared/Icon.jsx";
 
 const guideTabs = [
@@ -23,52 +24,69 @@ export function WorkspaceGuideTitle({ title, open, onClick }) {
 export function WorkspaceGuide({ title, tabs, onClose }) {
   const [activeTab, setActiveTab] = useState("actions");
   const guideId = makeGuideId(title);
-  return (
-    <aside className="workspace-guide" aria-label={`${title} guide`}>
-      <header className="workspace-guide-header">
-        <div>
-          <span>MODULE GUIDE</span>
-          <h4>{title}</h4>
-        </div>
-        <button
-          type="button"
-          className="workspace-guide-close"
-          aria-label={`Close ${title} guide`}
-          title="Close guide"
-          onClick={onClose}
-        >
-          <Icon name="close" size={14} />
-        </button>
-      </header>
-      <div className="workspace-guide-tabs" role="tablist" aria-label={`${title} guide sections`}>
-        {guideTabs.map(([id, label]) => (
+  useEffect(() => {
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  return createPortal(
+    <>
+      <button
+        type="button"
+        className="workspace-guide-scrim"
+        aria-label={`Close ${title} guide`}
+        onClick={onClose}
+      />
+      <aside className="workspace-guide" aria-label={`${title} guide`}>
+        <header className="workspace-guide-header">
+          <div>
+            <span>MODULE GUIDE</span>
+            <h4>{title}</h4>
+          </div>
           <button
-            key={id}
             type="button"
-            role="tab"
-            id={`${guideId}-${id}`}
-            aria-selected={activeTab === id}
-            aria-controls={`${guideId}-panel`}
-            className={activeTab === id ? "is-active" : ""}
-            onClick={() => setActiveTab(id)}
+            className="workspace-guide-close"
+            aria-label={`Collapse ${title} guide`}
+            title="Collapse guide"
+            onClick={onClose}
           >
-            {label}
+            <Icon name="panel-left" size={14} />
           </button>
-        ))}
-      </div>
-      <div
-        className="workspace-guide-content"
-        role="tabpanel"
-        id={`${guideId}-panel`}
-        aria-labelledby={`${guideId}-${activeTab}`}
-      >
-        <ul>
-          {(tabs[activeTab] ?? []).map((item) => (
-            <li key={item}>{item}</li>
+        </header>
+        <div className="workspace-guide-tabs" role="tablist" aria-label={`${title} guide sections`}>
+          {guideTabs.map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              id={`${guideId}-${id}`}
+              aria-selected={activeTab === id}
+              aria-controls={`${guideId}-panel`}
+              className={activeTab === id ? "is-active" : ""}
+              onClick={() => setActiveTab(id)}
+            >
+              {label}
+            </button>
           ))}
-        </ul>
-      </div>
-    </aside>
+        </div>
+        <div
+          className="workspace-guide-content"
+          role="tabpanel"
+          id={`${guideId}-panel`}
+          aria-labelledby={`${guideId}-${activeTab}`}
+        >
+          <ul>
+            {(tabs[activeTab] ?? []).map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      </aside>
+    </>,
+    document.body,
   );
 }
 

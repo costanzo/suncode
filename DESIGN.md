@@ -146,7 +146,7 @@ Workspace presentation state resumes per project when its window is reopened. Th
 
 Panel content uses 16px horizontal padding, 10–12px control gaps, and 24px separation around conversation content. The composer occupies a stable 126px footer of the conversation region. The project window supports a 620px compact minimum: supporting panels and drawers retreat, the title-bar panel menu remains available, labels elide, and the conversation stays usable.
 
-Module guide cards open upward from their title control, align to its left edge, and keep the same placement across all modules and responsive states.
+Module guides open as a left-edge drawer from the viewport. The drawer is full-height, sits above the design-system navigation, is modestly wider than the navigation rail on desktop, and uses a scrim to preserve focus. Its header includes an icon-only collapse action, while the original guide header, three tabs, and tab-specific content remain unchanged across modules and responsive states.
 
 ## Elevation & Depth
 
