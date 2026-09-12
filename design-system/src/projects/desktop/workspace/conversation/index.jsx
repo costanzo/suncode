@@ -72,12 +72,33 @@ const conversationGuides = {
         "Assistant Markdown uses 14px type with a 1.6 line-height for comfortable reading.",
         "User rows use a right-aligned message surface while assistant rows stay quiet and readable.",
         "The active tool row carries a muted Working for duration label, while completed assistant output shows Worked for.",
+        "Completed assistant output places the completion time immediately beside the copy action.",
         "Historical tool calls stay in Tool activity instead of the conversation timeline.",
       ],
       logic: [
         "The session has content and is waiting for the next user submission.",
         "The conversation keeps submitted user messages and assistant responses in chronological order without per-turn divider metadata.",
         "Turn changes summarize added, deleted, and edited files and link to the diff.",
+        "The completion time is presented as a quiet local-time marker with an accessible exact timestamp tooltip.",
+      ],
+    },
+  },
+  intermediateAssistant: {
+    tabs: {
+      actions: [
+        "Compare the quieter intermediate assistant update with the final response below it.",
+        "Use the intermediate update as progress context rather than the turn's conclusion.",
+        "Continue to the final assistant message for the completed summary and actions.",
+      ],
+      style: [
+        "Intermediate assistant messages use 12px muted text with a tighter 1.5 line-height.",
+        "They omit completion duration, copy, and change actions so the final response remains primary.",
+        "The final assistant message keeps the full 14px hierarchy, duration, completion time, and copy action.",
+      ],
+      logic: [
+        "A turn may emit assistant updates before its final response is available.",
+        "Intermediate updates stay in chronological order and remain readable without competing with the final message.",
+        "Only the final assistant message owns completion metadata and response actions.",
       ],
     },
   },
@@ -232,6 +253,13 @@ export function WorkspaceConversationPage() {
       description: "A completed turn is waiting for the next instruction.",
       side: "right",
       content: <ConversationPanel standalone state="content-waiting" onViewChanges={viewChanges} />,
+    },
+    {
+      id: "intermediateAssistant",
+      title: "Intermediate assistant message",
+      description: "A quieter in-turn update keeps progress context secondary to the final response.",
+      side: "right",
+      content: <ConversationPanel standalone state="intermediate-assistant" onViewChanges={viewChanges} />,
     },
     {
       id: "updating",

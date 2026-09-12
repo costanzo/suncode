@@ -1165,6 +1165,14 @@ export function ConversationPanel({
             )}
             <p>Review the conversation layout and keep the existing attachment behavior.</p>
           </div>
+          {state === "intermediate-assistant" && (
+            <div className="workspace-message workspace-message-assistant workspace-message-assistant-intermediate">
+              <p>
+                Let me confirm the module types and dependency relationships before I summarize the
+                project structure.
+              </p>
+            </div>
+          )}
           {activeTool && <div className="workspace-assistant-duration">Working for 18s</div>}
           {activeTool && <button type="button" className="workspace-active-tool" onClick={() => onOpenToolActivity ? onOpenToolActivity("0198e82c", 1) : window.location.hash = "/projects/desktop/workspace/tool-activity"}>
             <Icon name={activeTool.icon} size={14} />
@@ -1180,15 +1188,24 @@ export function ConversationPanel({
                 explorer, conversation, review, source control, and provider trace.
               </p>
               <div className="workspace-message-footer">
-                <button
-                  type="button"
-                  className={`workspace-copy ${copiedResponse ? "is-copied" : ""}`}
-                  aria-label={copiedResponse ? "Copied response" : "Copy response"}
-                  title={copiedResponse ? "Copied" : "Copy response"}
-                  onClick={copyResponse}
-                >
-                  <Icon name={copiedResponse ? "check" : "copy"} size={13} />
-                </button>
+                <div className="workspace-message-actions">
+                  <button
+                    type="button"
+                    className={`workspace-copy ${copiedResponse ? "is-copied" : ""}`}
+                    aria-label={copiedResponse ? "Copied response" : "Copy response"}
+                    title={copiedResponse ? "Copied" : "Copy response"}
+                    onClick={copyResponse}
+                  >
+                    <Icon name={copiedResponse ? "check" : "copy"} size={13} />
+                  </button>
+                  <time
+                    className="workspace-message-completed-time"
+                    dateTime="2026-09-12T14:32:18+08:00"
+                    title="Completed at 14:32"
+                  >
+                    14:32
+                  </time>
+                </div>
                 <TurnChangeSummary {...completedTurnChanges} onViewChanges={onViewChanges} />
               </div>
             </div>

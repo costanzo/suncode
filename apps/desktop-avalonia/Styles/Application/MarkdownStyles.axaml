@@ -128,7 +128,8 @@
                 Focusable="True"
                 ToolTip.Tip="Copy code"
                 AutomationProperties.Name="Copy code">
-                <Viewbox Width="14" Height="14">
+                <Grid>
+                  <Viewbox x:Name="CopyGlyph" Width="14" Height="14">
                   <Path Width="24" Height="24" Stroke="{DynamicResource TextMutedBrush}" StrokeThickness="2">
                     <Path.Data>
                       <GeometryGroup>
@@ -137,7 +138,11 @@
                       </GeometryGroup>
                     </Path.Data>
                   </Path>
-                </Viewbox>
+                  </Viewbox>
+                  <Viewbox x:Name="CheckGlyph" Width="14" Height="14" IsVisible="False">
+                    <Path Width="24" Height="24" Stroke="{DynamicResource CopySuccessBrush}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round" Data="M4,12 L9,17 L20,6" />
+                  </Viewbox>
+                </Grid>
               </Button>
               <!-- Required by LiveMarkdown's template contract; the design-system surface
                    intentionally does not show a separate language header. -->
@@ -147,6 +152,16 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+    <Style Selector="^ /template/ Button#PART_CopyButton.copy-success">
+      <Setter Property="ToolTip.Tip" Value="Copied" />
+      <Setter Property="AutomationProperties.Name" Value="Code copied" />
+      <Style Selector="^ /template/ Viewbox#CopyGlyph">
+        <Setter Property="IsVisible" Value="False" />
+      </Style>
+      <Style Selector="^ /template/ Viewbox#CheckGlyph">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+    </Style>
   </Style>
 
   <Style Selector="md|CodeInline">

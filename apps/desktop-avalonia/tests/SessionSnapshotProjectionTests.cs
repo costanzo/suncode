@@ -24,6 +24,9 @@ public sealed class SessionSnapshotProjectionTests
             "2026-09-12T00:00:00.000Z",
             "2026-09-12T00:00:01.200Z",
             "completed"));
+        Assert.Equal(
+            DateTimeOffset.Parse("2026-09-12T00:00:01.200Z").ToLocalTime().ToString("HH:mm"),
+            DesktopViewModel.FormatCompletionTime("2026-09-12T00:00:01.200Z"));
     }
 
     [Fact]
@@ -49,6 +52,10 @@ public sealed class SessionSnapshotProjectionTests
         var assistant = Assert.Single(DesktopViewModel.ProjectSnapshot(snapshot).Messages);
         Assert.Equal("Worked for 1.2 s", assistant.DurationLabel);
         Assert.True(assistant.ShowDuration);
+        Assert.Equal(
+            DateTimeOffset.Parse("2026-09-12T00:00:01.200Z").ToLocalTime().ToString("HH:mm"),
+            assistant.CompletionTimeText);
+        Assert.True(assistant.HasCompletionTime);
     }
 
     [Fact]

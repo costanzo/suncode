@@ -1478,6 +1478,15 @@
   max-width: 640px;
   padding-bottom: 6px;
 }
+.workspace-message-assistant-intermediate {
+  max-width: 620px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.workspace-message-assistant-intermediate p {
+  margin: 0;
+}
 .workspace-assistant-duration {
   margin-bottom: 5px;
   color: var(--text-muted);
@@ -1515,6 +1524,16 @@
   gap: 8px;
   min-height: 25px;
   margin-top: 6px;
+}
+.workspace-message-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.workspace-message-completed-time {
+  color: var(--text-muted);
+  font: 10px/1.35 var(--font-mono);
+  white-space: nowrap;
 }
 .workspace-copy {
   display: grid;

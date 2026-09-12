@@ -23,6 +23,12 @@
       <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
       <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
     </Style>
+    <Style Selector="TextBlock.assistant-completed-time">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
     <Style Selector="Button.tool-card:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
@@ -182,9 +188,16 @@
                 <Grid>
                   <controls:MarkdownText Markdown="{Binding Text}" FontSize="14" HorizontalAlignment="Stretch" />
                 </Grid>
-                <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Margin="-7,0,0,0" Padding="5" HorizontalAlignment="Left" Click="CopyMessage" ToolTip.Tip="Copy response" AutomationProperties.Name="Copy response" IsVisible="{Binding ShowCopy}">
-                  <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
-                </Button>
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="-7,0,0,0" HorizontalAlignment="Left">
+                  <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Padding="5" Click="CopyMessage" ToolTip.Tip="Copy response" AutomationProperties.Name="Copy response" IsVisible="{Binding ShowCopy}">
+                    <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
+                  </Button>
+                  <TextBlock Classes="assistant-completed-time"
+                             Text="{Binding CompletionTimeText}"
+                             ToolTip.Tip="{Binding CompletionTimeText}"
+                             AutomationProperties.Name="{Binding CompletionTimeText, StringFormat=Message completed at {0}}"
+                             IsVisible="{Binding HasCompletionTime}" />
+                </StackPanel>
               </StackPanel>
             </StackPanel>
           </DataTemplate>

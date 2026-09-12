@@ -397,6 +397,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 if (finalAssistant is not null)
                 {
                     finalAssistant.DurationText = FormatDuration(activityTurn.StartedAt, activityTurn.CompletedAt, state);
+                    finalAssistant.CompletionTimeText = FormatCompletionTime(activityTurn.CompletedAt);
                 }
                 foreach (var toolUse in toolUses.OrderBy(item => item.String("createdAt", "created_at"), StringComparer.Ordinal).ThenBy(item => item.Int("ordinal")))
                 {
@@ -726,6 +727,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 {
                     finalAssistant.IsFinalAssistant = true;
                     finalAssistant.DurationText = FormatDuration(activityTurn.StartedAt, activityTurn.CompletedAt, state);
+                    finalAssistant.CompletionTimeText = FormatCompletionTime(activityTurn.CompletedAt);
                 }
             }
             SyncActiveToolRow();
@@ -968,6 +970,13 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (elapsed.TotalSeconds < 1) return $"{elapsed.TotalMilliseconds:0} ms";
         if (elapsed.TotalMinutes < 1) return $"{elapsed.TotalSeconds:0.#} s";
         return $"{elapsed.TotalMinutes:0.#} m";
+    }
+
+    internal static string FormatCompletionTime(string completedAt)
+    {
+        return DateTimeOffset.TryParse(completedAt, out var completed)
+            ? completed.ToLocalTime().ToString("HH:mm")
+            : string.Empty;
     }
 
     private static string EventText(string type, JsonObject payload)

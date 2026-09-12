@@ -67,6 +67,7 @@ public sealed class MessageItem : ObservableObject, IDisposable
     private bool _showTurnMarker;
     private string _durationText = string.Empty;
     private bool _isWorkingDuration;
+    private string _completionTimeText = string.Empty;
 
     public string MessageId { get => _messageId; set => SetProperty(ref _messageId, value); }
     public required string Role { get; init; }
@@ -112,6 +113,15 @@ public sealed class MessageItem : ObservableObject, IDisposable
     }
     public bool ShowDuration => (IsWorkingDuration || IsFinalAssistant) && !string.IsNullOrWhiteSpace(DurationText);
     public string DurationLabel => IsWorkingDuration ? $"Working for {DurationText}" : $"Worked for {DurationText}";
+    public string CompletionTimeText
+    {
+        get => _completionTimeText;
+        set
+        {
+            if (SetProperty(ref _completionTimeText, value)) OnPropertyChanged(nameof(HasCompletionTime));
+        }
+    }
+    public bool HasCompletionTime => !string.IsNullOrWhiteSpace(CompletionTimeText);
     public bool CanBeFinalAssistant { get => _canBeFinalAssistant; set => SetProperty(ref _canBeFinalAssistant, value); }
     public bool Streaming { get => _streaming; set => SetProperty(ref _streaming, value); }
     public bool IsUser => Role == "user";
