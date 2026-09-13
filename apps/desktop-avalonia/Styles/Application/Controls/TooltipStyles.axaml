@@ -1,0 +1,26 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Anchor to the control instead of the pointer so the gap is stable. -->
+  <Style Selector="Control">
+    <Setter Property="ToolTip.Placement" Value="Bottom" />
+    <Setter Property="ToolTip.VerticalOffset" Value="8" />
+    <Setter Property="ToolTip.HorizontalOffset" Value="0" />
+  </Style>
+
+  <!-- Keep native Avalonia tooltips aligned with the design-system overlay. -->
+  <Style Selector="ToolTip">
+    <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="MaxWidth" Value="180" />
+    <Setter Property="FontFamily" Value="Noto Sans, Noto Sans CJK SC, Noto Sans SC, PingFang SC, Helvetica Neue, Arial, sans-serif" />
+    <Setter Property="FontSize" Value="10" />
+  </Style>
+  <Style Selector="ToolTip /template/ Border">
+    <Setter Property="BoxShadow" Value="0 16 36 0 #24162634" />
+  </Style>
+</Styles>
