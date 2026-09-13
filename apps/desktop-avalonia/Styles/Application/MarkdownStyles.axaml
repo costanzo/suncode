@@ -178,15 +178,16 @@
   <Style Selector="md|MarkdownRenderer.secondary md|MarkdownTextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
     <Setter Property="FontSize" Value="12" />
-    <Setter Property="LineHeight" Value="16" />
+    <Setter Property="LineHeight" Value="18" />
   </Style>
   <Style Selector="md|MarkdownRenderer.secondary md|CodeInline">
     <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
     <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
     <Setter Property="FontSize" Value="12" />
-    <Setter Property="Padding" Value="0,0" />
-    <Setter Property="Margin" Value="0,0" />
+    <Setter Property="BaselineAlignment" Value="Baseline" />
+    <Setter Property="Padding" Value="1,0" />
+    <Setter Property="Margin" Value="1,0" />
   </Style>
   <Style Selector="md|Link">
     <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
