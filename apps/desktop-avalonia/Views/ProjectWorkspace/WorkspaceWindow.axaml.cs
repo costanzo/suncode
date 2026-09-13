@@ -58,6 +58,7 @@ public sealed partial class WorkspaceWindow : Window
         RestoreWindowGeometry();
         ConfigureProjectWindow();
         UpdateNativeProjectMenu();
+        if (ViewModel.SelectedSession != null) SessionEntered();
     }
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
