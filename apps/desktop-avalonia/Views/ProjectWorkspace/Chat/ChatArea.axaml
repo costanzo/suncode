@@ -146,7 +146,7 @@
     <Grid>
       <ScrollViewer x:Name="ConversationScroller"
                     Margin="0"
-                    Padding="18,0,18,128"
+                    Padding="18,0,18,0"
                     HorizontalScrollBarVisibility="Disabled"
                     VerticalScrollBarVisibility="Auto"
                     IsVisible="{Binding HasSelectedSession}">
@@ -287,6 +287,11 @@
             <Ellipse Classes="running-dot dot-2" IsVisible="{Binding IsTurnIndicatorDots}" />
             <Ellipse Classes="running-dot dot-3" IsVisible="{Binding IsTurnIndicatorDots}" />
           </StackPanel>
+
+          <!-- Keep the timeline's final rows above the overlaid composer. An
+               explicit spacer participates in the content extent reliably,
+               including during animated bottom scrolling. -->
+          <Border Height="144" />
         </StackPanel>
       </ScrollViewer>
 

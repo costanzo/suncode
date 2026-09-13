@@ -213,7 +213,9 @@ const conversationGuides = {
       ],
       logic: [
         "Entering a session positions the viewport at its latest message once.",
-        "Later assistant, tool, and layout updates preserve the current viewport instead of following new content.",
+        "Submitting a new turn re-enters follow mode so the sent user message and live output remain visible.",
+        "If the user remains at the latest message, turn completion may follow the final response to the newest message.",
+        "After the user scrolls away, later assistant, tool, and layout updates preserve the current viewport instead of following new content.",
         "Activating the control scrolls to the newest message and hides the control.",
       ],
     },

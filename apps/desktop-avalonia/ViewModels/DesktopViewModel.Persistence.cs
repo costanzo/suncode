@@ -527,6 +527,13 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             {
                 assistant.Text += delta;
             }
+            if (delta.Length > 0)
+            {
+                // The collection itself does not change when a streaming
+                // assistant row receives another text delta. Notify the chat
+                // surface so it can keep the viewport at the latest content.
+                OnPropertyChanged(nameof(Messages));
+            }
         }
         else if (type is "message.user" or "message.assistant")
         {
@@ -596,6 +603,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             }
             if (changed)
             {
+                OnPropertyChanged(nameof(Messages));
                 OnPropertyChanged(nameof(HasMessages));
             }
         }
@@ -629,6 +637,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 TurnId = payload.TurnId ?? string.Empty,
                 IsProcess = true
             });
+            OnPropertyChanged(nameof(Messages));
             OnPropertyChanged(nameof(HasMessages));
         }
         else if (!type.StartsWith("provider.exchange.", StringComparison.Ordinal))
