@@ -3,9 +3,9 @@ using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Avalonia.Media.Imaging;
 using SunCode.Desktop.Infrastructure;
+using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.Models;
 
@@ -36,18 +36,17 @@ public sealed class ComposerAttachment : IDisposable
 
     public void Dispose() => Preview.Dispose();
 
-    public static ComposerAttachment FromPayload(JsonObject value)
+    public static ComposerAttachment FromSdk(SessionImage value)
     {
-        var thumbnail = value.String("thumbnailBase64", "thumbnail_base64");
-        var bytes = Convert.FromBase64String(thumbnail);
+        var bytes = Convert.FromBase64String(value.ThumbnailBase64);
         using var stream = new MemoryStream(bytes, writable: false);
         return new ComposerAttachment(
-            value.String("imageId", "image_id"),
-            value.String("displayName", "display_name"),
+            value.ImageId,
+            value.DisplayName,
             new Bitmap(stream),
-            value.String("storagePath", "storage_path"),
-            value.String("sourceKind", "source_kind"),
-            value["originalPath"]?.GetValue<string>());
+            value.StoragePath,
+            value.SourceKind,
+            value.OriginalPath);
     }
 }
 
@@ -432,12 +431,18 @@ public sealed record TodoItem(string Content, string Status, string Priority)
 
     public bool IsCompleted => Status is "completed" or "cancelled";
 
-    public static TodoItem? FromPayload(JsonObject payload)
+    public static TodoItem? FromSdk(SessionTurnTodo todo)
     {
-        var content = payload.String("content");
-        return string.IsNullOrWhiteSpace(content)
+        return string.IsNullOrWhiteSpace(todo.Content)
             ? null
-            : new TodoItem(content, payload.String("status"), payload.String("priority"));
+            : new TodoItem(todo.Content, todo.Status, todo.Priority);
+    }
+
+    public static TodoItem? FromSdk(AgentTodoEventItem todo)
+    {
+        return string.IsNullOrWhiteSpace(todo.Content)
+            ? null
+            : new TodoItem(todo.Content, todo.Status, todo.Priority);
     }
 }
 

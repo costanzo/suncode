@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using SunCode.Sdk.Models;
 
 namespace SunCode.Sdk;
@@ -13,108 +12,205 @@ public sealed partial class AgentSdk
         NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
     };
 
-    private static T Deserialize<T>(JsonObject body)
+    private static T Deserialize<T>(JsonElement body)
         => body.Deserialize<T>(TypedJsonOptions)
            ?? throw new SdkException("invalid_response", $"Agent returned an empty {typeof(T).Name} response");
 
-    private static async Task<T> Typed<T>(Task<JsonObject> operation)
+    private static async Task<T> Typed<T>(Task<JsonElement> operation)
         => Deserialize<T>(await operation.ConfigureAwait(false));
 
-    public static Task<VersionResult> GetVersionAsync() => Typed<VersionResult>(VersionAsync());
-    public Task<HealthResult> GetHealthAsync() => Typed<HealthResult>(HealthAsync());
-    public Task<DiagnosticsResult> GetDiagnosticsAsync() => Typed<DiagnosticsResult>(DiagnosticsAsync());
-    public Task<ModelsResult> GetModelsAsync() => Typed<ModelsResult>(ListModelsAsync());
-    public Task<CredentialsResult> GetCredentialsAsync() => Typed<CredentialsResult>(ListCredentialsAsync());
-    public Task<ProjectsResult> GetProjectsAsync() => Typed<ProjectsResult>(ListProjectsAsync());
-    public Task<McpServersResult> GetMcpServersAsync(string? projectId = null) => Typed<McpServersResult>(ListMcpServersAsync(projectId));
-    public Task<McpServer> CreateMcpServerAsync(CreateMcpServerRequest request) => Typed<McpServer>(WithNullableUtf8Async(
-        [request.ProjectId, request.IdempotencyKey, JsonSerializer.Serialize(request.Server, TypedJsonOptions)],
-        values => NativeMethods.suncode_agent_sdk_create_mcp_server(_handle, values[0], values[1], values[2])));
-    public Task<McpServer> UpdateMcpServerAsync(UpdateMcpServerRequest request) => Typed<McpServer>(WithNullableUtf8Async(
-        [request.ProjectId, request.ServerId, request.IdempotencyKey, JsonSerializer.Serialize(request.Server, TypedJsonOptions)],
-        values => NativeMethods.suncode_agent_sdk_update_mcp_server(_handle, values[0], values[1], request.ExpectedRevision, values[2], values[3])));
-    public Task<McpServer> SetMcpServerEnabledAsync(SetMcpServerEnabledRequest request) => Typed<McpServer>(SetMcpServerEnabledAsync(
-        request.ProjectId, request.ServerId, request.ExpectedRevision, request.IdempotencyKey, request.Enabled));
-    public Task<McpServerDeleteResult> DeleteMcpServerAsync(DeleteMcpServerRequest request) => Typed<McpServerDeleteResult>(DeleteMcpServerAsync(
-        request.ServerId, request.ExpectedRevision, request.IdempotencyKey));
-    public Task<McpServer> RetryMcpServerTypedAsync(string projectId, string serverId) => Typed<McpServer>(RetryMcpServerAsync(projectId, serverId));
-    public Task<McpLoadProgress> StartMcpProjectTypedAsync(string projectId) => Typed<McpLoadProgress>(StartMcpProjectAsync(projectId));
-    public Task<McpLoadProgress> GetMcpLoadProgressAsync(string projectId) => Typed<McpLoadProgress>(McpLoadProgressAsync(projectId));
+    public static Task<VersionResult> GetVersionAsync() => Typed<VersionResult>(RawVersionAsync());
+    public Task<HealthResult> GetHealthAsync() => Typed<HealthResult>(RawHealthAsync());
+    public Task<DiagnosticsResult> GetDiagnosticsAsync() => Typed<DiagnosticsResult>(RawDiagnosticsAsync());
+    public Task<ModelsResult> GetModelsAsync() => Typed<ModelsResult>(RawListModelsAsync());
+    public Task<CredentialsResult> GetCredentialsAsync() => Typed<CredentialsResult>(RawListCredentialsAsync());
+    public Task<ProjectsResult> GetProjectsAsync() => Typed<ProjectsResult>(RawListProjectsAsync());
 
-    public Task<SettingsResult> GetSettingsAsync(SettingScope scope) => Typed<SettingsResult>(
-        scope.ProjectId is null && scope.SessionId is null
-            ? ListSettingsAsync()
-            : scope.SessionId is null
-                ? ListProjectSettingsAsync(scope.ProjectId!)
-                : ListSessionSettingsAsync(scope.ProjectId ?? throw new ArgumentException("ProjectId is required when SessionId is set", nameof(scope)), scope.SessionId));
+    public Task<McpServersResult> GetMcpServersAsync(string? projectId = null) =>
+        Typed<McpServersResult>(RawListMcpServersAsync(projectId));
 
-    public Task<SettingUpdate> SetSettingAsync(SetSettingRequest request) => Typed<SettingUpdate>(
-        request.Scope switch
-        {
-            "global" => SetSettingAsync(request.Key, request.Value),
-            "project" when request.ProjectId is not null => SetProjectSettingAsync(request.ProjectId, request.Key, request.Value),
-            "session" when request.SessionId is not null && request.Key == "full_control" && request.Value is bool enabled => SetSessionFullControlAsync(request.SessionId, enabled),
-            _ => throw new ArgumentException("Scope and identifiers do not form a supported setting request", nameof(request))
-        });
+    public Task<McpServer> CreateMcpServerAsync(CreateMcpServerRequest request) =>
+        Typed<McpServer>(RawCreateMcpServerAsync(
+            request.ProjectId,
+            request.IdempotencyKey,
+            JsonSerializer.Serialize(request.Server, TypedJsonOptions)));
 
-    public Task<CredentialUpdate> SetCredentialAsync(SetCredentialRequest request) => Typed<CredentialUpdate>(SetCredentialAsync(request.Provider, request.ApiKey));
-    public Task<CredentialUpdate> RemoveCredentialTypedAsync(string provider) => Typed<CredentialUpdate>(RemoveCredentialAsync(provider));
-    public Task<ProviderEndpointUpdate> SetProviderEndpointAsync(ProviderEndpointRequest request) => Typed<ProviderEndpointUpdate>(SetProviderEndpointAsync(request.Provider, request.Endpoint));
-    public Task<ProjectRecord> OpenProjectAsync(OpenProjectRequest request) => Typed<ProjectRecord>(WithNullableUtf8Async(
-        [request.Path, request.DisplayName], values => NativeMethods.suncode_agent_sdk_open_project(_handle, values[0], values[1])));
-    public Task<ProjectRecord> SelectProjectTypedAsync(string projectId) => Typed<ProjectRecord>(SelectProjectAsync(projectId));
-    public Task<ProjectDependenciesResult> ListProjectDependenciesTypedAsync(string projectId) => Typed<ProjectDependenciesResult>(ListProjectDependenciesAsync(projectId));
-    public Task<DependencyRemoval> RemoveProjectDependencyTypedAsync(string projectId, string dependencyId) => Typed<DependencyRemoval>(RemoveProjectDependencyAsync(projectId, dependencyId));
-    public Task<ProjectDirectoryResult> ListProjectDirectoryTypedAsync(string projectId, string? dependencyId, string path) => Typed<ProjectDirectoryResult>(ListProjectDirectoryAsync(projectId, dependencyId, path));
-    public Task<ProjectFileResult> ReadProjectFileTypedAsync(string projectId, string? dependencyId, string path) => Typed<ProjectFileResult>(ReadProjectFileAsync(projectId, dependencyId, path));
-    public Task<SessionsResult> ListSessionsTypedAsync(string projectId) => Typed<SessionsResult>(ListSessionsAsync(projectId));
-    public Task<GitStatusResult> GitStatusTypedAsync(string projectId) => Typed<GitStatusResult>(GitStatusAsync(projectId));
-    public Task<GitDiffFileResult> GitDiffTypedAsync(string projectId, string scope, string path) => Typed<GitDiffFileResult>(GitDiffAsync(projectId, scope, path));
-    public Task<SessionRecord> CreateSessionAsync(CreateSessionRequest request) => Typed<SessionRecord>(CreateSessionAsync(request.ProjectId, request.Title, request.Model));
-    public Task<SessionRecord> RenameSessionTypedAsync(string sessionId, string title) => Typed<SessionRecord>(RenameSessionAsync(sessionId, title));
-    public Task<SessionRecord> ArchiveSessionTypedAsync(string sessionId) => Typed<SessionRecord>(ArchiveSessionAsync(sessionId));
-    public Task<SessionRecord> SetSessionPinnedTypedAsync(string sessionId, bool pinned) => Typed<SessionRecord>(SetSessionPinnedAsync(sessionId, pinned));
-    public Task<SessionRecord> ReopenSessionAsync(string sessionId) => Typed<SessionRecord>(WithUtf8Async([sessionId], values => NativeMethods.suncode_agent_sdk_reopen_session(_handle, values[0])));
-    public Task<SessionImagesResult> ListSessionImagesTypedAsync(string sessionId) => Typed<SessionImagesResult>(ListSessionImagesAsync(sessionId));
-    public Task<SessionImage> AddSessionImageAsync(AddSessionImageRequest request) => Typed<SessionImage>(WithUtf8Async(
-        [request.SessionId, JsonSerializer.Serialize(request, TypedJsonOptions)],
-        values => NativeMethods.suncode_agent_sdk_add_session_image(_handle, values[0], values[1])));
-    public Task<SessionImageRemoval> RemoveSessionImageTypedAsync(string sessionId, string imageId) => Typed<SessionImageRemoval>(RemoveSessionImageAsync(sessionId, imageId));
-    public Task<SessionSnapshot> GetSessionSnapshotAsync(string sessionId) => Typed<SessionSnapshot>(SessionSnapshotAsync(sessionId));
-    public Task<SessionUsageResult> GetSessionUsageAsync(string sessionId) => Typed<SessionUsageResult>(SessionUsageAsync(sessionId));
-    public Task<ProviderExchangesResult> GetProviderExchangesAsync(string sessionId) => Typed<ProviderExchangesResult>(ListProviderExchangesAsync(sessionId));
-    public Task<ProviderExchangeDetails> GetProviderExchangeAsync(string sessionId, string exchangeId) => Typed<ProviderExchangeDetails>(ProviderExchangeAsync(sessionId, exchangeId));
-    public Task<CheckpointsResult> GetCheckpointsAsync(string sessionId) => Typed<CheckpointsResult>(ListCheckpointsAsync(sessionId));
-    public Task<CheckpointDetails> GetCheckpointManifestAsync(string manifestId) => Typed<CheckpointDetails>(WithUtf8Async([manifestId], values => NativeMethods.suncode_agent_sdk_checkpoint_manifest(_handle, values[0])));
-    public Task<RestoreOutcome> RestoreCheckpointTypedAsync(string manifestId, string sessionId) => Typed<RestoreOutcome>(RestoreCheckpointAsync(manifestId, sessionId));
-    public Task<TurnResponse> SubmitTurnAsync(SubmitTurnRequest request) => Typed<TurnResponse>(
-        request.ImageIds.Count == 0
-            ? WithNullableUtf8Async(
-                [request.SessionId, request.Input, request.IdempotencyKey, request.Model, request.ReasoningEffort],
-                values => NativeMethods.suncode_agent_sdk_submit_turn(_handle, values[0], values[1], values[2], values[3], values[4]))
-            : WithNullableUtf8Async(
-                [request.SessionId, request.Input, request.IdempotencyKey, request.Model, request.ReasoningEffort, JsonSerializer.Serialize(request.ImageIds)],
-                values => NativeMethods.suncode_agent_sdk_submit_turn_with_attachments(_handle, values[0], values[1], values[2], values[3], values[4], values[5])));
-    public Task<CancellationOutcome> CancelTurnTypedAsync(string sessionId, string turnId) => Typed<CancellationOutcome>(CancelTurnAsync(sessionId, turnId));
-    public Task<TurnResponse> RetryLastTurnTypedAsync(string sessionId) => Typed<TurnResponse>(RetryLastTurnAsync(sessionId));
-    public Task<ApprovalRecord> GetApprovalAsync(string approvalId) => Typed<ApprovalRecord>(WithUtf8Async([approvalId], values => NativeMethods.suncode_agent_sdk_get_approval(_handle, values[0])));
-    public Task<ApprovalOutcome> ResolveApprovalAsync(ApprovalDecisionRequest request) => Typed<ApprovalOutcome>(ResolveApprovalAsync(request.ApprovalId, request.Decision switch
-    {
-        ApprovalDecision.Deny => "deny",
-        ApprovalDecision.AllowOnce => "allow_once",
-        ApprovalDecision.AllowSession => "allow_session",
-        _ => throw new ArgumentOutOfRangeException(nameof(request))
-    }));
-    public Task<QuestionOutcome> ReplyQuestionAsync(ReplyQuestionRequest request) => Typed<QuestionOutcome>(ReplyQuestionAsync(request.RequestId, JsonSerializer.SerializeToNode(request.Answers) as JsonArray ?? throw new ArgumentException("Answers cannot be serialized", nameof(request))));
-    public Task<QuestionOutcome> RejectQuestionTypedAsync(string requestId) => Typed<QuestionOutcome>(RejectQuestionAsync(requestId));
+    public Task<McpServer> UpdateMcpServerAsync(UpdateMcpServerRequest request) =>
+        Typed<McpServer>(RawUpdateMcpServerAsync(
+            request.ProjectId,
+            request.ServerId,
+            request.ExpectedRevision,
+            request.IdempotencyKey,
+            JsonSerializer.Serialize(request.Server, TypedJsonOptions)));
 
-    public IDisposable SubscribeTyped(string sessionId, long after, Action<JsonElement> onEvent)
+    public Task<McpServer> SetMcpServerEnabledAsync(SetMcpServerEnabledRequest request) =>
+        Typed<McpServer>(RawSetMcpServerEnabledAsync(
+            request.ProjectId,
+            request.ServerId,
+            request.ExpectedRevision,
+            request.IdempotencyKey,
+            request.Enabled));
+
+    public Task<McpServerDeleteResult> DeleteMcpServerAsync(DeleteMcpServerRequest request) =>
+        Typed<McpServerDeleteResult>(RawDeleteMcpServerAsync(
+            request.ServerId,
+            request.ExpectedRevision,
+            request.IdempotencyKey));
+
+    public Task<McpServer> RetryMcpServerAsync(string projectId, string serverId) =>
+        Typed<McpServer>(RawRetryMcpServerAsync(projectId, serverId));
+
+    public Task<McpLoadProgress> StartMcpProjectAsync(string projectId) =>
+        Typed<McpLoadProgress>(RawStartMcpProjectAsync(projectId));
+
+    public Task<McpLoadProgress> GetMcpLoadProgressAsync(string projectId) =>
+        Typed<McpLoadProgress>(RawMcpLoadProgressAsync(projectId));
+
+    public Task<SettingsResult> GetSettingsAsync(SettingScope scope) =>
+        Typed<SettingsResult>(RawListSettingsAsync(scope.ProjectId, scope.SessionId));
+
+    public Task<SettingUpdate> SetSettingAsync(SetSettingRequest request) =>
+        Typed<SettingUpdate>(RawSetSettingAsync(
+            request.Scope,
+            request.ProjectId,
+            request.SessionId,
+            request.Key,
+            request.Value));
+
+    public Task<CredentialUpdate> SetCredentialAsync(SetCredentialRequest request) =>
+        Typed<CredentialUpdate>(RawSetCredentialAsync(request.Provider, request.ApiKey));
+
+    public Task<CredentialUpdate> RemoveCredentialAsync(string provider) =>
+        Typed<CredentialUpdate>(RawRemoveCredentialAsync(provider));
+
+    public Task<ProviderEndpointUpdate> SetProviderEndpointAsync(ProviderEndpointRequest request) =>
+        Typed<ProviderEndpointUpdate>(RawSetProviderEndpointAsync(request.Provider, request.Endpoint));
+
+    public Task<ProjectRecord> OpenProjectAsync(OpenProjectRequest request) =>
+        Typed<ProjectRecord>(RawOpenProjectAsync(request.Path, request.DisplayName));
+
+    public Task<ProjectRecord> SelectProjectAsync(string projectId) =>
+        Typed<ProjectRecord>(RawSelectProjectAsync(projectId));
+
+    public Task<ProjectDependenciesResult> ListProjectDependenciesAsync(string projectId) =>
+        Typed<ProjectDependenciesResult>(RawListProjectDependenciesAsync(projectId));
+
+    public Task<ProjectDependency> AddProjectDependencyAsync(string projectId, string path) =>
+        Typed<ProjectDependency>(RawAddProjectDependencyAsync(projectId, path));
+
+    public Task<DependencyRemoval> RemoveProjectDependencyAsync(string projectId, string dependencyId) =>
+        Typed<DependencyRemoval>(RawRemoveProjectDependencyAsync(projectId, dependencyId));
+
+    public Task<ProjectDirectoryResult> ListProjectDirectoryAsync(
+        string projectId,
+        string? dependencyId,
+        string path) =>
+        Typed<ProjectDirectoryResult>(RawListProjectDirectoryAsync(projectId, dependencyId, path));
+
+    public Task<ProjectFileResult> ReadProjectFileAsync(
+        string projectId,
+        string? dependencyId,
+        string path) =>
+        Typed<ProjectFileResult>(RawReadProjectFileAsync(projectId, dependencyId, path));
+
+    public Task<GitStatusResult> GitStatusAsync(string projectId) =>
+        Typed<GitStatusResult>(RawGitStatusAsync(projectId));
+
+    public Task<GitDiffFileResult> GitDiffAsync(string projectId, string scope, string path) =>
+        Typed<GitDiffFileResult>(RawGitDiffAsync(projectId, scope, path));
+
+    public Task<SessionsResult> ListSessionsAsync(string projectId) =>
+        Typed<SessionsResult>(RawListSessionsAsync(projectId));
+
+    public Task<SessionRecord> CreateSessionAsync(CreateSessionRequest request) =>
+        Typed<SessionRecord>(RawCreateSessionAsync(request.ProjectId, request.Title, request.Model));
+
+    public Task<SessionRecord> RenameSessionAsync(string sessionId, string title) =>
+        Typed<SessionRecord>(RawRenameSessionAsync(sessionId, title));
+
+    public Task<SessionRecord> ArchiveSessionAsync(string sessionId) =>
+        Typed<SessionRecord>(RawArchiveSessionAsync(sessionId));
+
+    public Task<SessionRecord> SetSessionPinnedAsync(string sessionId, bool pinned) =>
+        Typed<SessionRecord>(RawSetSessionPinnedAsync(sessionId, pinned));
+
+    public Task<SessionRecord> ReopenSessionAsync(string sessionId) =>
+        Typed<SessionRecord>(RawReopenSessionAsync(sessionId));
+
+    public Task<SessionImagesResult> ListSessionImagesAsync(string sessionId) =>
+        Typed<SessionImagesResult>(RawListSessionImagesAsync(sessionId));
+
+    public Task<SessionImage> AddSessionImageAsync(AddSessionImageRequest request) =>
+        Typed<SessionImage>(RawAddSessionImageAsync(
+            request.SessionId,
+            JsonSerializer.Serialize(request, TypedJsonOptions)));
+
+    public Task<SessionImageRemoval> RemoveSessionImageAsync(string sessionId, string imageId) =>
+        Typed<SessionImageRemoval>(RawRemoveSessionImageAsync(sessionId, imageId));
+
+    public Task<SessionSnapshot> GetSessionSnapshotAsync(string sessionId) =>
+        Typed<SessionSnapshot>(RawSessionSnapshotAsync(sessionId));
+
+    public Task<SessionUsageResult> GetSessionUsageAsync(string sessionId) =>
+        Typed<SessionUsageResult>(RawSessionUsageAsync(sessionId));
+
+    public Task<ProviderExchangesResult> GetProviderExchangesAsync(string sessionId) =>
+        Typed<ProviderExchangesResult>(RawListProviderExchangesAsync(sessionId));
+
+    public Task<ProviderExchangeDetails> GetProviderExchangeAsync(string sessionId, string exchangeId) =>
+        Typed<ProviderExchangeDetails>(RawProviderExchangeAsync(sessionId, exchangeId));
+
+    public Task<CheckpointsResult> GetCheckpointsAsync(string sessionId) =>
+        Typed<CheckpointsResult>(RawListCheckpointsAsync(sessionId));
+
+    public Task<CheckpointDetails> GetCheckpointManifestAsync(string manifestId) =>
+        Typed<CheckpointDetails>(RawCheckpointManifestAsync(manifestId));
+
+    public Task<RestoreOutcome> RestoreCheckpointAsync(string manifestId, string sessionId) =>
+        Typed<RestoreOutcome>(RawRestoreCheckpointAsync(manifestId, sessionId));
+
+    public Task<TurnResponse> SubmitTurnAsync(SubmitTurnRequest request) =>
+        Typed<TurnResponse>(
+            request.ImageIds.Count == 0
+                ? RawSubmitTurnAsync(request)
+                : RawSubmitTurnWithAttachmentsAsync(request));
+
+    public Task<CancellationOutcome> CancelTurnAsync(string sessionId, string turnId) =>
+        Typed<CancellationOutcome>(RawCancelTurnAsync(sessionId, turnId));
+
+    public Task<TurnResponse> RetryLastTurnAsync(string sessionId) =>
+        Typed<TurnResponse>(RawRetryLastTurnAsync(sessionId));
+
+    public Task<ApprovalRecord> GetApprovalAsync(string approvalId) =>
+        Typed<ApprovalRecord>(RawGetApprovalAsync(approvalId));
+
+    public Task<ApprovalOutcome> ResolveApprovalAsync(ApprovalDecisionRequest request) =>
+        Typed<ApprovalOutcome>(RawResolveApprovalAsync(
+            request.ApprovalId,
+            request.Decision switch
+            {
+                ApprovalDecision.Deny => "deny",
+                ApprovalDecision.AllowOnce => "allow_once",
+                ApprovalDecision.AllowSession => "allow_session",
+                _ => throw new ArgumentOutOfRangeException(nameof(request))
+            }));
+
+    public Task<QuestionOutcome> ReplyQuestionAsync(ReplyQuestionRequest request) =>
+        Typed<QuestionOutcome>(RawReplyQuestionAsync(
+            request.RequestId,
+            JsonSerializer.Serialize(request.Answers, TypedJsonOptions)));
+
+    public Task<QuestionOutcome> RejectQuestionAsync(string requestId) =>
+        Typed<QuestionOutcome>(RawRejectQuestionAsync(requestId));
+
+    public IDisposable SubscribeTyped(string sessionId, long after, Action<AgentEvent> onEvent)
     {
         ArgumentNullException.ThrowIfNull(onEvent);
-        return Subscribe(sessionId, after, json =>
+        return RawSubscribe(sessionId, after, json =>
         {
             using var document = JsonDocument.Parse(json);
-            onEvent(document.RootElement.Clone());
+            onEvent(document.RootElement.Deserialize<AgentEvent>(TypedJsonOptions)
+                ?? throw new SdkException("invalid_event", "Agent returned an empty event"));
         });
     }
 }

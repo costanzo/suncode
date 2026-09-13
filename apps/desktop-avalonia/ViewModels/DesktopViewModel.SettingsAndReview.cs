@@ -2,13 +2,13 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Sdk;
+using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
 
@@ -29,21 +29,20 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ProviderTraceError = string.Empty;
         try
         {
-            var result = await _sdk!.ListProviderExchangesAsync(sessionId);
+            var result = await _sdk!.GetProviderExchangesAsync(sessionId);
             if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
             ProviderTraces.Clear();
             ProviderTraceTurns.Clear();
             _providerTraceDetails.Clear();
             _providerTraceDetailLoads.Clear();
-            var exchanges = result.Array("exchanges").OfType<JsonObject>().Select(ProviderTraceFromJson).ToList();
+            var exchanges = result.Exchanges.Select(ProviderTraceFromSdk).ToList();
             foreach (var exchange in exchanges) ProviderTraces.Add(exchange);
-            var turnValues = result.Array("turns").OfType<JsonObject>().ToList();
-            for (var index = 0; index < turnValues.Count; index++)
+            for (var index = 0; index < result.Turns.Count; index++)
             {
-                var item = turnValues[index];
-                var turnId = item.String("turnId", "turn_id");
+                var item = result.Turns[index];
+                var turnId = item.TurnId;
                 var calls = exchanges.Where(call => call.TurnId == turnId).OrderBy(call => call.Iteration).ThenBy(call => call.StartedAt).ToList();
-                ProviderTraceTurns.Add(ProviderTraceTurnFromJson(item, turnValues.Count - index, calls));
+                ProviderTraceTurns.Add(ProviderTraceTurnFromSdk(item, result.Turns.Count - index, calls));
             }
             ApplyProviderTraceFilter();
             ProviderTraceState = "ready";
@@ -173,7 +172,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (!EnsureSdk() || string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(apiKey)) return;
         await RunAsync(async () =>
         {
-            await _sdk!.SetCredentialAsync(provider, apiKey.Trim());
+            await _sdk!.SetCredentialAsync(new SetCredentialRequest(provider, apiKey.Trim()));
             await LoadCredentialsAsync();
             await LoadModelsAsync();
         }, "Credential stored");
@@ -203,7 +202,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         IsBusy = true;
         try
         {
-            await _sdk!.SetProviderEndpointAsync(provider, endpoint);
+            await _sdk!.SetProviderEndpointAsync(new ProviderEndpointRequest(provider, endpoint));
             await LoadModelsAsync();
             StatusText = "Provider URL saved";
             ConnectionState = "connected";
@@ -225,7 +224,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (!EnsureSdk()) return;
         await RunAsync(async () =>
         {
-            await _sdk!.SetSettingAsync("default_model", model.Id);
+            await _sdk!.SetSettingAsync(new SetSettingRequest(
+                "global", null, null, "default_model", JsonSerializer.SerializeToElement(model.Id)));
             SelectedModel = model;
         }, "Default model saved");
     }
@@ -235,7 +235,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (!EnsureSdk() || mode is not ("dark" or "light")) return;
         await RunAsync(async () =>
         {
-            await _sdk!.SetSettingAsync("theme_mode", mode);
+            await _sdk!.SetSettingAsync(new SetSettingRequest(
+                "global", null, null, "theme_mode", JsonSerializer.SerializeToElement(mode)));
             SetTheme(mode);
         }, "Theme saved");
     }
@@ -276,10 +277,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var sdk = _sdk!;
         try
         {
-            await sdk.SetSettingAsync("log_level", level);
-            await sdk.SetSettingAsync("log_directory", directory);
-            await sdk.SetSettingAsync("log_max_bytes", maxBytes);
-            await sdk.SetSettingAsync("log_retention", retention);
+            await sdk.SetSettingAsync(new SetSettingRequest("global", null, null, "log_level", JsonSerializer.SerializeToElement(level)));
+            await sdk.SetSettingAsync(new SetSettingRequest("global", null, null, "log_directory", JsonSerializer.SerializeToElement(directory)));
+            await sdk.SetSettingAsync(new SetSettingRequest("global", null, null, "log_max_bytes", JsonSerializer.SerializeToElement(maxBytes)));
+            await sdk.SetSettingAsync(new SetSettingRequest("global", null, null, "log_retention", JsonSerializer.SerializeToElement(retention)));
             LogLevel = level;
             LogDirectory = directory;
             LogMaxBytes = maxBytes;
@@ -311,7 +312,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         IsBusy = true;
         try
         {
-            await _sdk!.SetSettingAsync("image_directory", directory);
+            await _sdk!.SetSettingAsync(new SetSettingRequest("global", null, null, "image_directory", JsonSerializer.SerializeToElement(directory)));
             ImageDirectory = directory;
             StatusText = "Image storage location saved";
             ConnectionState = "connected";
@@ -335,7 +336,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         IsBusy = true;
         try
         {
-            await _sdk!.SetSettingAsync("verify_https_certificates", enabled);
+            await _sdk!.SetSettingAsync(new SetSettingRequest("global", null, null, "verify_https_certificates", JsonSerializer.SerializeToElement(enabled)));
             VerifyHttpsCertificates = enabled;
             StatusText = enabled
                 ? "HTTPS certificate verification enabled"
@@ -361,8 +362,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         try
         {
             certificatePath = certificatePath?.Trim() ?? string.Empty;
-            await _sdk!.SetSettingAsync("use_system_certificates", useSystem);
-            await _sdk.SetSettingAsync("certificate_path", certificatePath);
+            await _sdk!.SetSettingAsync(new SetSettingRequest("global", null, null, "use_system_certificates", JsonSerializer.SerializeToElement(useSystem)));
+            await _sdk.SetSettingAsync(new SetSettingRequest("global", null, null, "certificate_path", JsonSerializer.SerializeToElement(certificatePath)));
             UseSystemCertificates = useSystem;
             CertificatePath = certificatePath;
             StatusText = "Certificate trust settings saved";
@@ -384,13 +385,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
         try
         {
-            var result = await _sdk.ListProjectSettingsAsync(SelectedProject.ProjectId);
-            var node = result.Array("settings")
-                .OfType<JsonObject>()
-                .FirstOrDefault(item => item.String("key") == "tool_call_limit"
-                    && item.String("scope") == "project")?["value"];
-            if (node is JsonValue value
-                && value.TryGetValue<int>(out var limit)
+            var result = await _sdk.GetSettingsAsync(new(SelectedProject.ProjectId, null));
+            var setting = result.Settings.FirstOrDefault(item => item.Key == "tool_call_limit");
+            if (setting is not null
+                && setting.Value.TryGetInt32(out var limit)
                 && limit is >= 1 and <= 256)
             {
                 ToolCallLimit = limit;
@@ -418,7 +416,12 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         IsBusy = true;
         try
         {
-            await _sdk!.SetProjectSettingAsync(SelectedProject.ProjectId, "tool_call_limit", limit);
+            await _sdk!.SetSettingAsync(new SetSettingRequest(
+                "project",
+                SelectedProject.ProjectId,
+                null,
+                "tool_call_limit",
+                JsonSerializer.SerializeToElement(limit)));
             ToolCallLimit = limit;
             StatusText = "Project tool-call limit saved";
             ConnectionState = "connected";

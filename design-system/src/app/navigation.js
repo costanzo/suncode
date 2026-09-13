@@ -255,7 +255,8 @@ export const primaryModules = [
               {
                 path: "/projects/desktop/workspace/editor",
                 label: "Editor",
-                keywords: "read-only file viewer avaloniaedit textmate syntax highlighting line numbers",
+                keywords:
+                  "read-only file viewer avaloniaedit textmate syntax highlighting line numbers",
               },
               {
                 path: "/projects/desktop/workspace/review",
@@ -278,6 +279,28 @@ export const primaryModules = [
                 keywords: "tool calls progress live output turns operations details",
               },
             ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "agents",
+    label: "Agents",
+    path: "/agents",
+    icon: "agent",
+    items: [
+      {
+        path: "/agents/general",
+        label: "General",
+        icon: "agent",
+        keywords: "general agent prompts orchestration behavior",
+        children: [
+          {
+            path: "/agents/general/prompt",
+            label: "Prompt",
+            icon: "message",
+            keywords: "system prompt repository instructions tool guidance questions context",
           },
         ],
       },

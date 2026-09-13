@@ -53,6 +53,13 @@ const paths = {
       <path d="M4 6V4h6l2 2" />
     </>
   ),
+  agent: (
+    <>
+      <rect x="5" y="7" width="14" height="12" rx="3" />
+      <path d="M12 4v3M3 12h2M19 12h2" />
+      <path d="M8.5 13h.01M15.5 13h.01M9 16h6" />
+    </>
+  ),
   folder: <path d="M3 6h7l2 2h9v11H3z" />,
   dependencies: (
     <>

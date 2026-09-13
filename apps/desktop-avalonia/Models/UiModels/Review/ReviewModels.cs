@@ -3,9 +3,9 @@ using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Avalonia.Media.Imaging;
 using SunCode.Desktop.Infrastructure;
+using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.Models;
 
@@ -34,6 +34,7 @@ public sealed record ProviderTraceItem(
     IReadOnlyList<ProviderTraceMessageItem> Messages,
     IReadOnlyList<ProviderTraceToolItem> Tools)
 {
+    public IReadOnlyList<AgentMessage> InputMessages { get; set; } = [];
     public ObservableCollection<ProviderTraceContentItem> Contents { get; } = [ProviderTraceContentItem.Placeholder()];
     public bool IsExpanded { get; set; }
     public bool ContentsLoaded { get; set; }

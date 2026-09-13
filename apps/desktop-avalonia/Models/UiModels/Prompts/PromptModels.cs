@@ -3,9 +3,9 @@ using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Avalonia.Media.Imaging;
 using SunCode.Desktop.Infrastructure;
+using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.Models;
 
@@ -82,42 +82,43 @@ public sealed class PendingQuestionItem
     public string ToolCallId { get; }
     public ObservableCollection<QuestionPromptItem> Questions { get; } = [];
 
-    public static PendingQuestionItem? FromPayload(JsonObject payload)
+    public static PendingQuestionItem? FromSdk(PendingQuestion payload)
     {
-        var requestId = payload.String("request_id", "requestId");
+        var requestId = payload.RequestId;
         if (string.IsNullOrWhiteSpace(requestId)) return null;
-        var result = new PendingQuestionItem(requestId, payload.String("turn_id", "turnId"), payload.String("tool_call_id", "toolCallId"));
-        foreach (var value in payload.Array("questions").OfType<JsonObject>())
+        var result = new PendingQuestionItem(requestId, payload.TurnId, payload.ToolCallId);
+        foreach (var value in payload.Questions)
         {
             var prompt = new QuestionPromptItem(
-                value.String("header"), value.String("question"), value.Bool("multiple"),
-                !value.TryGetPropertyValue("custom", out var custom) || custom?.GetValue<bool>() != false);
-            foreach (var option in value.Array("options").OfType<JsonObject>())
-                prompt.Options.Add(new QuestionOptionItem(option.String("label"), option.String("description")));
+                value.Header, value.Question, value.Multiple, value.Custom);
+            foreach (var option in value.Options)
+                prompt.Options.Add(new QuestionOptionItem(option.Label, option.Description));
             result.Questions.Add(prompt);
         }
         return result.Questions.Count == 0 ? null : result;
+    }
+
+    public static PendingQuestionItem? FromSdk(AgentEventPayload payload)
+    {
+        if (string.IsNullOrWhiteSpace(payload.RequestId) || payload.Questions is null || payload.Questions.Count == 0)
+            return null;
+        var result = new PendingQuestionItem(
+            payload.RequestId,
+            payload.TurnId ?? string.Empty,
+            payload.ToolCallId ?? string.Empty);
+        foreach (var value in payload.Questions)
+        {
+            var prompt = new QuestionPromptItem(value.Header, value.Question, value.Multiple, value.Custom);
+            foreach (var option in value.Options)
+                prompt.Options.Add(new QuestionOptionItem(option.Label, option.Description));
+            result.Questions.Add(prompt);
+        }
+        return result;
     }
 }
 
 public sealed record ApprovalItem(string ApprovalId, string Operation, string Arguments)
 {
-    private JsonObject ArgumentObject
-    {
-        get
-        {
-            if (string.IsNullOrWhiteSpace(Arguments)) return [];
-            try
-            {
-                return JsonNode.Parse(Arguments) as JsonObject ?? [];
-            }
-            catch (JsonException)
-            {
-                return [];
-            }
-        }
-    }
-
     public string ActionText => Operation switch
     {
         "bash" => "Run a shell command",
@@ -166,10 +167,12 @@ public sealed record ApprovalItem(string ApprovalId, string Operation, string Ar
             var program = ProgramText;
             if (string.IsNullOrWhiteSpace(program)) return string.Empty;
 
-            var args = ArgumentObject["args"] as JsonArray;
-            return args is null || args.Count == 0
+            return !TryGetArguments(out var argumentObject)
+                || !argumentObject.TryGetProperty("args", out var args)
+                || args.ValueKind != JsonValueKind.Array
+                || args.GetArrayLength() == 0
                 ? program
-                : string.Join(" ", new[] { program }.Concat(args.Select(FormatArgument)));
+                : string.Join(" ", new[] { program }.Concat(args.EnumerateArray().Select(FormatArgument)));
         }
     }
 
@@ -177,30 +180,62 @@ public sealed record ApprovalItem(string ApprovalId, string Operation, string Ar
     {
         foreach (var name in names)
         {
-            if (ArgumentObject[name] is JsonValue value && value.TryGetValue<string>(out var text))
-                return text ?? string.Empty;
+            if (TryGetArguments(out var argumentObject)
+                && argumentObject.TryGetProperty(name, out var value)
+                && value.ValueKind == JsonValueKind.String)
+                return value.GetString() ?? string.Empty;
         }
         return string.Empty;
     }
 
-    private static string FormatArgument(JsonNode? value)
+    private bool TryGetArguments(out JsonElement value)
     {
-        if (value is not JsonValue jsonValue || !jsonValue.TryGetValue<string>(out var text))
-            return value?.ToJsonString() ?? string.Empty;
+        try
+        {
+            using var document = JsonDocument.Parse(Arguments);
+            value = document.RootElement.Clone();
+            return value.ValueKind == JsonValueKind.Object;
+        }
+        catch (JsonException)
+        {
+            value = default;
+            return false;
+        }
+    }
+
+    private static string FormatArgument(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.String)
+            return value.GetRawText();
+        var text = value.GetString() ?? string.Empty;
 
         if (string.IsNullOrEmpty(text) || text.Any(char.IsWhiteSpace) || text.Contains('"'))
             return $"\"{text.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
         return text;
     }
 
-    public static ApprovalItem? FromPayload(JsonObject payload)
+    public static ApprovalItem? FromSdk(ApprovalRecord payload)
     {
-        var id = payload.String("approval_id", "approvalId");
+        var id = payload.ApprovalId;
         return string.IsNullOrWhiteSpace(id)
             ? null
             : new ApprovalItem(
                 id,
-                payload.String("operation"),
-                payload["arguments"]?.ToJsonString(DisplayJson.Options) ?? "{}");
+                payload.Operation,
+                payload.Arguments.ValueKind == JsonValueKind.Undefined
+                    ? "{}"
+                    : JsonSerializer.Serialize(payload.Arguments, DisplayJson.Options));
+    }
+
+    public static ApprovalItem? FromSdk(AgentEventPayload payload)
+    {
+        return string.IsNullOrWhiteSpace(payload.ApprovalId)
+            ? null
+            : new ApprovalItem(
+                payload.ApprovalId,
+                payload.Operation ?? string.Empty,
+                payload.Arguments is { } arguments && arguments.ValueKind != JsonValueKind.Undefined
+                    ? JsonSerializer.Serialize(arguments, DisplayJson.Options)
+                    : "{}");
     }
 }

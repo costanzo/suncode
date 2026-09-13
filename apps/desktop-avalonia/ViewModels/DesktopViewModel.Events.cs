@@ -2,13 +2,13 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Sdk;
+using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
 
@@ -49,7 +49,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         try
         {
             var sdk = await AgentSdk.OpenAsync();
-            await sdk.HealthAsync();
+            await sdk.GetHealthAsync();
             _sdk = sdk;
             ConnectionState = "connected";
             StatusText = "Connected to local agent";
@@ -279,60 +279,96 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             || turn.Sequence.ToString().Contains(filter, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static ProviderTraceTurnItem ProviderTraceTurnFromJson(JsonObject item, int sequence, IReadOnlyList<ProviderTraceItem> calls) =>
+    private static ProviderTraceTurnItem ProviderTraceTurnFromSdk(
+        SessionTraceTurn item,
+        int sequence,
+        IReadOnlyList<ProviderTraceItem> calls) =>
         new(
-            item.String("turnId", "turn_id"),
-            item.String("state"),
-            item.String("modelId", "model_id"),
-            item.String("createdAt", "created_at"),
-            item.String("startedAt", "started_at"),
-            item.String("completedAt", "completed_at"),
-            item.Long("inputTokens", "input_tokens"),
-            item.Long("outputTokens", "output_tokens"),
-            item.Long("totalTokens", "total_tokens"),
+            item.TurnId,
+            item.State,
+            item.ModelId ?? string.Empty,
+            item.CreatedAt,
+            item.StartedAt ?? string.Empty,
+            item.CompletedAt ?? string.Empty,
+            (long)item.InputTokens,
+            (long)item.OutputTokens,
+            (long)item.TotalTokens,
             sequence,
             calls);
 
-    private static ProviderTraceItem ProviderTraceFromJson(JsonObject item)
+    private static ProviderTraceItem ProviderTraceFromSdk(ProviderExchange item)
     {
-        var usage = item.Object("usage");
-        var messages = item.Array("messages").OfType<JsonObject>().Select(message => new ProviderTraceMessageItem(
-            message.String("messageId", "message_id"),
-            message.String("role"),
-            MessageText(message.Object("message")),
-            message.String("createdAt", "created_at"))).ToList();
-        var tools = item.Array("toolUses", "tool_uses").OfType<JsonObject>().Select(tool => new ProviderTraceToolItem(
-            tool.String("toolCallId", "tool_call_id"),
-            tool.String("name"),
-            tool.String("state"),
-            Pretty(tool["request"]),
-            Pretty(tool["result"]),
-            tool.String("errorCode", "error_code"),
-            tool.String("createdAt", "created_at"))).ToList();
-        return new ProviderTraceItem(
-            item.String("exchangeId", "exchange_id"),
-            item.String("turnId", "turn_id"),
-            item.String("provider"),
-            item.String("modelId", "model_id"),
-            item.String("wireModel", "wire_model"),
-            item.String("providerRequestId", "provider_request_id"),
-            item.String("providerResponseId", "provider_response_id"),
-            item.String("state"),
-            item.Int("iteration"),
-            item.String("startedAt", "started_at"),
-            item.String("completedAt", "completed_at"),
-            OptionalLong(usage, "input_tokens"),
-            OptionalLong(usage, "output_tokens"),
-            OptionalLong(usage, "cache_read_tokens"),
-            OptionalLong(usage, "cache_write_tokens"),
-            OptionalLong(usage, "total_tokens"),
-            item.String("finishReason", "finish_reason"),
-            Pretty(item["inputMessages"] ?? item["input_messages"]),
-            OutputText(item["outputMessage"] ?? item["output_message"]),
-            Pretty(item["toolCalls"] ?? item["tool_calls"]),
-            Pretty(item["error"]),
+        var usage = item.Usage;
+        var result = new ProviderTraceItem(
+            item.ExchangeId,
+            item.TurnId,
+            item.Provider,
+            item.ModelId,
+            item.WireModel,
+            item.ProviderRequestId ?? string.Empty,
+            item.ProviderResponseId ?? string.Empty,
+            item.State,
+            item.Iteration,
+            item.StartedAt,
+            item.CompletedAt ?? string.Empty,
+            usage is null ? null : (long)usage.InputTokens,
+            usage is null ? null : (long)usage.OutputTokens,
+            usage?.CacheReadTokens is { } cacheRead ? (long)cacheRead : null,
+            usage?.CacheWriteTokens is { } cacheWrite ? (long)cacheWrite : null,
+            usage is null ? null : (long)usage.TotalTokens,
+            item.FinishReason ?? string.Empty,
+            JsonSerializer.Serialize(item.InputMessages, DisplayJson.Options),
+            MessageDisplayText(item.OutputMessage),
+            JsonSerializer.Serialize(item.ToolCalls, DisplayJson.Options),
+            Pretty(item.Error),
+            [],
+            []);
+        result.InputMessages = item.InputMessages;
+        return result;
+    }
+
+    private static ProviderTraceItem ProviderTraceFromSdk(ProviderExchangeDetails item)
+    {
+        var usage = item.Usage;
+        var messages = item.Messages.Select(message => new ProviderTraceMessageItem(
+            message.MessageId,
+            message.Role,
+            MessageText(message.Message),
+            message.CreatedAt)).ToList();
+        var tools = item.ToolUses.Select(tool => new ProviderTraceToolItem(
+            tool.ToolCallId,
+            tool.Name,
+            tool.State,
+            Pretty(tool.Request),
+            Pretty(tool.Result),
+            tool.ErrorCode ?? string.Empty,
+            tool.CreatedAt)).ToList();
+        var result = new ProviderTraceItem(
+            item.ExchangeId,
+            item.TurnId,
+            item.Provider,
+            item.ModelId,
+            item.WireModel,
+            item.ProviderRequestId ?? string.Empty,
+            item.ProviderResponseId ?? string.Empty,
+            item.State,
+            item.Iteration,
+            item.StartedAt,
+            item.CompletedAt ?? string.Empty,
+            usage is null ? null : (long)usage.InputTokens,
+            usage is null ? null : (long)usage.OutputTokens,
+            usage?.CacheReadTokens is { } cacheRead ? (long)cacheRead : null,
+            usage?.CacheWriteTokens is { } cacheWrite ? (long)cacheWrite : null,
+            usage is null ? null : (long)usage.TotalTokens,
+            item.FinishReason ?? string.Empty,
+            JsonSerializer.Serialize(item.InputMessages, DisplayJson.Options),
+            MessageDisplayText(item.OutputMessage),
+            JsonSerializer.Serialize(item.ToolCalls, DisplayJson.Options),
+            Pretty(item.Error),
             messages,
             tools);
+        result.InputMessages = item.InputMessages;
+        return result;
     }
 
     private async Task<ProviderTraceItem> GetProviderTraceDetailsAsync(string sessionId, string exchangeId)
@@ -357,8 +393,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     private async Task<ProviderTraceItem> LoadProviderTraceDetailsCoreAsync(string sessionId, string exchangeId)
     {
-        var result = await _sdk!.ProviderExchangeAsync(sessionId, exchangeId);
-        return ProviderTraceFromJson(result);
+        var result = await _sdk!.GetProviderExchangeAsync(sessionId, exchangeId);
+        return ProviderTraceFromSdk(result);
     }
 
     private static void PopulateProviderTraceContents(ProviderTraceItem trace, ProviderTraceItem details)
@@ -403,23 +439,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 createdAt));
         }
 
-        JsonArray? inputMessages = null;
-        if (!string.IsNullOrWhiteSpace(details.InputText))
-        {
-            try
-            {
-                inputMessages = JsonNode.Parse(details.InputText) as JsonArray;
-            }
-            catch (JsonException)
-            {
-                // The raw request remains available in the call overview.
-            }
-        }
-        if (inputMessages is not null)
-        {
-            foreach (var message in inputMessages.OfType<JsonObject>())
-                AddMessage(message.String("role"), MessageText(message), string.Empty);
-        }
+        foreach (var message in details.InputMessages)
+            AddMessage(message.Role, MessageText(message), string.Empty);
         foreach (var message in details.Messages)
             AddMessage(message.Role, message.Content, message.CreatedAt);
         AddMessage("assistant", details.OutputText, details.CompletedAt);
@@ -448,25 +469,19 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         return compact.Length <= 72 ? compact : $"{compact[..72]}…";
     }
 
-    private static long? OptionalLong(JsonObject value, string name)
+    private static string MessageDisplayText(AgentMessage? message)
     {
-        if (value.Count == 0) return null;
-        if (value[name] is not JsonValue item) return null;
-        return item.TryGetValue<long>(out var result) ? result : null;
-    }
-
-    private static string OutputText(JsonNode? node)
-    {
-        if (node is not JsonObject message) return string.Empty;
+        if (message is null) return string.Empty;
         var text = MessageText(message);
-        return string.IsNullOrWhiteSpace(text) ? Pretty(node) : text;
+        return string.IsNullOrWhiteSpace(text)
+            ? JsonSerializer.Serialize(message, DisplayJson.Options)
+            : text;
     }
 
-    private static string Pretty(JsonNode? node)
-    {
-        if (node is null) return string.Empty;
-        return node.ToJsonString(DisplayJson.Options);
-    }
+    private static string Pretty(JsonElement? node) =>
+        node is null || node.Value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
+            ? string.Empty
+            : node.Value.GetRawText();
 
     private void NotifyGitDiffPresentationChanged()
     {

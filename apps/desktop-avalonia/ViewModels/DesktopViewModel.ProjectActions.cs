@@ -2,13 +2,13 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Sdk;
+using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
 
@@ -32,7 +32,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (string.IsNullOrWhiteSpace(path) || !await EnsureSdkReadyAsync()) return;
         await RunAsync(async () =>
         {
-            var opened = await _sdk!.OpenProjectAsync(path);
+            var opened = await _sdk!.OpenProjectAsync(new OpenProjectRequest(path));
             await LoadProjectsAsync();
             var project = MatchOrCreateProject(opened);
             if (project is not null) await SelectProjectAsync(project);
@@ -45,7 +45,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         IsBusy = true;
         try
         {
-            var opened = await _sdk!.OpenProjectAsync(path);
+            var opened = await _sdk!.OpenProjectAsync(new OpenProjectRequest(path));
             await LoadProjectsAsync();
             var project = MatchOrCreateProject(opened);
             StatusText = "Project opened";
@@ -123,12 +123,12 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 node.DependencyId,
                 node.Path);
             node.Children.Clear();
-            foreach (var item in result.Array("entries").OfType<JsonObject>())
+            foreach (var item in result.Entries)
             {
                 node.Children.Add(new ExplorerNode(
-                    item.String("name"),
-                    item.String("path"),
-                    item.String("kind"),
+                    item.Name,
+                    item.Path,
+                    item.Kind,
                     node.DependencyId));
             }
             node.IsLoaded = true;
@@ -171,8 +171,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (!EnsureSdk() || SelectedProject is null) return;
         await RunAsync(async () =>
         {
-            var created = await _sdk!.CreateSessionAsync(SelectedProject.ProjectId, title.Trim(), SelectedModel?.Id);
-            await LoadSessionsAsync(created.String("sessionId"));
+            var created = await _sdk!.CreateSessionAsync(new CreateSessionRequest(
+                SelectedProject.ProjectId,
+                title.Trim(),
+                SelectedModel?.Id));
+            await LoadSessionsAsync(created.SessionId);
         }, "Session created");
     }
 
@@ -262,8 +265,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         {
             var stageTimer = Stopwatch.StartNew();
             LogSession(operationId, sessionId, $"snapshot.begin version={loadVersion}");
-            var snapshot = await _sdk!.SessionSnapshotAsync(sessionId);
-            LogSession(operationId, sessionId, $"snapshot.end elapsed_ms={stageTimer.Elapsed.TotalMilliseconds:F1} messages={snapshot.Array("messages").Count()} events={snapshot.Array("events").Count()}");
+            var snapshot = await _sdk!.GetSessionSnapshotAsync(sessionId);
+            LogSession(operationId, sessionId, $"snapshot.end elapsed_ms={stageTimer.Elapsed.TotalMilliseconds:F1} messages={snapshot.Messages.Count} turns={snapshot.ConversationTurns.Count}");
             if (!IsCurrentSessionLoad(sessionId, loadVersion))
             {
                 LogSession(operationId, sessionId, $"snapshot.discard reason=stale current={DescribeSessionContext()}");
@@ -310,7 +313,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            var subscription = _sdk.Subscribe(sessionId, 0, json => OnNativeEvent(sessionId, json));
+            var subscription = _sdk.SubscribeTyped(sessionId, 0, eventValue => OnNativeEvent(sessionId, eventValue));
             if (!IsCurrentSessionLoad(sessionId, loadVersion))
             {
                 LogSession(operationId, sessionId, $"subscribe.discard reason=stale current={DescribeSessionContext()}");
@@ -363,13 +366,14 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         IsBusy = true;
         try
         {
-            var result = await _sdk!.SubmitTurnAsync(
+            var result = await _sdk!.SubmitTurnAsync(new SubmitTurnRequest(
                 SelectedSession.SessionId,
                 text,
+                Guid.NewGuid().ToString("N"),
                 SelectedModel.Id,
                 SelectedReasoningEffort,
-                attachments.Select(attachment => attachment.ImageId).ToArray());
-            var submissionStatus = result.String("status");
+                attachments.Select(attachment => attachment.ImageId).ToArray()));
+            var submissionStatus = result.Status;
             StatusText = submissionStatus switch
             {
                 "queued" => "Message queued for this turn",
@@ -409,7 +413,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         try
         {
             var result = await _sdk!.RetryLastTurnAsync(SelectedSession.SessionId);
-            StatusText = result.String("status") switch
+            StatusText = result.Status switch
             {
                 "awaiting_approval" => "Retry is awaiting approval",
                 "awaiting_question" => "Retry is awaiting your answer",
@@ -434,7 +438,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var sessionId = requestedSessionId ?? SelectedSession.SessionId;
         var result = await _sdk.ListSessionImagesAsync(sessionId);
         if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
-        ReplaceComposerAttachments(result.Array("images").OfType<JsonObject>().Select(ComposerAttachment.FromPayload));
+        ReplaceComposerAttachments(result.Images.Select(ComposerAttachment.FromSdk));
     }
 
     public async Task<bool> AddSessionImageAsync(
@@ -455,17 +459,15 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         IsBusy = true;
         try
         {
-            var payload = new JsonObject
-            {
-                ["displayName"] = displayName,
-                ["sourceKind"] = sourceKind,
-                ["originalPath"] = originalPath is null ? null : JsonValue.Create(originalPath),
-                ["extension"] = extension,
-                ["bytesBase64"] = Convert.ToBase64String(bytes),
-                ["thumbnailBase64"] = Convert.ToBase64String(thumbnailBytes)
-            };
-            var result = await _sdk!.AddSessionImageAsync(SelectedSession.SessionId, payload);
-            ComposerAttachments.Add(ComposerAttachment.FromPayload(result));
+            var result = await _sdk!.AddSessionImageAsync(new AddSessionImageRequest(
+                SelectedSession.SessionId,
+                displayName,
+                sourceKind,
+                extension,
+                Convert.ToBase64String(bytes),
+                Convert.ToBase64String(thumbnailBytes),
+                originalPath));
+            ComposerAttachments.Add(ComposerAttachment.FromSdk(result));
             StatusText = "Image uploaded";
             ConnectionState = "connected";
             return true;
@@ -505,7 +507,14 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (!EnsureSdk() || PendingApproval is null) return;
         await RunAsync(async () =>
         {
-            await _sdk!.ResolveApprovalAsync(PendingApproval.ApprovalId, decision);
+            await _sdk!.ResolveApprovalAsync(new ApprovalDecisionRequest(
+                PendingApproval.ApprovalId,
+                decision switch
+                {
+                    "allow_once" => ApprovalDecision.AllowOnce,
+                    "allow_session" => ApprovalDecision.AllowSession,
+                    _ => ApprovalDecision.Deny
+                }));
             if (decision == "allow_session") FullControlEnabled = true;
             PendingApproval = null;
         }, decision switch
@@ -527,13 +536,12 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     {
         if (!EnsureSdk() || PendingQuestion is null) return;
         var question = PendingQuestion;
-        var answers = new JsonArray(question.Questions
-            .Select(item => (JsonNode)new JsonArray(item.Answers
-                .Select(value => (JsonNode?)JsonValue.Create(value)).ToArray()))
-            .ToArray());
+        var answers = question.Questions
+            .Select(item => (IReadOnlyList<string>)item.Answers)
+            .ToArray();
         await RunAsync(async () =>
         {
-            await _sdk!.ReplyQuestionAsync(question.RequestId, answers);
+            await _sdk!.ReplyQuestionAsync(new ReplyQuestionRequest(question.RequestId, answers));
             PendingQuestion = null;
         }, "Answers submitted");
     }
@@ -555,12 +563,17 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var sessionId = SelectedSession.SessionId;
         await RunAsync(async () =>
         {
-            await _sdk!.SetSessionFullControlAsync(sessionId, false);
+            await _sdk!.SetSettingAsync(new SetSettingRequest(
+                "session",
+                SelectedProject?.ProjectId,
+                sessionId,
+                "full_control",
+                JsonSerializer.SerializeToElement(false)));
             if (SelectedSession?.SessionId == sessionId) FullControlEnabled = false;
         }, "Full Control turned off");
     }
 
-    public async Task RestoreCheckpointAsync(CheckpointItem checkpoint)
+    public async Task RestoreCheckpointAsync(SunCode.Desktop.Models.CheckpointItem checkpoint)
     {
         if (!EnsureSdk() || SelectedSession is null || !checkpoint.CanReview) return;
         await RunAsync(async () =>
@@ -576,12 +589,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (!EnsureSdk()) return;
         await RunAsync(async () =>
         {
-            var diagnostics = await _sdk!.DiagnosticsAsync();
-            var health = diagnostics.Object("health");
-            var database = health.Object("database");
-            DiagnosticsText = health.Count == 0
-                ? "Diagnostics unavailable"
-                : $"Agent  {health.String("agent")}\nDatabase  {(database.Bool("ok") ? "Ready" : "Check required")}";
+            var diagnostics = await _sdk!.GetDiagnosticsAsync();
+            DiagnosticsText = diagnostics.Health.Ok
+                ? $"Agent  {diagnostics.Health.Agent}\nDatabase  {(diagnostics.Health.Database.Ok ? "Ready" : "Check required")}"
+                : "Diagnostics unavailable";
             OnPropertyChanged(nameof(IsAgentHealthy));
         });
     }
@@ -598,18 +609,18 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         try
         {
             var status = await _sdk!.GitStatusAsync(SelectedProject.ProjectId);
-            GitBranch = status.String("branch");
-            GitChangedFiles = status.Int("changed_files");
-            GitAdditions = status.Int("additions");
-            GitDeletions = status.Int("deletions");
-            GitStatusTruncated = status.Bool("truncated");
+            GitBranch = status.Branch ?? string.Empty;
+            GitChangedFiles = status.ChangedFiles;
+            GitAdditions = (int)status.Additions;
+            GitDeletions = (int)status.Deletions;
+            GitStatusTruncated = status.Truncated;
             GitFiles.Clear();
-            foreach (var node in status.Array("files").OfType<JsonObject>())
+            foreach (var node in status.Files)
             {
                 GitFiles.Add(new GitFileItem(
-                    node.String("path"), node.String("status"), node.Bool("staged"), node.Bool("unstaged"),
-                    node.Bool("conflicted"), node.Int("additions"), node.Int("deletions"),
-                    node.String("old_path"), node.Bool("binary")));
+                    node.Path, node.Status, node.Staged, node.Unstaged,
+                    node.Conflicted, (int)node.Additions, (int)node.Deletions,
+                    node.OldPath ?? string.Empty, node.Binary));
             }
             ApplyGitFilter();
             GitState = "ready";
@@ -642,20 +653,20 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         try
         {
             var diff = await _sdk!.GitDiffAsync(SelectedProject.ProjectId, scope, file.Path);
-            GitPatch = diff.String("patch");
-            GitDiffBinary = diff.Bool("binary");
-            GitDiffTruncated = diff.Bool("truncated");
-            GitDiffAdditions = diff.Int("additions");
-            GitDiffDeletions = diff.Int("deletions");
-            foreach (var hunk in diff.Array("hunks").OfType<JsonObject>())
+            GitPatch = diff.Patch;
+            GitDiffBinary = diff.Binary;
+            GitDiffTruncated = diff.Truncated;
+            GitDiffAdditions = diff.Additions;
+            GitDiffDeletions = diff.Deletions;
+            foreach (var hunk in diff.Hunks)
             {
-                DiffLines.Add(new DiffLineItem("hunk", hunk.String("header"), string.Empty, string.Empty));
-                foreach (var line in hunk.Array("lines").OfType<JsonObject>())
+                DiffLines.Add(new DiffLineItem("hunk", hunk.Header, string.Empty, string.Empty));
+                foreach (var line in hunk.Lines)
                 {
                     DiffLines.Add(new DiffLineItem(
-                        line.String("kind"), line.String("text"),
-                        line["old_line"]?.ToString() ?? string.Empty,
-                        line["new_line"]?.ToString() ?? string.Empty));
+                        line.Kind, line.Text,
+                        line.OldLine?.ToString() ?? string.Empty,
+                        line.NewLine?.ToString() ?? string.Empty));
                 }
             }
             OnPropertyChanged(nameof(HasGitDiffLines));

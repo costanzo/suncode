@@ -33,6 +33,9 @@ import { MobilePlatformPage } from "../platforms/mobile/index.jsx";
 import { TuiPlatformPage } from "../platforms/tui/index.jsx";
 import { WebPlatformPage } from "../platforms/web/index.jsx";
 import { ProjectsPage } from "../projects/ProjectsPage.jsx";
+import { AgentsPage } from "../agents/AgentsPage.jsx";
+import { GeneralAgentPage } from "../agents/general/GeneralPage.jsx";
+import { PromptPage } from "../agents/general/prompt/PromptPage.jsx";
 import { ProjectHubPage } from "../projects/desktop/index.jsx";
 import { AboutPage } from "../projects/desktop/about/index.jsx";
 import { DesktopProjectPage } from "../projects/desktop/DesktopProjectPage.jsx";
@@ -98,6 +101,9 @@ const routes = {
   ),
   "/platforms/web/ownership": () => <DeferredOwnershipPage platform="web" title="Web" />,
   "/projects": ProjectsPage,
+  "/agents": AgentsPage,
+  "/agents/general": GeneralAgentPage,
+  "/agents/general/prompt": PromptPage,
   "/projects/desktop": DesktopProjectPage,
   "/projects/desktop/project-hub": ProjectHubPage,
   "/projects/desktop/dialog-window": DialogWindowPage,

@@ -2,13 +2,13 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Sdk;
+using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
 
@@ -17,18 +17,18 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private async Task LoadProjectsAsync()
     {
         if (_sdk is null) return;
-        var result = await _sdk.ListProjectsAsync();
+        var result = await _sdk.GetProjectsAsync();
         Projects.Clear();
-        foreach (var item in result.Array("projects").OfType<JsonObject>())
+        foreach (var item in result.Projects)
         {
-            Projects.Add(new ProjectItem(item.String("projectId"), item.String("displayName"), item.String("canonicalRoot")));
+            Projects.Add(new ProjectItem(item.ProjectId, item.DisplayName, item.CanonicalRoot));
         }
         OnPropertyChanged(nameof(HasProjects));
     }
 
-    private ProjectItem? MatchOrCreateProject(JsonObject opened)
+    private ProjectItem? MatchOrCreateProject(ProjectRecord opened)
     {
-        var projectId = opened.String("projectId");
+        var projectId = opened.ProjectId;
         if (projectId.Length == 0) return null;
 
         var project = Projects.FirstOrDefault(item => item.ProjectId == projectId);
@@ -36,8 +36,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
         var fallback = new ProjectItem(
             projectId,
-            opened.String("displayName"),
-            opened.String("canonicalRoot"));
+            opened.DisplayName,
+            opened.CanonicalRoot);
 
         if (fallback.CanonicalRoot.Length == 0) return null;
 
@@ -55,11 +55,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             return;
         }
         var result = await _sdk.ListProjectDependenciesAsync(SelectedProject.ProjectId);
-        foreach (var item in result.Array("dependencies").OfType<JsonObject>())
+        foreach (var item in result.Dependencies)
         {
             ProjectDependencies.Add(new ProjectDependencyItem(
-                item.String("dependencyId"),
-                item.String("displayName")));
+                item.DependencyId,
+                item.DisplayName));
         }
         OnPropertyChanged(nameof(HasProjectDependencies));
     }
@@ -97,19 +97,19 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     {
         if (_sdk is null || SelectedProject is null) return;
         var result = await _sdk.ListSessionsAsync(SelectedProject.ProjectId);
-        var sessionStates = result.Object("sessionStates");
+        var sessionStates = result.SessionStates;
         Sessions.Clear();
-        foreach (var item in result.Array("sessions").OfType<JsonObject>())
+        foreach (var item in result.Sessions)
         {
-            var sessionId = item.String("sessionId");
+            var sessionId = item.SessionId;
             Sessions.Add(new SessionItem(
                 sessionId,
-                item.String("title"),
-                item.String("lastActivityAt"),
-                !string.IsNullOrWhiteSpace(item.String("pinAt", "pin_at")),
-                sessionStates.String(sessionId),
-                item.String("modelId", "model_id"),
-                item.String("reasoningEffort", "reasoning_effort")));
+                item.Title ?? string.Empty,
+                item.LastActivityAt,
+                !string.IsNullOrWhiteSpace(item.PinAt),
+                sessionStates.TryGetValue(sessionId, out var state) ? state : string.Empty,
+                item.ModelId ?? string.Empty,
+                item.ReasoningEffort ?? string.Empty));
         }
         RefreshRecentSessionReferences();
         OnPropertyChanged(nameof(HasSessions));
@@ -142,23 +142,22 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     {
         if (_sdk is null) return;
         var selectedId = SelectedModel?.Id;
-        var result = await _sdk.ListModelsAsync();
+        var result = await _sdk.GetModelsAsync();
         _selectedModel = null;
         Models.Clear();
         Providers.Clear();
-        foreach (var item in result.Array("models").OfType<JsonObject>())
+        foreach (var item in result.Models)
         {
             Models.Add(new ModelItem(
-                item.String("id"),
-                item.String("provider"),
-                item.String("providerLabel", "provider_label"),
-                item.String("availability"),
-                item.Object("capabilities").Bool("reasoning_effort"),
-                item.Object("capabilities").Bool("vision"),
-                item.String("apiBase", "api_base"),
-                item.String("defaultApiBase", "default_api_base"),
-                item.Array("reasoningEfforts", "reasoning_efforts")
-                    .Select(value => value?.GetValue<string>() ?? string.Empty)
+                item.Id,
+                item.Provider,
+                item.ProviderLabel,
+                item.Availability,
+                item.Capabilities.ReasoningEffort,
+                item.Capabilities.Vision,
+                item.ApiBase,
+                item.DefaultApiBase,
+                item.ReasoningEfforts
                     .Where(value => !string.IsNullOrWhiteSpace(value))
                     .ToArray()));
         }
@@ -192,11 +191,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private async Task LoadCredentialsAsync()
     {
         if (_sdk is null) return;
-        var result = await _sdk.ListCredentialsAsync();
+        var result = await _sdk.GetCredentialsAsync();
         Credentials.Clear();
-        foreach (var item in result.Array("credentials").OfType<JsonObject>())
+        foreach (var item in result.Credentials)
         {
-            Credentials.Add(new CredentialItem(item.String("provider"), item.Bool("configured")));
+            Credentials.Add(new CredentialItem(item.Provider, item.Configured));
         }
         RefreshProviderConfigurationStates();
     }
@@ -215,27 +214,26 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private async Task LoadSettingsAsync()
     {
         if (_sdk is null) return;
-        var result = await _sdk.ListSettingsAsync();
-        var settings = result.Array("settings").OfType<JsonObject>().ToArray();
+        var settings = (await _sdk.GetSettingsAsync(new())).Settings;
         string StringSetting(string key, string fallback)
         {
-            var node = settings.FirstOrDefault(item => item.String("key") == key)?["value"];
-            return node is JsonValue value && value.TryGetValue<string>(out var parsed)
-                ? parsed
+            var setting = settings.FirstOrDefault(item => item.Key == key);
+            return setting is not null && setting.Value.ValueKind == JsonValueKind.String
+                ? setting.Value.GetString() ?? fallback
                 : fallback;
         }
         long LongSetting(string key, long fallback)
         {
-            var node = settings.FirstOrDefault(item => item.String("key") == key)?["value"];
-            return node is JsonValue value && value.TryGetValue<long>(out var parsed)
+            var setting = settings.FirstOrDefault(item => item.Key == key);
+            return setting is not null && setting.Value.TryGetInt64(out var parsed)
                 ? parsed
                 : fallback;
         }
         bool BoolSetting(string key, bool fallback)
         {
-            var node = settings.FirstOrDefault(item => item.String("key") == key)?["value"];
-            return node is JsonValue value && value.TryGetValue<bool>(out var parsed)
-                ? parsed
+            var setting = settings.FirstOrDefault(item => item.Key == key);
+            return setting is not null && setting.Value.ValueKind is JsonValueKind.True or JsonValueKind.False
+                ? setting.Value.GetBoolean()
                 : fallback;
         }
         var retention = LongSetting("log_retention", 5);
@@ -259,9 +257,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
         foreach (var item in settings)
         {
-            var key = item.String("key");
-            if (item["value"] is not JsonValue settingValue
-                || !settingValue.TryGetValue<string>(out var value)) continue;
+            var key = item.Key;
+            if (item.Value.ValueKind != JsonValueKind.String) continue;
+            var value = item.Value.GetString() ?? string.Empty;
             if (key == "theme_mode" && value is "dark" or "light") SetTheme(value);
             if (key == "default_model") SelectedModel = Models.FirstOrDefault(model => model.Id == value) ?? SelectedModel;
         }
@@ -270,42 +268,43 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private async Task LoadSessionControlAsync(string sessionId, long loadVersion)
     {
         if (_sdk is null || SelectedProject is null) return;
-        var result = await _sdk.ListSessionSettingsAsync(SelectedProject.ProjectId, sessionId);
+        var result = await _sdk.GetSettingsAsync(new(SelectedProject.ProjectId, sessionId));
         if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
-        var setting = result.Array("settings")
-            .OfType<JsonObject>()
-            .FirstOrDefault(item => item.String("key") == "full_control");
-        FullControlEnabled = setting?["value"] is JsonValue value
-            && value.TryGetValue<bool>(out var enabled)
-            && enabled;
+        var setting = result.Settings.FirstOrDefault(item => item.Key == "full_control");
+        FullControlEnabled = setting is not null
+            && setting.Value.ValueKind is JsonValueKind.True or JsonValueKind.False
+            && setting.Value.GetBoolean();
     }
 
     private async Task LoadSessionUsageAsync(string? requestedSessionId = null, long? loadVersion = null)
     {
         if (_sdk is null || SelectedSession is null) return;
         var sessionId = requestedSessionId ?? SelectedSession.SessionId;
-        var result = await _sdk.SessionUsageAsync(sessionId);
+        var result = await _sdk.GetSessionUsageAsync(sessionId);
         if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
-        SessionTotalTokens = result.Long("total_tokens");
+        SessionTotalTokens = (long)result.TotalTokens;
     }
 
     private async Task LoadCheckpointsAsync(string? requestedSessionId = null, long? loadVersion = null)
     {
         if (_sdk is null || SelectedSession is null) return;
         var sessionId = requestedSessionId ?? SelectedSession.SessionId;
-        var result = await _sdk.ListCheckpointsAsync(sessionId);
+        var result = await _sdk.GetCheckpointsAsync(sessionId);
         if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
-        var checkpoints = result.Array("checkpoints").OfType<JsonObject>().Select(item =>
+        var checkpoints = result.Checkpoints.Select(item =>
         {
-            var paths = item.Array("paths").Select(node => node?.GetValue<string>() ?? string.Empty).Where(path => path.Length > 0).ToArray();
-            return new CheckpointItem(item.String("manifestId"), item.String("turnId"), item.String("status"), paths);
+            return new SunCode.Desktop.Models.CheckpointItem(
+                item.ManifestId,
+                item.TurnId ?? string.Empty,
+                item.Status,
+                Array.Empty<string>());
         });
         Checkpoints.ReplaceAll(checkpoints);
         OnPropertyChanged(nameof(HasCheckpoints));
         NotifyReviewPresentationChanged();
     }
 
-    internal static SessionSnapshotProjection ProjectSnapshot(JsonObject snapshot)
+    internal static SessionSnapshotProjection ProjectSnapshot(SessionSnapshot snapshot)
     {
         var messages = new List<MessageItem>();
         var toolActivityTurns = new List<ToolActivityTurnItem>();
@@ -314,79 +313,82 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var changedPaths = new List<string>();
         var changedPathSet = new HashSet<string>(StringComparer.Ordinal);
         ApprovalItem? pendingApproval = null;
-        PendingQuestionItem? pendingQuestion = (snapshot["pendingQuestion"] as JsonObject ?? snapshot["pending_question"] as JsonObject) is { } pendingPayload
-            ? PendingQuestionItem.FromPayload(pendingPayload)
+        PendingQuestionItem? pendingQuestion = snapshot.PendingQuestion is { } pending
+            ? PendingQuestionItem.FromSdk(pending)
             : null;
         var activeTurnId = string.Empty;
         var activeTurnState = string.Empty;
-        var imagePayloads = snapshot.Array("images")
-            .OfType<JsonObject>()
-            .Where(image => image.String("imageId", "image_id").Length > 0)
-            .ToDictionary(image => image.String("imageId", "image_id"), StringComparer.Ordinal);
+        var imagePayloads = snapshot.Images
+            .Where(image => image.ImageId.Length > 0)
+            .ToDictionary(image => image.ImageId, StringComparer.Ordinal);
 
-        var conversationTurns = snapshot.Array("conversationTurns").OfType<JsonObject>().ToArray();
+        var conversationTurns = snapshot.ConversationTurns;
         var todoTurnId = conversationTurns
-            .Where(turn => !IsTerminalTurnState(turn.String("state")))
-            .Select(turn => turn.String("turnId", "turn_id"))
+            .Where(turn => !IsTerminalTurnState(turn.State))
+            .Select(turn => turn.TurnId)
             .LastOrDefault(id => id.Length > 0)
             ?? conversationTurns
-                .Select(turn => turn.String("turnId", "turn_id"))
+                .Select(turn => turn.TurnId)
                 .LastOrDefault(id => id.Length > 0)
             ?? string.Empty;
-        if (conversationTurns.Length > 0)
+        if (conversationTurns.Count > 0)
         {
-            for (var turnIndex = 0; turnIndex < conversationTurns.Length; turnIndex++)
+            for (var turnIndex = 0; turnIndex < conversationTurns.Count; turnIndex++)
             {
                 var turn = conversationTurns[turnIndex];
-                var turnId = turn.String("turnId", "turn_id");
-                var state = turn.String("state");
-                var startedAt = turn.String("startedAt", "started_at");
-                var completedAt = turn.String("completedAt", "completed_at");
+                var turnId = turn.TurnId;
+                var state = turn.State;
+                var startedAt = turn.StartedAt ?? string.Empty;
+                var completedAt = turn.CompletedAt ?? string.Empty;
                 if (!IsTerminalTurnState(state)) activeTurnId = turnId;
                 activeTurnState = state;
-                var toolUses = turn.Array("toolUses").OfType<JsonObject>().ToArray();
+                var toolUses = turn.ToolUses;
                 if (turnId == todoTurnId)
-                    currentTodos = ParseTodos(turn["todos"]);
-                var turnMessages = turn.Array("messages").OfType<JsonObject>()
-                    .OrderBy(item => item.String("createdAt", "created_at"), StringComparer.Ordinal)
+                    currentTodos = turn.Todos
+                        .Select(TodoItem.FromSdk)
+                        .Where(item => item is not null)
+                        .Select(item => item!)
+                        .ToArray();
+                var turnMessages = turn.Messages
+                    .OrderBy(item => item.CreatedAt, StringComparer.Ordinal)
                     .ToArray();
                 var userPreview = turnMessages
-                    .Where(item => item.String("role") == "user")
-                    .Select(item => MessageText(item.Object("message")))
+                    .Where(item => item.Role == "user")
+                    .Select(item => MessageText(item.Message))
                     .FirstOrDefault(text => !string.IsNullOrWhiteSpace(text)) ?? string.Empty;
                 var activityTurn = new ToolActivityTurnItem(
                     turnId,
                     turnIndex + 1,
                     state,
                     BoundedPreview(userPreview),
-                    turn.String("createdAt", "created_at"),
+                    turn.CreatedAt,
                     startedAt,
                     completedAt)
                 {
                     IsExpanded = !IsTerminalTurnState(state)
                 };
-                foreach (var toolUse in toolUses.OrderBy(item => item.String("createdAt", "created_at"), StringComparer.Ordinal).ThenBy(item => item.Int("ordinal")))
+                foreach (var toolUse in toolUses.OrderBy(item => item.CreatedAt, StringComparer.Ordinal).ThenBy(item => item.Ordinal))
                 {
-                    activityTurn.Tools.Add(ToolActivityItemFromJson(toolUse, turnId));
+                    activityTurn.Tools.Add(ToolActivityItemFromSdk(toolUse, turnId));
                 }
                 toolActivityTurns.Add(activityTurn);
                 foreach (var item in turnMessages)
                 {
-                    var role = item.String("role");
-                    var message = item.Object("message");
+                    var role = item.Role;
+                    var message = item.Message;
                     var text = MessageText(message);
                     if (role is "user" or "assistant" && !string.IsNullOrWhiteSpace(text))
                     {
                         messages.Add(new MessageItem
                         {
-                            MessageId = item.String("messageId", "message_id"),
+                            MessageId = item.MessageId,
                             Role = role,
                             Text = text,
                             ContentSequence = messages.Count + 1,
                             TurnId = turnId,
                             Attachments = role == "user" ? MessageAttachments(message, imagePayloads) : [],
-                            CanBeFinalAssistant = role == "assistant" && message.Array("tool_calls").Count == 0,
-                            IsFinalAssistant = role == "assistant" && message.Array("tool_calls").Count == 0,
+                            CanBeFinalAssistant = role == "assistant" && (message.ToolCalls?.Count ?? 0) == 0,
+                            IsFinalAssistant = role == "assistant" && (message.ToolCalls?.Count ?? 0) == 0,
                             IsVisible = true,
                             TurnSequence = turnIndex + 1,
                             TurnPreview = BoundedPreview(userPreview)
@@ -402,7 +404,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                     finalAssistant.DurationText = FormatDuration(activityTurn.StartedAt, activityTurn.CompletedAt, state);
                     finalAssistant.CompletionTimeText = FormatCompletionTime(activityTurn.CompletedAt);
                 }
-                foreach (var toolUse in toolUses.OrderBy(item => item.String("createdAt", "created_at"), StringComparer.Ordinal).ThenBy(item => item.Int("ordinal")))
+                foreach (var toolUse in toolUses.OrderBy(item => item.CreatedAt, StringComparer.Ordinal).ThenBy(item => item.Ordinal))
                 {
                     var toolMessage = ToolMessageItem(toolUse, turnId, messages.Count + 1);
                     toolMessage.IsVisible = false;
@@ -412,9 +414,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
         else
         {
-            foreach (var item in snapshot.Array("messages").OfType<JsonObject>())
+            foreach (var item in snapshot.Messages)
             {
-                var role = item.String("role");
+                var role = item.Role;
                 if (role is not ("user" or "assistant")) continue;
                 var text = MessageText(item);
                 if (string.IsNullOrWhiteSpace(text)) continue;
@@ -425,50 +427,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                     ContentSequence = messages.Count + 1,
                     IsVisible = true,
                     Attachments = role == "user" ? MessageAttachments(item, imagePayloads) : [],
-                    IsFinalAssistant = role == "assistant",
-                    CanBeFinalAssistant = role == "assistant"
+                    IsFinalAssistant = role == "assistant" && (item.ToolCalls?.Count ?? 0) == 0,
+                    CanBeFinalAssistant = role == "assistant" && (item.ToolCalls?.Count ?? 0) == 0
                 });
-            }
-        }
-
-        foreach (var item in snapshot.Array("events").OfType<JsonObject>())
-        {
-            var type = item.String("event_type", "eventType");
-            if (type is "message.user" or "message.assistant" or "message.tool") continue;
-            var payload = item.Object("payload");
-            if (!type.StartsWith("provider.exchange.", StringComparison.Ordinal))
-            {
-                activities.Add(new ActivityItem(type, EventText(type, payload), activities.Count + 1, payload.String("state"), payload.String("operation")));
-            }
-
-            if (type == "context.compacted")
-            {
-                messages.Add(new MessageItem
-                {
-                    Role = "assistant",
-                    Kind = "context.compacted",
-                    Text = EventText(type, payload),
-                    ContentSequence = messages.Count + 1,
-                    TurnId = payload.String("turn_id"),
-                    IsProcess = true
-                });
-            }
-
-            foreach (var path in new[] { payload.String("path"), payload.String("from"), payload.String("to") })
-            {
-                if (path.Length > 0 && changedPathSet.Add(path)) changedPaths.Add(path);
-            }
-
-            if (type == "approval.requested") pendingApproval = ApprovalItem.FromPayload(payload);
-            if (type == "approval.resolved") pendingApproval = null;
-            if (type == "question.asked") pendingQuestion = PendingQuestionItem.FromPayload(payload);
-            if (type is "question.replied" or "question.rejected") pendingQuestion = null;
-            if (type == "turn.state")
-            {
-                var state = payload.String("state");
-                activeTurnId = state is "completed" or "failed" or "cancelled" or "interrupted"
-                    ? string.Empty
-                    : payload.String("turn_id");
             }
         }
 
@@ -508,29 +469,19 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(LatestActivityText));
     }
 
-    private void OnNativeEvent(string sessionId, string json) => Dispatcher.UIThread.Post(() =>
+    private void OnNativeEvent(string sessionId, AgentEvent value) => Dispatcher.UIThread.Post(() =>
     {
         if (_disposed || SelectedSession?.SessionId != sessionId)
         {
             return;
         }
-        try
+        if (value.EventType == "resync.required")
         {
-            if (JsonNode.Parse(json) is JsonObject item)
-            {
-                if (item.String("event_type", "eventType") == "resync.required")
-                {
-                    LogSession("event", sessionId, "resync.required reload_begin");
-                    _ = ReloadCurrentSessionAsync(sessionId);
-                    return;
-                }
-                ApplyEvent(item, true);
-            }
+            LogSession("event", sessionId, "resync.required reload_begin");
+            _ = ReloadCurrentSessionAsync(sessionId);
+            return;
         }
-        catch (JsonException exception)
-        {
-            StatusText = $"Ignored malformed agent event: {exception.Message}";
-        }
+        ApplyEvent(value, true);
     });
 
     private async Task ReloadCurrentSessionAsync(string sessionId)
@@ -541,18 +492,18 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         await SelectSessionAsync(SelectedSession);
     }
 
-    internal void ApplyEvent(JsonObject value, bool live)
+    internal void ApplyEvent(AgentEvent value, bool live)
     {
-        var type = value.String("event_type", "eventType");
-        var payload = value.Object("payload");
+        var type = value.EventType;
+        var payload = value.Payload;
         var text = EventText(type, payload);
 
         if (type == "assistant.delta")
         {
-            var turnId = payload.String("turn_id");
+            var turnId = payload.TurnId ?? string.Empty;
             var assistant = Messages.LastOrDefault(message =>
                 message.TurnId == turnId && message.Role == "assistant" && message.Streaming);
-            var delta = payload.String("text");
+            var delta = payload.Text ?? string.Empty;
             if (assistant is null)
             {
                 if (delta.Length > 0)
@@ -579,10 +530,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
         else if (type is "message.user" or "message.assistant")
         {
-            var turnId = payload.String("turn_id");
-            var messageId = payload.String("message_id", "messageId");
-            var message = payload.Object("message");
-            var canBeFinalAssistant = type == "message.assistant" && message.Array("tool_calls").Count == 0;
+            var turnId = payload.TurnId ?? string.Empty;
+            var messageId = payload.MessageId ?? string.Empty;
+            var message = payload.Message ?? EmptyMessage;
+            var canBeFinalAssistant = type == "message.assistant" && (message.ToolCalls?.Count ?? 0) == 0;
             var changed = false;
             var streaming = type == "message.assistant"
                 ? Messages.LastOrDefault(message =>
@@ -651,15 +602,19 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         else if (type is "tool.requested" or "tool.state" or "tool.result" or "tool.output")
         {
             ApplyToolEvent(payload, type);
-            Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.String("state"), payload.String("name")));
+            Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.State ?? string.Empty, payload.Name ?? string.Empty));
             OnPropertyChanged(nameof(HasActivities));
             OnPropertyChanged(nameof(LatestActivityText));
         }
         else if (type == "todo.updated")
         {
-            CurrentTodos.ReplaceAll(ParseTodos(payload["todos"]));
+            CurrentTodos.ReplaceAll((payload.Todos ?? [])
+                .Select(TodoItem.FromSdk)
+                .Where(item => item is not null)
+                .Select(item => item!)
+                .ToArray());
             OnPropertyChanged(nameof(HasCurrentTodos));
-            Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.String("state"), "todowrite"));
+            Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.State ?? string.Empty, "todowrite"));
             OnPropertyChanged(nameof(HasActivities));
             OnPropertyChanged(nameof(LatestActivityText));
         }
@@ -671,20 +626,20 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 Kind = "context.compacted",
                 Text = EventText(type, payload),
                 ContentSequence = Messages.Count + 1,
-                TurnId = payload.String("turn_id"),
+                TurnId = payload.TurnId ?? string.Empty,
                 IsProcess = true
             });
             OnPropertyChanged(nameof(HasMessages));
         }
         else if (!type.StartsWith("provider.exchange.", StringComparison.Ordinal))
         {
-            Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.String("state"), payload.String("operation")));
+            Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.State ?? string.Empty, payload.Operation ?? string.Empty));
             OnPropertyChanged(nameof(HasActivities));
             OnPropertyChanged(nameof(LatestActivityText));
         }
 
         var pathAdded = false;
-        foreach (var path in new[] { payload.String("path"), payload.String("from"), payload.String("to") })
+        foreach (var path in new[] { payload.Path ?? string.Empty })
         {
             if (path.Length > 0 && !ChangedPaths.Contains(path))
             {
@@ -695,18 +650,18 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 pathAdded = true;
             }
         }
-        if (type == "approval.requested") PendingApproval = ApprovalItem.FromPayload(payload);
+        if (type == "approval.requested") PendingApproval = ApprovalItem.FromSdk(payload);
         if (type == "approval.resolved")
         {
-            if (payload.String("decision") == "allow_session") FullControlEnabled = true;
+            if (payload.Decision == "allow_session") FullControlEnabled = true;
             PendingApproval = null;
         }
-        if (type == "question.asked") PendingQuestion = PendingQuestionItem.FromPayload(payload);
+        if (type == "question.asked") PendingQuestion = PendingQuestionItem.FromSdk(payload);
         if (type is "question.replied" or "question.rejected") PendingQuestion = null;
         if (type == "turn.state")
         {
-            var state = payload.String("state");
-            var turnId = payload.String("turn_id");
+            var state = payload.State ?? string.Empty;
+            var turnId = payload.TurnId ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(turnId)) LastTurnId = turnId;
             if (state == "admitted")
             {
@@ -716,10 +671,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             ActiveTurnId = IsTerminalTurnState(state) ? string.Empty : turnId;
             ActiveTurnState = state;
             var activityTurn = EnsureToolActivityTurn(turnId);
-            var occurredAt = value.String("occurred_at", "occurredAt");
+            var occurredAt = value.OccurredAt;
             activityTurn.SetTiming(
-                payload.String("started_at", "startedAt"),
-                IsTerminalTurnState(state) ? (payload.String("completed_at", "completedAt") is { Length: > 0 } completed ? completed : occurredAt) : null);
+                payload.StartedAt,
+                IsTerminalTurnState(state) ? (payload.CompletedAt is { Length: > 0 } completed ? completed : occurredAt) : null);
             if (string.IsNullOrWhiteSpace(activityTurn.StartedAt) && state == "admitted")
                 activityTurn.SetTiming(occurredAt, null);
             activityTurn.Update(state);
@@ -744,29 +699,29 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (live && (type.StartsWith("checkpoint.", StringComparison.Ordinal) || pathAdded)) _ = RefreshGitAsync();
     }
 
-    private void ApplyToolEvent(JsonObject payload, string eventType)
+    private void ApplyToolEvent(AgentEventPayload payload, string eventType)
     {
-        var turnId = payload.String("turn_id");
-        var toolCallId = payload.String("tool_call_id");
+        var turnId = payload.TurnId ?? string.Empty;
+        var toolCallId = payload.ToolCallId ?? string.Empty;
         if (turnId.Length == 0 || toolCallId.Length == 0) return;
         var turn = EnsureToolActivityTurn(turnId);
         var existing = turn.Tools.FirstOrDefault(tool => tool.ToolCallId == toolCallId);
         var state = eventType == "tool.state"
-            ? payload.String("state")
+            ? payload.State ?? string.Empty
             : existing?.State ?? "requested";
-        var name = payload.String("name");
+        var name = payload.Name ?? string.Empty;
         if (name.Length == 0) name = existing?.Name ?? "tool";
         var request = eventType == "tool.requested"
-            ? Pretty(payload["arguments"])
+            ? Pretty(payload.Arguments)
             : existing?.Request ?? string.Empty;
         var result = eventType == "tool.result"
-            ? Pretty(payload["result"])
+            ? Pretty(payload.Result)
             : existing?.Result ?? string.Empty;
         var output = eventType == "tool.output"
             ? AppendBoundedOutput(existing?.Output ?? string.Empty, DecodeOutputChunk(payload))
             : existing?.Output ?? string.Empty;
         var error = eventType == "tool.state"
-            ? payload.String("reason")
+            ? payload.Reason ?? string.Empty
             : existing?.Error ?? string.Empty;
         if (existing is null)
         {
@@ -784,10 +739,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         SyncActiveToolRow();
     }
 
-    private static string DecodeOutputChunk(JsonObject payload)
+    private static string DecodeOutputChunk(AgentEventPayload payload)
     {
-        var encoded = payload.String("chunk_base64", "chunkBase64");
-        if (encoded.Length == 0) return payload.String("chunk");
+        var encoded = payload.ChunkBase64 ?? string.Empty;
+        if (encoded.Length == 0) return string.Empty;
         try { return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(encoded)); }
         catch (FormatException) { return string.Empty; }
     }
@@ -917,31 +872,31 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (row is not null) row.DurationText = ActiveTurnDurationText;
     }
 
-    private static ToolActivityItem ToolActivityItemFromJson(JsonObject item, string turnId) => new(
+    private static ToolActivityItem ToolActivityItemFromSdk(SessionCallToolUse item, string turnId) => new(
         turnId,
-        item.String("toolCallId", "tool_call_id"),
-        item.String("name"),
-        item.String("state"),
-        Pretty(item["request"]),
-        Pretty(item["result"]),
+        item.ToolCallId,
+        item.Name,
+        item.State,
+        Pretty(item.Request),
+        Pretty(item.Result),
         string.Empty,
-        item.String("errorCode", "error_code"),
-        item.String("createdAt", "created_at"));
+        item.ErrorCode ?? string.Empty,
+        item.CreatedAt);
 
-    private static MessageItem ToolMessageItem(JsonObject item, string turnId, long sequence) => new()
+    private static MessageItem ToolMessageItem(SessionCallToolUse item, string turnId, long sequence) => new()
     {
         Role = "tool",
         Kind = "tool",
-        Text = item.String("name"),
+        Text = item.Name,
         ContentSequence = sequence,
         TurnId = turnId,
-        ToolCallId = item.String("toolCallId", "tool_call_id"),
-        ToolName = item.String("name"),
-        ToolState = item.String("state"),
-        ToolDetail = Pretty(item["result"] ?? item["request"]),
-        ToolRequest = Pretty(item["request"]),
-        ToolResult = Pretty(item["result"]),
-        ToolError = item.String("errorCode", "error_code"),
+        ToolCallId = item.ToolCallId,
+        ToolName = item.Name,
+        ToolState = item.State,
+        ToolDetail = Pretty(item.Result ?? item.Request),
+        ToolRequest = Pretty(item.Request),
+        ToolResult = Pretty(item.Result),
+        ToolError = item.ErrorCode ?? string.Empty,
         IsProcess = true,
         IsVisible = false
     };
@@ -952,13 +907,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var compact = string.Join(" ", text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
         return compact.Length <= previewLength ? compact : compact[..previewLength].TrimEnd() + "...";
     }
-
-    private static IReadOnlyList<TodoItem> ParseTodos(JsonNode? value) =>
-        (value as JsonArray)?.OfType<JsonObject>()
-            .Select(TodoItem.FromPayload)
-            .Where(item => item is not null)
-            .Select(item => item!)
-            .ToArray() ?? [];
 
     private static bool IsTerminalTurnState(string state) =>
         state is "completed" or "failed" or "cancelled" or "interrupted";
@@ -984,63 +932,56 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             : string.Empty;
     }
 
-    private static string EventText(string type, JsonObject payload)
+    private static string EventText(string type, AgentEventPayload payload)
     {
-        var message = payload.Object("message");
-        var messageText = MessageText(message);
+        var messageText = payload.Message is { } message ? MessageText(message) : string.Empty;
         if (type is "message.user" or "message.assistant" or "message.tool" || !string.IsNullOrEmpty(messageText)) return messageText;
         return type switch
         {
-            "approval.requested" => $"Approval required for {payload.String("operation")}",
+            "approval.requested" => $"Approval required for {payload.Operation}",
             "question.asked" => "Waiting for an answer",
             "question.replied" => "Question answered",
             "question.rejected" => "Question skipped",
             "todo.updated" => "Todo list updated",
-            "context.compacted" => $"Context compacted · retained {payload.String("retained_tokens")} tokens",
-            "checkpoint.captured" => $"Checkpoint captured for {payload.String("path")}",
+            "context.compacted" => $"Context compacted · retained {payload.RetainedTokens} tokens",
+            "checkpoint.captured" => $"Checkpoint captured for {payload.Path}",
             "checkpoint.restore_failed" => "Undo stopped because a file changed outside SunCode",
-            "turn.state" => $"Turn {payload.String("state")}",
-            "assistant.delta" => payload.String("text"),
-            "tool.output" => $"Command output · {payload.String("stream")}",
+            "turn.state" => $"Turn {payload.State}",
+            "assistant.delta" => payload.Text ?? string.Empty,
+            "tool.output" => $"Command output · {payload.Stream}",
             _ => type
         };
     }
 
-    private static string MessageText(JsonObject message)
-    {
-        return string.Join("\n", message.Array("content")
-            .OfType<JsonObject>()
-            .Where(part => part.String("type") == "text")
-            .Select(part => part.String("text")));
-    }
+    private static readonly AgentMessage EmptyMessage = new(string.Empty, [], [], null);
+
+    private static string MessageText(AgentMessage message) => message.Text;
 
     private static IReadOnlyList<ComposerAttachment> MessageAttachments(
-        JsonObject message,
-        IReadOnlyDictionary<string, JsonObject> images)
+        AgentMessage message,
+        IReadOnlyDictionary<string, SessionImage> images)
     {
         var attachments = new List<ComposerAttachment>();
         foreach (var imageId in MessageImageIds(message))
         {
             if (images.TryGetValue(imageId, out var payload))
-                attachments.Add(ComposerAttachment.FromPayload(payload));
+                attachments.Add(ComposerAttachment.FromSdk(payload));
         }
         return attachments;
     }
 
-    internal static IReadOnlyList<string> MessageImageIds(JsonObject message) =>
-        message.Array("content")
-            .OfType<JsonObject>()
-            .Where(part => part.String("type") == "image_ref")
-            .Select(part => part.String("text"))
+    internal static IReadOnlyList<string> MessageImageIds(AgentMessage message) =>
+        (message.Content ?? [])
+            .Where(part => part.Kind == "image_ref")
+            .Select(part => part.Text)
             .Where(imageId => imageId.Length > 0)
             .ToArray();
 
-    private IReadOnlyList<ComposerAttachment> PendingMessageAttachments(JsonObject message)
+    private IReadOnlyList<ComposerAttachment> PendingMessageAttachments(AgentMessage message)
     {
-        var imageIds = message.Array("content")
-            .OfType<JsonObject>()
-            .Where(part => part.String("type") == "image_ref")
-            .Select(part => part.String("text"))
+        var imageIds = (message.Content ?? [])
+            .Where(part => part.Kind == "image_ref")
+            .Select(part => part.Text)
             .ToHashSet(StringComparer.Ordinal);
         if (imageIds.Count == 0) return [];
         var attachments = _submittedAttachments.Where(item => imageIds.Contains(item.ImageId)).ToArray();

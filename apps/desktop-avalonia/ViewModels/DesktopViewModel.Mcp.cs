@@ -39,7 +39,7 @@ public sealed partial class DesktopViewModel
         if (SelectedProject is null || !await EnsureSdkReadyAsync()) return;
         try
         {
-            _mcpLoadProgress = await _sdk!.StartMcpProjectTypedAsync(SelectedProject.ProjectId);
+            _mcpLoadProgress = await _sdk!.StartMcpProjectAsync(SelectedProject.ProjectId);
             NotifyMcpProgressChanged();
         }
         catch (Exception exception)
@@ -133,7 +133,7 @@ public sealed partial class DesktopViewModel
         if (!await EnsureSdkReadyAsync() || SelectedProject is null) return false;
         return await RunMcpMutationAsync(item, async () =>
         {
-            var server = await _sdk!.RetryMcpServerTypedAsync(SelectedProject.ProjectId, item.ServerId);
+            var server = await _sdk!.RetryMcpServerAsync(SelectedProject.ProjectId, item.ServerId);
             UpsertMcpServer(server);
         }, "MCP server connection retried.");
     }

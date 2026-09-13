@@ -82,7 +82,7 @@ public sealed partial class DesktopViewModel
         EditorState = "loading";
         try
         {
-            var result = await _sdk.ReadProjectFileTypedAsync(projectId, node.DependencyId, node.Path);
+            var result = await _sdk.ReadProjectFileAsync(projectId, node.DependencyId, node.Path);
             if (!IsCurrentEditorLoad(node, projectId, loadVersion)) return;
             EditorContent = result.Content;
             EditorState = result.Content.Length == 0 ? "empty" : "ready";

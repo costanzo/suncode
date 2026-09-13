@@ -1,6 +1,7 @@
-using System.Text.Json.Nodes;
+using System.Text.Json;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
+using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.Tests;
 
@@ -48,7 +49,7 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void SnapshotProjectsTurnTimingToTheFinalAssistantMessage()
     {
-        var snapshot = JsonNode.Parse("""
+        var snapshot = Snapshot("""
         {
           "conversationTurns": [{
             "turnId": "turn-1",
@@ -63,7 +64,7 @@ public sealed class SessionSnapshotProjectionTests
             }]
           }]
         }
-        """)!.AsObject();
+        """);
 
         var assistant = Assert.Single(DesktopViewModel.ProjectSnapshot(snapshot).Messages);
         Assert.Equal("Worked for 1.2 s", assistant.DurationLabel);
@@ -77,7 +78,7 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void ProjectionExtractsMessageOwnedImageReferences()
     {
-        var message = JsonNode.Parse("""
+        var message = Message("""
         {
           "role":"user",
           "content":[
@@ -86,7 +87,7 @@ public sealed class SessionSnapshotProjectionTests
             {"type":"image_ref","text":"image-2"}
           ]
         }
-        """)!.AsObject();
+        """);
 
         Assert.Equal(["image-1", "image-2"], DesktopViewModel.MessageImageIds(message));
     }
@@ -168,7 +169,7 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void ApprovalItemFormatsShellRequestsForReview()
     {
-        var payload = JsonNode.Parse("""
+        var payload = Approval("""
         {
           "approval_id": "approval-1",
           "operation": "bash",
@@ -178,9 +179,9 @@ public sealed class SessionSnapshotProjectionTests
             "workdir": "src"
           }
         }
-        """)!.AsObject();
+        """);
 
-        var approval = ApprovalItem.FromPayload(payload)!;
+        var approval = ApprovalItem.FromSdk(payload)!;
 
         Assert.Equal("Run a shell command", approval.ActionText);
         Assert.Equal("Command", approval.DetailLabel);
@@ -194,7 +195,7 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void ToolDetailsKeepShellOperatorsReadable()
     {
-        var snapshot = JsonNode.Parse("""
+        var snapshot = Snapshot("""
         {
           "conversationTurns": [
             {
@@ -212,7 +213,7 @@ public sealed class SessionSnapshotProjectionTests
             }
           ]
         }
-        """)!.AsObject();
+        """);
 
         var tool = Assert.Single(DesktopViewModel.ProjectSnapshot(snapshot).ToolActivityTurns.Single().Tools);
 
@@ -225,15 +226,15 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void ApprovalItemSummarizesFileTargetsAndKeepsRawRequestReadable()
     {
-        var payload = JsonNode.Parse("""
+        var payload = Approval("""
         {
           "approval_id": "approval-2",
           "operation": "write",
           "arguments": {"path":"src/App.cs","content":"class App {}"}
         }
-        """)!.AsObject();
+        """);
 
-        var approval = ApprovalItem.FromPayload(payload)!;
+        var approval = ApprovalItem.FromSdk(payload)!;
 
         Assert.Equal("Write to a project file", approval.ActionText);
         Assert.Equal("Target", approval.DetailLabel);
@@ -244,18 +245,18 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void ApprovalItemSummarizesWebFetchByUrl()
     {
-        var payload = new JsonObject
+        var payload = Approval("""
         {
-            ["approval_id"] = "approval-web",
-            ["operation"] = "webfetch",
-            ["arguments"] = new JsonObject
-            {
-                ["url"] = "https://example.com/reference",
-                ["format"] = "markdown"
-            }
-        };
+          "approval_id": "approval-web",
+          "operation": "webfetch",
+          "arguments": {
+            "url": "https://example.com/reference",
+            "format": "markdown"
+          }
+        }
+        """);
 
-        var approval = ApprovalItem.FromPayload(payload)!;
+        var approval = ApprovalItem.FromSdk(payload)!;
 
         Assert.Equal("Fetch web content", approval.ActionText);
         Assert.Equal("Web request", approval.OperationText);
@@ -276,7 +277,7 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void ProjectionRestoresPendingQuestionFromSnapshot()
     {
-        var snapshot = JsonNode.Parse("""
+        var snapshot = Snapshot("""
         {
           "pendingQuestion": {
             "request_id": "que-1",
@@ -292,7 +293,7 @@ public sealed class SessionSnapshotProjectionTests
           },
           "conversationTurns": [{"turnId":"turn-1","state":"resolving_calls","messages":[],"toolUses":[]}]
         }
-        """)!.AsObject();
+        """);
 
         var projection = DesktopViewModel.ProjectSnapshot(snapshot);
 
@@ -307,24 +308,24 @@ public sealed class SessionSnapshotProjectionTests
     public void LiveQuestionEventsSetAndClearPendingQuestion()
     {
         using var viewModel = new DesktopViewModel();
-        viewModel.ApplyEvent(JsonNode.Parse("""
+        viewModel.ApplyEvent(Event("""
         {
           "event_type":"question.asked",
           "payload":{"request_id":"que-2","turn_id":"turn-2","tool_call_id":"call-2","questions":[{"header":"Scope","question":"Use project scope?","options":[{"label":"Yes","description":"Keep it local"}]}]}
         }
-        """)!.AsObject(), true);
+        """), true);
 
         Assert.Equal("que-2", viewModel.PendingQuestion?.RequestId);
-        viewModel.ApplyEvent(JsonNode.Parse("""
+        viewModel.ApplyEvent(Event("""
         {"event_type":"question.replied","payload":{"request_id":"que-2","turn_id":"turn-2","answers":[["Yes"]]}}
-        """)!.AsObject(), true);
+        """), true);
         Assert.Null(viewModel.PendingQuestion);
     }
 
     [Fact]
     public void ProjectionRestoresCurrentTodosFromTheLatestTodoWrite()
     {
-        var snapshot = JsonNode.Parse("""
+        var snapshot = Snapshot("""
         {
           "conversationTurns": [{
             "turnId": "turn-1",
@@ -348,7 +349,7 @@ public sealed class SessionSnapshotProjectionTests
             ]
           }]
         }
-        """)!.AsObject();
+        """);
 
         var todos = DesktopViewModel.ProjectSnapshot(snapshot).CurrentTodos;
 
@@ -372,44 +373,44 @@ public sealed class SessionSnapshotProjectionTests
     {
         using var viewModel = new DesktopViewModel();
 
-        viewModel.ApplyEvent(JsonNode.Parse("""
+        viewModel.ApplyEvent(Event("""
         {
           "event_type":"todo.updated",
           "payload":{"turn_id":"turn-0","todos":[
             {"content":"Previous turn","status":"completed","priority":"low"}
           ]}
         }
-        """)!.AsObject(), true);
+        """), true);
         Assert.Single(viewModel.CurrentTodos);
 
-        viewModel.ApplyEvent(JsonNode.Parse("""
+        viewModel.ApplyEvent(Event("""
         {
           "event_type":"turn.state",
           "payload":{"turn_id":"turn-1","state":"admitted"}
         }
-        """)!.AsObject(), true);
+        """), true);
         Assert.Empty(viewModel.CurrentTodos);
 
-        viewModel.ApplyEvent(JsonNode.Parse("""
+        viewModel.ApplyEvent(Event("""
         {
           "event_type":"todo.updated",
           "payload":{"turn_id":"turn-1","todos":[
             {"content":"Inspect project","status":"in_progress","priority":"high"}
           ]}
         }
-        """)!.AsObject(), true);
+        """), true);
 
         var todo = Assert.Single(viewModel.CurrentTodos);
         Assert.Equal("Inspect project", todo.Content);
         Assert.Equal(">", todo.StatusMarker);
         Assert.True(viewModel.HasCurrentTodos);
 
-        viewModel.ApplyEvent(JsonNode.Parse("""
+        viewModel.ApplyEvent(Event("""
         {
           "event_type":"todo.updated",
           "payload":{"turn_id":"turn-1","todos":[]}
         }
-        """)!.AsObject(), true);
+        """), true);
 
         Assert.Empty(viewModel.CurrentTodos);
         Assert.False(viewModel.HasCurrentTodos);
@@ -418,7 +419,7 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void SnapshotUsesPersistedTodosInsteadOfTodoToolResult()
     {
-        var snapshot = JsonNode.Parse("""
+        var snapshot = Snapshot("""
         {
           "conversationTurns": [{
             "turnId":"turn-1",
@@ -427,7 +428,7 @@ public sealed class SessionSnapshotProjectionTests
             "toolUses":[{"name":"todowrite","state":"succeeded","result":{"todos":[{"content":"Stale result","status":"pending","priority":"low"}]}}]
           }]
         }
-        """)!.AsObject();
+        """);
 
         var todo = Assert.Single(DesktopViewModel.ProjectSnapshot(snapshot).CurrentTodos);
 
@@ -438,14 +439,14 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void ProjectionPreservesNormalizedMessages()
     {
-        var snapshot = JsonNode.Parse("""
+        var snapshot = Snapshot("""
         {
           "messages": [
             {"role":"user","content":[{"type":"text","text":"first"}]},
             {"role":"assistant","content":[{"type":"text","text":"second"}]}
           ]
         }
-        """)!.AsObject();
+        """);
 
         var projection = DesktopViewModel.ProjectSnapshot(snapshot);
 
@@ -462,7 +463,7 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void ProjectionOmitsAssistantMessagesWithoutVisibleText()
     {
-        var snapshot = JsonNode.Parse("""
+        var snapshot = Snapshot("""
         {
           "messages": [
             {"role":"user","content":[{"type":"text","text":"inspect this"}]},
@@ -474,7 +475,7 @@ public sealed class SessionSnapshotProjectionTests
             {"role":"assistant","content":[{"type":"text","text":"done"}]}
           ]
         }
-        """)!.AsObject();
+        """);
 
         var projection = DesktopViewModel.ProjectSnapshot(snapshot);
 
@@ -487,7 +488,7 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void LegacyProjectionPreservesVisibleAssistantMessages()
     {
-        var snapshot = JsonNode.Parse("""
+        var snapshot = Snapshot("""
         {
           "messages": [
             {"role":"user","content":[{"type":"text","text":"first question"}]},
@@ -497,7 +498,7 @@ public sealed class SessionSnapshotProjectionTests
             {"role":"assistant","content":[{"type":"text","text":"second summary"}]}
           ]
         }
-        """)!.AsObject();
+        """);
 
         var projection = DesktopViewModel.ProjectSnapshot(snapshot);
 
@@ -514,7 +515,7 @@ public sealed class SessionSnapshotProjectionTests
     public void LiveProjectionOmitsAssistantMessagesWithoutVisibleText()
     {
         var viewModel = new DesktopViewModel();
-        var toolCallMessage = JsonNode.Parse("""
+        var toolCallMessage = Event("""
         {
           "event_type":"message.assistant",
           "payload":{
@@ -526,7 +527,7 @@ public sealed class SessionSnapshotProjectionTests
             }
           }
         }
-        """)!.AsObject();
+        """);
 
         viewModel.ApplyEvent(toolCallMessage, live: true);
 
@@ -537,13 +538,13 @@ public sealed class SessionSnapshotProjectionTests
     public void EmptyFinalEventPreservesAlreadyStreamedAssistantText()
     {
         var viewModel = new DesktopViewModel();
-        viewModel.ApplyEvent(JsonNode.Parse("""
+        viewModel.ApplyEvent(Event("""
         {
           "event_type":"assistant.delta",
           "payload":{"turn_id":"turn-1","text":"visible response"}
         }
-        """)!.AsObject(), live: true);
-        var emptyFinalMessage = JsonNode.Parse("""
+        """), live: true);
+        var emptyFinalMessage = Event("""
         {
           "event_type":"message.assistant",
           "payload":{
@@ -552,7 +553,7 @@ public sealed class SessionSnapshotProjectionTests
             "message":{"role":"assistant","content":[]}
           }
         }
-        """)!.AsObject();
+        """);
 
         viewModel.ApplyEvent(emptyFinalMessage, live: true);
 
@@ -656,7 +657,7 @@ public sealed class SessionSnapshotProjectionTests
     public void DuplicateLiveMessageIdIsAppliedOnce()
     {
         var viewModel = new DesktopViewModel();
-        var userMessage = JsonNode.Parse("""
+        var userMessage = Event("""
         {
           "event_type":"message.user",
           "payload":{
@@ -665,7 +666,7 @@ public sealed class SessionSnapshotProjectionTests
             "message":{"role":"user","content":[{"type":"text","text":"only once"}]}
           }
         }
-        """)!.AsObject();
+        """);
 
         viewModel.ApplyEvent(userMessage, live: true);
         viewModel.ApplyEvent(userMessage, live: true);
@@ -681,7 +682,7 @@ public sealed class SessionSnapshotProjectionTests
         var viewModel = new DesktopViewModel();
         foreach (var messageId in new[] { "message-1", "message-2" })
         {
-            viewModel.ApplyEvent(JsonNode.Parse($$"""
+            viewModel.ApplyEvent(Event($$"""
             {
               "event_type":"message.user",
               "payload":{
@@ -690,7 +691,7 @@ public sealed class SessionSnapshotProjectionTests
                 "message":{"role":"user","content":[{"type":"text","text":"same text"}]}
               }
             }
-            """)!.AsObject(), live: true);
+            """), live: true);
         }
 
         Assert.Equal(2, viewModel.Messages.Count);
@@ -699,7 +700,7 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void MessageProjectionCombinesAllTextParts()
     {
-        var snapshot = JsonNode.Parse("""
+        var snapshot = Snapshot("""
         {
           "messages": [
             {
@@ -711,7 +712,7 @@ public sealed class SessionSnapshotProjectionTests
             }
           ]
         }
-        """)!.AsObject();
+        """);
 
         var projection = DesktopViewModel.ProjectSnapshot(snapshot);
 
@@ -721,7 +722,7 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void NormalizedTurnSnapshotCollapsesProcessItemsWithoutDeletingThem()
     {
-        var snapshot = JsonNode.Parse("""
+        var snapshot = Snapshot("""
         {
           "conversationTurns": [
             {
@@ -739,7 +740,7 @@ public sealed class SessionSnapshotProjectionTests
             }
           ]
         }
-        """)!.AsObject();
+        """);
 
         var projection = DesktopViewModel.ProjectSnapshot(snapshot);
 
@@ -772,7 +773,7 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void AssistantTextWithToolCallsRemainsProcessInsteadOfBecomingFinal()
     {
-        var snapshot = JsonNode.Parse("""
+        var snapshot = Snapshot("""
         {
           "conversationTurns": [
             {
@@ -802,7 +803,7 @@ public sealed class SessionSnapshotProjectionTests
             }
           ]
         }
-        """)!.AsObject();
+        """);
 
         var projection = DesktopViewModel.ProjectSnapshot(snapshot);
 
@@ -856,9 +857,9 @@ public sealed class SessionSnapshotProjectionTests
         var viewModel = new DesktopViewModel();
         viewModel.ApplyEvent(TurnState("turn-1", "resolving_calls"), live: true);
         viewModel.ApplyEvent(ToolEvent("tool.requested", "turn-1", "tool-1", "bash", "requested"), live: true);
-        viewModel.ApplyEvent(JsonNode.Parse("""
+        viewModel.ApplyEvent(Event("""
         {"event_type":"tool.output","payload":{"turn_id":"turn-1","tool_call_id":"tool-1","chunk_base64":"aGVsbG8="}}
-        """)!.AsObject(), live: true);
+        """), live: true);
 
         var turn = Assert.Single(viewModel.ToolActivityTurns);
         var tool = Assert.Single(turn.Tools);
@@ -870,7 +871,7 @@ public sealed class SessionSnapshotProjectionTests
     [Fact]
     public void ToolActivityProjectionUsesCompactStatesAndUserPreview()
     {
-        var snapshot = JsonNode.Parse("""
+        var snapshot = Snapshot("""
         {
           "conversationTurns":[{
             "turnId":"turn-1","state":"resolving_calls",
@@ -882,7 +883,7 @@ public sealed class SessionSnapshotProjectionTests
             ]
           }]
         }
-        """)!.AsObject();
+        """);
 
         var turn = Assert.Single(DesktopViewModel.ProjectSnapshot(snapshot).ToolActivityTurns);
 
@@ -921,14 +922,14 @@ public sealed class SessionSnapshotProjectionTests
         Assert.Equal(1, sourceChanges);
     }
 
-    private static JsonObject UserMessage(string messageId, string turnId, string text) =>
+    private static AgentEvent UserMessage(string messageId, string turnId, string text) =>
         MessageEvent("message.user", "user", messageId, turnId, text);
 
-    private static JsonObject AssistantMessage(string messageId, string turnId, string text) =>
+    private static AgentEvent AssistantMessage(string messageId, string turnId, string text) =>
         MessageEvent("message.assistant", "assistant", messageId, turnId, text);
 
-    private static JsonObject AssistantWithToolCall(string messageId, string turnId, string text) =>
-        JsonNode.Parse($$$"""
+    private static AgentEvent AssistantWithToolCall(string messageId, string turnId, string text) =>
+        Event($$$"""
         {
           "event_type":"message.assistant",
           "payload":{
@@ -941,10 +942,10 @@ public sealed class SessionSnapshotProjectionTests
             }
           }
         }
-        """)!.AsObject();
+        """);
 
-    private static JsonObject MessageEvent(string eventType, string role, string messageId, string turnId, string text) =>
-        JsonNode.Parse($$"""
+    private static AgentEvent MessageEvent(string eventType, string role, string messageId, string turnId, string text) =>
+        Event($$"""
         {
           "event_type":"{{eventType}}",
           "payload":{
@@ -953,26 +954,26 @@ public sealed class SessionSnapshotProjectionTests
             "message":{"role":"{{role}}","content":[{"type":"text","text":"{{text}}"}]}
           }
         }
-        """)!.AsObject();
+        """);
 
-    private static JsonObject AssistantDelta(string turnId, string text) =>
-        JsonNode.Parse($$"""
+    private static AgentEvent AssistantDelta(string turnId, string text) =>
+        Event($$"""
         {
           "event_type":"assistant.delta",
           "payload":{"turn_id":"{{turnId}}","text":"{{text}}"}
         }
-        """)!.AsObject();
+        """);
 
-    private static JsonObject TurnState(string turnId, string state) =>
-        JsonNode.Parse($$"""
+    private static AgentEvent TurnState(string turnId, string state) =>
+        Event($$"""
         {
           "event_type":"turn.state",
           "payload":{"turn_id":"{{turnId}}","state":"{{state}}"}
         }
-        """)!.AsObject();
+        """);
 
-    private static JsonObject ToolEvent(string eventType, string turnId, string toolCallId, string name, string state) =>
-        JsonNode.Parse($$"""
+    private static AgentEvent ToolEvent(string eventType, string turnId, string toolCallId, string name, string state) =>
+        Event($$"""
         {
           "event_type":"{{eventType}}",
           "payload":{
@@ -983,5 +984,62 @@ public sealed class SessionSnapshotProjectionTests
             "arguments":{"path":"README.md"}
           }
         }
-        """)!.AsObject();
+        """);
+
+    private static SessionSnapshot Snapshot(string json)
+    {
+        var snapshot = Deserialize<SessionSnapshot>(json);
+        var turns = (snapshot.ConversationTurns ?? [])
+            .Select(turn => turn with
+            {
+                Messages = (turn.Messages ?? [])
+                    .Select(message => message with
+                    {
+                        Message = NormalizeMessage(message.Message)
+                    })
+                    .ToArray(),
+                ToolUses = turn.ToolUses ?? [],
+                Todos = turn.Todos ?? []
+            })
+            .ToArray();
+
+        return snapshot with
+        {
+            Messages = (snapshot.Messages ?? []).Select(NormalizeMessage).ToArray(),
+            ConversationTurns = turns,
+            Images = snapshot.Images ?? []
+        };
+    }
+
+    private static AgentMessage Message(string json) => NormalizeMessage(Deserialize<AgentMessage>(json));
+
+    private static ApprovalRecord Approval(string json) => Deserialize<ApprovalRecord>(json);
+
+    private static AgentEvent Event(string json)
+    {
+        var value = Deserialize<AgentEvent>(json);
+        return value with
+        {
+            SessionId = value.SessionId ?? string.Empty,
+            OccurredAt = value.OccurredAt ?? "2026-09-13T00:00:00.000Z",
+            Payload = value.Payload ?? new AgentEventPayload()
+        };
+    }
+
+    private static AgentMessage NormalizeMessage(AgentMessage message) =>
+        message with
+        {
+            Role = message.Role ?? string.Empty,
+            Content = message.Content ?? [],
+            ToolCalls = message.ToolCalls ?? []
+        };
+
+    private static T Deserialize<T>(string json) =>
+        JsonSerializer.Deserialize<T>(json, JsonOptions)
+        ?? throw new InvalidOperationException($"Could not deserialize {typeof(T).Name} fixture.");
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 }

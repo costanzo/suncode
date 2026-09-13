@@ -5,7 +5,11 @@ namespace SunCode.Sdk.Models;
 
 public sealed record VersionResult(string Version);
 
-public sealed record HealthResult(bool Ok, string Agent, JsonElement Database);
+public sealed record DatabaseHealth(
+    bool Ok,
+    [property: JsonPropertyName("journal_mode")] string JournalMode);
+
+public sealed record HealthResult(bool Ok, string Agent, DatabaseHealth Database);
 
 public sealed record RecoveryStatus(
     string Status,
@@ -40,7 +44,7 @@ public sealed record ModelLimits(
 
 public sealed record ModelDescriptor(
     string Provider,
-    string ProviderLabel,
+    [property: JsonPropertyName("provider_label")] string ProviderLabel,
     string Id,
     [property: JsonPropertyName("wire_model")] string WireModel,
     [property: JsonPropertyName("api_base")] string ApiBase,
@@ -239,12 +243,102 @@ public sealed record SessionImageRemoval(
     [property: JsonPropertyName("image_id")] string ImageId,
     bool Removed);
 
+public sealed record AgentContentPart(
+    [property: JsonPropertyName("type")] string Kind,
+    string Text);
+
+public sealed record AgentToolCall(
+    [property: JsonPropertyName("call_id")] string CallId,
+    string Name,
+    JsonElement Arguments);
+
+public sealed record AgentMessage(
+    string Role,
+    IReadOnlyList<AgentContentPart>? Content,
+    [property: JsonPropertyName("tool_calls")] IReadOnlyList<AgentToolCall>? ToolCalls,
+    [property: JsonPropertyName("tool_call_id")] string? ToolCallId)
+{
+    public string Text => string.Join(
+        "\n",
+        (Content ?? []).Where(part => part.Kind == "text").Select(part => part.Text));
+}
+
+public sealed record AgentUsage(
+    [property: JsonPropertyName("input_tokens")] ulong InputTokens,
+    [property: JsonPropertyName("output_tokens")] ulong OutputTokens,
+    [property: JsonPropertyName("total_tokens")] ulong TotalTokens,
+    [property: JsonPropertyName("cache_read_tokens")] ulong? CacheReadTokens = null,
+    [property: JsonPropertyName("cache_miss_tokens")] ulong? CacheMissTokens = null,
+    [property: JsonPropertyName("cache_write_tokens")] ulong? CacheWriteTokens = null,
+    [property: JsonPropertyName("reasoning_tokens")] ulong? ReasoningTokens = null);
+
+public sealed record SessionTurnTodo(
+    string TurnId,
+    long Ordinal,
+    string Content,
+    string Status,
+    string Priority,
+    string CreatedAt,
+    string UpdatedAt,
+    string? CompletedAt);
+
+public sealed record SessionCallMessage(
+    string MessageId,
+    string SessionId,
+    string? TurnId,
+    string? SessionCallId,
+    string Role,
+    AgentMessage Message,
+    string CreatedAt);
+
+public sealed record SessionCallToolUse(
+    string TurnId,
+    string ToolCallId,
+    string? SessionCallId,
+    string Name,
+    JsonElement? Request,
+    JsonElement? Result,
+    string State,
+    long? Ordinal,
+    string CreatedAt,
+    string UpdatedAt,
+    string? CompletedAt,
+    string? ErrorCode);
+
+public sealed record SessionConversationTurn(
+    string TurnId,
+    string State,
+    string CreatedAt,
+    string? StartedAt,
+    string? CompletedAt,
+    IReadOnlyList<SessionCallMessage> Messages,
+    IReadOnlyList<SessionCallToolUse> ToolUses,
+    IReadOnlyList<SessionTurnTodo> Todos);
+
+public sealed record QuestionOption(
+    string Label,
+    string Description);
+
+public sealed record QuestionPrompt(
+    string Question,
+    string Header,
+    IReadOnlyList<QuestionOption> Options,
+    bool Multiple,
+    bool Custom);
+
+public sealed record PendingQuestion(
+    [property: JsonPropertyName("request_id")] string RequestId,
+    [property: JsonPropertyName("session_id")] string SessionId,
+    [property: JsonPropertyName("turn_id")] string TurnId,
+    [property: JsonPropertyName("tool_call_id")] string ToolCallId,
+    IReadOnlyList<QuestionPrompt> Questions);
+
 public sealed record SessionSnapshot(
     SessionRecord Session,
-    JsonElement Messages,
-    JsonElement ConversationTurns,
+    IReadOnlyList<AgentMessage> Messages,
+    [property: JsonPropertyName("conversationTurns")] IReadOnlyList<SessionConversationTurn> ConversationTurns,
     IReadOnlyList<SessionImage> Images,
-    [property: JsonPropertyName("pendingQuestion")] JsonElement? PendingQuestion);
+    [property: JsonPropertyName("pendingQuestion")] PendingQuestion? PendingQuestion);
 
 public sealed record SessionUsageResult(
     [property: JsonPropertyName("session_id")] string SessionId,
@@ -252,19 +346,102 @@ public sealed record SessionUsageResult(
     [property: JsonPropertyName("output_tokens")] ulong OutputTokens,
     [property: JsonPropertyName("total_tokens")] ulong TotalTokens);
 
+public sealed record ProviderError(
+    string Code,
+    string Message,
+    bool Retryable);
+
+public sealed record ProviderExchange(
+    [property: JsonPropertyName("exchange_id")] string ExchangeId,
+    [property: JsonPropertyName("session_id")] string SessionId,
+    [property: JsonPropertyName("turn_id")] string TurnId,
+    string Provider,
+    [property: JsonPropertyName("model_id")] string ModelId,
+    [property: JsonPropertyName("wire_model")] string WireModel,
+    [property: JsonPropertyName("provider_request_id")] string? ProviderRequestId,
+    [property: JsonPropertyName("provider_response_id")] string? ProviderResponseId,
+    string State,
+    int Iteration,
+    [property: JsonPropertyName("started_at")] string StartedAt,
+    [property: JsonPropertyName("completed_at")] string? CompletedAt,
+    [property: JsonPropertyName("input_messages")] IReadOnlyList<AgentMessage> InputMessages,
+    [property: JsonPropertyName("output_message")] AgentMessage? OutputMessage,
+    [property: JsonPropertyName("tool_calls")] IReadOnlyList<AgentToolCall> ToolCalls,
+    AgentUsage? Usage,
+    [property: JsonPropertyName("finish_reason")] string? FinishReason,
+    JsonElement? Error);
+
+public sealed record SessionTraceTurn(
+    [property: JsonPropertyName("turn_id")] string TurnId,
+    [property: JsonPropertyName("session_id")] string SessionId,
+    string State,
+    [property: JsonPropertyName("model_id")] string? ModelId,
+    [property: JsonPropertyName("created_at")] string CreatedAt,
+    [property: JsonPropertyName("updated_at")] string UpdatedAt,
+    [property: JsonPropertyName("started_at")] string? StartedAt,
+    [property: JsonPropertyName("completed_at")] string? CompletedAt,
+    [property: JsonPropertyName("error_code")] string? ErrorCode,
+    [property: JsonPropertyName("input_tokens")] ulong InputTokens,
+    [property: JsonPropertyName("output_tokens")] ulong OutputTokens,
+    [property: JsonPropertyName("total_tokens")] ulong TotalTokens);
+
 public sealed record ProviderExchangesResult(
     [property: JsonPropertyName("session_id")] string SessionId,
-    JsonElement Turns,
-    JsonElement Exchanges);
+    IReadOnlyList<SessionTraceTurn> Turns,
+    IReadOnlyList<ProviderExchange> Exchanges);
 
 public sealed record ProviderExchangeDetails(
-    JsonElement Exchange,
-    JsonElement Messages,
-    JsonElement ToolUses);
+    [property: JsonPropertyName("exchange_id")] string ExchangeId,
+    [property: JsonPropertyName("session_id")] string SessionId,
+    [property: JsonPropertyName("turn_id")] string TurnId,
+    string Provider,
+    [property: JsonPropertyName("model_id")] string ModelId,
+    [property: JsonPropertyName("wire_model")] string WireModel,
+    [property: JsonPropertyName("provider_request_id")] string? ProviderRequestId,
+    [property: JsonPropertyName("provider_response_id")] string? ProviderResponseId,
+    string State,
+    int Iteration,
+    [property: JsonPropertyName("started_at")] string StartedAt,
+    [property: JsonPropertyName("completed_at")] string? CompletedAt,
+    [property: JsonPropertyName("input_messages")] IReadOnlyList<AgentMessage> InputMessages,
+    [property: JsonPropertyName("output_message")] AgentMessage? OutputMessage,
+    [property: JsonPropertyName("tool_calls")] IReadOnlyList<AgentToolCall> ToolCalls,
+    AgentUsage? Usage,
+    [property: JsonPropertyName("finish_reason")] string? FinishReason,
+    JsonElement? Error,
+    IReadOnlyList<SessionCallMessage> Messages,
+    [property: JsonPropertyName("tool_uses")] IReadOnlyList<SessionCallToolUse> ToolUses);
 
-public sealed record CheckpointsResult(string SessionId, JsonElement Checkpoints);
+public sealed record CheckpointManifest(
+    [property: JsonPropertyName("manifest_id")] string ManifestId,
+    [property: JsonPropertyName("session_id")] string SessionId,
+    [property: JsonPropertyName("turn_id")] string? TurnId,
+    string Status,
+    [property: JsonPropertyName("created_at")] string CreatedAt,
+    [property: JsonPropertyName("updated_at")] string UpdatedAt,
+    [property: JsonPropertyName("expires_at")] string ExpiresAt,
+    [property: JsonPropertyName("restored_at")] string? RestoredAt);
 
-public sealed record CheckpointDetails(JsonElement Manifest, JsonElement Items);
+public sealed record CheckpointItem(
+    [property: JsonPropertyName("checkpoint_id")] string CheckpointId,
+    [property: JsonPropertyName("manifest_id")] string? ManifestId,
+    [property: JsonPropertyName("session_id")] string SessionId,
+    [property: JsonPropertyName("turn_id")] string? TurnId,
+    [property: JsonPropertyName("tool_call_id")] string? ToolCallId,
+    [property: JsonPropertyName("relative_path")] string? RelativePath,
+    string Status,
+    [property: JsonPropertyName("created_at")] string CreatedAt,
+    [property: JsonPropertyName("restored_at")] string? RestoredAt,
+    [property: JsonPropertyName("invalidated_at")] string? InvalidatedAt,
+    long? Ordinal);
+
+public sealed record CheckpointsResult(
+    [property: JsonPropertyName("session_id")] string SessionId,
+    IReadOnlyList<CheckpointManifest> Checkpoints);
+
+public sealed record CheckpointDetails(
+    CheckpointManifest Manifest,
+    IReadOnlyList<CheckpointItem> Items);
 
 public sealed record RestoreOutcome(
     [property: JsonPropertyName("manifest_id")] string ManifestId,
@@ -297,6 +474,20 @@ public sealed record GitStatusResult(
     bool Truncated,
     [property: JsonPropertyName("unsupported_paths")] int UnsupportedPaths);
 
+public sealed record GitDiffLine(
+    string Kind,
+    [property: JsonPropertyName("old_line")] uint? OldLine,
+    [property: JsonPropertyName("new_line")] uint? NewLine,
+    string Text);
+
+public sealed record GitDiffHunk(
+    string Header,
+    [property: JsonPropertyName("old_start")] uint OldStart,
+    [property: JsonPropertyName("old_lines")] uint OldLines,
+    [property: JsonPropertyName("new_start")] uint NewStart,
+    [property: JsonPropertyName("new_lines")] uint NewLines,
+    IReadOnlyList<GitDiffLine> Lines);
+
 public sealed record GitDiffFileResult(
     string Scope,
     string Path,
@@ -305,7 +496,7 @@ public sealed record GitDiffFileResult(
     bool Binary,
     int Additions,
     int Deletions,
-    JsonElement Hunks,
+    IReadOnlyList<GitDiffHunk> Hunks,
     string Patch,
     bool Truncated);
 
@@ -318,24 +509,24 @@ public sealed record TurnResponse(
     [property: JsonPropertyName("queued_id")] string? QueuedId,
     [property: JsonPropertyName("active_turn_id")] string? ActiveTurnId,
     int? Position,
-    JsonElement? Message,
-    JsonElement? Usage,
+    AgentMessage? Message,
+    AgentUsage? Usage,
     uint? Iterations,
     [property: JsonPropertyName("tool_calls")] uint? ToolCalls);
 
 public sealed record ApprovalRecord(
-    [property: JsonPropertyName("approvalId")] string ApprovalId,
-    [property: JsonPropertyName("projectId")] string? ProjectId,
-    [property: JsonPropertyName("sessionId")] string SessionId,
-    [property: JsonPropertyName("turnId")] string TurnId,
-    [property: JsonPropertyName("toolCallId")] string ToolCallId,
+    [property: JsonPropertyName("approval_id")] string ApprovalId,
+    [property: JsonPropertyName("project_id")] string? ProjectId,
+    [property: JsonPropertyName("session_id")] string SessionId,
+    [property: JsonPropertyName("turn_id")] string TurnId,
+    [property: JsonPropertyName("tool_call_id")] string ToolCallId,
     string Operation,
     JsonElement Arguments,
     string Status,
     string? Decision,
-    [property: JsonPropertyName("decisionSource")] string? DecisionSource,
-    [property: JsonPropertyName("createdAt")] string CreatedAt,
-    [property: JsonPropertyName("updatedAt")] string UpdatedAt);
+    [property: JsonPropertyName("decision_source")] string? DecisionSource,
+    [property: JsonPropertyName("created_at")] string CreatedAt,
+    [property: JsonPropertyName("updated_at")] string UpdatedAt);
 
 public sealed record ApprovalOutcome(
     [property: JsonPropertyName("approval_id")] string ApprovalId,
@@ -351,7 +542,12 @@ public sealed record CancellationOutcome(
 
 public sealed record SettingScope(string? ProjectId = null, string? SessionId = null);
 
-public sealed record SetSettingRequest(string Scope, string? ProjectId, string? SessionId, string Key, object Value);
+public sealed record SetSettingRequest(
+    string Scope,
+    string? ProjectId,
+    string? SessionId,
+    string Key,
+    JsonElement Value);
 
 public sealed record SetCredentialRequest(string Provider, string ApiKey);
 
@@ -387,4 +583,76 @@ public enum ApprovalDecision
     AllowSession
 }
 
-public sealed record ReplyQuestionRequest(string RequestId, IReadOnlyList<IReadOnlyList<string>> Answers);
+public sealed record AgentEvent(
+    [property: JsonPropertyName("session_id")] string SessionId,
+    [property: JsonPropertyName("occurred_at")] string OccurredAt,
+    [property: JsonPropertyName("event_type")] string EventType,
+    AgentEventPayload Payload);
+
+public sealed record AgentEventPayload(
+    [property: JsonPropertyName("turn_id")] string? TurnId = null,
+    string? State = null,
+    [property: JsonPropertyName("model_id")] string? ModelId = null,
+    [property: JsonPropertyName("submission_idempotency_key")] string? SubmissionIdempotencyKey = null,
+    string? Reason = null,
+    [property: JsonPropertyName("call_id")] string? CallId = null,
+    [property: JsonPropertyName("tool_call_id")] string? ToolCallId = null,
+    string? Name = null,
+    JsonElement? Arguments = null,
+    JsonElement? Result = null,
+    long? Ordinal = null,
+    string? Stream = null,
+    [property: JsonPropertyName("chunk_base64")] string? ChunkBase64 = null,
+    [property: JsonPropertyName("message_id")] string? MessageId = null,
+    [property: JsonPropertyName("queued_id")] string? QueuedId = null,
+    [property: JsonPropertyName("queued_idempotency_key")] string? QueuedIdempotencyKey = null,
+    AgentMessage? Message = null,
+    AgentUsage? Usage = null,
+    string? Text = null,
+    [property: JsonPropertyName("input_messages")] IReadOnlyList<AgentMessage>? InputMessages = null,
+    [property: JsonPropertyName("active_turn_id")] string? ActiveTurnId = null,
+    int? Position = null,
+    uint? Iterations = null,
+    [property: JsonPropertyName("exchange_id")] string? ExchangeId = null,
+    string? Provider = null,
+    [property: JsonPropertyName("wire_model")] string? WireModel = null,
+    [property: JsonPropertyName("started_at")] string? StartedAt = null,
+    [property: JsonPropertyName("completed_at")] string? CompletedAt = null,
+    int? OriginalCharacters = null,
+    int? RetainedCharacters = null,
+    int? OriginalTokens = null,
+    int? RetainedTokens = null,
+    int? DroppedMessages = null,
+    AgentContextSummary? Summary = null,
+    [property: JsonPropertyName("output_message")] AgentMessage? OutputMessage = null,
+    ProviderError? Error = null,
+    [property: JsonPropertyName("provider_request_id")] string? ProviderRequestId = null,
+    [property: JsonPropertyName("provider_response_id")] string? ProviderResponseId = null,
+    [property: JsonPropertyName("finish_reason")] string? FinishReason = null,
+    [property: JsonPropertyName("approval_id")] string? ApprovalId = null,
+    string? Operation = null,
+    string? Decision = null,
+    [property: JsonPropertyName("request_id")] string? RequestId = null,
+    IReadOnlyList<QuestionPrompt>? Questions = null,
+    IReadOnlyList<IReadOnlyList<string>>? Answers = null,
+    IReadOnlyList<AgentTodoEventItem>? Todos = null,
+    [property: JsonPropertyName("manifest_id")] string? ManifestId = null,
+    [property: JsonPropertyName("checkpoint_id")] string? CheckpointId = null,
+    string? Path = null);
+
+public sealed record AgentTodoEventItem(
+    string Content,
+    string Status,
+    string Priority);
+
+public sealed record AgentContextSummary(
+    string Objective,
+    [property: JsonPropertyName("important_constraints")] IReadOnlyList<string> ImportantConstraints,
+    [property: JsonPropertyName("completed_work")] IReadOnlyList<string> CompletedWork,
+    [property: JsonPropertyName("active_work")] IReadOnlyList<string> ActiveWork,
+    IReadOnlyList<string> Blockers,
+    [property: JsonPropertyName("next_action")] string NextAction);
+
+public sealed record ReplyQuestionRequest(
+    string RequestId,
+    IReadOnlyList<IReadOnlyList<string>> Answers);
