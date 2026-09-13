@@ -685,8 +685,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 var finalAssistant = Messages.LastOrDefault(item => item.TurnId == turnId && item.IsAssistant && item.CanBeFinalAssistant);
                 if (finalAssistant is not null)
                 {
-                    finalAssistant.IsFinalAssistant = true;
                     finalAssistant.DurationText = FormatDuration(activityTurn.StartedAt, activityTurn.CompletedAt, state);
+                    finalAssistant.IsFinalAssistant = true;
                     finalAssistant.CompletionTimeText = FormatCompletionTime(activityTurn.CompletedAt);
                 }
             }
