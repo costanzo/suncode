@@ -19,7 +19,7 @@ There are 16 application tables:
 
 ### `project`
 
-One row per opened local directory tree: `project_id` primary key, unique non-empty `canonical_root`, non-empty `display_name`, lifecycle timestamps, and nullable `archived_at`.
+One row per opened local directory tree: `project_id` primary key, non-empty `user_id`, unique `(user_id, canonical_root)`, non-empty `display_name`, lifecycle timestamps, and nullable `archived_at`.
 
 ### `project_dependency`
 

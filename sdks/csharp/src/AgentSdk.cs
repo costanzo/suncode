@@ -9,21 +9,25 @@ public sealed partial class AgentSdk : IDisposable
 {
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 6;
+    private const uint AbiVersion = 7;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
+    private static string? _sharedUserId;
     private IntPtr _handle;
     private bool _disposed;
 
     private AgentSdk(IntPtr handle) => _handle = handle;
 
-    public static Task<AgentSdk> OpenAsync() => Task.Run(() =>
+    public static Task<AgentSdk> OpenAsync(string userId) => Task.Run(() =>
     {
         try
         {
             lock (SharedHandleLock)
             {
+                if (string.IsNullOrWhiteSpace(userId)) throw new ArgumentException("User ID is required", nameof(userId));
+                if (_sharedHandle != IntPtr.Zero && !string.Equals(_sharedUserId, userId, StringComparison.Ordinal))
+                    throw new SdkException("agent_already_active", "The embedded agent is already open for another user");
                 if (_sharedHandle == IntPtr.Zero)
                 {
                     var version = NativeMethods.suncode_agent_sdk_abi_version();
@@ -33,7 +37,10 @@ public sealed partial class AgentSdk : IDisposable
                         throw new SdkException("abi_mismatch", $"Agent ABI {version} is not supported; expected {AbiVersion}");
                     }
 
-                    _sharedHandle = NativeMethods.suncode_agent_sdk_open_default(out var error);
+                    var userIdMemory = Marshal.StringToCoTaskMemUTF8(userId);
+                    IntPtr error;
+                    try { _sharedHandle = NativeMethods.suncode_agent_sdk_open_default(userIdMemory, out error); }
+                    finally { Marshal.FreeCoTaskMem(userIdMemory); }
                     if (_sharedHandle == IntPtr.Zero)
                     {
                         SdkDiagnosticLog.Error("sdk.open", "operation=open native_handle=null");
@@ -41,6 +48,7 @@ public sealed partial class AgentSdk : IDisposable
                     }
                 }
 
+                _sharedUserId = userId;
                 _sharedHandleReferences++;
                 SdkDiagnosticLog.Debug("sdk.open", $"operation=open references={_sharedHandleReferences}");
                 return new AgentSdk(_sharedHandle);
@@ -356,6 +364,7 @@ public sealed partial class AgentSdk : IDisposable
                     NativeMethods.suncode_agent_sdk_close(_sharedHandle);
                     SdkDiagnosticLog.Info("sdk.close", "native_handle closed");
                     _sharedHandle = IntPtr.Zero;
+                    _sharedUserId = null;
                 }
             }
             _handle = IntPtr.Zero;

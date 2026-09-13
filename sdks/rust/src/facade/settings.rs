@@ -6,6 +6,12 @@ impl AgentSdk {
         project_id: Option<&str>,
         session_id: Option<&str>,
     ) -> SdkResult<SettingsResult> {
+        if let Some(project_id) = project_id {
+            self.project_for_user(project_id)?;
+        }
+        if let Some(session_id) = session_id {
+            self.session_for_user(session_id)?;
+        }
         Ok(SettingsResult {
             settings: self.state.store.settings(project_id, session_id)?,
         })
@@ -20,6 +26,12 @@ impl AgentSdk {
         value: &Value,
     ) -> SdkResult<SettingUpdate> {
         validate_setting(scope, key, value)?;
+        if let Some(project_id) = project_id {
+            self.project_for_user(project_id)?;
+        }
+        if let Some(session_id) = session_id {
+            self.session_for_user(session_id)?;
+        }
         let scope_id = match scope {
             "global" => "global",
             "project" => {

@@ -115,6 +115,7 @@ diesel::table! {
 diesel::table! {
     project (project_id) {
         project_id -> Text,
+        user_id -> Text,
         canonical_root -> Text,
         display_name -> Text,
         created_at -> Text,

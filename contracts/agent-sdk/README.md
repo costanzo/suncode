@@ -8,11 +8,11 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 ## Lifecycle
 
-`open_default` loads configuration, acquires the data-directory lock, opens and initializes the current SQLite schema, initializes operations and providers, performs recovery, and returns an opaque agent handle. A second process opening the same data directory receives `agent_already_active`. An incompatible database is rejected; the only additive compatibility path creates `mcp_server` when opening the immediately preceding valid 15-table schema.
+`open_default(user_id)` validates and binds a non-empty user identifier, then loads configuration, acquires the data-directory lock, opens and initializes the current SQLite schema, initializes operations and providers, performs recovery, and returns an opaque agent handle. Project and project-derived session APIs are filtered to that immutable user scope. The Phase 1 Avalonia host supplies `os:<Environment.UserName>`; this is logical ownership, not authentication. A second process opening the same data directory receives `agent_already_active`. An incompatible database is rejected.
 
 The agent handle owns the Tokio runtime and all agent services. Host wrappers may share one handle inside a process. Subscriptions must be closed before the final agent handle is released. Closing a subscription stops callback delivery before returning.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 6. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 7. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
 ## Methods
 
@@ -38,9 +38,9 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `retry_mcp_server` | Retry one enabled server for an active project |
 | `start_mcp_project` | Start project-scoped MCP connections in the background and return initial progress |
 | `mcp_load_progress` | Read project-scoped MCP startup progress without waiting for connections |
-| `list_projects` | List known active projects |
-| `open_project` | Canonicalize and open a project |
-| `select_project` | Select a known project and reopen its canonical root |
+| `list_projects` | List known active projects for the SDK user |
+| `open_project` | Canonicalize and open a project for the SDK user |
+| `select_project` | Select a known project belonging to the SDK user and reopen its canonical root |
 | `list_project_dependencies` | List stable IDs and display names for a project's read-only source dependencies |
 | `add_project_dependency` | Canonicalize and register a non-overlapping read-only source folder |
 | `remove_project_dependency` | Remove one dependency registration without changing its files |

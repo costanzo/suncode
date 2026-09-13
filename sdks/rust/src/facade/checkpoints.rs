@@ -2,6 +2,7 @@ use super::*;
 
 impl AgentSdk {
     pub fn list_checkpoints(&self, session_id: &str) -> SdkResult<CheckpointsResult> {
+        self.session_for_user(session_id)?;
         Ok(CheckpointsResult {
             session_id: session_id.to_string(),
             checkpoints: self.state.store.manifests(session_id)?,
@@ -42,16 +43,8 @@ impl AgentSdk {
                 "checkpoint is not available",
             ));
         }
-        let session = self
-            .state
-            .store
-            .session_by_id(session_id)?
-            .ok_or_else(|| BusinessError::missing("session"))?;
-        let project = self
-            .state
-            .store
-            .project_by_id(session.project_id.as_deref().unwrap_or(""))?
-            .ok_or_else(|| BusinessError::missing("project"))?;
+        let session = self.session_for_user(session_id)?;
+        let project = self.project_for_user(session.project_id.as_deref().unwrap_or(""))?;
         self.state
             .store
             .set_manifest_status(manifest_id, "restoring")?;

@@ -72,6 +72,7 @@ public sealed record SettingUpdate(
 
 public sealed record ProjectRecord(
     string ProjectId,
+    string? UserId,
     string CanonicalRoot,
     string DisplayName,
     string CreatedAt,

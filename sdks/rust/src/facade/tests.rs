@@ -56,6 +56,7 @@ fn test_state(directory: &std::path::Path) -> AgentState {
     );
     AgentState {
         store,
+        user_id: "default".into(),
         operations,
         active_project: Arc::new(Mutex::new(None)),
         events,
@@ -135,6 +136,27 @@ fn named_sdk_methods_serve_project_session_and_model_dtos() {
     assert_eq!(
         sdk.session_usage("missing-session").unwrap_err().code,
         "session_not_found"
+    );
+}
+
+#[test]
+fn project_listing_and_selection_are_user_scoped() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut sdk_a = AgentSdk::from_state_for_test(test_state(directory.path()));
+    sdk_a.state.user_id = "user-a".into();
+    let project = sdk_a
+        .open_project(directory.path().to_str().unwrap(), None)
+        .unwrap();
+    assert_eq!(project.user_id, "user-a");
+
+    let mut state_b = test_state(directory.path());
+    state_b.store = sdk_a.state.store.clone();
+    state_b.user_id = "user-b".into();
+    let sdk_b = AgentSdk::from_state_for_test(state_b);
+    assert!(sdk_b.list_projects().unwrap().projects.is_empty());
+    assert_eq!(
+        sdk_b.select_project(&project.project_id).unwrap_err().code,
+        "project_not_found"
     );
 }
 

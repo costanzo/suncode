@@ -38,10 +38,14 @@ pub extern "C" fn suncode_agent_sdk_version() -> *mut c_char {
 
 #[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_open_default(
+    user_id: *const c_char,
     error_out: *mut *mut c_char,
 ) -> *mut SunCodeAgentHandle {
     write_error_out(error_out, ptr::null_mut());
-    match catch_unwind(AssertUnwindSafe(AgentSdk::open_default)) {
+    match catch_unwind(AssertUnwindSafe(|| {
+        let user_id = c_string(user_id, "user_id")?;
+        AgentSdk::open_default(&user_id)
+    })) {
         Ok(Ok(sdk)) => Box::into_raw(Box::new(SunCodeAgentHandle { sdk })),
         Ok(Err(error)) => {
             logging::write_business_error("sdk.open", "open_default", &error, "phase=initialize");

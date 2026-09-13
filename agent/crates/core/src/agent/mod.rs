@@ -122,6 +122,7 @@ struct QueuedMessage {
 #[derive(Clone)]
 pub struct Agent {
     store: Store,
+    pub(crate) user_id: String,
     providers: Arc<ModelProviderRegistry>,
     operations: Arc<suncode_tool::Operations>,
     events: broadcast::Sender<SessionEvent>,

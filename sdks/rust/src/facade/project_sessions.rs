@@ -2,7 +2,12 @@ use super::*;
 
 impl AgentSdk {
     pub fn list_sessions(&self, project_id: &str) -> SdkResult<SessionsResult> {
-        if self.state.store.project_by_id(project_id)?.is_none() {
+        if self
+            .state
+            .store
+            .project_by_id_for_user(&self.state.user_id, project_id)?
+            .is_none()
+        {
             return Err(BusinessError::missing("project"));
         }
         let sessions = self.state.store.sessions_for_project(project_id, true)?;
@@ -26,7 +31,7 @@ impl AgentSdk {
         let project = self
             .state
             .store
-            .project_by_id(project_id)?
+            .project_by_id_for_user(&self.state.user_id, project_id)?
             .ok_or_else(|| BusinessError::missing("project"))?;
         let value = self
             .state
@@ -57,7 +62,7 @@ impl AgentSdk {
         let project = self
             .state
             .store
-            .project_by_id(project_id)?
+            .project_by_id_for_user(&self.state.user_id, project_id)?
             .ok_or_else(|| BusinessError::missing("project"))?;
         let value = self
             .state

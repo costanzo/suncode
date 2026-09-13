@@ -8,12 +8,13 @@ impl AgentSdk {
         let project = self
             .state
             .store
-            .project_by_id(project_id)?
+            .project_by_id_for_user(&self.state.user_id, project_id)?
             .ok_or_else(|| BusinessError::missing("project"))?;
-        self.runtime.block_on(self.state.agent.activate_mcp_project(
-            &project.project_id,
-            Path::new(&project.canonical_root),
-        ))?;
+        self.runtime.block_on(
+            self.state
+                .agent
+                .activate_mcp_project(&project.project_id, Path::new(&project.canonical_root)),
+        )?;
         Ok(self.mcp_load_progress(project_id))
     }
 
@@ -214,7 +215,12 @@ impl AgentSdk {
 
     fn validate_mcp_project(&self, project_id: Option<&str>) -> SdkResult<()> {
         if let Some(project_id) = project_id {
-            if self.state.store.project_by_id(project_id)?.is_none() {
+            if self
+                .state
+                .store
+                .project_by_id_for_user(&self.state.user_id, project_id)?
+                .is_none()
+            {
                 return Err(BusinessError::missing("project"));
             }
         }

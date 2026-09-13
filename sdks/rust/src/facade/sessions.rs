@@ -8,6 +8,7 @@ impl AgentSdk {
         title: Option<&str>,
         model: Option<&str>,
     ) -> SdkResult<SessionRecord> {
+        self.project_for_user(project_id)?;
         let selected_model = match model {
             Some(model) => Some(model.to_string()),
             None => self.state.store.project_default_model(project_id)?,
@@ -26,6 +27,7 @@ impl AgentSdk {
     }
 
     pub fn rename_session(&self, session_id: &str, title: &str) -> SdkResult<SessionRecord> {
+        self.session_for_user(session_id)?;
         if title.trim().is_empty() {
             return Err(BusinessError::invalid("title is required"));
         }
@@ -33,21 +35,22 @@ impl AgentSdk {
     }
 
     pub fn archive_session(&self, session_id: &str) -> SdkResult<SessionRecord> {
+        self.session_for_user(session_id)?;
         self.state.store.set_session_archived(session_id, true)
     }
 
     pub fn set_session_pinned(&self, session_id: &str, pinned: bool) -> SdkResult<SessionRecord> {
+        self.session_for_user(session_id)?;
         self.state.store.set_session_pinned(session_id, pinned)
     }
 
     pub fn reopen_session(&self, session_id: &str) -> SdkResult<SessionRecord> {
+        self.session_for_user(session_id)?;
         self.state.store.set_session_archived(session_id, false)
     }
 
     pub fn list_session_images(&self, session_id: &str) -> SdkResult<SessionImagesResult> {
-        if self.state.store.session_by_id(session_id)?.is_none() {
-            return Err(BusinessError::missing("session"));
-        }
+        self.session_for_user(session_id)?;
         let referenced = self
             .state
             .store
@@ -74,9 +77,7 @@ impl AgentSdk {
         session_id: &str,
         payload: &Value,
     ) -> SdkResult<SessionImageRecord> {
-        if self.state.store.session_by_id(session_id)?.is_none() {
-            return Err(BusinessError::missing("session"));
-        }
+        self.session_for_user(session_id)?;
         let request: AddSessionImageRequest = serde_json::from_value(payload.clone())?;
         let display_name = request.display_name.trim();
         let source_kind = request.source_kind.trim();
@@ -199,11 +200,7 @@ impl AgentSdk {
             "session_snapshot",
             format!("begin session={session_id}"),
         );
-        let session = self
-            .state
-            .store
-            .session_by_id(session_id)?
-            .ok_or_else(|| BusinessError::missing("session"))?;
+        let session = self.session_for_user(session_id)?;
         let messages = self.state.store.messages(session_id)?;
         let images = self.state.store.session_images(session_id)?;
         let conversation_turns = self.state.store.session_conversation_turns(session_id)?;
@@ -223,9 +220,7 @@ impl AgentSdk {
     }
 
     pub fn session_usage(&self, session_id: &str) -> SdkResult<SessionUsageResult> {
-        if self.state.store.session_by_id(session_id)?.is_none() {
-            return Err(BusinessError::missing("session"));
-        }
+        self.session_for_user(session_id)?;
         let usage = self.state.store.session_usage(session_id)?;
         Ok(SessionUsageResult {
             session_id: session_id.to_string(),
@@ -236,9 +231,7 @@ impl AgentSdk {
     }
 
     pub fn list_provider_exchanges(&self, session_id: &str) -> SdkResult<ProviderExchangesResult> {
-        if self.state.store.session_by_id(session_id)?.is_none() {
-            return Err(BusinessError::missing("session"));
-        }
+        self.session_for_user(session_id)?;
         Ok(ProviderExchangesResult {
             session_id: session_id.to_string(),
             turns: self.state.store.session_trace_turns(session_id)?,

@@ -10,7 +10,7 @@ use suncode_agent::domain::{
 use suncode_common::BusinessError;
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 6;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 7;
 pub type SdkResult<T> = Result<T, BusinessError>;
 pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
 

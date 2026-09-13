@@ -4,7 +4,10 @@ use suncode_agent::domain::ProjectRecord;
 impl AgentSdk {
     pub fn list_projects(&self) -> SdkResult<ProjectsResult> {
         Ok(ProjectsResult {
-            projects: self.state.store.projects(false)?,
+            projects: self
+                .state
+                .store
+                .projects_for_user(&self.state.user_id, false)?,
         })
     }
 
@@ -23,7 +26,10 @@ impl AgentSdk {
         let display_name = display_name
             .or_else(|| result.get("display_name").and_then(Value::as_str))
             .unwrap_or("Project");
-        let project = self.state.store.project(root, display_name)?;
+        let project = self
+            .state
+            .store
+            .project_for_user(&self.state.user_id, root, display_name)?;
         if let Ok(mut active) = self.state.active_project.lock() {
             *active = Some(project.project_id.clone());
         }
@@ -34,7 +40,7 @@ impl AgentSdk {
         let project = self
             .state
             .store
-            .project_by_id(project_id)?
+            .project_by_id_for_user(&self.state.user_id, project_id)?
             .ok_or_else(|| BusinessError::missing("project"))?;
         self.state
             .operations
@@ -50,7 +56,12 @@ impl AgentSdk {
         &self,
         project_id: &str,
     ) -> SdkResult<ProjectDependenciesResult> {
-        if self.state.store.project_by_id(project_id)?.is_none() {
+        if self
+            .state
+            .store
+            .project_by_id_for_user(&self.state.user_id, project_id)?
+            .is_none()
+        {
             return Err(BusinessError::missing("project"));
         }
         Ok(ProjectDependenciesResult {
@@ -73,7 +84,7 @@ impl AgentSdk {
         let project = self
             .state
             .store
-            .project_by_id(project_id)?
+            .project_by_id_for_user(&self.state.user_id, project_id)?
             .ok_or_else(|| BusinessError::missing("project"))?;
         let opened = self
             .state
@@ -139,6 +150,7 @@ impl AgentSdk {
         dependency_id: Option<&str>,
         path: &str,
     ) -> SdkResult<Value> {
+        self.project_for_user(project_id)?;
         let root = if let Some(dependency_id) = dependency_id {
             self.state
                 .store
@@ -148,7 +160,7 @@ impl AgentSdk {
         } else {
             self.state
                 .store
-                .project_by_id(project_id)?
+                .project_by_id_for_user(&self.state.user_id, project_id)?
                 .ok_or_else(|| BusinessError::missing("project"))?
                 .canonical_root
         };
@@ -169,6 +181,7 @@ impl AgentSdk {
         path: &str,
     ) -> SdkResult<ProjectFileResult> {
         const EDITOR_FILE_LIMIT: usize = 1024 * 1024;
+        self.project_for_user(project_id)?;
         let root = if let Some(dependency_id) = dependency_id {
             self.state
                 .store
@@ -178,7 +191,7 @@ impl AgentSdk {
         } else {
             self.state
                 .store
-                .project_by_id(project_id)?
+                .project_by_id_for_user(&self.state.user_id, project_id)?
                 .ok_or_else(|| BusinessError::missing("project"))?
                 .canonical_root
         };

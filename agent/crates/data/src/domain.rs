@@ -338,6 +338,7 @@ pub struct SessionImageRecord {
 #[serde(rename_all = "camelCase")]
 pub struct ProjectRecord {
     pub project_id: String,
+    pub user_id: String,
     pub canonical_root: String,
     pub display_name: String,
     pub created_at: String,

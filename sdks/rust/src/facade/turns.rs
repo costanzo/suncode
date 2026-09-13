@@ -11,6 +11,7 @@ impl AgentSdk {
         model: Option<&str>,
         reasoning_effort: Option<&str>,
     ) -> SdkResult<TurnResponse> {
+        self.session_for_user(session_id)?;
         self.submit_turn_with_attachments(
             session_id,
             input,
@@ -72,15 +73,19 @@ impl AgentSdk {
     }
 
     pub fn retry_last_turn(&self, session_id: &str) -> SdkResult<TurnResponse> {
+        self.session_for_user(session_id)?;
         self.runtime
             .block_on(self.state.agent.retry_last_turn(session_id))
     }
 
     pub fn get_approval(&self, approval_id: &str) -> SdkResult<ApprovalRecord> {
-        self.state
+        let approval = self
+            .state
             .store
             .approval(approval_id)?
-            .ok_or_else(|| BusinessError::missing("approval"))
+            .ok_or_else(|| BusinessError::missing("approval"))?;
+        self.session_for_user(&approval.session_id)?;
+        Ok(approval)
     }
 
     pub fn resolve_approval(
@@ -91,6 +96,12 @@ impl AgentSdk {
         if !["deny", "allow_once", "allow_session"].contains(&decision) {
             return Err(BusinessError::invalid("invalid approval decision"));
         }
+        let approval = self
+            .state
+            .store
+            .approval(approval_id)?
+            .ok_or_else(|| BusinessError::missing("approval"))?;
+        self.session_for_user(&approval.session_id)?;
         let resolved = self
             .runtime
             .block_on(self.state.agent.resolve_approval(approval_id, decision))?;
@@ -175,9 +186,7 @@ impl AgentSdk {
             "subscribe",
             format!("begin session={session_id} after={_after}"),
         );
-        if self.state.store.session_by_id(&session_id)?.is_none() {
-            return Err(BusinessError::missing("session"));
-        }
+        self.session_for_user(&session_id)?;
 
         // Events are live-only. Hosts recover durable state by reading a fresh snapshot.
         let mut receiver = self.state.events.subscribe();

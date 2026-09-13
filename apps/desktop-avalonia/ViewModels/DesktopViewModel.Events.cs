@@ -48,7 +48,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         StatusText = "Starting local agent...";
         try
         {
-            var sdk = await AgentSdk.OpenAsync();
+            var sdk = await AgentSdk.OpenAsync($"os:{Environment.UserName}");
             await sdk.GetHealthAsync();
             _sdk = sdk;
             ConnectionState = "connected";

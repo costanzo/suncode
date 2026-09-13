@@ -39,6 +39,7 @@ pub use subscriptions::AgentSubscription;
 #[derive(Clone)]
 struct AgentState {
     store: Store,
+    user_id: String,
     operations: Arc<suncode_tool::Operations>,
     active_project: Arc<Mutex<Option<String>>>,
     events: broadcast::Sender<SessionEvent>,
@@ -47,6 +48,34 @@ struct AgentState {
     certificate_path: Arc<RwLock<Option<PathBuf>>>,
     agent: Agent,
     providers: Arc<ModelProviderRegistry>,
+}
+
+impl AgentSdk {
+    pub(crate) fn project_for_user(
+        &self,
+        project_id: &str,
+    ) -> SdkResult<suncode_agent::domain::ProjectRecord> {
+        self.state
+            .store
+            .project_by_id_for_user(&self.state.user_id, project_id)?
+            .ok_or_else(|| BusinessError::missing("project"))
+    }
+
+    pub(crate) fn session_for_user(
+        &self,
+        session_id: &str,
+    ) -> SdkResult<suncode_agent::domain::SessionRecord> {
+        let session = self
+            .state
+            .store
+            .session_by_id(session_id)?
+            .ok_or_else(|| BusinessError::missing("session"))?;
+        let project_id = session.project_id.as_deref().ok_or_else(|| {
+            BusinessError::new("scope_denied", "session is not bound to a project")
+        })?;
+        self.project_for_user(project_id)?;
+        Ok(session)
+    }
 }
 
 #[derive(Clone)]
@@ -197,7 +226,11 @@ fn registry_from_store(
     Ok(registry)
 }
 
-async fn build_state<F>(config: &Config, configure_providers: F) -> SdkResult<AgentState>
+async fn build_state<F>(
+    config: &Config,
+    user_id: &str,
+    configure_providers: F,
+) -> SdkResult<AgentState>
 where
     F: FnOnce(&mut ModelProviderRegistry) -> Result<(), BusinessError>,
 {
@@ -242,16 +275,18 @@ where
     configure_providers(&mut providers)
         .map_err(|error| BusinessError::new("provider_registration_failed", error.to_string()))?;
     let providers = Arc::new(providers);
-    let agent = Agent::new_with_mcp_configuration(
+    let agent = Agent::new_with_user_id(
         store.clone(),
         providers.clone(),
         operations.clone(),
         events.clone(),
         config.non_interactive,
         config.data_dir.clone(),
+        user_id.to_owned(),
     );
     let state = AgentState {
         store,
+        user_id: user_id.to_owned(),
         operations,
         active_project: Arc::new(Mutex::new(None)),
         events,

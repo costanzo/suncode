@@ -7,15 +7,16 @@ impl AgentSdk {
         }
     }
 
-    pub fn open_default() -> SdkResult<Self> {
-        Self::open_default_with_providers(|_| Ok(()))
+    pub fn open_default(user_id: &str) -> SdkResult<Self> {
+        Self::open_default_with_providers(user_id, |_| Ok(()))
     }
 
     /// Opens the agent after extending the built-in registry with trusted providers.
-    pub fn open_default_with_providers<F>(configure_providers: F) -> SdkResult<Self>
+    pub fn open_default_with_providers<F>(user_id: &str, configure_providers: F) -> SdkResult<Self>
     where
         F: FnOnce(&mut ModelProviderRegistry) -> Result<(), BusinessError>,
     {
+        let user_id = validate_user_id(user_id)?;
         let config = Config::load().map_err(BusinessError::invalid)?;
         let lock = AgentLock::acquire(&config.data_dir).map_err(|error| {
             if error.kind() == std::io::ErrorKind::AlreadyExists {
@@ -31,7 +32,7 @@ impl AgentSdk {
             .map_err(|error| {
                 BusinessError::unavailable(format!("tokio runtime unavailable: {error}"))
             })?;
-        let state = runtime.block_on(build_state(&config, configure_providers))?;
+        let state = runtime.block_on(build_state(&config, &user_id, configure_providers))?;
         logging::write(Level::Info, "agent", "open completed");
         Ok(Self {
             _lock: Some(lock),
@@ -168,4 +169,15 @@ impl AgentSdk {
             endpoint,
         })
     }
+}
+
+fn validate_user_id(value: &str) -> SdkResult<String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err(BusinessError::invalid("user_id is required"));
+    }
+    if value.len() > 256 || value.chars().any(char::is_control) {
+        return Err(BusinessError::invalid("user_id is invalid"));
+    }
+    Ok(value.to_owned())
 }

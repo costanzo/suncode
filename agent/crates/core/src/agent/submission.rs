@@ -32,6 +32,7 @@ impl Agent {
     {
         let mcp = McpManager::new(store.clone(), application_data);
         Self {
+            user_id: "default".into(),
             store,
             providers: providers.into(),
             operations,
@@ -43,6 +44,30 @@ impl Agent {
             session_locks: Arc::new(AsyncMutex::new(HashMap::new())),
             mcp,
         }
+    }
+
+    pub fn new_with_user_id<P>(
+        store: Store,
+        providers: P,
+        operations: Arc<suncode_tool::Operations>,
+        events: broadcast::Sender<SessionEvent>,
+        non_interactive: bool,
+        application_data: PathBuf,
+        user_id: String,
+    ) -> Self
+    where
+        P: Into<Arc<ModelProviderRegistry>>,
+    {
+        let mut agent = Self::new_with_mcp_configuration(
+            store,
+            providers,
+            operations,
+            events,
+            non_interactive,
+            application_data,
+        );
+        agent.user_id = user_id;
+        agent
     }
 
     #[cfg(test)]
@@ -145,7 +170,7 @@ impl Agent {
             .ok_or_else(|| BusinessError::new("conflict", "session is not bound to a project"))?;
         let project = self
             .store
-            .project_by_id(&project_id)?
+            .project_by_id_for_user(&self.user_id, &project_id)?
             .ok_or_else(|| BusinessError::new("not_found", "project not found"))?;
         let tool_call_limit = self
             .store
