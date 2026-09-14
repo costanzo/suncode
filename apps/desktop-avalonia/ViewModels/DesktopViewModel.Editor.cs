@@ -72,6 +72,7 @@ public sealed partial class DesktopViewModel
     public async Task SelectExplorerFileAsync(ExplorerNode node)
     {
         if (!node.IsFile || _sdk is null || SelectedProject is null) return;
+        if (!ShouldReloadEditorFile(node)) return;
 
         var projectId = SelectedProject.ProjectId;
         var loadVersion = Interlocked.Increment(ref _editorLoadVersion);
@@ -113,6 +114,9 @@ public sealed partial class DesktopViewModel
         && SelectedProject?.ProjectId == projectId
         && ReferenceEquals(SelectedEditorFile, node);
 
+    private bool ShouldReloadEditorFile(ExplorerNode node) =>
+        !ReferenceEquals(SelectedEditorFile, node) || EditorState is "idle" or "error";
+    
     private void CloseEditor()
     {
         Interlocked.Increment(ref _editorLoadVersion);

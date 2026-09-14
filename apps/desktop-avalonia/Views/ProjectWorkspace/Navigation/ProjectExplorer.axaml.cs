@@ -2,6 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
+using Avalonia;
+using Avalonia.Input;
+
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
@@ -28,6 +31,22 @@ public sealed partial class ProjectExplorer : UserControl
         if (e.AddedItems.OfType<ExplorerNode>().FirstOrDefault() is { IsFile: true } node)
             await ViewModel.SelectExplorerFileAsync(node);
     }
+
+    private void ExplorerDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (OriginatesFromButton(e.Source)) return;
+        if (e.Source is not Visual visual) return;
+        if (visual.FindAncestorOfType<TreeViewItem>()?.DataContext is not ExplorerNode
+            {
+                ToggleOnDoubleClick: true
+            } node) return;
+        node.IsExpanded = !node.IsExpanded;
+        e.Handled = true;
+    }
+    
+    private static bool OriginatesFromButton(object? source) =>
+        source is Button || source is Visual visual && visual.FindAncestorOfType<Button>() is not null;
+    
 
     private async void AddDependency(object? sender, RoutedEventArgs e)
     {

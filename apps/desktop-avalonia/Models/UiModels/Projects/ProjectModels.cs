@@ -56,6 +56,7 @@ public sealed class ExplorerNode : ObservableObject
     public bool IsPlaceholder { get; }
     public bool IsDirectory => Kind == "directory" || IsGroup;
     public bool IsFile => Kind == "file";
+    public bool ToggleOnDoubleClick => IsDirectory && !IsPlaceholder;
     public bool CanRemove => IsRoot && IsDependency;
     public bool IsDependencyRoot => IsRoot && (IsDependency || IsGroup);
     public bool HasPathSubtitle => !string.IsNullOrWhiteSpace(Path) && Path != ".";

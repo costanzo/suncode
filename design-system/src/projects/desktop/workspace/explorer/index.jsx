@@ -8,6 +8,7 @@ const explorerGuides = {
     tabs: {
       actions: [
         "Expand the project root to browse the active project tree.",
+        "Double-click a folder to expand or collapse it; single-click only selects it.",
         "Select a file to open it in the Workspace read-only editor.",
         "Use the dependency root even when it contains no entries.",
       ],
@@ -46,7 +47,7 @@ const explorerGuides = {
     tabs: {
       actions: [
         "Scroll horizontally when a path or nested folder exceeds the panel width.",
-        "Expand deep folders one level at a time to keep the tree readable.",
+        "Double-click deep folders one level at a time to keep the tree readable.",
         "Select the deeply nested file to verify its full path.",
       ],
       style: [
