@@ -169,6 +169,7 @@
     <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="FontSize" Value="12" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
     <Setter Property="CornerRadius" Value="4" />
@@ -186,7 +187,7 @@
     <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
     <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontSize" Value="11" />
     <Setter Property="BaselineAlignment" Value="Baseline" />
     <Setter Property="Padding" Value="1,0" />
     <Setter Property="Margin" Value="1,0" />
