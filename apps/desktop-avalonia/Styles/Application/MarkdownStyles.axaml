@@ -8,7 +8,7 @@
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
       <Setter Property="BorderThickness" Value="1,1,0,0" />
-      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="CornerRadius" Value="6" />
       <Setter Property="ClipToBounds" Value="True" />
       <Setter Property="Margin" Value="0,16" />
       <Setter Property="Padding" Value="0" />
@@ -168,6 +168,8 @@
   <Style Selector="md|CodeInline">
     <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
     <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
     <Setter Property="CornerRadius" Value="4" />
     <Setter Property="Padding" Value="2,0" />
@@ -233,8 +235,9 @@
   </Style>
   <Style Selector="Border.QuoteBlock">
     <Setter Property="Background" Value="{DynamicResource AccentSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
-    <Setter Property="BorderThickness" Value="3,0,0,0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Padding" Value="12,8" />
     <Setter Property="Margin" Value="0,8" />
   </Style>

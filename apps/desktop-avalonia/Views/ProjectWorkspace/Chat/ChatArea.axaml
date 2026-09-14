@@ -291,7 +291,7 @@
           <!-- Keep the timeline's final rows above the overlaid composer. An
                explicit spacer participates in the content extent reliably,
                including during animated bottom scrolling. -->
-          <Border Height="144" />
+          <Border Height="128" />
         </StackPanel>
       </ScrollViewer>
 
