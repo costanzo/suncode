@@ -15,12 +15,21 @@
       <Setter Property="CornerRadius" Value="0" />
       <Setter Property="VerticalContentAlignment" Value="Stretch" />
     </Style>
-    <Style Selector="ListBox.git-files">
-      <Setter Property="Padding" Value="0,0,4,8" />
+    <Style Selector="ListBox.diff-lines ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
     </Style>
-    <Style Selector="ListBox.git-files ListBoxItem:selected /template/ Border#PART_LayoutRoot">
-      <Setter Property="Background" Value="{DynamicResource AccentSurfaceBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+    <Style Selector="ListBox.git-files">
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.git-files ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="ListBox.git-files ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource GitAccentSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource GitAccentBrush}" />
       <Setter Property="BorderThickness" Value="1" />
     </Style>
   </UserControl.Styles>
@@ -60,6 +69,7 @@
           <ColumnDefinition Width="1" />
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
+        <!-- Git file list -->
         <Grid Grid.Column="0" Background="{DynamicResource GitSidebarBrush}" RowDefinitions="30,*">
           <Grid Grid.Row="0" Margin="12,0,10,0" ColumnDefinitions="*,Auto">
             <TextBlock Text="{Binding GitFileCountText}" Classes="eyebrow" VerticalAlignment="Center" />
@@ -99,11 +109,13 @@
                   <Grid ColumnDefinitions="34,34,1,*">
                     <Border Grid.ColumnSpan="4" Background="{DynamicResource SuccessSurfaceBrush}" IsVisible="{Binding IsAddition}" />
                     <Border Grid.ColumnSpan="4" Background="{DynamicResource DangerSurfaceBrush}" IsVisible="{Binding IsDeletion}" />
-                    <Border Grid.ColumnSpan="4" Background="{DynamicResource AccentSurfaceBrush}" IsVisible="{Binding IsHunk}" />
+                    <Border Grid.ColumnSpan="4" Background="{DynamicResource GitAccentSurfaceBrush}" IsVisible="{Binding IsHunk}" />
                     <TextBlock Text="{Binding OldLine}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <TextBlock Grid.Column="1" Text="{Binding NewLine}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <Border Grid.Column="2" Background="{DynamicResource BorderBrush}" />
-                    <TextBlock Grid.Column="3" Text="{Binding DisplayText}" Classes="mono" FontSize="11" Margin="10,0,16,0" VerticalAlignment="Center" TextWrapping="NoWrap" />
+                    <TextBlock Grid.Column="3" Text="{Binding DisplayText}" Classes="mono" Foreground="{DynamicResource GitSuccessBrush}" FontSize="11" Margin="10,0,16,0" VerticalAlignment="Center" TextWrapping="NoWrap" IsVisible="{Binding IsAddition}"/>
+                    <TextBlock Grid.Column="3" Text="{Binding DisplayText}" Classes="mono" Foreground="{DynamicResource GitDangerBrush}" FontSize="11" Margin="10,0,16,0" VerticalAlignment="Center" TextWrapping="NoWrap" IsVisible="{Binding IsDeletion}"/>
+                    <TextBlock Grid.Column="3" Text="{Binding DisplayText}" Classes="mono" Foreground="{DynamicResource GitAccentBrush}" FontSize="11" Margin="10,0,16,0" VerticalAlignment="Center" TextWrapping="NoWrap" IsVisible="{Binding IsHunk}"/>
                   </Grid>
                 </DataTemplate>
               </ListBox.ItemTemplate>

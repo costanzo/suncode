@@ -68,6 +68,11 @@
       <SolidColorBrush x:Key="ToolTreeBrush" Color="#15191e" />
       <SolidColorBrush x:Key="GitSidebarBrush" Color="#0b0e12" />
       <SolidColorBrush x:Key="GitWorkspaceBrush" Color="#13171c" />
+      <SolidColorBrush x:Key="GitAccentSurfaceBrush" Color="#172824" />
+      <SolidColorBrush x:Key="GitAccentBrush" Color="#69c5b0" />
+      <SolidColorBrush x:Key="GitAccentHoverBrush" Color="#7dd2be" />
+      <SolidColorBrush x:Key="GitSuccessBrush" Color="#78c99b" />
+      <SolidColorBrush x:Key="GitDangerBrush" Color="#e68a83" />
       <!-- Composer matches design-system surface-raised. -->
       <SolidColorBrush x:Key="ComposerBrush" Color="#181c21" />
       <SolidColorBrush x:Key="FieldBrush" Color="#15191e" />
@@ -168,6 +173,11 @@
       <SolidColorBrush x:Key="ToolTreeBrush" Color="#f4f7f9" />
       <SolidColorBrush x:Key="GitSidebarBrush" Color="#e9eef2" />
       <SolidColorBrush x:Key="GitWorkspaceBrush" Color="#f8fafb" />
+      <SolidColorBrush x:Key="GitAccentSurfaceBrush" Color="#e0f2ee" />
+      <SolidColorBrush x:Key="GitAccentBrush" Color="#2f8f7d" />
+      <SolidColorBrush x:Key="GitAccentHoverBrush" Color="#277f6f" />
+      <SolidColorBrush x:Key="GitSuccessBrush" Color="#27845b" />
+      <SolidColorBrush x:Key="GitDangerBrush" Color="#b6463f" />
       <!-- Composer matches design-system surface-raised. -->
       <SolidColorBrush x:Key="ComposerBrush" Color="#f8fafc" />
       <SolidColorBrush x:Key="FieldBrush" Color="#f4f7f9" />
