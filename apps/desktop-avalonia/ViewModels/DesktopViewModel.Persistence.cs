@@ -462,6 +462,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var activeActivityTurn = ToolActivityTurns.LastOrDefault(item => item.TurnId == projection.ActiveTurnId);
         UpdateActiveTurnTiming(projection.ActiveTurnId, activeActivityTurn?.StartedAt);
         OnPropertyChanged(nameof(HasMessages));
+        NotifyAssistantStreamingChanged();
         OnPropertyChanged(nameof(HasActivities));
         OnPropertyChanged(nameof(HasToolActivityTurns));
         OnPropertyChanged(nameof(ToolActivitySummary));
@@ -533,6 +534,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 // assistant row receives another text delta. Notify the chat
                 // surface so it can keep the viewport at the latest content.
                 OnPropertyChanged(nameof(Messages));
+                NotifyAssistantStreamingChanged();
             }
         }
         else if (type is "message.user" or "message.assistant")
@@ -605,6 +607,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             {
                 OnPropertyChanged(nameof(Messages));
                 OnPropertyChanged(nameof(HasMessages));
+                NotifyAssistantStreamingChanged();
             }
         }
         else if (type is "tool.requested" or "tool.state" or "tool.result" or "tool.output")
@@ -639,6 +642,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             });
             OnPropertyChanged(nameof(Messages));
             OnPropertyChanged(nameof(HasMessages));
+            NotifyAssistantStreamingChanged();
         }
         else if (!type.StartsWith("provider.exchange.", StringComparison.Ordinal))
         {

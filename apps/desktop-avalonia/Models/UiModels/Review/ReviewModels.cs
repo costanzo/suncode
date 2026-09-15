@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
@@ -34,12 +33,8 @@ public sealed record ProviderTraceItem(
     IReadOnlyList<ProviderTraceMessageItem> Messages,
     IReadOnlyList<ProviderTraceToolItem> Tools)
 {
-    public IReadOnlyList<AgentMessage> InputMessages { get; set; } = [];
-    public ObservableCollection<ProviderTraceContentItem> Contents { get; } = [ProviderTraceContentItem.Placeholder()];
     public bool IsExpanded { get; set; }
-    public bool ContentsLoaded { get; set; }
-    public bool ContentsLoading { get; set; }
-    public string Title => $"{Provider}  ·  {ModelId}";
+    public string Title => $"{Provider} · {ModelId}";
     public string CallText => $"Call {Iteration}";
     public string TurnText => $"turn {Short(TurnId)}";
     public string IdentifierText => Short(ExchangeId);
@@ -86,6 +81,7 @@ public sealed record ProviderTraceItem(
     public bool IsCompleted => State == "completed";
     public bool IsFailed => State == "failed";
     public bool IsCompaction => ModelId == "context-compaction" || FinishReason == "context_compacted";
+    public bool HasInput => !string.IsNullOrWhiteSpace(InputText) && InputText != "[]";
     public bool HasOutput => !string.IsNullOrWhiteSpace(OutputText);
     public bool HasToolCalls => !string.IsNullOrWhiteSpace(ToolCallsText) && ToolCallsText != "[]";
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorText);
@@ -165,45 +161,6 @@ public sealed record ProviderTraceTurnItem(
         >= 1_000 => $"{value / 1_000d:0.#}k",
         _ => value.ToString()
     };
-}
-
-public sealed record ProviderTraceContentItem(
-    string ExchangeId,
-    string Kind,
-    string Title,
-    string Summary,
-    string Content,
-    string Request,
-    string Result,
-    string ErrorCode,
-    string CreatedAt,
-    bool IsPlaceholder = false)
-{
-    public bool IsExpanded { get; set; }
-    public string TimeText => DateTimeOffset.TryParse(CreatedAt, out var timestamp)
-        ? timestamp.ToLocalTime().ToString("HH:mm:ss.fff")
-        : CreatedAt;
-    public string KindText => Kind switch
-    {
-        "user" => "USER MESSAGE",
-        "assistant" => "ASSISTANT MESSAGE",
-        "thinking" => "THINKING MESSAGE",
-        "tool" => "TOOL USE",
-        "context" => "CONTEXT",
-        _ => Kind.ToUpperInvariant()
-    };
-    public bool IsUser => Kind == "user";
-    public bool IsAssistant => Kind == "assistant";
-    public bool IsThinking => Kind == "thinking";
-    public bool IsTool => Kind == "tool";
-    public bool IsContext => Kind == "context";
-    public bool HasContent => !string.IsNullOrWhiteSpace(Content);
-    public bool HasRequest => !string.IsNullOrWhiteSpace(Request);
-    public bool HasResult => !string.IsNullOrWhiteSpace(Result);
-    public bool HasError => !string.IsNullOrWhiteSpace(ErrorCode);
-
-    public static ProviderTraceContentItem Placeholder(string title = "Load call contents") =>
-        new(string.Empty, "placeholder", title, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, true);
 }
 
 public sealed record ProviderTraceMessageItem(string MessageId, string Role, string Content, string CreatedAt)

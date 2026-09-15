@@ -200,7 +200,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         FilteredProviderTraceTurns.Clear();
         SelectedProviderTrace = null;
         SelectedProviderTraceDetails = null;
-        SelectedProviderTraceContent = null;
         _providerTraceDetails.Clear();
         _providerTraceDetailLoads.Clear();
         ProviderTraceState = "idle";
@@ -323,7 +322,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             Pretty(item.Error),
             [],
             []);
-        result.InputMessages = item.InputMessages;
         return result;
     }
 
@@ -367,7 +365,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             Pretty(item.Error),
             messages,
             tools);
-        result.InputMessages = item.InputMessages;
         return result;
     }
 
@@ -395,78 +392,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     {
         var result = await _sdk!.GetProviderExchangeAsync(sessionId, exchangeId);
         return ProviderTraceFromSdk(result);
-    }
-
-    private static void PopulateProviderTraceContents(ProviderTraceItem trace, ProviderTraceItem details)
-    {
-        if (trace.ContentsLoaded) return;
-        var contents = new List<ProviderTraceContentItem>();
-        var identities = new HashSet<string>(StringComparer.Ordinal);
-
-        if (details.IsCompaction)
-        {
-            contents.Add(new ProviderTraceContentItem(
-                trace.ExchangeId,
-                "context",
-                "Context compaction",
-                details.OutputText,
-                details.OutputText,
-                string.Empty,
-                details.OutputText,
-                string.Empty,
-                details.CompletedAt));
-        }
-
-        void AddMessage(string role, string content, string createdAt)
-        {
-            if (role is not ("user" or "assistant" or "thinking") || string.IsNullOrWhiteSpace(content)) return;
-            var identity = $"{role}\n{content}";
-            if (!identities.Add(identity)) return;
-            contents.Add(new ProviderTraceContentItem(
-                trace.ExchangeId,
-                role,
-                role switch
-                {
-                    "user" => "User message",
-                    "assistant" => "Assistant message",
-                    _ => "Thinking message"
-                },
-                Preview(content),
-                content,
-                string.Empty,
-                string.Empty,
-                string.Empty,
-                createdAt));
-        }
-
-        foreach (var message in details.InputMessages)
-            AddMessage(message.Role, MessageText(message), string.Empty);
-        foreach (var message in details.Messages)
-            AddMessage(message.Role, message.Content, message.CreatedAt);
-        AddMessage("assistant", details.OutputText, details.CompletedAt);
-
-        contents.AddRange(details.Tools.Select(tool => new ProviderTraceContentItem(
-            trace.ExchangeId,
-            "tool",
-            tool.Name,
-            tool.StateText,
-            string.Empty,
-            tool.Request,
-            tool.Result,
-            tool.ErrorCode,
-            tool.CreatedAt)));
-
-        trace.Contents.Clear();
-        foreach (var content in contents) trace.Contents.Add(content);
-        if (trace.Contents.Count == 0)
-            trace.Contents.Add(ProviderTraceContentItem.Placeholder("No messages or tool uses"));
-        trace.ContentsLoaded = true;
-    }
-
-    private static string Preview(string value)
-    {
-        var compact = string.Join(" ", value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-        return compact.Length <= 72 ? compact : $"{compact[..72]}…";
     }
 
     private static string MessageDisplayText(AgentMessage? message)

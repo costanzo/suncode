@@ -40,7 +40,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private GitFileItem? _selectedGitFile;
     private ProviderTraceItem? _selectedProviderTrace;
     private ProviderTraceItem? _selectedProviderTraceDetails;
-    private ProviderTraceContentItem? _selectedProviderTraceContent;
     private readonly Dictionary<string, ProviderTraceItem> _providerTraceDetails = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Task<ProviderTraceItem>> _providerTraceDetailLoads = new(StringComparer.Ordinal);
     private readonly HashSet<string> _appliedMessageIds = new(StringComparer.Ordinal);
@@ -133,6 +132,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             _messages = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasMessages));
+            NotifyAssistantStreamingChanged();
         }
     }
     public BulkObservableCollection<ActivityItem> Activities { get; } = [];
@@ -239,10 +239,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _selectedProviderTrace, value))
             {
                 SelectedProviderTraceDetails = null;
-                SelectedProviderTraceContent = null;
                 OnPropertyChanged(nameof(SelectedProviderTraceTitle));
                 OnPropertyChanged(nameof(HasSelectedProviderTrace));
-                OnPropertyChanged(nameof(ShowSelectedProviderTraceOverview));
             }
         }
     }
@@ -256,20 +254,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             {
                 OnPropertyChanged(nameof(SelectedProviderTraceTitle));
                 OnPropertyChanged(nameof(HasSelectedProviderTrace));
-            }
-        }
-    }
-
-    public ProviderTraceContentItem? SelectedProviderTraceContent
-    {
-        get => _selectedProviderTraceContent;
-        private set
-        {
-            if (SetProperty(ref _selectedProviderTraceContent, value))
-            {
-                OnPropertyChanged(nameof(SelectedProviderTraceTitle));
-                OnPropertyChanged(nameof(HasSelectedProviderTraceContent));
-                OnPropertyChanged(nameof(ShowSelectedProviderTraceOverview));
             }
         }
     }
@@ -462,6 +446,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool EffectiveProviderTraceVisible => ProviderTraceVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
     public bool EffectiveToolActivityVisible => ToolActivityVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
     private bool CanShowBottomDrawer => BottomDrawerHeight >= MinimumBottomDrawerHeight;
+    private double maxBottomDrawerHeight => Math.Max(
+        MinimumBottomDrawerHeight, _layoutHeight - 36d - 4d - MinimumWorkspaceHeight - 20d);
+    public double EffectiveBottomDrawerHeight => Math.Min(BottomDrawerHeight, maxBottomDrawerHeight);
     public bool WorkspaceGuttersVisible => _layoutWidth > CompactWorkspaceBreakpoint;
     public GridLength WorkspaceGutterWidth => WorkspaceGuttersVisible ? new GridLength(34) : new GridLength(0);
     public GridLength WorkspaceGutterGap => WorkspaceGuttersVisible ? new GridLength(4) : new GridLength(0);
@@ -484,8 +471,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ? "Select a tool call"
         : $"{SelectedToolActivityTurn.Title} · {SelectedToolActivity.StateText}";
     public bool HasSelectedProviderTrace => SelectedProviderTraceDetails is not null;
-    public bool HasSelectedProviderTraceContent => SelectedProviderTraceContent is not null;
-    public bool ShowSelectedProviderTraceOverview => HasSelectedProviderTrace && !HasSelectedProviderTraceContent;
+    public bool ShowSelectedProviderTraceOverview => HasSelectedProviderTrace;
     public bool HasSessionLoadError => !string.IsNullOrWhiteSpace(SessionLoadError);
     public string GitFileCountText => $"{FilteredGitFiles.Count} {(FilteredGitFiles.Count == 1 ? "file" : "files")}";
     public string ProviderTraceCountText => $"{FilteredProviderTraceTurns.Count} turns · {FilteredProviderTraceTurns.Sum(turn => turn.Calls.Count)} calls";
@@ -499,8 +485,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public string RuntimeHealthSummary => IsAgentHealthy ? "Agent and database ready" : "Runtime needs attention";
     public bool IsTurnActive => !string.IsNullOrWhiteSpace(ActiveTurnId);
     public bool IsTurnCompacting => ActiveTurnState == "compacting";
-    public bool IsTurnThinking => ActiveTurnState == "calling_model";
-    public bool IsTurnIndicatorDots => IsTurnActive && !IsTurnThinking && !IsTurnCompacting;
+    public bool IsTurnThinking => ActiveTurnState == "calling_model" && !IsAssistantStreaming;
+    public bool IsAssistantStreaming => Messages.Any(message => message.Streaming);
+    public bool IsTurnIndicatorDots => IsTurnActive && !IsTurnThinking && !IsTurnCompacting && !IsAssistantStreaming;
     public bool HasFailedTurn => ActiveTurnState == "failed";
     public string ReviewHeadingText => HasFailedTurn ? "Turn stopped" : IsTurnCompacting ? "Compacting context" : IsTurnActive ? "1 active process" : HasPendingApproval || HasPendingQuestion ? "Awaiting input" : "No active process";
     public string ReviewStatusText => HasFailedTurn ? "Turn failed" : IsTurnCompacting ? "Compacting conversation context" : IsTurnActive ? "Agent running" : HasPendingApproval ? "Waiting for approval" : HasPendingQuestion ? "Waiting for answer" : "Agent idle";
@@ -520,6 +507,13 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool CanChooseReasoningEffort => CanCompose && SelectedModel?.SupportsReasoningEffort == true;
     public bool CanAttachImages => CanCompose && SelectedModel?.SupportsVision == true && !IsTurnActive;
 
+    private void NotifyAssistantStreamingChanged()
+    {
+        OnPropertyChanged(nameof(IsAssistantStreaming));
+        OnPropertyChanged(nameof(IsTurnIndicatorDots));
+        OnPropertyChanged(nameof(IsTurnThinking));
+    }
+    
     private void NotifyReviewPresentationChanged()
     {
         OnPropertyChanged(nameof(ReviewHeadingText));
@@ -583,9 +577,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public string ProviderTraceSummary => ProviderTraces.Count == 0
         ? "No provider requests"
         : $"{ProviderTraces.Count} provider {(ProviderTraces.Count == 1 ? "request" : "requests")}";
-    public string SelectedProviderTraceTitle => SelectedProviderTraceContent is { } content
-        ? $"{SelectedProviderTraceDetails?.Title ?? SelectedProviderTrace?.Title} · {content.Title}"
-        : SelectedProviderTraceDetails?.Title ?? SelectedProviderTrace?.Title ?? "No model call selected";
+
+    public string SelectedProviderTraceTitle => SelectedProviderTraceDetails?.Title ??
+                                                SelectedProviderTrace?.Title ?? "No model call selected";
     public string ProviderTraceEmptyMessage
     {
         get
@@ -638,6 +632,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(EffectiveGitVisible));
         OnPropertyChanged(nameof(EffectiveProviderTraceVisible));
         OnPropertyChanged(nameof(EffectiveToolActivityVisible));
+        OnPropertyChanged(nameof(EffectiveBottomDrawerHeight));
         OnPropertyChanged(nameof(BottomDrawerGap));
         OnPropertyChanged(nameof(WorkspaceGuttersVisible));
         OnPropertyChanged(nameof(WorkspaceGutterWidth));
@@ -648,6 +643,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private void NotifyDrawerLayoutChanged(string effectivePropertyName)
     {
         OnPropertyChanged(effectivePropertyName);
+        OnPropertyChanged(nameof(EffectiveBottomDrawerHeight));
         OnPropertyChanged(nameof(BottomDrawerGap));
     }
 }

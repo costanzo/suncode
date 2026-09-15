@@ -64,11 +64,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (!EnsureSdk() || SelectedSession is null) return;
         var sessionId = SelectedSession.SessionId;
         SelectedProviderTrace = trace;
-        SelectedProviderTraceContent = null;
+        SelectedProviderTraceDetails = trace;
         if (_providerTraceDetails.TryGetValue(trace.ExchangeId, out var cached))
         {
             SelectedProviderTraceDetails = cached;
-            PopulateProviderTraceContents(trace, cached);
             return;
         }
         ProviderTraceState = "loading";
@@ -77,7 +76,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         {
             var details = await GetProviderTraceDetailsAsync(sessionId, trace.ExchangeId);
             if (SelectedSession?.SessionId != sessionId || SelectedProviderTrace?.ExchangeId != trace.ExchangeId) return;
-            PopulateProviderTraceContents(trace, details);
             SelectedProviderTraceDetails = details;
             ProviderTraceState = "ready";
         }
@@ -87,52 +85,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             ProviderTraceState = "error";
             ProviderTraceError = exception.Message;
         }
-    }
-
-    public async Task LoadProviderTraceContentsAsync(ProviderTraceItem trace)
-    {
-        if (trace.ContentsLoaded || trace.ContentsLoading || !EnsureSdk() || SelectedSession is null) return;
-        trace.ContentsLoading = true;
-        trace.Contents.Clear();
-        trace.Contents.Add(ProviderTraceContentItem.Placeholder("Loading call contents..."));
-        try
-        {
-            ProviderTraceItem details;
-            if (!_providerTraceDetails.TryGetValue(trace.ExchangeId, out details!))
-            {
-                var sessionId = SelectedSession.SessionId;
-                details = await GetProviderTraceDetailsAsync(sessionId, trace.ExchangeId);
-                if (SelectedSession?.SessionId != sessionId) return;
-            }
-            PopulateProviderTraceContents(trace, details);
-            if (SelectedProviderTrace?.ExchangeId == trace.ExchangeId)
-                SelectedProviderTraceDetails = details;
-        }
-        catch (Exception exception)
-        {
-            trace.Contents.Clear();
-            trace.Contents.Add(ProviderTraceContentItem.Placeholder("Call contents are unavailable"));
-            ProviderTraceError = exception.Message;
-        }
-        finally
-        {
-            trace.ContentsLoading = false;
-        }
-    }
-
-    public async Task SelectProviderTraceContentAsync(ProviderTraceContentItem content)
-    {
-        if (content.IsPlaceholder) return;
-        var trace = ProviderTraces.FirstOrDefault(item => item.ExchangeId == content.ExchangeId);
-        if (trace is null) return;
-        if (!_providerTraceDetails.TryGetValue(trace.ExchangeId, out var details))
-        {
-            await LoadProviderTraceContentsAsync(trace);
-            if (!_providerTraceDetails.TryGetValue(trace.ExchangeId, out details)) return;
-        }
-        SelectedProviderTrace = trace;
-        SelectedProviderTraceDetails = details;
-        SelectedProviderTraceContent = content;
     }
 
     public void SetProviderTraceFilter(string filter)

@@ -23,7 +23,8 @@
             <TextBlock Classes="settings-row-hint" Text="Agent and desktop log files are written to this folder." />
           </StackPanel>
           <controls:SCFileSelector x:Name="LogDirectoryInput" Grid.Column="1" PlaceholderText="Default logs folder"
-                                   DialogTitle="Choose log directory" SelectionMode="Folder" />
+                                   DialogTitle="Choose log directory" SelectionMode="Folder" 
+                                   TextChanged="OnLogDirectoryChanged"/>
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
@@ -32,7 +33,8 @@
           </StackPanel>
           <controls:SCNumericInput x:Name="LogMaxMegabytesInput" Grid.Column="1"
                                    Unit="MB" Minimum="1" Maximum="1000" Increment="1" FormatString="0"
-                                   PlaceholderText="10" AutomationProperties.Name="Maximum file size in megabytes" />
+                                   PlaceholderText="10" AutomationProperties.Name="Maximum file size in megabytes" 
+                                   ValueChanged="OnLogMaxMegabytesChanged"/>
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
@@ -41,11 +43,16 @@
           </StackPanel>
           <controls:SCNumericInput x:Name="LogRetentionInput" Grid.Column="1"
                                    Minimum="0" Maximum="100" Increment="1" FormatString="0"
-                                   PlaceholderText="5" AutomationProperties.Name="Retained log backups" />
+                                   PlaceholderText="5" AutomationProperties.Name="Retained log backups" 
+                                   ValueChanged="OnLogRetentionChanged"/>
         </Grid>
       </StackPanel>
       <StackPanel Classes="settings-actions">
-        <Button Classes="compact primary sc-button" Content="Save logging settings" Click="OnSaveLogging" />
+        <Button x:Name="SaveLoggingButton" 
+                Classes="compact primary sc-button" 
+                Content="Save logging settings" 
+                Click="OnSaveLogging" 
+                IsEnabled="False"/>
         <TextBlock x:Name="LoggingStatus" Classes="sc-text-status" VerticalAlignment="Center" />
       </StackPanel>
       <Border Classes="settings-divider" />
@@ -57,11 +64,12 @@
             <TextBlock Classes="settings-row-hint" Text="Directory for saving images." />
           </StackPanel>
           <controls:SCFileSelector x:Name="ImageDirectoryInput" Grid.Column="1" PlaceholderText="Default images folder"
-                                   DialogTitle="Choose image directory" SelectionMode="Folder" />
+                                   DialogTitle="Choose image directory" SelectionMode="Folder" 
+                                   TextChanged="OnImageDirectoryChanged"/>
         </Grid>
       </StackPanel>
       <StackPanel Classes="settings-actions">
-        <Button Classes="compact primary sc-button" Content="Save image location" Click="OnSaveImageDirectory" />
+        <Button x:Name="SaveImageDirectoryButton" Classes="compact primary sc-button" Content="Save image location" Click="OnSaveImageDirectory" IsEnabled="False"/>
         <TextBlock x:Name="ImageDirectoryStatus" Classes="sc-text-status" VerticalAlignment="Center" />
       </StackPanel>
     </StackPanel>

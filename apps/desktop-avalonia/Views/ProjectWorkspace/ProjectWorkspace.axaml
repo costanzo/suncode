@@ -186,13 +186,13 @@
             <Border Grid.Row="1" Background="#01000000" Cursor="SizeNorthSouth" Tag="BottomDrawer" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveToolActivityVisible}" />
 
             <Grid Grid.Row="2">
-              <Border Classes="card" Height="{Binding BottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding EffectiveGitVisible}">
+              <Border Classes="card" Height="{Binding EffectiveBottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding EffectiveGitVisible}">
                 <review:GitViewer x:Name="GitViewer" VerticalAlignment="Stretch" />
               </Border>
-              <Border Classes="card" Height="{Binding BottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding EffectiveProviderTraceVisible}">
+              <Border Classes="card" Height="{Binding EffectiveBottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding EffectiveProviderTraceVisible}">
                 <review:ProviderTraceViewer x:Name="ProviderTraceViewer" VerticalAlignment="Stretch" />
               </Border>
-              <Border Classes="card" Height="{Binding BottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding EffectiveToolActivityVisible}">
+              <Border Classes="card" Height="{Binding EffectiveBottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding EffectiveToolActivityVisible}">
                 <review:ToolActivityViewer x:Name="ToolActivityViewer" VerticalAlignment="Stretch" />
               </Border>
             </Grid>

@@ -39,6 +39,8 @@ public sealed partial class SCNumericInput : UserControl
 
     public static readonly StyledProperty<bool> ShowButtonSpinnerProperty =
         AvaloniaProperty.Register<SCNumericInput, bool>(nameof(ShowButtonSpinner), true);
+    
+    public event EventHandler<AvaloniaPropertyChangedEventArgs>? ValueChanged;
 
     public SCNumericInput()
     {
@@ -46,6 +48,8 @@ public sealed partial class SCNumericInput : UserControl
         Input.PropertyChanged += InputPropertyChanged;
         SyncInput();
     }
+    
+    private bool _isSyncingValue;
 
     public decimal? Value
     {
@@ -138,6 +142,10 @@ public sealed partial class SCNumericInput : UserControl
         {
             SetCurrentValue(ValueProperty, Input.Value);
             UpdateSpinButtonState();
+            if (!_isSyncingValue)
+            {
+                ValueChanged?.Invoke(this, change);
+            }
         }
     }
 
@@ -178,7 +186,9 @@ public sealed partial class SCNumericInput : UserControl
     {
         if (Input is null || UnitText is null) return;
 
+        _isSyncingValue = true;
         Input.Value = Value;
+        _isSyncingValue = false;
         Input.Minimum = Minimum;
         Input.Maximum = Maximum;
         Input.Increment = Increment;

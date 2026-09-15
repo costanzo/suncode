@@ -34,6 +34,8 @@ public sealed partial class SCFileSelector : UserControl
         AvaloniaProperty.Register<SCFileSelector, SCFileSelectorSelectionMode>(nameof(SelectionMode), SCFileSelectorSelectionMode.Folder);
 
     private bool _syncingText;
+    
+    public event EventHandler<TextChangedEventArgs>? TextChanged;
 
     public SCFileSelector()
     {
@@ -125,6 +127,7 @@ public sealed partial class SCFileSelector : UserControl
     {
         if (_syncingText) return;
         Text = PathInput.Text;
+        TextChanged?.Invoke(this, e);
     }
 
     private async void BrowseRequested(object? sender, RoutedEventArgs e)

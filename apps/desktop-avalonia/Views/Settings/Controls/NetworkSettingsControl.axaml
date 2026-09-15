@@ -63,8 +63,9 @@
         </Border>
       </StackPanel>
       <StackPanel Classes="settings-actions">
-        <Button Classes="compact primary sc-button" Content="Save HTTPS setting"
-                Click="OnSaveHttpsCertificateVerification" />
+        <Button x:Name="SaveHttpsCertificateButton" Classes="compact primary sc-button" Content="Save HTTPS setting"
+                Click="OnSaveHttpsCertificateVerification" 
+                IsEnabled="False"/>
         <TextBlock x:Name="HttpsCertificateStatus" Classes="sc-text-status" VerticalAlignment="Center" />
       </StackPanel>
     </StackPanel>

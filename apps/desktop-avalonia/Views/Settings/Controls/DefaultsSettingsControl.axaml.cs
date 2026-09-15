@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using SunCode.Desktop.Controls;
@@ -8,6 +9,8 @@ public sealed partial class DefaultsSettingsControl : UserControl
 {
     public event EventHandler<SelectionChangedEventArgs>? DefaultModelChanged;
     public event EventHandler<RoutedEventArgs>? SaveToolCallLimitRequested;
+    public event EventHandler<AvaloniaPropertyChangedEventArgs>? ToolCallLimitChanged;
+    
 
     public SCFlatComboBox ModelSelector => DefaultModelSelector;
     public SCNumericInput ToolCallLimit => ToolCallLimitInput;
@@ -19,6 +22,9 @@ public sealed partial class DefaultsSettingsControl : UserControl
     {
         InitializeComponent();
     }
+    
+    private void OnToolCallLimitChanged(object? sender, AvaloniaPropertyChangedEventArgs e) =>
+        ToolCallLimitChanged?.Invoke(this, e);
 
     private void OnDefaultModelChanged(object? sender, SelectionChangedEventArgs e) =>
         DefaultModelChanged?.Invoke(this, e);

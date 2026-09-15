@@ -36,7 +36,8 @@
                                    Minimum="1"
                                    Maximum="256"
                                    Increment="1"
-                                   FormatString="0" />
+                                   FormatString="0" 
+                                   ValueChanged="OnToolCallLimitChanged"/>
         </Grid>
       </StackPanel>
       <StackPanel Classes="settings-actions">

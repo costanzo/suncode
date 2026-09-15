@@ -6,6 +6,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Padding" Value="5,10" />
   </Style>
   <Style Selector="controls|ModelProviderSettingsControl TextBox.settings-provider-input:pointerover">
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
