@@ -272,7 +272,7 @@ public sealed class ToolActivityTurnItem : ObservableObject
     public bool IsExpanded { get => _isExpanded; set => SetProperty(ref _isExpanded, value); }
     public string Title => $"Turn {Sequence}";
     public string IdentifierText => TurnId.Length <= 8 ? TurnId : TurnId[..8];
-    public string ToolCountText => $"{Tools.Count} {(Tools.Count == 1 ? "call" : "calls")}";
+    public string ToolCountText => $"{Tools.Count}";
     public string StateText => State.Replace('_', ' ');
     public bool IsActive => State is "admitted" or "queued" or "preparing" or "calling_model" or "resolving_calls" or "compacting";
 
