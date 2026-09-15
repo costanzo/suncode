@@ -38,8 +38,8 @@
     <Border Background="Transparent" BorderThickness="0" ClipToBounds="True" CornerRadius="10">
       <Grid RowDefinitions="36,1,*">
       <Grid Grid.Row="0" Margin="12,0,8,0" ColumnDefinitions="Auto,8,Auto,8,Auto,8,Auto,*,Auto,8,26,8,26,8,26">
-        <svg:Svg Grid.Column="0" Width="16" Height="16" Path="/Assets/icons/git-branch.svg" Css="{DynamicResource AccentSvgCss}" VerticalAlignment="Center" />
-        <TextBlock Grid.Column="2" Text="{Binding GitBranch}" Classes="mono" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" MaxWidth="190" TextTrimming="CharacterEllipsis" />
+        <svg:Svg Grid.Column="0" Width="16" Height="16" Path="/Assets/icons/git-branch.svg" Css="{DynamicResource GitAccentSvgCss}" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="2" Text="{Binding GitBranch}" Classes="mono" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Width="190" TextTrimming="CharacterEllipsis" />
         <Border Grid.Column="4" Width="1" Height="18" Background="{DynamicResource BorderBrush}" />
         <Border Grid.Column="6" Height="28" Padding="1" CornerRadius="6" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
           <StackPanel Orientation="Horizontal">
@@ -51,7 +51,7 @@
                           HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
           </StackPanel>
         </Border>
-        <TextBox Grid.Column="8" Width="210" Height="28" MinHeight="28" Padding="10,3" PlaceholderText="Filter changed files" TextChanged="GitFilterChanged" />
+        <TextBox Grid.Column="8" Width="210" Height="28" MinHeight="28" Padding="10,5" VerticalAlignment="Center" FontSize="11" PlaceholderText="Filter changed files" TextChanged="GitFilterChanged" />
         <Button Grid.Column="10" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="RefreshGit" ToolTip.Tip="Refresh Git status" AutomationProperties.Name="Refresh Git status">
           <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
