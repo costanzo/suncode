@@ -1,6 +1,8 @@
 using System.Collections.Specialized;
+using System.IO;
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -38,19 +40,35 @@ public sealed partial class SettingsWindow : Window
     private DesktopViewModel? _subscribedViewModel;
     private McpServerEditorWindow? _mcpEditorWindow;
     private readonly DispatcherTimer _mcpPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    
+    private int _baselineToolCallLimit;
+    private string _baselineLogDirectory = string.Empty;
+    private string _baselineLogLevel = string.Empty;
+    private long _baselineLogMaxBytes;
+    private int _baselineLogRetention;
+    private String _baselineImageDirectory = string.Empty;
+    private bool _baselineVerifyHttpsCertificates;
+    private bool _baselineUseSystemCertificates;
+    private string _baselineCertificatePath = string.Empty;
 
     public SettingsWindow()
     {
         InitializeComponent();
         DefaultsPage.DefaultModelChanged += DefaultModelChanged;
         DefaultsPage.SaveToolCallLimitRequested += SaveToolCallLimit;
+        DefaultsPage.ToolCallLimitChanged += ToolCallLimitValueChanged;
         AppearancePage.ThemeChanged += ThemeChanged;
         LoggingPage.LogLevelChanged += LogLevelChanged;
+        LoggingPage.LogDirectoryChanged += LoggingDirectoryChanged;
+        LoggingPage.LogMaxMegabytesChanged += LoggingMaxMegabytesChanged;
+        LoggingPage.LogRetentionChanged += LoggingRetentionChanged;
+        LoggingPage.ImageDirectoryChanged += ImageDirectoryChanged;
         LoggingPage.SaveLoggingRequested += SaveLogging;
         LoggingPage.SaveImageDirectoryRequested += SaveImageDirectory;
         NetworkPage.HttpsCertificateVerificationChanged += HttpsCertificateVerificationChanged;
         NetworkPage.SystemCertificatesChanged += SystemCertificatesChanged;
         NetworkPage.SaveHttpsCertificateVerificationRequested += SaveHttpsCertificateVerification;
+        NetworkPage.CertificatePathChanged += CertificatePathChanged;
         McpPage.AddRequested += AddMcpServer;
         McpPage.EditRequested += EditMcpServer;
         McpPage.DeleteRequested += DeleteMcpServer;
@@ -70,22 +88,34 @@ public sealed partial class SettingsWindow : Window
             LoggingPage.LogLevelSelectorControl.SelectedItem = LogLevelOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.LogLevel));
             DefaultsPage.ToolCallLimit.Value = ViewModel.ToolCallLimit;
             DefaultsPage.ToolCallLimit.IsEnabled = ViewModel.IsProjectOpen;
-            DefaultsPage.SaveToolCallLimitButtonControl.IsEnabled = ViewModel.IsProjectOpen;
             DefaultsPage.ToolCallLimitScopeText.Text = ViewModel.SelectedProject is { } project
                 ? $"Project: {project.DisplayName}"
                 : "Open a project to configure this setting.";
+            _baselineToolCallLimit = ViewModel.ToolCallLimit;
             LoggingPage.LogDirectoryInputControl.Text = ViewModel.EffectiveLogDirectory;
             LoggingPage.ImageDirectoryInputControl.Text = ViewModel.EffectiveImageDirectory;
             LoggingPage.LogMaxMegabytesInputControl.Value = Math.Max(1, ViewModel.LogMaxBytes / (1024 * 1024));
             LoggingPage.LogRetentionInputControl.Value = ViewModel.LogRetention;
+            _baselineLogLevel = ViewModel.LogLevel;
+            _baselineLogDirectory = NormalizeDirectory(ViewModel.EffectiveLogDirectory);
+            _baselineLogMaxBytes = ViewModel.LogMaxBytes;
+            _baselineLogRetention = ViewModel.LogRetention;
+            _baselineImageDirectory = NormalizeDirectory(ViewModel.EffectiveImageDirectory);
             NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked = ViewModel.VerifyHttpsCertificates;
             NetworkPage.UseSystemCertificatesToggleControl.IsChecked = ViewModel.UseSystemCertificates;
             NetworkPage.CertificatePathInputControl.Text = ViewModel.CertificatePath;
             NetworkPage.CertificatePathInputControl.IsEnabled = ViewModel.UseSystemCertificates == false;
+            _baselineVerifyHttpsCertificates = ViewModel.VerifyHttpsCertificates;
+            _baselineUseSystemCertificates = ViewModel.UseSystemCertificates;
+            _baselineCertificatePath = ViewModel.CertificatePath ?? string.Empty;
             RefreshHttpsCertificateWarning();
             RefreshCertificateTrustPresentation();
             LoggingPage.LoggingStatusText.Text = "Local settings";
             LoggingPage.ImageDirectoryStatusText.Text = "Local settings";
+            RefreshDefaultsDirtyState();
+            RefreshLoggingDirtyState();
+            RefreshImageDirectoryDirtyState();
+            RefreshHttpsDirtyState();
             ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
             var savedNavigation = ViewModel.SavedSettingsNavigation;
             SetProvidersExpanded(savedNavigation.ProvidersExpanded);
@@ -268,6 +298,38 @@ public sealed partial class SettingsWindow : Window
 
     private void LogLevelChanged(object? sender, SelectionChangedEventArgs e)
     {
+        if (!_ready) return;
+        RefreshLoggingDirtyState();
+    }
+    
+    private void LoggingDirectoryChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (!_ready) return;
+        RefreshLoggingDirtyState();
+    }
+    
+    private void LoggingMaxMegabytesChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (!_ready) return;
+        RefreshLoggingDirtyState();
+    }
+    
+    private void LoggingRetentionChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (!_ready) return;
+        RefreshLoggingDirtyState();
+    }
+    
+    private void ImageDirectoryChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (!_ready) return;
+        RefreshImageDirectoryDirtyState();
+    }
+    
+    private void ToolCallLimitValueChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (!_ready) return;
+        RefreshDefaultsDirtyState();
     }
 
     private async void SaveLogging(object? sender, RoutedEventArgs e)
@@ -291,6 +353,14 @@ public sealed partial class SettingsWindow : Window
             decimal.ToInt32(retentionValue).ToString(System.Globalization.CultureInfo.InvariantCulture));
         LoggingPage.LoggingStatusText.Text = ViewModel.StatusText;
         LoggingPage.LoggingStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
+        if (saved)
+        {
+            _baselineLogLevel = ViewModel.LogLevel;
+            _baselineLogDirectory = NormalizeDirectory(ViewModel.EffectiveLogDirectory);
+            _baselineLogMaxBytes = ViewModel.LogMaxBytes;
+            _baselineLogRetention = ViewModel.LogRetention;
+        }
+        RefreshLoggingDirtyState();
     }
 
     private async void SaveImageDirectory(object? sender, RoutedEventArgs e)
@@ -298,16 +368,30 @@ public sealed partial class SettingsWindow : Window
         var saved = await ViewModel.SaveImageDirectoryAsync(LoggingPage.ImageDirectoryInputControl.Text);
         LoggingPage.ImageDirectoryStatusText.Text = ViewModel.StatusText;
         LoggingPage.ImageDirectoryStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
+        if (saved)
+        {
+            _baselineImageDirectory = NormalizeDirectory(ViewModel.EffectiveImageDirectory);
+        }
+        RefreshImageDirectoryDirtyState();
     }
 
-    private void HttpsCertificateVerificationChanged(object? sender, RoutedEventArgs e) =>
+    private void HttpsCertificateVerificationChanged(object? sender, RoutedEventArgs e)
+    {
         RefreshCertificateTrustPresentation();
+        if (_ready) RefreshHttpsDirtyState();
+    }
 
     private void SystemCertificatesChanged(object? sender, RoutedEventArgs e)
     {
         ViewModel.UseSystemCertificates = NetworkPage.UseSystemCertificatesToggleControl.IsChecked == true;
         NetworkPage.CertificatePathInputControl.IsEnabled = !ViewModel.UseSystemCertificates;
         RefreshCertificateTrustPresentation();
+        if (_ready) RefreshHttpsDirtyState();
+    }
+    
+    private void CertificatePathChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_ready) RefreshHttpsDirtyState();
     }
 
     private async void SaveHttpsCertificateVerification(object? sender, RoutedEventArgs e)
@@ -321,7 +405,14 @@ public sealed partial class SettingsWindow : Window
         {
             NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked = ViewModel.VerifyHttpsCertificates;
         }
+        else
+        {
+            _baselineVerifyHttpsCertificates = ViewModel.VerifyHttpsCertificates;
+            _baselineUseSystemCertificates = ViewModel.UseSystemCertificates;
+            _baselineCertificatePath = ViewModel.CertificatePath ?? string.Empty;
+        }
         RefreshHttpsCertificateWarning();
+        RefreshHttpsDirtyState();
     }
 
     private void RefreshHttpsCertificateWarning()
@@ -351,6 +442,8 @@ public sealed partial class SettingsWindow : Window
         var saved = await ViewModel.SaveProjectToolCallLimitAsync(decimal.ToInt32(value));
         DefaultsPage.ToolCallLimitStatusText.Text = ViewModel.StatusText;
         DefaultsPage.ToolCallLimitStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
+        if (saved) _baselineToolCallLimit = ViewModel.ToolCallLimit;
+        RefreshDefaultsDirtyState();
     }
 
     private async void SaveCredential(object? sender, RoutedEventArgs e)
@@ -455,5 +548,56 @@ public sealed partial class SettingsWindow : Window
         var items = viewModel.Models.Select(model => new SCComboBoxItem(model.Id, model)).ToArray();
         DefaultsPage.ModelSelector.ItemsSource = items;
         DefaultsPage.ModelSelector.SelectedItem = items.FirstOrDefault(item => item.Value is ModelItem model && model.Id == viewModel.SelectedModel?.Id);
+    }
+    
+    private static string NormalizeDirectory(string? directory) =>
+        directory?.Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) ?? string.Empty;
+
+    private void RefreshDefaultsDirtyState()
+    {
+        if (!ViewModel.IsProjectOpen)
+        {
+            DefaultsPage.SaveToolCallLimitButtonControl.IsEnabled = false;
+            return;
+        }
+
+        var current = (int?)DefaultsPage.ToolCallLimit.Value;
+        DefaultsPage.SaveToolCallLimitButtonControl.IsEnabled = 
+            current.HasValue && current.Value != _baselineToolCallLimit;
+    }
+
+    private void RefreshLoggingDirtyState()
+    {
+        var level = LoggingPage.LogLevelSelectorControl.SelectedItem?.Value as string ?? ViewModel.LogLevel;
+        var directory = NormalizeDirectory(LoggingPage.LogDirectoryInputControl.Text);
+        var megabytes = LoggingPage.LogMaxMegabytesInputControl.Value is { } mbValue 
+            ? checked(decimal.ToInt64(mbValue) * 1024 * 1024) 
+            : (long?)null;
+        var retention = LoggingPage.LogRetentionInputControl.Value is { } retentionValue 
+            ? decimal.ToInt32(retentionValue) 
+            : (int?)null;
+        LoggingPage.SaveLoggingButtonControl.IsEnabled =
+            !string.Equals(level, _baselineLogLevel, StringComparison.Ordinal)
+            || !string.Equals(directory, _baselineLogDirectory, StringComparison.Ordinal)
+            || (megabytes.HasValue && megabytes.Value != _baselineLogMaxBytes)
+            || (retention.HasValue && retention.Value != _baselineLogRetention);
+    }
+    
+    private void RefreshImageDirectoryDirtyState()
+    {
+        var directory = NormalizeDirectory(LoggingPage.ImageDirectoryInputControl.Text);
+        LoggingPage.SaveImageDirectoryButtonControl.IsEnabled =
+            !string.Equals(directory, _baselineImageDirectory, StringComparison.Ordinal);
+    }
+    
+    private void RefreshHttpsDirtyState()
+    {
+        var verify = NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked == true;
+        var useSystem = NetworkPage.UseSystemCertificatesToggleControl.IsChecked == true;
+        var path = (NetworkPage.CertificatePathInputControl.Text ?? string.Empty).Trim();
+        NetworkPage.SaveHttpsCertificateButtonControl.IsEnabled =
+            verify != _baselineVerifyHttpsCertificates
+            || useSystem != _baselineUseSystemCertificates
+            || !string.Equals(path, _baselineCertificatePath, StringComparison.Ordinal);
     }
 }
