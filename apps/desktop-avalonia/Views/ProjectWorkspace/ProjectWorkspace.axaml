@@ -128,7 +128,7 @@
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/workspace-files.svg" IsVisible="{Binding ExplorerSidebarVisible}" />
               </Grid>
             </Button>
-            <Border Grid.Column="3" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" />
+            <Border Grid.Row="3" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" Background="Transparent"/>
             <Button Grid.Row="4" Classes="icon gutter" Classes.active="{Binding GitVisible}" Click="ToggleGit" ToolTip.Tip="Show or hide source control" AutomationProperties.Name="Show or hide source control">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/git-branch.svg" IsVisible="{Binding !GitVisible}" />
