@@ -184,11 +184,11 @@ public sealed record ProjectDependency(
     string CreatedAt);
 
 public sealed record ProjectDependenciesResult(
-    [property: JsonPropertyName("project_id")] string ProjectId,
+    [property: JsonPropertyName("projectId")] string ProjectId,
     IReadOnlyList<ProjectDependency> Dependencies);
 
 public sealed record DependencyRemoval(
-    [property: JsonPropertyName("dependency_id")] string DependencyId,
+    [property: JsonPropertyName("dependencyId")] string DependencyId,
     bool Removed);
 
 public sealed record DirectoryEntry(string Name, string Path, string Kind, bool Expandable);
@@ -387,7 +387,7 @@ public sealed record SessionTraceTurn(
     [property: JsonPropertyName("totalTokens")] ulong TotalTokens);
 
 public sealed record ProviderExchangesResult(
-    [property: JsonPropertyName("sessionId")] string SessionId,
+    [property: JsonPropertyName("session_id")] string SessionId,
     IReadOnlyList<SessionTraceTurn> Turns,
     IReadOnlyList<ProviderExchange> Exchanges);
 
@@ -414,26 +414,26 @@ public sealed record ProviderExchangeDetails(
     [property: JsonPropertyName("toolUses")] IReadOnlyList<SessionCallToolUse> ToolUses);
 
 public sealed record CheckpointManifest(
-    [property: JsonPropertyName("manifest_id")] string ManifestId,
-    [property: JsonPropertyName("session_id")] string SessionId,
-    [property: JsonPropertyName("turn_id")] string? TurnId,
+    [property: JsonPropertyName("manifestId")] string ManifestId,
+    [property: JsonPropertyName("sessionId")] string SessionId,
+    [property: JsonPropertyName("turnId")] string? TurnId,
     string Status,
-    [property: JsonPropertyName("created_at")] string CreatedAt,
-    [property: JsonPropertyName("updated_at")] string UpdatedAt,
-    [property: JsonPropertyName("expires_at")] string ExpiresAt,
-    [property: JsonPropertyName("restored_at")] string? RestoredAt);
+    [property: JsonPropertyName("createdAt")] string CreatedAt,
+    [property: JsonPropertyName("updatedAt")] string UpdatedAt,
+    [property: JsonPropertyName("expiresAt")] string ExpiresAt,
+    [property: JsonPropertyName("restoredAt")] string? RestoredAt);
 
 public sealed record CheckpointItem(
-    [property: JsonPropertyName("checkpoint_id")] string CheckpointId,
-    [property: JsonPropertyName("manifest_id")] string? ManifestId,
-    [property: JsonPropertyName("session_id")] string SessionId,
-    [property: JsonPropertyName("turn_id")] string? TurnId,
-    [property: JsonPropertyName("tool_call_id")] string? ToolCallId,
-    [property: JsonPropertyName("relative_path")] string? RelativePath,
+    [property: JsonPropertyName("checkpointId")] string CheckpointId,
+    [property: JsonPropertyName("manifestId")] string? ManifestId,
+    [property: JsonPropertyName("sessionId")] string SessionId,
+    [property: JsonPropertyName("turnId")] string? TurnId,
+    [property: JsonPropertyName("toolCallId")] string? ToolCallId,
+    [property: JsonPropertyName("relativePath")] string? RelativePath,
     string Status,
-    [property: JsonPropertyName("created_at")] string CreatedAt,
-    [property: JsonPropertyName("restored_at")] string? RestoredAt,
-    [property: JsonPropertyName("invalidated_at")] string? InvalidatedAt,
+    [property: JsonPropertyName("createdAt")] string CreatedAt,
+    [property: JsonPropertyName("restoredAt")] string? RestoredAt,
+    [property: JsonPropertyName("invalidatedAt")] string? InvalidatedAt,
     long? Ordinal);
 
 public sealed record CheckpointsResult(
@@ -516,18 +516,18 @@ public sealed record TurnResponse(
     [property: JsonPropertyName("tool_calls")] uint? ToolCalls);
 
 public sealed record ApprovalRecord(
-    [property: JsonPropertyName("approval_id")] string ApprovalId,
-    [property: JsonPropertyName("project_id")] string? ProjectId,
-    [property: JsonPropertyName("session_id")] string SessionId,
-    [property: JsonPropertyName("turn_id")] string TurnId,
-    [property: JsonPropertyName("tool_call_id")] string ToolCallId,
+    [property: JsonPropertyName("approvalId")] string ApprovalId,
+    [property: JsonPropertyName("projectId")] string? ProjectId,
+    [property: JsonPropertyName("sessionId")] string SessionId,
+    [property: JsonPropertyName("turnId")] string TurnId,
+    [property: JsonPropertyName("toolCallId")] string ToolCallId,
     string Operation,
     JsonElement Arguments,
     string Status,
     string? Decision,
-    [property: JsonPropertyName("decision_source")] string? DecisionSource,
-    [property: JsonPropertyName("created_at")] string CreatedAt,
-    [property: JsonPropertyName("updated_at")] string UpdatedAt);
+    [property: JsonPropertyName("decisionSource")] string? DecisionSource,
+    [property: JsonPropertyName("createdAt")] string CreatedAt,
+    [property: JsonPropertyName("updatedAt")] string UpdatedAt);
 
 public sealed record ApprovalOutcome(
     [property: JsonPropertyName("approval_id")] string ApprovalId,
@@ -613,17 +613,19 @@ public sealed record AgentEventPayload(
     [property: JsonPropertyName("input_messages")] IReadOnlyList<AgentMessage>? InputMessages = null,
     [property: JsonPropertyName("active_turn_id")] string? ActiveTurnId = null,
     int? Position = null,
+    [property: JsonPropertyName("iteration")] uint? Iteration = null,
     uint? Iterations = null,
+    [property: JsonPropertyName("tool_calls")] JsonElement? ToolCalls = null,
     [property: JsonPropertyName("exchange_id")] string? ExchangeId = null,
     string? Provider = null,
     [property: JsonPropertyName("wire_model")] string? WireModel = null,
     [property: JsonPropertyName("started_at")] string? StartedAt = null,
     [property: JsonPropertyName("completed_at")] string? CompletedAt = null,
-    int? OriginalCharacters = null,
-    int? RetainedCharacters = null,
-    int? OriginalTokens = null,
-    int? RetainedTokens = null,
-    int? DroppedMessages = null,
+    [property: JsonPropertyName("original_characters")] int? OriginalCharacters = null,
+    [property: JsonPropertyName("retained_characters")] int? RetainedCharacters = null,
+    [property: JsonPropertyName("original_tokens")] int? OriginalTokens = null,
+    [property: JsonPropertyName("retained_tokens")] int? RetainedTokens = null,
+    [property: JsonPropertyName("dropped_messages")] int? DroppedMessages = null,
     AgentContextSummary? Summary = null,
     [property: JsonPropertyName("output_message")] AgentMessage? OutputMessage = null,
     ProviderError? Error = null,

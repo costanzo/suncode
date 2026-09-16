@@ -85,4 +85,58 @@ public sealed class SdkTypedModelTests
         Assert.Equal("project", transport.GetProperty("workingDirectory").GetString());
         Assert.Equal(15UL, transport.GetProperty("startupTimeoutSeconds").GetUInt64());
     }
+
+    [Fact]
+    public void Deserializes_rust_camel_case_dependency_checkpoint_and_approval_fields()
+    {
+        const string dependenciesJson = """
+            {"projectId":"project-1","dependencies":[{"dependencyId":"dependency-1","projectId":"project-1","displayName":"Library","createdAt":"created"}]}
+            """;
+        var dependencies = JsonSerializer.Deserialize<ProjectDependenciesResult>(dependenciesJson, Options);
+
+        Assert.NotNull(dependencies);
+        Assert.Equal("project-1", dependencies.ProjectId);
+        Assert.Equal("dependency-1", Assert.Single(dependencies.Dependencies).DependencyId);
+
+        const string checkpointJson = """
+            {"manifest":{"manifestId":"manifest-1","sessionId":"session-1","turnId":"turn-1","status":"available","createdAt":"created","updatedAt":"updated","expiresAt":"expires","restoredAt":null},"items":[{"checkpointId":"checkpoint-1","manifestId":"manifest-1","sessionId":"session-1","turnId":"turn-1","toolCallId":"tool-1","relativePath":"src/main.rs","status":"available","createdAt":"created","restoredAt":null,"invalidatedAt":null,"ordinal":0}]}
+            """;
+        var checkpoint = JsonSerializer.Deserialize<CheckpointDetails>(checkpointJson, Options);
+
+        Assert.NotNull(checkpoint);
+        Assert.Equal("manifest-1", checkpoint.Manifest.ManifestId);
+        Assert.Equal("src/main.rs", Assert.Single(checkpoint.Items).RelativePath);
+
+        const string approvalJson = """
+            {"approvalId":"approval-1","projectId":"project-1","sessionId":"session-1","turnId":"turn-1","toolCallId":"tool-1","operation":"write","arguments":{},"status":"pending","decision":null,"decisionSource":null,"createdAt":"created","updatedAt":"updated"}
+            """;
+        var approval = JsonSerializer.Deserialize<ApprovalRecord>(approvalJson, Options);
+
+        Assert.NotNull(approval);
+        Assert.Equal("approval-1", approval.ApprovalId);
+        Assert.Equal("tool-1", approval.ToolCallId);
+    }
+
+    [Fact]
+    public void Deserializes_rust_provider_result_and_event_payload_fields()
+    {
+        const string exchangesJson = """
+            {"session_id":"session-1","turns":[],"exchanges":[]}
+            """;
+        var exchanges = JsonSerializer.Deserialize<ProviderExchangesResult>(exchangesJson, Options);
+
+        Assert.NotNull(exchanges);
+        Assert.Equal("session-1", exchanges.SessionId);
+
+        const string eventJson = """
+            {"session_id":"session-1","occurred_at":"now","event_type":"context.compacted","payload":{"turn_id":"turn-1","iteration":2,"tool_calls":3,"original_characters":100,"retained_characters":40,"original_tokens":25,"retained_tokens":10,"dropped_messages":4}}
+            """;
+        var agentEvent = JsonSerializer.Deserialize<AgentEvent>(eventJson, Options);
+
+        Assert.NotNull(agentEvent);
+        Assert.Equal((uint)2, agentEvent.Payload.Iteration);
+        Assert.Equal(3, agentEvent.Payload.ToolCalls?.GetInt32());
+        Assert.Equal(100, agentEvent.Payload.OriginalCharacters);
+        Assert.Equal(4, agentEvent.Payload.DroppedMessages);
+    }
 }

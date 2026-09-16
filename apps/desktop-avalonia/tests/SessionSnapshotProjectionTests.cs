@@ -171,7 +171,7 @@ public sealed class SessionSnapshotProjectionTests
     {
         var payload = Approval("""
         {
-          "approval_id": "approval-1",
+          "approvalId": "approval-1",
           "operation": "bash",
           "arguments": {
             "command": "find . -type f -name \"*.cs\" | head -200 && echo done",
@@ -228,7 +228,7 @@ public sealed class SessionSnapshotProjectionTests
     {
         var payload = Approval("""
         {
-          "approval_id": "approval-2",
+          "approvalId": "approval-2",
           "operation": "write",
           "arguments": {"path":"src/App.cs","content":"class App {}"}
         }
@@ -247,7 +247,7 @@ public sealed class SessionSnapshotProjectionTests
     {
         var payload = Approval("""
         {
-          "approval_id": "approval-web",
+          "approvalId": "approval-web",
           "operation": "webfetch",
           "arguments": {
             "url": "https://example.com/reference",
