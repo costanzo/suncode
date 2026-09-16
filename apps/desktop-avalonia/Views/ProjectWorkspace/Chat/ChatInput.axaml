@@ -107,10 +107,21 @@
       <Setter Property="MinWidth" Value="17" />
       <Setter Property="MinHeight" Value="17" />
       <Setter Property="Padding" Value="3" />
+      <Setter Property="IsVisible" Value="False" />
       <Setter Property="Background" Value="{DynamicResource TextBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource ComposerBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="9" />
+    </Style>
+    <Style Selector="Button.attachment-remove:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource TextSecondaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ComposerBrush}" />
+    </Style>
+    <Style Selector="Border.attachment:pointerover Button.attachment-remove">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="Button.attachment-remove:focus">
+      <Setter Property="IsVisible" Value="True" />
     </Style>
   </UserControl.Styles>
 
@@ -129,14 +140,15 @@
     <ItemsControl.ItemTemplate>
       <DataTemplate x:DataType="models:ComposerAttachment">
         <Grid Width="60" Height="60">
-          <Border Width="48"
+          <Border Classes="attachment" 
+                  Width="48"
                   Height="48"
                   HorizontalAlignment="Left"
                   Padding="1"
                   Background="{DynamicResource FieldBrush}"
                   BorderBrush="{DynamicResource BorderStrongBrush}"
                   BorderThickness="1"
-                  CornerRadius="6"
+                  CornerRadius="5"
                   BoxShadow="0 3 8 0 #40000000">
             <Grid>
               <Button Classes="attachment-preview"
