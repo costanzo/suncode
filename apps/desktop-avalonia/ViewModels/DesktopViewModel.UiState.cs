@@ -13,6 +13,7 @@ public sealed partial class DesktopViewModel
     {
         _uiStateStore = uiStateStore;
         _conversationDurationTimer.Tick += ConversationDurationTick;
+        ComposerAttachments.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ComposerBottomClearance));
     }
 
     internal UiProjectState SavedUiProjectState => SelectedProject is { } project

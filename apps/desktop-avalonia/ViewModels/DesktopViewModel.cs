@@ -121,6 +121,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             : ["low", "medium", "high"];
     public ObservableCollection<CredentialItem> Credentials { get; } = [];
     public ObservableCollection<ComposerAttachment> ComposerAttachments { get; } = [];
+    public double ComposerBottomClearance => ComposerAttachments.Count > 0 ? 180 : 128;
     public ObservableCollection<ProjectDependencyItem> ProjectDependencies { get; } = [];
     public ObservableCollection<ExplorerNode> ExplorerRoots { get; } = [];
     public BulkObservableCollection<MessageItem> Messages
