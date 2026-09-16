@@ -38,6 +38,11 @@ public sealed class MarkdownText : ContentControl
             HandleCopyingToClipboard,
             RoutingStrategies.Bubble,
             handledEventsToo: true);
+        _renderer.AddHandler(
+            MarkdownTextBlock.LinkClickEvent,
+            HandleLinkClick,
+            RoutingStrategies.Bubble,
+            handledEventsToo: true);
         Content = _renderer;
     }
 
@@ -74,6 +79,26 @@ public sealed class MarkdownText : ContentControl
         _markdownBuilder.Append(markdown);
         _renderedMarkdown = markdown;
     }
+
+    private async void HandleLinkClick(object? sender, LinkClickedEventArgs e)
+    {
+        try
+        {
+            if (e.HRef is { IsAbsoluteUri: true, Scheme: "http" or "https" } url)
+            {
+                var launcher = TopLevel.GetTopLevel(_renderer)?.Launcher;
+                if (launcher is not null)
+                {
+                    await launcher.LaunchUriAsync(url);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore errors when opening links, as we don't want to crash the app for this
+        }
+    }
+    
 
     private async void HandleCopyingToClipboard(object? sender, RoutedEventArgs e)
     {
