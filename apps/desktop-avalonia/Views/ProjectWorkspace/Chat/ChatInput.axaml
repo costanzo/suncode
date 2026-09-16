@@ -6,6 +6,7 @@
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Chat.ChatInput"
              x:DataType="vm:DesktopViewModel"
+             DragDrop.AllowDrop="True"
              Height="126"
              Margin="0"
              VerticalAlignment="Bottom"
@@ -62,6 +63,11 @@
     </Style>
     <Style Selector="Border.composer-surface.unavailable">
       <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}" />
+    </Style>
+    <Style Selector="Border.composer-surface.drop-active">
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="Background" Value="{DynamicResource AccentSurfaceBrush}" />
     </Style>
     <Style Selector="TextBlock.composer-status">
       <Setter Property="FontSize" Value="11" />
@@ -150,7 +156,8 @@
     </ItemsControl.ItemTemplate>
     </ItemsControl>
 
-    <Border Classes="composer-surface" Classes.unavailable="{Binding IsModelUnavailable}"
+    <Border x:Name="ComposerSurface"
+            Classes="composer-surface" Classes.unavailable="{Binding IsModelUnavailable}"
           Margin="24,14,24,10"
           Padding="16,12,12,5"
           CornerRadius="16"

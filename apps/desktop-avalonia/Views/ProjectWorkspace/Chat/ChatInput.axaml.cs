@@ -25,6 +25,11 @@ public sealed partial class ChatInput : UserControl
     private const int MaxImageBytes = 20 * 1024 * 1024;
     private const long MaxImagePixels = 50_000_000;
     private DesktopViewModel? _subscribedViewModel;
+    private const string DropActiveClass = "drop-active";
+    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".avif"
+    };
     private string _expandedDraft = string.Empty;
     private bool _selectorRefreshQueued;
     private bool _selectorRefreshInProgress;
@@ -42,6 +47,9 @@ public sealed partial class ChatInput : UserControl
         InitializeComponent();
         ComposerInput.AddHandler(KeyDownEvent, ComposerKeyDown, RoutingStrategies.Tunnel);
         ComposerInput.AddHandler(TextBox.PastingFromClipboardEvent, ComposerPaste);
+        AddHandler(DragDrop.DragOverEvent, ComposerDragOver);
+        AddHandler(DragDrop.DropEvent, ComposerDrop);
+        AddHandler(DragDrop.DragLeaveEvent, ComposerDragLeave);
         DataContextChanged += (_, _) => RebindViewModelSubscriptions();
         AttachedToVisualTree += (_, _) => RebindViewModelSubscriptions();
     }
@@ -276,6 +284,78 @@ public sealed partial class ChatInput : UserControl
     {
         var extension = Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
         return string.IsNullOrWhiteSpace(extension) ? "png" : extension;
+    }
+    
+    private static bool IsImageName(string name) => 
+        AllowedImageExtensions.Contains(Path.GetExtension(name));
+    
+    private void ComposerDragOver(object? sender, DragEventArgs e)
+    {
+        if (!CanAcceptDrop(e.DataTransfer, out _))
+        {
+            ComposerSurface.Classes.Remove(DropActiveClass);
+            e.DragEffects = DragDropEffects.None;
+            return;
+        }
+        ComposerSurface.Classes.Add(DropActiveClass);
+        e.DragEffects = DragDropEffects.Copy;
+        e.Handled = true;
+    }
+    
+    private void ComposerDragLeave(object? sender, DragEventArgs e)
+    {
+        ComposerSurface.Classes.Remove(DropActiveClass);
+    }
+    
+    private async void ComposerDrop(object? sender, DragEventArgs e)
+    {
+        ComposerSurface.Classes.Remove(DropActiveClass);
+        if (!CanAcceptDrop(e.DataTransfer, out var files))
+        {
+            e.DragEffects = DragDropEffects.None;
+            return;
+        }
+        
+        e.DragEffects = DragDropEffects.Copy;
+        e.Handled = true;
+
+        foreach (var file in files.Take(MaxAttachments - ViewModel.ComposerAttachments.Count))
+        {
+            try
+            {
+                var localPath = file.TryGetLocalPath();
+                await using var stream = await file.OpenReadAsync();
+                var bytes = await ReadImageBytesAsync(stream);
+                var thumbnail = await Task.Run(() => CreateThumbnailBytes(bytes));
+                var extension = ExtensionFromName(file.Name);
+                await ViewModel.AddSessionImageAsync(
+                    file.Name,
+                    "file",
+                    localPath,
+                    extension,
+                    bytes,
+                    thumbnail);
+            }
+            catch (Exception exception)
+            {
+                ViewModel.ReportPresentationError($"Could not load image '{file.Name}': {exception.Message}");
+            }
+        }
+    }
+
+    private bool CanAcceptDrop(IDataTransfer data, out IReadOnlyList<IStorageFile> files)
+    {
+        files = Array.Empty<IStorageFile>();
+        if (!ViewModel.CanAttachImages || !data.Contains(DataFormat.File)) return false;
+
+        var items = data.TryGetFiles();
+        if (items is null || items.Length == 0) return false;
+
+        var images = items.OfType<IStorageFile>().Where(file => IsImageName(file.Name)).ToList();
+        if (images.Count == 0) return false;
+        
+        files = images;
+        return true;
     }
 
     private void RebindViewModelSubscriptions()
