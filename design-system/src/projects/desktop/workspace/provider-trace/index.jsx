@@ -32,7 +32,7 @@ const providerTraceGuides = {
       ],
       style: [
         "Turn rows use compact 40px minimum heights with a 7px content gap.",
-        "Collapsed calls hide nested content while preserving title, time, status, and tokens.",
+        "Collapsed calls preserve title, time, status, and tokens without nested rows.",
         "The trace list uses a 230px desktop column before the detail divider.",
       ],
       logic: [
@@ -50,13 +50,13 @@ const providerTraceGuides = {
         "Move between calls without leaving the provider trace.",
       ],
       style: [
-        "The three-level hierarchy uses turn, call, and content rows.",
-        "Nested content rows keep 40px minimum height and a 20px left inset.",
-        "User, assistant, and tool labels use 9px monospace uppercase text.",
+        "The hierarchy uses turn and call rows only; calls are leaf rows",
+        "Call rows keep title, time, status, and token summary aligned in one row.",
+        "Selecting a call opens its overview detail without a nested content tier.",
       ],
       logic: [
         "Each turn can contain multiple model calls.",
-        "Each call can contain user, assistant, and tool content entries.",
+        "Each call is a leaf row whose messages, tools, request, and response live in the detail pane.",
         "Expansion state is local UI state and does not alter canonical messages.",
       ],
     },
@@ -69,9 +69,9 @@ const providerTraceGuides = {
         "Compare the event with the following model call when investigating context behavior.",
       ],
       style: [
-        "The compaction call uses a subtle steel-tinted row and a CONTEXT content label.",
+        "The compaction call uses a subtle steel-tinted row.",
         "Its detail pane keeps the same metrics grid while replacing model response text with the compaction result.",
-        "The three-level hierarchy remains turn, call, and content so system events are easy to locate.",
+        "The turn and call hierarchy keeps system evenets easy to locate without a content tier.",
       ],
       logic: [
         "Context compaction is recorded as a completed internal event within the turn trace.",
@@ -83,7 +83,7 @@ const providerTraceGuides = {
   expanded: {
     tabs: {
       actions: [
-        "Select a content row to inspect its canonical payload.",
+        "Select a call to inspect its request, response, and usage",
         "Review request and response identifiers without exposing credentials.",
         "Use timing and token metrics to understand provider behavior.",
       ],
@@ -93,7 +93,7 @@ const providerTraceGuides = {
         "The detail header keeps title, status, and token metrics aligned in a compact row.",
       ],
       logic: [
-        "The selected content is read-only and reflects the normalized provider trace.",
+        "The selected call is read-only and reflects the normalized provider trace.",
         "Provider identifiers are redacted or presented as safe metadata.",
         "Usage and timing belong to the selected model call, not the whole session.",
       ],
@@ -121,7 +121,7 @@ export function WorkspaceProviderTracePage() {
     {
       id: "turnExpanded",
       title: "Turn expanded",
-      description: "A turn reveals its individual model calls and content rows.",
+      description: "A turn reveals its individual model calls.",
       side: "right",
       content: <ProviderTracePanel standalone state="turn-expanded" />,
     },
@@ -145,7 +145,7 @@ export function WorkspaceProviderTracePage() {
     <>
       <PageHeader
         title="Provider trace"
-        description="Model exchanges, canonical content, tool activity, usage, timing, and redacted provider identifiers."
+        description="Model exchanges, tool activity, usage, timing, and redacted provider identifiers."
       />
       <Section id="provider-trace-panel" title="Model exchange detail">
         <div className="workspace-state-grid workspace-drawer-state-grid">

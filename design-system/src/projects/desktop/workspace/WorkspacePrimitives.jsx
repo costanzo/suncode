@@ -1824,11 +1824,7 @@ export function SourceControlPanel({
 
 export function ProviderTracePanel({ onClose, standalone = false, state = "expanded" }) {
   const [selected, setSelected] = useState(state === "context-compaction" ? 1 : 0);
-  const [selectedContent, setSelectedContent] = useState(0);
   const [expandedTurn, setExpandedTurn] = useState(state !== "turn-collapsed");
-  const [expandedCall, setExpandedCall] = useState(
-    state === "expanded" || state === "context-compaction",
-  );
   const traces = [
     {
       title: "Response · gpt-5.6-sol",
@@ -1937,7 +1933,6 @@ export function ProviderTracePanel({ onClose, standalone = false, state = "expan
   ];
   const noTurns = state === "no-turns";
   const activeTrace = traces[selected] ?? traces[0];
-  const activeContent = activeTrace.contents[selectedContent] ?? activeTrace.contents[0];
   return (
     <section className={`workspace-drawer workspace-trace ${standalone ? "is-standalone" : ""}`}>
       <header>
@@ -1987,22 +1982,8 @@ export function ProviderTracePanel({ onClose, standalone = false, state = "expan
                     <button
                       type="button"
                       className={`workspace-trace-call ${trace.kind ? `is-${trace.kind}` : ""} ${selected === index ? "is-selected" : ""}`}
-                      aria-expanded={selected === index && expandedCall}
-                      onClick={() => {
-                        setSelected(index);
-                        setSelectedContent(0);
-                        setExpandedCall(
-                          selected === index
-                            ? !expandedCall
-                            : state === "expanded" || state === "context-compaction",
-                        );
-                      }}
+                      onClick={() => setSelected(index)}
                     >
-                      <Icon
-                        name="chevron-right"
-                        className={selected === index && expandedCall ? "is-open" : ""}
-                        size={11}
-                      />
                       <span>
                         <strong>{trace.title}</strong>
                         <small>{trace.time}</small>
@@ -2012,25 +1993,6 @@ export function ProviderTracePanel({ onClose, standalone = false, state = "expan
                         <small>{trace.tokens}</small>
                       </span>
                     </button>
-                    {selected === index && expandedCall && (
-                      <div className="workspace-trace-call-contents">
-                        {trace.contents.map((content, contentIndex) => (
-                          <button
-                            type="button"
-                            className={`workspace-trace-content-row is-${content.kind} ${selectedContent === contentIndex ? "is-selected" : ""}`}
-                            key={`${trace.title}-${content.title}`}
-                            onClick={() => setSelectedContent(contentIndex)}
-                          >
-                            <span>{content.label}</span>
-                            <span>
-                              <strong>{content.title}</strong>
-                              <small>{content.summary}</small>
-                            </span>
-                            <time>{content.time}</time>
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -2039,7 +2001,7 @@ export function ProviderTracePanel({ onClose, standalone = false, state = "expan
           <div className="workspace-trace-detail">
             <div className="workspace-trace-title">
               <code>
-                {activeTrace.title} · {activeContent.label}
+                {activeTrace.title}
               </code>
               <span>
                 {activeTrace.kind === "compaction" ? "context build" : "1.84 s  gpt-5.6-sol"}
@@ -2069,18 +2031,11 @@ export function ProviderTracePanel({ onClose, standalone = false, state = "expan
                     : "exchange  exch_01JY7F6P8S"}
                 </span>
               </div>
-              <h4>{activeContent.label}</h4>
-              <p>
-                <b>{activeContent.label}</b>
-                <span>{activeContent.summary}</span>
-              </p>
               <h4>{activeTrace.kind === "compaction" ? "Compaction result" : "Model response"}</h4>
               <pre>
                 {activeTrace.kind === "compaction"
                   ? `{"status":"completed","event":"context.compacted","dropped_messages":6,"retained_tokens":12160}`
-                  : activeContent.kind === "tool"
-                    ? `{"status":"completed","tool":"${activeContent.title}"}`
-                    : `{"status":"completed","role":"${activeContent.kind}"}`}
+                  : `{"status":"completed","role":"assistant"}`}
               </pre>
             </div>
           </div>
