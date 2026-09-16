@@ -1,7 +1,39 @@
 import { useEffect, useRef, useState } from "react";
 import specimenImage from "../../../assets/logos/suncode-logo.svg";
 import { Icon } from "../../../shared/Icon.jsx";
+import { Button } from "../button/index.js";
+import markdownSource from "./markdown-specimen.md?raw";
 import "./Markdown.css";
+
+async function copyText(text) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {}
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "");
+  textArea.setAttribute("aria-hidden", "true");
+  textArea.style.position = "fixed";
+  textArea.style.opacity = "0";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } finally {
+    textArea.remove();
+  }
+
+  if (!copied) {
+    throw new Error("Copy command failed");
+  }
+}
 
 function CodeBlock({ language, children }) {
   const codeRef = useRef(null);
@@ -15,17 +47,7 @@ function CodeBlock({ language, children }) {
     if (!code) return;
 
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(code.textContent ?? "");
-      } else {
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(code);
-        selection?.removeAllRanges();
-        selection?.addRange(range);
-        document.execCommand("copy");
-        selection?.removeAllRanges();
-      }
+      await copyText(code.textContent ?? "");
 
       setCopied(true);
       window.clearTimeout(resetTimerRef.current);
@@ -56,8 +78,46 @@ function CodeBlock({ language, children }) {
 }
 
 export function MarkdownSpecimen() {
+  const resetTimerRef = useRef(null);
+  const [copyStatus, setCopyStatus] = useState("idle");
+
+  useEffect(() => () => window.clearTimeout(resetTimerRef.current), []);
+
+  async function copyMarkdown() {
+    try {
+      await copyText(markdownSource.trim());
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("failed");
+    }
+
+    window.clearTimeout(resetTimerRef.current);
+    resetTimerRef.current = window.setTimeout(() => setCopyStatus("idle"), 1600);
+  }
+
+  const copyLabel =
+    copyStatus === "copied" ? "Copied" : copyStatus === "failed" ? "Copy failed" : "Copy Markdown";
+
   return (
     <article className="markdown-sample">
+      <div className="markdown-sample-toolbar">
+        <Button
+          type="button"
+          size="sm"
+          icon={copyStatus === "copied" ? "check" : copyStatus === "failed" ? "close" : "copy"}
+          className={`markdown-document-copy is-${copyStatus}`}
+          onClick={copyMarkdown}
+        >
+          {copyLabel}
+        </Button>
+        <span className="markdown-copy-status" role="status" aria-live="polite">
+          {copyStatus === "copied"
+            ? "Markdown copied to clipboard."
+            : copyStatus === "failed"
+              ? "Markdown could not be copied."
+              : ""}
+        </span>
+      </div>
       <div className="markdown">
         <h1>Building a reliable coding session</h1>
         <p>

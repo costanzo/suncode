@@ -273,6 +273,7 @@ Assistant messages are rendered as Markdown and use the same semantic content to
 - **Hierarchy:** Markdown headings are smaller than the application title scale. `h1` starts at 26px in a message, `h2` at 19px, and `h3` at 15px, with spacing that groups related content.
 - **Body:** Use the normal UI sans for prose at 14px and 1.6 line height. Links use the control-silver accent with an underline; emphasis changes weight or tone rather than adding semantic colors.
 - **Machine content:** Inline code and fenced code use JetBrains Mono on the inset surface. Code blocks scroll horizontally instead of wrapping long identifiers or commands.
+- **Copy:** A compact action above a complete Markdown reading surface copies the original Markdown source rather than rendered text. It confirms success in place, announces the result to assistive technology, and exposes a clear failure state when clipboard access is unavailable.
 - **Structure:** Blockquotes use a quiet outlined accent surface. Tables use compact headers, hairline row separators, and horizontal scrolling on narrow widths. Task-list controls are visual state indicators, not editable product settings.
 - **Safety:** Markdown content must not use status colors decoratively. Warning and danger colors remain reserved for actual authority, error, or destructive states around the content.
 
