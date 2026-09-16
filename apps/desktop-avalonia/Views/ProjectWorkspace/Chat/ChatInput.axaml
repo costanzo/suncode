@@ -7,6 +7,7 @@
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Chat.ChatInput"
              x:DataType="vm:DesktopViewModel"
              DragDrop.AllowDrop="True"
+             ClipToBounds="False"
              Height="126"
              Margin="0"
              VerticalAlignment="Bottom"
@@ -116,42 +117,45 @@
   <Grid>
     <ItemsControl x:Name="AttachmentStrip"
                   ItemsSource="{Binding ComposerAttachments}"
-                  Margin="28,-42,0,0"
+                  Margin="28,-46,0,0"
                   VerticalAlignment="Top"
                   HorizontalAlignment="Left"
                   ZIndex="3">
     <ItemsControl.ItemsPanel>
       <ItemsPanelTemplate>
-        <StackPanel Orientation="Horizontal" Spacing="7" />
+        <StackPanel Orientation="Horizontal" Spacing="0" />
       </ItemsPanelTemplate>
     </ItemsControl.ItemsPanel>
     <ItemsControl.ItemTemplate>
       <DataTemplate x:DataType="models:ComposerAttachment">
-        <Border Width="48"
-                Height="48"
-                Padding="1"
-                Background="{DynamicResource FieldBrush}"
-                BorderBrush="{DynamicResource BorderStrongBrush}"
-                BorderThickness="1"
-                CornerRadius="6"
-                BoxShadow="0 3 8 0 #40000000">
-          <Grid>
-            <Button Classes="attachment-preview"
-                    Click="PreviewAttachment"
-                    ToolTip.Tip="View image">
-              <Image Source="{Binding Preview}"
-                     Stretch="UniformToFill" />
-            </Button>
-            <Button Classes="attachment-remove"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    Margin="0,-7,-7,0"
-                    Click="RemoveAttachment"
-                    ToolTip.Tip="Remove image">
-              <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource AccentInkSvgCss}" />
-            </Button>
-          </Grid>
-        </Border>
+        <Grid Width="60" Height="60">
+          <Border Width="48"
+                  Height="48"
+                  HorizontalAlignment="Left"
+                  Padding="1"
+                  Background="{DynamicResource FieldBrush}"
+                  BorderBrush="{DynamicResource BorderStrongBrush}"
+                  BorderThickness="1"
+                  CornerRadius="6"
+                  BoxShadow="0 3 8 0 #40000000">
+            <Grid>
+              <Button Classes="attachment-preview"
+                      Click="PreviewAttachment"
+                      ToolTip.Tip="View image">
+                <Image Source="{Binding Preview}"
+                       Stretch="UniformToFill" />
+              </Button>
+              <Button Classes="attachment-remove"
+                      HorizontalAlignment="Right"
+                      VerticalAlignment="Top"
+                      Margin="0,-7,-7,0"
+                      Click="RemoveAttachment"
+                      ToolTip.Tip="Remove image">
+                <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource AccentInkSvgCss}" />
+              </Button>
+            </Grid>
+          </Border>
+        </Grid>
       </DataTemplate>
     </ItemsControl.ItemTemplate>
     </ItemsControl>
