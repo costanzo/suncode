@@ -166,9 +166,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
-    public async Task CreateSessionAsync(string title)
+    public async Task<bool> CreateSessionAsync(string title)
     {
-        if (!EnsureSdk() || SelectedProject is null) return;
+        if (!EnsureSdk() || SelectedProject is null) return false;
+        var createdSuccessfully = false;
         await RunAsync(async () =>
         {
             var created = await _sdk!.CreateSessionAsync(new CreateSessionRequest(
@@ -176,7 +177,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 title.Trim(),
                 SelectedModel?.Id));
             await LoadSessionsAsync(created.SessionId);
+            createdSuccessfully = true;
         }, "Session created");
+        return createdSuccessfully;
     }
 
     public async Task RenameSessionAsync(SessionItem session, string title)

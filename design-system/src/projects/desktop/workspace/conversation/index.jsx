@@ -37,6 +37,7 @@ const conversationGuides = {
       ],
       logic: [
         "A session exists but has no messages yet.",
+        "After a new session is created, keyboard focus moves to the available composer so the first instruction can be typed immediately.",
         "The first submitted message creates the initial user turn.",
         "Attachments are held in the composer until the message is sent.",
       ],

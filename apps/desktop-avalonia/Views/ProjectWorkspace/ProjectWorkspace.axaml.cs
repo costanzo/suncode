@@ -265,7 +265,10 @@ public sealed partial class ProjectWorkspace : UserControl
         if (string.IsNullOrWhiteSpace(title)) return;
         var target = _sessionDialogTarget;
         HideSessionDialog();
-        if (target is null) await ViewModel.CreateSessionAsync(title);
+        if (target is null)
+        {
+            if (await ViewModel.CreateSessionAsync(title)) ChatArea.FocusComposer();
+        }
         else await ViewModel.RenameSessionAsync(target, title);
     }
 

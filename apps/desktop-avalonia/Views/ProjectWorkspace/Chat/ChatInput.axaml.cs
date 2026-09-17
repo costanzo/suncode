@@ -180,6 +180,19 @@ public sealed partial class ChatInput : UserControl
         ComposerInput.Text = string.Empty;
     }
 
+    internal void FocusComposer()
+    {
+        // Closing the session dialog restores its prior focus at input priority.
+        // Queue this afterward so a newly created session lands in its composer.
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (DataContext is DesktopViewModel viewModel && viewModel.CanCompose)
+            {
+                ComposerInput.Focus();
+            }
+        }, DispatcherPriority.Background);
+    }
+
     private void ModelSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (ModelSelector.SelectedItem?.Value is not ModelItem selected) return;
