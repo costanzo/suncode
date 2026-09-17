@@ -265,7 +265,7 @@
     <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
     <Setter Property="CornerRadius" Value="4" />
     <Setter Property="Padding" Value="2,0" />
-    <Setter Property="Margin" Value="2,0" />
+    <Setter Property="Margin" Value="2,3,2,2" />
   </Style>
   <!-- CodeInline is a Run, so its line box comes from the containing MarkdownTextBlock. Keep
        the intermediate message compact while sizing its mono glyphs explicitly. -->
