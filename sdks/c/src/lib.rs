@@ -327,6 +327,20 @@ pub unsafe extern "C" fn suncode_agent_sdk_set_setting(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_set_proxy_configuration(
+    handle: *mut SunCodeAgentHandle,
+    request_json: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let request = serde_json::from_value::<suncode_sdk::ProxyConfigurationRequest>(
+            json_from_c(request_json, "request_json")?,
+        )
+        .map_err(|_| BusinessError::invalid("proxy configuration request is invalid"))?;
+        sdk.set_proxy_configuration(request)
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_set_credential(
     handle: *mut SunCodeAgentHandle,
     provider: *const c_char,

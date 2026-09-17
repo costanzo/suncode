@@ -330,6 +330,49 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         finally { IsBusy = false; }
     }
 
+    public async Task<bool> SaveProxyConfigurationAsync(
+        string mode,
+        string? url,
+        string? username,
+        string? password,
+        bool clearPassword,
+        string? bypassRules)
+    {
+        if (!EnsureSdk()) return false;
+        IsBusy = true;
+        try
+        {
+            var bypass = (bypassRules ?? string.Empty)
+                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(value => value.Length > 0)
+                .ToArray();
+            var result = await _sdk!.SetProxyConfigurationAsync(new ProxyConfigurationRequest(
+                mode,
+                url?.Trim() ?? string.Empty,
+                username?.Trim() ?? string.Empty,
+                string.IsNullOrEmpty(password) ? null : password,
+                clearPassword,
+                bypass));
+            ProxyMode = result.Mode;
+            ProxyUrl = result.Url;
+            ProxyUsername = result.Username;
+            ProxyPasswordConfigured = result.PasswordConfigured;
+            ProxyBypassRules = string.Join(Environment.NewLine, result.Bypass);
+            StatusText = "Proxy settings applied";
+            ConnectionState = "connected";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+            return false;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     public async Task LoadProjectToolCallLimitAsync()
     {
         ToolCallLimit = 64;

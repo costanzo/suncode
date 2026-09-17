@@ -9,7 +9,7 @@ path = "src/lib.rs"
 
 [dependencies]
 futures-util = "0.3"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "system-proxy"] }
 suncode-common = { path = "../common" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

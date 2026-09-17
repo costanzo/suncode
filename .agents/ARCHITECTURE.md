@@ -89,6 +89,8 @@ The seeded providers are DeepSeek, Zhipu GLM, OpenAI, Kimi, Claude, and Gemini. 
 
 The API key is read exclusively from the plaintext `llm_model_provider.api_key` column in SQLite. Provider endpoints and required `adapter_type` values are read from `llm_model_provider`; model request codes, context lengths, auto-compaction thresholds, output limits, capability flags, and enabled/order state are read from `llm_model`. A custom provider must select an adapter implemented by `suncode-llm`; the current persisted adapter is `openai` for OpenAI-compatible endpoints. Plaintext credentials never enter protocol responses, events, or logs. Provider API-key environment variables are not read in either interactive or non-interactive mode. Global `verify_https_certificates` defaults to `true` and controls server certificate-chain and hostname verification for built-in provider and WebFetch HTTPS requests. Disabling it is an explicit insecure mode equivalent to `curl -k`; it does not weaken other authority or URL controls.
 
+Global proxy configuration is stored in the unified `configuration` table and applies to every SunCode-owned HTTP client: built-in and persisted OpenAI-compatible providers, WebFetch, and remote Streamable HTTP MCP connections. Modes are no proxy, supported system proxy discovery, and custom HTTP/HTTPS proxy with Basic credentials and bypass rules. PAC, SOCKS, local MCP child-process traffic, and trusted third-party provider internals are outside this guarantee. `proxy_password` follows the current plaintext SQLite policy but is removed from settings read projections, which expose only `proxy_password_configured`.
+
 ## 7. Persistence
 
 Rust is the only database owner. Avalonia, providers, and future extensions never open the database.

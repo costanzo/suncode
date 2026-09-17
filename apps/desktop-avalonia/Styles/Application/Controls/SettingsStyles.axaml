@@ -127,4 +127,10 @@
   <Style Selector="TextBox.sc-secret-input, TextBox.sc-secret-input:focus">
     <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
   </Style>
+  <Style Selector="TextBox.settings-proxy-bypass, TextBox.settings-proxy-bypass:focus">
+    <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="VerticalContentAlignment" Value="Top" />
+    <Setter Property="Padding" Value="9,8" />
+  </Style>
 </Styles>

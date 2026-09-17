@@ -77,6 +77,10 @@ public sealed partial class AgentSdk
             request.Key,
             request.Value));
 
+    public Task<ProxyConfigurationResult> SetProxyConfigurationAsync(ProxyConfigurationRequest request) =>
+        Typed<ProxyConfigurationResult>(RawSetProxyConfigurationAsync(
+            JsonSerializer.Serialize(request, TypedJsonOptions)));
+
     public Task<CredentialUpdate> SetCredentialAsync(SetCredentialRequest request) =>
         Typed<CredentialUpdate>(RawSetCredentialAsync(request.Provider, request.ApiKey));
 

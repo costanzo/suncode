@@ -19,6 +19,7 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
     time::{Duration, Instant},
 };
+use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
 
 const MAX_RESPONSE_BYTES: usize = 5 * 1024 * 1024;
 const MAX_MODEL_BYTES: usize = 64 * 1024;
@@ -73,6 +74,7 @@ pub(super) fn execute(
     verify_https_certificates: bool,
     use_system_certificates: bool,
     certificate_path: Option<&Path>,
+    proxy_configuration: &HttpProxyConfiguration,
 ) -> Result<Value, BusinessError> {
     let url = args.url.trim();
     if url.is_empty() {
@@ -133,6 +135,7 @@ pub(super) fn execute(
             client_builder = client_builder.add_root_certificate(certificate);
         }
     }
+    client_builder = apply_proxy_configuration(client_builder, proxy_configuration)?;
     let client = client_builder
         .build()
         .map_err(|_| fetch_failure("web client could not be created", false))?;
@@ -216,6 +219,27 @@ pub(super) fn execute(
         result["artifact_id"] = json!(artifacts::write_artifact(root, output.as_bytes())?);
     }
     Ok(result)
+}
+
+fn apply_proxy_configuration(
+    builder: reqwest::blocking::ClientBuilder,
+    configuration: &HttpProxyConfiguration,
+) -> Result<reqwest::blocking::ClientBuilder, BusinessError> {
+    match configuration.mode {
+        HttpProxyMode::NoProxy => Ok(builder.no_proxy()),
+        HttpProxyMode::System => Ok(builder),
+        HttpProxyMode::Custom => {
+            let mut proxy = reqwest::Proxy::all(&configuration.url)
+                .map_err(|_| invalid("custom proxy URL is invalid"))?;
+            if !configuration.username.is_empty() {
+                proxy = proxy.basic_auth(&configuration.username, &configuration.password);
+            }
+            proxy = proxy.no_proxy(reqwest::NoProxy::from_string(
+                &configuration.no_proxy_value(),
+            ));
+            Ok(builder.no_proxy().proxy(proxy))
+        }
+    }
 }
 
 fn send(
@@ -534,6 +558,7 @@ mod tests {
             true,
             true,
             None,
+            &HttpProxyConfiguration::default(),
         )
         .unwrap();
         server.join().unwrap();
@@ -590,6 +615,7 @@ mod tests {
             true,
             true,
             None,
+            &HttpProxyConfiguration::default(),
         )
         .unwrap_err();
         server.join().unwrap();
@@ -613,6 +639,7 @@ mod tests {
             true,
             true,
             None,
+            &HttpProxyConfiguration::default(),
         )
         .unwrap_err();
         redirect_server.join().unwrap();
@@ -636,6 +663,7 @@ mod tests {
             true,
             true,
             None,
+            &HttpProxyConfiguration::default(),
         )
         .unwrap();
         server.join().unwrap();
@@ -647,5 +675,47 @@ mod tests {
         assert!(artifact.exists());
         assert!(std::fs::metadata(artifact).unwrap().len() > MAX_MODEL_BYTES as u64);
         fs::remove_dir_all(checkpoints.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn routes_webfetch_through_the_custom_proxy() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0_u8; 4096];
+            let read = stream.read(&mut request).unwrap();
+            let request = String::from_utf8_lossy(&request[..read]);
+            assert!(request.starts_with("GET http://example.test/page HTTP/1.1"));
+            let body = "proxied";
+            write!(
+                stream,
+                "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            )
+            .unwrap();
+        });
+        let result = execute(
+            None,
+            WebfetchArguments {
+                url: "http://example.test/page".into(),
+                format: Some("text".into()),
+                timeout: None,
+            },
+            None,
+            true,
+            true,
+            None,
+            &HttpProxyConfiguration {
+                mode: HttpProxyMode::Custom,
+                url: format!("http://{address}"),
+                username: String::new(),
+                password: String::new(),
+                bypass: Vec::new(),
+            },
+        )
+        .unwrap();
+        server.join().unwrap();
+        assert_eq!(result["content"], "proxied");
     }
 }

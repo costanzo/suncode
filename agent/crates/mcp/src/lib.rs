@@ -21,7 +21,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use suncode_common::BusinessError;
+use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
 use tokio::sync::{mpsc, Mutex};
 use tokio_util::sync::CancellationToken;
 
@@ -29,11 +29,12 @@ const MAX_TOOLS_PER_SERVER: usize = 128;
 const MAX_RESULT_BYTES: usize = 1024 * 1024;
 const MAX_SSE_EVENT_BYTES: usize = 2 * 1024 * 1024;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TlsConfig {
     pub verify_certificates: bool,
     pub use_system_certificates: bool,
     pub certificate_path: Option<PathBuf>,
+    pub proxy: HttpProxyConfiguration,
 }
 
 impl Default for TlsConfig {
@@ -42,11 +43,12 @@ impl Default for TlsConfig {
             verify_certificates: true,
             use_system_certificates: true,
             certificate_path: None,
+            proxy: HttpProxyConfiguration::default(),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum ConnectionConfig {
     Stdio {
         command: String,
@@ -558,6 +560,21 @@ fn http_client(config: &TlsConfig) -> Result<reqwest::Client, BusinessError> {
     } else {
         builder = builder.tls_certs_only(custom_certificate.into_iter());
     }
+    builder = match config.proxy.mode {
+        HttpProxyMode::NoProxy => builder.no_proxy(),
+        HttpProxyMode::System => builder,
+        HttpProxyMode::Custom => {
+            let mut proxy = reqwest::Proxy::all(&config.proxy.url)
+                .map_err(|_| BusinessError::invalid("custom proxy URL is invalid"))?;
+            if !config.proxy.username.is_empty() {
+                proxy = proxy.basic_auth(&config.proxy.username, &config.proxy.password);
+            }
+            proxy = proxy.no_proxy(reqwest::NoProxy::from_string(
+                &config.proxy.no_proxy_value(),
+            ));
+            builder.no_proxy().proxy(proxy)
+        }
+    };
     builder
         .build()
         .map_err(|error| mcp_error("mcp_http_client_failed", error.to_string()))
@@ -725,5 +742,31 @@ mod tests {
             &["opaque-secret-value".into()],
         );
         assert_eq!(error.message, "request failed: remote echoed [redacted]");
+    }
+
+    #[test]
+    fn builds_clients_for_each_proxy_mode() {
+        for proxy in [
+            HttpProxyConfiguration {
+                mode: HttpProxyMode::NoProxy,
+                ..HttpProxyConfiguration::default()
+            },
+            HttpProxyConfiguration::default(),
+            HttpProxyConfiguration {
+                mode: HttpProxyMode::Custom,
+                url: "http://127.0.0.1:8080".into(),
+                username: "developer".into(),
+                password: "secret".into(),
+                bypass: vec![".internal.example.test".into()],
+            },
+        ] {
+            assert!(http_client(&TlsConfig {
+                verify_certificates: true,
+                use_system_certificates: true,
+                certificate_path: None,
+                proxy,
+            })
+            .is_ok());
+        }
     }
 }

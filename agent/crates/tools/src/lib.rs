@@ -12,12 +12,13 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::{SystemTime, UNIX_EPOCH};
-use suncode_common::BusinessError;
+use suncode_common::{BusinessError, HttpProxyConfiguration};
 
 static CHECKPOINT_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 /// Callback for bounded, best-effort streaming process output chunks.
 pub type ProcessOutputCallback = Arc<dyn Fn(&str, &[u8]) + Send + Sync>;
 pub type CertificatePath = Arc<RwLock<Option<PathBuf>>>;
+pub type ProxyConfiguration = Arc<RwLock<HttpProxyConfiguration>>;
 mod arguments;
 mod artifacts;
 mod checkpoint;
@@ -48,6 +49,7 @@ fn execute_operation(
         None,
         true,
         Arc::new(RwLock::new(None)),
+        Arc::new(RwLock::new(HttpProxyConfiguration::default())),
     )
 }
 
@@ -61,6 +63,7 @@ fn execute_operation_with_cancellation(
     output_callback: Option<ProcessOutputCallback>,
     use_system_certificates: bool,
     certificate_path: CertificatePath,
+    proxy_configuration: ProxyConfiguration,
 ) -> Result<Value, BusinessError> {
     if let Some(result) = tools::dispatch_with_output(
         method,
@@ -76,6 +79,10 @@ fn execute_operation_with_cancellation(
             .ok()
             .and_then(|p| p.clone())
             .as_deref(),
+        proxy_configuration
+            .read()
+            .map(|configuration| configuration.clone())
+            .unwrap_or_default(),
     ) {
         return result;
     }
@@ -367,6 +374,7 @@ pub struct Operations {
     verify_https_certificates: Arc<AtomicBool>,
     use_system_certificates: Arc<AtomicBool>,
     certificate_path: CertificatePath,
+    proxy_configuration: ProxyConfiguration,
 }
 
 impl Operations {
@@ -387,6 +395,7 @@ impl Operations {
             verify_https_certificates,
             use_system_certificates: Arc::new(AtomicBool::new(true)),
             certificate_path: Arc::new(RwLock::new(None)),
+            proxy_configuration: Arc::new(RwLock::new(HttpProxyConfiguration::default())),
         })
     }
 
@@ -395,6 +404,12 @@ impl Operations {
             .store(use_system, Ordering::SeqCst);
         if let Ok(mut current) = self.certificate_path.write() {
             *current = path;
+        }
+    }
+
+    pub fn set_proxy_configuration(&self, configuration: HttpProxyConfiguration) {
+        if let Ok(mut current) = self.proxy_configuration.write() {
+            *current = configuration;
         }
     }
 
@@ -566,6 +581,7 @@ impl Operations {
             None,
             self.use_system_certificates.load(Ordering::SeqCst),
             self.certificate_path.clone(),
+            self.proxy_configuration.clone(),
         )
         .map_err(failure_value)
     }
@@ -610,6 +626,7 @@ impl Operations {
             output_callback,
             self.use_system_certificates.load(Ordering::SeqCst),
             self.certificate_path.clone(),
+            self.proxy_configuration.clone(),
         )
         .map_err(failure_value)
     }

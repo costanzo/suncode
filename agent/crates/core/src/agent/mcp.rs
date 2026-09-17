@@ -1,6 +1,7 @@
 use super::*;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
+use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
 use suncode_data::{McpServerRecord, McpTransportConfig, McpWorkingDirectory};
 use suncode_mcp::{Connection, ConnectionConfig, TlsConfig};
 
@@ -204,6 +205,24 @@ impl McpManager {
         let results = join_all(futures).await;
         for result in results {
             result?;
+        }
+        Ok(())
+    }
+
+    pub(super) async fn reconcile_remote_servers(&self) -> Result<(), BusinessError> {
+        let server_ids = self
+            .inner
+            .store
+            .mcp_servers()?
+            .into_iter()
+            .filter(|server| {
+                server.enabled
+                    && matches!(server.transport, McpTransportConfig::StreamableHttp { .. })
+            })
+            .map(|server| server.mcp_server_id)
+            .collect::<Vec<_>>();
+        for server_id in server_ids {
+            self.reconcile_all(&server_id).await?;
         }
         Ok(())
     }
@@ -516,6 +535,45 @@ impl McpManager {
                 .and_then(Value::as_str)
                 .filter(|value| !value.trim().is_empty())
                 .map(PathBuf::from),
+            proxy: self.proxy_config()?,
+        })
+    }
+
+    fn proxy_config(&self) -> Result<HttpProxyConfiguration, BusinessError> {
+        let settings = self.inner.store.settings(None, None)?;
+        let value = |key: &str| {
+            settings
+                .iter()
+                .find(|setting| setting.key == key)
+                .map(|setting| &setting.value)
+        };
+        Ok(HttpProxyConfiguration {
+            mode: value("proxy_mode")
+                .and_then(Value::as_str)
+                .and_then(HttpProxyMode::parse)
+                .unwrap_or(HttpProxyMode::System),
+            url: value("proxy_url")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            username: value("proxy_username")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            password: value("proxy_password")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            bypass: value("proxy_bypass")
+                .and_then(Value::as_array)
+                .map(|values| {
+                    values
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_string)
+                        .collect()
+                })
+                .unwrap_or_default(),
         })
     }
 
@@ -764,6 +822,10 @@ impl Agent {
             return Ok(());
         }
         self.mcp.reconcile_all(server_id).await
+    }
+
+    pub async fn reconcile_mcp_network_configuration(&self) -> Result<(), BusinessError> {
+        self.mcp.reconcile_remote_servers().await
     }
 
     pub async fn retry_mcp_server(

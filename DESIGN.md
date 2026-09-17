@@ -223,6 +223,16 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Custom certificates:** Turning off system certificates enables a file-selector field for a custom certificate path. Leaving system certificates on disables that path field rather than hiding it, so the dependency remains visible.
 - **Path selector:** Certificate path selection uses the same field-plus-browse-button language as other path selectors, but in file mode rather than folder mode.
 
+### Network Proxy Settings
+
+- **Placement:** Proxy configuration is the first section on the existing Network Settings page, before HTTPS security. It is a global embedded-agent setting rather than a provider-specific control.
+- **Modes:** One native single-select control exposes `No proxy`, `System proxy`, and `Custom proxy`. Mode-specific explanatory notes are not shown beneath the selector; the control remains compact while the underlying behavior stays documented. No proxy explicitly disables automatic proxy discovery, and system proxy uses supported operating-system and standard environment settings without PAC support.
+- **Custom configuration:** Custom mode reveals one subordinate section for an HTTP or HTTPS proxy URL, optional Basic-auth username/password, and bypass rules. Switching modes preserves custom values without exposing the saved password.
+- **Secret state:** A persisted password is represented only as `Password stored`. An empty password field preserves it, while an explicit remove action clears it. Passwords never appear in read APIs, status copy, errors, or logs.
+- **Bypass rules:** The multiline field uses one hostname, domain suffix, IP address, CIDR range, or `*` per line. Helper copy identifies loopback destinations as always direct.
+- **Application:** Saving applies to subsequent built-in provider and WebFetch requests and reconnects active remote HTTP MCP servers. In-flight requests and local MCP child-process traffic are unchanged.
+- **Feedback:** Invalid fields show specific recovery copy. Custom proxy combined with disabled HTTPS verification keeps the existing risk warning visually dominant.
+
 ### Keyboard Shortcut Settings
 
 - **Placement:** Keyboard shortcuts is a first-level child page in the Settings navigation, alongside Defaults, Appearance, Network, and Logging.

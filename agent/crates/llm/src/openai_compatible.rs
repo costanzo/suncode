@@ -10,6 +10,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, RwLock,
 };
+use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -22,7 +23,6 @@ const REQUEST_ID_HEADERS: &[&str] = &[
 
 #[derive(Clone)]
 pub struct OpenAiCompatibleProvider {
-    insecure_client: Result<reqwest::Client, String>,
     provider_id: String,
     provider_label: String,
     endpoint: String,
@@ -30,6 +30,7 @@ pub struct OpenAiCompatibleProvider {
     verify_https_certificates: Arc<AtomicBool>,
     use_system_certificates: Arc<AtomicBool>,
     certificate_path: Arc<RwLock<Option<PathBuf>>>,
+    proxy_configuration: Arc<RwLock<HttpProxyConfiguration>>,
 }
 
 impl OpenAiCompatibleProvider {
@@ -75,13 +76,29 @@ impl OpenAiCompatibleProvider {
         use_system_certificates: Arc<AtomicBool>,
         certificate_path: Arc<RwLock<Option<PathBuf>>>,
     ) -> Self {
-        let insecure_client = reqwest::Client::builder()
-            .danger_accept_invalid_certs(true)
-            .danger_accept_invalid_hostnames(true)
-            .build()
-            .map_err(|error| error.to_string());
+        Self::new_with_network_configuration(
+            provider_id,
+            provider_label,
+            endpoint,
+            keys,
+            verify_https_certificates,
+            use_system_certificates,
+            certificate_path,
+            Arc::new(RwLock::new(HttpProxyConfiguration::default())),
+        )
+    }
+
+    pub fn new_with_network_configuration(
+        provider_id: impl Into<String>,
+        provider_label: impl Into<String>,
+        endpoint: impl Into<String>,
+        keys: Arc<dyn ApiKeyResolver>,
+        verify_https_certificates: Arc<AtomicBool>,
+        use_system_certificates: Arc<AtomicBool>,
+        certificate_path: Arc<RwLock<Option<PathBuf>>>,
+        proxy_configuration: Arc<RwLock<HttpProxyConfiguration>>,
+    ) -> Self {
         Self {
-            insecure_client,
             provider_id: provider_id.into(),
             provider_label: provider_label.into(),
             endpoint: endpoint.into().trim_end_matches('/').to_string(),
@@ -89,32 +106,23 @@ impl OpenAiCompatibleProvider {
             verify_https_certificates,
             use_system_certificates,
             certificate_path,
+            proxy_configuration,
         }
     }
 
     fn client(&self) -> Result<reqwest::Client, BusinessError> {
-        if !self.verify_https_certificates.load(Ordering::SeqCst) {
-            return self.insecure_client.clone().map_err(|error| {
-                BusinessError::provider(
-                    "provider_client_unavailable",
-                    format!(
-                        "{} HTTPS client could not be created: {error}",
-                        self.provider_label
-                    ),
-                    false,
-                    None,
-                )
-            });
-        }
-        let mut builder = reqwest::Client::builder();
-        if !self.use_system_certificates.load(Ordering::SeqCst) {
+        let verify_certificates = self.verify_https_certificates.load(Ordering::SeqCst);
+        let mut builder = reqwest::Client::builder()
+            .danger_accept_invalid_certs(!verify_certificates)
+            .danger_accept_invalid_hostnames(!verify_certificates);
+        if verify_certificates && !self.use_system_certificates.load(Ordering::SeqCst) {
             builder = builder.tls_built_in_root_certs(false);
         }
         // A custom trust file is only meaningful when the system trust store
         // has explicitly been disabled. Ignore any stale persisted path in
         // the default system-certificates mode so a deleted file cannot break
         // provider calls or retries.
-        if !self.use_system_certificates.load(Ordering::SeqCst) {
+        if verify_certificates && !self.use_system_certificates.load(Ordering::SeqCst) {
             if let Some(path) = self.certificate_path.read().ok().and_then(|p| p.clone()) {
                 let bytes = std::fs::read(&path).map_err(|e| {
                     BusinessError::provider(
@@ -137,6 +145,14 @@ impl OpenAiCompatibleProvider {
                 builder = builder.add_root_certificate(cert);
             }
         }
+        let proxy_configuration = self
+            .proxy_configuration
+            .read()
+            .map(|configuration| configuration.clone())
+            .unwrap_or_default();
+        builder = apply_proxy_configuration(builder, &proxy_configuration).map_err(|message| {
+            BusinessError::provider("provider_client_unavailable", message, false, None)
+        })?;
         builder.build().map_err(|error| {
             BusinessError::provider(
                 "provider_client_unavailable",
@@ -272,6 +288,27 @@ impl OpenAiCompatibleProvider {
     }
 }
 
+fn apply_proxy_configuration(
+    builder: reqwest::ClientBuilder,
+    configuration: &HttpProxyConfiguration,
+) -> Result<reqwest::ClientBuilder, String> {
+    match configuration.mode {
+        HttpProxyMode::NoProxy => Ok(builder.no_proxy()),
+        HttpProxyMode::System => Ok(builder),
+        HttpProxyMode::Custom => {
+            let mut proxy = reqwest::Proxy::all(&configuration.url)
+                .map_err(|_| "custom proxy URL is invalid".to_string())?;
+            if !configuration.username.is_empty() {
+                proxy = proxy.basic_auth(&configuration.username, &configuration.password);
+            }
+            proxy = proxy.no_proxy(reqwest::NoProxy::from_string(
+                &configuration.no_proxy_value(),
+            ));
+            Ok(builder.no_proxy().proxy(proxy))
+        }
+    }
+}
+
 impl LlmProvider for OpenAiCompatibleProvider {
     fn complete<'a>(
         &'a self,
@@ -300,6 +337,7 @@ mod tests {
         Arc,
     };
     use std::{path::PathBuf, sync::RwLock};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::sync::mpsc;
     use tokio_util::sync::CancellationToken;
 
@@ -388,6 +426,69 @@ mod tests {
         assert_eq!(usage.reasoning_tokens, None);
         assert_eq!(receiver.recv().await.as_deref(), Some("hello"));
         server.abort();
+    }
+
+    #[tokio::test]
+    async fn routes_provider_requests_through_the_custom_proxy() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut request = vec![0_u8; 16 * 1024];
+            let read = stream.read(&mut request).await.unwrap();
+            let request = String::from_utf8_lossy(&request[..read]);
+            assert!(
+                request.starts_with("POST http://provider.example.test/chat/completions HTTP/1.1")
+            );
+            assert!(request.to_ascii_lowercase().contains(
+                "proxy-authorization: basic cHJveHktdXNlcjpwcm94eS1wYXNz"
+                    .to_ascii_lowercase()
+                    .as_str()
+            ));
+            let body = concat!(
+                "data: {\"id\":\"chatcmpl-proxy\",\"choices\":[{\"delta\":{\"content\":\"proxied\"},\"finish_reason\":\"stop\"}]}\n\n",
+                "data: [DONE]\n\n"
+            );
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            stream.write_all(response.as_bytes()).await.unwrap();
+        });
+        let provider = OpenAiCompatibleProvider::new_with_network_configuration(
+            "enterprise",
+            "Enterprise Gateway",
+            "http://provider.example.test",
+            Arc::new(TestKeys),
+            Arc::new(AtomicBool::new(true)),
+            Arc::new(AtomicBool::new(true)),
+            Arc::new(RwLock::new(None)),
+            Arc::new(RwLock::new(suncode_common::HttpProxyConfiguration {
+                mode: suncode_common::HttpProxyMode::Custom,
+                url: format!("http://{address}"),
+                username: "proxy-user".into(),
+                password: "proxy-pass".into(),
+                bypass: Vec::new(),
+            })),
+        );
+        let messages = vec![Message::text("user", "hello")];
+        let tools = Vec::<ToolDefinition>::new();
+        let (sender, _receiver) = mpsc::unbounded_channel();
+        let result = provider
+            .complete(
+                CompletionRequest {
+                    messages: &messages,
+                    wire_model: "company-model-v1",
+                    tools: &tools,
+                    reasoning_effort: None,
+                },
+                &CancellationToken::new(),
+                sender,
+            )
+            .await
+            .unwrap();
+        server.await.unwrap();
+        assert_eq!(result.text, "proxied");
     }
 
     #[test]

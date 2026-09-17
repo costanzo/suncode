@@ -4,6 +4,72 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fmt;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum HttpProxyMode {
+    NoProxy,
+    System,
+    Custom,
+}
+
+impl HttpProxyMode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::NoProxy => "no_proxy",
+            Self::System => "system",
+            Self::Custom => "custom",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "no_proxy" => Some(Self::NoProxy),
+            "system" => Some(Self::System),
+            "custom" => Some(Self::Custom),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct HttpProxyConfiguration {
+    pub mode: HttpProxyMode,
+    pub url: String,
+    pub username: String,
+    pub password: String,
+    pub bypass: Vec<String>,
+}
+
+impl Default for HttpProxyConfiguration {
+    fn default() -> Self {
+        Self {
+            mode: HttpProxyMode::System,
+            url: String::new(),
+            username: String::new(),
+            password: String::new(),
+            bypass: Vec::new(),
+        }
+    }
+}
+
+impl HttpProxyConfiguration {
+    pub fn no_proxy_value(&self) -> String {
+        let mut values = vec![
+            "localhost".to_string(),
+            "127.0.0.0/8".to_string(),
+            "::1/128".to_string(),
+        ];
+        for value in &self.bypass {
+            if !values
+                .iter()
+                .any(|existing| existing.eq_ignore_ascii_case(value))
+            {
+                values.push(value.clone());
+            }
+        }
+        values.join(",")
+    }
+}
+
 /// The single business-level error crossing SunCode crate boundaries.
 ///
 /// Lower-level adapters may use their native error types internally, but they

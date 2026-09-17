@@ -26,6 +26,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `list_models` | List stable models and credential-derived availability |
 | `list_settings` | Read effective non-secret settings with scope provenance |
 | `set_setting` | Store one global, project, or session configuration value |
+| `set_proxy_configuration` | Atomically store global proxy mode, endpoint, credentials, and bypass rules while returning only redacted password state |
 | `list_credentials` | Read redacted provider credential status |
 | `set_credential` | Store or replace one provider API key |
 | `remove_credential` | Remove one provider API key |
@@ -127,6 +128,8 @@ Turn submission returns a tagged outcome:
 Cancellation returns `cancellation_requested`; cancelling a turn that is not active returns `conflict`.
 
 `allow_session` atomically approves the pending operation and persists session-scoped `full_control=true` in `configuration`. While enabled, known approval-gated tools skip interactive approval for that session, but validation, project and dependency scope, auditing, checkpoints, cancellation, and unknown-tool denial remain enforced. Writing session-scoped `full_control=false` through `set_setting` restores normal approval behavior.
+
+Proxy configuration is global and is updated atomically through `set_proxy_configuration`. The request carries `mode`, `url`, `username`, optional replacement `password`, explicit `clearPassword`, and `bypass`. Omitting `password` preserves the stored value. Settings reads never return the persisted `proxy_password`; they return `proxy_password_configured` instead. The update response likewise contains only non-secret values and `passwordConfigured`.
 
 ## Errors
 

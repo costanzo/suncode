@@ -70,6 +70,21 @@ public sealed record SettingUpdate(
     string Scope,
     [property: JsonPropertyName("scope_id")] string ScopeId);
 
+public sealed record ProxyConfigurationRequest(
+    string Mode,
+    string Url,
+    string Username,
+    string? Password,
+    bool ClearPassword,
+    IReadOnlyList<string> Bypass);
+
+public sealed record ProxyConfigurationResult(
+    string Mode,
+    string Url,
+    string Username,
+    bool PasswordConfigured,
+    IReadOnlyList<string> Bypass);
+
 public sealed record ProjectRecord(
     string ProjectId,
     string? UserId,

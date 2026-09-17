@@ -149,6 +149,7 @@ impl AgentSdk {
             self.state.verify_https_certificates.clone(),
             self.state.use_system_certificates.clone(),
             self.state.certificate_path.clone(),
+            self.state.proxy_configuration.clone(),
         )?;
         self.state
             .store

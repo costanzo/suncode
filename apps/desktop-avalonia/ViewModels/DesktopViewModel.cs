@@ -60,6 +60,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private bool _verifyHttpsCertificates = true;
     private bool _useSystemCertificates = true;
     private string _certificatePath = string.Empty;
+    private string _proxyMode = "system";
+    private string _proxyUrl = string.Empty;
+    private string _proxyUsername = string.Empty;
+    private bool _proxyPasswordConfigured;
+    private string _proxyBypassRules = string.Empty;
     private int _toolCallLimit = 64;
     private string _diagnosticsText = "Diagnostics unavailable";
     private string _gitState = "idle";
@@ -321,6 +326,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public long LogMaxBytes { get => _logMaxBytes; private set => SetProperty(ref _logMaxBytes, value); }
     public int LogRetention { get => _logRetention; private set => SetProperty(ref _logRetention, value); }
     public bool VerifyHttpsCertificates { get => _verifyHttpsCertificates; private set => SetProperty(ref _verifyHttpsCertificates, value); }
+    public string ProxyMode { get => _proxyMode; private set => SetProperty(ref _proxyMode, value); }
+    public string ProxyUrl { get => _proxyUrl; private set => SetProperty(ref _proxyUrl, value); }
+    public string ProxyUsername { get => _proxyUsername; private set => SetProperty(ref _proxyUsername, value); }
+    public bool ProxyPasswordConfigured { get => _proxyPasswordConfigured; private set => SetProperty(ref _proxyPasswordConfigured, value); }
+    public string ProxyBypassRules { get => _proxyBypassRules; private set => SetProperty(ref _proxyBypassRules, value); }
     public int ToolCallLimit { get => _toolCallLimit; private set => SetProperty(ref _toolCallLimit, value); }
     public string DiagnosticsText { get => _diagnosticsText; private set => SetProperty(ref _diagnosticsText, value); }
     public bool FullControlEnabled { get => _fullControlEnabled; private set => SetProperty(ref _fullControlEnabled, value); }

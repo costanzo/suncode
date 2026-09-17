@@ -236,6 +236,17 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 ? setting.Value.GetBoolean()
                 : fallback;
         }
+        string[] StringArraySetting(string key)
+        {
+            var setting = settings.FirstOrDefault(item => item.Key == key);
+            return setting is not null && setting.Value.ValueKind == JsonValueKind.Array
+                ? setting.Value.EnumerateArray()
+                    .Where(value => value.ValueKind == JsonValueKind.String)
+                    .Select(value => value.GetString() ?? string.Empty)
+                    .Where(value => value.Length > 0)
+                    .ToArray()
+                : Array.Empty<string>();
+        }
         var retention = LongSetting("log_retention", 5);
         var configuredLevel = StringSetting("log_level", "INFO").Trim().ToUpperInvariant();
         LogLevel = configuredLevel is "TRACE" or "DEBUG" or "INFO" or "WARN" or "ERROR" or "OFF"
@@ -249,6 +260,12 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         VerifyHttpsCertificates = BoolSetting("verify_https_certificates", true);
         UseSystemCertificates = BoolSetting("use_system_certificates", true);
         CertificatePath = StringSetting("certificate_path", string.Empty);
+        var proxyMode = StringSetting("proxy_mode", "system");
+        ProxyMode = proxyMode is "no_proxy" or "system" or "custom" ? proxyMode : "system";
+        ProxyUrl = StringSetting("proxy_url", string.Empty);
+        ProxyUsername = StringSetting("proxy_username", string.Empty);
+        ProxyPasswordConfigured = BoolSetting("proxy_password_configured", false);
+        ProxyBypassRules = string.Join(Environment.NewLine, StringArraySetting("proxy_bypass"));
         DiagnosticLog.Configure(
             LogLevel,
             LogDirectory,

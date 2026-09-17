@@ -10,7 +10,7 @@ use std::{
 };
 use suncode_agent::logging::{self, Level};
 use suncode_agent::{agent::Agent, domain::SessionEvent, AgentLock};
-use suncode_common::BusinessError;
+use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
 use suncode_config::Config;
 use suncode_data::{LlmModelProviderInput, LlmModelProviderRecord, Store};
 use suncode_llm::{
@@ -46,6 +46,7 @@ struct AgentState {
     verify_https_certificates: Arc<AtomicBool>,
     use_system_certificates: Arc<AtomicBool>,
     certificate_path: Arc<RwLock<Option<PathBuf>>>,
+    proxy_configuration: Arc<RwLock<HttpProxyConfiguration>>,
     agent: Agent,
     providers: Arc<ModelProviderRegistry>,
 }
@@ -149,10 +150,11 @@ fn openai_provider(
     verify_https_certificates: Arc<AtomicBool>,
     use_system_certificates: Arc<AtomicBool>,
     certificate_path: Arc<RwLock<Option<PathBuf>>>,
+    proxy_configuration: Arc<RwLock<HttpProxyConfiguration>>,
 ) -> SdkResult<Arc<dyn suncode_llm::LlmProvider>> {
     match provider.adapter_type.as_str() {
         "openai" => Ok(Arc::new(
-            OpenAiCompatibleProvider::new_with_tls_configuration(
+            OpenAiCompatibleProvider::new_with_network_configuration(
                 provider.provider_id.clone(),
                 provider.display_name.clone(),
                 provider.endpoint.clone(),
@@ -160,6 +162,7 @@ fn openai_provider(
                 verify_https_certificates,
                 use_system_certificates,
                 certificate_path,
+                proxy_configuration,
             ),
         )),
         adapter_type => Err(BusinessError::new(
@@ -175,6 +178,7 @@ fn registry_from_store(
     verify_https_certificates: Arc<AtomicBool>,
     use_system_certificates: Arc<AtomicBool>,
     certificate_path: Arc<RwLock<Option<PathBuf>>>,
+    proxy_configuration: Arc<RwLock<HttpProxyConfiguration>>,
 ) -> SdkResult<ModelProviderRegistry> {
     let providers = store.llm_model_providers(true)?;
     let models = store.llm_models(true)?;
@@ -216,6 +220,7 @@ fn registry_from_store(
             verify_https_certificates.clone(),
             use_system_certificates.clone(),
             certificate_path.clone(),
+            proxy_configuration.clone(),
         )?;
         registry
             .register(provider.provider_id, adapter, provider_models)
@@ -251,6 +256,7 @@ where
             .filter(|value| !value.trim().is_empty())
             .map(PathBuf::from),
     ));
+    let proxy_configuration = Arc::new(RwLock::new(proxy_configuration_from_store(&store)?));
     let operations = Arc::new(
         suncode_tool::Operations::new_with_https_certificate_verification(
             config.data_dir.join("operations"),
@@ -262,6 +268,12 @@ where
         use_system_certificates.load(Ordering::SeqCst),
         certificate_path.read().ok().and_then(|path| path.clone()),
     );
+    operations.set_proxy_configuration(
+        proxy_configuration
+            .read()
+            .map(|configuration| configuration.clone())
+            .unwrap_or_default(),
+    );
     let (events, _) = broadcast::channel(256);
     let mut providers = registry_from_store(
         &store,
@@ -271,6 +283,7 @@ where
         verify_https_certificates.clone(),
         use_system_certificates.clone(),
         certificate_path.clone(),
+        proxy_configuration.clone(),
     )?;
     configure_providers(&mut providers)
         .map_err(|error| BusinessError::new("provider_registration_failed", error.to_string()))?;
@@ -293,11 +306,52 @@ where
         verify_https_certificates,
         use_system_certificates,
         certificate_path,
+        proxy_configuration,
         agent,
         providers,
     };
     state.agent.recover().await?;
     Ok(state)
+}
+
+fn proxy_configuration_from_store(store: &Store) -> SdkResult<HttpProxyConfiguration> {
+    let settings = store.settings(None, None)?;
+    let value = |key: &str| {
+        settings
+            .iter()
+            .find(|record| record.key == key)
+            .map(|record| &record.value)
+    };
+    let mode = value("proxy_mode")
+        .and_then(Value::as_str)
+        .and_then(HttpProxyMode::parse)
+        .unwrap_or(HttpProxyMode::System);
+    let bypass = value("proxy_bypass")
+        .and_then(Value::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
+    Ok(HttpProxyConfiguration {
+        mode,
+        url: value("proxy_url")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        username: value("proxy_username")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        password: value("proxy_password")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        bypass,
+    })
 }
 
 fn global_bool_setting(store: &Store, key: &str, fallback: bool) -> SdkResult<bool> {
@@ -369,6 +423,19 @@ fn configure_logging(store: &Store, data_dir: &Path) -> SdkResult<()> {
 }
 
 fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
+    if matches!(
+        key,
+        "proxy_mode"
+            | "proxy_url"
+            | "proxy_username"
+            | "proxy_password"
+            | "proxy_bypass"
+            | "proxy_password_configured"
+    ) {
+        return Err(BusinessError::invalid(
+            "proxy settings must be updated through set_proxy_configuration",
+        ));
+    }
     if key == "image_directory" {
         if scope != "global" {
             return Err(BusinessError::invalid(

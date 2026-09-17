@@ -2,7 +2,7 @@
 
 use crate::{
     domain::SettingRecord,
-    store::{lock, now, Store},
+    store::{business_transaction, lock, now, Store},
 };
 use diesel::prelude::*;
 use diesel::sql_query;
@@ -122,5 +122,25 @@ impl Store {
             _ => unreachable!(),
         }.map_err(crate::database_error)?;
         Ok(())
+    }
+
+    pub fn set_global_settings(&self, values: &[(String, Value)]) -> Result<(), BusinessError> {
+        let mut connection = lock(&self.connection)?;
+        business_transaction(&mut connection, |connection| {
+            let timestamp = now();
+            for (key, value) in values {
+                if key.trim().is_empty() {
+                    return Err(BusinessError::invalid("setting key is required"));
+                }
+                let encoded = serde_json::to_string(value)?;
+                sql_query("INSERT INTO configuration(scope,key,value_json,updated_at) VALUES ('global',?,?,?) ON CONFLICT(key) WHERE scope='global' DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at")
+                    .bind::<Text, _>(key.trim())
+                    .bind::<Text, _>(&encoded)
+                    .bind::<Text, _>(&timestamp)
+                    .execute(connection)
+                    .map_err(crate::database_error)?;
+            }
+            Ok(())
+        })
     }
 }

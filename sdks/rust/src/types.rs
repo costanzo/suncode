@@ -82,6 +82,29 @@ pub struct SettingUpdate {
     pub scope_id: String,
 }
 
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProxyConfigurationRequest {
+    pub mode: String,
+    pub url: String,
+    pub username: String,
+    pub password: Option<String>,
+    #[serde(default)]
+    pub clear_password: bool,
+    #[serde(default)]
+    pub bypass: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProxyConfigurationResult {
+    pub mode: String,
+    pub url: String,
+    pub username: String,
+    pub password_configured: bool,
+    pub bypass: Vec<String>,
+}
+
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct McpSecretChanges {

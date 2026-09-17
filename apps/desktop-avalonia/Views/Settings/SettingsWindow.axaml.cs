@@ -34,6 +34,13 @@ public sealed partial class SettingsWindow : Window
         new("OFF", "OFF")
     ];
 
+    private static readonly IReadOnlyList<SCComboBoxItem> ProxyModeOptions =
+    [
+        new("No proxy", "no_proxy"),
+        new("System proxy", "system"),
+        new("Custom proxy", "custom")
+    ];
+
     private bool _ready;
     private bool _providersExpanded = true;
     private string _provider = string.Empty;
@@ -50,6 +57,12 @@ public sealed partial class SettingsWindow : Window
     private bool _baselineVerifyHttpsCertificates;
     private bool _baselineUseSystemCertificates;
     private string _baselineCertificatePath = string.Empty;
+    private string _baselineProxyMode = "system";
+    private string _baselineProxyUrl = string.Empty;
+    private string _baselineProxyUsername = string.Empty;
+    private string _baselineProxyBypass = string.Empty;
+    private bool _baselineProxyPasswordConfigured;
+    private bool _clearProxyPassword;
 
     public SettingsWindow()
     {
@@ -69,6 +82,10 @@ public sealed partial class SettingsWindow : Window
         NetworkPage.SystemCertificatesChanged += SystemCertificatesChanged;
         NetworkPage.SaveHttpsCertificateVerificationRequested += SaveHttpsCertificateVerification;
         NetworkPage.CertificatePathChanged += CertificatePathChanged;
+        NetworkPage.ProxyModeChanged += ProxyModeChanged;
+        NetworkPage.ProxyTextChanged += ProxyTextChanged;
+        NetworkPage.RemoveProxyPasswordRequested += RemoveProxyPassword;
+        NetworkPage.SaveProxyRequested += SaveProxy;
         McpPage.AddRequested += AddMcpServer;
         McpPage.EditRequested += EditMcpServer;
         McpPage.DeleteRequested += DeleteMcpServer;
@@ -105,17 +122,31 @@ public sealed partial class SettingsWindow : Window
             NetworkPage.UseSystemCertificatesToggleControl.IsChecked = ViewModel.UseSystemCertificates;
             NetworkPage.CertificatePathInputControl.Text = ViewModel.CertificatePath;
             NetworkPage.CertificatePathInputControl.IsEnabled = ViewModel.UseSystemCertificates == false;
+            NetworkPage.ProxyModeSelectorControl.ItemsSource = ProxyModeOptions;
+            NetworkPage.ProxyModeSelectorControl.SelectedItem = ProxyModeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ProxyMode));
+            NetworkPage.ProxyUrlInputControl.Text = ViewModel.ProxyUrl;
+            NetworkPage.ProxyUsernameInputControl.Text = ViewModel.ProxyUsername;
+            NetworkPage.ProxyPasswordInputControl.Text = string.Empty;
+            NetworkPage.ProxyBypassInputControl.Text = ViewModel.ProxyBypassRules;
+            _baselineProxyMode = ViewModel.ProxyMode;
+            _baselineProxyUrl = ViewModel.ProxyUrl;
+            _baselineProxyUsername = ViewModel.ProxyUsername;
+            _baselineProxyBypass = NormalizeProxyBypass(ViewModel.ProxyBypassRules);
+            _baselineProxyPasswordConfigured = ViewModel.ProxyPasswordConfigured;
+            _clearProxyPassword = false;
             _baselineVerifyHttpsCertificates = ViewModel.VerifyHttpsCertificates;
             _baselineUseSystemCertificates = ViewModel.UseSystemCertificates;
             _baselineCertificatePath = ViewModel.CertificatePath ?? string.Empty;
             RefreshHttpsCertificateWarning();
             RefreshCertificateTrustPresentation();
+            RefreshProxyPresentation();
             LoggingPage.LoggingStatusText.Text = "Local settings";
             LoggingPage.ImageDirectoryStatusText.Text = "Local settings";
             RefreshDefaultsDirtyState();
             RefreshLoggingDirtyState();
             RefreshImageDirectoryDirtyState();
             RefreshHttpsDirtyState();
+            RefreshProxyDirtyState();
             ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
             var savedNavigation = ViewModel.SavedSettingsNavigation;
             SetProvidersExpanded(savedNavigation.ProvidersExpanded);
@@ -394,6 +425,79 @@ public sealed partial class SettingsWindow : Window
         if (_ready) RefreshHttpsDirtyState();
     }
 
+    private void ProxyModeChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        NetworkPage.ProxyStatusText.Text = string.Empty;
+        RefreshProxyPresentation();
+        if (_ready) RefreshProxyDirtyState();
+    }
+
+    private void ProxyTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(NetworkPage.ProxyPasswordInputControl.Text))
+        {
+            _clearProxyPassword = false;
+            RefreshProxyPresentation();
+        }
+        if (_ready) RefreshProxyDirtyState();
+    }
+
+    private void RemoveProxyPassword(object? sender, RoutedEventArgs e)
+    {
+        _clearProxyPassword = true;
+        NetworkPage.ProxyPasswordInputControl.Text = string.Empty;
+        RefreshProxyPresentation();
+        RefreshProxyDirtyState();
+    }
+
+    private async void SaveProxy(object? sender, RoutedEventArgs e)
+    {
+        var mode = NetworkPage.ProxyModeSelectorControl.SelectedItem?.Value as string ?? "system";
+        var saved = await ViewModel.SaveProxyConfigurationAsync(
+            mode,
+            NetworkPage.ProxyUrlInputControl.Text,
+            NetworkPage.ProxyUsernameInputControl.Text,
+            NetworkPage.ProxyPasswordInputControl.Text,
+            _clearProxyPassword,
+            NetworkPage.ProxyBypassInputControl.Text);
+        NetworkPage.ProxyStatusText.Text = ViewModel.StatusText;
+        NetworkPage.ProxyStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
+        if (saved)
+        {
+            _baselineProxyMode = ViewModel.ProxyMode;
+            _baselineProxyUrl = ViewModel.ProxyUrl;
+            _baselineProxyUsername = ViewModel.ProxyUsername;
+            _baselineProxyBypass = NormalizeProxyBypass(ViewModel.ProxyBypassRules);
+            _baselineProxyPasswordConfigured = ViewModel.ProxyPasswordConfigured;
+            _clearProxyPassword = false;
+            NetworkPage.ProxyPasswordInputControl.Text = string.Empty;
+            NetworkPage.ProxyBypassInputControl.Text = ViewModel.ProxyBypassRules;
+        }
+        RefreshProxyPresentation();
+        RefreshProxyDirtyState();
+    }
+
+    private void RefreshProxyPresentation()
+    {
+        var mode = NetworkPage.ProxyModeSelectorControl.SelectedItem?.Value as string ?? "system";
+        NetworkPage.CustomProxySectionControl.IsVisible = mode == "custom";
+        var passwordConfigured = _baselineProxyPasswordConfigured && !_clearProxyPassword;
+        NetworkPage.RemoveProxyPasswordButtonControl.IsVisible = passwordConfigured;
+        NetworkPage.ProxyPasswordInputControl.PlaceholderText = passwordConfigured ? "Password stored" : "Optional";
+        NetworkPage.ProxyPasswordHintText.Text = passwordConfigured
+            ? "Password stored. Leave empty to keep it or remove it explicitly."
+            : "Optional Basic proxy authentication password.";
+        if (string.IsNullOrWhiteSpace(NetworkPage.ProxyStatusText.Text))
+        {
+            NetworkPage.ProxyStatusText.Text = mode switch
+            {
+                "no_proxy" => "Direct connections",
+                "custom" => "Custom proxy",
+                _ => "System proxy"
+            };
+        }
+    }
+
     private async void SaveHttpsCertificateVerification(object? sender, RoutedEventArgs e)
     {
         var enabled = NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked == true;
@@ -553,6 +657,11 @@ public sealed partial class SettingsWindow : Window
     private static string NormalizeDirectory(string? directory) =>
         directory?.Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) ?? string.Empty;
 
+    private static string NormalizeProxyBypass(string? value) => string.Join('\n',
+        (value ?? string.Empty)
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(item => item.Length > 0));
+
     private void RefreshDefaultsDirtyState()
     {
         if (!ViewModel.IsProjectOpen)
@@ -599,5 +708,21 @@ public sealed partial class SettingsWindow : Window
             verify != _baselineVerifyHttpsCertificates
             || useSystem != _baselineUseSystemCertificates
             || !string.Equals(path, _baselineCertificatePath, StringComparison.Ordinal);
+    }
+
+    private void RefreshProxyDirtyState()
+    {
+        var mode = NetworkPage.ProxyModeSelectorControl.SelectedItem?.Value as string ?? "system";
+        var url = NetworkPage.ProxyUrlInputControl.Text?.Trim() ?? string.Empty;
+        var username = NetworkPage.ProxyUsernameInputControl.Text?.Trim() ?? string.Empty;
+        var bypass = NormalizeProxyBypass(NetworkPage.ProxyBypassInputControl.Text);
+        var passwordChanged = !string.IsNullOrEmpty(NetworkPage.ProxyPasswordInputControl.Text);
+        NetworkPage.SaveProxyButtonControl.IsEnabled =
+            !string.Equals(mode, _baselineProxyMode, StringComparison.Ordinal)
+            || !string.Equals(url, _baselineProxyUrl, StringComparison.Ordinal)
+            || !string.Equals(username, _baselineProxyUsername, StringComparison.Ordinal)
+            || !string.Equals(bypass, _baselineProxyBypass, StringComparison.Ordinal)
+            || passwordChanged
+            || _clearProxyPassword;
     }
 }

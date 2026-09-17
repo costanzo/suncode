@@ -87,6 +87,34 @@ public sealed class SdkTypedModelTests
     }
 
     [Fact]
+    public void Serializes_proxy_configuration_with_write_only_password_patch()
+    {
+        var request = new ProxyConfigurationRequest(
+            "custom",
+            "http://proxy.example.test:8080",
+            "developer",
+            "secret",
+            false,
+            [".internal.example.test", "10.0.0.0/8"]);
+
+        var json = JsonSerializer.Serialize(request, Options);
+        using var document = JsonDocument.Parse(json);
+
+        Assert.Equal("custom", document.RootElement.GetProperty("mode").GetString());
+        Assert.Equal("secret", document.RootElement.GetProperty("password").GetString());
+        Assert.False(document.RootElement.GetProperty("clearPassword").GetBoolean());
+
+        const string responseJson = """
+            {"mode":"custom","url":"http://proxy.example.test:8080","username":"developer","passwordConfigured":true,"bypass":[".internal.example.test"]}
+            """;
+        var result = JsonSerializer.Deserialize<ProxyConfigurationResult>(responseJson, Options);
+
+        Assert.NotNull(result);
+        Assert.True(result.PasswordConfigured);
+        Assert.Equal("developer", result.Username);
+    }
+
+    [Fact]
     public void Deserializes_rust_camel_case_dependency_checkpoint_and_approval_fields()
     {
         const string dependenciesJson = """

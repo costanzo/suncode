@@ -24,6 +24,7 @@ fn test_sdk(directory: &std::path::Path) -> AgentSdk {
 fn test_state(directory: &std::path::Path) -> AgentState {
     let store = Store::open_memory().unwrap();
     let verify_https_certificates = Arc::new(AtomicBool::new(true));
+    let proxy_configuration = Arc::new(RwLock::new(HttpProxyConfiguration::default()));
     let operations = Arc::new(
         suncode_tool::Operations::new_with_https_certificate_verification(
             directory.join("operations"),
@@ -44,6 +45,7 @@ fn test_state(directory: &std::path::Path) -> AgentState {
             verify_https_certificates.clone(),
             Arc::new(AtomicBool::new(true)),
             Arc::new(RwLock::new(None)),
+            proxy_configuration.clone(),
         )
         .unwrap(),
     );
@@ -63,8 +65,113 @@ fn test_state(directory: &std::path::Path) -> AgentState {
         verify_https_certificates,
         use_system_certificates: Arc::new(AtomicBool::new(true)),
         certificate_path: Arc::new(RwLock::new(None)),
+        proxy_configuration,
         agent,
         providers,
+    }
+}
+
+#[test]
+fn proxy_configuration_is_atomic_live_and_redacted() {
+    let directory = tempfile::tempdir().unwrap();
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+
+    let result = sdk
+        .set_proxy_configuration(ProxyConfigurationRequest {
+            mode: "custom".into(),
+            url: "http://proxy.example.test:8080".into(),
+            username: "developer".into(),
+            password: Some("private-proxy-password".into()),
+            clear_password: false,
+            bypass: vec![".internal.example.test".into(), "10.0.0.0/8".into()],
+        })
+        .unwrap();
+    assert_eq!(result.mode, "custom");
+    assert!(result.password_configured);
+    assert_eq!(
+        sdk.state.proxy_configuration.read().unwrap().password,
+        "private-proxy-password"
+    );
+
+    let settings = sdk.list_settings(None, None).unwrap().settings;
+    assert!(settings
+        .iter()
+        .all(|setting| setting.key != "proxy_password"));
+    assert_eq!(
+        settings
+            .iter()
+            .find(|setting| setting.key == "proxy_password_configured")
+            .map(|setting| setting.value.clone()),
+        Some(json!(true))
+    );
+    assert_eq!(
+        sdk.state
+            .store
+            .settings(None, None)
+            .unwrap()
+            .into_iter()
+            .find(|setting| setting.key == "proxy_password")
+            .unwrap()
+            .value,
+        json!("private-proxy-password")
+    );
+
+    let preserved = sdk
+        .set_proxy_configuration(ProxyConfigurationRequest {
+            mode: "system".into(),
+            url: "http://proxy.example.test:8080".into(),
+            username: "developer".into(),
+            password: None,
+            clear_password: false,
+            bypass: Vec::new(),
+        })
+        .unwrap();
+    assert!(preserved.password_configured);
+
+    let cleared = sdk
+        .set_proxy_configuration(ProxyConfigurationRequest {
+            mode: "no_proxy".into(),
+            url: String::new(),
+            username: String::new(),
+            password: None,
+            clear_password: true,
+            bypass: Vec::new(),
+        })
+        .unwrap();
+    assert!(!cleared.password_configured);
+}
+
+#[test]
+fn proxy_configuration_rejects_unsupported_or_unsafe_values() {
+    let directory = tempfile::tempdir().unwrap();
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    for request in [
+        ProxyConfigurationRequest {
+            mode: "custom".into(),
+            url: "socks5://proxy.example.test:1080".into(),
+            username: String::new(),
+            password: None,
+            clear_password: false,
+            bypass: Vec::new(),
+        },
+        ProxyConfigurationRequest {
+            mode: "custom".into(),
+            url: "http://user:password@proxy.example.test:8080".into(),
+            username: String::new(),
+            password: None,
+            clear_password: false,
+            bypass: Vec::new(),
+        },
+        ProxyConfigurationRequest {
+            mode: "custom".into(),
+            url: "http://proxy.example.test:8080".into(),
+            username: String::new(),
+            password: None,
+            clear_password: false,
+            bypass: vec!["*.example.*".into()],
+        },
+    ] {
+        assert!(sdk.set_proxy_configuration(request).is_err());
     }
 }
 

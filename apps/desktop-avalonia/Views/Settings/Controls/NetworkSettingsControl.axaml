@@ -7,8 +7,70 @@
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
         <TextBlock Text="Network" Classes="sc-text-title" />
-        <TextBlock Classes="settings-hint" Text="Configure how Rust HTTPS clients establish secure connections." />
+        <TextBlock Classes="settings-hint" Text="Configure how the embedded Rust agent reaches HTTP and HTTPS services." />
       </StackPanel>
+      <StackPanel Classes="settings-panel-section">
+        <TextBlock Classes="section-label" Text="PROXY" />
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Proxy mode" />
+            <TextBlock Classes="settings-row-hint"
+                       Text="Applies to model providers, WebFetch, and remote HTTP MCP servers." />
+          </StackPanel>
+          <controls:SCFlatComboBox x:Name="ProxyModeSelector" Grid.Column="1" HorizontalAlignment="Stretch"
+                                   SelectionChanged="OnProxyModeChanged" />
+        </Grid>
+        <Border x:Name="CustomProxySection" Classes="settings-subsection" IsVisible="False">
+          <StackPanel Spacing="14">
+            <TextBlock Text="CUSTOM PROXY" Classes="section-label" />
+            <Grid Classes="settings-row" ColumnDefinitions="*,220">
+              <StackPanel Classes="settings-row-copy">
+                <TextBlock Classes="settings-row-title" Text="Proxy URL" />
+                <TextBlock Classes="settings-row-hint" Text="Use an HTTP or HTTPS URL without embedded credentials." />
+              </StackPanel>
+              <TextBox x:Name="ProxyUrlInput" Grid.Column="1" Classes="mono settings-provider-input"
+                       PlaceholderText="http://proxy.example.com:8080" TextChanged="OnProxyTextChanged" />
+            </Grid>
+            <Grid Classes="settings-row" ColumnDefinitions="*,220">
+              <StackPanel Classes="settings-row-copy">
+                <TextBlock Classes="settings-row-title" Text="Username" />
+                <TextBlock Classes="settings-row-hint" Text="Optional Basic proxy authentication username." />
+              </StackPanel>
+              <TextBox x:Name="ProxyUsernameInput" Grid.Column="1" Classes="mono settings-provider-input"
+                       TextChanged="OnProxyTextChanged" />
+            </Grid>
+            <Grid Classes="settings-row" ColumnDefinitions="*,220">
+              <StackPanel Classes="settings-row-copy">
+                <TextBlock Classes="settings-row-title" Text="Password" />
+                <TextBlock x:Name="ProxyPasswordHint" Classes="settings-row-hint"
+                           Text="Optional Basic proxy authentication password." />
+              </StackPanel>
+              <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBox x:Name="ProxyPasswordInput" Classes="mono sc-secret-input settings-provider-input"
+                         PlaceholderText="Optional" TextChanged="OnProxyTextChanged" />
+                <Button x:Name="RemoveProxyPasswordButton" Grid.Column="1" Classes="compact quiet sc-button"
+                        Content="Remove" IsVisible="False" Click="OnRemoveProxyPassword" />
+              </Grid>
+            </Grid>
+            <Grid Classes="settings-row" ColumnDefinitions="*,220" VerticalAlignment="Top">
+              <StackPanel Classes="settings-row-copy">
+                <TextBlock Classes="settings-row-title" Text="Bypass rules" />
+                <TextBlock Classes="settings-row-hint"
+                           Text="One hostname, domain suffix, IP address, CIDR range, or * per line. Loopback is always direct." />
+              </StackPanel>
+              <TextBox x:Name="ProxyBypassInput" Grid.Column="1" Classes="mono settings-proxy-bypass"
+                       AcceptsReturn="True" TextWrapping="NoWrap" Height="92"
+                       PlaceholderText=".internal.example.com&#10;10.0.0.0/8" TextChanged="OnProxyTextChanged" />
+            </Grid>
+          </StackPanel>
+        </Border>
+        <StackPanel Classes="settings-actions">
+          <Button x:Name="SaveProxyButton" Classes="compact primary sc-button" Content="Save proxy settings"
+                  Click="OnSaveProxy" IsEnabled="False" />
+          <TextBlock x:Name="ProxyStatus" Classes="sc-text-status" VerticalAlignment="Center" />
+        </StackPanel>
+      </StackPanel>
+      <Border Classes="settings-divider" />
       <StackPanel Classes="settings-panel-section">
         <TextBlock Classes="section-label" Text="HTTPS SECURITY" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">

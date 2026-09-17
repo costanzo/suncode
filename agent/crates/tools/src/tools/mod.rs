@@ -18,6 +18,7 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
+use suncode_common::HttpProxyConfiguration;
 
 pub(super) fn dispatch_with_output(
     method: &str,
@@ -29,6 +30,7 @@ pub(super) fn dispatch_with_output(
     output_callback: Option<ProcessOutputCallback>,
     use_system_certificates: bool,
     certificate_path: Option<&Path>,
+    proxy_configuration: HttpProxyConfiguration,
 ) -> Option<Result<Value, BusinessError>> {
     Some(match method {
         "tool/read" => run_read_typed(params, project_root),
@@ -46,6 +48,7 @@ pub(super) fn dispatch_with_output(
                 verify_https_certificates,
                 use_system_certificates,
                 certificate_path,
+                &proxy_configuration,
             )
         }),
         "tool/write" => run_typed(params, |args: WriteArguments| {

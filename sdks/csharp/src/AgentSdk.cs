@@ -116,6 +116,10 @@ public sealed partial class AgentSdk : IDisposable
         values => NativeMethods.suncode_agent_sdk_set_setting(
             _handle, values[0], values[1], values[2], values[3], values[4]));
 
+    private Task<JsonElement> RawSetProxyConfigurationAsync(string requestJson) => WithUtf8Async(
+        [requestJson],
+        values => NativeMethods.suncode_agent_sdk_set_proxy_configuration(_handle, values[0]));
+
     private Task<JsonElement> RawSetCredentialAsync(string provider, string apiKey) => WithUtf8Async(
         [provider, apiKey],
         values => NativeMethods.suncode_agent_sdk_set_credential(_handle, values[0], values[1]));

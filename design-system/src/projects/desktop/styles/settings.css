@@ -257,6 +257,34 @@
 .settings-directory-field {
   position: relative;
 }
+.settings-secret-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.settings-secret-field > .field {
+  width: 100%;
+  min-height: var(--control-md);
+}
+.settings-secret-field > button {
+  min-height: var(--control-md);
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.settings-secret-field > button:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.settings-proxy-bypass {
+  width: 100%;
+  min-height: 92px;
+  padding: 9px 10px;
+  line-height: 1.45;
+  resize: vertical;
+}
 .settings-directory-field > button {
   position: absolute;
   top: 50%;

@@ -12,9 +12,22 @@ impl AgentSdk {
         if let Some(session_id) = session_id {
             self.session_for_user(session_id)?;
         }
-        Ok(SettingsResult {
-            settings: self.state.store.settings(project_id, session_id)?,
-        })
+        let mut settings = self.state.store.settings(project_id, session_id)?;
+        let password_configured = settings
+            .iter()
+            .find(|setting| setting.key == "proxy_password")
+            .and_then(|setting| setting.value.as_str())
+            .is_some_and(|value| !value.is_empty());
+        settings.retain(|setting| setting.key != "proxy_password");
+        settings.retain(|setting| setting.key != "proxy_password_configured");
+        settings.push(suncode_data::SettingRecord {
+            key: "proxy_password_configured".into(),
+            value: Value::Bool(password_configured),
+            scope: "global".into(),
+            scope_id: "global".into(),
+        });
+        settings.sort_by(|left, right| left.key.cmp(&right.key));
+        Ok(SettingsResult { settings })
     }
 
     pub fn set_setting(
@@ -90,4 +103,188 @@ impl AgentSdk {
             scope_id: scope_id.to_string(),
         })
     }
+
+    pub fn set_proxy_configuration(
+        &self,
+        request: ProxyConfigurationRequest,
+    ) -> SdkResult<ProxyConfigurationResult> {
+        let current = self
+            .state
+            .proxy_configuration
+            .read()
+            .map(|configuration| configuration.clone())
+            .unwrap_or_default();
+        let configuration = validate_proxy_configuration(request, &current)?;
+        self.state.store.set_global_settings(&[
+            (
+                "proxy_mode".into(),
+                Value::String(configuration.mode.as_str().into()),
+            ),
+            ("proxy_url".into(), Value::String(configuration.url.clone())),
+            (
+                "proxy_username".into(),
+                Value::String(configuration.username.clone()),
+            ),
+            (
+                "proxy_password".into(),
+                Value::String(configuration.password.clone()),
+            ),
+            (
+                "proxy_bypass".into(),
+                Value::Array(
+                    configuration
+                        .bypass
+                        .iter()
+                        .cloned()
+                        .map(Value::String)
+                        .collect(),
+                ),
+            ),
+        ])?;
+        if let Ok(mut current) = self.state.proxy_configuration.write() {
+            *current = configuration.clone();
+        }
+        self.state
+            .operations
+            .set_proxy_configuration(configuration.clone());
+        self.runtime
+            .block_on(self.state.agent.reconcile_mcp_network_configuration())?;
+        Ok(proxy_configuration_result(&configuration))
+    }
+}
+
+fn proxy_configuration_result(configuration: &HttpProxyConfiguration) -> ProxyConfigurationResult {
+    ProxyConfigurationResult {
+        mode: configuration.mode.as_str().into(),
+        url: configuration.url.clone(),
+        username: configuration.username.clone(),
+        password_configured: !configuration.password.is_empty(),
+        bypass: configuration.bypass.clone(),
+    }
+}
+
+fn validate_proxy_configuration(
+    request: ProxyConfigurationRequest,
+    current: &HttpProxyConfiguration,
+) -> SdkResult<HttpProxyConfiguration> {
+    let mode = HttpProxyMode::parse(request.mode.trim())
+        .ok_or_else(|| BusinessError::invalid("proxy mode must be no_proxy, system, or custom"))?;
+    if request.clear_password && request.password.is_some() {
+        return Err(BusinessError::invalid(
+            "proxy password cannot be replaced and removed together",
+        ));
+    }
+    let url = normalize_proxy_url(&request.url, mode)?;
+    let username = request.username.trim().to_string();
+    if username.chars().count() > 1024 || username.chars().any(char::is_control) {
+        return Err(BusinessError::invalid("proxy username is invalid"));
+    }
+    let password = if request.clear_password {
+        String::new()
+    } else if let Some(password) = request.password {
+        if password.chars().count() > 8192 || password.contains('\0') {
+            return Err(BusinessError::invalid("proxy password is invalid"));
+        }
+        password
+    } else {
+        current.password.clone()
+    };
+    if mode == HttpProxyMode::Custom && username.is_empty() && !password.is_empty() {
+        return Err(BusinessError::invalid(
+            "proxy username is required when a password is configured",
+        ));
+    }
+    let bypass = normalize_bypass_rules(request.bypass)?;
+    Ok(HttpProxyConfiguration {
+        mode,
+        url,
+        username,
+        password,
+        bypass,
+    })
+}
+
+fn normalize_proxy_url(value: &str, mode: HttpProxyMode) -> SdkResult<String> {
+    let value = value.trim();
+    if value.is_empty() {
+        if mode == HttpProxyMode::Custom {
+            return Err(BusinessError::invalid(
+                "proxy URL is required for custom proxy mode",
+            ));
+        }
+        return Ok(String::new());
+    }
+    let url = url::Url::parse(value)
+        .map_err(|_| BusinessError::invalid("proxy URL must be a valid HTTP or HTTPS URL"))?;
+    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+        return Err(BusinessError::invalid(
+            "proxy URL must be a valid HTTP or HTTPS URL",
+        ));
+    }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err(BusinessError::invalid(
+            "proxy URL must not contain embedded credentials",
+        ));
+    }
+    if url.query().is_some() || url.fragment().is_some() || url.path() != "/" {
+        return Err(BusinessError::invalid(
+            "proxy URL must not contain a path, query, or fragment",
+        ));
+    }
+    Ok(value.trim_end_matches('/').to_string())
+}
+
+fn normalize_bypass_rules(values: Vec<String>) -> SdkResult<Vec<String>> {
+    if values.len() > 256 {
+        return Err(BusinessError::invalid(
+            "proxy bypass supports at most 256 rules",
+        ));
+    }
+    let mut normalized = Vec::new();
+    for value in values {
+        let value = value.trim();
+        if value.is_empty() {
+            continue;
+        }
+        if value.chars().count() > 512 || !valid_bypass_rule(value) {
+            return Err(BusinessError::invalid(format!(
+                "proxy bypass rule is invalid: {value}"
+            )));
+        }
+        let value = value.to_ascii_lowercase();
+        if !normalized.iter().any(|existing| existing == &value) {
+            normalized.push(value);
+        }
+    }
+    Ok(normalized)
+}
+
+fn valid_bypass_rule(value: &str) -> bool {
+    if value == "*" || value.parse::<std::net::IpAddr>().is_ok() {
+        return true;
+    }
+    if let Some((address, prefix)) = value.rsplit_once('/') {
+        let Ok(address) = address.parse::<std::net::IpAddr>() else {
+            return false;
+        };
+        let Ok(prefix) = prefix.parse::<u8>() else {
+            return false;
+        };
+        return match address {
+            std::net::IpAddr::V4(_) => prefix <= 32,
+            std::net::IpAddr::V6(_) => prefix <= 128,
+        };
+    }
+    let domain = value.strip_prefix('.').unwrap_or(value);
+    !domain.is_empty()
+        && domain.chars().count() <= 253
+        && domain.split('.').all(|label| {
+            !label.is_empty()
+                && label.len() <= 63
+                && !label.starts_with('-')
+                && !label.ends_with('-')
+                && label
+                    .chars()
+                    .all(|character| character.is_ascii_alphanumeric() || character == '-')
+        })
 }
