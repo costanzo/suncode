@@ -48,6 +48,7 @@
                     Classes="project-switcher-menu-item"
                     Height="42"
                     Padding="8,5"
+                    HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Stretch"
                     Click="OpenProject">
               <Grid ColumnDefinitions="18,8,*,8,14">
