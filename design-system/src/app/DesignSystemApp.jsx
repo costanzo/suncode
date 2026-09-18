@@ -50,6 +50,7 @@ import { WorkspaceReviewPage } from "../projects/desktop/workspace/review/index.
 import { WorkspaceSourceControlPage } from "../projects/desktop/workspace/source-control/index.jsx";
 import { WorkspaceProviderTracePage } from "../projects/desktop/workspace/provider-trace/index.jsx";
 import { WorkspaceToolActivityPage } from "../projects/desktop/workspace/tool-activity/index.jsx";
+import { WorkspaceChildSessionsPage } from "../projects/desktop/workspace/child-sessions/index.jsx";
 import { Icon } from "../shared/Icon.jsx";
 import { RouteLink } from "../shared/PagePrimitives.jsx";
 import compactLogoUrl from "../assets/logos/suncode-logo-small.svg";
@@ -109,6 +110,7 @@ const routes = {
   "/projects/desktop/dialog-window": DialogWindowPage,
   "/projects/desktop/about": AboutPage,
   "/projects/desktop/settings": SettingsPage,
+  "/projects/desktop/settings/agents": () => <SettingsPage initialPage="agents" />,
   "/projects/desktop/workspace": WorkspacePage,
   "/projects/desktop/workspace/sessions": WorkspaceSessionsPage,
   "/projects/desktop/workspace/explorer": WorkspaceExplorerPage,
@@ -118,6 +120,7 @@ const routes = {
   "/projects/desktop/workspace/source-control": WorkspaceSourceControlPage,
   "/projects/desktop/workspace/provider-trace": WorkspaceProviderTracePage,
   "/projects/desktop/workspace/tool-activity": WorkspaceToolActivityPage,
+  "/projects/desktop/workspace/child-sessions": WorkspaceChildSessionsPage,
 };
 
 function readTheme() {

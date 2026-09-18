@@ -9,7 +9,7 @@ import { DialogWindowConfirmation } from "../dialog-window/index.jsx";
 
 export { TrafficLights } from "../../../shared/TrafficLights.jsx";
 
-const sessions = [
+export const primarySessions = [
   {
     id: "workspace-information-architecture",
     title: "Workspace information architecture",
@@ -28,6 +28,66 @@ const sessions = [
     title: "Desktop navigation polish",
     time: "Aug 26",
     status: "idle",
+  },
+];
+const sessions = primarySessions;
+
+export const childSessions = [
+  {
+    id: "child-ui-ux-review",
+    parentSessionId: "workspace-information-architecture",
+    agentId: "builtin.ui-ux.v1",
+    agentName: "ui-ux-agent",
+    agentDisplayName: "UI/UX Agent",
+    title: "Review child-session workspace UX",
+    task: "Review the child-session panel, read-only detail view, and recent-content behavior against the desktop design system.",
+    state: "running",
+    time: "Now",
+    duration: "38s",
+    toolCalls: 3,
+    model: "gpt-5.6-sol",
+  },
+  {
+    id: "child-swe-contracts",
+    parentSessionId: "workspace-information-architecture",
+    agentId: "builtin.swe.v1",
+    agentName: "swe-agent",
+    agentDisplayName: "Software Engineering Agent",
+    title: "Map session contract changes",
+    task: "Identify the SDK and persistence contracts required for parent and child session relationships without implementing them.",
+    state: "completed",
+    time: "4 min ago",
+    duration: "1m 12s",
+    toolCalls: 6,
+    model: "gpt-5.6-sol",
+  },
+  {
+    id: "child-swe-approval",
+    parentSessionId: "workspace-information-architecture",
+    agentId: "builtin.swe.v1",
+    agentName: "swe-agent",
+    agentDisplayName: "Software Engineering Agent",
+    title: "Validate focused design build",
+    task: "Run the focused design-system verification after the parent session finishes the UI specimen.",
+    state: "approval",
+    time: "7 min ago",
+    duration: "24s",
+    toolCalls: 2,
+    model: "gpt-5.6-sol",
+  },
+  {
+    id: "child-ui-ux-failed",
+    parentSessionId: "provider-migration-review",
+    agentId: "builtin.ui-ux.v1",
+    agentName: "ui-ux-agent",
+    agentDisplayName: "UI/UX Agent",
+    title: "Inspect compact-width layout",
+    task: "Check the child-session detail at the compact workspace breakpoint.",
+    state: "failed",
+    time: "12 min ago",
+    duration: "16s",
+    toolCalls: 1,
+    model: "gpt-5.6-sol",
   },
 ];
 
@@ -772,9 +832,9 @@ export function ExplorerPanel({
               ? "project"
               : node.kind === "dependencies"
                 ? "dependencies"
-              : isContainer
-                ? "folder"
-                : fileIcon;
+                : isContainer
+                  ? "folder"
+                  : fileIcon;
           return (
             <button
               key={node.id}
@@ -840,9 +900,9 @@ const editorCodeLines = [
     ["keyword", "UserControl"],
     ["punctuation", " "],
     ["type", "xmlns"],
-    ["punctuation", "=\""],
+    ["punctuation", '="'],
     ["string", "https://github.com/avaloniaui"],
-    ["punctuation", "\""],
+    ["punctuation", '"'],
     ["punctuation", ">"],
   ],
   [
@@ -850,9 +910,9 @@ const editorCodeLines = [
     ["keyword", "Grid"],
     ["punctuation", " "],
     ["type", "RowDefinitions"],
-    ["punctuation", "=\""],
+    ["punctuation", '="'],
     ["string", "36,*,20"],
-    ["punctuation", "\" />"],
+    ["punctuation", '" />'],
   ],
   [["comment", "  <!-- Conversation and editor share this content slot. -->"]],
   [
@@ -860,16 +920,16 @@ const editorCodeLines = [
     ["keyword", "Grid"],
     ["punctuation", " "],
     ["type", "Grid.Row"],
-    ["punctuation", "=\""],
+    ["punctuation", '="'],
     ["number", "1"],
-    ["punctuation", "\">"],
+    ["punctuation", '">'],
   ],
   [
     ["punctuation", "    <"],
     ["keyword", "chat:ChatArea"],
     ["punctuation", " "],
     ["type", "IsVisible"],
-    ["punctuation", "=\""],
+    ["punctuation", '="'],
     ["string", "{Binding IsConversationVisible}"],
     ["punctuation", " />"],
   ],
@@ -878,39 +938,74 @@ const editorCodeLines = [
     ["keyword", "editor:ReadOnlyEditor"],
     ["punctuation", " "],
     ["type", "IsVisible"],
-    ["punctuation", "=\""],
+    ["punctuation", '="'],
     ["string", "{Binding IsEditorVisible}"],
     ["punctuation", " />"],
   ],
-  [["punctuation", "  </"], ["keyword", "Grid"], ["punctuation", ">"]],
+  [
+    ["punctuation", "  </"],
+    ["keyword", "Grid"],
+    ["punctuation", ">"],
+  ],
   [
     ["punctuation", "  <"],
     ["keyword", "TextBlock"],
     ["punctuation", " "],
     ["type", "Text"],
-    ["punctuation", "=\""],
+    ["punctuation", '="'],
     ["string", "READ ONLY"],
-    ["punctuation", "\" />"],
+    ["punctuation", '" />'],
   ],
-  [["punctuation", "</"], ["keyword", "UserControl"], ["punctuation", ">"]],
+  [
+    ["punctuation", "</"],
+    ["keyword", "UserControl"],
+    ["punctuation", ">"],
+  ],
 ];
 
 const markdownEditorLines = [
   [["keyword", "# Shared UI"]],
   [],
-  [["punctuation", "This package contains the "], ["type", "desktop component foundations"], ["punctuation", "."]],
+  [
+    ["punctuation", "This package contains the "],
+    ["type", "desktop component foundations"],
+    ["punctuation", "."],
+  ],
   [],
   [["keyword", "## Usage"]],
   [],
-  [["punctuation", "- "], ["string", "Import semantic tokens from the shared theme."]],
-  [["punctuation", "- "], ["string", "Keep project files read-only when opened as dependencies."]],
+  [
+    ["punctuation", "- "],
+    ["string", "Import semantic tokens from the shared theme."],
+  ],
+  [
+    ["punctuation", "- "],
+    ["string", "Keep project files read-only when opened as dependencies."],
+  ],
 ];
 
 const jsxEditorLines = [
-  [["keyword", "export function"], ["punctuation", " "], ["type", "ModelProviderDropdown"], ["punctuation", "({ models }) {"]],
-  [["keyword", "  const"], ["punctuation", " enabled = models.filter((model) => model.enabled);"]],
-  [["keyword", "  return"], ["punctuation", " ("]],
-  [["punctuation", "    <"], ["type", "SingleDropdown"], ["punctuation", " options={enabled} ariaLabel="], ["string", "\"Model provider\""], ["punctuation", " />"]],
+  [
+    ["keyword", "export function"],
+    ["punctuation", " "],
+    ["type", "ModelProviderDropdown"],
+    ["punctuation", "({ models }) {"],
+  ],
+  [
+    ["keyword", "  const"],
+    ["punctuation", " enabled = models.filter((model) => model.enabled);"],
+  ],
+  [
+    ["keyword", "  return"],
+    ["punctuation", " ("],
+  ],
+  [
+    ["punctuation", "    <"],
+    ["type", "SingleDropdown"],
+    ["punctuation", " options={enabled} ariaLabel="],
+    ["string", '"Model provider"'],
+    ["punctuation", " />"],
+  ],
   [["punctuation", "  );"]],
   [["punctuation", "}"]],
 ];
@@ -979,7 +1074,10 @@ export function EditorPanel({
                 <span className="workspace-editor-line-number">{index + 1}</span>
                 <span className="workspace-editor-line-code">
                   {line.map(([tone, text], tokenIndex) => (
-                    <span className={`workspace-editor-token is-${tone}`} key={`${index}-${tokenIndex}`}>
+                    <span
+                      className={`workspace-editor-token is-${tone}`}
+                      key={`${index}-${tokenIndex}`}
+                    >
                       {text}
                     </span>
                   ))}
@@ -990,8 +1088,14 @@ export function EditorPanel({
         </pre>
       )}
       {state !== "ready" && (
-        <div className={`workspace-editor-state is-${state}`} role={state === "error" ? "alert" : "status"}>
-          <Icon name={state === "error" ? "close" : state === "empty" ? "file-text" : "activity"} size={24} />
+        <div
+          className={`workspace-editor-state is-${state}`}
+          role={state === "error" ? "alert" : "status"}
+        >
+          <Icon
+            name={state === "error" ? "close" : state === "empty" ? "file-text" : "activity"}
+            size={24}
+          />
           <strong>{stateLabel}</strong>
           <span>
             {state === "loading"
@@ -1146,97 +1250,110 @@ export function ConversationPanel({
               );
             }}
           >
-          <div className="workspace-message workspace-message-user">
-            {sentAttachments.length > 0 && (
-              <div className="workspace-message-attachments" aria-label="Images sent with this message">
-                {sentAttachments.map((attachment) => (
-                  <button
-                    type="button"
-                    className="workspace-message-attachment"
-                    key={attachment.id}
-                    onClick={() => setPreviewAttachment(attachment)}
-                    aria-label={`View ${attachment.name}`}
-                    title="View image"
-                  >
-                    <img src={attachment.url} alt={attachment.name} />
-                  </button>
-                ))}
+            <div className="workspace-message workspace-message-user">
+              {sentAttachments.length > 0 && (
+                <div
+                  className="workspace-message-attachments"
+                  aria-label="Images sent with this message"
+                >
+                  {sentAttachments.map((attachment) => (
+                    <button
+                      type="button"
+                      className="workspace-message-attachment"
+                      key={attachment.id}
+                      onClick={() => setPreviewAttachment(attachment)}
+                      aria-label={`View ${attachment.name}`}
+                      title="View image"
+                    >
+                      <img src={attachment.url} alt={attachment.name} />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p>Review the conversation layout and keep the existing attachment behavior.</p>
+            </div>
+            {state === "intermediate-assistant" && (
+              <div className="workspace-message workspace-message-assistant workspace-message-assistant-intermediate">
+                <p>
+                  Let me confirm the module types and dependency relationships before I summarize
+                  the project structure.
+                </p>
               </div>
             )}
-            <p>Review the conversation layout and keep the existing attachment behavior.</p>
-          </div>
-          {state === "intermediate-assistant" && (
-            <div className="workspace-message workspace-message-assistant workspace-message-assistant-intermediate">
-              <p>
-                Let me confirm the module types and dependency relationships before I summarize the
-                project structure.
-              </p>
-            </div>
-          )}
-          {activeTool && <div className="workspace-assistant-duration">Working for 18s</div>}
-          {activeTool && <button type="button" className="workspace-active-tool" onClick={() => onOpenToolActivity ? onOpenToolActivity("0198e82c", 1) : window.location.hash = "/projects/desktop/workspace/tool-activity"}>
-            <Icon name={activeTool.icon} size={14} />
-            <span>{activeTool.title}</span>
-            <small>Running · View in Tool activity</small>
-            <Icon name="arrow" size={12} />
-          </button>}
-          {!turnActive ? (
-            <div className="workspace-message workspace-message-assistant">
-              <div className="workspace-assistant-duration">Worked for 42s</div>
-              <p>
-                I split Workspace into a complete composition and focused pages for sessions,
-                explorer, conversation, review, source control, and provider trace.
-              </p>
-              <div className="workspace-message-footer">
-                <div className="workspace-message-actions">
-                  <button
-                    type="button"
-                    className={`workspace-copy ${copiedResponse ? "is-copied" : ""}`}
-                    aria-label={copiedResponse ? "Copied response" : "Copy response"}
-                    title={copiedResponse ? "Copied" : "Copy response"}
-                    onClick={copyResponse}
-                  >
-                    <Icon name={copiedResponse ? "check" : "copy"} size={13} />
-                  </button>
-                  <time
-                    className="workspace-message-completed-time"
-                    dateTime="2026-09-12T14:32:18+08:00"
-                    title="Completed at 14:32"
-                  >
-                    14:32
-                  </time>
+            {activeTool && <div className="workspace-assistant-duration">Working for 18s</div>}
+            {activeTool && (
+              <button
+                type="button"
+                className="workspace-active-tool"
+                onClick={() =>
+                  onOpenToolActivity
+                    ? onOpenToolActivity("0198e82c", 1)
+                    : (window.location.hash = "/projects/desktop/workspace/tool-activity")
+                }
+              >
+                <Icon name={activeTool.icon} size={14} />
+                <span>{activeTool.title}</span>
+                <small>Running · View in Tool activity</small>
+                <Icon name="arrow" size={12} />
+              </button>
+            )}
+            {!turnActive ? (
+              <div className="workspace-message workspace-message-assistant">
+                <div className="workspace-assistant-duration">Worked for 42s</div>
+                <p>
+                  I split Workspace into a complete composition and focused pages for sessions,
+                  explorer, conversation, review, source control, and provider trace.
+                </p>
+                <div className="workspace-message-footer">
+                  <div className="workspace-message-actions">
+                    <button
+                      type="button"
+                      className={`workspace-copy ${copiedResponse ? "is-copied" : ""}`}
+                      aria-label={copiedResponse ? "Copied response" : "Copy response"}
+                      title={copiedResponse ? "Copied" : "Copy response"}
+                      onClick={copyResponse}
+                    >
+                      <Icon name={copiedResponse ? "check" : "copy"} size={13} />
+                    </button>
+                    <time
+                      className="workspace-message-completed-time"
+                      dateTime="2026-09-12T14:32:18+08:00"
+                      title="Completed at 14:32"
+                    >
+                      14:32
+                    </time>
+                  </div>
+                  <TurnChangeSummary {...completedTurnChanges} onViewChanges={onViewChanges} />
                 </div>
-                <TurnChangeSummary {...completedTurnChanges} onViewChanges={onViewChanges} />
               </div>
-            </div>
-          ) : (
-            <div className="workspace-message workspace-message-assistant workspace-message-assistant-status">
-              <p>
-                Inspecting the workspace shell and keeping the long-running build visible in the
-                conversation timeline.
-              </p>
-            </div>
-          )}
-          {thinking && (
-            <div
-              className="workspace-thinking-indicator"
-              role="status"
-              aria-label="Assistant is thinking"
-            >
-              <span>Thinking</span>
-            </div>
-          )}
-          {updating && !thinking && (
-            <div
-              className="workspace-running-indicator"
-              role="status"
-              aria-label="Agent is working"
-            >
-              <i />
-              <i />
-              <i />
-            </div>
-          )}
+            ) : (
+              <div className="workspace-message workspace-message-assistant workspace-message-assistant-status">
+                <p>
+                  Inspecting the workspace shell and keeping the long-running build visible in the
+                  conversation timeline.
+                </p>
+              </div>
+            )}
+            {thinking && (
+              <div
+                className="workspace-thinking-indicator"
+                role="status"
+                aria-label="Assistant is thinking"
+              >
+                <span>Thinking</span>
+              </div>
+            )}
+            {updating && !thinking && (
+              <div
+                className="workspace-running-indicator"
+                role="status"
+                aria-label="Agent is working"
+              >
+                <i />
+                <i />
+                <i />
+              </div>
+            )}
           </div>
           {showScrollToBottom && (
             <button
@@ -1336,7 +1453,7 @@ export function ConversationPanel({
                     ? [{ id: "specimen", label: "Specimen", models: ["vision-input specimen"] }]
                     : modelUnavailable
                       ? [{ id: "openai", label: "OpenAI", models: ["gpt-5.6-sol"] }]
-                    : workspaceModelGroups
+                      : workspaceModelGroups
                 }
                 initialValue={
                   imageInputEnabled
@@ -1410,6 +1527,237 @@ export function ConversationPanel({
           </div>
         </div>
       </Modal>
+    </section>
+  );
+}
+
+const childSessionStateLabels = {
+  running: "Running",
+  completed: "Completed",
+  approval: "Waiting for approval",
+  failed: "Failed",
+};
+
+export function ChildSessionsPanel({
+  compact = false,
+  standalone = false,
+  sessions: items = childSessions,
+  selectedChildId = items[0]?.id ?? "",
+  parentTitle = "Workspace information architecture",
+  onSelectChild,
+}) {
+  return (
+    <aside
+      className={`workspace-panel workspace-child-sessions ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""}`}
+    >
+      <div className="workspace-child-sessions-header">
+        <div>
+          <h3>Child sessions</h3>
+          <span>{parentTitle}</span>
+        </div>
+        <code>{items.length}</code>
+      </div>
+      {items.length ? (
+        <div className="workspace-child-session-list" role="group" aria-label="Child sessions">
+          {items.map((child) => (
+            <button
+              type="button"
+              key={child.id}
+              className={`workspace-child-session ${selectedChildId === child.id ? "is-selected" : ""}`}
+              aria-current={selectedChildId === child.id ? "true" : undefined}
+              onClick={() => onSelectChild?.(child)}
+            >
+              <span className="workspace-child-session-icon">
+                <Icon name="agent" size={14} />
+              </span>
+              <span className="workspace-child-session-copy">
+                <span>
+                  <strong>{child.title}</strong>
+                  <i
+                    className={`workspace-child-session-status is-${child.state}`}
+                    aria-label={childSessionStateLabels[child.state]}
+                    title={childSessionStateLabels[child.state]}
+                  />
+                </span>
+                <small>{child.agentDisplayName}</small>
+                <span className="workspace-child-session-meta">
+                  <b>{childSessionStateLabels[child.state]}</b>
+                  <span>·</span>
+                  <span>{child.time}</span>
+                </span>
+              </span>
+              <Icon name="chevron-right" size={12} className="workspace-child-session-chevron" />
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="workspace-child-session-empty">
+          <Icon name="agent" size={22} />
+          <strong>No child sessions yet</strong>
+          <span>Child sessions appear when the main agent delegates work.</span>
+        </div>
+      )}
+    </aside>
+  );
+}
+
+export function ChildSessionDetail({ child = childSessions[0], standalone = false, onBack }) {
+  if (!child)
+    return (
+      <section className={`workspace-child-detail ${standalone ? "is-standalone" : ""}`}>
+        <div className="workspace-child-detail-empty">
+          <Icon name="agent" size={24} />
+          <strong>Select a child session</strong>
+          <span>Choose a delegated session from the right panel to inspect its activity.</span>
+        </div>
+      </section>
+    );
+
+  const isRunning = child.state === "running";
+  const isCompleted = child.state === "completed";
+  const isApproval = child.state === "approval";
+  const isFailed = child.state === "failed";
+
+  return (
+    <section className={`workspace-child-detail ${standalone ? "is-standalone" : ""}`}>
+      <header className="workspace-child-detail-header">
+        {onBack ? (
+          <button type="button" onClick={onBack} aria-label="Back to main session">
+            <Icon name="chevron-right" size={13} />
+          </button>
+        ) : (
+          <span className="workspace-child-detail-back-placeholder" aria-hidden="true" />
+        )}
+        <span className="workspace-child-detail-agent-icon">
+          <Icon name="agent" size={15} />
+        </span>
+        <div>
+          <strong>{child.title}</strong>
+          <span>{child.agentDisplayName}</span>
+        </div>
+        <span className={`workspace-child-detail-state is-${child.state}`}>
+          <i />
+          {childSessionStateLabels[child.state]}
+        </span>
+      </header>
+      <div className="workspace-child-detail-scroll">
+        <dl className="workspace-child-detail-meta">
+          <div>
+            <dt>Agent</dt>
+            <dd>
+              <code>{child.agentName}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Model</dt>
+            <dd>
+              <code>{child.model}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Duration</dt>
+            <dd>{child.duration}</dd>
+          </div>
+          <div>
+            <dt>Tool calls</dt>
+            <dd>{child.toolCalls}</dd>
+          </div>
+        </dl>
+        <div className="workspace-child-timeline">
+          <article className="workspace-child-event is-delegation">
+            <span className="workspace-child-event-mark">
+              <Icon name="message" size={13} />
+            </span>
+            <div>
+              <header>
+                <strong>Task from Main Agent</strong>
+                <time>{child.time}</time>
+              </header>
+              <p>{child.task}</p>
+            </div>
+          </article>
+
+          <article className="workspace-child-event is-tool">
+            <span className="workspace-child-event-mark">
+              <Icon name="tool" size={13} />
+            </span>
+            <div>
+              <header>
+                <strong>{isApproval ? "bash" : "read · glob · grep"}</strong>
+                <time>{isApproval ? "Awaiting approval" : `${child.toolCalls} calls`}</time>
+              </header>
+              <code>
+                {isApproval
+                  ? "npm run build --prefix design-system"
+                  : "Inspected the relevant workspace, settings, and design-system specifications."}
+              </code>
+            </div>
+          </article>
+
+          {isApproval && (
+            <div className="workspace-child-authority-note">
+              <Icon name="lock" size={15} />
+              <div>
+                <strong>Approval required in Review</strong>
+                <span>
+                  The child session cannot grant itself authority. Approve or deny this operation
+                  from the main session's Review panel.
+                </span>
+              </div>
+            </div>
+          )}
+
+          {isFailed && (
+            <div className="workspace-child-failure-note">
+              <Icon name="activity" size={15} />
+              <div>
+                <strong>Child session stopped</strong>
+                <span>
+                  The compact-width inspection could not load the requested view. The main agent can
+                  decide whether to delegate it again.
+                </span>
+              </div>
+            </div>
+          )}
+
+          {(isRunning || isCompleted) && (
+            <article
+              className={`workspace-child-event is-response ${isRunning ? "is-running" : ""}`}
+            >
+              <span className="workspace-child-event-mark">
+                <Icon name="agent" size={13} />
+              </span>
+              <div>
+                <header>
+                  <strong>{child.agentDisplayName}</strong>
+                  <time>{isRunning ? "Working" : "Completed"}</time>
+                </header>
+                {isRunning ? (
+                  <>
+                    <p>
+                      I am checking how the new right panel yields space before the central reading
+                      surface becomes too narrow.
+                    </p>
+                    <span className="workspace-child-working">Reviewing responsive states</span>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      The contract should keep the primary session as the authority root while child
+                      sessions remain independently inspectable.
+                    </p>
+                    <ul>
+                      <li>Exclude child sessions from the primary Sessions list.</li>
+                      <li>Expose child snapshots through read-only detail surfaces.</li>
+                      <li>Keep approval and undo decisions anchored to the main session.</li>
+                    </ul>
+                  </>
+                )}
+              </div>
+            </article>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
@@ -2000,9 +2348,7 @@ export function ProviderTracePanel({ onClose, standalone = false, state = "expan
           </div>
           <div className="workspace-trace-detail">
             <div className="workspace-trace-title">
-              <code>
-                {activeTrace.title}
-              </code>
+              <code>{activeTrace.title}</code>
               <span>
                 {activeTrace.kind === "compaction" ? "context build" : "1.84 s  gpt-5.6-sol"}
               </span>
@@ -2052,10 +2398,42 @@ const toolActivityTurns = [
     preview: "Add the Workspace surface to the design system, but keep each major area…",
     status: "Running",
     tools: [
-      { title: "Read ProjectWorkspace.axaml", state: "Completed", tone: "success", request: "apps/desktop-avalonia/Views/ProjectWorkspace/ProjectWorkspace.axaml", result: "218 lines read" },
-      { title: "Run mvn compile for the workspace shell specimen", state: "Running", tone: "running", request: "mvn -pl design-system compile", result: "Command still running", live: ["[INFO] Scanning for projects...", "[INFO] Building design-system 0.0.0-review", "> vite build", "transforming modules...", "rendering chunks..."] },
-      { title: "Update workspace routes and modules", state: "Queued", tone: "queued", request: "design-system/src/app/navigation.js", result: "Waiting for the running compile command to finish" },
-      { title: "Read missing workspace manifest", state: "Failed", tone: "danger", request: "design-system/src/projects/desktop/workspace/manifest.json", result: "The file could not be found", error: "file_not_found" },
+      {
+        title: "Read ProjectWorkspace.axaml",
+        state: "Completed",
+        tone: "success",
+        request: "apps/desktop-avalonia/Views/ProjectWorkspace/ProjectWorkspace.axaml",
+        result: "218 lines read",
+      },
+      {
+        title: "Run mvn compile for the workspace shell specimen",
+        state: "Running",
+        tone: "running",
+        request: "mvn -pl design-system compile",
+        result: "Command still running",
+        live: [
+          "[INFO] Scanning for projects...",
+          "[INFO] Building design-system 0.0.0-review",
+          "> vite build",
+          "transforming modules...",
+          "rendering chunks...",
+        ],
+      },
+      {
+        title: "Update workspace routes and modules",
+        state: "Queued",
+        tone: "queued",
+        request: "design-system/src/app/navigation.js",
+        result: "Waiting for the running compile command to finish",
+      },
+      {
+        title: "Read missing workspace manifest",
+        state: "Failed",
+        tone: "danger",
+        request: "design-system/src/projects/desktop/workspace/manifest.json",
+        result: "The file could not be found",
+        error: "file_not_found",
+      },
     ],
   },
 ];
@@ -2067,20 +2445,34 @@ const completedToolActivityTurns = [
     preview: "Review the current Avalonia workspace layout and summarize the supporting bays…",
     status: "Completed",
     tools: [
-      { title: "List design-system files", state: "Completed", tone: "success", request: "design-system/src/projects/desktop/workspace", result: "42 files found" },
-      { title: "Search provider trace bindings", state: "Completed", tone: "success", request: "rg ProviderTrace apps/desktop-avalonia", result: "14 provider trace bindings found" },
-      { title: "Read ProviderTraceViewer.axaml", state: "Completed", tone: "success", request: "apps/desktop-avalonia/Views/ProjectWorkspace/Review/ProviderTraceViewer.axaml", result: "302 lines read" },
+      {
+        title: "List design-system files",
+        state: "Completed",
+        tone: "success",
+        request: "design-system/src/projects/desktop/workspace",
+        result: "42 files found",
+      },
+      {
+        title: "Search provider trace bindings",
+        state: "Completed",
+        tone: "success",
+        request: "rg ProviderTrace apps/desktop-avalonia",
+        result: "14 provider trace bindings found",
+      },
+      {
+        title: "Read ProviderTraceViewer.axaml",
+        state: "Completed",
+        tone: "success",
+        request: "apps/desktop-avalonia/Views/ProjectWorkspace/Review/ProviderTraceViewer.axaml",
+        result: "302 lines read",
+      },
     ],
   },
 ];
 
 export function ToolActivityPanel({ onClose, standalone = false, state = "running" }) {
   const empty = state === "empty";
-  const turns = empty
-    ? []
-    : state === "completed"
-      ? completedToolActivityTurns
-      : toolActivityTurns;
+  const turns = empty ? [] : state === "completed" ? completedToolActivityTurns : toolActivityTurns;
   const initialTurn = 0;
   const initialTool = state === "running" ? 1 : 0;
   const [selectedTurn, setSelectedTurn] = useState(initialTurn);
@@ -2092,55 +2484,165 @@ export function ToolActivityPanel({ onClose, standalone = false, state = "runnin
   useEffect(() => {
     setVisibleOutputLines(2);
     if (!tool?.live) return undefined;
-    const timer = window.setInterval(() => setVisibleOutputLines((current) => {
-      if (current >= tool.live.length) {
-        window.clearInterval(timer);
-        return current;
-      }
-      return current + 1;
-    }), 680);
+    const timer = window.setInterval(
+      () =>
+        setVisibleOutputLines((current) => {
+          if (current >= tool.live.length) {
+            window.clearInterval(timer);
+            return current;
+          }
+          return current + 1;
+        }),
+      680,
+    );
     return () => window.clearInterval(timer);
   }, [selectedTurn, selectedTool, tool?.live]);
-  return <section className={`workspace-drawer workspace-tool-activity ${standalone ? "is-standalone" : ""}`}>
-    <header>
-      <Icon name="tool" size={16} />
-      <strong>Tool activity</strong>
-      <span>{empty ? "0 turns" : `${turns.length} turn · ${turns.reduce((sum, item) => sum + item.tools.length, 0)} calls`}</span>
-      <div />
-      <div className="workspace-tool-activity-actions">
-        <IconButton icon="copy" label="Copy tool activity" onClick={() => navigator.clipboard?.writeText("Tool activity preview")} />
-        <IconButton icon="close" label="Close tool activity" onClick={onClose} disabled={!onClose} />
-      </div>
-    </header>
-    {empty ? <div className="workspace-tool-empty"><Icon name="tool" size={24} /><strong>No turns yet</strong><span>Tool calls will appear here after the agent starts its first turn.</span></div> : <div className="workspace-tool-body">
-      <div className="workspace-tool-tree">
-        <div className="workspace-drawer-label">CURRENT SESSION</div>
-        {turns.map((item, turnIndex) => <div key={item.id}>
-          <button type="button" className={`workspace-tool-turn ${selectedTurn === turnIndex ? "is-selected" : ""}`} aria-expanded={expandedTurns.has(turnIndex)} onClick={() => { setSelectedTurn(turnIndex); setSelectedTool(0); setExpandedTurns((current) => { const next = new Set(current); if (next.has(turnIndex)) next.delete(turnIndex); else next.add(turnIndex); return next; }); }}>
-            <Icon name="chevron-right" className={expandedTurns.has(turnIndex) ? "is-open" : ""} size={11} />
-            <span><strong>{item.title}</strong><small>{item.preview}</small></span><b>{item.tools.length}</b>
-          </button>
-          {expandedTurns.has(turnIndex) && <div className="workspace-tool-children">{item.tools.map((entry, toolIndex) => <button type="button" key={entry.title} className={`workspace-tool-tree-row is-${entry.tone} ${selectedTurn === turnIndex && selectedTool === toolIndex ? "is-selected" : ""}`} onClick={() => { setSelectedTurn(turnIndex); setSelectedTool(toolIndex); }}>
-            <Icon name={entry.tone === "running" ? "tool" : "activity"} size={13} /><span><strong>{entry.title}</strong></span>{entry.tone !== "success" && entry.tone !== "danger" && <i className={`is-${entry.tone}`} aria-label={entry.state} />}
-          </button>)}</div>}
-        </div>)}
-      </div>
-      <div className="workspace-tool-detail">
-        <div className="workspace-tool-detail-heading"><div><code>{turn.title} · {tool.state.toUpperCase()}</code><h3>{tool.title}</h3></div><span className={`workspace-tool-state is-${tool.tone}`}>{tool.state}</span></div>
-        <div className="workspace-tool-meta"><span>TOOL CALL</span><code>{turn.id} · {selectedTool + 1} of {turn.tools.length}</code><span>STATUS</span><code>{tool.state}</code></div>
-        <div className="workspace-tool-detail-section"><span>Request</span><code>{tool.request}</code></div>
-        {tool.live && <div className="workspace-tool-detail-section"><div className="workspace-tool-live-heading"><span>Live output</span><small>Following tail · {visibleOutputLines} lines</small></div><pre className="workspace-tool-live-output" aria-live="polite"><code>{tool.live.slice(0, visibleOutputLines).join("\n")}</code></pre></div>}
-        <div className="workspace-tool-detail-section"><span>{tool.live ? "Latest status" : "Result"}</span><code>{tool.result}</code></div>
-        {tool.error && <div className="workspace-tool-detail-section is-error"><span>Error</span><code>{tool.error}</code></div>}
-      </div>
-    </div>}
-  </section>;
+  return (
+    <section
+      className={`workspace-drawer workspace-tool-activity ${standalone ? "is-standalone" : ""}`}
+    >
+      <header>
+        <Icon name="tool" size={16} />
+        <strong>Tool activity</strong>
+        <span>
+          {empty
+            ? "0 turns"
+            : `${turns.length} turn · ${turns.reduce((sum, item) => sum + item.tools.length, 0)} calls`}
+        </span>
+        <div />
+        <div className="workspace-tool-activity-actions">
+          <IconButton
+            icon="copy"
+            label="Copy tool activity"
+            onClick={() => navigator.clipboard?.writeText("Tool activity preview")}
+          />
+          <IconButton
+            icon="close"
+            label="Close tool activity"
+            onClick={onClose}
+            disabled={!onClose}
+          />
+        </div>
+      </header>
+      {empty ? (
+        <div className="workspace-tool-empty">
+          <Icon name="tool" size={24} />
+          <strong>No turns yet</strong>
+          <span>Tool calls will appear here after the agent starts its first turn.</span>
+        </div>
+      ) : (
+        <div className="workspace-tool-body">
+          <div className="workspace-tool-tree">
+            <div className="workspace-drawer-label">CURRENT SESSION</div>
+            {turns.map((item, turnIndex) => (
+              <div key={item.id}>
+                <button
+                  type="button"
+                  className={`workspace-tool-turn ${selectedTurn === turnIndex ? "is-selected" : ""}`}
+                  aria-expanded={expandedTurns.has(turnIndex)}
+                  onClick={() => {
+                    setSelectedTurn(turnIndex);
+                    setSelectedTool(0);
+                    setExpandedTurns((current) => {
+                      const next = new Set(current);
+                      if (next.has(turnIndex)) next.delete(turnIndex);
+                      else next.add(turnIndex);
+                      return next;
+                    });
+                  }}
+                >
+                  <Icon
+                    name="chevron-right"
+                    className={expandedTurns.has(turnIndex) ? "is-open" : ""}
+                    size={11}
+                  />
+                  <span>
+                    <strong>{item.title}</strong>
+                    <small>{item.preview}</small>
+                  </span>
+                  <b>{item.tools.length}</b>
+                </button>
+                {expandedTurns.has(turnIndex) && (
+                  <div className="workspace-tool-children">
+                    {item.tools.map((entry, toolIndex) => (
+                      <button
+                        type="button"
+                        key={entry.title}
+                        className={`workspace-tool-tree-row is-${entry.tone} ${selectedTurn === turnIndex && selectedTool === toolIndex ? "is-selected" : ""}`}
+                        onClick={() => {
+                          setSelectedTurn(turnIndex);
+                          setSelectedTool(toolIndex);
+                        }}
+                      >
+                        <Icon name={entry.tone === "running" ? "tool" : "activity"} size={13} />
+                        <span>
+                          <strong>{entry.title}</strong>
+                        </span>
+                        {entry.tone !== "success" && entry.tone !== "danger" && (
+                          <i className={`is-${entry.tone}`} aria-label={entry.state} />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="workspace-tool-detail">
+            <div className="workspace-tool-detail-heading">
+              <div>
+                <code>
+                  {turn.title} · {tool.state.toUpperCase()}
+                </code>
+                <h3>{tool.title}</h3>
+              </div>
+              <span className={`workspace-tool-state is-${tool.tone}`}>{tool.state}</span>
+            </div>
+            <div className="workspace-tool-meta">
+              <span>TOOL CALL</span>
+              <code>
+                {turn.id} · {selectedTool + 1} of {turn.tools.length}
+              </code>
+              <span>STATUS</span>
+              <code>{tool.state}</code>
+            </div>
+            <div className="workspace-tool-detail-section">
+              <span>Request</span>
+              <code>{tool.request}</code>
+            </div>
+            {tool.live && (
+              <div className="workspace-tool-detail-section">
+                <div className="workspace-tool-live-heading">
+                  <span>Live output</span>
+                  <small>Following tail · {visibleOutputLines} lines</small>
+                </div>
+                <pre className="workspace-tool-live-output" aria-live="polite">
+                  <code>{tool.live.slice(0, visibleOutputLines).join("\n")}</code>
+                </pre>
+              </div>
+            )}
+            <div className="workspace-tool-detail-section">
+              <span>{tool.live ? "Latest status" : "Result"}</span>
+              <code>{tool.result}</code>
+            </div>
+            {tool.error && (
+              <div className="workspace-tool-detail-section is-error">
+                <span>Error</span>
+                <code>{tool.error}</code>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 export function ProjectSwitcher({ projects = workspaceRecentProjects }) {
   const [open, setOpen] = useState(true);
   const switcherRef = useRef(null);
-  const currentProject = projects.find((project) => project.current) ?? projects[0] ?? { name: "No project", path: "" };
+  const currentProject = projects.find((project) => project.current) ??
+    projects[0] ?? { name: "No project", path: "" };
 
   const closeMenu = () => setOpen(false);
   useEffect(() => {
@@ -2175,7 +2677,12 @@ export function ProjectSwitcher({ projects = workspaceRecentProjects }) {
       </button>
       {open && (
         <div className="project-switcher-menu" role="menu" aria-label="Project actions">
-          <button type="button" className="project-switcher-action" role="menuitem" onClick={closeMenu}>
+          <button
+            type="button"
+            className="project-switcher-action"
+            role="menuitem"
+            onClick={closeMenu}
+          >
             <Icon name="folder" size={14} />
             <span>
               <strong>Open project</strong>
@@ -2221,6 +2728,13 @@ const initialRecentContent = [
     session: sessions[0],
   },
   {
+    id: "child-session:child-swe-contracts",
+    kind: "child-session",
+    title: "Map session contract changes",
+    detail: "Software Engineering Agent · Completed",
+    child: childSessions[1],
+  },
+  {
     id: "file:workspace-file",
     kind: "file",
     title: "ProjectWorkspace.axaml",
@@ -2258,6 +2772,14 @@ const contentItemForSession = (session) => ({
   session,
 });
 
+const contentItemForChildSession = (child) => ({
+  id: `child-session:${child.id}`,
+  kind: "child-session",
+  title: child.title,
+  detail: `${child.agentDisplayName} · ${childSessionStateLabels[child.state]}`,
+  child,
+});
+
 const contentItemForFile = (file) => {
   const document = editorDocuments[file.id] ?? {
     name: file.name,
@@ -2280,9 +2802,11 @@ export function ContentSwitcher({
 }) {
   const [open, setOpen] = useState(initialOpen);
   const switcherRef = useRef(null);
-  const recentItems = items
-    .filter((item) => item.id !== currentItem.id)
-    .slice(0, 20);
+  const recentItems = items.filter((item) => item.id !== currentItem.id).slice(0, 20);
+  const iconForKind = (kind) =>
+    kind === "file" ? "file-text" : kind === "child-session" ? "agent" : "message";
+  const labelForKind = (kind) =>
+    kind === "file" ? "FILE" : kind === "child-session" ? "CHILD SESSION" : "SESSION";
 
   useEffect(() => {
     if (!open) return undefined;
@@ -2310,7 +2834,7 @@ export function ContentSwitcher({
         aria-label={`Current ${currentItem.kind}: ${currentItem.title}. Show recently viewed content`}
         onClick={() => setOpen((value) => !value)}
       >
-        <Icon name={currentItem.kind === "file" ? "file-text" : "message"} size={13} />
+        <Icon name={iconForKind(currentItem.kind)} size={13} />
         <strong>{currentItem.title}</strong>
         <Icon name="chevron-right" size={11} className="content-switcher-chevron" />
       </button>
@@ -2337,11 +2861,11 @@ export function ContentSwitcher({
                     setOpen(false);
                   }}
                 >
-                  <Icon name={item.kind === "file" ? "file-text" : "message"} size={14} />
+                  <Icon name={iconForKind(item.kind)} size={14} />
                   <span>
                     <strong>{item.title}</strong>
-                    <small title={`${item.kind === "file" ? "File" : "Session"} · ${item.detail}`}>
-                      <b>{item.kind === "file" ? "FILE" : "SESSION"}</b>
+                    <small title={`${labelForKind(item.kind)} · ${item.detail}`}>
+                      <b>{labelForKind(item.kind)}</b>
                       <span> · {item.detail}</span>
                     </small>
                   </span>
@@ -2363,17 +2887,28 @@ export function ContentSwitcher({
 export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProjects }) {
   const [navigation, setNavigation] = useState("sessions");
   const [activeFile, setActiveFile] = useState(null);
+  const [activeChild, setActiveChild] = useState(null);
   const [activeSessionId, setActiveSessionId] = useState(sessions[0].id);
   const [currentContent, setCurrentContent] = useState(() => contentItemForSession(sessions[0]));
   const [recentContent, setRecentContent] = useState(initialRecentContent);
-  const [reviewVisible, setReviewVisible] = useState(true);
+  const [rightRegion, setRightRegion] = useState("review");
   const [drawer, setDrawer] = useState("tools");
   const [archiveRequest, setArchiveRequest] = useState(null);
+  const activePrimarySession =
+    sessions.find((session) => session.id === activeSessionId) ?? sessions[0];
+  const visibleChildSessions = childSessions.filter(
+    (child) => child.parentSessionId === activePrimarySession.id,
+  );
   const toggleDrawer = (next) => setDrawer((current) => (current === next ? null : next));
   const selectContent = (item) => {
     setCurrentContent(item);
     setActiveFile(item.kind === "file" ? item.file : null);
+    setActiveChild(item.kind === "child-session" ? item.child : null);
     if (item.kind === "session") setActiveSessionId(item.session?.id ?? item.session?.title);
+    if (item.kind === "child-session") {
+      setActiveSessionId(item.child.parentSessionId);
+      setRightRegion("children");
+    }
     setRecentContent((current) =>
       [item, ...current.filter((entry) => entry.id !== item.id)].slice(0, 20),
     );
@@ -2454,6 +2989,11 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
             )}
             {activeFile ? (
               <EditorPanel compact file={activeFile} />
+            ) : activeChild ? (
+              <ChildSessionDetail
+                child={activeChild}
+                onBack={() => selectContent(contentItemForSession(activePrimarySession))}
+              />
             ) : (
               <ConversationPanel
                 compact
@@ -2462,7 +3002,16 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
                 onOpenToolActivity={() => setDrawer("tools")}
               />
             )}
-            {reviewVisible && <ReviewPanel compact />}
+            {rightRegion === "review" && <ReviewPanel compact />}
+            {rightRegion === "children" && (
+              <ChildSessionsPanel
+                compact
+                sessions={visibleChildSessions}
+                selectedChildId={activeChild?.id}
+                parentTitle={activePrimarySession.title}
+                onSelectChild={(child) => selectContent(contentItemForChildSession(child))}
+              />
+            )}
           </div>
           {drawer === "git" && (
             <SourceControlPanel
@@ -2477,8 +3026,14 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
           <IconButton
             icon="panel-right"
             label="Show review"
-            active={reviewVisible}
-            onClick={() => setReviewVisible(!reviewVisible)}
+            active={rightRegion === "review"}
+            onClick={() => setRightRegion(rightRegion === "review" ? null : "review")}
+          />
+          <IconButton
+            icon="agent"
+            label="Show child sessions"
+            active={rightRegion === "children"}
+            onClick={() => setRightRegion(rightRegion === "children" ? null : "children")}
           />
         </aside>
       </div>
@@ -2521,7 +3076,12 @@ export function McpLoadingStatus({ settled, total, connected = 0, failed = 0 }) 
   const label = `MCP ${settled}/${total}`;
   const detail = `${connected} connected${failed ? ` · ${failed} failed` : ""} · ${remaining} starting`;
   return (
-    <span className={`workspace-mcp-status${failed ? " has-failures" : ""}`} title={detail} role="status" aria-label={`${label} · ${detail}`}>
+    <span
+      className={`workspace-mcp-status${failed ? " has-failures" : ""}`}
+      title={detail}
+      role="status"
+      aria-label={`${label} · ${detail}`}
+    >
       <Icon name="server" size={11} />
       <span className="workspace-mcp-status-label">{label}</span>
       <span className="workspace-mcp-progress" aria-hidden="true">

@@ -513,6 +513,72 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.settings-agent-overview {
+  display: grid;
+  border-top: 1px solid var(--border);
+}
+.settings-agent-overview > button {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 16px;
+  gap: 11px;
+  align-items: center;
+  width: 100%;
+  min-height: 78px;
+  padding: 10px 4px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.settings-agent-overview > button:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.settings-agent-overview > button:focus-visible {
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
+.settings-agent-overview-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  color: var(--content-agent);
+  background: var(--content-agent-surface);
+  border-radius: var(--radius-sm);
+}
+.settings-agent-overview > button > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.settings-agent-overview strong {
+  color: var(--text);
+  font-size: 12px;
+}
+.settings-agent-overview small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-agent-overview code {
+  overflow: hidden;
+  color: var(--text-muted);
+  font: 9px var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-agent-overview > button > .ds-icon {
+  color: var(--text-muted);
+}
+.settings-agent-overview > button:hover > .ds-icon {
+  color: var(--accent);
+}
 .settings-model-list {
   display: grid;
   gap: 8px;
@@ -567,6 +633,119 @@
   flex: 0 0 auto;
   color: var(--text);
   font: 11px var(--font-mono);
+}
+.settings-agents-content {
+  max-width: 720px;
+}
+.settings-agent-detail-icon {
+  display: grid;
+  place-items: center;
+  color: var(--content-agent);
+  background: var(--content-agent-surface);
+  border-radius: var(--radius-sm);
+}
+.settings-agent-heading {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 11px;
+  align-items: center;
+  margin-bottom: 26px;
+}
+.settings-agent-detail-icon {
+  width: 42px;
+  height: 42px;
+}
+.settings-agent-heading > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.settings-agent-heading strong {
+  color: var(--text);
+  font-size: 13px;
+}
+.settings-agent-heading code {
+  color: var(--text-muted);
+  font: 10px var(--font-mono);
+}
+.settings-agent-identity {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 0 28px;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+.settings-agent-identity > div {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  min-height: 58px;
+  gap: 5px;
+  padding: 12px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.settings-agent-identity dt {
+  color: var(--text-muted);
+  font: 9px var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.settings-agent-identity dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-agent-identity code {
+  font: 10px var(--font-mono);
+}
+.settings-agent-section {
+  display: grid;
+  gap: 12px;
+}
+.settings-agent-section + .settings-agent-section {
+  margin-top: 30px;
+}
+.settings-agent-section > .settings-section-label {
+  line-height: 1;
+}
+.settings-agent-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.settings-agent-tools code {
+  padding: 6px 8px;
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font: 10px var(--font-mono);
+}
+.settings-agent-boundaries {
+  display: grid;
+  border-top: 1px solid var(--border);
+}
+.settings-agent-boundaries > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 42px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-agent-boundaries span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.settings-agent-boundaries strong {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
 }
 .settings-global-status {
   position: absolute;
@@ -919,6 +1098,9 @@
   }
   .settings-panel-content {
     padding: 24px 18px 30px;
+  }
+  .settings-agent-identity {
+    grid-template-columns: minmax(0, 1fr);
   }
   .settings-heading-row {
     display: grid;

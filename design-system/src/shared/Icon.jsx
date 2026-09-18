@@ -60,6 +60,12 @@ const paths = {
       <path d="M8.5 13h.01M15.5 13h.01M9 16h6" />
     </>
   ),
+  lock: (
+    <>
+      <rect x="5" y="10" width="14" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
+    </>
+  ),
   folder: <path d="M3 6h7l2 2h9v11H3z" />,
   dependencies: (
     <>

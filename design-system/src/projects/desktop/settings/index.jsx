@@ -55,6 +55,35 @@ const providerCatalog = {
   },
 };
 
+const agentCatalog = [
+  {
+    id: "builtin.ui-ux.v1",
+    name: "ui-ux-agent",
+    displayName: "UI/UX Agent",
+    version: "1",
+    description:
+      "Reviews product interfaces, interaction states, accessibility, and design-system alignment.",
+    tools: ["read", "glob", "grep", "webfetch"],
+    modelPolicy: "Inherits parent session model",
+    mcpPolicy: "Not allowed",
+    delegation: "Not allowed",
+    toolLimit: "32 calls",
+  },
+  {
+    id: "builtin.swe.v1",
+    name: "swe-agent",
+    displayName: "Software Engineering Agent",
+    version: "1",
+    description:
+      "Investigates, implements, and verifies focused software changes inside the opened project.",
+    tools: ["read", "glob", "grep", "write", "edit", "bash"],
+    modelPolicy: "Inherits parent session model",
+    mcpPolicy: "Not allowed",
+    delegation: "Not allowed",
+    toolLimit: "64 calls",
+  },
+];
+
 const navItems = [
   { id: "defaults", label: "Defaults", icon: "foundation" },
   { id: "appearance", label: "Appearance", icon: "sun" },
@@ -67,8 +96,9 @@ const navItems = [
 const settingsGuide = {
   tabs: {
     actions: [
-      "Choose Defaults, Appearance, Keyboard shortcuts, Network, MCP servers, or Logging from the left navigation.",
-      "Use the chevron beside Model providers to collapse or expand its provider links.",
+      "Choose Defaults, Appearance, Keyboard shortcuts, Network, MCP servers, Agents, or Logging from the left navigation.",
+      "Use the chevrons beside Agents and Model providers to collapse or expand their fixed catalogs.",
+      "Select an agent beneath Agents to inspect its immutable identity, tool allowlist, and authority boundaries.",
       "Select a provider to edit its OpenAI-compatible URL or credential.",
       "A provider is shown without a stored key so its recovery path and available models can be reviewed.",
       "Use Reset default to restore a provider's built-in URL.",
@@ -77,6 +107,7 @@ const settingsGuide = {
       "Use MCP servers to add, edit, delete, enable, disable, and retry local or remote servers.",
       "Edit a control and use its save action; use Done to return to ProjectHub.",
       "Keyboard shortcuts are shown as read-only key combinations; customization is reserved for a future release.",
+      "Agents is a read-only catalog of the built-in identities and exact tool allowlists compiled into SunCode.",
     ],
     style: [
       "The operating system owns the title bar and window controls; the client toolbar is 58px high with 22px horizontal padding.",
@@ -85,6 +116,7 @@ const settingsGuide = {
     ],
     logic: [
       "Settings are local to the embedded agent and are grouped by defaults, appearance, keyboard shortcuts, network, logging, and providers.",
+      "Built-in agents cannot be created, edited, enabled, disabled, or deleted from Settings.",
       "Provider URL changes and default resets are persisted and applied to subsequent requests without changing credentials or models.",
       "Custom proxy controls are subordinate to the selected proxy mode, preserve write-only password state, and apply to every Rust-owned HTTP client.",
       "Certificate-source controls are subordinate to HTTPS verification and switch between system trust and custom certificate-file input.",
@@ -120,7 +152,14 @@ const shortcutCatalog = [
   { action: "Cancel current turn or close dialog", keys: ["Escape"], ariaLabel: "Escape" },
 ];
 
-function SettingsNav({ page, setPage, providersExpanded, setProvidersExpanded }) {
+function SettingsNav({
+  page,
+  setPage,
+  agentsExpanded,
+  setAgentsExpanded,
+  providersExpanded,
+  setProvidersExpanded,
+}) {
   return (
     <aside className="settings-nav">
       <nav aria-label="Settings sections">
@@ -137,6 +176,43 @@ function SettingsNav({ page, setPage, providersExpanded, setProvidersExpanded })
               <span>{item.label}</span>
             </button>
           ))}
+          <div className="settings-nav-models">
+            <button
+              type="button"
+              className={`settings-nav-item settings-nav-parent ${page === "agents" ? "is-selected" : ""}`}
+              aria-current={page === "agents" ? "page" : undefined}
+              aria-label={`${agentsExpanded ? "Collapse" : "Expand"} agents`}
+              aria-expanded={agentsExpanded}
+              aria-controls="settings-agent-list"
+              onClick={() => {
+                setPage("agents");
+                setAgentsExpanded((expanded) => !expanded);
+              }}
+            >
+              <Icon name="agent" size={15} />
+              <span>Agents</span>
+              <Icon
+                name="chevron-right"
+                size={13}
+                className={`settings-nav-chevron ${agentsExpanded ? "is-rotated" : ""}`}
+              />
+            </button>
+            {agentsExpanded && (
+              <div className="settings-provider-list" id="settings-agent-list">
+                {agentCatalog.map((agent) => (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    aria-current={page === `agent:${agent.id}` ? "page" : undefined}
+                    className={`settings-nav-item settings-nav-provider ${page === `agent:${agent.id}` ? "is-selected" : ""}`}
+                    onClick={() => setPage(`agent:${agent.id}`)}
+                  >
+                    <span>{agent.displayName}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="settings-nav-models">
             <button
               type="button"
@@ -1254,6 +1330,106 @@ function McpServersPanel({ servers, setServers, onSave }) {
   );
 }
 
+function AgentsPanel({ onSelect }) {
+  return (
+    <div className="settings-panel-content settings-agents-content">
+      <div className="settings-panel-heading">
+        <h2>Agents</h2>
+        <p>Built-in agents available for delegation from the main session.</p>
+      </div>
+      <div className="settings-agent-overview">
+        {agentCatalog.map((agent) => (
+          <button key={agent.id} type="button" onClick={() => onSelect(agent.id)}>
+            <span className="settings-agent-overview-icon">
+              <Icon name="agent" size={15} />
+            </span>
+            <span>
+              <strong>{agent.displayName}</strong>
+              <small>{agent.description}</small>
+              <code>{agent.name}</code>
+            </span>
+            <Icon name="arrow" size={14} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AgentPanel({ agentId }) {
+  const selected = agentCatalog.find((agent) => agent.id === agentId) ?? agentCatalog[0];
+  return (
+    <div className="settings-panel-content settings-agents-content">
+      <div className="settings-heading-row">
+        <div className="settings-panel-heading">
+          <h2>{selected.displayName}</h2>
+          <p>{selected.description}</p>
+        </div>
+        <span className="settings-read-only-badge">Read only</span>
+      </div>
+      <div className="settings-agent-heading">
+        <span className="settings-agent-detail-icon">
+          <Icon name="agent" size={19} />
+        </span>
+        <div>
+          <strong>{selected.displayName}</strong>
+          <code>{selected.name}</code>
+        </div>
+      </div>
+
+      <dl className="settings-agent-identity">
+        <div>
+          <dt>Stable ID</dt>
+          <dd>
+            <code>{selected.id}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Version</dt>
+          <dd>
+            <code>{selected.version}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Model</dt>
+          <dd>{selected.modelPolicy}</dd>
+        </div>
+        <div>
+          <dt>Tool limit</dt>
+          <dd>{selected.toolLimit}</dd>
+        </div>
+      </dl>
+
+      <div className="settings-agent-section">
+        <span className="settings-section-label">Allowed tools</span>
+        <div className="settings-agent-tools">
+          {selected.tools.map((tool) => (
+            <code key={tool}>{tool}</code>
+          ))}
+        </div>
+      </div>
+
+      <div className="settings-agent-section">
+        <span className="settings-section-label">Boundaries</span>
+        <div className="settings-agent-boundaries">
+          <div>
+            <span>MCP tools</span>
+            <strong>{selected.mcpPolicy}</strong>
+          </div>
+          <div>
+            <span>Delegate again</span>
+            <strong>{selected.delegation}</strong>
+          </div>
+          <div>
+            <span>Direct user chat</span>
+            <strong>Not allowed</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProvidersPanel({ onSelect, endpoints }) {
   return (
     <div className="settings-panel-content">
@@ -1415,8 +1591,9 @@ function ProviderPanel({ providerId, onSave, endpoint, onEndpointChange }) {
   );
 }
 
-export function SettingsPage() {
-  const [page, setPage] = useState("defaults");
+export function SettingsPage({ initialPage = "defaults" }) {
+  const [page, setPage] = useState(initialPage);
+  const [agentsExpanded, setAgentsExpanded] = useState(true);
   const [providersExpanded, setProvidersExpanded] = useState(true);
   const [providerEndpoints, setProviderEndpoints] = useState(() =>
     Object.fromEntries(
@@ -1436,6 +1613,16 @@ export function SettingsPage() {
     if (page === "network") return <NetworkPanel onSave={save} />;
     if (page === "mcp")
       return <McpServersPanel servers={mcpServers} setServers={setMcpServers} onSave={save} />;
+    if (page === "agents")
+      return (
+        <AgentsPanel
+          onSelect={(agentId) => {
+            setPage(`agent:${agentId}`);
+            setStatus("");
+          }}
+        />
+      );
+    if (page.startsWith("agent:")) return <AgentPanel agentId={page.slice("agent:".length)} />;
     if (page === "logging") return <LoggingPanel onSave={save} />;
     if (page === "providers")
       return (
@@ -1467,7 +1654,7 @@ export function SettingsPage() {
     <>
       <PageHeader
         title="Settings"
-        description="The Avalonia desktop settings window for local defaults, keyboard shortcuts, security, MCP servers, diagnostics, and provider credentials."
+        description="The Avalonia desktop settings window for local defaults, keyboard shortcuts, security, MCP servers, built-in agents, diagnostics, and provider credentials."
         path="projects/desktop/settings/"
       />
       <WindowSizeNote width="900" height="672" minimumWidth="720" minimumHeight="552" />
@@ -1479,7 +1666,7 @@ export function SettingsPage() {
         <WorkspaceGuideState
           className="settings-guide-state"
           title="Settings controls"
-          description="Navigate local defaults, keyboard shortcuts, security, MCP servers, diagnostics, and provider credentials."
+          description="Navigate local defaults, keyboard shortcuts, security, MCP servers, built-in agents, diagnostics, and provider credentials."
           guide={settingsGuide}
           side="right"
           open={guideOpen}
@@ -1506,6 +1693,8 @@ export function SettingsPage() {
                   setPage(nextPage);
                   setStatus("");
                 }}
+                agentsExpanded={agentsExpanded}
+                setAgentsExpanded={setAgentsExpanded}
                 providersExpanded={providersExpanded}
                 setProvidersExpanded={setProvidersExpanded}
               />

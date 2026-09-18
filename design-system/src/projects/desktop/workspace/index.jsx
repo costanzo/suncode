@@ -1,4 +1,4 @@
-import { PageHeader, Section } from "../../../shared/PagePrimitives.jsx";
+import { ModuleLink, PageHeader, Section } from "../../../shared/PagePrimitives.jsx";
 import { McpLoadingStatus, WorkspaceWindow } from "./WorkspacePrimitives.jsx";
 import { WindowSizeNote } from "../WindowSizeNote.jsx";
 
@@ -12,6 +12,17 @@ export function WorkspacePage() {
       <WindowSizeNote width="1440" height="900" minimumWidth="620" minimumHeight="620" />
       <Section id="workspace-window" title="Project workspace">
         <WorkspaceWindow />
+      </Section>
+      <Section id="workspace-modules" title="Focused workspace surfaces">
+        <div className="module-card-grid">
+          <ModuleLink
+            to="/projects/desktop/workspace/child-sessions"
+            icon="agent"
+            title="Child sessions"
+            description="Linked delegated sessions, their right-side list, read-only detail, and recent-content behavior."
+            path="Right bay + central detail"
+          />
+        </div>
       </Section>
       <Section
         id="workspace-mcp-loading"
@@ -45,7 +56,9 @@ export function WorkspacePage() {
               <span>All servers are connected or terminally failed.</span>
             </div>
             <div className="workspace-mcp-specimen-footer is-complete">
-              <span className="workspace-mcp-complete-note">Footer returns to its normal quiet state.</span>
+              <span className="workspace-mcp-complete-note">
+                Footer returns to its normal quiet state.
+              </span>
               <code>gpt-5.6-sol</code>
             </div>
           </div>

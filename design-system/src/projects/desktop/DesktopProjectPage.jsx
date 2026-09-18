@@ -36,7 +36,7 @@ export function DesktopProjectPage() {
             to="/projects/desktop/settings"
             icon="foundation"
             title="Settings"
-            description="Configure defaults, appearance, keyboard shortcuts, network, logging, and provider credentials."
+            description="Configure defaults, appearance, keyboard shortcuts, network, logging, provider credentials, and inspect built-in agents."
             path="Default 900 × 672 DIP"
           />
           <ModuleLink

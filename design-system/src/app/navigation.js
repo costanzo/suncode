@@ -229,6 +229,13 @@ export const primaryModules = [
             label: "Settings",
             keywords:
               "defaults appearance keyboard shortcuts network logging model providers credentials",
+            children: [
+              {
+                path: "/projects/desktop/settings/agents",
+                label: "Agents",
+                keywords: "built-in agents tools allowlist immutable delegation",
+              },
+            ],
           },
           {
             path: "/projects/desktop/workspace",
@@ -277,6 +284,11 @@ export const primaryModules = [
                 path: "/projects/desktop/workspace/tool-activity",
                 label: "Tool activity",
                 keywords: "tool calls progress live output turns operations details",
+              },
+              {
+                path: "/projects/desktop/workspace/child-sessions",
+                label: "Child sessions",
+                keywords: "subagent child session delegation linked read-only agent",
               },
             ],
           },
