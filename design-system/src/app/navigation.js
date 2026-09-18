@@ -1,3 +1,5 @@
+import { builtInAgentCatalog } from "../agents/catalog.js";
+
 export const overviewItem = {
   path: "/",
   label: "Design system",
@@ -316,6 +318,12 @@ export const primaryModules = [
           },
         ],
       },
+      ...builtInAgentCatalog.map((agent) => ({
+        path: `/agents/${agent.slug}`,
+        label: agent.displayName,
+        icon: "agent",
+        keywords: `${agent.name} ${agent.displayName} built-in specialist ${agent.description}`,
+      })),
     ],
   },
 ];

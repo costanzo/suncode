@@ -338,7 +338,10 @@ All reusable source-imported design images, brand marks, and interface icons bel
 ## Agent Review Surfaces
 
 The Agents layer is organized by agent ownership rather than by implementation technology. Each agent
-is an independently addressable module with child routes for its behavior surfaces. `General` is the
-first agent, and its `Prompt` page is the catalog for system, repository, runtime, tool, question, and
-context-compaction prompts. Prompt entries identify their scope, owner, and implementation status, and
-long prompt content uses bounded monospace reading surfaces.
+is an independently addressable module with child routes for its behavior surfaces. The navigation lists
+the primary `General` agent followed by the six immutable built-in specialists: Architect, UI/UX Agent,
+Product Agent, Software Engineering Agent, QA Agent, and SRE Agent. `General` owns the `Prompt` catalog
+for system, repository, runtime, tool, question, and context-compaction prompts. Specialist pages expose
+their stable identity, role responsibilities, exact tool allowlist, inherited model policy, and boundaries.
+Prompt entries identify their scope, owner, and implementation status, and long prompt content uses
+bounded monospace reading surfaces.

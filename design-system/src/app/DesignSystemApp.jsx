@@ -36,6 +36,8 @@ import { ProjectsPage } from "../projects/ProjectsPage.jsx";
 import { AgentsPage } from "../agents/AgentsPage.jsx";
 import { GeneralAgentPage } from "../agents/general/GeneralPage.jsx";
 import { PromptPage } from "../agents/general/prompt/PromptPage.jsx";
+import { builtInAgentCatalog } from "../agents/catalog.js";
+import { SpecialistAgentPage } from "../agents/SpecialistAgentPage.jsx";
 import { ProjectHubPage } from "../projects/desktop/index.jsx";
 import { AboutPage } from "../projects/desktop/about/index.jsx";
 import { DesktopProjectPage } from "../projects/desktop/DesktopProjectPage.jsx";
@@ -105,6 +107,12 @@ const routes = {
   "/agents": AgentsPage,
   "/agents/general": GeneralAgentPage,
   "/agents/general/prompt": PromptPage,
+  ...Object.fromEntries(
+    builtInAgentCatalog.map((agent) => [
+      `/agents/${agent.slug}`,
+      () => <SpecialistAgentPage agent={agent} />,
+    ]),
+  ),
   "/projects/desktop": DesktopProjectPage,
   "/projects/desktop/project-hub": ProjectHubPage,
   "/projects/desktop/dialog-window": DialogWindowPage,

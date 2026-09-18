@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { builtInAgentCatalog as agentCatalog } from "../../../agents/catalog.js";
 import { Button } from "../../../components/universal/button/index.js";
 import { SingleDropdown } from "../../../components/universal/dropdown/index.js";
 import { ConfirmationDialog } from "../../../components/universal/modal/index.js";
@@ -54,83 +55,6 @@ const providerCatalog = {
     models: ["gemini-3.5", "gemini-3.6-flash"],
   },
 };
-
-const agentCatalog = [
-  {
-    id: "builtin.architect.v1",
-    name: "architect-agent",
-    displayName: "Architect",
-    version: "1",
-    description: "Owns architecture analysis, boundaries, contracts, and technical tradeoffs.",
-    tools: ["read", "glob", "grep", "webfetch", "todowrite"],
-    modelPolicy: "Inherits parent session model",
-    mcpPolicy: "Not allowed",
-    delegation: "Not allowed",
-    toolLimit: "32 calls",
-  },
-  {
-    id: "builtin.ui-ux.v1",
-    name: "ui-ux-agent",
-    displayName: "UI/UX Agent",
-    version: "1",
-    description:
-      "Reviews product interfaces, interaction states, accessibility, and design-system alignment.",
-    tools: ["read", "glob", "grep", "webfetch", "todowrite"],
-    modelPolicy: "Inherits parent session model",
-    mcpPolicy: "Not allowed",
-    delegation: "Not allowed",
-    toolLimit: "32 calls",
-  },
-  {
-    id: "builtin.product.v1",
-    name: "product-agent",
-    displayName: "Product Agent",
-    version: "1",
-    description: "Clarifies requirements, acceptance criteria, user flows, and edge cases.",
-    tools: ["read", "glob", "grep", "webfetch", "todowrite"],
-    modelPolicy: "Inherits parent session model",
-    mcpPolicy: "Not allowed",
-    delegation: "Not allowed",
-    toolLimit: "32 calls",
-  },
-  {
-    id: "builtin.swe.v1",
-    name: "swe-agent",
-    displayName: "Software Engineering Agent",
-    version: "1",
-    description:
-      "Investigates, implements, and verifies focused software changes inside the opened project.",
-    tools: ["read", "glob", "grep", "write", "edit", "bash", "todowrite", "webfetch"],
-    modelPolicy: "Inherits parent session model",
-    mcpPolicy: "Not allowed",
-    delegation: "Not allowed",
-    toolLimit: "64 calls",
-  },
-  {
-    id: "builtin.qa.v1",
-    name: "qa-agent",
-    displayName: "QA Agent",
-    version: "1",
-    description: "Designs and runs focused tests, regression checks, and failure analysis.",
-    tools: ["read", "glob", "grep", "write", "edit", "bash", "todowrite", "webfetch"],
-    modelPolicy: "Inherits parent session model",
-    mcpPolicy: "Not allowed",
-    delegation: "Not allowed",
-    toolLimit: "64 calls",
-  },
-  {
-    id: "builtin.sre.v1",
-    name: "sre-agent",
-    displayName: "SRE Agent",
-    version: "1",
-    description: "Handles operations, observability, recovery, performance, and runtime reliability.",
-    tools: ["read", "glob", "grep", "write", "edit", "bash", "todowrite", "webfetch"],
-    modelPolicy: "Inherits parent session model",
-    mcpPolicy: "Not allowed",
-    delegation: "Not allowed",
-    toolLimit: "64 calls",
-  },
-];
 
 const navItems = [
   { id: "defaults", label: "Defaults", icon: "foundation" },

@@ -1,4 +1,5 @@
 import { ModuleLink, PageHeader, Section } from "../shared/PagePrimitives.jsx";
+import { builtInAgentCatalog } from "./catalog.js";
 
 const agents = [
   {
@@ -8,6 +9,13 @@ const agents = [
     description: "Shared agent behavior, orchestration rules, and prompt composition.",
     pathLabel: "agents/general/",
   },
+  ...builtInAgentCatalog.map((agent) => ({
+    path: `/agents/${agent.slug}`,
+    icon: "agent",
+    title: agent.displayName,
+    description: agent.description,
+    pathLabel: `agents/${agent.slug}/`,
+  })),
 ];
 
 export function AgentsPage() {
