@@ -69,6 +69,10 @@
       <Setter Property="Margin" Value="0,8" />
       <Setter Property="Padding" Value="0" />
     </Style>
+    <Style Selector="^ Border.TableContent">
+      <Setter Property="ClipToBounds" Value="True" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
     <Style Selector="^ Border.TableCell">
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
@@ -114,7 +118,6 @@
       <Setter Property="RowSpacing" Value="0" />
       <Setter Property="Margin" Value="0" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="CornerRadius" Value="6" />
     </Style>
     <!-- Task list -->
     <Style Selector="^ CheckBox.TaskList">
