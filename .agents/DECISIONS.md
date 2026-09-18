@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260918-built-in-specialist-agents
+
+- Date: 2026-09-18
+- Status: Accepted
+- Context: One general agent needed bounded specialist delegation without creating user-configurable agents, parallel peer conversations, a second authority model, or client-owned orchestration.
+- Decision: Compile six immutable specialist definitions into Rust: Architect, UI/UX, Product, Software Engineering, QA, and SRE. Expose `delegate_agent` only to primary sessions. Every invocation creates a linked child session and durable invocation row, inherits the parent model/effort, applies a role allowlist and limit, excludes MCP/questions/nested delegation, and reuses normal policy, approvals, audit, checkpoints, recovery, and cancellation. SDK and Avalonia expose read-only catalog and child-session inspection; users may resolve child machine-operation approvals but cannot submit messages directly to a child.
+- Consequences: Specialist behavior and capability remain reviewable and versioned in source rather than configuration. Child sessions do not pollute the primary session list and cannot be renamed, pinned, archived, reopened, retried, or directly submitted. Child checkpoint manifests are not grouped into the parent turn's undo unit, so the UI and contracts must not claim unified parent undo.
+- Details: `features/built-in-subagents/`, `specs/built-in-subagents.md`, `contracts/agent-sdk/README.md`, `contracts/sqlite-schema.md`
+
 ## ADR-20260827-global-https-certificate-verification
 
 - Date: 2026-08-27

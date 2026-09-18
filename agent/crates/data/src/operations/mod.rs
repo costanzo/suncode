@@ -16,6 +16,7 @@ pub(crate) mod session_message;
 pub(crate) mod session_tool_use;
 pub(crate) mod session_turn;
 pub(crate) mod session_turn_todo;
+pub(crate) mod subagent_invocation;
 
 pub(crate) mod projection;
 pub(crate) mod recovery;

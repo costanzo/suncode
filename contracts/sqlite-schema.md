@@ -2,11 +2,11 @@
 
 Status: Current Phase 1 contract.
 
-The `suncode-data` package is the only ORM/database-connection owner and uses Diesel's SQLite backend for connections, transactions, typed table declarations, and query execution. The `suncode-database` package owns backend resources: `suncode_database::sqlite` contains the current SQL manifests, seed data, table manifest, and database-file creation/existence check. There is one current 16-table set, no version table, and no general migration runner. File names do not encode execution order. Table-owned ORM operations live under `agent/crates/data/src/operations/`, with `projection.rs` and `recovery.rs` reserved for cross-table workflows. Opening a database with any unexpected application table fails without conversion. Initialization applies the current manifest transactionally; its only schema-specific compatibility step is adding `mcp_server` to the immediately preceding valid 15-table schema. `session_turn_todo` is the authoritative per-turn todo projection and is replaced transactionally by `todo.updated` events.
+The `suncode-data` package is the only ORM/database-connection owner and uses Diesel's SQLite backend for connections, transactions, typed table declarations, and query execution. The `suncode-database` package owns backend resources: `suncode_database::sqlite` contains the current SQL manifests, seed data, table manifest, and database-file creation/existence check. There is one current 17-table set, no version table, and no general migration runner. File names do not encode execution order. Table-owned ORM operations live under `agent/crates/data/src/operations/`, with `projection.rs` and `recovery.rs` reserved for cross-table workflows. Opening a database with any unexpected application table fails without conversion. Initialization applies the current manifest transactionally and supports the immediately preceding schema by adding `subagent_invocation` plus the additive session agent columns; the earlier additive `mcp_server` compatibility step remains accepted. `session_turn_todo` is the authoritative per-turn todo projection and is replaced transactionally by `todo.updated` events.
 
-There are 16 application tables:
+There are 17 application tables:
 
-`approval_request`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `mcp_server`, `project`, `project_dependency`, `session`, `session_call`, `session_image`, `session_message`, `session_tool_use`, `session_turn`, and `session_turn_todo`.
+`approval_request`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `mcp_server`, `project`, `project_dependency`, `session`, `session_call`, `session_image`, `session_message`, `session_tool_use`, `session_turn`, `session_turn_todo`, and `subagent_invocation`.
 
 ## Conventions
 
@@ -39,13 +39,17 @@ Fresh and reopened current databases seed four global logging settings: `log_lev
 
 One row per global MCP server definition. It stores the opaque `mcp_server_id`, unique case-insensitive display name, immutable unique case-insensitive tool prefix, transport kind and versioned transport JSON, desired enabled state, ordering, optimistic revision, and timestamps. Transport JSON is either structured local stdio configuration or remote Streamable HTTP configuration. It may contain plaintext environment/header secrets; read DTOs expose key names only. Runtime connection state and discovered tools are project-scoped memory and are never persisted in this table.
 
-The tool prefix is generated on create and does not change when the display name is edited. Each successful non-idempotent update advances `revision`. Initialization may add this table to the immediately preceding valid 15-table schema; this is the only schema-specific additive compatibility path.
+The tool prefix is generated on create and does not change when the display name is edited. Each successful non-idempotent update advances `revision`. Initialization retains the narrow additive path that added this table to the prior 15-table schema; built-in agents add a separate current compatibility step for `subagent_invocation` and session classification columns.
 
 ## Sessions
 
 ### `session`
 
-One conversation per row, linked to a project. It stores optional title/model, `active`/`archived` status, activity timestamps, nullable `pin_at`, and archive consistency checks. A non-null `pin_at` marks the session as pinned and records when it was pinned.
+One conversation per row, linked to a project. It stores optional title/model, normalized reasoning effort, `active`/`archived` status, activity timestamps, nullable `pin_at`, and archive consistency checks. `kind` is `primary` or `child`. Primary rows have null parent/agent fields; child rows require `parent_session_id`, the stable built-in `agent_id`, and `agent_version`. A non-null `pin_at` marks a primary session as pinned and records when it was pinned. Active project session listings filter to primary rows; children are listed through their parent.
+
+### `subagent_invocation`
+
+One durable delegation correlation per child session. It links the parent session, parent turn, parent `delegate_agent` tool-call ID, child session, built-in agent ID/version, task JSON, snapshotted tool allowlist, and inherited model. State is `created`, `running`, `awaiting_approval`, `completed`, `failed`, `cancelled`, or `interrupted`; result/error and lifecycle timestamps retain the latest normalized outcome. Startup marks `created` or `running` invocations interrupted, while `awaiting_approval` remains durable for explicit resolution.
 
 ### `session_turn`
 

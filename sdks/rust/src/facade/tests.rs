@@ -247,6 +247,60 @@ fn named_sdk_methods_serve_project_session_and_model_dtos() {
 }
 
 #[test]
+fn built_in_agents_and_child_sessions_are_exposed_as_read_only_sdk_data() {
+    let directory = tempfile::tempdir().unwrap();
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    let agents = sdk.list_agents().unwrap().agents;
+    assert_eq!(agents.len(), 6);
+    assert_eq!(agents[0].name, "architect-agent");
+    assert_eq!(agents[5].name, "sre-agent");
+    assert!(agents.iter().all(|agent| !agent.can_delegate));
+
+    let project = sdk
+        .open_project(directory.path().to_str().unwrap(), None)
+        .unwrap();
+    let parent = sdk
+        .create_session(&project.project_id, Some("Parent"), Some("gpt-5.5"))
+        .unwrap();
+    let child = sdk
+        .state
+        .store
+        .create_child_session(
+            &project.project_id,
+            &parent.session_id,
+            "builtin.qa.v1",
+            1,
+            "Verify the change",
+            "gpt-5.5",
+        )
+        .unwrap();
+    sdk.state
+        .store
+        .create_subagent_invocation(
+            "sdk-invocation-1",
+            &parent.session_id,
+            "turn-1",
+            "call-1",
+            &child.session_id,
+            "builtin.qa.v1",
+            1,
+            &json!({"text":"Verify the change"}),
+            &json!(["read", "bash"]),
+            "gpt-5.5",
+        )
+        .unwrap();
+
+    let children = sdk.list_child_sessions(&parent.session_id).unwrap();
+    assert_eq!(children.sessions.len(), 1);
+    assert_eq!(children.sessions[0].session_id, child.session_id);
+    assert_eq!(children.invocations.len(), 1);
+    assert_eq!(children.invocations[0].agent_id, "builtin.qa.v1");
+    assert!(sdk.rename_session(&child.session_id, "Renamed").is_err());
+    assert!(sdk.archive_session(&child.session_id).is_err());
+    assert!(sdk.set_session_pinned(&child.session_id, true).is_err());
+}
+
+#[test]
 fn project_listing_and_selection_are_user_scoped() {
     let directory = tempfile::tempdir().unwrap();
     let mut sdk_a = AgentSdk::from_state_for_test(test_state(directory.path()));

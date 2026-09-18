@@ -22,6 +22,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::types::*;
 
+mod agents;
 mod checkpoints;
 mod lifecycle;
 mod mcp;

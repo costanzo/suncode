@@ -365,12 +365,37 @@ pub struct SessionRecord {
     pub title: Option<String>,
     pub model_id: Option<String>,
     pub reasoning_effort: Option<String>,
+    pub kind: String,
+    pub parent_session_id: Option<String>,
+    pub agent_id: Option<String>,
+    pub agent_version: Option<i64>,
     pub status: String,
     pub created_at: String,
     pub updated_at: String,
     pub last_activity_at: String,
     pub archived_at: Option<String>,
     pub pin_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubagentInvocationRecord {
+    pub invocation_id: String,
+    pub parent_session_id: String,
+    pub parent_turn_id: String,
+    pub parent_tool_call_id: String,
+    pub child_session_id: String,
+    pub agent_id: String,
+    pub agent_version: i64,
+    pub task: Value,
+    pub allowed_tools: Value,
+    pub model_id: String,
+    pub state: String,
+    pub result: Option<Value>,
+    pub error_code: Option<String>,
+    pub created_at: String,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

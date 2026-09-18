@@ -24,6 +24,7 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_remove_credential(IntPtr handle, IntPtr provider);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_set_provider_endpoint(IntPtr handle, IntPtr provider, IntPtr endpoint);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_projects(IntPtr handle);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_agents(IntPtr handle);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_mcp_servers(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_create_mcp_server(IntPtr handle, IntPtr projectId, IntPtr idempotencyKey, IntPtr requestJson);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_update_mcp_server(IntPtr handle, IntPtr projectId, IntPtr serverId, ulong expectedRevision, IntPtr idempotencyKey, IntPtr requestJson);
@@ -42,6 +43,7 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_git_status(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_git_diff_file(IntPtr handle, IntPtr projectId, IntPtr scope, IntPtr path);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_sessions(IntPtr handle, IntPtr projectId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_child_sessions(IntPtr handle, IntPtr parentSessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_create_session(IntPtr handle, IntPtr projectId, IntPtr title, IntPtr model);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_rename_session(IntPtr handle, IntPtr sessionId, IntPtr title);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_archive_session(IntPtr handle, IntPtr sessionId);

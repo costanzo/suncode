@@ -49,7 +49,7 @@ public sealed class WorkspaceLayoutTests
         Assert.True(viewModel.EffectiveNavigationVisible);
         Assert.True(viewModel.EffectiveReviewVisible);
         Assert.True(viewModel.EffectiveGitVisible);
-        Assert.Equal(26, viewModel.WorkspaceGutterWidth.Value);
+        Assert.Equal(34, viewModel.WorkspaceGutterWidth.Value);
         Assert.Equal(4, viewModel.WorkspaceGutterGap.Value);
     }
 
@@ -84,5 +84,23 @@ public sealed class WorkspaceLayoutTests
         Assert.Contains(nameof(DesktopViewModel.EffectiveGitVisible), changed);
         Assert.Contains(nameof(DesktopViewModel.BottomDrawerGap), changed);
         Assert.Equal(4, viewModel.BottomDrawerGap.Value);
+    }
+
+    [Fact]
+    public void ReviewAndChildSessionPanelsAreMutuallyExclusive()
+    {
+        using var viewModel = new DesktopViewModel { ReviewVisible = true };
+
+        viewModel.ChildSessionsVisible = true;
+
+        Assert.False(viewModel.ReviewVisible);
+        Assert.True(viewModel.ChildSessionsVisible);
+        Assert.True(viewModel.EffectiveChildSessionsVisible);
+
+        viewModel.ReviewVisible = true;
+
+        Assert.True(viewModel.ReviewVisible);
+        Assert.False(viewModel.ChildSessionsVisible);
+        Assert.True(viewModel.EffectiveReviewInspectorVisible);
     }
 }

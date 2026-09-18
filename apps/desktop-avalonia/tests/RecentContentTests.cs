@@ -130,6 +130,30 @@ public sealed class RecentContentTests
         Assert.Equal("FILE", dependencyItem.KindLabel);
     }
 
+    [Fact]
+    public void ChildSessionHistoryUsesAgentIdentityAndRefreshesState()
+    {
+        using var viewModel = new DesktopViewModel();
+        var child = Child("child-1", "Implement settings", "running");
+        viewModel.RememberRecentChildSession(child);
+
+        var item = Assert.Single(viewModel.RecentContents);
+        Assert.True(item.IsChildSession);
+        Assert.Equal("CHILD SESSION", item.KindLabel);
+        Assert.Equal("Software Engineering Agent · Running", item.Detail);
+
+        var completed = Child("child-1", "Implement settings", "completed");
+        viewModel.ChildSessions.Add(completed);
+        viewModel.RefreshRecentChildSessionReferences();
+
+        Assert.Equal("Software Engineering Agent · Completed", viewModel.RecentContents[0].Detail);
+        Assert.Same(completed, viewModel.RecentContents[0].ChildSession);
+    }
+
     private static SessionItem Session(string id, string title) =>
         new(id, title, "2026-09-08T00:00:00Z", false);
+
+    private static ChildSessionItem Child(string id, string title, string state) =>
+        new(id, "parent-1", title, "builtin.swe.v1", "Software Engineering Agent", state,
+            "2026-09-18T00:00:00Z", "gpt-5.5", "Implement", string.Empty, string.Empty);
 }

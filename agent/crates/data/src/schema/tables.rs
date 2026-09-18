@@ -142,12 +142,37 @@ diesel::table! {
         title -> Nullable<Text>,
         model_id -> Nullable<Text>,
         reasoning_effort -> Nullable<Text>,
+        kind -> Text,
+        parent_session_id -> Nullable<Text>,
+        agent_id -> Nullable<Text>,
+        agent_version -> Nullable<Integer>,
         status -> Text,
         created_at -> Text,
         updated_at -> Text,
         last_activity_at -> Text,
         pin_at -> Nullable<Text>,
         archived_at -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    subagent_invocation (invocation_id) {
+        invocation_id -> Text,
+        parent_session_id -> Text,
+        parent_turn_id -> Text,
+        parent_tool_call_id -> Text,
+        child_session_id -> Text,
+        agent_id -> Text,
+        agent_version -> Integer,
+        task_json -> Text,
+        allowed_tools_json -> Text,
+        model_id -> Text,
+        state -> Text,
+        result_json -> Nullable<Text>,
+        error_code -> Nullable<Text>,
+        created_at -> Text,
+        started_at -> Nullable<Text>,
+        completed_at -> Nullable<Text>,
     }
 }
 
@@ -273,4 +298,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     session_tool_use,
     session_turn,
     session_turn_todo,
+    subagent_invocation,
 );

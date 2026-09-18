@@ -1,4 +1,99 @@
 impl Agent {
+    fn persist_child_invocation_outcome(
+        &self,
+        continuation: &Continuation,
+        outcome: &Result<TurnResponse, BusinessError>,
+    ) -> Result<(), BusinessError> {
+        let Some(agent_id) = continuation.agent_id.as_deref() else {
+            return Ok(());
+        };
+        let definition = builtin_agents::by_id(agent_id)
+            .ok_or_else(|| BusinessError::unavailable("child session agent is not available"))?;
+        let (state, result, error_code) = match outcome {
+            Ok(TurnResponse::Completed { message, usage, iterations, tool_calls, .. }) => (
+                "completed",
+                json!({
+                    "status":"completed",
+                    "agentId":definition.id,
+                    "agentName":definition.name,
+                    "agentDisplayName":definition.display_name,
+                    "childSessionId":continuation.session_id,
+                    "result":message.text_content(),
+                    "usage":usage,
+                    "iterations":iterations,
+                    "toolCalls":tool_calls
+                }),
+                None,
+            ),
+            Ok(TurnResponse::AwaitingApproval { approval_id, .. }) => (
+                "awaiting_approval",
+                json!({
+                    "status":"awaiting_approval",
+                    "agentId":definition.id,
+                    "childSessionId":continuation.session_id,
+                    "approvalId":approval_id
+                }),
+                None,
+            ),
+            Ok(TurnResponse::AwaitingQuestion { .. }) => (
+                "failed",
+                json!({
+                    "status":"failed",
+                    "agentId":definition.id,
+                    "childSessionId":continuation.session_id,
+                    "error":{"code":"agent_question_denied","message":"child agents cannot ask the user questions"}
+                }),
+                Some("agent_question_denied"),
+            ),
+            Ok(TurnResponse::Queued { .. }) => (
+                "failed",
+                json!({
+                    "status":"failed",
+                    "agentId":definition.id,
+                    "childSessionId":continuation.session_id,
+                    "error":{"code":"agent_busy","message":"child agent unexpectedly queued work"}
+                }),
+                Some("agent_busy"),
+            ),
+            Err(error) if error.code == "approval_required" => {
+                let approval_id = error
+                    .details
+                    .get("approval_id")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| BusinessError::unavailable("child approval outcome is missing approval_id"))?;
+                (
+                    "awaiting_approval",
+                    json!({
+                        "status":"awaiting_approval",
+                        "agentId":definition.id,
+                        "childSessionId":continuation.session_id,
+                        "approvalId":approval_id
+                    }),
+                    None,
+                )
+            }
+            Err(error) => {
+                let state = if error.code == "cancelled" { "cancelled" } else { "failed" };
+                (
+                    state,
+                    json!({
+                        "status":state,
+                        "agentId":definition.id,
+                        "childSessionId":continuation.session_id,
+                        "error":{"code":error.code,"message":error.message,"details":error.details}
+                    }),
+                    Some(error.code.as_str()),
+                )
+            }
+        };
+        self.store.update_subagent_invocation(
+            &continuation.session_id,
+            state,
+            Some(&result),
+            error_code,
+        )
+    }
+
     pub async fn resolve_approval(
         &self,
         approval_id: &str,
@@ -26,8 +121,23 @@ impl Agent {
                 &continuation.submission_key,
                 &json!({"code":"authorization_denied","message":"Approval was denied"}),
             )?;
+            self.persist_child_invocation_outcome(
+                &continuation,
+                &Err(BusinessError::new(
+                    "authorization_denied",
+                    "Approval was denied",
+                )),
+            )?;
             self.store.finish_suspended(approval_id, "denied")?;
             return Ok(true);
+        }
+        if continuation.agent_id.is_some() {
+            self.store.update_subagent_invocation(
+                &continuation.session_id,
+                "running",
+                None,
+                None,
+            )?;
         }
         let token = CancellationToken::new();
         self.cancellations
@@ -47,7 +157,18 @@ impl Agent {
             let session_lock = agent.session_lock(&continuation.session_id).await;
             let _guard = session_lock.lock().await;
             let result = agent.continue_approved(&mut continuation, token).await;
-            let status = if result.is_ok() {
+            let suspended_again = result.as_ref().err().is_some_and(|error| {
+                matches!(error.code.as_str(), "approval_required" | "question_required")
+            });
+            if let Err(error) = agent.persist_child_invocation_outcome(&continuation, &result) {
+                logging::write_business_error(
+                    "subagent",
+                    "persist_approval_outcome",
+                    &error,
+                    format!("session={} turn={}", continuation.session_id, continuation.turn_id),
+                );
+            }
+            let status = if result.is_ok() || suspended_again {
                 "completed"
             } else {
                 "failed"
@@ -63,21 +184,23 @@ impl Agent {
                         continuation.session_id, continuation.turn_id
                     ),
                 );
-                agent.clear_queued_messages(&continuation.session_id);
-                let _ = agent.turn_state(
-                    &continuation,
-                    if error.code == "cancelled" {
-                        "cancelled"
-                    } else {
-                        "failed"
-                    },
-                    Some(&error.code),
-                );
-                let _ = agent.store.fail_turn(
-                    &continuation.session_id,
-                    &continuation.submission_key,
-                    &json!({"code":error.code,"message":error.message,"details":error.details}),
-                );
+                if !suspended_again {
+                    agent.clear_queued_messages(&continuation.session_id);
+                    let _ = agent.turn_state(
+                        &continuation,
+                        if error.code == "cancelled" {
+                            "cancelled"
+                        } else {
+                            "failed"
+                        },
+                        Some(&error.code),
+                    );
+                    let _ = agent.store.fail_turn(
+                        &continuation.session_id,
+                        &continuation.submission_key,
+                        &json!({"code":error.code,"message":error.message,"details":error.details}),
+                    );
+                }
             }
             agent
                 .cancellations

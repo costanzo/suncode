@@ -48,12 +48,34 @@ impl Agent {
             }
             self.tool_state(context, call, "requested", None)?;
             self.tool_state(context, call, "validating", None)?;
+            if !context.allowed_tools.is_empty()
+                && !context.allowed_tools.iter().any(|allowed| allowed == &call.name)
+            {
+                let error = BusinessError::new(
+                    "agent_tool_denied",
+                    format!("Tool `{}` is not allowed for this agent", call.name),
+                );
+                if !self.record_recoverable_call_error(context, call, &error)? {
+                    return Err(error);
+                }
+                continue;
+            }
             if !call.arguments.is_object() {
                 let error =
                     BusinessError::new("malformed_tool_call", "Tool arguments must be an object");
                 if !self.record_recoverable_call_error(context, call, &error)? {
                     return Err(error);
                 }
+                continue;
+            }
+            if call.name == "delegate_agent" {
+                self.execute_allowed_calls(
+                    context,
+                    std::mem::take(&mut allowed_calls),
+                    token.clone(),
+                )
+                .await?;
+                self.execute_delegate_agent(context, call, token.clone()).await?;
                 continue;
             }
             if !mcp::is_mcp_tool(&call.name) {
@@ -202,6 +224,123 @@ impl Agent {
         self.execute_allowed_calls(context, allowed_calls, token)
             .await?;
         Ok(())
+    }
+
+    async fn execute_delegate_agent(
+        &self,
+        context: &mut Continuation,
+        call: &ToolCall,
+        token: CancellationToken,
+    ) -> Result<(), BusinessError> {
+        if context.agent_id.is_some() {
+            let error = BusinessError::new("agent_tool_denied", "child agents cannot delegate");
+            return self.record_call_success(
+                context,
+                call,
+                json!({"status":"failed","error":{"code":error.code,"message":error.message}}),
+            );
+        }
+        let agent_name = call
+            .arguments
+            .get("agent")
+            .and_then(Value::as_str)
+            .ok_or_else(|| BusinessError::invalid("agent is required"))?;
+        let task = call
+            .arguments
+            .get("task")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|task| !task.is_empty() && task.chars().count() <= 16_000)
+            .ok_or_else(|| BusinessError::invalid("task must contain 1 through 16000 characters"))?;
+        let definition = builtin_agents::by_name(agent_name)
+            .ok_or_else(|| BusinessError::new("unknown_agent", "built-in agent was not found"))?;
+        self.tool_state(context, call, "policy_check", None)?;
+        self.tool_state(context, call, "authorized", None)?;
+        self.tool_state(context, call, "executing", None)?;
+        if token.is_cancelled() {
+            return Err(BusinessError::new("cancelled", "Turn was cancelled"));
+        }
+        let title = task.chars().take(80).collect::<String>();
+        let child = self.store.create_child_session(
+            &context.project_id,
+            &context.session_id,
+            definition.id,
+            definition.version,
+            &title,
+            &context.model,
+        )?;
+        let invocation_id = Uuid::new_v4().to_string();
+        self.store.create_subagent_invocation(
+            &invocation_id,
+            &context.session_id,
+            &context.turn_id,
+            &call.call_id,
+            &child.session_id,
+            definition.id,
+            definition.version,
+            &json!({"text":task}),
+            &json!(definition.allowed_tools),
+            &context.model,
+        )?;
+        self.store.update_subagent_invocation(&child.session_id, "running", None, None)?;
+        let outcome = Box::pin(self.submit_child(
+            &child.session_id,
+            task,
+            &context.model,
+            context.reasoning_effort.as_deref(),
+            token,
+        ))
+        .await;
+        let result = match outcome {
+            Ok(TurnResponse::Completed { message, usage, iterations, tool_calls, .. }) => {
+                let result = json!({
+                    "status":"completed",
+                    "agentId":definition.id,
+                    "agentName":definition.name,
+                    "agentDisplayName":definition.display_name,
+                    "childSessionId":child.session_id,
+                    "result":message.text_content(),
+                    "usage":usage,
+                    "iterations":iterations,
+                    "toolCalls":tool_calls
+                });
+                self.store.update_subagent_invocation(&child.session_id, "completed", Some(&result), None)?;
+                result
+            }
+            Ok(TurnResponse::AwaitingApproval { approval_id, .. }) => {
+                let result = json!({"status":"awaiting_approval","agentId":definition.id,"childSessionId":child.session_id,"approvalId":approval_id});
+                self.store.update_subagent_invocation(&child.session_id, "awaiting_approval", Some(&result), None)?;
+                result
+            }
+            Ok(TurnResponse::AwaitingQuestion { .. }) => {
+                let result = json!({"status":"failed","agentId":definition.id,"childSessionId":child.session_id,"error":{"code":"agent_question_denied","message":"child agents cannot ask the user questions"}});
+                self.store.update_subagent_invocation(&child.session_id, "failed", Some(&result), Some("agent_question_denied"))?;
+                result
+            }
+            Ok(TurnResponse::Queued { .. }) => {
+                let result = json!({"status":"failed","agentId":definition.id,"childSessionId":child.session_id,"error":{"code":"agent_busy","message":"child agent unexpectedly queued its initial task"}});
+                self.store.update_subagent_invocation(&child.session_id, "failed", Some(&result), Some("agent_busy"))?;
+                result
+            }
+            Err(error) if error.code == "approval_required" => {
+                let approval_id = error
+                    .details
+                    .get("approval_id")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| BusinessError::unavailable("child approval outcome is missing approval_id"))?;
+                let result = json!({"status":"awaiting_approval","agentId":definition.id,"childSessionId":child.session_id,"approvalId":approval_id});
+                self.store.update_subagent_invocation(&child.session_id, "awaiting_approval", Some(&result), None)?;
+                result
+            }
+            Err(error) => {
+                let state = if error.code == "cancelled" { "cancelled" } else { "failed" };
+                let error_code = error.code.clone();
+                let result = json!({"status":state,"agentId":definition.id,"childSessionId":child.session_id,"error":{"code":error.code,"message":error.message,"details":error.details}});
+                self.store.update_subagent_invocation(&child.session_id, state, Some(&result), Some(&error_code))?;
+                result
+            }
+        };
+        self.record_call_success(context, call, result)
     }
 
     async fn execute_allowed_calls(

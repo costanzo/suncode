@@ -4,7 +4,7 @@ use serde_json::json;
 use std::collections::BTreeMap;
 
 #[test]
-fn existing_fifteen_table_database_receives_additive_mcp_table() {
+fn existing_sixteen_table_database_without_mcp_receives_additive_table() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("agent.sqlite3");
     let mut connection = SqliteConnection::establish(path.to_str().unwrap()).unwrap();
@@ -21,6 +21,71 @@ fn existing_fifteen_table_database_receives_additive_mcp_table() {
 
     let store = Store::open(&path).unwrap();
     assert!(store.mcp_servers().unwrap().is_empty());
+}
+
+#[test]
+fn immediately_previous_schema_receives_subagent_table_and_session_columns() {
+    const PREVIOUS_SESSION_SCHEMA: &str = r#"
+        CREATE TABLE IF NOT EXISTS session (
+            session_id TEXT PRIMARY KEY CHECK(length(session_id) > 0),
+            project_id TEXT NOT NULL,
+            title TEXT,
+            model_id TEXT,
+            reasoning_effort TEXT,
+            status TEXT NOT NULL CHECK(status IN ('active', 'archived')),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            last_activity_at TEXT NOT NULL,
+            pin_at TEXT,
+            archived_at TEXT,
+            CHECK(
+                (status = 'active' AND archived_at IS NULL)
+                OR (status = 'archived' AND archived_at IS NOT NULL)
+            )
+        );
+        CREATE INDEX IF NOT EXISTS session_project_activity_idx
+            ON session(project_id, status, last_activity_at DESC, session_id);
+    "#;
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("agent.sqlite3");
+    let mut connection = SqliteConnection::establish(path.to_str().unwrap()).unwrap();
+    for script in suncode_database::sqlite::schema_scripts() {
+        if script.contains("CREATE TABLE IF NOT EXISTS subagent_invocation") {
+            continue;
+        }
+        if script.contains("CREATE TABLE IF NOT EXISTS session (") {
+            connection.batch_execute(PREVIOUS_SESSION_SCHEMA).unwrap();
+        } else {
+            connection.batch_execute(script).unwrap();
+        }
+    }
+    for script in suncode_database::sqlite::data_scripts() {
+        connection.batch_execute(script).unwrap();
+    }
+    drop(connection);
+
+    let store = Store::open(&path).unwrap();
+    let project = store
+        .project("/tmp/suncode-migrated-child", "Migrated")
+        .unwrap();
+    let parent = store
+        .create_session(&project.project_id, Some("Parent"), Some("gpt-5.5"))
+        .unwrap();
+    let child = store
+        .create_child_session(
+            &project.project_id,
+            &parent.session_id,
+            "builtin.architect.v1",
+            1,
+            "Review architecture",
+            "gpt-5.5",
+        )
+        .unwrap();
+    assert_eq!(child.kind, "child");
+    assert_eq!(
+        child.parent_session_id.as_deref(),
+        Some(parent.session_id.as_str())
+    );
 }
 
 #[test]
@@ -56,6 +121,65 @@ fn diesel_store_round_trips_project_and_session() {
             .as_deref(),
         Some("Test")
     );
+}
+
+#[test]
+fn child_sessions_are_linked_hidden_from_primary_lists_and_interrupted_on_recovery() {
+    let store = Store::open_memory().unwrap();
+    let project = store.project("/tmp/suncode-child", "Child").unwrap();
+    let parent = store
+        .create_session(&project.project_id, Some("Parent"), Some("gpt-5.5"))
+        .unwrap();
+    let child = store
+        .create_child_session(
+            &project.project_id,
+            &parent.session_id,
+            "builtin.swe.v1",
+            1,
+            "Implement the change",
+            "gpt-5.5",
+        )
+        .unwrap();
+    store
+        .create_subagent_invocation(
+            "invocation-1",
+            &parent.session_id,
+            "parent-turn-1",
+            "parent-call-1",
+            &child.session_id,
+            "builtin.swe.v1",
+            1,
+            &json!({"text":"Implement the change"}),
+            &json!(["read", "write"]),
+            "gpt-5.5",
+        )
+        .unwrap();
+    store
+        .update_subagent_invocation(&child.session_id, "running", None, None)
+        .unwrap();
+    store
+        .begin_turn(&child.session_id, "child-turn-key", "Implement", "gpt-5.5")
+        .unwrap();
+
+    let primary_sessions = store
+        .sessions_for_project(&project.project_id, false)
+        .unwrap();
+    assert_eq!(primary_sessions.len(), 1);
+    assert_eq!(primary_sessions[0].session_id, parent.session_id);
+    let child_sessions = store.child_sessions_for_parent(&parent.session_id).unwrap();
+    assert_eq!(child_sessions.len(), 1);
+    assert_eq!(child_sessions[0].session_id, child.session_id);
+
+    store.recover_startup().unwrap();
+    let invocation = store
+        .subagent_invocations_for_parent(&parent.session_id)
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap();
+    assert_eq!(invocation.state, "interrupted");
+    assert_eq!(invocation.error_code.as_deref(), Some("runtime_restarted"));
+    assert_eq!(store.session_ui_state(&child.session_id).unwrap(), "failed");
 }
 
 #[test]

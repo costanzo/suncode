@@ -1,3 +1,22 @@
+fn delegate_agent_definition() -> suncode_llm::ToolDefinition {
+    suncode_llm::ToolDefinition {
+        name: "delegate_agent".into(),
+        description: "Delegate a bounded task to one fixed specialist agent. The specialist works in a linked child session and returns a result to the main agent.".into(),
+        parameters: json!({
+            "type": "object",
+            "properties": {
+                "agent": {
+                    "type": "string",
+                    "enum": builtin_agents::all().iter().map(|agent| agent.name).collect::<Vec<_>>(),
+                },
+                "task": {"type": "string", "minLength": 1, "maxLength": 16000}
+            },
+            "required": ["agent", "task"],
+            "additionalProperties": false
+        }),
+    }
+}
+
 impl Agent {
     async fn run(
         &self,
@@ -53,6 +72,17 @@ impl Agent {
             let exchange_id = Uuid::new_v4().to_string();
             context.active_call_id = Some(exchange_id.clone());
             let mut llm_messages = vec![host_environment_message(&context.session_started_at)];
+            if let Some(agent_id) = context.agent_id.as_deref() {
+                if let Some(agent) = builtin_agents::by_id(agent_id) {
+                    llm_messages.push(suncode_llm::Message::text(
+                        "system",
+                        format!(
+                            "You are {} ({}). {}\nYou cannot delegate, ask the user questions, or use MCP tools. Stay within the advertised tool allowlist.",
+                            agent.display_name, agent.name, agent.instructions
+                        ),
+                    ));
+                }
+            }
             if let Some(message) = project_instruction_message(&context.project_root) {
                 llm_messages.push(message);
             }
@@ -84,7 +114,14 @@ impl Agent {
                         parameters: definition.parameters,
                     })
                     .collect::<Vec<_>>();
-                tool_definitions.extend(self.mcp.catalog(&context.project_id).await);
+                if !context.allowed_tools.is_empty() {
+                    tool_definitions.retain(|definition| {
+                        context.allowed_tools.iter().any(|allowed| allowed == &definition.name)
+                    });
+                } else {
+                    tool_definitions.push(delegate_agent_definition());
+                    tool_definitions.extend(self.mcp.catalog(&context.project_id).await);
+                }
                 let provider_call = provider.provider.complete(
                     CompletionRequest {
                         messages: &llm_messages,

@@ -22,6 +22,7 @@ use tokio::sync::{broadcast, mpsc, Mutex as AsyncMutex};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
+pub mod builtin_agents;
 pub mod events;
 use events::*;
 mod mcp;
@@ -78,6 +79,12 @@ struct Continuation {
     session_started_at: String,
     project_id: String,
     project_root: String,
+    #[serde(default)]
+    agent_id: Option<String>,
+    #[serde(default)]
+    agent_version: Option<i64>,
+    #[serde(default)]
+    allowed_tools: Vec<String>,
     turn_id: String,
     submission_key: String,
     model: String,

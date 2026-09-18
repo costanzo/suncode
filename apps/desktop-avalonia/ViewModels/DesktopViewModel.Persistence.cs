@@ -114,6 +114,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         RefreshRecentSessionReferences();
         OnPropertyChanged(nameof(HasSessions));
         var savedState = RestoreRecentContentState();
+        await RestoreSavedChildRecentContentsAsync(savedState);
         var savedSessionId = preferredSessionId
             ?? (savedState.CurrentContentKind == "session" ? savedState.CurrentSessionId : savedState.LastSessionId);
         var session = Sessions.FirstOrDefault(item => item.SessionId == savedSessionId)
@@ -182,6 +183,27 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(CanCompose));
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
             OnPropertyChanged(nameof(ComposerPlaceholder));
+        }
+    }
+
+    private async Task LoadAgentsAsync()
+    {
+        if (_sdk is null) return;
+        var result = await _sdk.ListAgentsAsync();
+        Agents.Clear();
+        foreach (var item in result.Agents)
+        {
+            Agents.Add(new AgentItem(
+                item.Id,
+                item.Name,
+                item.DisplayName,
+                item.Description,
+                item.Version,
+                item.AllowedTools,
+                item.ModelPolicy,
+                item.McpPolicy,
+                item.CanDelegate,
+                item.ToolCallLimit));
         }
     }
 
@@ -726,6 +748,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (live && type.StartsWith("checkpoint.", StringComparison.Ordinal)) _ = LoadCheckpointsAsync();
         if (live && type == "usage.updated") _ = LoadSessionUsageAsync();
         if (live && type.StartsWith("provider.exchange.", StringComparison.Ordinal) && ProviderTraceVisible) _ = RefreshProviderTracesAsync();
+        if (live && (type == "tool.result" || (type == "turn.state" && IsTerminalTurnState(payload.State ?? string.Empty)))) _ = LoadChildSessionsAsync();
         if (live && (type.StartsWith("checkpoint.", StringComparison.Ordinal) || pathAdded)) _ = RefreshGitAsync();
     }
 

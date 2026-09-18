@@ -1695,14 +1695,15 @@ export function ChildSessionDetail({ child = childSessions[0], standalone = fals
           </article>
 
           {isApproval && (
-            <div className="workspace-child-authority-note">
+            <div className="workspace-child-approval">
               <Icon name="lock" size={15} />
               <div>
-                <strong>Approval required in Review</strong>
-                <span>
-                  The child session cannot grant itself authority. Approve or deny this operation
-                  from the main session's Review panel.
-                </span>
+                <strong>Run a shell command</strong>
+                <span>Shell command · npm run build --prefix design-system</span>
+                <div>
+                  <button className="btn primary small" type="button">Allow once</button>
+                  <button className="btn small" type="button">Deny</button>
+                </div>
               </div>
             </div>
           )}
@@ -1749,7 +1750,7 @@ export function ChildSessionDetail({ child = childSessions[0], standalone = fals
                     <ul>
                       <li>Exclude child sessions from the primary Sessions list.</li>
                       <li>Expose child snapshots through read-only detail surfaces.</li>
-                      <li>Keep approval and undo decisions anchored to the main session.</li>
+                      <li>Keep delegated checkpoints scoped to the child session.</li>
                     </ul>
                   </>
                 )}

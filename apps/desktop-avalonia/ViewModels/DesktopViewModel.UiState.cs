@@ -20,13 +20,15 @@ public sealed partial class DesktopViewModel
         ? _uiStateStore?.Project(project.ProjectId) ?? new UiProjectState()
         : new UiProjectState();
 
-    internal void SaveSettingsNavigation(string page, string? providerId, bool providersExpanded)
+    internal void SaveSettingsNavigation(string page, string? providerId, bool providersExpanded, string? agentId, bool agentsExpanded)
     {
         _uiStateStore?.UpdateSettings(state =>
         {
             state.Page = page;
             state.ProviderId = providerId;
             state.ProvidersExpanded = providersExpanded;
+            state.AgentId = agentId;
+            state.AgentsExpanded = agentsExpanded;
         });
     }
 
@@ -46,6 +48,14 @@ public sealed partial class DesktopViewModel
             state.CurrentSessionId = null;
             state.CurrentDependencyId = file.DependencyId;
             state.CurrentFilePath = file.Path;
+        }
+        else if (SelectedChildSession is { } child)
+        {
+            state.CurrentContentKind = "child-session";
+            state.CurrentSessionId = child.SessionId;
+            state.CurrentDependencyId = null;
+            state.CurrentFilePath = null;
+            state.LastSessionId = child.ParentSessionId;
         }
         else if (SelectedSession is { } session)
         {
@@ -73,7 +83,8 @@ public sealed partial class DesktopViewModel
         {
             NavigationVisible = saved.LeftRegion != "closed";
             ExplorerVisible = saved.LeftRegion == "explorer";
-            ReviewVisible = saved.RightRegion != "closed";
+            ReviewVisible = saved.RightRegion == "review";
+            ChildSessionsVisible = saved.RightRegion == "children";
             GitVisible = saved.BottomDrawer == "git";
             ProviderTraceVisible = saved.BottomDrawer == "providerTrace";
             ToolActivityVisible = saved.BottomDrawer == "toolActivity";
@@ -140,7 +151,7 @@ public sealed partial class DesktopViewModel
         SaveProjectUiState(saved =>
         {
             saved.LeftRegion = !NavigationVisible ? "closed" : ExplorerVisible ? "explorer" : "sessions";
-            saved.RightRegion = ReviewVisible ? "review" : "closed";
+            saved.RightRegion = ReviewVisible ? "review" : ChildSessionsVisible ? "children" : "closed";
             saved.BottomDrawer = GitVisible ? "git" : ProviderTraceVisible ? "providerTrace" : ToolActivityVisible ? "toolActivity" : "closed";
         });
     }

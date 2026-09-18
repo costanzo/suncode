@@ -43,7 +43,9 @@ public sealed partial class SettingsWindow : Window
 
     private bool _ready;
     private bool _providersExpanded = true;
+    private bool _agentsExpanded = true;
     private string _provider = string.Empty;
+    private string _agent = string.Empty;
     private DesktopViewModel? _subscribedViewModel;
     private McpServerEditorWindow? _mcpEditorWindow;
     private readonly DispatcherTimer _mcpPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
@@ -148,12 +150,19 @@ public sealed partial class SettingsWindow : Window
             RefreshHttpsDirtyState();
             RefreshProxyDirtyState();
             ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
+            AgentsChevron.RenderTransform = new Avalonia.Media.RotateTransform(_agentsExpanded ? 90 : 0);
             var savedNavigation = ViewModel.SavedSettingsNavigation;
             SetProvidersExpanded(savedNavigation.ProvidersExpanded);
+            SetAgentsExpanded(savedNavigation.AgentsExpanded);
             if (savedNavigation.Page == "providers")
             {
                 ShowProviderPanel(savedNavigation.ProviderId);
                 SelectPage("providers", null);
+            }
+            else if (savedNavigation.Page == "agents")
+            {
+                ShowAgentPanel(savedNavigation.AgentId);
+                SelectPage("agents", null);
             }
             else
             {
@@ -186,6 +195,42 @@ public sealed partial class SettingsWindow : Window
     private void ShowMcp(object? sender, RoutedEventArgs e) => SelectPage("mcp", sender as Button);
     private void ShowLogging(object? sender, RoutedEventArgs e) => SelectPage("logging", sender as Button);
 
+    private void ShowAgents(object? sender, RoutedEventArgs e)
+    {
+        ShowAgentPanel(null);
+        SelectPage("agents", sender as Button);
+        SetAgentsExpanded(!_agentsExpanded);
+    }
+
+    private void SetAgentsExpanded(bool expanded)
+    {
+        _agentsExpanded = expanded;
+        AgentNavigation.IsVisible = _agentsExpanded;
+        AgentsChevron.RenderTransform = new Avalonia.Media.RotateTransform(_agentsExpanded ? 90 : 0);
+        if (_ready) ViewModel.SaveSettingsNavigation(CurrentPage(), _provider, _providersExpanded, _agent, _agentsExpanded);
+    }
+
+    private void ShowAgent(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string agent }) return;
+        ShowAgentPanel(agent);
+        SelectPage("agents", sender as Button);
+    }
+
+    private void AgentSelected(object? sender, string agent)
+    {
+        ShowAgentPanel(agent);
+        var navigation = this.GetVisualDescendants().OfType<Button>()
+            .FirstOrDefault(button => button.Classes.Contains("navigation") && Equals(button.Tag, agent));
+        SelectPage("agents", navigation);
+    }
+
+    private void ShowAgentPanel(string? agent)
+    {
+        _agent = agent ?? string.Empty;
+        AgentsPage.SelectedAgentId = agent;
+    }
+
     private void ShowProviders(object? sender, RoutedEventArgs e)
     {
         ShowProviderPanel(null);
@@ -198,7 +243,7 @@ public sealed partial class SettingsWindow : Window
         _providersExpanded = expanded;
         ProviderNavigation.IsVisible = _providersExpanded;
         ProvidersChevron.RenderTransform = new Avalonia.Media.RotateTransform(_providersExpanded ? 90 : 0);
-        if (_ready) ViewModel.SaveSettingsNavigation(CurrentPage(), _provider, _providersExpanded);
+        if (_ready) ViewModel.SaveSettingsNavigation(CurrentPage(), _provider, _providersExpanded, _agent, _agentsExpanded);
     }
 
     private void ShowProvider(object? sender, RoutedEventArgs e)
@@ -247,6 +292,7 @@ public sealed partial class SettingsWindow : Window
         NetworkPage.IsVisible = page == "network";
         LoggingPage.IsVisible = page == "logging";
         McpPage.IsVisible = page == "mcp";
+        AgentsPage.IsVisible = page == "agents";
         ProvidersPage.IsVisible = page == "providers";
         if (page == "mcp")
         {
@@ -265,8 +311,9 @@ public sealed partial class SettingsWindow : Window
         if (page == "network") NetworkNavigation.Classes.Set("selected", true);
         if (page == "logging") LoggingNavigation.Classes.Set("selected", true);
         if (page == "mcp") McpNavigation.Classes.Set("selected", true);
+        if (page == "agents" && selected is null) AgentsNavigation.Classes.Set("selected", true);
         if (page == "providers" && selected is null) ProvidersNavigation.Classes.Set("selected", true);
-        if (_ready) ViewModel.SaveSettingsNavigation(page, _provider, _providersExpanded);
+        if (_ready) ViewModel.SaveSettingsNavigation(page, _provider, _providersExpanded, _agent, _agentsExpanded);
     }
 
     private string CurrentPage() => DefaultsPage.IsVisible ? "defaults"
@@ -274,6 +321,7 @@ public sealed partial class SettingsWindow : Window
         : ShortcutsPage.IsVisible ? "shortcuts"
         : NetworkPage.IsVisible ? "network"
         : McpPage.IsVisible ? "mcp"
+        : AgentsPage.IsVisible ? "agents"
         : LoggingPage.IsVisible ? "logging"
         : "providers";
 

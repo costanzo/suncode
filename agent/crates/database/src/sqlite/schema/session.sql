@@ -4,6 +4,10 @@ CREATE TABLE IF NOT EXISTS session (
     title TEXT,
     model_id TEXT,
     reasoning_effort TEXT,
+    kind TEXT NOT NULL DEFAULT 'primary' CHECK(kind IN ('primary', 'child')),
+    parent_session_id TEXT,
+    agent_id TEXT,
+    agent_version INTEGER,
     status TEXT NOT NULL CHECK(status IN ('active', 'archived')),
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
@@ -13,6 +17,10 @@ CREATE TABLE IF NOT EXISTS session (
     CHECK(
         (status = 'active' AND archived_at IS NULL)
         OR (status = 'archived' AND archived_at IS NOT NULL)
+    ),
+    CHECK(
+        (kind = 'primary' AND parent_session_id IS NULL AND agent_id IS NULL AND agent_version IS NULL)
+        OR (kind = 'child' AND parent_session_id IS NOT NULL AND agent_id IS NOT NULL AND agent_version IS NOT NULL)
     )
 );
 

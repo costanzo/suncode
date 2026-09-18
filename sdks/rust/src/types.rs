@@ -262,6 +262,35 @@ pub struct SessionsResult {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BuiltinAgentDto {
+    pub id: String,
+    pub name: String,
+    pub display_name: String,
+    pub description: String,
+    pub version: i64,
+    pub allowed_tools: Vec<String>,
+    pub model_policy: String,
+    pub mcp_policy: String,
+    pub can_delegate: bool,
+    pub tool_call_limit: u32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AgentsResult {
+    pub agents: Vec<BuiltinAgentDto>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChildSessionsResult {
+    pub parent_session_id: String,
+    pub sessions: Vec<SessionRecord>,
+    pub session_states: std::collections::HashMap<String, String>,
+    pub invocations: Vec<suncode_agent::domain::SubagentInvocationRecord>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct SessionImagesResult {
     pub session_id: String,
     pub images: Vec<SessionImageRecord>,

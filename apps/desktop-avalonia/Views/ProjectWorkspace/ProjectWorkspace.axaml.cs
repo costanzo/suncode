@@ -149,6 +149,13 @@ public sealed partial class ProjectWorkspace : UserControl
         ViewModel.ReviewVisible = !ViewModel.ReviewVisible;
     }
 
+    private void ToggleChildSessions(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.ReviewPaneWidth < DesktopViewModel.MinimumReviewPaneWidth) ViewModel.ReviewPaneWidth = DesktopViewModel.DefaultReviewPaneWidth;
+        ViewModel.ChildSessionsVisible = !ViewModel.ChildSessionsVisible;
+        if (ViewModel.ChildSessionsVisible) _ = ViewModel.LoadChildSessionsAsync();
+    }
+
     internal void ToggleGitViewer()
     {
         ViewModel.GitVisible = !ViewModel.GitVisible;
@@ -405,6 +412,8 @@ public sealed partial class ProjectWorkspace : UserControl
     {
         if (item.File is { } file)
             await ViewModel.SelectExplorerFileAsync(file);
+        else if (item.ChildSession is { } child)
+            await ViewModel.SelectChildSessionAsync(child);
         else if (item.Session is { } session)
             await ViewModel.SelectSessionAsync(session);
     }

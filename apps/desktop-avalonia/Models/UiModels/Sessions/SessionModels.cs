@@ -11,18 +11,16 @@ namespace SunCode.Desktop.Models;
 public sealed record SessionItem(string SessionId, string Title, string LastActivityAt, bool IsPinned, string AgentState = "idle", string ModelId = "", string ReasoningEffort = "")
 {
     public string DisplayTitle => string.IsNullOrWhiteSpace(Title) ? "Untitled session" : Title;
-    public string RelativeActivity
+    public string RelativeActivity => RelativeActivityFor(LastActivityAt);
+    internal static string RelativeActivityFor(string value)
     {
-        get
-        {
-            if (!DateTimeOffset.TryParse(LastActivityAt, out var timestamp)) return "No activity yet";
+            if (!DateTimeOffset.TryParse(value, out var timestamp)) return "No activity yet";
             var elapsed = DateTimeOffset.Now - timestamp;
             if (elapsed.TotalMinutes < 1) return "Just now";
             if (elapsed.TotalHours < 1) return $"{(int)elapsed.TotalMinutes}m ago";
             if (elapsed.TotalDays < 1) return $"{(int)elapsed.TotalHours}h ago";
             if (elapsed.TotalDays < 7) return $"{(int)elapsed.TotalDays}d ago";
             return timestamp.ToString("d");
-        }
     }
     public bool IsRunning => AgentState == "running";
     public bool IsWaitingForApproval => AgentState == "approval";
@@ -68,3 +66,20 @@ public sealed record ModelItem(
 }
 
 public sealed record CredentialItem(string Provider, bool Configured);
+
+public sealed record AgentItem(
+    string Id,
+    string Name,
+    string DisplayName,
+    string Description,
+    long Version,
+    IReadOnlyList<string> AllowedTools,
+    string ModelPolicy,
+    string McpPolicy,
+    bool CanDelegate,
+    uint ToolCallLimit)
+{
+    public string AllowedToolsText => string.Join("  ", AllowedTools);
+    public string DelegateText => CanDelegate ? "Allowed" : "Not allowed";
+    public string ToolLimitText => $"{ToolCallLimit} calls";
+}

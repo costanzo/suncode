@@ -21,6 +21,7 @@ pub const TABLE_NAMES: &[&str] = &[
     "session_tool_use",
     "session_turn",
     "session_turn_todo",
+    "subagent_invocation",
 ];
 
 const SCHEMA_SCRIPTS: &[&str] = &[
@@ -40,6 +41,7 @@ const SCHEMA_SCRIPTS: &[&str] = &[
     include_str!("schema/llm_model_provider.sql"),
     include_str!("schema/llm_model.sql"),
     include_str!("schema/mcp_server.sql"),
+    include_str!("schema/subagent_invocation.sql"),
 ];
 
 const DATA_SCRIPTS: &[&str] = &[

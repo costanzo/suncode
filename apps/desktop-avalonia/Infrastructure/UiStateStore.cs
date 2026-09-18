@@ -14,6 +14,8 @@ internal sealed class UiSettingsState
     public string Page { get; set; } = "defaults";
     public string? ProviderId { get; set; }
     public bool ProvidersExpanded { get; set; } = true;
+    public string? AgentId { get; set; }
+    public bool AgentsExpanded { get; set; } = true;
 }
 
 internal sealed class UiProjectState
@@ -41,6 +43,7 @@ internal sealed class UiRecentContentState
 {
     public string Kind { get; set; } = string.Empty;
     public string? SessionId { get; set; }
+    public string? ParentSessionId { get; set; }
     public string? DependencyId { get; set; }
     public string? Path { get; set; }
     public DateTimeOffset LastViewedAt { get; set; }

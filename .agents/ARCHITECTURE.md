@@ -75,6 +75,8 @@ This internal boundary is for auditability and testing. It is not a child-proces
 
 One agent instance exists per data directory. Its host process acquires a single-instance lock, opens and initializes the current SQLite schema, reconciles interrupted local work, and retains the SDK handle until shutdown. It does not bind a client-facing socket, create an agent credential, or publish an endpoint discovery record.
 
+The Rust core contains one immutable catalog of six built-in specialist definitions. A primary session may invoke the core-owned `delegate_agent` conversation tool, which creates one linked child session and a durable invocation correlation. Child sessions inherit project, model, and reasoning effort, advertise only their role allowlist, revalidate every tool call, cannot use MCP or `question`, and cannot delegate again. They are inspection and authority surfaces for SDK clients, not independent user conversations. Parent cancellation propagates to an active child; pending child approvals resume through the ordinary durable approval path.
+
 The Avalonia client embeds and opens the agent, fetches a session snapshot, then receives live events through a direct subscription. A lagged subscription or reconnect reloads the normalized snapshot and never treats client cache as authoritative. A second process cannot attach to an active agent; replacement IPC requires a new architectural decision.
 
 ## 5. SDK Contract
@@ -99,21 +101,26 @@ SQLite keeps separate durable concerns:
 
 - normalized authority and operation outcomes in the owning session/tool rows
 - normalized rows in `project`, `session`, turn, model-call, tool-use, message, approval, and checkpoint tables
+- durable `subagent_invocation` rows correlating parent turn/tool calls with child sessions and their terminal or approval-suspended outcome
 - ephemeral live streaming deltas that are broadcast to connected clients but not retained
 - durable turn admission and approval continuation
 - scoped settings and plaintext provider-key records
 
-The Phase 1 database has one current 15-table schema and no schema versions or general migration runner. The `suncode-database` package owns backend resources, with SQLite scripts and file setup under `suncode-database::sqlite`; the `suncode-data` package owns Diesel connections, ORM declarations, persistence DTOs, and operations. Initialization applies the database package's ordered schema/data manifests in one transaction. Initialization may add the current empty `project_dependency` table to an otherwise-current 13-table database; unexpected or structurally incompatible databases remain rejected without conversion. `project` is the project identity table, and `project_dependency` stores its registered read-only source roots. `session` is the conversation root; `session_turn` is the single turn/submission/recovery record, `session_turn_todo` is the authoritative current todo projection keyed by turn and ordinal, `session_call` stores each LLM request plus independently nullable provider HTTP request and response-object identifiers, `session_tool_use` exclusively stores tool requests/results and state, and `session_message` stores user, assistant, and thinking messages. Provider context derives transient tool-role messages from succeeded tool-use rows. `configuration` owns global/project/session key-value overlays, including global logging policy. Human-readable messages are ordered by timestamp. Agent event payloads are not duplicated in SQLite; SDK snapshots read normalized rows and live subscribers resync after lag.
+The Phase 1 database has one current 17-table schema and no schema versions or general migration runner. The `suncode-database` package owns backend resources, with SQLite scripts and file setup under `suncode-database::sqlite`; the `suncode-data` package owns Diesel connections, ORM declarations, persistence DTOs, and operations. Initialization applies the database package's ordered schema/data manifests in one transaction. Narrow additive compatibility steps cover the earlier MCP table and the current `subagent_invocation` plus session classification columns; unexpected or structurally incompatible databases remain rejected without conversion. `project` is the project identity table, and `project_dependency` stores its registered read-only source roots. `session` is the conversation root; `subagent_invocation` correlates primary turns with delegated child sessions; `session_turn` is the single turn/submission/recovery record; `session_turn_todo` is the authoritative current todo projection keyed by turn and ordinal; `session_call` stores each LLM request plus independently nullable provider HTTP request and response-object identifiers; `session_tool_use` exclusively stores tool requests/results and state; and `session_message` stores user, assistant, and thinking messages. Provider context derives transient tool-role messages from succeeded tool-use rows. `configuration` owns global/project/session key-value overlays, including global logging policy. Human-readable messages are ordered by timestamp. Agent event payloads are not duplicated in SQLite; SDK snapshots read normalized rows and live subscribers resync after lag.
 
 ## 8. Authority Model
 
 Every tool call is validated, assigned a declared risk, evaluated by policy, and audited before execution. Read-only project inspection is allowed by the interactive default. Writes, process execution, network use outside the configured provider, secret access, destructive operations, and external paths require an explicit grant or user approval. Non-interactive execution fails closed without a matching profile grant.
+
+Built-in agent tool lists are capability ceilings, not authority grants. Child calls still pass the same validation, project scope, policy, approval, audit, checkpoint, and operation dispatcher as primary calls. Unknown or disallowed tools fail before policy evaluation.
 
 Approval precedes execution. Approval requests and suspended continuations are durable and single-use. A restart may reconcile an operation with a durable idempotency record but must not blindly replay a provider call with unknown completion.
 
 ## 9. Reversibility and Recovery
 
 Filesystem mutations capture pre-image checkpoints before changing disk. A turn-level manifest is the desktop undo unit and restores items in reverse operation order with post-image conflict checks. Process operations report the isolation actually enforced on the current platform; filtered environment or project-scoped working directory must never be described as network or OS sandboxing.
+
+Delegated child mutations currently produce child-session checkpoint manifests. The parent turn's undo manifest does not aggregate them, and clients must not claim that parent-turn undo covers delegated changes.
 
 Process execution has two explicit semantics: structured program-plus-argv execution never invokes a shell implicitly, while shell-script execution selects the documented host dialect (Windows PowerShell on Windows and POSIX `sh` on macOS/Linux). Both pass through the same policy and audited dispatcher. Shell syntax is platform-specific and is never translated between dialects.
 

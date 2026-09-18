@@ -14,7 +14,7 @@ const guide = {
     actions: [
       "Select a delegated session from the right panel to open its read-only detail in the central region.",
       "Use Back to main session or the ContentSwitcher to return to the parent conversation.",
-      "Resolve a child approval from the parent session's Review panel; the child detail never exposes a composer or direct reply action.",
+      "Resolve a child machine-operation approval inline with Allow once or Deny; the detail never exposes a composer or direct reply action.",
     ],
     style: [
       "The right panel reuses the 312px supporting-bay geometry and the same compact row rhythm as Sessions.",

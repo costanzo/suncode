@@ -27,7 +27,13 @@ impl AgentSdk {
     }
 
     pub fn rename_session(&self, session_id: &str, title: &str) -> SdkResult<SessionRecord> {
-        self.session_for_user(session_id)?;
+        let session = self.session_for_user(session_id)?;
+        if session.kind != "primary" {
+            return Err(BusinessError::new(
+                "child_session_read_only",
+                "child sessions cannot be renamed",
+            ));
+        }
         if title.trim().is_empty() {
             return Err(BusinessError::invalid("title is required"));
         }
@@ -35,17 +41,35 @@ impl AgentSdk {
     }
 
     pub fn archive_session(&self, session_id: &str) -> SdkResult<SessionRecord> {
-        self.session_for_user(session_id)?;
+        let session = self.session_for_user(session_id)?;
+        if session.kind != "primary" {
+            return Err(BusinessError::new(
+                "child_session_read_only",
+                "child sessions follow their parent lifecycle",
+            ));
+        }
         self.state.store.set_session_archived(session_id, true)
     }
 
     pub fn set_session_pinned(&self, session_id: &str, pinned: bool) -> SdkResult<SessionRecord> {
-        self.session_for_user(session_id)?;
+        let session = self.session_for_user(session_id)?;
+        if session.kind != "primary" {
+            return Err(BusinessError::new(
+                "child_session_read_only",
+                "child sessions cannot be pinned",
+            ));
+        }
         self.state.store.set_session_pinned(session_id, pinned)
     }
 
     pub fn reopen_session(&self, session_id: &str) -> SdkResult<SessionRecord> {
-        self.session_for_user(session_id)?;
+        let session = self.session_for_user(session_id)?;
+        if session.kind != "primary" {
+            return Err(BusinessError::new(
+                "child_session_read_only",
+                "child sessions follow their parent lifecycle",
+            ));
+        }
         self.state.store.set_session_archived(session_id, false)
     }
 

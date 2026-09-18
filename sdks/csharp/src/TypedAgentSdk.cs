@@ -126,6 +126,12 @@ public sealed partial class AgentSdk
     public Task<SessionsResult> ListSessionsAsync(string projectId) =>
         Typed<SessionsResult>(RawListSessionsAsync(projectId));
 
+    public Task<AgentsResult> ListAgentsAsync() =>
+        Typed<AgentsResult>(RawListAgentsAsync());
+
+    public Task<ChildSessionsResult> ListChildSessionsAsync(string parentSessionId) =>
+        Typed<ChildSessionsResult>(RawListChildSessionsAsync(parentSessionId));
+
     public Task<SessionRecord> CreateSessionAsync(CreateSessionRequest request) =>
         Typed<SessionRecord>(RawCreateSessionAsync(request.ProjectId, request.Title, request.Model));
 

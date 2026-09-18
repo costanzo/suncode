@@ -228,6 +228,10 @@ public sealed record SessionRecord(
     string? Title,
     string? ModelId,
     string? ReasoningEffort,
+    string Kind,
+    string? ParentSessionId,
+    string? AgentId,
+    long? AgentVersion,
     string Status,
     string CreatedAt,
     string UpdatedAt,
@@ -239,6 +243,44 @@ public sealed record SessionsResult(
     [property: JsonPropertyName("project_id")] string ProjectId,
     IReadOnlyList<SessionRecord> Sessions,
     [property: JsonPropertyName("sessionStates")] IReadOnlyDictionary<string, string> SessionStates);
+
+public sealed record BuiltinAgent(
+    string Id,
+    string Name,
+    string DisplayName,
+    string Description,
+    long Version,
+    IReadOnlyList<string> AllowedTools,
+    string ModelPolicy,
+    string McpPolicy,
+    bool CanDelegate,
+    uint ToolCallLimit);
+
+public sealed record AgentsResult(IReadOnlyList<BuiltinAgent> Agents);
+
+public sealed record SubagentInvocation(
+    string InvocationId,
+    string ParentSessionId,
+    string ParentTurnId,
+    string ParentToolCallId,
+    string ChildSessionId,
+    string AgentId,
+    long AgentVersion,
+    JsonElement Task,
+    JsonElement AllowedTools,
+    string ModelId,
+    string State,
+    JsonElement? Result,
+    string? ErrorCode,
+    string CreatedAt,
+    string? StartedAt,
+    string? CompletedAt);
+
+public sealed record ChildSessionsResult(
+    string ParentSessionId,
+    IReadOnlyList<SessionRecord> Sessions,
+    IReadOnlyDictionary<string, string> SessionStates,
+    IReadOnlyList<SubagentInvocation> Invocations);
 
 public sealed record SessionImage(
     string ImageId,

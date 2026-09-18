@@ -42,12 +42,37 @@ public sealed class SdkTypedModelTests
         Assert.Equal("project-1", project.ProjectId);
         Assert.Equal("Project", project.DisplayName);
 
-        const string sessionJson = "{\"sessionId\":\"session-1\",\"projectId\":\"project-1\",\"title\":\"Chat\",\"modelId\":\"gpt-5.5\",\"reasoningEffort\":\"high\",\"status\":\"active\",\"createdAt\":\"now\",\"updatedAt\":\"now\",\"lastActivityAt\":\"now\",\"archivedAt\":null,\"pinAt\":null}";
+        const string sessionJson = "{\"sessionId\":\"session-1\",\"projectId\":\"project-1\",\"title\":\"Chat\",\"modelId\":\"gpt-5.5\",\"reasoningEffort\":\"high\",\"kind\":\"primary\",\"parentSessionId\":null,\"agentId\":null,\"agentVersion\":null,\"status\":\"active\",\"createdAt\":\"now\",\"updatedAt\":\"now\",\"lastActivityAt\":\"now\",\"archivedAt\":null,\"pinAt\":null}";
         var session = JsonSerializer.Deserialize<SessionRecord>(sessionJson, Options);
 
         Assert.NotNull(session);
         Assert.Equal("gpt-5.5", session.ModelId);
         Assert.Equal("high", session.ReasoningEffort);
+        Assert.Equal("primary", session.Kind);
+    }
+
+    [Fact]
+    public void Deserializes_built_in_agent_and_child_session_contracts()
+    {
+        const string agentsJson = """
+            {"agents":[{"id":"builtin.swe.v1","name":"swe-agent","displayName":"Software Engineering Agent","description":"Implements software changes.","version":1,"allowedTools":["read","write"],"modelPolicy":"Inherits parent session model","mcpPolicy":"Not allowed","canDelegate":false,"toolCallLimit":64}]}
+            """;
+        var agents = JsonSerializer.Deserialize<AgentsResult>(agentsJson, Options);
+
+        var agent = Assert.Single(Assert.IsType<AgentsResult>(agents).Agents);
+        Assert.Equal("swe-agent", agent.Name);
+        Assert.False(agent.CanDelegate);
+        Assert.Equal((uint)64, agent.ToolCallLimit);
+
+        const string childrenJson = """
+            {"parentSessionId":"parent-1","sessions":[{"sessionId":"child-1","projectId":"project-1","title":"Implement","modelId":"gpt-5.5","reasoningEffort":"high","kind":"child","parentSessionId":"parent-1","agentId":"builtin.swe.v1","agentVersion":1,"status":"active","createdAt":"created","updatedAt":"updated","lastActivityAt":"updated","archivedAt":null,"pinAt":null}],"sessionStates":{"child-1":"approval"},"invocations":[{"invocationId":"invocation-1","parentSessionId":"parent-1","parentTurnId":"turn-1","parentToolCallId":"call-1","childSessionId":"child-1","agentId":"builtin.swe.v1","agentVersion":1,"task":{"text":"Implement"},"allowedTools":["read","write"],"modelId":"gpt-5.5","state":"awaiting_approval","result":{"approvalId":"approval-1"},"errorCode":null,"createdAt":"created","startedAt":"started","completedAt":null}]}
+            """;
+        var children = JsonSerializer.Deserialize<ChildSessionsResult>(childrenJson, Options);
+
+        Assert.NotNull(children);
+        Assert.Equal("child", Assert.Single(children.Sessions).Kind);
+        Assert.Equal("awaiting_approval", Assert.Single(children.Invocations).State);
+        Assert.Equal("approval", children.SessionStates["child-1"]);
     }
 
     [Fact]

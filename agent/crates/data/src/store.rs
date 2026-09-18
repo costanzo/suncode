@@ -108,6 +108,18 @@ fn initialize(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
                 )
                 .map_err(crate::database_error)?;
         }
+        if !schema::session_includes_subagent_columns(connection)? {
+            connection
+                .batch_execute(
+                    "ALTER TABLE session ADD COLUMN kind TEXT NOT NULL DEFAULT 'primary'; ALTER TABLE session ADD COLUMN parent_session_id TEXT; ALTER TABLE session ADD COLUMN agent_id TEXT; ALTER TABLE session ADD COLUMN agent_version INTEGER;",
+                )
+                .map_err(crate::database_error)?;
+        }
+        connection
+            .batch_execute(
+                "CREATE INDEX IF NOT EXISTS session_parent_activity_idx ON session(parent_session_id,status,last_activity_at DESC,session_id);",
+            )
+            .map_err(crate::database_error)?;
         let actual = schema::table_names(connection)?;
         if actual.iter().map(String::as_str).collect::<Vec<_>>() != sqlite::TABLE_NAMES {
             return Err(BusinessError::invalid(format!(

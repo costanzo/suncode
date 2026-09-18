@@ -12,6 +12,7 @@ Turn submission supports a compatibility text-only method and an attachment-awar
 - The provider receives canonical messages, host platform/shell context, and a bounded project-root `AGENTS.md` system message on every request. Successful project reads can attach unseen nested instructions, nearest-first, within bounded size and depth limits.
 - The model-facing catalog contains exactly `read`, `glob`, `grep`, `question`, `todowrite`, `write`, `edit`, `bash`, and `webfetch`. Invalid or malformed arguments are recoverable tool failures; authorization, approval, and agent failures remain terminal.
 - `question` durably suspends a turn for one to eight structured prompts and resumes or rejects it through the SDK. `todowrite` replaces up to 100 prioritized items, allowing at most one `in_progress` item, and projects the current list in normalized turn snapshots.
+- Primary turns may use `delegate_agent` to run one of six immutable Rust-defined specialists. Each invocation creates a linked child session with a role-specific built-in tool allowlist, no MCP, no questions, and no nested delegation.
 
 ## Providers and settings
 

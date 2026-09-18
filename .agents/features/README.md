@@ -13,6 +13,7 @@ Do not duplicate architecture, protocol, or migration history here.
 ## Current capabilities
 
 - [`agent-phase-1/`](agent-phase-1/README.md): embedded Rust agent loop, providers, policy, approvals, recovery, and SDK behavior.
+- [`built-in-subagents/`](built-in-subagents/README.md): fixed specialist catalog, restricted delegation, linked child sessions, and desktop inspection.
 - [`rust-core-phase-1/`](rust-core-phase-1/README.md): audited filesystem, search, Git, process, artifact, checkpoint, and WebFetch operations.
 - [`persistence-phase-1/`](persistence-phase-1/README.md): current SQLite ownership, normalized storage model, and native SDK boundary.
 - [`avalonia-desktop-phase-1/`](avalonia-desktop-phase-1/README.md): implemented .NET 10 Avalonia workflows and client boundary.

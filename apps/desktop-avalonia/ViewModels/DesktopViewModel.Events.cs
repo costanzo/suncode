@@ -54,6 +54,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             ConnectionState = "connected";
             StatusText = "Connected to local agent";
             await LoadModelsAsync();
+            await LoadAgentsAsync();
             await LoadSettingsAsync();
             await LoadCredentialsAsync();
             await LoadProjectsAsync();

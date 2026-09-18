@@ -219,6 +219,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     public async Task SelectSessionAsync(SessionItem session)
     {
+        ClearSelectedChildSession();
         CloseEditor();
         var enteringSession = SelectedSession?.SessionId != session.SessionId;
         var operationId = Guid.NewGuid().ToString("N")[..8];
@@ -315,6 +316,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 LogSession(operationId, sessionId, $"provider_traces.discard reason=stale current={DescribeSessionContext()}");
                 return;
             }
+            await LoadChildSessionsAsync();
+            if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
 
             var subscription = _sdk.SubscribeTyped(sessionId, 0, eventValue => OnNativeEvent(sessionId, eventValue));
             if (!IsCurrentSessionLoad(sessionId, loadVersion))

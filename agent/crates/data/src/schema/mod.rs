@@ -69,6 +69,22 @@ pub(crate) fn session_call_includes_provider_ids(
             .any(|column| column.name == "provider_response_id"))
 }
 
+pub(crate) fn session_includes_subagent_columns(
+    connection: &mut SqliteConnection,
+) -> Result<bool, crate::BusinessError> {
+    #[derive(diesel::QueryableByName)]
+    struct ColumnRow {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        name: String,
+    }
+    let columns = sql_query("PRAGMA table_info(session)")
+        .load::<ColumnRow>(connection)
+        .map_err(crate::database_error)?;
+    Ok(["kind", "parent_session_id", "agent_id", "agent_version"]
+        .iter()
+        .all(|name| columns.iter().any(|column| column.name == *name)))
+}
+
 pub(crate) fn llm_model_provider_includes_default_endpoint(
     connection: &mut SqliteConnection,
 ) -> Result<bool, crate::BusinessError> {

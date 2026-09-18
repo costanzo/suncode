@@ -90,6 +90,7 @@ ffi_no_args!(suncode_agent_sdk_diagnostics, diagnostics);
 ffi_no_args!(suncode_agent_sdk_list_models, list_models);
 ffi_no_args!(suncode_agent_sdk_list_credentials, list_credentials);
 ffi_no_args!(suncode_agent_sdk_list_projects, list_projects);
+ffi_no_args!(suncode_agent_sdk_list_agents, list_agents);
 
 #[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_list_mcp_servers(
@@ -410,6 +411,11 @@ ffi_one_string!(
 );
 ffi_one_string!(suncode_agent_sdk_git_status, git_status, "project_id");
 ffi_one_string!(suncode_agent_sdk_list_sessions, list_sessions, "project_id");
+ffi_one_string!(
+    suncode_agent_sdk_list_child_sessions,
+    list_child_sessions,
+    "parent_session_id"
+);
 ffi_one_string!(
     suncode_agent_sdk_archive_session,
     archive_session,
@@ -855,7 +861,7 @@ mod tests {
 
     #[test]
     fn exposes_the_current_abi_version() {
-        assert_eq!(suncode_agent_sdk_abi_version(), 6);
+        assert_eq!(suncode_agent_sdk_abi_version(), 7);
     }
 
     #[test]

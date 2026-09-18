@@ -92,6 +92,31 @@ impl Agent {
         reasoning_effort: Option<&str>,
         image_ids: &[String],
     ) -> Result<TurnResponse, BusinessError> {
+        self.submit_session(
+            session_id,
+            key,
+            input,
+            model,
+            reasoning_effort,
+            image_ids,
+            false,
+            None,
+        )
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn submit_session(
+        &self,
+        session_id: &str,
+        key: &str,
+        input: &str,
+        model: Option<&str>,
+        reasoning_effort: Option<&str>,
+        image_ids: &[String],
+        allow_child: bool,
+        inherited_token: Option<CancellationToken>,
+    ) -> Result<TurnResponse, BusinessError> {
         let session_lock = self.session_lock(session_id).await;
         let model = match model {
             Some(model) => model.to_string(),
@@ -164,6 +189,19 @@ impl Agent {
             .store
             .session_by_id(session_id)?
             .ok_or_else(|| BusinessError::new("not_found", "session not found"))?;
+        if session.kind == "child" && !allow_child {
+            return Err(BusinessError::new(
+                "child_session_read_only",
+                "child sessions can only be started by the parent agent",
+            ));
+        }
+        let agent_definition = session
+            .agent_id
+            .as_deref()
+            .and_then(crate::agent::builtin_agents::by_id);
+        if session.kind == "child" && agent_definition.is_none() {
+            return Err(BusinessError::new("agent_unavailable", "child session agent is not available"));
+        }
         let session_started_at = session.created_at.clone();
         let project_id = session
             .project_id
@@ -172,10 +210,13 @@ impl Agent {
             .store
             .project_by_id_for_user(&self.user_id, &project_id)?
             .ok_or_else(|| BusinessError::new("not_found", "project not found"))?;
-        let tool_call_limit = self
+        let project_tool_call_limit = self
             .store
             .project_tool_call_limit(&project_id)?
             .unwrap_or(DEFAULT_TOOL_CALL_LIMIT);
+        let tool_call_limit = agent_definition
+            .map(|definition| project_tool_call_limit.min(definition.tool_call_limit))
+            .unwrap_or(project_tool_call_limit);
         let admission = self
             .store
             .begin_turn_with_images(
@@ -201,7 +242,7 @@ impl Agent {
             ));
         }
         self.store.mark_turn_started(session_id, key)?;
-        let token = CancellationToken::new();
+        let token = inherited_token.unwrap_or_default();
         self.cancellations
             .lock()
             .map_err(|_| BusinessError::new("agent_unavailable", "cancellation state unavailable"))?
@@ -215,6 +256,11 @@ impl Agent {
             session_started_at,
             project_id,
             project_root: project.canonical_root,
+            agent_id: session.agent_id.clone(),
+            agent_version: session.agent_version,
+            allowed_tools: agent_definition
+                .map(|definition| definition.allowed_tools.iter().map(|tool| (*tool).to_string()).collect())
+                .unwrap_or_default(),
             turn_id: admission.turn_id.clone(),
             submission_key: key.into(),
             model,
@@ -279,6 +325,27 @@ impl Agent {
             }
         }
         result
+    }
+
+    async fn submit_child(
+        &self,
+        session_id: &str,
+        input: &str,
+        model: &str,
+        reasoning_effort: Option<&str>,
+        parent_token: CancellationToken,
+    ) -> Result<TurnResponse, BusinessError> {
+        self.submit_session(
+            session_id,
+            &Uuid::new_v4().to_string(),
+            input,
+            Some(model),
+            reasoning_effort,
+            &[],
+            true,
+            Some(parent_token),
+        )
+        .await
     }
 
     /// Retry the most recently failed turn in a session using its persisted input.

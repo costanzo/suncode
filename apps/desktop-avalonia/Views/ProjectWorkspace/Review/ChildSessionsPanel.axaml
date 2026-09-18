@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.ProjectWorkspace.Review.ChildSessionsPanel"
+             x:DataType="vm:DesktopViewModel">
+  <Border Classes="inspector-card">
+    <Grid Margin="12,14,12,12" RowDefinitions="44,*">
+      <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="3">
+          <TextBlock Text="Child sessions" FontSize="14" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding SessionTitle}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+        <Border Grid.Column="1" Width="22" Height="22" CornerRadius="5" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+          <TextBlock Text="{Binding ChildSessions.Count}" Classes="mono" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </Grid>
+      </Border>
+      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ItemsControl ItemsSource="{Binding ChildSessions}" IsVisible="{Binding HasChildSessions}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="models:ChildSessionItem">
+              <Button Classes="quiet" MinHeight="68" Padding="6,7" HorizontalContentAlignment="Stretch" CommandParameter="{Binding}" Click="SelectChildSession">
+                <Grid ColumnDefinitions="28,8,*,12">
+                  <Border Width="28" Height="28" CornerRadius="6" Background="{DynamicResource SurfaceAccentBrush}" VerticalAlignment="Center">
+                    <svg:Svg Width="14" Height="14" Path="/Assets/icons/agent.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding AgentDisplayName}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <TextBlock Text="{Binding StateText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+                      <TextBlock Text="·" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+                      <TextBlock Text="{Binding RelativeActivity}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+                    </StackPanel>
+                  </StackPanel>
+                  <svg:Svg Grid.Column="3" Width="12" Height="12" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+      <StackPanel Grid.Row="1" Margin="16,60" Spacing="7" HorizontalAlignment="Center" IsVisible="{Binding !HasChildSessions}">
+        <svg:Svg Width="22" Height="22" Path="/Assets/icons/agent.svg" Css="{DynamicResource IconSvgCss}" />
+        <TextBlock Text="No child sessions yet" FontSize="12" FontWeight="SemiBold" />
+        <TextBlock Text="They appear when the main agent delegates work." MaxWidth="220" FontSize="10" TextAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

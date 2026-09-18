@@ -24,6 +24,14 @@ struct Row {
     #[diesel(sql_type = Nullable<Text>)]
     reasoning_effort: Option<String>,
     #[diesel(sql_type = Text)]
+    kind: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    parent_session_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    agent_id: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Integer>)]
+    agent_version: Option<i32>,
+    #[diesel(sql_type = Text)]
     status: String,
     #[diesel(sql_type = Text)]
     created_at: String,
@@ -41,7 +49,7 @@ pub(crate) fn by_id(
     c: &mut SqliteConnection,
     id: &str,
 ) -> Result<Option<SessionRecord>, BusinessError> {
-    sql_query("SELECT session_id,project_id,title,model_id,reasoning_effort,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE session_id=?")
+    sql_query("SELECT session_id,project_id,title,model_id,reasoning_effort,kind,parent_session_id,agent_id,agent_version,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE session_id=?")
         .bind::<Text, _>(id).get_result::<Row>(c).optional().map_err(crate::database_error)?.map(to_record).transpose()
 }
 
@@ -52,6 +60,10 @@ fn to_record(row: Row) -> Result<SessionRecord, BusinessError> {
         title: row.title,
         model_id: row.model_id,
         reasoning_effort: row.reasoning_effort,
+        kind: row.kind,
+        parent_session_id: row.parent_session_id,
+        agent_id: row.agent_id,
+        agent_version: row.agent_version.map(i64::from),
         status: row.status,
         created_at: row.created_at,
         updated_at: row.updated_at,
@@ -88,7 +100,7 @@ impl Store {
         }
         let id = Uuid::new_v4().to_string();
         let timestamp = now();
-        sql_query("INSERT INTO session(session_id,project_id,title,model_id,reasoning_effort,status,created_at,updated_at,last_activity_at,pin_at,archived_at) VALUES (?,?,?,?,?,?,?,?,?,NULL,NULL)")
+        sql_query("INSERT INTO session(session_id,project_id,title,model_id,reasoning_effort,kind,parent_session_id,agent_id,agent_version,status,created_at,updated_at,last_activity_at,pin_at,archived_at) VALUES (?,?,?,?,?,'primary',NULL,NULL,NULL,?,?,?,?,NULL,NULL)")
             .bind::<Text, _>(&id)
             .bind::<Text, _>(project_id)
             .bind::<Nullable<Text>, _>(title)
@@ -101,6 +113,38 @@ impl Store {
             .execute(&mut *connection)
             .map_err(crate::database_error)?;
         by_id(&mut connection, &id)?.ok_or_else(|| BusinessError::invalid("session was not stored"))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_child_session(
+        &self,
+        project_id: &str,
+        parent_session_id: &str,
+        agent_id: &str,
+        agent_version: i64,
+        title: &str,
+        model_id: &str,
+    ) -> Result<SessionRecord, BusinessError> {
+        let mut connection = lock(&self.connection)?;
+        let id = Uuid::new_v4().to_string();
+        let timestamp = now();
+        sql_query("INSERT INTO session(session_id,project_id,title,model_id,reasoning_effort,kind,parent_session_id,agent_id,agent_version,status,created_at,updated_at,last_activity_at,pin_at,archived_at) VALUES (?,?,?,?,?,'child',?,?,?,?,?,?,?,NULL,NULL)")
+            .bind::<Text,_>(&id)
+            .bind::<Text,_>(project_id)
+            .bind::<Nullable<Text>,_>(Some(title))
+            .bind::<Nullable<Text>,_>(Some(model_id))
+            .bind::<Nullable<Text>,_>(None::<&str>)
+            .bind::<Text,_>(parent_session_id)
+            .bind::<Text,_>(agent_id)
+            .bind::<Nullable<diesel::sql_types::Integer>,_>(Some(i32::try_from(agent_version).map_err(|_| BusinessError::invalid("agent version is invalid"))?))
+            .bind::<Text,_>("active")
+            .bind::<Text,_>(&timestamp)
+            .bind::<Text,_>(&timestamp)
+            .bind::<Text,_>(&timestamp)
+            .execute(&mut *connection)
+            .map_err(crate::database_error)?;
+        by_id(&mut connection, &id)?
+            .ok_or_else(|| BusinessError::invalid("child session was not stored"))
     }
 
     pub fn session_by_id(&self, id: &str) -> Result<Option<SessionRecord>, BusinessError> {
@@ -137,12 +181,26 @@ impl Store {
     ) -> Result<Vec<SessionRecord>, BusinessError> {
         let mut connection = lock(&self.connection)?;
         let sql = if include_archived {
-            "SELECT session_id,project_id,title,model_id,reasoning_effort,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE project_id=? ORDER BY (pin_at IS NOT NULL) DESC,pin_at DESC,last_activity_at DESC,session_id"
+            "SELECT session_id,project_id,title,model_id,reasoning_effort,kind,parent_session_id,agent_id,agent_version,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE project_id=? AND kind='primary' ORDER BY (pin_at IS NOT NULL) DESC,pin_at DESC,last_activity_at DESC,session_id"
         } else {
-            "SELECT session_id,project_id,title,model_id,reasoning_effort,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE project_id=? AND status='active' ORDER BY (pin_at IS NOT NULL) DESC,pin_at DESC,last_activity_at DESC,session_id"
+            "SELECT session_id,project_id,title,model_id,reasoning_effort,kind,parent_session_id,agent_id,agent_version,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE project_id=? AND kind='primary' AND status='active' ORDER BY (pin_at IS NOT NULL) DESC,pin_at DESC,last_activity_at DESC,session_id"
         };
         sql_query(sql)
             .bind::<Text, _>(project_id)
+            .load::<Row>(&mut *connection)
+            .map_err(crate::database_error)?
+            .into_iter()
+            .map(to_record)
+            .collect()
+    }
+
+    pub fn child_sessions_for_parent(
+        &self,
+        parent_session_id: &str,
+    ) -> Result<Vec<SessionRecord>, BusinessError> {
+        let mut connection = lock(&self.connection)?;
+        sql_query("SELECT session_id,project_id,title,model_id,reasoning_effort,kind,parent_session_id,agent_id,agent_version,status,created_at,updated_at,last_activity_at,pin_at,archived_at FROM session WHERE parent_session_id=? ORDER BY created_at DESC,session_id")
+            .bind::<Text,_>(parent_session_id)
             .load::<Row>(&mut *connection)
             .map_err(crate::database_error)?
             .into_iter()

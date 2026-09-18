@@ -167,6 +167,12 @@ public sealed partial class AgentSdk : IDisposable
     private Task<JsonElement> RawListSessionsAsync(string projectId) => WithUtf8Async(
         [projectId], values => NativeMethods.suncode_agent_sdk_list_sessions(_handle, values[0]));
 
+    private Task<JsonElement> RawListAgentsAsync() => CallAsync(
+        handle => NativeMethods.suncode_agent_sdk_list_agents(handle));
+
+    private Task<JsonElement> RawListChildSessionsAsync(string parentSessionId) => WithUtf8Async(
+        [parentSessionId], values => NativeMethods.suncode_agent_sdk_list_child_sessions(_handle, values[0]));
+
     private Task<JsonElement> RawCreateSessionAsync(string projectId, string? title, string? model) => WithNullableUtf8Async(
         [projectId, title, model],
         values => NativeMethods.suncode_agent_sdk_create_session(_handle, values[0], values[1], values[2]));

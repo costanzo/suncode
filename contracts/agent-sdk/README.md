@@ -24,6 +24,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `health` | Read agent and database health |
 | `diagnostics` | Read redacted agent, recovery, credential, and active-project diagnostics |
 | `list_models` | List stable models and credential-derived availability |
+| `list_agents` | List the six immutable Rust-defined specialist agents and their exact tool policies |
 | `list_settings` | Read effective non-secret settings with scope provenance |
 | `set_setting` | Store one global, project, or session configuration value |
 | `set_proxy_configuration` | Atomically store global proxy mode, endpoint, credentials, and bypass rules while returning only redacted password state |
@@ -50,6 +51,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `git_status` | Read the bounded Git index/worktree status and aggregate change counts for a project |
 | `git_diff_file` | Read one bounded structured file diff for the all, staged, or unstaged scope |
 | `list_sessions` | List active sessions in a project, including the persisted model and reasoning-effort preference |
+| `list_child_sessions` | List delegated child sessions and invocation state for one primary session |
 | `create_session` | Create a session with an optional title and selected model |
 | `rename_session` | Rename a session |
 | `archive_session` | Recoverably archive a session |
@@ -76,6 +78,12 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `subscribe_session` | Deliver subsequent live events; lagged subscribers must reload `session_snapshot` |
 
 Rust-generated project, session, turn, approval, checkpoint, event, and message identifiers remain authoritative. Hosts do not manufacture IDs except idempotency keys.
+
+The built-in agent catalog contains `architect-agent`, `ui-ux-agent`, `product-agent`, `swe-agent`, `qa-agent`, and `sre-agent`. Definitions are compiled into Rust and expose a stable ID, unique machine name, display name, description, definition version, exact built-in tool allowlist, model policy, MCP policy, delegation policy, and tool-call limit. There is no create, update, enable, reorder, or delete method for this catalog.
+
+Only a primary agent turn may invoke the core-owned `delegate_agent` conversation tool. Every invocation creates a new `kind=child` session linked to its primary parent and one durable `subagent_invocation` row. Child sessions inherit project, model, and reasoning effort; their effective tool-call limit is the smaller of the project limit and the built-in agent limit. They receive only their built-in allowlist, never MCP, `question`, or `delegate_agent`, and execution revalidates every returned call. Public submission, retry, rename, pin, archive, and reopen calls reject child sessions. Snapshot, usage, provider-trace, approval, and event read paths remain available so clients can inspect and authorize delegated work.
+
+Delegation depth is one. Parent cancellation shares its cancellation token with an active child turn. A child approval suspends only the child continuation and updates the invocation to `awaiting_approval`; resolving it through the normal approval API resumes the child and eventually writes `completed`, `failed`, `cancelled`, or another `awaiting_approval` state. The parent turn may finish after receiving the awaiting result. Child checkpoints remain owned by the child session, so this contract does not claim parent-turn undo includes child mutations.
 
 MCP definitions are global desired state. Live clients and runtime states are keyed by server and project; `list_mcp_servers` accepts an optional project ID and reports `not_started`, `disabled`, `connecting`, `connected`, or `failed`. Project activation is explicit: `start_mcp_project` schedules enabled server connections in the background and returns immediately; `mcp_load_progress` reports `total`, `settled`, `connected`, `failed`, and `loading`. Read DTOs include only configured environment/header key names, never values. Create derives a stable opaque server ID from its idempotency key. Update, enable, and delete require both an idempotency key and the expected revision. Secret patches use `{ set, remove }`: omitted patches preserve existing values, `set` replaces named values, and `remove` deletes named values.
 

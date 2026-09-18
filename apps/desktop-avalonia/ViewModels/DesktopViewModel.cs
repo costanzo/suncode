@@ -93,6 +93,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private string? _loadedSessionId;
     private bool _navigationVisible = true;
     private bool _reviewVisible = true;
+    private bool _childSessionsVisible;
     private bool _navigationPinned = true;
     private bool _explorerVisible;
     private bool _gitVisible;
@@ -100,6 +101,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private bool _toolActivityVisible;
     private ToolActivityTurnItem? _selectedToolActivityTurn;
     private ToolActivityItem? _selectedToolActivity;
+    private ChildSessionItem? _selectedChildSession;
+    private ApprovalItem? _childPendingApproval;
     private double _layoutWidth = 1440;
     private double _layoutHeight = 900;
     private double _navigationPaneWidth = DefaultNavigationPaneWidth;
@@ -125,6 +128,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             ? efforts
             : ["low", "medium", "high"];
     public ObservableCollection<CredentialItem> Credentials { get; } = [];
+    public ObservableCollection<AgentItem> Agents { get; } = [];
     public ObservableCollection<ComposerAttachment> ComposerAttachments { get; } = [];
     public double ComposerBottomClearance => ComposerAttachments.Count > 0 ? 180 : 128;
     public ObservableCollection<ProjectDependencyItem> ProjectDependencies { get; } = [];
@@ -152,6 +156,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public ObservableCollection<ProviderTraceTurnItem> ProviderTraceTurns { get; } = [];
     public ObservableCollection<ProviderTraceTurnItem> FilteredProviderTraceTurns { get; } = [];
     public ObservableCollection<ToolActivityTurnItem> ToolActivityTurns { get; } = [];
+    public ObservableCollection<ChildSessionItem> ChildSessions { get; } = [];
+    public ObservableCollection<ChildSessionTimelineItem> ChildSessionTimeline { get; } = [];
 
     public ProjectItem? SelectedProject
     {
@@ -399,7 +405,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public long SessionTotalTokens { get => _sessionTotalTokens; private set { if (SetProperty(ref _sessionTotalTokens, value)) OnPropertyChanged(nameof(SessionTokenText)); } }
     public bool NavigationVisible { get => _navigationVisible; set { if (SetProperty(ref _navigationVisible, value)) { NotifyNavigationLayoutChanged(); SaveRegionState(); } } }
     public bool ExplorerVisible { get => _explorerVisible; set { if (SetProperty(ref _explorerVisible, value)) { NotifyNavigationLayoutChanged(); SaveRegionState(); } } }
-    public bool ReviewVisible { get => _reviewVisible; set { if (SetProperty(ref _reviewVisible, value)) { NotifyReviewLayoutChanged(); SaveRegionState(); } } }
+    public bool ReviewVisible { get => _reviewVisible; set { if (SetProperty(ref _reviewVisible, value)) { if (value && _childSessionsVisible) { _childSessionsVisible = false; OnPropertyChanged(nameof(ChildSessionsVisible)); } NotifyReviewLayoutChanged(); SaveRegionState(); } } }
+    public bool ChildSessionsVisible { get => _childSessionsVisible; set { if (SetProperty(ref _childSessionsVisible, value)) { if (value && _reviewVisible) { _reviewVisible = false; OnPropertyChanged(nameof(ReviewVisible)); } NotifyReviewLayoutChanged(); SaveRegionState(); } } }
     public bool NavigationPinned { get => _navigationPinned; set => SetProperty(ref _navigationPinned, value); }
     public bool GitVisible { get => _gitVisible; set { if (SetProperty(ref _gitVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveGitVisible)); SaveRegionState(); } } }
     public bool ProviderTraceVisible { get => _providerTraceVisible; set { if (SetProperty(ref _providerTraceVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveProviderTraceVisible)); SaveRegionState(); } } }
@@ -423,6 +430,29 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(HasSelectedToolActivity));
                 OnPropertyChanged(nameof(SelectedToolActivityTitle));
             }
+        }
+    }
+    public ChildSessionItem? SelectedChildSession
+    {
+        get => _selectedChildSession;
+        private set
+        {
+            if (!SetProperty(ref _selectedChildSession, value)) return;
+            OnPropertyChanged(nameof(IsChildSessionVisible));
+            OnPropertyChanged(nameof(IsConversationVisible));
+            OnPropertyChanged(nameof(IsEditorVisible));
+            OnPropertyChanged(nameof(HasSelectedChildSession));
+            OnPropertyChanged(nameof(ChildSessionTitle));
+            NotifyCurrentContentChanged();
+        }
+    }
+    public ApprovalItem? ChildPendingApproval
+    {
+        get => _childPendingApproval;
+        private set
+        {
+            if (SetProperty(ref _childPendingApproval, value))
+                OnPropertyChanged(nameof(HasChildPendingApproval));
         }
     }
     public double NavigationPaneWidth { get => _navigationPaneWidth; set { if (SetProperty(ref _navigationPaneWidth, value)) { NotifyNavigationLayoutChanged(); SavePanelGeometry(); } } }
@@ -452,7 +482,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool EffectiveNavigationVisible => NavigationVisible && _layoutWidth > NavigationPaneBreakpoint && NavigationPaneWidth >= MinimumNavigationPaneWidth;
     public bool EffectiveSessionSidebarVisible => EffectiveNavigationVisible && !ExplorerVisible;
     public bool EffectiveExplorerSidebarVisible => EffectiveNavigationVisible && ExplorerVisible;
-    public bool EffectiveReviewVisible => ReviewVisible && _layoutWidth > ReviewPaneBreakpoint && ReviewPaneWidth >= MinimumReviewPaneWidth;
+    public bool EffectiveReviewVisible => (ReviewVisible || ChildSessionsVisible) && _layoutWidth > ReviewPaneBreakpoint && ReviewPaneWidth >= MinimumReviewPaneWidth;
+    public bool EffectiveChildSessionsVisible => ChildSessionsVisible && EffectiveReviewVisible;
+    public bool EffectiveReviewInspectorVisible => ReviewVisible && EffectiveReviewVisible;
     public bool EffectiveGitVisible => GitVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
     public bool EffectiveProviderTraceVisible => ProviderTraceVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
     public bool EffectiveToolActivityVisible => ToolActivityVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
@@ -477,6 +509,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool HasFilteredProviderTraces => FilteredProviderTraceTurns.Count > 0;
     public bool HasToolActivityTurns => ToolActivityTurns.Count > 0;
     public bool HasSelectedToolActivity => SelectedToolActivity is not null;
+    public bool HasChildSessions => ChildSessions.Count > 0;
+    public bool HasSelectedChildSession => SelectedChildSession is not null;
+    public bool HasChildPendingApproval => ChildPendingApproval is not null;
+    public bool IsChildSessionVisible => SelectedChildSession is not null;
+    public string ChildSessionTitle => SelectedChildSession?.Title ?? string.Empty;
     public string ToolActivitySummary => $"{ToolActivityTurns.Count} {(ToolActivityTurns.Count == 1 ? "turn" : "turns")} · {ToolActivityTurns.Sum(turn => turn.Tools.Count)} calls";
     public string SelectedToolActivityTitle => SelectedToolActivity is null || SelectedToolActivityTurn is null
         ? "Select a tool call"
@@ -632,6 +669,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private void NotifyReviewLayoutChanged()
     {
         OnPropertyChanged(nameof(EffectiveReviewVisible));
+        OnPropertyChanged(nameof(EffectiveReviewInspectorVisible));
+        OnPropertyChanged(nameof(EffectiveChildSessionsVisible));
         OnPropertyChanged(nameof(ReviewWidth));
         OnPropertyChanged(nameof(ReviewGap));
     }

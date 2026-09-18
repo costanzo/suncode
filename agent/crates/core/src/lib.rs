@@ -11,6 +11,7 @@ pub use agent_lock::AgentLock;
 pub use domain::{
     ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectDependencyRecord,
     ProjectRecord, SessionEvent, SessionImageRecord, SessionRecord, SettingRecord,
+    SubagentInvocationRecord,
 };
 pub use suncode_common::BusinessError;
 pub use suncode_config::Config;

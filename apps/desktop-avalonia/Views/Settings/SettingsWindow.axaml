@@ -121,6 +121,24 @@
                 <TextBlock Grid.Column="1" Text="MCP servers" VerticalAlignment="Center" />
               </Grid>
             </Button>
+            <Button x:Name="AgentsNavigation" Classes="navigation" Click="ShowAgents">
+              <Grid ColumnDefinitions="15,*,13" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/agent.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="Agents" VerticalAlignment="Center" />
+                <svg:Svg x:Name="AgentsChevron" Grid.Column="2" Width="13" Height="13" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" RenderTransformOrigin="50%,50%" />
+              </Grid>
+            </Button>
+            <ItemsControl x:Name="AgentNavigation" Margin="30,0,0,0" ItemsSource="{Binding Agents}">
+              <ItemsControl.Styles><Style Selector="ContentPresenter"><Setter Property="HorizontalContentAlignment" Value="Stretch" /></Style></ItemsControl.Styles>
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:AgentItem">
+                  <Button Classes="navigation provider" Tag="{Binding Id}" Click="ShowAgent" AutomationProperties.Name="{Binding DisplayName, StringFormat=Open {0} agent details}">
+                    <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <Button x:Name="LoggingNavigation" Classes="navigation" Click="ShowLogging">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/assets.svg" Css="{DynamicResource IconSvgCss}" />
@@ -192,6 +210,11 @@
         <settings:LoggingSettingsControl x:Name="LoggingPage" IsVisible="False" />
 
         <settings:McpServersSettingsControl x:Name="McpPage" IsVisible="False" />
+
+        <settings:AgentSettingsControl x:Name="AgentsPage"
+                                       IsVisible="False"
+                                       Agents="{Binding Agents}"
+                                       AgentSelected="AgentSelected" />
 
         <Grid x:Name="ProvidersPage" IsVisible="False">
           <settings:ModelProviderSettingsControl x:Name="ProviderManager"

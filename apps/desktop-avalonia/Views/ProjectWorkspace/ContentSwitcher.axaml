@@ -20,6 +20,12 @@
                  IsHitTestVisible="False" />
         <svg:Svg Width="13"
                  Height="13"
+                 Path="/Assets/icons/agent.svg"
+                 Css="{DynamicResource IconSvgCss}"
+                 IsVisible="{Binding CurrentContentIsChildSession}"
+                 IsHitTestVisible="False" />
+        <svg:Svg Width="13"
+                 Height="13"
                  Path="{Binding CurrentContentIconPath}"
                  Css="{DynamicResource IconSvgCss}"
                  IsVisible="{Binding CurrentContentIsFile}"
@@ -114,6 +120,11 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center" />
                             </Border>
+                            <Border Background="{DynamicResource SurfaceAccentBrush}"
+                                    CornerRadius="6"
+                                    IsVisible="{Binding IsChildSession}">
+                              <svg:Svg Width="14" Height="14" Path="/Assets/icons/agent.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
                           </Grid>
                           <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Title}"
@@ -133,6 +144,12 @@
                                          FontWeight="SemiBold"
                                          Foreground="{DynamicResource ContentFileBrush}"
                                          IsVisible="{Binding IsFile}" />
+                              <TextBlock Text="CHILD SESSION"
+                                         Classes="mono"
+                                         FontSize="9"
+                                         FontWeight="SemiBold"
+                                         Foreground="{DynamicResource TextSecondaryBrush}"
+                                         IsVisible="{Binding IsChildSession}" />
                               <TextBlock Text="·" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
                               <TextBlock Text="{Binding Detail}"
                                          Classes="mono"

@@ -4,7 +4,7 @@ use crate::operations::projection;
 use crate::{
     domain::*,
     rows::RecoveryRow,
-    store::{lock, Store},
+    store::{lock, now, Store},
 };
 use diesel::prelude::*;
 use diesel::sql_query;
@@ -27,6 +27,11 @@ impl Store {
         }
         let mut c = lock(&self.connection)?;
         let rows=sql_query("SELECT turn_id,session_id,submission_idempotency_key AS key,model_id FROM session_turn WHERE state NOT IN ('completed','failed','cancelled','interrupted') AND (recovery_status IS NULL OR recovery_status NOT IN ('pending','resuming'))").load::<Row>(&mut *c).map_err(crate::database_error)?;
+        let timestamp = now();
+        sql_query("UPDATE subagent_invocation SET state='interrupted',error_code='runtime_restarted',completed_at=COALESCE(completed_at,?) WHERE state IN ('created','running')")
+            .bind::<Text,_>(&timestamp)
+            .execute(&mut *c)
+            .map_err(crate::database_error)?;
         drop(c);
         let mut events = Vec::new();
         for r in rows {

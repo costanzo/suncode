@@ -2651,6 +2651,7 @@
   overflow-y: auto;
 }
 .workspace-child-authority-note,
+.workspace-child-approval,
 .workspace-child-failure-note {
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr);
@@ -2659,6 +2660,30 @@
   padding: 10px 11px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+}
+.workspace-child-approval {
+  color: var(--warning);
+  background: var(--warning-surface);
+  border-color: var(--warning-border);
+}
+.workspace-child-approval > div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+.workspace-child-approval strong {
+  color: var(--text);
+  font-size: 12px;
+}
+.workspace-child-approval span {
+  color: var(--text-secondary);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.workspace-child-approval > div > div {
+  display: flex;
+  gap: 8px;
+  margin-top: 5px;
 }
 .workspace-child-detail-meta {
   display: grid;

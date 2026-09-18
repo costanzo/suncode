@@ -6,6 +6,7 @@ mod tests {
         ApiKeyResolver, ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
         OpenAiCompatibleProvider,
     };
+    use std::collections::BTreeSet;
 
     struct TestApiKey;
 
@@ -312,6 +313,35 @@ mod tests {
             .and_then(|message| message.get("content"))
             .and_then(Value::as_str)
             .unwrap_or_default();
+        let advertised_tools = body
+            .get("tools")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|tool| tool.get("function"))
+            .filter_map(|function| function.get("name"))
+            .filter_map(Value::as_str)
+            .collect::<BTreeSet<_>>();
+        let is_child = messages.iter().any(|message| {
+            message.get("role").and_then(Value::as_str) == Some("system")
+                && message
+                    .get("content")
+                    .and_then(Value::as_str)
+                    .is_some_and(|content| content.contains("Software Engineering Agent"))
+        });
+        if user_text == "assert primary tools" {
+            assert!(!is_child);
+            assert!(advertised_tools.contains("delegate_agent"));
+        }
+        if user_text == "assert child tools" {
+            assert!(is_child);
+            assert_eq!(
+                advertised_tools,
+                ["bash", "edit", "glob", "grep", "read", "todowrite", "webfetch", "write"]
+                    .into_iter()
+                    .collect()
+            );
+        }
         let dependency_alias = messages
             .iter()
             .filter(|message| message.get("role").and_then(Value::as_str) == Some("system"))
@@ -327,7 +357,15 @@ mod tests {
         if user_text.contains("slow") {
             tokio::time::sleep(Duration::from_millis(150)).await;
         }
-        let data = if user_text.contains("invalid arguments") && !has_tool_error {
+        let data = if last_role != Some("tool") && user_text == "delegate SWE to assert child tools" {
+            vec![json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"delegate-tools","function":{"name":"delegate_agent","arguments":"{\"agent\":\"swe-agent\",\"task\":\"assert child tools\"}"}}]},"finish_reason":"tool_calls"}]})]
+        } else if last_role != Some("tool") && user_text == "delegate SWE to read" {
+            vec![json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"delegate-read","function":{"name":"delegate_agent","arguments":"{\"agent\":\"swe-agent\",\"task\":\"read the file as child\"}"}}]},"finish_reason":"tool_calls"}]})]
+        } else if last_role != Some("tool") && user_text == "delegate SWE to write" {
+            vec![json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"delegate-write","function":{"name":"delegate_agent","arguments":"{\"agent\":\"swe-agent\",\"task\":\"write the file as child\"}"}}]},"finish_reason":"tool_calls"}]})]
+        } else if user_text == "assert primary tools" || user_text == "assert child tools" {
+            vec![json!({"choices":[{"delta":{"content":"tools verified"},"finish_reason":"stop"}],"usage":{"prompt_tokens":4,"completion_tokens":2,"total_tokens":6}})]
+        } else if user_text.contains("invalid arguments") && !has_tool_error {
             vec![
                 json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"invalid-read-call","function":{"name":"read","arguments":"{\"path\":123}"}}]},"finish_reason":"tool_calls"}]}),
             ]
@@ -498,6 +536,88 @@ mod tests {
         assert_eq!(usage["cache_miss_tokens"], 2);
         assert_eq!(usage["cache_write_tokens"], serde_json::Value::Null);
         assert_eq!(usage["reasoning_tokens"], 1);
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn primary_and_child_requests_advertise_their_respective_tool_catalogs() {
+        let (agent, _store, _root, server, session_id) = fixture().await;
+        agent
+            .submit(&session_id, "primary-tools-1", "assert primary tools", None, None)
+            .await
+            .unwrap();
+        agent
+            .submit(
+                &session_id,
+                "child-tools-1",
+                "delegate SWE to assert child tools",
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn delegation_creates_a_linked_child_and_public_submission_is_denied() {
+        let (agent, store, _root, server, session_id) = fixture().await;
+        agent
+            .submit(&session_id, "delegate-read-1", "delegate SWE to read", None, None)
+            .await
+            .unwrap();
+        let invocations = store.subagent_invocations_for_parent(&session_id).unwrap();
+        assert_eq!(invocations.len(), 1);
+        assert_eq!(invocations[0].state, "completed");
+        assert_eq!(invocations[0].agent_id, "builtin.swe.v1");
+        let child = store
+            .session_by_id(&invocations[0].child_session_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(child.kind, "child");
+        assert_eq!(child.parent_session_id.as_deref(), Some(session_id.as_str()));
+        let error = agent
+            .submit(&child.session_id, "direct-child-1", "talk directly", None, None)
+            .await
+            .unwrap_err();
+        assert_eq!(error.code, "child_session_read_only");
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn child_approval_transitions_invocation_to_completion() {
+        let (agent, store, root, server, session_id) = fixture().await;
+        agent
+            .submit(&session_id, "delegate-write-1", "delegate SWE to write", None, None)
+            .await
+            .unwrap();
+        let invocation = store
+            .subagent_invocations_for_parent(&session_id)
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+        assert_eq!(invocation.state, "awaiting_approval");
+        let approval_id = invocation.result.unwrap()["approvalId"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        agent.resolve_approval(&approval_id, "allow_once").await.unwrap();
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+        loop {
+            let invocation = store
+                .subagent_invocations_for_parent(&session_id)
+                .unwrap()
+                .into_iter()
+                .next()
+                .unwrap();
+            if invocation.state == "completed" {
+                break;
+            }
+            assert!(tokio::time::Instant::now() < deadline, "child approval continuation did not complete");
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert_eq!(fs::read_to_string(root.join("README.md")).unwrap(), "updated");
         server.abort();
     }
 

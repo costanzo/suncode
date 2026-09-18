@@ -109,6 +109,14 @@ impl Agent {
                         "approval_required" | "question_required"
                     )
                 });
+                if let Err(error) = agent.persist_child_invocation_outcome(&continuation, &result) {
+                    logging::write_business_error(
+                        "subagent",
+                        "persist_recovery_outcome",
+                        &error,
+                        format!("session={} turn={}", continuation.session_id, continuation.turn_id),
+                    );
+                }
                 let _ = agent.store.finish_suspended(
                     &approval_id,
                     if result.is_ok() || suspended_again {

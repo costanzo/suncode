@@ -54,8 +54,8 @@ public sealed partial class DesktopViewModel
         private set => SetProperty(ref _editorError, value);
     }
 
-    public bool IsEditorVisible => SelectedEditorFile is not null;
-    public bool IsConversationVisible => !IsEditorVisible;
+    public bool IsEditorVisible => SelectedEditorFile is not null && SelectedChildSession is null;
+    public bool IsConversationVisible => SelectedEditorFile is null && SelectedChildSession is null;
     public bool IsEditorLoading => EditorState == "loading";
     public bool IsEditorReady => EditorState == "ready";
     public bool IsEditorEmpty => EditorState == "empty";
@@ -77,6 +77,7 @@ public sealed partial class DesktopViewModel
         var projectId = SelectedProject.ProjectId;
         var loadVersion = Interlocked.Increment(ref _editorLoadVersion);
         SelectedEditorFile = node;
+        ClearSelectedChildSession();
         RememberRecentFile(node);
         EditorContent = string.Empty;
         EditorError = string.Empty;

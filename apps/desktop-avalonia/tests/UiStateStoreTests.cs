@@ -19,6 +19,8 @@ public sealed class UiStateStoreTests
                     settings.Page = "appearance";
                     settings.ProviderId = "openai";
                     settings.ProvidersExpanded = false;
+                    settings.AgentId = "builtin.swe.v1";
+                    settings.AgentsExpanded = true;
                 });
                 store.UpdateProject("project-1", project =>
                 {
@@ -28,6 +30,7 @@ public sealed class UiStateStoreTests
                     project.WindowX = 12;
                     project.WindowWidth = 1200;
                     project.RecentContent.Add(new UiRecentContentState { Kind = "file", Path = "src/Main.cs" });
+                    project.RecentContent.Add(new UiRecentContentState { Kind = "child-session", SessionId = "child-1", ParentSessionId = "parent-1" });
                 });
                 store.Flush();
             }
@@ -36,12 +39,15 @@ public sealed class UiStateStoreTests
             Assert.Equal("appearance", reloaded.Settings.Page);
             Assert.Equal("openai", reloaded.Settings.ProviderId);
             Assert.False(reloaded.Settings.ProvidersExpanded);
+            Assert.Equal("builtin.swe.v1", reloaded.Settings.AgentId);
+            Assert.True(reloaded.Settings.AgentsExpanded);
             var project = reloaded.Project("project-1");
             Assert.Equal("explorer", project.LeftRegion);
             Assert.Equal("closed", project.RightRegion);
             Assert.Equal("toolActivity", project.BottomDrawer);
             Assert.Equal(1200, project.WindowWidth);
-            Assert.Single(project.RecentContent);
+            Assert.Equal(2, project.RecentContent.Count);
+            Assert.Equal("parent-1", project.RecentContent[1].ParentSessionId);
         }
         finally
         {

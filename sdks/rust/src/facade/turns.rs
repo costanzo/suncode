@@ -73,7 +73,13 @@ impl AgentSdk {
     }
 
     pub fn retry_last_turn(&self, session_id: &str) -> SdkResult<TurnResponse> {
-        self.session_for_user(session_id)?;
+        let session = self.session_for_user(session_id)?;
+        if session.kind != "primary" {
+            return Err(BusinessError::new(
+                "child_session_read_only",
+                "child sessions cannot be retried directly",
+            ));
+        }
         self.runtime
             .block_on(self.state.agent.retry_last_turn(session_id))
     }
