@@ -1565,8 +1565,8 @@ function ProviderPanel({ providerId, onSave, endpoint, onEndpointChange }) {
 
 export function SettingsPage({ initialPage = "defaults" }) {
   const [page, setPage] = useState(initialPage);
-  const [agentsExpanded, setAgentsExpanded] = useState(true);
-  const [providersExpanded, setProvidersExpanded] = useState(true);
+  const [agentsExpanded, setAgentsExpanded] = useState(false);
+  const [providersExpanded, setProvidersExpanded] = useState(false);
   const [providerEndpoints, setProviderEndpoints] = useState(() =>
     Object.fromEntries(
       Object.entries(providerCatalog).map(([id, provider]) => [id, provider.endpoint]),

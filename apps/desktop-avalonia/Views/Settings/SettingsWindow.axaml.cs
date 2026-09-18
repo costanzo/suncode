@@ -42,8 +42,8 @@ public sealed partial class SettingsWindow : Window
     ];
 
     private bool _ready;
-    private bool _providersExpanded = true;
-    private bool _agentsExpanded = true;
+    private bool _providersExpanded = false;
+    private bool _agentsExpanded = false;
     private string _provider = string.Empty;
     private string _agent = string.Empty;
     private DesktopViewModel? _subscribedViewModel;

@@ -1,5 +1,5 @@
 import { Icon } from "../shared/Icon.jsx";
-import { PageHeader, Section } from "../shared/PagePrimitives.jsx";
+import { ModuleLink, PageHeader, Section } from "../shared/PagePrimitives.jsx";
 
 export function SpecialistAgentPage({ agent }) {
   return (
@@ -10,6 +10,23 @@ export function SpecialistAgentPage({ agent }) {
         status="Built-in agent"
         tone="implemented"
       />
+      <Section
+        id="agent-areas"
+        title="Agent areas"
+        description="Review the role prompt separately from this agent's identity, capabilities, and boundaries."
+      >
+        <div className="module-card-grid">
+          <ModuleLink
+            to={`/agents/${agent.slug}/prompt`}
+            icon="message"
+            title="Prompt"
+            description={`The role-specific instruction and shared child-session guardrails for ${agent.displayName}.`}
+            path={`agents/${agent.slug}/prompt/`}
+            status="Implemented"
+            tone="implemented"
+          />
+        </div>
+      </Section>
       <Section
         id="agent-definition"
         title="Definition"

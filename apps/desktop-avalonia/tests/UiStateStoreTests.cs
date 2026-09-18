@@ -6,6 +6,23 @@ namespace SunCode.Desktop.Tests;
 public sealed class UiStateStoreTests
 {
     [Fact]
+    public void NewStateStartsWithAgentAndProviderNavigationCollapsed()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "suncode-ui-state-tests", Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(directory, "ui-state.json");
+        try
+        {
+            using var store = new UiStateStore(path);
+            Assert.False(store.Settings.ProvidersExpanded);
+            Assert.False(store.Settings.AgentsExpanded);
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    [Fact]
     public void PersistsAndReloadsProjectAndSettingsState()
     {
         var directory = Path.Combine(Path.GetTempPath(), "suncode-ui-state-tests", Guid.NewGuid().ToString("N"));

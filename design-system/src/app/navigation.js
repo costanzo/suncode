@@ -323,6 +323,14 @@ export const primaryModules = [
         label: agent.displayName,
         icon: "agent",
         keywords: `${agent.name} ${agent.displayName} built-in specialist ${agent.description}`,
+        children: [
+          {
+            path: `/agents/${agent.slug}/prompt`,
+            label: "Prompt",
+            icon: "message",
+            keywords: `${agent.name} role instructions child session guardrails prompt`,
+          },
+        ],
       })),
     ],
   },

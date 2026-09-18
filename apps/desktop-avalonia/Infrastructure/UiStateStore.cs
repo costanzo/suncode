@@ -13,9 +13,9 @@ internal sealed class UiSettingsState
 {
     public string Page { get; set; } = "defaults";
     public string? ProviderId { get; set; }
-    public bool ProvidersExpanded { get; set; } = true;
+    public bool ProvidersExpanded { get; set; } = false;
     public string? AgentId { get; set; }
-    public bool AgentsExpanded { get; set; } = true;
+    public bool AgentsExpanded { get; set; } = false;
 }
 
 internal sealed class UiProjectState
