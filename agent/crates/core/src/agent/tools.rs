@@ -353,6 +353,7 @@ impl Agent {
             return Ok(());
         }
         let parallel_read_only = calls.len() > 1
+            && !calls.iter().any(|call| lsp::is_lsp_tool(&call.name))
             && calls
                 .iter()
                 .all(|call| tool_risk(&call.name) == Some(Risk::ReadOnly));
@@ -485,6 +486,21 @@ impl Agent {
             };
             return self.record_call_success(context, call, result);
         }
+        if lsp::is_lsp_tool(&call.name) {
+            let result = match self
+                .execute_lsp_call(context, call, token)
+                .await
+            {
+                Ok(result) => result,
+                Err(error) => {
+                    if !self.record_recoverable_call_error(context, call, &error)? {
+                        return Err(error);
+                    }
+                    return Ok(());
+                }
+            };
+            return self.record_call_success(context, call, result);
+        }
         let (project_root, mut params) = match self.prepare_call(context, call) {
             Ok(prepared) => prepared,
             Err(error) => {
@@ -538,7 +554,7 @@ impl Agent {
             error.code.as_str(),
             "invalid_arguments" | "malformed_tool_call"
         ) {
-            if !error.code.starts_with("mcp_") {
+            if !error.code.starts_with("mcp_") && !error.code.starts_with("lsp_") {
                 return Ok(false);
             }
         }
@@ -643,6 +659,94 @@ impl Agent {
             EventPayload::MessageTool(MessageToolPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: tool }),
         )?;
         Ok(())
+    }
+
+    async fn execute_lsp_call(
+        &self,
+        context: &Continuation,
+        call: &ToolCall,
+        token: CancellationToken,
+    ) -> Result<Value, BusinessError> {
+        let display_path = call
+            .arguments
+            .get("path")
+            .and_then(Value::as_str)
+            .ok_or_else(|| BusinessError::invalid("path is required"))?;
+        let (scope_root, prepared) = self.prepare_call(context, call)?;
+        let relative_path = prepared
+            .get("path")
+            .and_then(Value::as_str)
+            .ok_or_else(|| BusinessError::invalid("path is required"))?;
+        let read = self
+            .operation_in_project(
+                &scope_root,
+                "tool/read",
+                json!({"path":relative_path,"offset":1,"max_bytes":1024 * 1024}),
+                token.clone(),
+                None,
+            )
+            .await?;
+        if read.get("truncated").and_then(Value::as_bool) == Some(true) {
+            return Err(BusinessError::new(
+                "lsp_document_too_large",
+                "Language server document exceeds the 1 MiB semantic-tool bound",
+            ));
+        }
+        let bytes = read
+            .get("data_base64")
+            .and_then(Value::as_str)
+            .ok_or_else(|| BusinessError::new("read_failed", "file content is unavailable"))
+            .and_then(|encoded| {
+                STANDARD.decode(encoded).map_err(|_| {
+                    BusinessError::new("read_failed", "file content could not be decoded")
+                })
+            })?;
+        let text = String::from_utf8(bytes).map_err(|_| {
+            BusinessError::new(
+                "encoding_unsupported",
+                "language server tools require UTF-8 text",
+            )
+        })?;
+        let language_id = call
+            .arguments
+            .get("languageId")
+            .and_then(Value::as_str)
+            .or_else(|| lsp::infer_language_id(display_path))
+            .ok_or_else(|| {
+                BusinessError::new(
+                    "lsp_language_unknown",
+                    "Language could not be inferred; provide languageId",
+                )
+            })?;
+        let line = call
+            .arguments
+            .get("line")
+            .and_then(Value::as_u64)
+            .map(|value| u32::try_from(value).unwrap_or(u32::MAX));
+        let column = call
+            .arguments
+            .get("column")
+            .and_then(Value::as_u64)
+            .map(|value| u32::try_from(value).unwrap_or(u32::MAX));
+        let operation = lsp::operation(&call.name)
+            .ok_or_else(|| BusinessError::new("authorization_denied", "Unknown LSP tool"))?;
+        self.lsp
+            .execute(
+                lsp::SemanticRequest {
+                    project_id: &context.project_id,
+                    project_root: Path::new(&context.project_root),
+                    scope_root: Path::new(&scope_root),
+                    display_path,
+                    relative_path,
+                    language_id,
+                    text: &text,
+                    line,
+                    column,
+                    operation,
+                },
+                token,
+            )
+            .await
     }
 
     async fn operation_in_project(

@@ -4,6 +4,7 @@ pub(crate) mod approval_request;
 pub(crate) mod checkpoint;
 pub(crate) mod checkpoint_manifest;
 pub(crate) mod configuration;
+pub(crate) mod language_server;
 pub(crate) mod llm_model;
 pub(crate) mod llm_model_provider;
 pub(crate) mod mcp_server;

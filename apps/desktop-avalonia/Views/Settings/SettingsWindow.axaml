@@ -121,6 +121,12 @@
                 <TextBlock Grid.Column="1" Text="MCP servers" VerticalAlignment="Center" />
               </Grid>
             </Button>
+            <Button x:Name="LanguageServersNavigation" Classes="navigation" Click="ShowLanguageServers">
+              <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/file-code.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="Language servers" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
             <Button x:Name="AgentsNavigation" Classes="navigation" Click="ShowAgents">
               <Grid ColumnDefinitions="15,*,13" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/agent.svg" Css="{DynamicResource IconSvgCss}" />
@@ -210,6 +216,8 @@
         <settings:LoggingSettingsControl x:Name="LoggingPage" IsVisible="False" />
 
         <settings:McpServersSettingsControl x:Name="McpPage" IsVisible="False" />
+
+        <settings:LanguageServersSettingsControl x:Name="LanguageServersPage" IsVisible="False" />
 
         <settings:AgentSettingsControl x:Name="AgentsPage"
                                        IsVisible="False"

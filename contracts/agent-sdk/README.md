@@ -12,7 +12,7 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 The agent handle owns the Tokio runtime and all agent services. Host wrappers may share one handle inside a process. Subscriptions must be closed before the final agent handle is released. Closing a subscription stops callback delivery before returning.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 7. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 8. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
 ## Methods
 
@@ -40,6 +40,13 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `retry_mcp_server` | Retry one enabled server for an active project |
 | `start_mcp_project` | Start project-scoped MCP connections in the background and return initial progress |
 | `mcp_load_progress` | Read project-scoped MCP startup progress without waiting for connections |
+| `list_language_servers` | List global language-server definitions with selected-project runtime status and redacted environment key names |
+| `create_language_server` | Validate, persist, and reconcile one local stdio language server |
+| `update_language_server` | Replace one definition using optimistic revision and a write-only environment patch |
+| `set_language_server_enabled` | Persist enabled state and start or retire active project runtimes |
+| `delete_language_server` | Delete one definition and stop its active project runtimes |
+| `retry_language_server` | Retry one enabled language server for an active project |
+| `start_language_server_project` | Start matching enabled project-scoped language servers in the background |
 | `list_projects` | List known active projects for the SDK user |
 | `open_project` | Canonicalize and open a project for the SDK user |
 | `select_project` | Select a known project belonging to the SDK user and reopen its canonical root |
@@ -92,6 +99,10 @@ MCP write request JSON at the C ABI boundary uses camelCase field names to match
 Local transports receive a structured executable and argument list and are started without a shell. Their working directory is either the selected project's canonical root or the application data directory. Remote endpoints require HTTPS except loopback HTTP and follow the global certificate settings. Successful mutations persist before runtime reconciliation and retire old catalog generations immediately. Existing sessions snapshot the current connected MCP definitions before every provider call, so the next model request observes create, edit, enable, disable, delete, and tool-list changes without reopening the session.
 
 MCP stdio processes receive a Rust-owned, OS-specific environment allowlist on every launch. Unix-like launches provide standard executable lookup (`PATH` with Homebrew, user-local, Cargo, system, and host entries), `HOME`, user/login/shell identity, locale (`LANG`, `LC_ALL`), terminal/display session values, `TMPDIR`, XDG directories, and the canonical working directory (`PWD`). Windows launches provide `PATH`, `SystemRoot`/`WINDIR`, profile/application-data directories, `ComSpec`, `PATHEXT`, username/OS identity, and `TEMP`/`TMP`. Missing host values use deterministic safe defaults; MCP-configured entries are applied last and override the baseline. Loader/code-injection variables are excluded from implicit inheritance.
+
+Language-server definitions are global desired state while processes, initialization, document versions, capabilities, and failures are project-scoped memory. The write DTO contains `displayName`, `command`, `arguments`, `languageIds`, `rootMarkers`, `initializationOptions`, write-only `environment` changes, startup/request timeouts, enabled state, and ordering. Read DTOs expose environment key names only. Runtime states are `not_started`, `disabled`, `starting`, `indexing`, `ready`, and `failed`. Processes launch without a shell in the project root and receive a filtered environment. The first delivery supports only local stdio servers and does not accept server-requested edits or arbitrary command execution.
+
+The model-facing semantic catalog is fixed to `lsp_diagnostics`, `lsp_definition`, `lsp_references`, `lsp_hover`, and `lsp_symbols`. These calls are read-only, use one-based source positions, synchronize at most 1 MiB of UTF-8 text through the audited project/dependency read path, and normalize returned locations to project-relative paths or registered dependency aliases. Absolute external locations are not exposed. Missing servers, capabilities, timeouts, crashes, and malformed responses are recoverable `lsp_*` tool results.
 
 `tool_call_limit` is a project-only integer setting from 1 through 256. A project without that row uses 64. Turn admission snapshots the resolved value, so changing Settings affects later turns but not an active or approval-suspended turn. If one provider response would cross the limit, all calls in that response are retained as failed with `tool_budget_exceeded`, and none enters policy or execution.
 

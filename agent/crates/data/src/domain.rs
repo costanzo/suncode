@@ -88,6 +88,42 @@ pub struct McpServerInput {
     pub sort_order: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LanguageServerConfig {
+    pub version: u32,
+    pub command: String,
+    pub arguments: Vec<String>,
+    pub language_ids: Vec<String>,
+    pub root_markers: Vec<String>,
+    pub initialization_options: Value,
+    pub environment: BTreeMap<String, String>,
+    pub startup_timeout_seconds: u64,
+    pub request_timeout_seconds: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LanguageServerRecord {
+    pub language_server_id: String,
+    pub display_name: String,
+    pub config: LanguageServerConfig,
+    pub enabled: bool,
+    pub sort_order: i64,
+    pub revision: u64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LanguageServerInput {
+    pub display_name: String,
+    pub config: LanguageServerConfig,
+    pub enabled: bool,
+    pub sort_order: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LlmModelProviderRecord {
     pub provider_id: String,

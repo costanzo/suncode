@@ -24,6 +24,7 @@ use crate::types::*;
 
 mod agents;
 mod checkpoints;
+mod language_servers;
 mod lifecycle;
 mod mcp;
 mod project_sessions;

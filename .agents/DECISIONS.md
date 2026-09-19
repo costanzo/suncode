@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260919-rust-owned-language-server-support
+
+- Date: 2026-09-19
+- Status: Accepted
+- Context: Text search and bounded reads cannot provide compiler-grade diagnostics, symbol identity, definitions, references, or hover information. Direct Avalonia ownership, an MCP bridge, repository-controlled commands, or a generic model-facing LSP request would weaken the embedded Rust authority boundary.
+- Decision: Add a Rust-owned `suncode-lsp` local-stdio protocol adapter and a project-scoped core manager. Persist global definitions in `language_server`, expose named Rust/C/C# SDK management methods, and add exactly five bounded read-only semantic tools: diagnostics, definition, references, hover, and document symbols. Launch only explicit structured commands with a filtered environment; do not bundle language servers or Node/Bun. Reject server-requested edits and arbitrary commands.
+- Consequences: Users configure external language-server executables explicitly. Runtime state and document versions are memory-only per project. Semantic tools reuse authorized project/dependency reads, normalize locations, and return recoverable `lsp_*` failures. The SQLite schema advances to 18 tables and the C ABI to version 8. Rename, code actions, formatting, completion UI, and editable-editor behavior remain out of scope.
+- Details: `requirements/2026-09-19-language-server-support/`, `agent/crates/lsp/`, `agent/crates/core/src/agent/lsp.rs`, `contracts/agent-sdk/README.md`
+
 ## ADR-20260918-built-in-specialist-agents
 
 - Date: 2026-09-18

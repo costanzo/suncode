@@ -29,7 +29,8 @@ pub fn tool_risk(name: &str) -> Option<Risk> {
         return Some(Risk::ExternalTool);
     }
     match name {
-        "read" | "glob" | "grep" | "question" | "todowrite" => Some(Risk::ReadOnly),
+        "read" | "glob" | "grep" | "lsp_diagnostics" | "lsp_definition" | "lsp_references"
+        | "lsp_hover" | "lsp_symbols" | "question" | "todowrite" => Some(Risk::ReadOnly),
         "webfetch" => Some(Risk::NetworkAccess),
         "write" | "edit" => Some(Risk::ProjectWrite),
         "bash" => Some(Risk::ProcessExecution),

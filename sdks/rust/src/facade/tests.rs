@@ -449,6 +449,139 @@ fn mcp_sdk_redacts_secrets_and_enforces_idempotency_and_revisions() {
 }
 
 #[test]
+fn language_server_sdk_redacts_environment_and_enforces_revisions() {
+    let directory = tempfile::tempdir().unwrap();
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    let create = LanguageServerWriteRequest {
+        display_name: "Rust Analyzer".into(),
+        command: "rust-analyzer".into(),
+        arguments: Vec::new(),
+        language_ids: vec!["rust".into()],
+        root_markers: vec!["Cargo.toml".into()],
+        initialization_options: json!({"check":{"command":"clippy"}}),
+        environment: Some(LanguageServerEnvironmentChanges {
+            set: BTreeMap::from([
+                ("KEEP".into(), "preserved".into()),
+                ("TOKEN".into(), "private-value".into()),
+            ]),
+            remove: Vec::new(),
+        }),
+        startup_timeout_seconds: 30,
+        request_timeout_seconds: 30,
+        enabled: false,
+        sort_order: 0,
+    };
+    let created = sdk
+        .create_language_server(None, "lsp-create", create.clone())
+        .unwrap();
+    assert_eq!(
+        created.runtime_status,
+        suncode_agent::LanguageServerRuntimeState::Disabled
+    );
+    assert_eq!(created.environment_keys, ["KEEP", "TOKEN"]);
+    assert!(!serde_json::to_string(&created)
+        .unwrap()
+        .contains("private-value"));
+    assert_eq!(
+        sdk.create_language_server(None, "lsp-create", create)
+            .unwrap()
+            .language_server_id,
+        created.language_server_id
+    );
+
+    let update = LanguageServerWriteRequest {
+        display_name: "Rust Analyzer".into(),
+        command: "rust-analyzer".into(),
+        arguments: vec!["--log-file".into(), "ra.log".into()],
+        language_ids: vec!["rust".into()],
+        root_markers: vec!["Cargo.toml".into()],
+        initialization_options: json!({}),
+        environment: Some(LanguageServerEnvironmentChanges {
+            set: BTreeMap::from([("NEW".into(), "replacement".into())]),
+            remove: vec!["TOKEN".into()],
+        }),
+        startup_timeout_seconds: 45,
+        request_timeout_seconds: 40,
+        enabled: false,
+        sort_order: 0,
+    };
+    let updated = sdk
+        .update_language_server(
+            None,
+            &created.language_server_id,
+            created.revision,
+            "lsp-update",
+            update,
+        )
+        .unwrap();
+    assert_eq!(updated.environment_keys, ["KEEP", "NEW"]);
+    let stored = sdk
+        .state
+        .store
+        .language_server_by_id(&created.language_server_id)
+        .unwrap()
+        .unwrap();
+    assert_eq!(stored.config.environment["KEEP"], "preserved");
+    assert_eq!(stored.config.environment["NEW"], "replacement");
+    assert!(!stored.config.environment.contains_key("TOKEN"));
+    assert_eq!(
+        sdk.set_language_server_enabled(
+            None,
+            &created.language_server_id,
+            created.revision,
+            "stale-enable",
+            true,
+        )
+        .unwrap_err()
+        .code,
+        "language_server_revision_conflict"
+    );
+}
+
+#[test]
+fn language_server_save_succeeds_when_project_runtime_fails_to_start() {
+    let directory = tempfile::tempdir().unwrap();
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    let project = sdk
+        .open_project(directory.path().to_str().unwrap(), None)
+        .unwrap();
+    sdk.start_language_server_project(&project.project_id)
+        .unwrap();
+
+    let created = sdk
+        .create_language_server(
+            Some(&project.project_id),
+            "lsp-missing-executable",
+            LanguageServerWriteRequest {
+                display_name: "Missing server".into(),
+                command: "definitely-missing-suncode-language-server".into(),
+                arguments: Vec::new(),
+                language_ids: vec!["rust".into()],
+                root_markers: Vec::new(),
+                initialization_options: json!({}),
+                environment: None,
+                startup_timeout_seconds: 1,
+                request_timeout_seconds: 1,
+                enabled: true,
+                sort_order: 0,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(
+        created.runtime_status,
+        suncode_agent::LanguageServerRuntimeState::Failed
+    );
+    assert!(created.error.is_some());
+    assert!(sdk
+        .state
+        .store
+        .language_server_by_id(&created.language_server_id)
+        .unwrap()
+        .is_some());
+}
+
+#[test]
 fn mcp_project_start_reports_initial_progress_without_waiting_for_connections() {
     let directory = tempfile::tempdir().unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));

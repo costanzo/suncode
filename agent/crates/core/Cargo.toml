@@ -22,6 +22,7 @@ suncode-config = { path = "../config" }
 suncode-data = { path = "../data" }
 suncode-llm = { path = "../llm" }
 suncode-mcp = { path = "../mcp" }
+suncode-lsp = { path = "../lsp" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
 tokio-util = "0.7"
 uuid = { version = "1", features = ["v4", "serde"] }

@@ -31,6 +31,7 @@ impl Agent {
         P: Into<Arc<ModelProviderRegistry>>,
     {
         let mcp = McpManager::new(store.clone(), application_data);
+        let lsp = LanguageServerManager::new(store.clone());
         Self {
             user_id: "default".into(),
             store,
@@ -43,6 +44,7 @@ impl Agent {
             non_interactive,
             session_locks: Arc::new(AsyncMutex::new(HashMap::new())),
             mcp,
+            lsp,
         }
     }
 

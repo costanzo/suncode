@@ -24,6 +24,26 @@ fn existing_sixteen_table_database_without_mcp_receives_additive_table() {
 }
 
 #[test]
+fn immediately_previous_seventeen_table_database_receives_language_server_table() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("agent.sqlite3");
+    let mut connection = SqliteConnection::establish(path.to_str().unwrap()).unwrap();
+    for script in suncode_database::sqlite::schema_scripts()
+        .iter()
+        .filter(|script| !script.contains("CREATE TABLE IF NOT EXISTS language_server"))
+    {
+        connection.batch_execute(script).unwrap();
+    }
+    for script in suncode_database::sqlite::data_scripts() {
+        connection.batch_execute(script).unwrap();
+    }
+    drop(connection);
+
+    let store = Store::open(&path).unwrap();
+    assert!(store.language_servers().unwrap().is_empty());
+}
+
+#[test]
 fn immediately_previous_schema_receives_subagent_table_and_session_columns() {
     const PREVIOUS_SESSION_SCHEMA: &str = r#"
         CREATE TABLE IF NOT EXISTS session (
@@ -418,4 +438,103 @@ fn mcp_server_rejects_duplicate_names_prefixes_and_insecure_remote_urls() {
     store
         .create_mcp_server("mcp-4", &input("Loopback", "http://127.0.0.1:3000/mcp"))
         .unwrap();
+}
+
+#[test]
+fn language_server_crud_preserves_configuration_and_enforces_revisions() {
+    let store = Store::open_memory().unwrap();
+    let input = LanguageServerInput {
+        display_name: "Rust Analyzer".into(),
+        config: LanguageServerConfig {
+            version: 1,
+            command: "rust-analyzer".into(),
+            arguments: Vec::new(),
+            language_ids: vec!["rust".into()],
+            root_markers: vec!["Cargo.toml".into()],
+            initialization_options: json!({"check":{"command":"clippy"}}),
+            environment: BTreeMap::from([("RUST_LOG".into(), "warn".into())]),
+            startup_timeout_seconds: 30,
+            request_timeout_seconds: 30,
+        },
+        enabled: true,
+        sort_order: 0,
+    };
+    let created = store.create_language_server("lsp-1", &input).unwrap();
+    assert_eq!(created.revision, 1);
+    assert_eq!(created.config.environment["RUST_LOG"], "warn");
+    assert_eq!(
+        store.create_language_server("lsp-1", &input).unwrap(),
+        created
+    );
+
+    let mut updated_input = input.clone();
+    updated_input.display_name = "Rust".into();
+    let updated = store
+        .update_language_server("lsp-1", 1, &updated_input)
+        .unwrap();
+    assert_eq!(updated.revision, 2);
+    assert_eq!(
+        store
+            .update_language_server("lsp-1", 1, &input)
+            .unwrap_err()
+            .code,
+        "language_server_revision_conflict"
+    );
+    let disabled = store
+        .set_language_server_enabled("lsp-1", 2, false)
+        .unwrap();
+    assert!(!disabled.enabled);
+    assert!(store.delete_language_server("lsp-1", 3).unwrap());
+}
+
+#[test]
+fn language_server_validation_rejects_unsafe_configuration() {
+    let store = Store::open_memory().unwrap();
+    let input = LanguageServerInput {
+        display_name: "Broken".into(),
+        config: LanguageServerConfig {
+            version: 1,
+            command: "server".into(),
+            arguments: Vec::new(),
+            language_ids: vec!["rust".into(), "RUST".into()],
+            root_markers: vec!["../outside".into()],
+            initialization_options: json!([]),
+            environment: BTreeMap::new(),
+            startup_timeout_seconds: 0,
+            request_timeout_seconds: 0,
+        },
+        enabled: true,
+        sort_order: 0,
+    };
+    assert_eq!(
+        store
+            .create_language_server("lsp-invalid", &input)
+            .unwrap_err()
+            .code,
+        "invalid_arguments"
+    );
+
+    let oversized_order = LanguageServerInput {
+        display_name: "Oversized order".into(),
+        config: LanguageServerConfig {
+            version: 1,
+            command: "server".into(),
+            arguments: Vec::new(),
+            language_ids: vec!["rust".into()],
+            root_markers: Vec::new(),
+            initialization_options: json!({}),
+            environment: BTreeMap::new(),
+            startup_timeout_seconds: 30,
+            request_timeout_seconds: 30,
+        },
+        enabled: true,
+        sort_order: i64::from(i32::MAX) + 1,
+    };
+    assert_eq!(
+        store
+            .create_language_server("lsp-oversized-order", &oversized_order)
+            .unwrap_err()
+            .code,
+        "invalid_arguments"
+    );
 }

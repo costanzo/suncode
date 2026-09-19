@@ -3,6 +3,7 @@
 mod edit;
 mod glob;
 mod grep;
+mod lsp;
 mod question;
 mod read;
 mod shell;
@@ -24,6 +25,11 @@ pub fn all() -> Vec<ToolDefinition> {
         read::definition(),
         glob::definition(),
         grep::definition(),
+        lsp::diagnostics(),
+        lsp::definition(),
+        lsp::references(),
+        lsp::hover(),
+        lsp::symbols(),
         question::definition(),
         todowrite::definition(),
         write::definition(),
@@ -59,6 +65,11 @@ mod tests {
                 "edit",
                 "glob",
                 "grep",
+                "lsp_definition",
+                "lsp_diagnostics",
+                "lsp_hover",
+                "lsp_references",
+                "lsp_symbols",
                 "question",
                 "read",
                 "todowrite",

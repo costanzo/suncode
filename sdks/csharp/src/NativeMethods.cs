@@ -33,6 +33,13 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_retry_mcp_server(IntPtr handle, IntPtr projectId, IntPtr serverId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_start_mcp_project(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_mcp_load_progress(IntPtr handle, IntPtr projectId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_language_servers(IntPtr handle, IntPtr projectId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_create_language_server(IntPtr handle, IntPtr projectId, IntPtr idempotencyKey, IntPtr requestJson);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_update_language_server(IntPtr handle, IntPtr projectId, IntPtr languageServerId, ulong expectedRevision, IntPtr idempotencyKey, IntPtr requestJson);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_set_language_server_enabled(IntPtr handle, IntPtr projectId, IntPtr languageServerId, ulong expectedRevision, IntPtr idempotencyKey, byte enabled);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_delete_language_server(IntPtr handle, IntPtr languageServerId, ulong expectedRevision, IntPtr idempotencyKey);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_retry_language_server(IntPtr handle, IntPtr projectId, IntPtr languageServerId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_start_language_server_project(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_open_project(IntPtr handle, IntPtr path, IntPtr displayName);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_select_project(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_project_dependencies(IntPtr handle, IntPtr projectId);

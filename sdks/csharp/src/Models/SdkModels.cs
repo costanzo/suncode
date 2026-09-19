@@ -130,6 +130,78 @@ public sealed record McpLoadProgress(
 
 public sealed record McpServerDeleteResult(string McpServerId, bool Removed);
 
+public sealed record LanguageServer(
+    string LanguageServerId,
+    string DisplayName,
+    string Command,
+    IReadOnlyList<string> Arguments,
+    IReadOnlyList<string> LanguageIds,
+    IReadOnlyList<string> RootMarkers,
+    JsonElement InitializationOptions,
+    IReadOnlyList<string> EnvironmentKeys,
+    ulong StartupTimeoutSeconds,
+    ulong RequestTimeoutSeconds,
+    bool Enabled,
+    long SortOrder,
+    ulong Revision,
+    string RuntimeStatus,
+    int CapabilityCount,
+    string? Error,
+    string CreatedAt,
+    string UpdatedAt);
+
+public sealed record LanguageServersResult(IReadOnlyList<LanguageServer> Servers);
+
+public sealed record LanguageServerEnvironmentChanges(
+    IReadOnlyDictionary<string, string> Set,
+    IReadOnlyList<string> Remove)
+{
+    public static LanguageServerEnvironmentChanges Empty { get; } = new(
+        new Dictionary<string, string>(),
+        Array.Empty<string>());
+}
+
+public sealed record LanguageServerWriteRequest(
+    string DisplayName,
+    string Command,
+    IReadOnlyList<string> Arguments,
+    IReadOnlyList<string> LanguageIds,
+    IReadOnlyList<string> RootMarkers,
+    JsonElement InitializationOptions,
+    LanguageServerEnvironmentChanges? Environment,
+    ulong StartupTimeoutSeconds = 30,
+    ulong RequestTimeoutSeconds = 30,
+    bool Enabled = true,
+    long SortOrder = 0);
+
+public sealed record CreateLanguageServerRequest(
+    string? ProjectId,
+    string IdempotencyKey,
+    LanguageServerWriteRequest Server);
+
+public sealed record UpdateLanguageServerRequest(
+    string? ProjectId,
+    string LanguageServerId,
+    ulong ExpectedRevision,
+    string IdempotencyKey,
+    LanguageServerWriteRequest Server);
+
+public sealed record SetLanguageServerEnabledRequest(
+    string? ProjectId,
+    string LanguageServerId,
+    ulong ExpectedRevision,
+    string IdempotencyKey,
+    bool Enabled);
+
+public sealed record DeleteLanguageServerRequest(
+    string LanguageServerId,
+    ulong ExpectedRevision,
+    string IdempotencyKey);
+
+public sealed record LanguageServerDeleteResult(string LanguageServerId, bool Removed);
+
+public sealed record LanguageServerProjectResult(string ProjectId, bool Started);
+
 public sealed record McpSecretChanges(
     IReadOnlyDictionary<string, string> Set,
     IReadOnlyList<string> Remove)

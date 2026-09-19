@@ -169,6 +169,9 @@ fn translate_arguments_with_root(
 }
 
 fn validate_before_policy(name: &str, value: &Value) -> Result<(), BusinessError> {
+    if lsp::is_lsp_tool(name) {
+        return validate_lsp_arguments(name, value);
+    }
     if name == "question" {
         return validate_question_arguments(value);
     }
@@ -177,6 +180,37 @@ fn validate_before_policy(name: &str, value: &Value) -> Result<(), BusinessError
     }
     if name == "webfetch" {
         validate_webfetch_arguments(value)?;
+    }
+    Ok(())
+}
+
+fn validate_lsp_arguments(name: &str, value: &Value) -> Result<(), BusinessError> {
+    let path = value
+        .get("path")
+        .and_then(Value::as_str)
+        .filter(|path| !path.trim().is_empty() && path.chars().count() <= 4_096)
+        .ok_or_else(|| BusinessError::invalid("path is required and must be at most 4096 characters"))?;
+    if path.contains('\0') {
+        return Err(BusinessError::invalid("path contains an invalid character"));
+    }
+    if let Some(language_id) = value.get("languageId").and_then(Value::as_str) {
+        if language_id.is_empty()
+            || language_id.chars().count() > 64
+            || !language_id
+                .chars()
+                .all(|character| character.is_ascii_alphanumeric() || "_.+-".contains(character))
+        {
+            return Err(BusinessError::invalid("languageId is invalid"));
+        }
+    }
+    if matches!(name, "lsp_definition" | "lsp_references" | "lsp_hover") {
+        for key in ["line", "column"] {
+            if value.get(key).and_then(Value::as_u64).is_none_or(|value| value == 0) {
+                return Err(BusinessError::invalid(format!(
+                    "{key} must be a one-based positive integer"
+                )));
+            }
+        }
     }
     Ok(())
 }
@@ -646,7 +680,7 @@ fn dependency_path(path: &str) -> Option<(&str, &str)> {
 }
 
 fn dependency_tool_allowed(name: &str) -> bool {
-    matches!(name, "read" | "glob" | "grep")
+    matches!(name, "read" | "glob" | "grep") || lsp::is_lsp_tool(name)
 }
 
 fn to_llm_message(message: &Message) -> suncode_llm::Message {

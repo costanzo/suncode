@@ -48,7 +48,9 @@ public sealed partial class SettingsWindow : Window
     private string _agent = string.Empty;
     private DesktopViewModel? _subscribedViewModel;
     private McpServerEditorWindow? _mcpEditorWindow;
+    private LanguageServerEditorWindow? _languageServerEditorWindow;
     private readonly DispatcherTimer _mcpPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private readonly DispatcherTimer _languageServerPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     
     private int _baselineToolCallLimit;
     private string _baselineLogDirectory = string.Empty;
@@ -91,7 +93,11 @@ public sealed partial class SettingsWindow : Window
         McpPage.AddRequested += AddMcpServer;
         McpPage.EditRequested += EditMcpServer;
         McpPage.DeleteRequested += DeleteMcpServer;
+        LanguageServersPage.AddRequested += AddLanguageServer;
+        LanguageServersPage.EditRequested += EditLanguageServer;
+        LanguageServersPage.DeleteRequested += DeleteLanguageServer;
         _mcpPollTimer.Tick += McpPollTick;
+        _languageServerPollTimer.Tick += LanguageServerPollTick;
         WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
@@ -174,7 +180,9 @@ public sealed partial class SettingsWindow : Window
         Closed += (_, _) =>
         {
             _mcpPollTimer.Stop();
+            _languageServerPollTimer.Stop();
             _mcpEditorWindow?.Close();
+            _languageServerEditorWindow?.Close();
         };
     }
 
@@ -193,6 +201,7 @@ public sealed partial class SettingsWindow : Window
     private void ShowShortcuts(object? sender, RoutedEventArgs e) => SelectPage("shortcuts", sender as Button);
     private void ShowNetwork(object? sender, RoutedEventArgs e) => SelectPage("network", sender as Button);
     private void ShowMcp(object? sender, RoutedEventArgs e) => SelectPage("mcp", sender as Button);
+    private void ShowLanguageServers(object? sender, RoutedEventArgs e) => SelectPage("lsp", sender as Button);
     private void ShowLogging(object? sender, RoutedEventArgs e) => SelectPage("logging", sender as Button);
 
     private void ShowAgents(object? sender, RoutedEventArgs e)
@@ -292,6 +301,7 @@ public sealed partial class SettingsWindow : Window
         NetworkPage.IsVisible = page == "network";
         LoggingPage.IsVisible = page == "logging";
         McpPage.IsVisible = page == "mcp";
+        LanguageServersPage.IsVisible = page == "lsp";
         AgentsPage.IsVisible = page == "agents";
         ProvidersPage.IsVisible = page == "providers";
         if (page == "mcp")
@@ -303,6 +313,16 @@ public sealed partial class SettingsWindow : Window
         {
             _mcpPollTimer.Stop();
         }
+        if (page == "lsp")
+        {
+            _ = ViewModel.StartLanguageServerProjectAsync();
+            _ = ViewModel.LoadLanguageServersAsync();
+            _languageServerPollTimer.Start();
+        }
+        else
+        {
+            _languageServerPollTimer.Stop();
+        }
         foreach (var button in this.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("navigation")))
             button.Classes.Set("selected", button == selected);
         if (page == "defaults") DefaultsNavigation.Classes.Set("selected", true);
@@ -311,6 +331,7 @@ public sealed partial class SettingsWindow : Window
         if (page == "network") NetworkNavigation.Classes.Set("selected", true);
         if (page == "logging") LoggingNavigation.Classes.Set("selected", true);
         if (page == "mcp") McpNavigation.Classes.Set("selected", true);
+        if (page == "lsp") LanguageServersNavigation.Classes.Set("selected", true);
         if (page == "agents" && selected is null) AgentsNavigation.Classes.Set("selected", true);
         if (page == "providers" && selected is null) ProvidersNavigation.Classes.Set("selected", true);
         if (_ready) ViewModel.SaveSettingsNavigation(page, _provider, _providersExpanded, _agent, _agentsExpanded);
@@ -321,6 +342,7 @@ public sealed partial class SettingsWindow : Window
         : ShortcutsPage.IsVisible ? "shortcuts"
         : NetworkPage.IsVisible ? "network"
         : McpPage.IsVisible ? "mcp"
+        : LanguageServersPage.IsVisible ? "lsp"
         : AgentsPage.IsVisible ? "agents"
         : LoggingPage.IsVisible ? "logging"
         : "providers";
@@ -328,6 +350,11 @@ public sealed partial class SettingsWindow : Window
     private async void McpPollTick(object? sender, EventArgs e)
     {
         if (McpPage.IsVisible) await ViewModel.LoadMcpServersAsync();
+    }
+
+    private async void LanguageServerPollTick(object? sender, EventArgs e)
+    {
+        if (LanguageServersPage.IsVisible) await ViewModel.LoadLanguageServersAsync();
     }
 
     private void AddMcpServer() => OpenMcpEditor(null);
@@ -358,6 +385,40 @@ public sealed partial class SettingsWindow : Window
             server.DisplayName,
             () => _ = ViewModel.DeleteMcpServerAsync(server),
             "MCP SERVER",
+            "Delete server");
+        IsEnabled = false;
+        dialog.Closed += (_, _) => IsEnabled = true;
+        _ = dialog.ShowDialog(this);
+    }
+
+    private void AddLanguageServer() => OpenLanguageServerEditor(null);
+
+    private void EditLanguageServer(LanguageServerItem server) => OpenLanguageServerEditor(server);
+
+    private void OpenLanguageServerEditor(LanguageServerItem? server)
+    {
+        if (_languageServerEditorWindow is not null)
+        {
+            _languageServerEditorWindow.Activate();
+            return;
+        }
+        _languageServerEditorWindow = new LanguageServerEditorWindow(ViewModel, server);
+        _languageServerEditorWindow.Closed += (_, _) =>
+        {
+            _languageServerEditorWindow = null;
+            LanguageServersNavigation.Focus();
+        };
+        _languageServerEditorWindow.Show(this);
+    }
+
+    private void DeleteLanguageServer(LanguageServerItem server)
+    {
+        var dialog = new ConfirmationWindow(
+            "Delete language server?",
+            "Its project runtimes will stop and semantic results will no longer be available to new agent turns.",
+            server.DisplayName,
+            () => _ = ViewModel.DeleteLanguageServerAsync(server),
+            "LANGUAGE SERVER",
             "Delete server");
         IsEnabled = false;
         dialog.Closed += (_, _) => IsEnabled = true;

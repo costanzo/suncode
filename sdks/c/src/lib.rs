@@ -9,8 +9,8 @@ use std::{
 use suncode_common::BusinessError;
 use suncode_sdk::logging_module::{self as logging, Level};
 use suncode_sdk::{
-    AgentSdk, AgentSubscription, McpServerWriteRequest, SdkResult, SunCodeEventCallback,
-    SUNCODE_AGENT_SDK_ABI_VERSION,
+    AgentSdk, AgentSubscription, LanguageServerWriteRequest, McpServerWriteRequest, SdkResult,
+    SunCodeEventCallback, SUNCODE_AGENT_SDK_ABI_VERSION,
 };
 
 pub struct SunCodeAgentHandle {
@@ -210,6 +210,116 @@ pub unsafe extern "C" fn suncode_agent_sdk_mcp_load_progress(
 ) -> *mut c_char {
     ffi_call(handle, |sdk| {
         Ok(sdk.mcp_load_progress(&c_string(project_id, "project_id")?))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_list_language_servers(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let project_id = optional_c_string(project_id, "project_id")?;
+        sdk.list_language_servers(project_id.as_deref())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_create_language_server(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+    idempotency_key: *const c_char,
+    request_json: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let project_id = optional_c_string(project_id, "project_id")?;
+        sdk.create_language_server(
+            project_id.as_deref(),
+            &c_string(idempotency_key, "idempotency_key")?,
+            typed_json_from_c::<LanguageServerWriteRequest>(request_json, "request_json")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_update_language_server(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+    language_server_id: *const c_char,
+    expected_revision: u64,
+    idempotency_key: *const c_char,
+    request_json: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let project_id = optional_c_string(project_id, "project_id")?;
+        sdk.update_language_server(
+            project_id.as_deref(),
+            &c_string(language_server_id, "language_server_id")?,
+            expected_revision,
+            &c_string(idempotency_key, "idempotency_key")?,
+            typed_json_from_c::<LanguageServerWriteRequest>(request_json, "request_json")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_set_language_server_enabled(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+    language_server_id: *const c_char,
+    expected_revision: u64,
+    idempotency_key: *const c_char,
+    enabled: u8,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let project_id = optional_c_string(project_id, "project_id")?;
+        sdk.set_language_server_enabled(
+            project_id.as_deref(),
+            &c_string(language_server_id, "language_server_id")?,
+            expected_revision,
+            &c_string(idempotency_key, "idempotency_key")?,
+            enabled != 0,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_delete_language_server(
+    handle: *mut SunCodeAgentHandle,
+    language_server_id: *const c_char,
+    expected_revision: u64,
+    idempotency_key: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.delete_language_server(
+            &c_string(language_server_id, "language_server_id")?,
+            expected_revision,
+            &c_string(idempotency_key, "idempotency_key")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_retry_language_server(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+    language_server_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.retry_language_server(
+            &c_string(project_id, "project_id")?,
+            &c_string(language_server_id, "language_server_id")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_start_language_server_project(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.start_language_server_project(&c_string(project_id, "project_id")?)
     })
 }
 
@@ -861,7 +971,7 @@ mod tests {
 
     #[test]
     fn exposes_the_current_abi_version() {
-        assert_eq!(suncode_agent_sdk_abi_version(), 7);
+        assert_eq!(suncode_agent_sdk_abi_version(), 8);
     }
 
     #[test]

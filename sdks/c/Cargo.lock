@@ -2146,6 +2146,7 @@ dependencies = [
  "suncode-config",
  "suncode-data",
  "suncode-llm",
+ "suncode-lsp",
  "suncode-mcp",
  "suncode-tool",
  "tokio",
@@ -2195,6 +2196,18 @@ dependencies = [
  "suncode-common",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "suncode-lsp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "suncode-common",
+ "tokio",
+ "tokio-util",
+ "url",
 ]
 
 [[package]]

@@ -66,6 +66,43 @@ public sealed partial class AgentSdk
     public Task<McpLoadProgress> GetMcpLoadProgressAsync(string projectId) =>
         Typed<McpLoadProgress>(RawMcpLoadProgressAsync(projectId));
 
+    public Task<LanguageServersResult> GetLanguageServersAsync(string? projectId = null) =>
+        Typed<LanguageServersResult>(RawListLanguageServersAsync(projectId));
+
+    public Task<LanguageServer> CreateLanguageServerAsync(CreateLanguageServerRequest request) =>
+        Typed<LanguageServer>(RawCreateLanguageServerAsync(
+            request.ProjectId,
+            request.IdempotencyKey,
+            JsonSerializer.Serialize(request.Server, TypedJsonOptions)));
+
+    public Task<LanguageServer> UpdateLanguageServerAsync(UpdateLanguageServerRequest request) =>
+        Typed<LanguageServer>(RawUpdateLanguageServerAsync(
+            request.ProjectId,
+            request.LanguageServerId,
+            request.ExpectedRevision,
+            request.IdempotencyKey,
+            JsonSerializer.Serialize(request.Server, TypedJsonOptions)));
+
+    public Task<LanguageServer> SetLanguageServerEnabledAsync(SetLanguageServerEnabledRequest request) =>
+        Typed<LanguageServer>(RawSetLanguageServerEnabledAsync(
+            request.ProjectId,
+            request.LanguageServerId,
+            request.ExpectedRevision,
+            request.IdempotencyKey,
+            request.Enabled));
+
+    public Task<LanguageServerDeleteResult> DeleteLanguageServerAsync(DeleteLanguageServerRequest request) =>
+        Typed<LanguageServerDeleteResult>(RawDeleteLanguageServerAsync(
+            request.LanguageServerId,
+            request.ExpectedRevision,
+            request.IdempotencyKey));
+
+    public Task<LanguageServer> RetryLanguageServerAsync(string projectId, string languageServerId) =>
+        Typed<LanguageServer>(RawRetryLanguageServerAsync(projectId, languageServerId));
+
+    public Task<LanguageServerProjectResult> StartLanguageServerProjectAsync(string projectId) =>
+        Typed<LanguageServerProjectResult>(RawStartLanguageServerProjectAsync(projectId));
+
     public Task<SettingsResult> GetSettingsAsync(SettingScope scope) =>
         Typed<SettingsResult>(RawListSettingsAsync(scope.ProjectId, scope.SessionId));
 

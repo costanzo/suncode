@@ -2,11 +2,11 @@
 
 Status: Current Phase 1 contract.
 
-The `suncode-data` package is the only ORM/database-connection owner and uses Diesel's SQLite backend for connections, transactions, typed table declarations, and query execution. The `suncode-database` package owns backend resources: `suncode_database::sqlite` contains the current SQL manifests, seed data, table manifest, and database-file creation/existence check. There is one current 17-table set, no version table, and no general migration runner. File names do not encode execution order. Table-owned ORM operations live under `agent/crates/data/src/operations/`, with `projection.rs` and `recovery.rs` reserved for cross-table workflows. Opening a database with any unexpected application table fails without conversion. Initialization applies the current manifest transactionally and supports the immediately preceding schema by adding `subagent_invocation` plus the additive session agent columns; the earlier additive `mcp_server` compatibility step remains accepted. `session_turn_todo` is the authoritative per-turn todo projection and is replaced transactionally by `todo.updated` events.
+The `suncode-data` package is the only ORM/database-connection owner and uses Diesel's SQLite backend for connections, transactions, typed table declarations, and query execution. The `suncode-database` package owns backend resources: `suncode_database::sqlite` contains the current SQL manifests, seed data, table manifest, and database-file creation/existence check. There is one current 18-table set, no version table, and no general migration runner. File names do not encode execution order. Table-owned ORM operations live under `agent/crates/data/src/operations/`, with `projection.rs` and `recovery.rs` reserved for cross-table workflows. Opening a database with any unexpected application table fails without conversion. Initialization applies the current manifest transactionally and supports the exact prior schema by adding the empty `language_server` table; the earlier additive `subagent_invocation`/session-column and `mcp_server` compatibility steps remain accepted. `session_turn_todo` is the authoritative per-turn todo projection and is replaced transactionally by `todo.updated` events.
 
-There are 17 application tables:
+There are 18 application tables:
 
-`approval_request`, `checkpoint`, `checkpoint_manifest`, `configuration`, `llm_model`, `llm_model_provider`, `mcp_server`, `project`, `project_dependency`, `session`, `session_call`, `session_image`, `session_message`, `session_tool_use`, `session_turn`, `session_turn_todo`, and `subagent_invocation`.
+`approval_request`, `checkpoint`, `checkpoint_manifest`, `configuration`, `language_server`, `llm_model`, `llm_model_provider`, `mcp_server`, `project`, `project_dependency`, `session`, `session_call`, `session_image`, `session_message`, `session_tool_use`, `session_turn`, `session_turn_todo`, and `subagent_invocation`.
 
 ## Conventions
 
@@ -40,6 +40,12 @@ Fresh and reopened current databases seed four global logging settings: `log_lev
 One row per global MCP server definition. It stores the opaque `mcp_server_id`, unique case-insensitive display name, immutable unique case-insensitive tool prefix, transport kind and versioned transport JSON, desired enabled state, ordering, optimistic revision, and timestamps. Transport JSON is either structured local stdio configuration or remote Streamable HTTP configuration. It may contain plaintext environment/header secrets; read DTOs expose key names only. Runtime connection state and discovered tools are project-scoped memory and are never persisted in this table.
 
 The tool prefix is generated on create and does not change when the display name is edited. Each successful non-idempotent update advances `revision`. Initialization retains the narrow additive path that added this table to the prior 15-table schema; built-in agents add a separate current compatibility step for `subagent_invocation` and session classification columns.
+
+## Language Servers
+
+### `language_server`
+
+One row per global local-stdio language-server definition. It stores the opaque `language_server_id`, unique case-insensitive display name, versioned configuration JSON, desired enabled state, ordering, optimistic revision, and timestamps. Configuration JSON contains the structured executable and argument vector, language IDs, project-relative root markers, initialization options, plaintext environment values, and bounded startup/request timeouts. SDK reads expose only environment key names. Project runtime state, process handles, negotiated capabilities, diagnostics, and document versions are memory-only and are not persisted.
 
 ## Sessions
 

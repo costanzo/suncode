@@ -83,6 +83,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    language_server (language_server_id) {
+        language_server_id -> Text,
+        display_name -> Text,
+        config_json -> Text,
+        enabled -> Integer,
+        sort_order -> Integer,
+        revision -> Integer,
+        created_at -> Text,
+        updated_at -> Text,
+    }
+}
+
+diesel::table! {
     llm_model_provider (provider_id) {
         provider_id -> Text,
         display_name -> Text,
@@ -286,6 +299,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     checkpoint,
     checkpoint_manifest,
     configuration,
+    language_server,
     llm_model,
     llm_model_provider,
     mcp_server,

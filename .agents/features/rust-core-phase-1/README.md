@@ -11,6 +11,7 @@ The `suncode-tool` crate is the agent's narrow audited operations boundary. It i
 - Read-only Git status and per-file diff inspection through vendored `git2`/libgit2. Results are project-relative and bounded; Git mutation, remotes, and credentials are out of scope.
 - Structured program-plus-argv execution and platform-native shell scripts. Output streams are continuously drained, previews are bounded, complete oversized output is retained as an artifact, and cancellation terminates the process group/tree.
 - Approval-gated HTTP(S) text retrieval with URL credential rejection, same-origin redirect checks, declared-charset decoding, parser-backed HTML conversion, 5 MiB raw-response bounds, 64 KiB model previews, and managed artifacts for the remainder.
+- Project-scoped local stdio language-server clients with bounded JSON-RPC framing, filtered process environments, document synchronization, cancellation, and five normalized read-only semantic operations.
 
 All operations return typed results and business errors. Retired operation names fail closed. The model tool definitions and their audited implementations are maintained together under `agent/crates/tools`.
 

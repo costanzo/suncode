@@ -9,7 +9,7 @@ public sealed partial class AgentSdk : IDisposable
 {
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 7;
+    private const uint AbiVersion = 8;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -98,6 +98,32 @@ public sealed partial class AgentSdk : IDisposable
 
     private Task<JsonElement> RawMcpLoadProgressAsync(string projectId) => WithUtf8Async(
         [projectId], values => NativeMethods.suncode_agent_sdk_mcp_load_progress(_handle, values[0]));
+
+    private Task<JsonElement> RawListLanguageServersAsync(string? projectId) => WithNullableUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_list_language_servers(_handle, values[0]));
+
+    private Task<JsonElement> RawCreateLanguageServerAsync(string? projectId, string idempotencyKey, string requestJson) => WithNullableUtf8Async(
+        [projectId, idempotencyKey, requestJson],
+        values => NativeMethods.suncode_agent_sdk_create_language_server(_handle, values[0], values[1], values[2]));
+
+    private Task<JsonElement> RawUpdateLanguageServerAsync(string? projectId, string languageServerId, ulong expectedRevision, string idempotencyKey, string requestJson) => WithNullableUtf8Async(
+        [projectId, languageServerId, idempotencyKey, requestJson],
+        values => NativeMethods.suncode_agent_sdk_update_language_server(_handle, values[0], values[1], expectedRevision, values[2], values[3]));
+
+    private Task<JsonElement> RawSetLanguageServerEnabledAsync(string? projectId, string languageServerId, ulong expectedRevision, string idempotencyKey, bool enabled) => WithNullableUtf8Async(
+        [projectId, languageServerId, idempotencyKey],
+        values => NativeMethods.suncode_agent_sdk_set_language_server_enabled(_handle, values[0], values[1], expectedRevision, values[2], enabled ? (byte)1 : (byte)0));
+
+    private Task<JsonElement> RawDeleteLanguageServerAsync(string languageServerId, ulong expectedRevision, string idempotencyKey) => WithUtf8Async(
+        [languageServerId, idempotencyKey],
+        values => NativeMethods.suncode_agent_sdk_delete_language_server(_handle, values[0], expectedRevision, values[1]));
+
+    private Task<JsonElement> RawRetryLanguageServerAsync(string projectId, string languageServerId) => WithUtf8Async(
+        [projectId, languageServerId],
+        values => NativeMethods.suncode_agent_sdk_retry_language_server(_handle, values[0], values[1]));
+
+    private Task<JsonElement> RawStartLanguageServerProjectAsync(string projectId) => WithUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_start_language_server_project(_handle, values[0]));
 
     private Task<JsonElement> RawListSettingsAsync(string? projectId, string? sessionId) =>
         projectId is null && sessionId is null

@@ -112,6 +112,31 @@ public sealed class SdkTypedModelTests
     }
 
     [Fact]
+    public void Serializes_language_server_request_with_write_only_environment_patch()
+    {
+        using var optionsDocument = JsonDocument.Parse("{\"check\":{\"command\":\"clippy\"}}");
+        var request = new LanguageServerWriteRequest(
+            "Rust Analyzer",
+            "rust-analyzer",
+            Array.Empty<string>(),
+            ["rust"],
+            ["Cargo.toml"],
+            optionsDocument.RootElement.Clone(),
+            new LanguageServerEnvironmentChanges(
+                new Dictionary<string, string> { ["RUST_LOG"] = "warn" },
+                Array.Empty<string>()));
+
+        var json = JsonSerializer.Serialize(request, Options);
+        using var document = JsonDocument.Parse(json);
+
+        Assert.Equal("Rust Analyzer", document.RootElement.GetProperty("displayName").GetString());
+        Assert.Equal("rust-analyzer", document.RootElement.GetProperty("command").GetString());
+        Assert.Equal("rust", document.RootElement.GetProperty("languageIds")[0].GetString());
+        Assert.Equal("warn", document.RootElement.GetProperty("environment").GetProperty("set").GetProperty("RUST_LOG").GetString());
+        Assert.Equal(30UL, document.RootElement.GetProperty("startupTimeoutSeconds").GetUInt64());
+    }
+
+    [Fact]
     public void Serializes_proxy_configuration_with_write_only_password_patch()
     {
         var request = new ProxyConfigurationRequest(

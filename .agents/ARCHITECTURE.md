@@ -28,6 +28,7 @@ Rust SunCode agent core
     |- context, policy, approvals, and scheduling
     |- SQLite, settings, events, and credentials
     |- filesystem, search, process, and artifacts
+    |- project-scoped language-server protocol clients
     `- checkpoints and operation journal
 
 Future TypeScript N-API and Python PyO3 bindings embed the same SDK.
@@ -55,6 +56,7 @@ The Rust agent packages own:
 - provider credentials and model catalog through SQLite-owned LLM provider/model records
 - global, project, and session configuration through the unified `configuration` table
 - project boundary checks and machine-affecting operations
+- project-scoped language-server definitions, lifecycle, document synchronization, and bounded semantic queries
 - checkpoints, undo, managed artifacts, and operation reconciliation
 
 Provider and orchestration modules cannot perform project operations directly. They construct typed operation requests which pass through policy and the agent operation dispatcher.
@@ -106,7 +108,7 @@ SQLite keeps separate durable concerns:
 - durable turn admission and approval continuation
 - scoped settings and plaintext provider-key records
 
-The Phase 1 database has one current 17-table schema and no schema versions or general migration runner. The `suncode-database` package owns backend resources, with SQLite scripts and file setup under `suncode-database::sqlite`; the `suncode-data` package owns Diesel connections, ORM declarations, persistence DTOs, and operations. Initialization applies the database package's ordered schema/data manifests in one transaction. Narrow additive compatibility steps cover the earlier MCP table and the current `subagent_invocation` plus session classification columns; unexpected or structurally incompatible databases remain rejected without conversion. `project` is the project identity table, and `project_dependency` stores its registered read-only source roots. `session` is the conversation root; `subagent_invocation` correlates primary turns with delegated child sessions; `session_turn` is the single turn/submission/recovery record; `session_turn_todo` is the authoritative current todo projection keyed by turn and ordinal; `session_call` stores each LLM request plus independently nullable provider HTTP request and response-object identifiers; `session_tool_use` exclusively stores tool requests/results and state; and `session_message` stores user, assistant, and thinking messages. Provider context derives transient tool-role messages from succeeded tool-use rows. `configuration` owns global/project/session key-value overlays, including global logging policy. Human-readable messages are ordered by timestamp. Agent event payloads are not duplicated in SQLite; SDK snapshots read normalized rows and live subscribers resync after lag.
+The Phase 1 database has one current 18-table schema and no schema versions or general migration runner. The `suncode-database` package owns backend resources, with SQLite scripts and file setup under `suncode-database::sqlite`; the `suncode-data` package owns Diesel connections, ORM declarations, persistence DTOs, and operations. Initialization applies the database package's ordered schema/data manifests in one transaction. Narrow additive compatibility steps cover the current `language_server` table and the earlier MCP and built-in-agent additions; unexpected or structurally incompatible databases remain rejected without conversion. `project` is the project identity table, `project_dependency` stores registered read-only source roots, and `language_server` stores global desired local-stdio definitions while project runtime state remains memory-only. `session` is the conversation root; `subagent_invocation` correlates primary turns with delegated child sessions; `session_turn` is the single turn/submission/recovery record; `session_turn_todo` is the authoritative current todo projection keyed by turn and ordinal; `session_call` stores each LLM request plus independently nullable provider HTTP request and response-object identifiers; `session_tool_use` exclusively stores tool requests/results and state; and `session_message` stores user, assistant, and thinking messages. Provider context derives transient tool-role messages from succeeded tool-use rows. `configuration` owns global/project/session key-value overlays, including global logging policy. Human-readable messages are ordered by timestamp. Agent event payloads are not duplicated in SQLite; SDK snapshots read normalized rows and live subscribers resync after lag.
 
 ## 8. Authority Model
 
@@ -141,6 +143,7 @@ agent/crates/data/      Diesel ORM, persistence DTOs, and data operations
 agent/crates/llm/       provider-neutral LLM contracts, catalog, registry, and adapters
 agent/crates/tools/      `suncode-tool` package for built-in definitions and audited in-process machine operations
 agent/crates/mcp/        bounded MCP client transports, discovery, invocation, and result normalization
+agent/crates/lsp/        bounded local-stdio LSP framing, lifecycle, document sync, and semantic requests
 sdks/rust/                typed Rust SDK facade over the agent harness
     sdks/c/                   stable C ABI/native library
     sdks/csharp/              typed managed SDK and native integration for Avalonia

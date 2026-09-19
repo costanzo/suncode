@@ -6,7 +6,7 @@ pub mod logging;
 mod policy;
 
 pub use agent::events::*;
-pub use agent::TurnResponse;
+pub use agent::{LanguageServerRuntimeState, LanguageServerRuntimeStatus, TurnResponse};
 pub use agent_lock::AgentLock;
 pub use domain::{
     ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectDependencyRecord,

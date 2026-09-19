@@ -25,6 +25,9 @@ use uuid::Uuid;
 pub mod builtin_agents;
 pub mod events;
 use events::*;
+mod lsp;
+use lsp::LanguageServerManager;
+pub use lsp::{LanguageServerRuntimeState, LanguageServerRuntimeStatus};
 mod mcp;
 use mcp::McpManager;
 pub use mcp::{McpLoadProgress, McpRuntimeState, McpRuntimeStatus};
@@ -139,6 +142,7 @@ pub struct Agent {
     non_interactive: bool,
     session_locks: Arc<AsyncMutex<HashMap<String, Arc<AsyncMutex<()>>>>>,
     mcp: McpManager,
+    lsp: LanguageServerManager,
 }
 
 include!("submission.rs");

@@ -10,7 +10,7 @@ use suncode_agent::domain::{
 use suncode_common::BusinessError;
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 7;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 8;
 pub type SdkResult<T> = Result<T, BusinessError>;
 pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
 
@@ -202,6 +202,80 @@ pub struct McpLoadProgressResult {
 pub struct McpServerDeleteResult {
     pub mcp_server_id: String,
     pub removed: bool,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LanguageServerEnvironmentChanges {
+    #[serde(default)]
+    pub set: BTreeMap<String, String>,
+    #[serde(default)]
+    pub remove: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LanguageServerWriteRequest {
+    pub display_name: String,
+    pub command: String,
+    #[serde(default)]
+    pub arguments: Vec<String>,
+    pub language_ids: Vec<String>,
+    #[serde(default)]
+    pub root_markers: Vec<String>,
+    #[serde(default)]
+    pub initialization_options: Value,
+    #[serde(default)]
+    pub environment: Option<LanguageServerEnvironmentChanges>,
+    pub startup_timeout_seconds: u64,
+    pub request_timeout_seconds: u64,
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub sort_order: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LanguageServerDto {
+    pub language_server_id: String,
+    pub display_name: String,
+    pub command: String,
+    pub arguments: Vec<String>,
+    pub language_ids: Vec<String>,
+    pub root_markers: Vec<String>,
+    pub initialization_options: Value,
+    pub environment_keys: Vec<String>,
+    pub startup_timeout_seconds: u64,
+    pub request_timeout_seconds: u64,
+    pub enabled: bool,
+    pub sort_order: i64,
+    pub revision: u64,
+    pub runtime_status: suncode_agent::LanguageServerRuntimeState,
+    pub capability_count: usize,
+    pub error: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LanguageServersResult {
+    pub servers: Vec<LanguageServerDto>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LanguageServerDeleteResult {
+    pub language_server_id: String,
+    pub removed: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LanguageServerProjectResult {
+    pub project_id: String,
+    pub started: bool,
 }
 
 #[derive(Debug, Serialize)]
