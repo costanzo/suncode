@@ -119,6 +119,7 @@ const routes = {
   "/projects/desktop/dialog-window": DialogWindowPage,
   "/projects/desktop/about": AboutPage,
   "/projects/desktop/settings": SettingsPage,
+  "/projects/desktop/settings/language-servers": () => <SettingsPage initialPage="lsp" />,
   "/projects/desktop/settings/agents": () => <SettingsPage initialPage="agents" />,
   "/projects/desktop/workspace": WorkspacePage,
   "/projects/desktop/workspace/sessions": WorkspaceSessionsPage,

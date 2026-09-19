@@ -30,6 +30,9 @@ public sealed partial class App : Application
         AvaloniaXamlLoader.Load(this);
         ConfigureNativeApplicationMenu();
         DiagnosticLog.Info("app.initialize", "xaml_load end");
+#if DEBUG
+        this.AttachDeveloperTools();
+#endif
     }
 
     public override void OnFrameworkInitializationCompleted()

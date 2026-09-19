@@ -1046,6 +1046,281 @@
   font-size: 10px;
   line-height: 1.4;
 }
+.settings-lsp-content {
+  max-width: 840px;
+}
+.settings-lsp-content > .settings-heading-row {
+  display: flex;
+}
+.settings-lsp-content > .settings-heading-row .btn {
+  flex: 0 0 auto;
+}
+.lsp-server-list {
+  display: grid;
+  border-top: 1px solid var(--border);
+}
+.lsp-server-list-header,
+.lsp-server-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 106px 108px 70px 88px;
+  gap: 10px;
+  align-items: center;
+}
+.lsp-server-list-header {
+  min-height: 31px;
+  padding: 0 4px;
+  color: var(--text-muted);
+  font: 9px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lsp-server-row {
+  min-height: 82px;
+  padding: 11px 4px;
+  border-top: 1px solid var(--border);
+}
+.lsp-server-list-header + .lsp-server-row {
+  border-top: 0;
+}
+.lsp-server-row.is-failed {
+  background: color-mix(in srgb, var(--danger-surface) 44%, transparent);
+}
+.lsp-server-identity {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.lsp-server-identity strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lsp-server-identity code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font: 10px var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lsp-server-error {
+  color: var(--danger);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.lsp-language-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+.lsp-language-list code {
+  max-width: 100%;
+  padding: 3px 5px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: 9px var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lsp-server-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  color: var(--text-muted);
+}
+.lsp-server-status .settings-status-dot {
+  margin-top: 4px;
+}
+.lsp-server-status > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.lsp-server-status strong {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.lsp-server-status span {
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.3;
+}
+.lsp-server-status.is-ready {
+  color: var(--success);
+}
+.lsp-server-status.is-indexing {
+  color: var(--accent);
+}
+.lsp-server-status.is-failed {
+  color: var(--danger);
+}
+.lsp-server-status.is-failed strong {
+  color: var(--danger);
+}
+.lsp-index-progress {
+  display: block;
+  width: 68px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--border);
+}
+.lsp-index-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.lsp-server-switch {
+  justify-content: flex-start;
+}
+.lsp-server-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 0;
+}
+.lsp-server-actions .btn-icon {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+}
+.lsp-delete-button:hover {
+  color: var(--danger);
+  background: var(--danger-surface);
+}
+.lsp-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 38px 20px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+.lsp-empty-state strong {
+  color: var(--text);
+  font-size: 12px;
+}
+.lsp-empty-state span {
+  max-width: 380px;
+  font-size: 11px;
+}
+.lsp-editor-window-shell {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  pointer-events: none;
+}
+.lsp-editor-window {
+  pointer-events: auto;
+}
+.lsp-editor-window.has-fixed-height > .native-window-client {
+  display: grid;
+  min-height: 0;
+}
+.lsp-editor-window-client {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 0;
+  background: var(--surface);
+}
+.lsp-editor-heading {
+  display: grid;
+  gap: 4px;
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.lsp-editor-heading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.lsp-editor-heading p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.lsp-editor-scroll {
+  min-height: 0;
+  overflow: auto;
+  padding: 0 24px;
+}
+.lsp-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--surface-raised);
+  border-top: 1px solid var(--border);
+}
+.lsp-server-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px 16px;
+  margin: 18px 0;
+}
+.lsp-form-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.lsp-form-field > span:first-child {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+.lsp-form-field > small {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.lsp-form-field .field {
+  min-height: var(--control-md);
+}
+.lsp-form-field textarea.field {
+  min-height: 62px;
+  resize: vertical;
+}
+.lsp-form-wide {
+  grid-column: 1 / -1;
+}
+.lsp-form-enable {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 11px 12px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.lsp-form-enable > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.lsp-form-enable strong {
+  font-size: 11px;
+}
+.lsp-form-enable > div > span {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
 @media (max-width: 860px) {
   .settings-body {
     grid-template-columns: 196px minmax(0, 1fr);
@@ -1060,6 +1335,11 @@
   .mcp-server-list-header,
   .mcp-server-row {
     grid-template-columns: minmax(130px, 1fr) 102px 68px 92px;
+    gap: 8px;
+  }
+  .lsp-server-list-header,
+  .lsp-server-row {
+    grid-template-columns: minmax(130px, 1fr) 96px 102px 68px 84px;
     gap: 8px;
   }
 }
@@ -1112,6 +1392,12 @@
   .settings-mcp-content > .settings-heading-row .btn {
     width: fit-content;
   }
+  .settings-lsp-content > .settings-heading-row {
+    display: grid;
+  }
+  .settings-lsp-content > .settings-heading-row .btn {
+    width: fit-content;
+  }
   .mcp-server-list-header {
     display: none;
   }
@@ -1132,6 +1418,39 @@
   .mcp-server-actions {
     justify-self: end;
   }
+  .lsp-server-list-header {
+    display: none;
+  }
+  .lsp-server-row {
+    grid-template-areas:
+      "identity identity languages"
+      "status enabled actions";
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 12px 18px;
+    padding: 14px 4px;
+  }
+  .lsp-server-list > .lsp-server-row {
+    border-top: 1px solid var(--border);
+  }
+  .lsp-server-identity {
+    grid-area: identity;
+  }
+  .lsp-language-list {
+    grid-area: languages;
+    justify-self: end;
+  }
+  .lsp-server-status {
+    grid-area: status;
+    justify-self: start;
+  }
+  .lsp-server-switch {
+    grid-area: enabled;
+    justify-self: end;
+  }
+  .lsp-server-actions {
+    grid-area: actions;
+    justify-self: end;
+  }
   .mcp-editor-window-shell {
     padding: 12px;
   }
@@ -1141,7 +1460,19 @@
   .mcp-server-form {
     grid-template-columns: 1fr;
   }
+  .lsp-editor-window-shell {
+    padding: 12px;
+  }
+  .lsp-editor-window {
+    height: min(660px, calc(100vh - 24px));
+  }
+  .lsp-server-form {
+    grid-template-columns: 1fr;
+  }
   .mcp-form-wide {
+    grid-column: auto;
+  }
+  .lsp-form-wide {
     grid-column: auto;
   }
   .settings-subsection {
@@ -1265,5 +1596,45 @@
   }
   .mcp-server-switch {
     justify-self: start;
+  }
+  .settings-lsp-content > .settings-heading-row {
+    display: grid;
+    gap: 12px;
+  }
+  .settings-lsp-content > .settings-heading-row .btn {
+    width: fit-content;
+  }
+  .lsp-server-list-header {
+    display: none;
+  }
+  .lsp-server-row {
+    grid-template-areas:
+      "identity identity languages"
+      "status enabled actions";
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 12px 18px;
+    padding: 14px 4px;
+  }
+  .lsp-server-list > .lsp-server-row {
+    border-top: 1px solid var(--border);
+  }
+  .lsp-server-identity {
+    grid-area: identity;
+  }
+  .lsp-language-list {
+    grid-area: languages;
+    justify-self: end;
+  }
+  .lsp-server-status {
+    grid-area: status;
+    justify-self: start;
+  }
+  .lsp-server-switch {
+    grid-area: enabled;
+    justify-self: end;
+  }
+  .lsp-server-actions {
+    grid-area: actions;
+    justify-self: end;
   }
 }

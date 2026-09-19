@@ -62,13 +62,14 @@ const navItems = [
   { id: "shortcuts", label: "Keyboard shortcuts", icon: "keyboard" },
   { id: "network", label: "Network", icon: "platform" },
   { id: "mcp", label: "MCP servers", icon: "server" },
+  { id: "lsp", label: "Language servers", icon: "file-code" },
   { id: "logging", label: "Logging", icon: "assets" },
 ];
 
 const settingsGuide = {
   tabs: {
     actions: [
-      "Choose Defaults, Appearance, Keyboard shortcuts, Network, MCP servers, Agents, or Logging from the left navigation.",
+      "Choose Defaults, Appearance, Keyboard shortcuts, Network, MCP servers, Language servers, Agents, or Logging from the left navigation.",
       "Use the chevrons beside Agents and Model providers to collapse or expand their fixed catalogs.",
       "Select an agent beneath Agents to inspect its immutable identity, tool allowlist, and authority boundaries.",
       "Select a provider to edit its OpenAI-compatible URL or credential.",
@@ -77,6 +78,7 @@ const settingsGuide = {
       "Use Network to choose no proxy, system proxy, or a custom proxy and to review certificate verification and trust states.",
       "Use the folder buttons in Logging to choose log and image storage directories.",
       "Use MCP servers to add, edit, delete, enable, disable, and retry local or remote servers.",
+      "Use Language servers to configure project-scoped semantic analysis for diagnostics, definitions, references, hover details, and symbols.",
       "Edit a control and use its save action; use Done to return to ProjectHub.",
       "Keyboard shortcuts are shown as read-only key combinations; customization is reserved for a future release.",
       "Agents is a read-only catalog of the built-in identities and exact tool allowlists compiled into SunCode.",
@@ -87,7 +89,7 @@ const settingsGuide = {
       "Rows use 12px labels, 11px hints, 36px controls, 24px column gaps, and 16px section gaps.",
     ],
     logic: [
-      "Settings are local to the embedded agent and are grouped by defaults, appearance, keyboard shortcuts, network, logging, and providers.",
+      "Settings are local to the embedded agent and are grouped by defaults, appearance, keyboard shortcuts, network, language tooling, logging, agents, and providers.",
       "Built-in agents cannot be created, edited, enabled, disabled, or deleted from Settings.",
       "Provider URL changes and default resets are persisted and applied to subsequent requests without changing credentials or models.",
       "Custom proxy controls are subordinate to the selected proxy mode, preserve write-only password state, and apply to every Rust-owned HTTP client.",
@@ -98,6 +100,9 @@ const settingsGuide = {
       "MCP configuration is persisted by the embedded Rust agent; the effective tool catalog is refreshed without starting a new session.",
       "Connected, connecting, failed, and disabled are runtime states. Enabled is the persisted desired state.",
       "MCP server definitions are global, while the status shown belongs to the current project connection.",
+      "Language server definitions are global desired state, while indexing and readiness belong to the current project runtime.",
+      "Language servers run as local processes with user authority. Their caches and toolchain side effects are not covered by SunCode undo.",
+      "Server-requested file edits and command execution are refused; the surface specifies semantic read capabilities only.",
       "Settings reopens to the last valid destination, including the selected provider and its expanded navigation state.",
     ],
   },
@@ -1302,6 +1307,593 @@ function McpServersPanel({ servers, setServers, onSave }) {
   );
 }
 
+const initialLanguageServers = [
+  {
+    id: "lsp_rust_analyzer",
+    name: "rust-analyzer",
+    command: "rust-analyzer",
+    arguments: "",
+    languages: ["Rust"],
+    languageIds: "rust",
+    rootMarkers: "Cargo.toml\nrust-project.json",
+    enabled: true,
+    status: "ready",
+    capabilityCount: 5,
+  },
+  {
+    id: "lsp_typescript",
+    name: "TypeScript language server",
+    command: "typescript-language-server",
+    arguments: "--stdio",
+    languages: ["TypeScript", "JavaScript"],
+    languageIds: "typescript\ntypescriptreact\njavascript\njavascriptreact",
+    rootMarkers: "tsconfig.json\njsconfig.json\npackage.json",
+    enabled: true,
+    status: "indexing",
+    progress: 68,
+    capabilityCount: 5,
+  },
+  {
+    id: "lsp_gopls",
+    name: "gopls",
+    command: "gopls",
+    arguments: "serve",
+    languages: ["Go"],
+    languageIds: "go\ngomod\ngowork\ngotmpl",
+    rootMarkers: "go.work\ngo.mod",
+    enabled: true,
+    status: "failed",
+    capabilityCount: 0,
+    error: "Executable not found. Install gopls or update the executable path.",
+  },
+  {
+    id: "lsp_python",
+    name: "Python LSP",
+    command: "pylsp",
+    arguments: "",
+    languages: ["Python"],
+    languageIds: "python",
+    rootMarkers: "pyproject.toml\nsetup.py\nrequirements.txt",
+    enabled: false,
+    status: "disabled",
+    capabilityCount: 0,
+  },
+];
+
+const emptyLanguageServerDraft = {
+  name: "",
+  command: "",
+  arguments: "",
+  languageIds: "",
+  rootMarkers: "",
+  initializationOptions: "",
+  environment: "",
+  startupTimeout: "30",
+  requestTimeout: "30",
+  enabled: true,
+};
+
+const languageServerStatusLabels = {
+  ready: "Ready",
+  indexing: "Indexing",
+  failed: "Failed",
+  disabled: "Disabled",
+  not_started: "Not started",
+};
+
+function LanguageServerSwitch({ server, onToggle }) {
+  const pending = server.status === "indexing";
+  return (
+    <label className="settings-switch lsp-server-switch">
+      <input
+        type="checkbox"
+        checked={server.enabled}
+        disabled={pending}
+        onChange={(event) => onToggle(server.id, event.target.checked)}
+        aria-label={`${server.enabled ? "Disable" : "Enable"} ${server.name}`}
+      />
+      <span className="settings-switch-track">
+        <span />
+      </span>
+      <b>{server.enabled ? "On" : "Off"}</b>
+    </label>
+  );
+}
+
+function LanguageServerEditorWindow({ open, server, onClose, onSubmit }) {
+  const windowRef = useRef(null);
+  const descriptionId = useId();
+  const [draft, setDraft] = useState(() =>
+    server
+      ? {
+          ...emptyLanguageServerDraft,
+          name: server.name,
+          command: server.command,
+          arguments: server.arguments ?? "",
+          languageIds: server.languageIds ?? "",
+          rootMarkers: server.rootMarkers ?? "",
+          initializationOptions: server.initializationOptions ?? "",
+          startupTimeout: server.startupTimeout ?? emptyLanguageServerDraft.startupTimeout,
+          requestTimeout: server.requestTimeout ?? emptyLanguageServerDraft.requestTimeout,
+          enabled: server.enabled,
+        }
+      : emptyLanguageServerDraft,
+  );
+  const editing = Boolean(server);
+  const update = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
+  const valid = draft.name.trim() && draft.command.trim() && draft.languageIds.trim();
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const priorFocus = document.activeElement;
+    windowRef.current?.querySelector("input, button, textarea")?.focus();
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+      if (event.key !== "Tab") return;
+      const focusable = [
+        ...windowRef.current.querySelectorAll("button, input, textarea, [href]"),
+      ].filter((element) => !element.disabled);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      priorFocus?.focus();
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="lsp-editor-window-shell">
+      <NativeWindowFrame
+        platform="macos"
+        title={editing ? "Edit language server" : "Add language server"}
+        width="640px"
+        height="660px"
+        onClose={onClose}
+        className="lsp-editor-window"
+      >
+        <div
+          ref={windowRef}
+          className="lsp-editor-window-client"
+          role="dialog"
+          aria-modal="false"
+          aria-label={editing ? "Edit language server" : "Add language server"}
+          aria-describedby={descriptionId}
+        >
+          <header className="lsp-editor-heading">
+            <h2>{editing ? "Edit language server" : "Add language server"}</h2>
+            <p id={descriptionId}>
+              Configure a structured local process. SunCode never invokes the executable through a
+              shell.
+            </p>
+          </header>
+          <div className="lsp-editor-scroll">
+            <div className="lsp-server-form">
+              <label className="lsp-form-field">
+                <span>Server name</span>
+                <input
+                  className="field"
+                  value={draft.name}
+                  onChange={(event) => update("name", event.target.value)}
+                  placeholder="rust-analyzer"
+                  aria-label="Language server name"
+                />
+              </label>
+              <label className="lsp-form-field">
+                <span>Executable</span>
+                <input
+                  className="field mono"
+                  value={draft.command}
+                  onChange={(event) => update("command", event.target.value)}
+                  placeholder="rust-analyzer"
+                  spellCheck="false"
+                  aria-label="Language server executable"
+                />
+              </label>
+              <label className="lsp-form-field">
+                <span>Arguments</span>
+                <textarea
+                  className="field mono"
+                  value={draft.arguments}
+                  onChange={(event) => update("arguments", event.target.value)}
+                  placeholder="One argument per line"
+                  aria-label="Language server arguments"
+                />
+              </label>
+              <label className="lsp-form-field">
+                <span>Language IDs</span>
+                <textarea
+                  className="field mono"
+                  value={draft.languageIds}
+                  onChange={(event) => update("languageIds", event.target.value)}
+                  placeholder="One LSP language ID per line"
+                  aria-label="Language IDs"
+                />
+                <small>At least one language ID is required.</small>
+              </label>
+              <label className="lsp-form-field">
+                <span>Root markers</span>
+                <textarea
+                  className="field mono"
+                  value={draft.rootMarkers}
+                  onChange={(event) => update("rootMarkers", event.target.value)}
+                  placeholder="Cargo.toml"
+                  aria-label="Project root markers"
+                />
+                <small>One project-relative file or directory name per line.</small>
+              </label>
+              <label className="lsp-form-field">
+                <span>Initialization options</span>
+                <textarea
+                  className="field mono"
+                  value={draft.initializationOptions}
+                  onChange={(event) => update("initializationOptions", event.target.value)}
+                  placeholder="Optional JSON object"
+                  aria-label="Language server initialization options"
+                  spellCheck="false"
+                />
+              </label>
+              <label className="lsp-form-field lsp-form-wide">
+                <span>Environment</span>
+                <textarea
+                  className="field mono"
+                  value={draft.environment}
+                  onChange={(event) => update("environment", event.target.value)}
+                  placeholder={editing ? "NAME=value replaces; -NAME removes" : "NAME=value"}
+                  aria-label="Language server environment entries"
+                />
+                <small>
+                  Values are stored locally and hidden after saving. Use -NAME to remove a stored
+                  key.
+                </small>
+              </label>
+              <label className="lsp-form-field">
+                <span>Startup timeout</span>
+                <span className="settings-unit-field">
+                  <input
+                    className="field mono"
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={draft.startupTimeout}
+                    onChange={(event) => update("startupTimeout", event.target.value)}
+                    aria-label="Language server startup timeout in seconds"
+                  />
+                  <span>SEC</span>
+                </span>
+              </label>
+              <label className="lsp-form-field">
+                <span>Request timeout</span>
+                <span className="settings-unit-field">
+                  <input
+                    className="field mono"
+                    type="number"
+                    min="1"
+                    max="600"
+                    value={draft.requestTimeout}
+                    onChange={(event) => update("requestTimeout", event.target.value)}
+                    aria-label="Language server request timeout in seconds"
+                  />
+                  <span>SEC</span>
+                </span>
+              </label>
+              <div className="lsp-form-enable lsp-form-wide">
+                <div>
+                  <strong>Enable server</strong>
+                  <span>Starts one project-scoped process when a matching project is active.</span>
+                </div>
+                <label className="settings-switch">
+                  <input
+                    type="checkbox"
+                    checked={draft.enabled}
+                    onChange={(event) => update("enabled", event.target.checked)}
+                    aria-label="Enable language server after saving"
+                  />
+                  <span className="settings-switch-track">
+                    <span />
+                  </span>
+                  <b>{draft.enabled ? "On" : "Off"}</b>
+                </label>
+              </div>
+            </div>
+          </div>
+          <footer className="lsp-editor-actions">
+            <Button size="sm" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={!valid}
+              onClick={() => onSubmit({ ...draft, id: server?.id })}
+            >
+              {editing ? "Save changes" : "Add server"}
+            </Button>
+          </footer>
+        </div>
+      </NativeWindowFrame>
+    </div>
+  );
+}
+
+function LanguageServersPanel({ servers, setServers, onSave }) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const editingServer = servers.find((server) => server.id === editingId);
+  const deletingServer = servers.find((server) => server.id === deletingId);
+
+  const startIndexing = (id) => {
+    setServers((current) =>
+      current.map((server) =>
+        server.id === id
+          ? {
+              ...server,
+              enabled: true,
+              status: "indexing",
+              progress: 18,
+              error: undefined,
+              capabilityCount: 0,
+            }
+          : server,
+      ),
+    );
+    window.setTimeout(() => {
+      setServers((current) =>
+        current.map((server) =>
+          server.id === id
+            ? { ...server, status: "ready", progress: undefined, capabilityCount: 5 }
+            : server,
+        ),
+      );
+    }, 850);
+  };
+
+  const toggleServer = (id, enabled) => {
+    if (!enabled) {
+      setServers((current) =>
+        current.map((server) =>
+          server.id === id
+            ? {
+                ...server,
+                enabled: false,
+                status: "disabled",
+                progress: undefined,
+                capabilityCount: 0,
+                error: undefined,
+              }
+            : server,
+        ),
+      );
+      onSave("Language server disabled for new project runtimes.");
+      return;
+    }
+    startIndexing(id);
+    onSave("Language server enabled. Starting and indexing the current project.");
+  };
+
+  const saveServer = (draft) => {
+    const languages = draft.languageIds
+      .split("\n")
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .map((value) => value.replace(/react$/i, " React"))
+      .map((value) => value.charAt(0).toUpperCase() + value.slice(1));
+    if (draft.id) {
+      setServers((current) =>
+        current.map((server) =>
+          server.id === draft.id
+            ? {
+                ...server,
+                name: draft.name.trim(),
+                command: draft.command.trim(),
+                arguments: draft.arguments.trim(),
+                languageIds: draft.languageIds.trim(),
+                rootMarkers: draft.rootMarkers.trim(),
+                initializationOptions: draft.initializationOptions.trim(),
+                startupTimeout: draft.startupTimeout,
+                requestTimeout: draft.requestTimeout,
+                languages,
+                enabled: draft.enabled,
+                status: draft.enabled ? "indexing" : "disabled",
+                progress: draft.enabled ? 18 : undefined,
+                capabilityCount: 0,
+                error: undefined,
+              }
+            : server,
+        ),
+      );
+      if (draft.enabled) startIndexing(draft.id);
+    } else {
+      const id = `lsp_${Date.now()}`;
+      const next = {
+        id,
+        name: draft.name.trim(),
+        command: draft.command.trim(),
+        arguments: draft.arguments.trim(),
+        languageIds: draft.languageIds.trim(),
+        rootMarkers: draft.rootMarkers.trim(),
+        initializationOptions: draft.initializationOptions.trim(),
+        startupTimeout: draft.startupTimeout,
+        requestTimeout: draft.requestTimeout,
+        languages,
+        enabled: draft.enabled,
+        status: draft.enabled ? "indexing" : "disabled",
+        progress: draft.enabled ? 18 : undefined,
+        capabilityCount: 0,
+      };
+      setServers((current) => [...current, next]);
+      if (draft.enabled) window.setTimeout(() => startIndexing(id), 0);
+    }
+    setDialogOpen(false);
+    setEditingId(null);
+    onSave(
+      draft.enabled
+        ? "Language server saved. Starting the current project runtime."
+        : "Language server saved as disabled.",
+    );
+  };
+
+  const deleteServer = () => {
+    if (!deletingServer) return;
+    setServers((current) => current.filter((server) => server.id !== deletingServer.id));
+    setDeletingId(null);
+    onSave("Language server deleted. Its project runtimes were stopped.");
+  };
+
+  return (
+    <div className="settings-panel-content settings-lsp-content">
+      <div className="settings-panel-heading settings-heading-row">
+        <div>
+          <h2>Language servers</h2>
+          <p>Manage project-scoped semantic analysis used by the coding agent.</p>
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          icon="plus"
+          onClick={() => {
+            setEditingId(null);
+            setDialogOpen(true);
+          }}
+        >
+          Add server
+        </Button>
+      </div>
+      {servers.length ? (
+        <div className="lsp-server-list" aria-label="Configured language servers">
+          <div className="lsp-server-list-header" aria-hidden="true">
+            <span>Server</span>
+            <span>Languages</span>
+            <span>Status</span>
+            <span>Enabled</span>
+            <span>Actions</span>
+          </div>
+          {servers.map((server) => (
+            <div className={`lsp-server-row is-${server.status}`} key={server.id}>
+              <div className="lsp-server-identity">
+                <strong>{server.name}</strong>
+                <code>
+                  {[server.command, server.arguments?.replaceAll("\n", " ")]
+                    .filter(Boolean)
+                    .join(" ")}
+                </code>
+                {server.error && <span className="lsp-server-error">{server.error}</span>}
+              </div>
+              <div
+                className="lsp-language-list"
+                aria-label={`Languages: ${server.languages.join(", ")}`}
+              >
+                {server.languages.map((language) => (
+                  <code key={language}>{language}</code>
+                ))}
+              </div>
+              <div className={`lsp-server-status is-${server.status}`}>
+                <span className="settings-status-dot" />
+                <div>
+                  <strong>{languageServerStatusLabels[server.status]}</strong>
+                  <span>
+                    {server.status === "ready"
+                      ? `${server.capabilityCount} capabilities`
+                      : server.status === "indexing"
+                        ? `${server.progress ?? 0}% indexed`
+                        : server.status === "failed"
+                          ? "No semantic results"
+                          : server.status === "not_started"
+                            ? "Open a project"
+                            : "Not running"}
+                  </span>
+                  {server.status === "indexing" && (
+                    <span className="lsp-index-progress" aria-hidden="true">
+                      <span style={{ width: `${server.progress ?? 0}%` }} />
+                    </span>
+                  )}
+                </div>
+              </div>
+              <LanguageServerSwitch server={server} onToggle={toggleServer} />
+              <div className="lsp-server-actions">
+                {server.status === "failed" && (
+                  <button
+                    type="button"
+                    className="btn btn-icon btn-quiet"
+                    aria-label={`Retry ${server.name}`}
+                    title="Retry server"
+                    onClick={() => startIndexing(server.id)}
+                  >
+                    <Icon name="refresh" size={14} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-icon btn-quiet"
+                  aria-label={`Edit ${server.name}`}
+                  title="Edit server"
+                  onClick={() => {
+                    setEditingId(server.id);
+                    setDialogOpen(true);
+                  }}
+                >
+                  <Icon name="edit" size={14} />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-icon btn-quiet lsp-delete-button"
+                  aria-label={`Delete ${server.name}`}
+                  title="Delete server"
+                  onClick={() => setDeletingId(server.id)}
+                >
+                  <Icon name="trash" size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="lsp-empty-state">
+          <Icon name="file-code" size={22} />
+          <strong>No language servers configured</strong>
+          <span>Add a local language server to give the agent project-aware semantic context.</span>
+        </div>
+      )}
+      <LanguageServerEditorWindow
+        key={`${editingId ?? "new"}:${dialogOpen}`}
+        open={dialogOpen}
+        server={editingServer}
+        onClose={() => {
+          setDialogOpen(false);
+          setEditingId(null);
+        }}
+        onSubmit={saveServer}
+      />
+      <ConfirmationDialog
+        open={Boolean(deletingServer)}
+        title="Delete language server?"
+        description="Its project runtimes will stop and semantic results will no longer be available to new agent turns."
+        confirmLabel="Delete server"
+        onCancel={() => setDeletingId(null)}
+        onConfirm={deleteServer}
+      >
+        <div className="confirmation-dialog-target">
+          <span>LANGUAGE SERVER</span>
+          <strong>{deletingServer?.name}</strong>
+        </div>
+      </ConfirmationDialog>
+    </div>
+  );
+}
+
 function AgentsPanel({ onSelect }) {
   return (
     <div className="settings-panel-content settings-agents-content">
@@ -1574,6 +2166,7 @@ export function SettingsPage({ initialPage = "defaults" }) {
   );
   const [status, setStatus] = useState("");
   const [mcpServers, setMcpServers] = useState(initialMcpServers);
+  const [languageServers, setLanguageServers] = useState(initialLanguageServers);
   const [guideOpen, setGuideOpen] = useState(false);
   const navigateBack = () => {
     window.location.hash = "/projects/desktop/project-hub";
@@ -1585,6 +2178,14 @@ export function SettingsPage({ initialPage = "defaults" }) {
     if (page === "network") return <NetworkPanel onSave={save} />;
     if (page === "mcp")
       return <McpServersPanel servers={mcpServers} setServers={setMcpServers} onSave={save} />;
+    if (page === "lsp")
+      return (
+        <LanguageServersPanel
+          servers={languageServers}
+          setServers={setLanguageServers}
+          onSave={save}
+        />
+      );
     if (page === "agents")
       return (
         <AgentsPanel
@@ -1626,7 +2227,7 @@ export function SettingsPage({ initialPage = "defaults" }) {
     <>
       <PageHeader
         title="Settings"
-        description="The Avalonia desktop settings window for local defaults, keyboard shortcuts, security, MCP servers, built-in agents, diagnostics, and provider credentials."
+        description="The Avalonia desktop settings window for local defaults, keyboard shortcuts, security, MCP servers, language servers, built-in agents, diagnostics, and provider credentials."
         path="projects/desktop/settings/"
       />
       <WindowSizeNote width="900" height="672" minimumWidth="720" minimumHeight="552" />
@@ -1638,7 +2239,7 @@ export function SettingsPage({ initialPage = "defaults" }) {
         <WorkspaceGuideState
           className="settings-guide-state"
           title="Settings controls"
-          description="Navigate local defaults, keyboard shortcuts, security, MCP servers, built-in agents, diagnostics, and provider credentials."
+          description="Navigate local defaults, keyboard shortcuts, security, MCP servers, language servers, built-in agents, diagnostics, and provider credentials."
           guide={settingsGuide}
           side="right"
           open={guideOpen}

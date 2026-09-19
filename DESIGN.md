@@ -254,6 +254,17 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Authority:** Enabling local stdio explicitly warns that it starts a process with the user's authority. MCP tool approvals state that remote side effects may not be undoable by SunCode; connection state must never imply sandboxing or trust.
 - **Responsive behavior:** At narrow widths, row metadata and actions wrap into stable bands without hiding the enable control or destructive action. The editor window uses a stable 620 × 610 DIP default with a 520 × 520 DIP minimum; long commands, URLs, and errors scroll or wrap without resizing the window.
 
+### Language Server Settings
+
+- **Placement:** Language servers is a first-level Settings destination beside MCP servers. Individual servers remain in the content list rather than becoming navigation children, keeping the navigation stable as language coverage grows.
+- **Purpose:** The surface configures project-scoped semantic analysis for agent coding tasks: diagnostics, definitions, references, hover details, and symbols. It does not make the read-only project editor editable and does not present completion, rename, or code-action affordances.
+- **List:** Each row shows server identity, structured executable summary, configured language scope, effective project runtime state, enabled state, and compact retry/edit/delete actions. Ready uses the healthy state, indexing uses the active accent plus bounded progress, failed uses the danger state with specific recovery copy, and disabled or not-started remain neutral.
+- **Scope:** Definitions are global desired state, while process lifecycle, indexing, capabilities, and failures belong to the selected project runtime. Without a current project, enabled servers show `Not started` rather than implying a connection.
+- **Create and edit:** One shared separate native window edits display name, executable, one-argument-per-line arguments, LSP language IDs, project-relative root markers, optional initialization-options JSON, write-only environment entries, enabled state, and startup/request timeouts. Server name, executable, and at least one language ID are required before the add or save action becomes available. Stored environment values never repopulate the field; `NAME=value` replaces an entry and `-NAME` removes one. The window has no backdrop, and closing it discards unsaved edits. The executable is always launched as structured program plus arguments, never through a shell.
+- **Immediate application:** A saved enabled definition enters starting/indexing state for the active project. Disable presents the disabled state, stops the project runtime, and removes semantic results from subsequent agent work.
+- **Deletion:** Delete uses the shared confirmation dialog, names the exact server, and explains that project runtimes stop and semantic results disappear from new agent turns.
+- **Responsive behavior:** At narrow widths, identity, languages, runtime state, enabled control, and actions wrap into two stable bands without hiding destructive or recovery actions. The editor window uses a stable 640 × 660 DIP default with a 520 × 540 DIP minimum; long commands, identifiers, JSON, and errors scroll or wrap without resizing the window.
+
 ### Built-in Agent Settings
 
 - **Placement:** Agents is an expandable first-level Settings destination beside Model providers. Expanding it reveals the fixed built-in agents as navigation children; it is not a configuration or extension-management surface.
