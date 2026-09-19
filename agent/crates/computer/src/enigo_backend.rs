@@ -3,8 +3,8 @@ use crate::{
     DisplayGeometry, KeyState, MouseButton, MouseButtonState, PermissionState, ScrollDirection,
 };
 use enigo::{
-    Axis, Button, CaptureFrame, Coordinate, Direction, Enigo, Key, Keyboard, Mouse, Screen,
-    Settings,
+    capture_permission, input_permission, Axis, Button, CaptureFrame, Coordinate, Direction, Enigo,
+    Key, Keyboard, Mouse, PermissionStatus, Screen, Settings,
 };
 
 pub struct EnigoBackend {
@@ -14,6 +14,21 @@ pub struct EnigoBackend {
 }
 
 impl EnigoBackend {
+    pub fn permission_info() -> (PermissionState, PermissionState) {
+        (
+            permission_state(capture_permission(false)),
+            permission_state(input_permission(false)),
+        )
+    }
+
+    pub fn request_capture_permission() -> PermissionState {
+        permission_state(capture_permission(true))
+    }
+
+    pub fn request_input_permission() -> PermissionState {
+        permission_state(input_permission(true))
+    }
+
     pub fn new() -> ComputerResult<Self> {
         let settings = Settings {
             open_prompt_to_get_permissions: false,
@@ -82,10 +97,11 @@ impl EnigoBackend {
 
 impl ComputerBackend for EnigoBackend {
     fn runtime_info(&mut self) -> ComputerResult<BackendRuntimeInfo> {
+        let (capture_permission, input_permission) = Self::permission_info();
         Ok(BackendRuntimeInfo {
             display: self.current_geometry()?,
-            capture_permission: PermissionState::Unknown,
-            input_permission: PermissionState::Allowed,
+            capture_permission,
+            input_permission,
         })
     }
 
@@ -204,4 +220,13 @@ const fn key_direction(state: KeyState) -> Direction {
 
 fn backend_error(error: impl std::fmt::Display) -> ComputerError {
     ComputerError::Backend(error.to_string())
+}
+
+const fn permission_state(status: PermissionStatus) -> PermissionState {
+    match status {
+        PermissionStatus::Allowed => PermissionState::Allowed,
+        PermissionStatus::Denied => PermissionState::Denied,
+        PermissionStatus::Unknown => PermissionState::Unknown,
+        PermissionStatus::Unsupported => PermissionState::Unsupported,
+    }
 }

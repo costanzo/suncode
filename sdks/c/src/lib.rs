@@ -176,6 +176,22 @@ ffi_no_args!(
     suncode_agent_sdk_computer_runtime_info,
     computer_runtime_info
 );
+ffi_no_args!(
+    suncode_agent_sdk_request_computer_capture_permission,
+    request_computer_capture_permission
+);
+ffi_no_args!(
+    suncode_agent_sdk_request_computer_input_permission,
+    request_computer_input_permission
+);
+ffi_no_args!(
+    suncode_agent_sdk_take_computer_control,
+    take_computer_control
+);
+ffi_no_args!(
+    suncode_agent_sdk_return_computer_control,
+    return_computer_control
+);
 
 #[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_set_computer_use_enabled(

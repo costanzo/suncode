@@ -9,7 +9,7 @@ public sealed partial class AgentSdk : IDisposable
 {
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 11;
+    private const uint AbiVersion = 13;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -72,6 +72,18 @@ public sealed partial class AgentSdk : IDisposable
 
     private Task<JsonElement> RawComputerRuntimeInfoAsync() =>
         CallAsync(NativeMethods.suncode_agent_sdk_computer_runtime_info);
+
+    private Task<JsonElement> RawRequestComputerCapturePermissionAsync() =>
+        CallAsync(NativeMethods.suncode_agent_sdk_request_computer_capture_permission);
+
+    private Task<JsonElement> RawRequestComputerInputPermissionAsync() =>
+        CallAsync(NativeMethods.suncode_agent_sdk_request_computer_input_permission);
+
+    private Task<JsonElement> RawTakeComputerControlAsync() =>
+        CallAsync(NativeMethods.suncode_agent_sdk_take_computer_control);
+
+    private Task<JsonElement> RawReturnComputerControlAsync() =>
+        CallAsync(NativeMethods.suncode_agent_sdk_return_computer_control);
 
     private Task<JsonElement> RawSetComputerUseEnabledAsync(bool enabled) =>
         CallAsync(handle => NativeMethods.suncode_agent_sdk_set_computer_use_enabled(handle, enabled ? (byte)1 : (byte)0));

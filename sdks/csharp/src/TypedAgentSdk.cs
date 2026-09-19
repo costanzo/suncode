@@ -8,6 +8,18 @@ public sealed partial class AgentSdk
     public Task<ComputerRuntimeInfo> GetComputerRuntimeInfoAsync() =>
         Typed<ComputerRuntimeInfo>(RawComputerRuntimeInfoAsync());
 
+    public Task<ComputerRuntimeInfo> RequestComputerCapturePermissionAsync() =>
+        Typed<ComputerRuntimeInfo>(RawRequestComputerCapturePermissionAsync());
+
+    public Task<ComputerRuntimeInfo> RequestComputerInputPermissionAsync() =>
+        Typed<ComputerRuntimeInfo>(RawRequestComputerInputPermissionAsync());
+
+    public Task<ComputerRuntimeInfo> TakeComputerControlAsync() =>
+        Typed<ComputerRuntimeInfo>(RawTakeComputerControlAsync());
+
+    public Task<ComputerRuntimeInfo> ReturnComputerControlAsync() =>
+        Typed<ComputerRuntimeInfo>(RawReturnComputerControlAsync());
+
     public Task<ComputerRuntimeInfo> SetComputerUseEnabledAsync(bool enabled) =>
         Typed<ComputerRuntimeInfo>(RawSetComputerUseEnabledAsync(enabled));
 

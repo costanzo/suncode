@@ -1,7 +1,11 @@
 use crate::{ComputerError, ComputerResult};
-use image::{DynamicImage, ImageFormat, RgbaImage};
+use image::{imageops::FilterType, DynamicImage, ImageFormat, RgbaImage};
 use serde::{Deserialize, Serialize};
 use std::io::Cursor;
+
+pub const MAX_PROVIDER_IMAGE_EDGE: u32 = 1_568;
+pub const MAX_PROVIDER_IMAGE_PIXELS: u64 = 1_000_000;
+pub const MAX_PROVIDER_PNG_BYTES: usize = 5 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -141,6 +145,31 @@ impl ComputerFrame {
         )
     }
 
+    pub fn provider_frame(&self) -> ComputerResult<Self> {
+        let (width, height) =
+            provider_dimensions(self.display.pixel_width, self.display.pixel_height);
+        if width == self.display.pixel_width && height == self.display.pixel_height {
+            return Ok(self.clone());
+        }
+        let image = RgbaImage::from_raw(
+            self.display.pixel_width,
+            self.display.pixel_height,
+            self.rgba.clone(),
+        )
+        .ok_or(ComputerError::InvalidFrame(
+            "RGBA payload length does not match the display dimensions",
+        ))?;
+        let resized = image::imageops::resize(&image, width, height, FilterType::Triangle);
+        Self::new(
+            DisplayGeometry {
+                pixel_width: width,
+                pixel_height: height,
+                ..self.display
+            },
+            resized.into_raw(),
+        )
+    }
+
     pub fn png(&self) -> ComputerResult<Vec<u8>> {
         let image = RgbaImage::from_raw(
             self.display.pixel_width,
@@ -154,8 +183,32 @@ impl ComputerFrame {
         DynamicImage::ImageRgba8(image)
             .write_to(&mut bytes, ImageFormat::Png)
             .map_err(|error| ComputerError::Backend(format!("PNG encoding failed: {error}")))?;
-        Ok(bytes.into_inner())
+        let bytes = bytes.into_inner();
+        if bytes.len() > MAX_PROVIDER_PNG_BYTES {
+            return Err(ComputerError::InvalidFrame(
+                "encoded PNG exceeds the provider image limit",
+            ));
+        }
+        Ok(bytes)
     }
+}
+
+fn provider_dimensions(width: u32, height: u32) -> (u32, u32) {
+    let pixels = u64::from(width) * u64::from(height);
+    if width <= MAX_PROVIDER_IMAGE_EDGE
+        && height <= MAX_PROVIDER_IMAGE_EDGE
+        && pixels <= MAX_PROVIDER_IMAGE_PIXELS
+    {
+        return (width, height);
+    }
+    let edge_scale = (f64::from(MAX_PROVIDER_IMAGE_EDGE) / f64::from(width))
+        .min(f64::from(MAX_PROVIDER_IMAGE_EDGE) / f64::from(height));
+    let pixel_scale = (MAX_PROVIDER_IMAGE_PIXELS as f64 / pixels as f64).sqrt();
+    let scale = edge_scale.min(pixel_scale).min(1.0);
+    (
+        (f64::from(width) * scale).floor().max(1.0) as u32,
+        (f64::from(height) * scale).floor().max(1.0) as u32,
+    )
 }
 
 fn map_axis(
@@ -190,4 +243,39 @@ fn validate_region(region: PixelRegion, width: u32, height: u32) -> ComputerResu
         ));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn provider_frame_preserves_input_mapping_while_limiting_pixels() {
+        let display = DisplayGeometry {
+            generation: 7,
+            input_x: 10,
+            input_y: 20,
+            input_width: 2_000,
+            input_height: 1_000,
+            pixel_width: 2_000,
+            pixel_height: 1_000,
+        };
+        let frame = ComputerFrame::new(display, vec![0; 2_000 * 1_000 * 4]).unwrap();
+        let provider = frame.provider_frame().unwrap();
+        assert!(
+            u64::from(provider.display.pixel_width) * u64::from(provider.display.pixel_height)
+                <= MAX_PROVIDER_IMAGE_PIXELS
+        );
+        assert_eq!(provider.display.input_width, 2_000);
+        assert_eq!(provider.display.input_height, 1_000);
+        assert_eq!(
+            provider
+                .input_point(PixelPoint {
+                    x: provider.display.pixel_width - 1,
+                    y: provider.display.pixel_height - 1,
+                })
+                .unwrap(),
+            (2_009, 1_019)
+        );
+    }
 }

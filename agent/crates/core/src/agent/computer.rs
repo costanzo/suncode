@@ -1,6 +1,8 @@
 use super::*;
-use std::sync::atomic::{AtomicBool, Ordering};
-use suncode_computer::{ComputerAction, ComputerBackend, ComputerExecutor, PermissionState};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use suncode_computer::{
+    ComputerAction, ComputerBackend, ComputerExecutor, EnigoBackend, PermissionState,
+};
 
 pub(super) fn is_computer_call(call: &ToolCall) -> bool {
     call.toolset_name.as_deref() == Some("computer")
@@ -41,8 +43,12 @@ pub(super) struct ComputerManager {
 
 struct Inner {
     enabled: AtomicBool,
+    control_owner: AtomicU8,
     executor: Mutex<Option<ComputerExecutor<Box<dyn ComputerBackend>>>>,
 }
+
+const CONTROL_USER: u8 = 0;
+const CONTROL_AGENT: u8 = 1;
 
 impl ComputerManager {
     pub(super) fn new(store: &Store) -> Self {
@@ -59,6 +65,7 @@ impl ComputerManager {
         Self {
             inner: Arc::new(Inner {
                 enabled: AtomicBool::new(enabled),
+                control_owner: AtomicU8::new(if enabled { CONTROL_AGENT } else { CONTROL_USER }),
                 executor: Mutex::new(None),
             }),
         }
@@ -78,10 +85,15 @@ impl ComputerManager {
 
     pub(super) fn set_enabled(&self, enabled: bool) -> Result<(), BusinessError> {
         self.inner.enabled.store(enabled, Ordering::SeqCst);
+        self.inner.control_owner.store(
+            if enabled { CONTROL_AGENT } else { CONTROL_USER },
+            Ordering::SeqCst,
+        );
         if !enabled {
             if let Ok(mut executor) = self.inner.executor.lock() {
                 if let Some(executor) = executor.as_mut() {
                     executor.release_all().map_err(computer_error)?;
+                    executor.retire_frame();
                 }
             }
         }
@@ -92,13 +104,49 @@ impl ComputerManager {
         self.set_enabled(false)
     }
 
+    pub(super) fn take_user_control(&self) -> Result<(), BusinessError> {
+        self.inner
+            .control_owner
+            .store(CONTROL_USER, Ordering::SeqCst);
+        let mut executor =
+            self.inner.executor.lock().map_err(|_| {
+                BusinessError::unavailable("Computer Use backend lock is unavailable")
+            })?;
+        if let Some(executor) = executor.as_mut() {
+            executor.release_all().map_err(computer_error)?;
+            executor.retire_frame();
+        }
+        Ok(())
+    }
+
+    pub(super) fn return_agent_control(&self) -> Result<(), BusinessError> {
+        if !self.inner.enabled.load(Ordering::SeqCst) {
+            return Err(BusinessError::new(
+                "computer_use_disabled",
+                "Computer Use is disabled",
+            ));
+        }
+        let mut executor =
+            self.inner.executor.lock().map_err(|_| {
+                BusinessError::unavailable("Computer Use backend lock is unavailable")
+            })?;
+        if let Some(executor) = executor.as_mut() {
+            executor.retire_frame();
+        }
+        self.inner
+            .control_owner
+            .store(CONTROL_AGENT, Ordering::SeqCst);
+        Ok(())
+    }
+
     pub(super) fn info(&self) -> ComputerRuntimeInfo {
         let mut input_width = None;
         let mut input_height = None;
         let mut pixel_width = None;
         let mut pixel_height = None;
-        let mut capture_permission = "unknown".to_string();
-        let mut input_permission = "unknown".to_string();
+        let (capture_status, input_status) = EnigoBackend::permission_info();
+        let mut capture_permission = permission_name(capture_status).to_string();
+        let mut input_permission = permission_name(input_status).to_string();
         let mut error = None;
         let backend_available = match self.inner.executor.lock() {
             Ok(mut executor) => match executor.as_mut() {
@@ -134,7 +182,10 @@ impl ComputerManager {
             pixel_height,
             capture_permission,
             input_permission,
-            control_owner: if enabled && backend_available {
+            control_owner: if enabled
+                && backend_available
+                && self.inner.control_owner.load(Ordering::SeqCst) == CONTROL_AGENT
+            {
                 "agent"
             } else {
                 "user"
@@ -149,7 +200,11 @@ impl ComputerManager {
         model_supports_computer_use: bool,
     ) -> Vec<suncode_llm::ClientToolsetDefinition> {
         let info = self.info();
-        if !info.enabled || !info.backend_available || !model_supports_computer_use {
+        if !info.enabled
+            || !info.backend_available
+            || info.control_owner != "agent"
+            || !model_supports_computer_use
+        {
             return Vec::new();
         }
         vec![suncode_llm::ClientToolsetDefinition {
@@ -171,6 +226,12 @@ impl ComputerManager {
                 "Computer Use is disabled",
             ));
         }
+        if self.inner.control_owner.load(Ordering::SeqCst) != CONTROL_AGENT {
+            return Err(BusinessError::new(
+                "computer_control_unavailable",
+                "Computer Use is under user control",
+            ));
+        }
         let action = ComputerAction::from_member(member, input).map_err(computer_error)?;
         let inner = self.inner.clone();
         tokio::task::spawn_blocking(move || {
@@ -185,7 +246,9 @@ impl ComputerManager {
             })?;
             executor
                 .execute(&action, &|| {
-                    cancellation.is_cancelled() || !inner.enabled.load(Ordering::SeqCst)
+                    cancellation.is_cancelled()
+                        || !inner.enabled.load(Ordering::SeqCst)
+                        || inner.control_owner.load(Ordering::SeqCst) != CONTROL_AGENT
                 })
                 .map_err(computer_error)
         })
@@ -205,6 +268,26 @@ impl Agent {
 
     pub fn emergency_stop_computer_use(&self) -> Result<(), BusinessError> {
         self.computer.emergency_stop()
+    }
+
+    pub fn take_computer_control(&self) -> Result<ComputerRuntimeInfo, BusinessError> {
+        self.computer.take_user_control()?;
+        Ok(self.computer.info())
+    }
+
+    pub fn return_computer_control(&self) -> Result<ComputerRuntimeInfo, BusinessError> {
+        self.computer.return_agent_control()?;
+        Ok(self.computer.info())
+    }
+
+    pub fn request_computer_capture_permission(&self) -> ComputerRuntimeInfo {
+        let _ = EnigoBackend::request_capture_permission();
+        self.computer.info()
+    }
+
+    pub fn request_computer_input_permission(&self) -> ComputerRuntimeInfo {
+        let _ = EnigoBackend::request_input_permission();
+        self.computer.info()
     }
 
     pub fn install_computer_backend(

@@ -81,9 +81,12 @@
           <TextBlock x:Name="ControlOwnerText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="User" />
         </Grid>
         <WrapPanel Classes="settings-actions">
-          <Button Classes="compact quiet sc-button" Content="Test screenshot" IsEnabled="False" />
-          <Button Classes="compact quiet sc-button" Content="Test input control" IsEnabled="False" />
-          <TextBlock Classes="sc-text-status" Text="Permission tests are not available in this build." VerticalAlignment="Center" TextWrapping="Wrap" />
+          <Button x:Name="TakeControlButton" Classes="compact quiet sc-button" Content="Take control" Click="OnTakeControl" />
+          <Button x:Name="ReturnControlButton" Classes="compact primary sc-button" Content="Return control to agent" Click="OnReturnControl" />
+        </WrapPanel>
+        <WrapPanel Classes="settings-actions">
+          <Button x:Name="CapturePermissionButton" Classes="compact quiet sc-button" Content="Request screen capture" Click="OnRequestCapturePermission" />
+          <Button x:Name="InputPermissionButton" Classes="compact quiet sc-button" Content="Request input control" Click="OnRequestInputPermission" />
         </WrapPanel>
       </StackPanel>
 

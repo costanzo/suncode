@@ -363,6 +363,7 @@
 }
 .computer-runtime-state.is-permission_missing,
 .computer-inline-status.is-permission_missing,
+.computer-inline-status.is-denied,
 .computer-runtime-state.is-interrupted {
   color: var(--warning);
 }

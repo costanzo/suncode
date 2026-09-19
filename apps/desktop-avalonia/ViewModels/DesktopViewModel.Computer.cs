@@ -59,6 +59,44 @@ public sealed partial class DesktopViewModel
         }
     }
 
+    public async Task<bool> RequestComputerCapturePermissionAsync()
+    {
+        if (!await EnsureSdkReadyAsync()) return false;
+        try
+        {
+            ComputerRuntime = await _sdk!.RequestComputerCapturePermissionAsync();
+            ComputerStatusText = ComputerRuntime.CapturePermission == "allowed"
+                ? "Screen capture permission is available."
+                : "Screen capture permission is still unavailable. Review the operating-system prompt or privacy settings.";
+            return ComputerRuntime.CapturePermission == "allowed";
+        }
+        catch (Exception exception)
+        {
+            ComputerStatusText = exception.Message;
+            ReportError(exception);
+            return false;
+        }
+    }
+
+    public async Task<bool> RequestComputerInputPermissionAsync()
+    {
+        if (!await EnsureSdkReadyAsync()) return false;
+        try
+        {
+            ComputerRuntime = await _sdk!.RequestComputerInputPermissionAsync();
+            ComputerStatusText = ComputerRuntime.InputPermission == "allowed"
+                ? "Input control permission is available."
+                : "Input control permission is still unavailable. Review the operating-system prompt or privacy settings.";
+            return ComputerRuntime.InputPermission == "allowed";
+        }
+        catch (Exception exception)
+        {
+            ComputerStatusText = exception.Message;
+            ReportError(exception);
+            return false;
+        }
+    }
+
     public async Task<bool> EmergencyStopComputerUseAsync()
     {
         if (!await EnsureSdkReadyAsync()) return false;
@@ -66,6 +104,40 @@ public sealed partial class DesktopViewModel
         {
             ComputerRuntime = await _sdk!.EmergencyStopComputerUseAsync();
             ComputerStatusText = "Computer Use stopped. Held input was released.";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ComputerStatusText = exception.Message;
+            ReportError(exception);
+            return false;
+        }
+    }
+
+    public async Task<bool> TakeComputerControlAsync()
+    {
+        if (!await EnsureSdkReadyAsync()) return false;
+        try
+        {
+            ComputerRuntime = await _sdk!.TakeComputerControlAsync();
+            ComputerStatusText = "You control the desktop. Computer Use tools are paused.";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ComputerStatusText = exception.Message;
+            ReportError(exception);
+            return false;
+        }
+    }
+
+    public async Task<bool> ReturnComputerControlAsync()
+    {
+        if (!await EnsureSdkReadyAsync()) return false;
+        try
+        {
+            ComputerRuntime = await _sdk!.ReturnComputerControlAsync();
+            ComputerStatusText = "Control returned to the agent. A fresh screenshot is required before coordinate input.";
             return true;
         }
         catch (Exception exception)

@@ -19,4 +19,7 @@ pub use enigo_backend::EnigoBackend;
 pub use executor::{
     ActionOutcome, BatchItem, ComputerError, ComputerExecutor, ComputerResult, HALT_MESSAGE,
 };
-pub use frame::{ComputerFrame, DisplayGeometry, PixelPoint, PixelRegion};
+pub use frame::{
+    ComputerFrame, DisplayGeometry, PixelPoint, PixelRegion, MAX_PROVIDER_IMAGE_EDGE,
+    MAX_PROVIDER_IMAGE_PIXELS, MAX_PROVIDER_PNG_BYTES,
+};

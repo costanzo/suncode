@@ -606,9 +606,13 @@ function NetworkPanel({ onSave }) {
 
 function ComputerUsePanel({ onSave }) {
   const [enabled, setEnabled] = useState(false);
+  const [capturePermission, setCapturePermission] = useState("denied");
+  const [inputPermission, setInputPermission] = useState("allowed");
+  const [controlOwner, setControlOwner] = useState("user");
 
   const toggleEnabled = (nextEnabled) => {
     setEnabled(nextEnabled);
+    setControlOwner(nextEnabled ? "agent" : "user");
     onSave(
       nextEnabled
         ? "Computer Use enabled. Desktop input still requires approval."
@@ -617,7 +621,24 @@ function ComputerUsePanel({ onSave }) {
   };
   const emergencyStop = () => {
     setEnabled(false);
+    setControlOwner("user");
     onSave("Computer Use stopped. Held input was released.");
+  };
+  const requestCapturePermission = () => {
+    setCapturePermission("allowed");
+    onSave("Screen capture permission is available.");
+  };
+  const requestInputPermission = () => {
+    setInputPermission("allowed");
+    onSave("Input control permission is available.");
+  };
+  const takeControl = () => {
+    setControlOwner("user");
+    onSave("You control the desktop. Computer Use tools are paused.");
+  };
+  const returnControl = () => {
+    setControlOwner("agent");
+    onSave("Control returned. The agent must take a fresh screenshot before coordinate input.");
   };
 
   return (
@@ -672,28 +693,38 @@ function ComputerUsePanel({ onSave }) {
           <code className="computer-readonly-value">Built-in display · 3024 × 1964 px</code>
         </SettingRow>
         <SettingRow label="Screen capture" hint="Required to send screenshots to the selected provider.">
-          <span className="computer-inline-status is-ready">
+          <span className={`computer-inline-status is-${capturePermission}`}>
             <span className="settings-status-dot" />
-            Allowed
+            {capturePermission === "allowed" ? "Allowed" : "Permission needed"}
           </span>
         </SettingRow>
         <SettingRow label="Input control" hint="Required for mouse and keyboard actions after approval.">
-          <span className="computer-inline-status is-ready">
+          <span className={`computer-inline-status is-${inputPermission}`}>
             <span className="settings-status-dot" />
-            Allowed
+            {inputPermission === "allowed" ? "Allowed" : "Permission needed"}
           </span>
         </SettingRow>
         <SettingRow label="Current control owner" hint="The user and agent never control desktop input simultaneously.">
-          <code className="computer-readonly-value">{enabled ? "Agent · idle" : "User"}</code>
+          <code className="computer-readonly-value">{controlOwner === "agent" ? "Agent · idle" : "User"}</code>
         </SettingRow>
         <div className="settings-actions">
-          <Button size="sm" disabled>
-            Test screenshot
+          {controlOwner === "agent" ? (
+            <Button size="sm" disabled={!enabled} onClick={takeControl}>
+              Take control
+            </Button>
+          ) : (
+            <Button variant="primary" size="sm" disabled={!enabled} onClick={returnControl}>
+              Return control to agent
+            </Button>
+          )}
+        </div>
+        <div className="settings-actions">
+          <Button size="sm" disabled={capturePermission === "allowed"} onClick={requestCapturePermission}>
+            {capturePermission === "allowed" ? "Screen capture allowed" : "Request screen capture"}
           </Button>
-          <Button size="sm" disabled>
-            Test input control
+          <Button size="sm" disabled={inputPermission === "allowed"} onClick={requestInputPermission}>
+            {inputPermission === "allowed" ? "Input control allowed" : "Request input control"}
           </Button>
-          <span className="settings-save-status">Permission tests are not available in this build.</span>
         </div>
       </div>
       <div className="settings-divider" />

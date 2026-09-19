@@ -12,7 +12,7 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 The async Rust facade owns agent services but no executor; `AsyncAgentSdk::open_default(...).await` and all runtime-dependent methods execute on the host's Tokio runtime. Pure local persistence and DTO operations remain synchronous and explicit. The root compatibility `AgentSdk` is the blocking wrapper: it owns one Tokio runtime, dereferences to the async facade for synchronous methods, and adapts only awaited operations with `block_on`. C embeds that blocking wrapper. Host wrappers may share one handle inside a process. The Rust facade exposes a typed `SessionEventStream` implementing standard `Stream` and `FusedStream` contracts plus direct receive methods; native bindings adapt that stream to their host runtime. C subscriptions must be closed before the final agent handle is released. Closing a C subscription signals its stream and stops callback delivery before returning.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 11. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 13. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
 ## Methods
 
@@ -33,6 +33,10 @@ The Rust API uses typed inputs and outputs. Async Rust hosts use `AsyncAgentSdk`
 | `remove_credential` | Remove one provider API key |
 | `set_provider_endpoint` | Validate, persist, and apply one provider API base URL |
 | `computer_runtime_info` | Read global Computer Use enablement, backend availability, primary-display geometry, redacted permission state, control owner, and safe error state |
+| `request_computer_capture_permission` | Explicitly ask the operating system for desktop capture permission and return refreshed redacted runtime state |
+| `request_computer_input_permission` | Explicitly ask the operating system for desktop input permission and return refreshed redacted runtime state |
+| `take_computer_control` | Transfer exclusive desktop-control ownership to the user, cancel active Computer Use work, release held input, and retire the current coordinate frame |
+| `return_computer_control` | Return exclusive control to the agent while requiring a fresh screenshot before coordinate input |
 | `set_computer_use_enabled` | Persist global Computer Use availability, install the built-in backend when enabling, and release held input when disabling |
 | `emergency_stop_computer_use` | Persist disabled state, cooperatively cancel active Computer Use work, and release held keys and mouse buttons |
 | `browser_runtime_info` | Read global Browser Use enablement, packaged component identity, installation health, and optional project runtime/profile state |
@@ -121,7 +125,11 @@ Language-server definitions are global desired state while processes, initializa
 
 `computer_use_enabled` is a global-only boolean defaulting to `false`. Enabling installs the built-in Enigo-backed runtime and does not grant input authority. `computer_runtime_info` reports only redacted runtime facts: backend availability, primary-display input and screenshot dimensions, capture and input permission state (`allowed`, `denied`, `unknown`, or `unsupported`), current control owner, and a bounded safe error. Permission state may remain `unknown` where the backend cannot inspect it without performing a user-visible operation. Emergency stop disables the capability, makes active cooperative execution observe cancellation, and releases held input before returning. A later explicit enable is required to resume.
 
+Desktop-control ownership is exclusive. User takeover removes the Computer Use toolset from subsequent provider calls, makes active cooperative execution observe cancellation, releases held input, and retires the current screenshot frame. Returning control re-enables advertisement for otherwise supported models but retains no prior coordinate frame, so the first later coordinate action requires a fresh screenshot.
+
 Computer Use is interactive-only in the initial delivery. Observation actions follow the interactive default policy; any input-producing batch requires approval even when the session otherwise has Full Control. Screenshot bytes are transient provider context and are not returned by management DTOs or stored in durable continuation JSON.
+
+Full-display and zoom images sent to a provider preserve aspect ratio and the input-coordinate mapping while being bounded to a 1568-pixel edge, 1,000,000 pixels, and a 5 MiB encoded PNG. The active provider context keeps image content for at most the two newest Computer Use results; older correlated tool results are retained as text omission markers so tool-use/result ordering remains valid without retaining unbounded screenshot bytes.
 
 Browser runtime management never grants site authority. User-control handoff is exclusive and agent browser actions remain unavailable until control returns. Clearing a profile requires the runtime to be stopped and deletes browser cookies, login state, and site storage without changing project files. Chromium keeps ordinary certificate verification and does not inherit the global insecure certificate toggle.
 

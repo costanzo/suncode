@@ -1,6 +1,6 @@
 use crate::{
     ComputerAction, ComputerBackend, ComputerFrame, KeyChord, KeyModifier, KeyState, MouseButton,
-    MouseButtonState, PixelPoint,
+    MouseButtonState, PixelPoint, PixelRegion,
 };
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
@@ -57,6 +57,7 @@ pub enum BatchItem {
 pub struct ComputerExecutor<B: ComputerBackend> {
     backend: B,
     last_frame: Option<ComputerFrame>,
+    last_source_frame: Option<ComputerFrame>,
     held_keys: Vec<String>,
     left_button_held: bool,
 }
@@ -66,6 +67,7 @@ impl<B: ComputerBackend> ComputerExecutor<B> {
         Self {
             backend,
             last_frame: None,
+            last_source_frame: None,
             held_keys: Vec::new(),
             left_button_held: false,
         }
@@ -73,6 +75,11 @@ impl<B: ComputerBackend> ComputerExecutor<B> {
 
     pub fn backend_mut(&mut self) -> &mut B {
         &mut self.backend
+    }
+
+    pub fn retire_frame(&mut self) {
+        self.last_frame = None;
+        self.last_source_frame = None;
     }
 
     pub fn execute_batch(
@@ -108,12 +115,20 @@ impl<B: ComputerBackend> ComputerExecutor<B> {
         self.check_cancelled(cancelled)?;
         match action {
             ComputerAction::Screenshot => {
-                let frame = self.backend.capture_primary()?;
+                let source = self.backend.capture_primary()?;
+                let frame = source.provider_frame()?;
+                self.last_source_frame = Some(source);
                 self.last_frame = Some(frame.clone());
                 Ok(ActionOutcome::Image(frame))
             }
             ComputerAction::Zoom { region } => {
-                let frame = self.current_frame()?.crop(*region)?;
+                let source_region = self.source_region(*region)?;
+                let frame = self
+                    .last_source_frame
+                    .as_ref()
+                    .ok_or(ComputerError::FrameRequired)?
+                    .crop(source_region)?
+                    .provider_frame()?;
                 Ok(ActionOutcome::Image(frame))
             }
             ComputerAction::LeftClick {
@@ -277,15 +292,46 @@ impl<B: ComputerBackend> ComputerExecutor<B> {
 
     fn current_frame(&mut self) -> ComputerResult<&ComputerFrame> {
         let current = self.backend.primary_display()?;
-        let frame = self
-            .last_frame
+        let source_display = self
+            .last_source_frame
             .as_ref()
-            .ok_or(ComputerError::FrameRequired)?;
-        if current != frame.display {
+            .ok_or(ComputerError::FrameRequired)?
+            .display;
+        if current != source_display {
             self.last_frame = None;
+            self.last_source_frame = None;
             return Err(ComputerError::FrameRetired);
         }
         Ok(self.last_frame.as_ref().expect("frame was checked"))
+    }
+
+    fn source_region(&mut self, region: PixelRegion) -> ComputerResult<PixelRegion> {
+        let model = self.current_frame()?;
+        let model_width = model.display.pixel_width;
+        let model_height = model.display.pixel_height;
+        validate_model_region(region, model_width, model_height)?;
+        let source = self
+            .last_source_frame
+            .as_ref()
+            .ok_or(ComputerError::FrameRequired)?;
+        let x = scale_floor(region.x, model_width, source.display.pixel_width);
+        let y = scale_floor(region.y, model_height, source.display.pixel_height);
+        let right = scale_ceil(
+            region.x + region.width,
+            model_width,
+            source.display.pixel_width,
+        );
+        let bottom = scale_ceil(
+            region.y + region.height,
+            model_height,
+            source.display.pixel_height,
+        );
+        Ok(PixelRegion {
+            x,
+            y,
+            width: right.saturating_sub(x).max(1),
+            height: bottom.saturating_sub(y).max(1),
+        })
     }
 
     fn resolve_point(&mut self, point: PixelPoint) -> ComputerResult<(i32, i32)> {
@@ -377,6 +423,35 @@ impl<B: ComputerBackend> Drop for ComputerExecutor<B> {
 
 fn ok() -> ActionOutcome {
     ActionOutcome::Text("OK".into())
+}
+
+fn validate_model_region(region: PixelRegion, width: u32, height: u32) -> ComputerResult<()> {
+    if region.width == 0
+        || region.height == 0
+        || region
+            .x
+            .checked_add(region.width)
+            .is_none_or(|right| right > width)
+        || region
+            .y
+            .checked_add(region.height)
+            .is_none_or(|bottom| bottom > height)
+    {
+        return Err(ComputerError::InvalidAction(
+            "zoom region must be inside the screenshot",
+        ));
+    }
+    Ok(())
+}
+
+fn scale_floor(value: u32, from: u32, to: u32) -> u32 {
+    (u64::from(value) * u64::from(to) / u64::from(from)) as u32
+}
+
+fn scale_ceil(value: u32, from: u32, to: u32) -> u32 {
+    u32::try_from((u64::from(value) * u64::from(to)).div_ceil(u64::from(from)))
+        .unwrap_or(to)
+        .min(to)
 }
 
 #[cfg(test)]
@@ -531,5 +606,29 @@ mod tests {
                 "key:Control:Release",
             ]
         );
+    }
+
+    #[test]
+    fn resized_zoom_coordinates_expand_to_source_pixels() {
+        assert_eq!(scale_floor(500, 1_000, 2_000), 1_000);
+        assert_eq!(scale_ceil(750, 1_000, 2_000), 1_500);
+    }
+
+    #[test]
+    fn retiring_a_frame_requires_a_fresh_screenshot() {
+        let mut executor = ComputerExecutor::new(FakeBackend::default());
+        executor
+            .execute(&ComputerAction::Screenshot, &|| false)
+            .unwrap();
+        executor.retire_frame();
+        let error = executor
+            .execute(
+                &ComputerAction::MouseMove {
+                    coordinate: PixelPoint { x: 0, y: 0 },
+                },
+                &|| false,
+            )
+            .unwrap_err();
+        assert_eq!(error, ComputerError::FrameRequired);
     }
 }

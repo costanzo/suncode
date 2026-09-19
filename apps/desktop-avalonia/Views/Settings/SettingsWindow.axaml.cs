@@ -96,6 +96,10 @@ public sealed partial class SettingsWindow : Window
         NetworkPage.RemoveProxyPasswordRequested += RemoveProxyPassword;
         NetworkPage.SaveProxyRequested += SaveProxy;
         ComputerPage.EnabledChanged += ComputerEnabledChanged;
+        ComputerPage.CapturePermissionRequested += RequestComputerCapturePermission;
+        ComputerPage.InputPermissionRequested += RequestComputerInputPermission;
+        ComputerPage.TakeControlRequested += TakeComputerControl;
+        ComputerPage.ReturnControlRequested += ReturnComputerControl;
         ComputerPage.EmergencyStopRequested += EmergencyStopComputerUse;
         BrowserPage.EnabledChanged += BrowserEnabledChanged;
         BrowserPage.VerifyRequested += VerifyBrowserRuntime;
@@ -453,9 +457,22 @@ public sealed partial class SettingsWindow : Window
                 : FormatComputerValue(runtime.TargetDisplay);
             ComputerPage.CapturePermissionTextControl.Text = FormatComputerValue(runtime.CapturePermission);
             ComputerPage.CapturePermissionDotControl.Fill = ComputerPermissionBrush(runtime.CapturePermission);
+            ComputerPage.CapturePermissionButtonControl.IsEnabled = runtime.CapturePermission == "denied";
+            ComputerPage.CapturePermissionButtonControl.Content = runtime.CapturePermission == "allowed"
+                ? "Screen capture allowed"
+                : "Request screen capture";
             ComputerPage.InputPermissionTextControl.Text = FormatComputerValue(runtime.InputPermission);
             ComputerPage.InputPermissionDotControl.Fill = ComputerPermissionBrush(runtime.InputPermission);
+            ComputerPage.InputPermissionButtonControl.IsEnabled = runtime.InputPermission == "denied";
+            ComputerPage.InputPermissionButtonControl.Content = runtime.InputPermission == "allowed"
+                ? "Input control allowed"
+                : "Request input control";
             ComputerPage.ControlOwnerTextControl.Text = FormatComputerValue(runtime.ControlOwner);
+            var agentControlled = runtime.ControlOwner == "agent";
+            ComputerPage.TakeControlButtonControl.IsVisible = runtime.Enabled && agentControlled;
+            ComputerPage.TakeControlButtonControl.IsEnabled = runtime.BackendAvailable;
+            ComputerPage.ReturnControlButtonControl.IsVisible = runtime.Enabled && !agentControlled;
+            ComputerPage.ReturnControlButtonControl.IsEnabled = runtime.BackendAvailable;
             ComputerPage.StatusTextControl.Text = string.IsNullOrWhiteSpace(ViewModel.ComputerStatusText)
                 ? runtime.Error ?? string.Empty
                 : ViewModel.ComputerStatusText;
@@ -487,6 +504,30 @@ public sealed partial class SettingsWindow : Window
     private async void EmergencyStopComputerUse(object? sender, RoutedEventArgs e)
     {
         await ViewModel.EmergencyStopComputerUseAsync();
+        RefreshComputerPresentation();
+    }
+
+    private async void RequestComputerCapturePermission(object? sender, RoutedEventArgs e)
+    {
+        await ViewModel.RequestComputerCapturePermissionAsync();
+        RefreshComputerPresentation();
+    }
+
+    private async void RequestComputerInputPermission(object? sender, RoutedEventArgs e)
+    {
+        await ViewModel.RequestComputerInputPermissionAsync();
+        RefreshComputerPresentation();
+    }
+
+    private async void TakeComputerControl(object? sender, RoutedEventArgs e)
+    {
+        await ViewModel.TakeComputerControlAsync();
+        RefreshComputerPresentation();
+    }
+
+    private async void ReturnComputerControl(object? sender, RoutedEventArgs e)
+    {
+        await ViewModel.ReturnComputerControlAsync();
         RefreshComputerPresentation();
     }
 

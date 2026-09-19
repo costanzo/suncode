@@ -47,7 +47,9 @@ Verify the Enigo capture/input backend, screenshot coordinate space, Claude clie
 
 - `cargo check --all-features` in the Enigo repository — passed.
 - `cargo test screen::tests --lib` in the Enigo repository — passed, 3 tests; no real input was generated.
-- `cargo test -p suncode-computer` — passed, 5 tests.
+- `cargo check --all-features` in Enigo — passed after adding macOS permission status/request APIs at revision `36c08bbe4a00150d2b1817553985a2c115169e3a`.
+- `cargo test -p suncode-computer` — passed, 8 tests, including provider resize, resized-coordinate mapping, and frame retirement; no real input was generated.
+- `cargo test -p suncode-agent computer_context_tests --lib` — passed, proving older screenshot bytes are pruned without dropping correlated tool results.
 - `cargo check --manifest-path agent/Cargo.toml -p suncode-computer -p suncode-agent` — passed.
 - `cargo check --manifest-path sdks/c/Cargo.toml` — passed after runtime-info and emergency-stop wiring.
 - `dotnet build sdks/csharp/SunCode.Sdk.csproj --no-restore` — passed with zero warnings and errors.

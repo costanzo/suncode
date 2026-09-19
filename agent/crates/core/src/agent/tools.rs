@@ -804,6 +804,7 @@ impl Agent {
         let mut provider_message = message;
         provider_message.tool_call_id = Some(call.call_id.clone());
         context.messages.push(provider_message);
+        prune_computer_screenshot_images(&mut context.messages, 2);
         let mut redacted = Message::text(
             "tool",
             serde_json::to_string(&metadata).unwrap_or_else(|_| "{}".into()),
@@ -1099,5 +1100,62 @@ impl Agent {
             tool_calls: Vec::new(),
             tool_call_id: None,
         }))
+    }
+}
+
+fn prune_computer_screenshot_images(messages: &mut [Message], keep_latest: usize) {
+    let mut retained = 0usize;
+    for message in messages.iter_mut().rev() {
+        let computer_screenshot = message.role == "tool"
+            && message
+                .content
+                .iter()
+                .any(|part| part.kind == "text" && part.text == "Computer screenshot captured.")
+            && message.content.iter().any(|part| part.kind == "image_url");
+        if !computer_screenshot {
+            continue;
+        }
+        retained += 1;
+        if retained <= keep_latest {
+            continue;
+        }
+        message.content.retain(|part| part.kind != "image_url");
+        if let Some(text) = message.content.iter_mut().find(|part| part.kind == "text") {
+            text.text = "[older computer screenshot omitted from provider context]".into();
+        }
+    }
+}
+
+#[cfg(test)]
+mod computer_context_tests {
+    use super::*;
+
+    fn screenshot(call_id: &str) -> Message {
+        let mut message = Message::text("tool", "Computer screenshot captured.");
+        message.content.push(crate::domain::ContentPart {
+            kind: "image_url".into(),
+            text: "data:image/png;base64,cG5n".into(),
+        });
+        message.tool_call_id = Some(call_id.into());
+        message
+    }
+
+    #[test]
+    fn older_computer_screenshots_are_redacted_but_tool_results_remain() {
+        let mut messages = vec![screenshot("one"), screenshot("two"), screenshot("three")];
+        prune_computer_screenshot_images(&mut messages, 2);
+        assert_eq!(messages[0].tool_call_id.as_deref(), Some("one"));
+        assert_eq!(
+            messages[0].content[0].text,
+            "[older computer screenshot omitted from provider context]"
+        );
+        assert!(!messages[0]
+            .content
+            .iter()
+            .any(|part| part.kind == "image_url"));
+        assert!(messages[1..].iter().all(|message| message
+            .content
+            .iter()
+            .any(|part| part.kind == "image_url")));
     }
 }

@@ -12,7 +12,8 @@
 
 - [x] Add public display/capture/frame contracts.
 - [x] Add mock capture tests and coordinate transforms.
-- [ ] Complete macOS capture permission status and production conformance.
+- [x] Add macOS capture and input permission status/request APIs.
+- [ ] Complete macOS production permission and coordinate conformance.
 - [ ] Implement Windows capture and DPI-consistent coordinates.
 - [ ] Implement X11 capture in the root coordinate space.
 - [ ] Unify Wayland RemoteDesktop and ScreenCast through one portal session.
@@ -22,7 +23,8 @@
 
 - [x] Add `suncode-computer` and all 17 actions.
 - [ ] Complete serial batch approval continuation; emergency stop, cancellation, and held-input cleanup are implemented.
-- [ ] Complete image resizing and context pruning; zoom, PNG encoding, and frame generations are implemented.
+- [x] Add exclusive user/agent control handoff and invalidate frames on either transition.
+- [x] Complete image resizing and context pruning, including zoom, PNG limits, frame generations, and coordinate preservation.
 - [x] Add Anthropic Messages and native client-toolset support.
 - [x] Add ComputerManager, policy, approval, audit, persistence redaction, and recovery foundations.
 - [x] Add Rust/C/C# SDK enablement, runtime-info, and emergency-stop APIs.
