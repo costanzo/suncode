@@ -24,6 +24,7 @@ use suncode_llm::{
 use crate::types::*;
 
 mod agents;
+pub mod blocking;
 mod browser;
 mod checkpoints;
 mod language_servers;
@@ -38,6 +39,7 @@ mod subscriptions;
 mod tests;
 mod turns;
 
+pub use blocking::AgentSdk;
 pub use subscriptions::{
     SessionEventStream, SessionEventStreamControl, SessionWatch, SubscriptionError,
 };
@@ -57,7 +59,7 @@ struct AgentState {
     providers: Arc<ModelProviderRegistry>,
 }
 
-impl AgentSdk {
+impl AsyncAgentSdk {
     pub(crate) fn project_for_user(
         &self,
         project_id: &str,
@@ -580,25 +582,18 @@ fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
     Ok(())
 }
 
-pub struct AgentSdk {
+pub struct AsyncAgentSdk {
     _lock: Option<AgentLock>,
     data_dir: PathBuf,
-    runtime: tokio::runtime::Runtime,
     state: AgentState,
 }
 
 #[cfg(test)]
-impl AgentSdk {
+impl AsyncAgentSdk {
     fn from_state_for_test(state: AgentState) -> Self {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .thread_name("suncode-sdk-test")
-            .build()
-            .unwrap();
         Self {
             _lock: None,
             data_dir: PathBuf::new(),
-            runtime,
             state,
         }
     }

@@ -1,20 +1,16 @@
 use super::*;
+use futures_util::{stream::FusedStream, StreamExt};
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 use suncode_agent::{domain::Message, AgentEvent, EventPayload, TurnStatePayload};
 
 fn test_sdk(directory: &std::path::Path) -> AgentSdk {
     let state = test_state(directory);
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .thread_name("suncode-sdk-test")
-        .build()
-        .unwrap();
-    AgentSdk {
+    AgentSdk::from_async_for_test(AsyncAgentSdk {
         _lock: None,
         data_dir: directory.to_path_buf(),
-        runtime,
         state,
-    }
+    })
 }
 
 fn test_state(directory: &std::path::Path) -> AgentState {
@@ -65,6 +61,32 @@ fn test_state(directory: &std::path::Path) -> AgentState {
         agent,
         providers,
     }
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn async_sdk_opens_inside_an_existing_tokio_runtime() {
+    static ENVIRONMENT: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
+    let _guard = ENVIRONMENT
+        .get_or_init(|| tokio::sync::Mutex::new(()))
+        .lock()
+        .await;
+    let directory = tempfile::tempdir().unwrap();
+    std::env::set_var("SUNCODE_DATA_DIRECTORY", directory.path().join("data"));
+    std::env::remove_var("SUNCODE_DATABASE_PATH");
+    std::env::set_var("SUNCODE_NON_INTERACTIVE", "false");
+
+    let sdk = AsyncAgentSdk::open_default("async-test-user")
+        .await
+        .unwrap();
+
+    assert!(sdk.health().unwrap().ok);
+    assert!(!sdk.list_models().unwrap().models.is_empty());
+    let browser = sdk.browser_runtime_info(None).await.unwrap();
+    assert!(!browser.enabled);
+    drop(sdk);
+
+    std::env::remove_var("SUNCODE_DATA_DIRECTORY");
+    std::env::remove_var("SUNCODE_NON_INTERACTIVE");
 }
 
 #[test]
@@ -1209,6 +1231,117 @@ fn subscription_delivers_live_events_without_replay() {
     assert_eq!(received.event_type().as_str(), "turn.state");
     assert!(matches!(received.payload, EventPayload::TurnState(_)));
     subscription.close();
+}
+
+#[tokio::test]
+async fn subscription_implements_fused_standard_stream() {
+    let directory = tempfile::tempdir().unwrap();
+    let state = test_state(directory.path());
+    let project = state
+        .store
+        .project(directory.path().to_str().unwrap(), "Test")
+        .unwrap();
+    let session = state
+        .store
+        .create_session(
+            &project.project_id,
+            Some("First"),
+            Some("deepseek-v4-flash"),
+        )
+        .unwrap();
+    let events = state.events.clone();
+    let sdk = AsyncAgentSdk::from_state_for_test(state);
+    let mut subscription = sdk.subscribe_session_events(&session.session_id).unwrap();
+
+    events.publish(AgentEvent {
+        session_id: session.session_id,
+        occurred_at: "2026-09-19T00:00:00.000Z".into(),
+        payload: EventPayload::TurnState(TurnStatePayload {
+            turn_id: "turn-1".into(),
+            state: "calling_model".into(),
+            model_id: None,
+            submission_idempotency_key: None,
+            reason: None,
+        }),
+    });
+
+    let event = subscription.next().await.unwrap().unwrap();
+    assert_eq!(event.event_type().as_str(), "turn.state");
+    assert!(!subscription.is_terminated());
+
+    subscription.close();
+    assert!(subscription.next().await.is_none());
+    assert!(subscription.is_terminated());
+    assert!(subscription.next().await.is_none());
+}
+
+#[tokio::test]
+async fn close_control_wakes_a_pending_standard_stream() {
+    let directory = tempfile::tempdir().unwrap();
+    let state = test_state(directory.path());
+    let project = state
+        .store
+        .project(directory.path().to_str().unwrap(), "Test")
+        .unwrap();
+    let session = state
+        .store
+        .create_session(
+            &project.project_id,
+            Some("First"),
+            Some("deepseek-v4-flash"),
+        )
+        .unwrap();
+    let sdk = AsyncAgentSdk::from_state_for_test(state);
+    let mut subscription = sdk.subscribe_session_events(&session.session_id).unwrap();
+    let control = subscription.control();
+    let waiting = tokio::spawn(async move { subscription.next().await });
+
+    tokio::task::yield_now().await;
+    control.close();
+
+    assert!(waiting.await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn standard_stream_reports_lag_once_and_then_terminates() {
+    let directory = tempfile::tempdir().unwrap();
+    let state = test_state(directory.path());
+    let project = state
+        .store
+        .project(directory.path().to_str().unwrap(), "Test")
+        .unwrap();
+    let session = state
+        .store
+        .create_session(
+            &project.project_id,
+            Some("First"),
+            Some("deepseek-v4-flash"),
+        )
+        .unwrap();
+    let events = state.events.clone();
+    let sdk = AsyncAgentSdk::from_state_for_test(state);
+    let mut subscription = sdk.subscribe_session_events(&session.session_id).unwrap();
+
+    for index in 0..17 {
+        events.publish(AgentEvent {
+            session_id: session.session_id.clone(),
+            occurred_at: "2026-09-19T00:00:00.000Z".into(),
+            payload: EventPayload::TurnState(TurnStatePayload {
+                turn_id: format!("turn-{index}"),
+                state: "calling_model".into(),
+                model_id: None,
+                submission_idempotency_key: None,
+                reason: None,
+            }),
+        });
+    }
+
+    assert!(matches!(
+        subscription.next().await,
+        Some(Err(SubscriptionError::Lagged { missed: 1 }))
+    ));
+    assert!(subscription.is_terminated());
+    assert!(subscription.next().await.is_none());
 }
 
 #[test]

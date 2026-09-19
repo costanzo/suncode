@@ -21,7 +21,7 @@ The architecture favors explicit ownership, reviewable authority, and one author
     | P/Invoke over C ABI
 `sdks/c` native binding
     |
-`sdks/rust` typed facade
+`sdks/rust` async-first typed facade plus explicit blocking host adapter
     |
 Rust SunCode agent core
     |- agent loop using the suncode-llm provider layer
@@ -92,7 +92,7 @@ One agent instance exists per data directory. Its host process acquires a single
 
 The Rust core contains one immutable catalog of six built-in specialist definitions. A primary session may invoke the core-owned `delegate_agent` conversation tool, which creates one linked child session and a durable invocation correlation. Child sessions inherit project, model, and reasoning effort, advertise only their role allowlist, revalidate every tool call, cannot use MCP or `question`, and cannot delegate again. They are inspection and authority surfaces for SDK clients, not independent user conversations. Parent cancellation propagates to an active child; pending child approvals resume through the ordinary durable approval path.
 
-The Avalonia client embeds and opens the agent, atomically obtains a session snapshot plus dormant stream, applies the snapshot and auxiliary presentation state, then explicitly starts callback delivery. Core routes non-exhaustive typed events through bounded session-scoped streams; the Rust SDK is pull-based, while the C binding owns dormant handle activation, callback-thread, and JSON-envelope adaptation for Avalonia. Rust `watch_session` registers a stream and reads its snapshot under the same per-session in-memory gate used by event projection and publication, so a notification cannot fall between the two views; clients still apply events idempotently because some normalized lifecycle writes precede notification projection. Stale or failed desktop loads dispose their dormant handle before callback activation. A lagged subscription or reconnect repeats the atomic watch flow and never treats client cache as authoritative. A second process cannot attach to an active agent; replacement IPC requires a new architectural decision.
+The Avalonia client embeds and opens the agent through the explicit runtime-owning blocking adapter, atomically obtains a session snapshot plus dormant stream, applies the snapshot and auxiliary presentation state, then explicitly starts callback delivery. Native Rust hosts instead use the runtime-free `AsyncAgentSdk` on their own Tokio executor. Core routes non-exhaustive typed events through bounded session-scoped streams; the Rust SDK implements the standard `Stream` and `FusedStream` contracts in addition to direct receive methods, while the C binding owns dormant handle activation, callback-thread, and JSON-envelope adaptation for Avalonia. Normal Rust stream closure returns `None`; lag returns one typed error and terminates so the host can establish a fresh atomic watch. Rust `watch_session` registers a stream and reads its snapshot under the same per-session in-memory gate used by event projection and publication, so a notification cannot fall between the two views; clients still apply events idempotently because some normalized lifecycle writes precede notification projection. Stale or failed desktop loads dispose their dormant handle before callback activation. A lagged subscription or reconnect repeats the atomic watch flow and never treats client cache as authoritative. A second process cannot attach to an active agent; replacement IPC requires a new architectural decision.
 
 ## 5. SDK Contract
 

@@ -1,7 +1,7 @@
 use super::*;
 use suncode_agent::domain::{SessionImageRecord, SessionRecord};
 
-impl AgentSdk {
+impl AsyncAgentSdk {
     pub fn watch_session(&self, session_id: &str) -> SdkResult<SessionWatch> {
         self.session_for_user(session_id)?;
         let (snapshot, subscription) = self

@@ -1,6 +1,6 @@
 use super::*;
 
-impl AgentSdk {
+impl AsyncAgentSdk {
     pub fn list_sessions(&self, project_id: &str) -> SdkResult<SessionsResult> {
         if self
             .state

@@ -1,6 +1,6 @@
 use super::*;
 
-impl AgentSdk {
+impl AsyncAgentSdk {
     pub fn list_settings(
         &self,
         project_id: Option<&str>,
@@ -30,7 +30,7 @@ impl AgentSdk {
         Ok(SettingsResult { settings })
     }
 
-    pub fn set_setting(
+    pub async fn set_setting(
         &self,
         scope: &str,
         project_id: Option<&str>,
@@ -79,11 +79,10 @@ impl AgentSdk {
             }
         }
         if scope == "global" && key == "browser_use_enabled" {
-            self.runtime.block_on(
-                self.state
-                    .agent
-                    .set_browser_use_enabled(value.as_bool().unwrap_or(false)),
-            );
+            self.state
+                .agent
+                .set_browser_use_enabled(value.as_bool().unwrap_or(false))
+                .await;
         }
         if scope == "global" && (key == "use_system_certificates" || key == "certificate_path") {
             self.state.operations.set_certificate_configuration(
@@ -111,7 +110,7 @@ impl AgentSdk {
         })
     }
 
-    pub fn set_proxy_configuration(
+    pub async fn set_proxy_configuration(
         &self,
         request: ProxyConfigurationRequest,
     ) -> SdkResult<ProxyConfigurationResult> {
@@ -154,8 +153,10 @@ impl AgentSdk {
         self.state
             .operations
             .set_proxy_configuration(configuration.clone());
-        self.runtime
-            .block_on(self.state.agent.reconcile_mcp_network_configuration())?;
+        self.state
+            .agent
+            .reconcile_mcp_network_configuration()
+            .await?;
         self.state
             .agent
             .set_browser_proxy_configuration(configuration.clone());

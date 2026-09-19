@@ -3,25 +3,22 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use suncode_data::{McpServerInput, McpServerRecord, McpTransportConfig};
 
-impl AgentSdk {
-    pub fn start_mcp_project(&self, project_id: &str) -> SdkResult<McpLoadProgressResult> {
+impl AsyncAgentSdk {
+    pub async fn start_mcp_project(&self, project_id: &str) -> SdkResult<McpLoadProgressResult> {
         let project = self
             .state
             .store
             .project_by_id_for_user(&self.state.user_id, project_id)?
             .ok_or_else(|| BusinessError::missing("project"))?;
-        self.runtime.block_on(
-            self.state
-                .agent
-                .activate_mcp_project(&project.project_id, Path::new(&project.canonical_root)),
-        )?;
-        Ok(self.mcp_load_progress(project_id))
+        self.state
+            .agent
+            .activate_mcp_project(&project.project_id, Path::new(&project.canonical_root))
+            .await?;
+        Ok(self.mcp_load_progress(project_id).await)
     }
 
-    pub fn mcp_load_progress(&self, project_id: &str) -> McpLoadProgressResult {
-        let progress = self
-            .runtime
-            .block_on(self.state.agent.mcp_load_progress(project_id));
+    pub async fn mcp_load_progress(&self, project_id: &str) -> McpLoadProgressResult {
+        let progress = self.state.agent.mcp_load_progress(project_id).await;
         McpLoadProgressResult {
             total: progress.total,
             settled: progress.settled,
@@ -31,19 +28,16 @@ impl AgentSdk {
         }
     }
 
-    pub fn list_mcp_servers(&self, project_id: Option<&str>) -> SdkResult<McpServersResult> {
+    pub async fn list_mcp_servers(&self, project_id: Option<&str>) -> SdkResult<McpServersResult> {
         self.validate_mcp_project(project_id)?;
-        let servers = self
-            .state
-            .store
-            .mcp_servers()?
-            .into_iter()
-            .map(|server| self.mcp_server_dto(project_id, server))
-            .collect::<SdkResult<Vec<_>>>()?;
+        let mut servers = Vec::new();
+        for server in self.state.store.mcp_servers()? {
+            servers.push(self.mcp_server_dto(project_id, server).await?);
+        }
         Ok(McpServersResult { servers })
     }
 
-    pub fn create_mcp_server(
+    pub async fn create_mcp_server(
         &self,
         project_id: Option<&str>,
         idempotency_key: &str,
@@ -54,12 +48,11 @@ impl AgentSdk {
         let server_id = deterministic_server_id(idempotency_key);
         let input = write_input(request, None)?;
         let server = self.state.store.create_mcp_server(&server_id, &input)?;
-        self.runtime
-            .block_on(self.state.agent.reconcile_mcp_server(&server_id))?;
-        self.mcp_server_dto(project_id, server)
+        self.state.agent.reconcile_mcp_server(&server_id).await?;
+        self.mcp_server_dto(project_id, server).await
     }
 
-    pub fn update_mcp_server(
+    pub async fn update_mcp_server(
         &self,
         project_id: Option<&str>,
         server_id: &str,
@@ -79,12 +72,11 @@ impl AgentSdk {
             .state
             .store
             .update_mcp_server(server_id, expected_revision, &input)?;
-        self.runtime
-            .block_on(self.state.agent.reconcile_mcp_server(server_id))?;
-        self.mcp_server_dto(project_id, server)
+        self.state.agent.reconcile_mcp_server(server_id).await?;
+        self.mcp_server_dto(project_id, server).await
     }
 
-    pub fn set_mcp_server_enabled(
+    pub async fn set_mcp_server_enabled(
         &self,
         project_id: Option<&str>,
         server_id: &str,
@@ -98,12 +90,11 @@ impl AgentSdk {
             self.state
                 .store
                 .set_mcp_server_enabled(server_id, expected_revision, enabled)?;
-        self.runtime
-            .block_on(self.state.agent.reconcile_mcp_server(server_id))?;
-        self.mcp_server_dto(project_id, server)
+        self.state.agent.reconcile_mcp_server(server_id).await?;
+        self.mcp_server_dto(project_id, server).await
     }
 
-    pub fn delete_mcp_server(
+    pub async fn delete_mcp_server(
         &self,
         server_id: &str,
         expected_revision: u64,
@@ -114,33 +105,40 @@ impl AgentSdk {
             .state
             .store
             .delete_mcp_server(server_id, expected_revision)?;
-        self.runtime
-            .block_on(self.state.agent.reconcile_mcp_server(server_id))?;
+        self.state.agent.reconcile_mcp_server(server_id).await?;
         Ok(McpServerDeleteResult {
             mcp_server_id: server_id.to_string(),
             removed,
         })
     }
 
-    pub fn retry_mcp_server(&self, project_id: &str, server_id: &str) -> SdkResult<McpServerDto> {
-        self.runtime
-            .block_on(self.state.agent.retry_mcp_server(project_id, server_id))?;
+    pub async fn retry_mcp_server(
+        &self,
+        project_id: &str,
+        server_id: &str,
+    ) -> SdkResult<McpServerDto> {
+        self.state
+            .agent
+            .retry_mcp_server(project_id, server_id)
+            .await?;
         let server = self
             .state
             .store
             .mcp_server_by_id(server_id)?
             .ok_or_else(|| BusinessError::missing("mcp_server"))?;
-        self.mcp_server_dto(Some(project_id), server)
+        self.mcp_server_dto(Some(project_id), server).await
     }
 
-    fn mcp_server_dto(
+    async fn mcp_server_dto(
         &self,
         project_id: Option<&str>,
         server: McpServerRecord,
     ) -> SdkResult<McpServerDto> {
         let runtime = self
-            .runtime
-            .block_on(self.state.agent.mcp_runtime_status(project_id, &server));
+            .state
+            .agent
+            .mcp_runtime_status(project_id, &server)
+            .await;
         let (
             transport_type,
             command,

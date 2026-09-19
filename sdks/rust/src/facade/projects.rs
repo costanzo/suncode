@@ -1,7 +1,7 @@
 use super::*;
 use suncode_agent::domain::ProjectRecord;
 
-impl AgentSdk {
+impl AsyncAgentSdk {
     pub fn list_projects(&self) -> SdkResult<ProjectsResult> {
         Ok(ProjectsResult {
             projects: self

@@ -1,6 +1,6 @@
 use super::*;
 
-impl AgentSdk {
+impl AsyncAgentSdk {
     pub fn list_agents(&self) -> SdkResult<AgentsResult> {
         Ok(AgentsResult {
             agents: suncode_agent::agent::builtin_agents::all()

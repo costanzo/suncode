@@ -3,8 +3,10 @@
 mod facade;
 mod types;
 
+pub use facade::blocking;
 pub use facade::{
-    AgentSdk, SessionEventStream, SessionEventStreamControl, SessionWatch, SubscriptionError,
+    AgentSdk, AsyncAgentSdk, SessionEventStream, SessionEventStreamControl, SessionWatch,
+    SubscriptionError,
 };
 pub use suncode_agent::logging as logging_module;
 pub mod events {

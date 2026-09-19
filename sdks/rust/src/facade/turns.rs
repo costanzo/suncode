@@ -1,8 +1,8 @@
 use super::*;
 use suncode_agent::{agent::TurnResponse, domain::ApprovalRecord};
 
-impl AgentSdk {
-    pub fn submit_turn(
+impl AsyncAgentSdk {
+    pub async fn submit_turn(
         &self,
         session_id: &str,
         input: &str,
@@ -19,9 +19,10 @@ impl AgentSdk {
             reasoning_effort,
             &[],
         )
+        .await
     }
 
-    pub fn submit_turn_with_attachments(
+    pub async fn submit_turn_with_attachments(
         &self,
         session_id: &str,
         input: &str,
@@ -37,15 +38,18 @@ impl AgentSdk {
             return Err(BusinessError::invalid("idempotency_key is required"));
         }
         match self
-            .runtime
-            .block_on(self.state.agent.submit_with_attachments(
+            .state
+            .agent
+            .submit_with_attachments(
                 session_id,
                 idempotency_key,
                 input,
                 model,
                 reasoning_effort,
                 image_ids,
-            )) {
+            )
+            .await
+        {
             Ok(response) => Ok(response),
             Err(error) if error.code == "approval_required" => Ok(TurnResponse::AwaitingApproval {
                 turn_id: detail_string(&error, "turn_id")?,
@@ -71,7 +75,7 @@ impl AgentSdk {
         })
     }
 
-    pub fn retry_last_turn(&self, session_id: &str) -> SdkResult<TurnResponse> {
+    pub async fn retry_last_turn(&self, session_id: &str) -> SdkResult<TurnResponse> {
         let session = self.session_for_user(session_id)?;
         if session.kind != "primary" {
             return Err(BusinessError::new(
@@ -79,8 +83,7 @@ impl AgentSdk {
                 "child sessions cannot be retried directly",
             ));
         }
-        self.runtime
-            .block_on(self.state.agent.retry_last_turn(session_id))
+        self.state.agent.retry_last_turn(session_id).await
     }
 
     pub fn get_approval(&self, approval_id: &str) -> SdkResult<ApprovalRecord> {
@@ -93,7 +96,7 @@ impl AgentSdk {
         Ok(approval)
     }
 
-    pub fn resolve_approval(
+    pub async fn resolve_approval(
         &self,
         approval_id: &str,
         decision: &str,
@@ -108,8 +111,10 @@ impl AgentSdk {
             .ok_or_else(|| BusinessError::missing("approval"))?;
         self.session_for_user(&approval.session_id)?;
         let resolved = self
-            .runtime
-            .block_on(self.state.agent.resolve_approval(approval_id, decision))?;
+            .state
+            .agent
+            .resolve_approval(approval_id, decision)
+            .await?;
         if !resolved {
             return Err(BusinessError::new(
                 "conflict",
@@ -122,7 +127,11 @@ impl AgentSdk {
         })
     }
 
-    pub fn reply_question(&self, request_id: &str, answers: &Value) -> SdkResult<QuestionOutcome> {
+    pub async fn reply_question(
+        &self,
+        request_id: &str,
+        answers: &Value,
+    ) -> SdkResult<QuestionOutcome> {
         let answers = answers
             .as_array()
             .ok_or_else(|| BusinessError::invalid("answers must be an array"))?;
@@ -144,11 +153,11 @@ impl AgentSdk {
                     })
             })
             .collect::<SdkResult<Vec<Vec<String>>>>()?;
-        let resolved = self.runtime.block_on(
-            self.state
-                .agent
-                .resolve_question(request_id, answers, false),
-        )?;
+        let resolved = self
+            .state
+            .agent
+            .resolve_question(request_id, answers, false)
+            .await?;
         if !resolved {
             return Err(BusinessError::new(
                 "conflict",
@@ -161,12 +170,12 @@ impl AgentSdk {
         })
     }
 
-    pub fn reject_question(&self, request_id: &str) -> SdkResult<QuestionOutcome> {
-        let resolved = self.runtime.block_on(self.state.agent.resolve_question(
-            request_id,
-            Vec::new(),
-            true,
-        ))?;
+    pub async fn reject_question(&self, request_id: &str) -> SdkResult<QuestionOutcome> {
+        let resolved = self
+            .state
+            .agent
+            .resolve_question(request_id, Vec::new(), true)
+            .await?;
         if !resolved {
             return Err(BusinessError::new(
                 "conflict",

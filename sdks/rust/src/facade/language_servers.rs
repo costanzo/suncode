@@ -3,39 +3,35 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashSet};
 use suncode_data::{LanguageServerConfig, LanguageServerInput, LanguageServerRecord};
 
-impl AgentSdk {
-    pub fn start_language_server_project(
+impl AsyncAgentSdk {
+    pub async fn start_language_server_project(
         &self,
         project_id: &str,
     ) -> SdkResult<LanguageServerProjectResult> {
         let project = self.project_for_user(project_id)?;
-        self.runtime.block_on(
-            self.state
-                .agent
-                .activate_language_server_project(project_id, Path::new(&project.canonical_root)),
-        )?;
+        self.state
+            .agent
+            .activate_language_server_project(project_id, Path::new(&project.canonical_root))
+            .await?;
         Ok(LanguageServerProjectResult {
             project_id: project_id.to_string(),
             started: true,
         })
     }
 
-    pub fn list_language_servers(
+    pub async fn list_language_servers(
         &self,
         project_id: Option<&str>,
     ) -> SdkResult<LanguageServersResult> {
         self.validate_language_server_project(project_id)?;
-        let servers = self
-            .state
-            .store
-            .language_servers()?
-            .into_iter()
-            .map(|server| self.language_server_dto(project_id, server))
-            .collect::<SdkResult<Vec<_>>>()?;
+        let mut servers = Vec::new();
+        for server in self.state.store.language_servers()? {
+            servers.push(self.language_server_dto(project_id, server).await?);
+        }
         Ok(LanguageServersResult { servers })
     }
 
-    pub fn create_language_server(
+    pub async fn create_language_server(
         &self,
         project_id: Option<&str>,
         idempotency_key: &str,
@@ -49,15 +45,14 @@ impl AgentSdk {
             .state
             .store
             .create_language_server(&language_server_id, &input)?;
-        self.runtime.block_on(
-            self.state
-                .agent
-                .reconcile_language_server(&language_server_id),
-        )?;
-        self.language_server_dto(project_id, server)
+        self.state
+            .agent
+            .reconcile_language_server(&language_server_id)
+            .await?;
+        self.language_server_dto(project_id, server).await
     }
 
-    pub fn update_language_server(
+    pub async fn update_language_server(
         &self,
         project_id: Option<&str>,
         language_server_id: &str,
@@ -78,15 +73,14 @@ impl AgentSdk {
             expected_revision,
             &input,
         )?;
-        self.runtime.block_on(
-            self.state
-                .agent
-                .reconcile_language_server(language_server_id),
-        )?;
-        self.language_server_dto(project_id, server)
+        self.state
+            .agent
+            .reconcile_language_server(language_server_id)
+            .await?;
+        self.language_server_dto(project_id, server).await
     }
 
-    pub fn set_language_server_enabled(
+    pub async fn set_language_server_enabled(
         &self,
         project_id: Option<&str>,
         language_server_id: &str,
@@ -101,15 +95,14 @@ impl AgentSdk {
             expected_revision,
             enabled,
         )?;
-        self.runtime.block_on(
-            self.state
-                .agent
-                .reconcile_language_server(language_server_id),
-        )?;
-        self.language_server_dto(project_id, server)
+        self.state
+            .agent
+            .reconcile_language_server(language_server_id)
+            .await?;
+        self.language_server_dto(project_id, server).await
     }
 
-    pub fn delete_language_server(
+    pub async fn delete_language_server(
         &self,
         language_server_id: &str,
         expected_revision: u64,
@@ -120,46 +113,44 @@ impl AgentSdk {
             .state
             .store
             .delete_language_server(language_server_id, expected_revision)?;
-        self.runtime.block_on(
-            self.state
-                .agent
-                .reconcile_language_server(language_server_id),
-        )?;
+        self.state
+            .agent
+            .reconcile_language_server(language_server_id)
+            .await?;
         Ok(LanguageServerDeleteResult {
             language_server_id: language_server_id.to_string(),
             removed,
         })
     }
 
-    pub fn retry_language_server(
+    pub async fn retry_language_server(
         &self,
         project_id: &str,
         language_server_id: &str,
     ) -> SdkResult<LanguageServerDto> {
         self.project_for_user(project_id)?;
-        self.runtime.block_on(
-            self.state
-                .agent
-                .retry_language_server(project_id, language_server_id),
-        )?;
+        self.state
+            .agent
+            .retry_language_server(project_id, language_server_id)
+            .await?;
         let server = self
             .state
             .store
             .language_server_by_id(language_server_id)?
             .ok_or_else(|| BusinessError::missing("language_server"))?;
-        self.language_server_dto(Some(project_id), server)
+        self.language_server_dto(Some(project_id), server).await
     }
 
-    fn language_server_dto(
+    async fn language_server_dto(
         &self,
         project_id: Option<&str>,
         server: LanguageServerRecord,
     ) -> SdkResult<LanguageServerDto> {
-        let runtime = self.runtime.block_on(
-            self.state
-                .agent
-                .language_server_runtime_status(project_id, &server),
-        );
+        let runtime = self
+            .state
+            .agent
+            .language_server_runtime_status(project_id, &server)
+            .await;
         Ok(LanguageServerDto {
             language_server_id: server.language_server_id,
             display_name: server.display_name,

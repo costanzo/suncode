@@ -1,6 +1,6 @@
 use super::*;
 
-impl AgentSdk {
+impl AsyncAgentSdk {
     pub fn list_checkpoints(&self, session_id: &str) -> SdkResult<CheckpointsResult> {
         self.session_for_user(session_id)?;
         Ok(CheckpointsResult {

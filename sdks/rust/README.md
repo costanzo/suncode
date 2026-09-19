@@ -1,6 +1,6 @@
 # SunCode Rust SDK
 
-This crate is the typed Rust SDK facade over the `suncode-agent` harness. It owns the host-facing Rust methods, DTOs, lifecycle, and subscription API. The Avalonia-facing C ABI is implemented separately by [`../c`](../c).
+This crate is the typed Rust SDK facade over the `suncode-agent` harness. `AsyncAgentSdk` is the runtime-free primary Rust facade: async hosts supply Tokio and await runtime-dependent operations directly. `blocking::AgentSdk` owns one Tokio runtime for synchronous hosts and remains re-exported at the crate root as `AgentSdk` for compatibility. Both surfaces share the same state, validation, DTO, persistence, policy, and event implementation. The Avalonia-facing C ABI is implemented separately by [`../c`](../c).
 
 The `version` method returns the embedded `suncode-agent` core package version without opening agent state. Client bindings use it for About-window component version display.
 
@@ -10,10 +10,13 @@ It does not open a second database or implement provider/tool behavior independe
 
 - `src/lib.rs` defines the crate's public entry point and re-exports the facade and DTOs.
 - `src/types.rs` owns host-facing DTOs, result aliases, and the ABI version constant.
-- `src/facade/` owns `AgentSdk`, lifecycle and configuration helpers, and methods grouped by capability.
-- `src/facade/subscriptions.rs` owns the typed pull-based `SessionEventStream`, its close control, and lag/closed outcomes. It contains no C callbacks, raw pointers, JSON serialization, or worker threads.
+- `src/facade/` owns `AsyncAgentSdk`, lifecycle and configuration helpers, and methods grouped by capability.
+- `src/facade/blocking.rs` owns executor creation and blocking adaptation only; `Deref` reuses synchronous async-facade methods.
+- `src/facade/subscriptions.rs` owns the typed `SessionEventStream`, its standard `Stream`/`FusedStream` behavior, direct receive methods, close control, and lag/closed outcomes. It contains no C callbacks, raw pointers, JSON serialization, or worker threads.
 - `src/facade/tests.rs` keeps facade behavior tests beside the implementation; C ABI tests remain in `sdks/c`.
 
-The `events` module re-exports the non-exhaustive typed core event catalog. Rust hosts receive `Arc<AgentEvent>` values and can use async `recv`, blocking `blocking_recv`, or nonblocking `try_recv`. Native callback adaptation belongs to each language binding.
+The `events` module re-exports the non-exhaustive typed core event catalog. Async Rust hosts can use `StreamExt::next` and other standard stream combinators over `Result<Arc<AgentEvent>, SubscriptionError>` items. Normal close is end-of-stream; lag is returned once and then the fused stream terminates so the host can establish a fresh atomic watch. Direct async `recv`, blocking `blocking_recv`, and nonblocking `try_recv` remain available. Native callback adaptation belongs to each language binding.
 
 Rust hosts should establish session state with `AgentSdk::watch_session`. It returns `SessionWatch { snapshot, events }` atomically relative to durable event projection and live publication. The standalone snapshot and subscribe methods remain available for compatibility but do not collectively close the boundary race.
+
+Async hosts should use `AsyncAgentSdk::watch_session`; the compatibility wording above applies equally because `watch_session` itself is a synchronous local composition method. Blocking hosts use the root `AgentSdk`. Calling the blocking wrapper from inside an async runtime is unsupported; use `AsyncAgentSdk` instead.

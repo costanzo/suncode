@@ -1,18 +1,17 @@
 use super::*;
 
-impl AgentSdk {
-    pub fn browser_runtime_info(
+impl AsyncAgentSdk {
+    pub async fn browser_runtime_info(
         &self,
         project_id: Option<&str>,
     ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
         if let Some(project_id) = project_id {
             self.project_for_user(project_id)?;
         }
-        self.runtime
-            .block_on(self.state.agent.browser_runtime_info(project_id))
+        self.state.agent.browser_runtime_info(project_id).await
     }
 
-    pub fn set_browser_use_enabled(
+    pub async fn set_browser_use_enabled(
         &self,
         enabled: bool,
     ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
@@ -22,77 +21,72 @@ impl AgentSdk {
             "browser_use_enabled",
             &Value::Bool(enabled),
         )?;
-        self.runtime
-            .block_on(self.state.agent.set_browser_use_enabled(enabled));
-        self.browser_runtime_info(None)
+        self.state.agent.set_browser_use_enabled(enabled).await;
+        self.browser_runtime_info(None).await
     }
 
-    pub fn verify_browser_runtime(
+    pub async fn verify_browser_runtime(
         &self,
         project_id: Option<&str>,
     ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
         if let Some(project_id) = project_id {
             self.project_for_user(project_id)?;
         }
-        self.runtime
-            .block_on(self.state.agent.verify_browser_runtime())?;
-        self.browser_runtime_info(project_id)
+        self.state.agent.verify_browser_runtime().await?;
+        self.browser_runtime_info(project_id).await
     }
 
-    pub fn start_browser_project(
+    pub async fn start_browser_project(
         &self,
         project_id: &str,
     ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
         self.project_for_user(project_id)?;
-        self.runtime
-            .block_on(self.state.agent.start_browser_project(project_id))?;
-        self.browser_runtime_info(Some(project_id))
+        self.state.agent.start_browser_project(project_id).await?;
+        self.browser_runtime_info(Some(project_id)).await
     }
 
-    pub fn take_browser_control(
+    pub async fn take_browser_control(
         &self,
         project_id: &str,
     ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
         self.project_for_user(project_id)?;
-        self.runtime
-            .block_on(self.state.agent.take_browser_control(project_id))?;
-        self.browser_runtime_info(Some(project_id))
+        self.state.agent.take_browser_control(project_id).await?;
+        self.browser_runtime_info(Some(project_id)).await
     }
 
-    pub fn return_browser_control(
+    pub async fn return_browser_control(
         &self,
         project_id: &str,
     ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
         self.project_for_user(project_id)?;
-        self.runtime
-            .block_on(self.state.agent.return_browser_control(project_id))?;
-        self.browser_runtime_info(Some(project_id))
+        self.state.agent.return_browser_control(project_id).await?;
+        self.browser_runtime_info(Some(project_id)).await
     }
 
-    pub fn restart_browser_runtime(
+    pub async fn restart_browser_runtime(
         &self,
         project_id: &str,
     ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
         self.project_for_user(project_id)?;
-        self.runtime
-            .block_on(self.state.agent.restart_browser_runtime(project_id))?;
-        self.browser_runtime_info(Some(project_id))
+        self.state.agent.restart_browser_runtime(project_id).await?;
+        self.browser_runtime_info(Some(project_id)).await
     }
 
-    pub fn stop_browser_runtime(
+    pub async fn stop_browser_runtime(
         &self,
         project_id: &str,
     ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
         self.project_for_user(project_id)?;
-        self.runtime
-            .block_on(self.state.agent.stop_browser_runtime(project_id))?;
-        self.browser_runtime_info(Some(project_id))
+        self.state.agent.stop_browser_runtime(project_id).await?;
+        self.browser_runtime_info(Some(project_id)).await
     }
 
-    pub fn clear_browser_profile(&self, project_id: &str) -> SdkResult<BrowserProfileClearResult> {
+    pub async fn clear_browser_profile(
+        &self,
+        project_id: &str,
+    ) -> SdkResult<BrowserProfileClearResult> {
         self.project_for_user(project_id)?;
-        self.runtime
-            .block_on(self.state.agent.clear_browser_profile(project_id))?;
+        self.state.agent.clear_browser_profile(project_id).await?;
         Ok(BrowserProfileClearResult {
             project_id: project_id.into(),
             cleared: true,

@@ -6,6 +6,7 @@ use std::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex, Weak,
     },
+    task::{Context, Poll},
 };
 use tokio::sync::mpsc;
 
@@ -283,6 +284,24 @@ impl AgentEventSubscription {
             return Err(error);
         }
         Ok(event)
+    }
+
+    pub fn poll_recv(
+        &mut self,
+        context: &mut Context<'_>,
+    ) -> Poll<Result<Arc<AgentEvent>, EventReceiveError>> {
+        if let Some(error) = self.registration.error() {
+            return Poll::Ready(Err(error));
+        }
+        let event = match self.receiver.poll_recv(context) {
+            Poll::Ready(Some(event)) => event,
+            Poll::Ready(None) => return Poll::Ready(Err(EventReceiveError::Closed)),
+            Poll::Pending => return Poll::Pending,
+        };
+        if let Some(error) = self.registration.error() {
+            return Poll::Ready(Err(error));
+        }
+        Poll::Ready(Ok(event))
     }
 
     pub fn blocking_recv(&mut self) -> Result<Arc<AgentEvent>, EventReceiveError> {

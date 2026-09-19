@@ -1,18 +1,21 @@
 use super::*;
 
-impl AgentSdk {
+impl AsyncAgentSdk {
     pub fn version() -> VersionResult {
         VersionResult {
             version: suncode_agent::version(),
         }
     }
 
-    pub fn open_default(user_id: &str) -> SdkResult<Self> {
-        Self::open_default_with_providers(user_id, |_| Ok(()))
+    pub async fn open_default(user_id: &str) -> SdkResult<Self> {
+        Self::open_default_with_providers(user_id, |_| Ok(())).await
     }
 
     /// Opens the agent after extending the built-in registry with trusted providers.
-    pub fn open_default_with_providers<F>(user_id: &str, configure_providers: F) -> SdkResult<Self>
+    pub async fn open_default_with_providers<F>(
+        user_id: &str,
+        configure_providers: F,
+    ) -> SdkResult<Self>
     where
         F: FnOnce(&mut ModelProviderRegistry) -> Result<(), BusinessError>,
     {
@@ -25,19 +28,11 @@ impl AgentSdk {
                 BusinessError::unavailable(format!("agent lock unavailable: {error}"))
             }
         })?;
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .thread_name("suncode-sdk")
-            .build()
-            .map_err(|error| {
-                BusinessError::unavailable(format!("tokio runtime unavailable: {error}"))
-            })?;
-        let state = runtime.block_on(build_state(&config, &user_id, configure_providers))?;
+        let state = build_state(&config, &user_id, configure_providers).await?;
         logging::write(Level::Info, "agent", "open completed");
         Ok(Self {
             _lock: Some(lock),
             data_dir: config.data_dir,
-            runtime,
             state,
         })
     }

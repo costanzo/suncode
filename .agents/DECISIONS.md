@@ -2,6 +2,24 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260919-rust-sdk-standard-session-stream
+
+- Date: 2026-09-19
+- Status: Accepted
+- Context: The typed Rust session subscription supported direct async, blocking, and nonblocking receives but did not implement the standard `Stream` trait. Async hosts therefore could not use `StreamExt`, generic stream consumers, or ordinary stream combinators without a custom adapter.
+- Decision: Implement `futures_core::Stream<Item = Result<Arc<AgentEvent>, SubscriptionError>>` and `FusedStream` on `SessionEventStream`. Normal close is end-of-stream, lag is emitted once as a typed error and then terminates the stream, and existing direct receive methods remain available. Add only a minimal poll primitive to the core subscription; C continues using the blocking receive adapter.
+- Consequences: Rust async hosts can consume atomic session watches with standard stream tooling and `select!` while retaining typed fail-closed lag recovery. C ABI 10, C#, Avalonia, persistence, queue bounds, and event envelopes do not change. `futures-core` becomes a small public SDK dependency, with `futures-util` used only in tests.
+- Details: `requirements/2026-09-19-rust-sdk-standard-stream/`, `agent/crates/core/src/agent/event_hub.rs`, `sdks/rust/src/facade/subscriptions.rs`, `sdks/rust/README.md`, `contracts/agent-sdk/README.md`
+
+## ADR-20260919-async-first-rust-sdk
+
+- Date: 2026-09-19
+- Status: Accepted
+- Context: The reusable Rust facade owned a hidden Tokio runtime and exposed core async work by calling `block_on`. That was convenient for C# but unsuitable for future Rust CLI/TUI and other async hosts, which need natural cancellation and `select!` without nested-runtime risk.
+- Decision: Make `AsyncAgentSdk` the runtime-free semantic facade. Startup and runtime-dependent Browser, MCP, LSP, turn, approval, question, and network-reconciliation methods are native async operations on the caller's Tokio runtime; pure local persistence and DTO methods remain synchronous. Add `blocking::AgentSdk`, re-exported at the crate root as compatibility `AgentSdk`, which owns one Tokio runtime, dereferences to `AsyncAgentSdk` for synchronous methods, and adapts awaited methods only. C embeds the blocking adapter.
+- Consequences: Rust async hosts gain a true async SDK with no hidden executor or facade-level `block_on`; existing C/C#/Avalonia behavior and ABI 10 remain unchanged. The two surfaces share one implementation rather than duplicating authority or persistence logic. Synchronous SQLite work remains explicit and may block an async executor thread; profiling may justify targeted `spawn_blocking` helpers later. Calling the blocking wrapper from an async runtime is unsupported.
+- Details: `requirements/2026-09-19-async-first-rust-sdk/`, `sdks/rust/src/facade/blocking.rs`, `sdks/rust/src/facade/lifecycle.rs`, `sdks/rust/README.md`, `contracts/agent-sdk/README.md`
+
 ## ADR-20260919-native-dormant-session-watch
 
 - Date: 2026-09-19
