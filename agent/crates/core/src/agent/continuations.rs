@@ -99,6 +99,7 @@ impl Agent {
         approval_id: &str,
         decision: &str,
     ) -> Result<bool, BusinessError> {
+        self.ensure_running()?;
         let Some(suspended) = self.store.resolve_approval(approval_id, decision)? else {
             return Ok(false);
         };
@@ -222,6 +223,7 @@ impl Agent {
         answers: Vec<Vec<String>>,
         rejected: bool,
     ) -> Result<bool, BusinessError> {
+        self.ensure_running()?;
         let snapshot = self.store.question_snapshot(request_id)?.ok_or_else(|| {
             BusinessError::new("conflict", "question is missing or already resolved")
         })?;

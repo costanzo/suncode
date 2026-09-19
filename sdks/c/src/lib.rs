@@ -152,7 +152,16 @@ pub unsafe extern "C" fn suncode_agent_sdk_open_default(
 pub unsafe extern "C" fn suncode_agent_sdk_close(handle: *mut SunCodeAgentHandle) {
     if !handle.is_null() {
         logging::write(Level::Info, "sdk.close", "handle_close begin");
-        let _ = catch_unwind(AssertUnwindSafe(|| drop(Box::from_raw(handle))));
+        match catch_unwind(AssertUnwindSafe(|| {
+            let SunCodeAgentHandle { sdk } = *Box::from_raw(handle);
+            sdk.shutdown()
+        })) {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => {
+                logging::write_business_error("sdk.close", "shutdown", &error, "phase=cleanup")
+            }
+            Err(_) => logging::write(Level::Error, "sdk.close", "operation=shutdown panic=true"),
+        }
         logging::write(Level::Info, "sdk.close", "handle_close end");
     }
 }

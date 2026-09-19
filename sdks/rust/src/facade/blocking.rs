@@ -47,6 +47,11 @@ impl AgentSdk {
         &self.inner
     }
 
+    pub fn shutdown(self) -> SdkResult<()> {
+        let Self { inner, runtime } = self;
+        runtime.block_on(inner.shutdown())
+    }
+
     pub fn browser_runtime_info(&self, project_id: Option<&str>) -> SdkResult<BrowserRuntimeInfo> {
         self.runtime
             .block_on(self.inner.browser_runtime_info(project_id))

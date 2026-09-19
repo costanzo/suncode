@@ -159,6 +159,7 @@ pub struct Agent {
     lsp: LanguageServerManager,
     browser: BrowserManager,
     computer: ComputerManager,
+    shutting_down: Arc<std::sync::atomic::AtomicBool>,
 }
 
 include!("submission.rs");

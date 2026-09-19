@@ -1,6 +1,9 @@
 use super::*;
 use serde_json::{json, Map};
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicBool, Ordering},
+};
 use suncode_data::LanguageServerRecord;
 use suncode_lsp::{Client, ConnectionConfig, PositionEncoding};
 use url::Url;
@@ -34,6 +37,7 @@ pub(super) struct LanguageServerManager {
 struct Inner {
     store: Store,
     projects: AsyncMutex<HashMap<String, ProjectRuntime>>,
+    closed: AtomicBool,
 }
 
 struct ProjectRuntime {
@@ -77,6 +81,7 @@ impl LanguageServerManager {
             inner: Arc::new(Inner {
                 store,
                 projects: AsyncMutex::new(HashMap::new()),
+                closed: AtomicBool::new(false),
             }),
         }
     }
@@ -86,6 +91,7 @@ impl LanguageServerManager {
         project_id: &str,
         root: &Path,
     ) -> Result<(), BusinessError> {
+        self.ensure_open()?;
         let created = {
             let mut projects = self.inner.projects.lock().await;
             if let Some(runtime) = projects.get_mut(project_id) {
@@ -216,6 +222,7 @@ impl LanguageServerManager {
         project_id: &str,
         server: LanguageServerRecord,
     ) -> Result<(), BusinessError> {
+        self.ensure_open()?;
         let prepared = {
             let mut projects = self.inner.projects.lock().await;
             let runtime = projects
@@ -270,34 +277,63 @@ impl LanguageServerManager {
         .await;
         let stale_client = {
             let mut projects = self.inner.projects.lock().await;
-            let Some(slot) = projects
+            if let Some(slot) = projects
                 .get_mut(project_id)
                 .and_then(|runtime| runtime.slots.get_mut(&server.language_server_id))
-            else {
-                return Ok(());
-            };
-            if slot.generation != generation || slot.revision != server.revision {
-                result.ok()
-            } else {
-                match result {
-                    Ok(client) => {
-                        slot.state = LanguageServerRuntimeState::Indexing;
-                        slot.error = None;
-                        slot.client = Some(client);
-                        None
-                    }
-                    Err(error) => {
-                        slot.state = LanguageServerRuntimeState::Failed;
-                        slot.error = Some(error.message.clone());
-                        return Err(error);
+            {
+                if slot.generation != generation || slot.revision != server.revision {
+                    result.ok()
+                } else {
+                    match result {
+                        Ok(client) => {
+                            slot.state = LanguageServerRuntimeState::Indexing;
+                            slot.error = None;
+                            slot.client = Some(client);
+                            None
+                        }
+                        Err(error) => {
+                            slot.state = LanguageServerRuntimeState::Failed;
+                            slot.error = Some(error.message.clone());
+                            return Err(error);
+                        }
                     }
                 }
+            } else {
+                result.ok()
             }
         };
         if let Some(client) = stale_client {
             client.close().await;
         }
         Ok(())
+    }
+
+    pub(super) async fn shutdown(&self) {
+        if self.inner.closed.swap(true, Ordering::AcqRel) {
+            return;
+        }
+        let clients = {
+            let mut projects = self.inner.projects.lock().await;
+            projects
+                .drain()
+                .flat_map(|(_, project)| project.slots.into_values())
+                .filter_map(|slot| slot.client)
+                .collect::<Vec<_>>()
+        };
+        for client in clients {
+            client.close().await;
+        }
+    }
+
+    fn ensure_open(&self) -> Result<(), BusinessError> {
+        if self.inner.closed.load(Ordering::Acquire) {
+            Err(BusinessError::new(
+                "agent_shutting_down",
+                "agent shutdown is in progress",
+            ))
+        } else {
+            Ok(())
+        }
     }
 
     async fn retire_server(&self, project_id: &str, language_server_id: &str) {

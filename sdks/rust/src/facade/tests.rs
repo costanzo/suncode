@@ -64,7 +64,7 @@ fn test_state(directory: &std::path::Path) -> AgentState {
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn async_sdk_opens_inside_an_existing_tokio_runtime() {
+async fn async_sdk_opens_and_shuts_down_inside_an_existing_tokio_runtime() {
     static ENVIRONMENT: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
     let _guard = ENVIRONMENT
         .get_or_init(|| tokio::sync::Mutex::new(()))
@@ -83,7 +83,12 @@ async fn async_sdk_opens_inside_an_existing_tokio_runtime() {
     assert!(!sdk.list_models().unwrap().models.is_empty());
     let browser = sdk.browser_runtime_info(None).await.unwrap();
     assert!(!browser.enabled);
-    drop(sdk);
+    sdk.shutdown().await.unwrap();
+
+    let reopened = AsyncAgentSdk::open_default("async-test-user")
+        .await
+        .unwrap();
+    reopened.shutdown().await.unwrap();
 
     std::env::remove_var("SUNCODE_DATA_DIRECTORY");
     std::env::remove_var("SUNCODE_NON_INTERACTIVE");
@@ -1300,6 +1305,31 @@ async fn close_control_wakes_a_pending_standard_stream() {
     control.close();
 
     assert!(waiting.await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn sdk_shutdown_closes_session_streams() {
+    let directory = tempfile::tempdir().unwrap();
+    let state = test_state(directory.path());
+    let project = state
+        .store
+        .project(directory.path().to_str().unwrap(), "Test")
+        .unwrap();
+    let session = state
+        .store
+        .create_session(
+            &project.project_id,
+            Some("First"),
+            Some("deepseek-v4-flash"),
+        )
+        .unwrap();
+    let sdk = AsyncAgentSdk::from_state_for_test(state);
+    let mut subscription = sdk.subscribe_session_events(&session.session_id).unwrap();
+
+    sdk.shutdown().await.unwrap();
+
+    assert!(subscription.next().await.is_none());
+    assert!(subscription.is_terminated());
 }
 
 #[tokio::test]

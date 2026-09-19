@@ -113,6 +113,14 @@ impl SessionEventHub {
         self.publish_locked(event);
     }
 
+    pub fn close_all(&self) {
+        self.inner
+            .subscribers
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clear();
+    }
+
     fn session_gate(&self, session_id: &str) -> Arc<Mutex<()>> {
         self.inner
             .gates
@@ -425,6 +433,21 @@ mod tests {
 
         assert!(matches!(
             join.join().unwrap(),
+            Err(EventReceiveError::Closed)
+        ));
+    }
+
+    #[tokio::test]
+    async fn close_all_wakes_every_session_receiver() {
+        let hub = SessionEventHub::new(1);
+        let mut first = hub.subscribe("session-1");
+        let mut second = hub.subscribe("session-2");
+
+        hub.close_all();
+
+        assert!(matches!(first.recv().await, Err(EventReceiveError::Closed)));
+        assert!(matches!(
+            second.recv().await,
             Err(EventReceiveError::Closed)
         ));
     }

@@ -1,4 +1,79 @@
 impl Agent {
+    fn ensure_running(&self) -> Result<(), BusinessError> {
+        if self
+            .shutting_down
+            .load(std::sync::atomic::Ordering::Acquire)
+        {
+            Err(BusinessError::new(
+                "agent_shutting_down",
+                "agent shutdown is in progress",
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub async fn shutdown(&self) -> Result<(), BusinessError> {
+        if self
+            .shutting_down
+            .swap(true, std::sync::atomic::Ordering::AcqRel)
+        {
+            return Ok(());
+        }
+
+        let (tokens, cancellation_state_available) = match self.cancellations.lock() {
+            Ok(cancellations) => (
+                cancellations.values().cloned().collect::<Vec<_>>(),
+                true,
+            ),
+            Err(_) => (Vec::new(), false),
+        };
+        for token in tokens {
+            token.cancel();
+        }
+        if let Ok(mut queued) = self.queued_messages.lock() {
+            queued.clear();
+        }
+
+        let computer_result = self.computer.emergency_stop();
+        tokio::join!(
+            self.browser.shutdown(),
+            self.mcp.shutdown(),
+            self.lsp.shutdown()
+        );
+
+        let turns_stopped = tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                let active = self
+                    .active_turns
+                    .lock()
+                    .map(|turns| turns.is_empty())
+                    .unwrap_or(false);
+                if active {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .is_ok();
+
+        self.events.close_all();
+
+        computer_result?;
+        if !cancellation_state_available {
+            return Err(BusinessError::unavailable(
+                "cancellation state was unavailable during shutdown",
+            ));
+        }
+        if !turns_stopped {
+            return Err(BusinessError::unavailable(
+                "active turns did not stop before the shutdown deadline",
+            ));
+        }
+        Ok(())
+    }
+
     fn emit(
         &self,
         session_id: &str,

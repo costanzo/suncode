@@ -49,6 +49,7 @@ impl Agent {
             lsp,
             browser,
             computer,
+            shutting_down: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
 
@@ -123,6 +124,7 @@ impl Agent {
         allow_child: bool,
         inherited_token: Option<CancellationToken>,
     ) -> Result<TurnResponse, BusinessError> {
+        self.ensure_running()?;
         let session_lock = self.session_lock(session_id).await;
         let model = match model {
             Some(model) => model.to_string(),

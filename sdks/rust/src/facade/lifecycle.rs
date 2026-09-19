@@ -37,6 +37,18 @@ impl AsyncAgentSdk {
         })
     }
 
+    pub async fn shutdown(self) -> SdkResult<()> {
+        logging::write(Level::Info, "agent", "shutdown begin");
+        let result = self.state.agent.shutdown().await;
+        match &result {
+            Ok(()) => logging::write(Level::Info, "agent", "shutdown completed"),
+            Err(error) => {
+                logging::write_business_error("agent", "shutdown", error, "phase=cleanup")
+            }
+        }
+        result
+    }
+
     pub fn health(&self) -> SdkResult<HealthResult> {
         Ok(HealthResult {
             ok: true,

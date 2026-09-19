@@ -20,3 +20,5 @@ The `events` module re-exports the non-exhaustive typed core event catalog. Asyn
 Rust hosts should establish session state with `AgentSdk::watch_session`. It returns `SessionWatch { snapshot, events }` atomically relative to durable event projection and live publication. The standalone snapshot and subscribe methods remain available for compatibility but do not collectively close the boundary race.
 
 Async hosts should use `AsyncAgentSdk::watch_session`; the compatibility wording above applies equally because `watch_session` itself is a synchronous local composition method. Blocking hosts use the root `AgentSdk`. Calling the blocking wrapper from inside an async runtime is unsupported; use `AsyncAgentSdk` instead.
+
+Hosts should close the SDK explicitly. `AsyncAgentSdk::shutdown(self).await` and `blocking::AgentSdk::shutdown(self)` consume their handle, cancel active turns, release Computer Use input, drain Browser/MCP/LSP resources, close session streams, and release the data-directory lock. The blocking adapter retains its Tokio runtime until cleanup completes. Dropping either facade remains a fallback but does not promise graceful asynchronous cleanup.

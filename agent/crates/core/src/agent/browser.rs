@@ -75,6 +75,8 @@ struct Inner {
     verification_error: std::sync::RwLock<Option<String>>,
     proxy: std::sync::RwLock<HttpProxyConfiguration>,
     projects: AsyncMutex<HashMap<String, BrowserSlot>>,
+    verification_worker: AsyncMutex<Option<Arc<WorkerProcess>>>,
+    closed: AtomicBool,
 }
 
 struct BrowserSlot {
@@ -119,6 +121,8 @@ impl BrowserManager {
                 verification_error: std::sync::RwLock::new(None),
                 proxy: std::sync::RwLock::new(HttpProxyConfiguration::default()),
                 projects: AsyncMutex::new(HashMap::new()),
+                verification_worker: AsyncMutex::new(None),
+                closed: AtomicBool::new(false),
             }),
         }
     }
@@ -291,6 +295,9 @@ impl BrowserManager {
     }
 
     pub(super) async fn set_enabled(&self, enabled: bool) {
+        if enabled && self.inner.closed.load(Ordering::Acquire) {
+            return;
+        }
         self.inner.enabled.store(enabled, Ordering::SeqCst);
         if enabled {
             self.inner.verified.store(false, Ordering::SeqCst);
@@ -318,6 +325,7 @@ impl BrowserManager {
     }
 
     pub(super) async fn verify(&self) -> Result<(), BusinessError> {
+        self.require_enabled()?;
         if !self.inner.enabled.load(Ordering::SeqCst) {
             return Err(BusinessError::new(
                 "browser_use_disabled",
@@ -327,7 +335,20 @@ impl BrowserManager {
         let verification = async {
             self.verify_integrity()?;
             let worker = self.spawn_worker("verify").await?;
+            {
+                let mut current = self.inner.verification_worker.lock().await;
+                if self.inner.closed.load(Ordering::Acquire) {
+                    drop(current);
+                    worker.close().await;
+                    return Err(BusinessError::new(
+                        "agent_shutting_down",
+                        "agent shutdown is in progress",
+                    ));
+                }
+                *current = Some(worker.clone());
+            }
             worker.close().await;
+            self.inner.verification_worker.lock().await.take();
             Ok::<(), BusinessError>(())
         }
         .await;
@@ -393,6 +414,24 @@ impl BrowserManager {
                 return Err(error);
             }
         };
+        let installed = {
+            let mut projects = self.inner.projects.lock().await;
+            if self.inner.closed.load(Ordering::Acquire) {
+                false
+            } else if let Some(slot) = projects.get_mut(project_id) {
+                slot.worker = Some(worker.clone());
+                true
+            } else {
+                false
+            }
+        };
+        if !installed {
+            worker.close().await;
+            return Err(BusinessError::new(
+                "agent_shutting_down",
+                "agent shutdown is in progress",
+            ));
+        }
         let state = worker
             .request::<WorkerState>(
                 "start",
@@ -412,7 +451,22 @@ impl BrowserManager {
                 return Err(error);
             }
         };
+        if self.inner.closed.load(Ordering::Acquire) {
+            worker.close().await;
+            return Err(BusinessError::new(
+                "agent_shutting_down",
+                "agent shutdown is in progress",
+            ));
+        }
         let mut projects = self.inner.projects.lock().await;
+        if self.inner.closed.load(Ordering::Acquire) || !projects.contains_key(project_id) {
+            drop(projects);
+            worker.close().await;
+            return Err(BusinessError::new(
+                "agent_shutting_down",
+                "agent shutdown is in progress",
+            ));
+        }
         projects.insert(
             project_id.into(),
             BrowserSlot {
@@ -448,6 +502,25 @@ impl BrowserManager {
             worker.close().await;
         }
         Ok(())
+    }
+
+    pub(super) async fn shutdown(&self) {
+        if self.inner.closed.swap(true, Ordering::AcqRel) {
+            return;
+        }
+        let workers = {
+            let mut projects = self.inner.projects.lock().await;
+            projects
+                .drain()
+                .filter_map(|(_, slot)| slot.worker)
+                .collect::<Vec<_>>()
+        };
+        if let Some(worker) = self.inner.verification_worker.lock().await.take() {
+            worker.close().await;
+        }
+        for worker in workers {
+            worker.close().await;
+        }
     }
 
     pub(super) async fn clear_profile(&self, project_id: &str) -> Result<(), BusinessError> {
@@ -552,6 +625,9 @@ impl BrowserManager {
     }
 
     async fn fail_slot(&self, project_id: &str, error: &BusinessError) {
+        if self.inner.closed.load(Ordering::Acquire) {
+            return;
+        }
         let mut projects = self.inner.projects.lock().await;
         projects.insert(
             project_id.into(),
@@ -566,6 +642,12 @@ impl BrowserManager {
     }
 
     fn require_enabled(&self) -> Result<(), BusinessError> {
+        if self.inner.closed.load(Ordering::Acquire) {
+            return Err(BusinessError::new(
+                "agent_shutting_down",
+                "agent shutdown is in progress",
+            ));
+        }
         if self.inner.enabled.load(Ordering::SeqCst) {
             Ok(())
         } else {

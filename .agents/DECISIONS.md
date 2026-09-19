@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260919-explicit-rust-sdk-shutdown
+
+- Date: 2026-09-19
+- Status: Accepted
+- Context: The async-first facade owned no executor but also had no explicit asynchronous cleanup contract. Drop released ordinary values, while background continuations and Browser, MCP, LSP, Computer Use, and event resources could remain attached to a host runtime. The blocking adapter happened to abort remaining runtime tasks when its executor was dropped.
+- Decision: Add consuming `AsyncAgentSdk::shutdown().await` and `blocking::AgentSdk::shutdown()` operations backed by one idempotent core shutdown. Shutdown rejects new turn/continuation admission, cancels active turns, clears queued input, performs Computer Use emergency stop, drains Browser/MCP/LSP resources, waits up to five seconds for active turns, closes event subscribers, and then releases the facade and data-directory lock. Native handle close invokes the blocking shutdown path and logs cleanup failures without changing its existing `void` ABI.
+- Consequences: Async hosts get deterministic cleanup independent of runtime destruction, blocking/native hosts keep their runtime alive until cleanup finishes, late process startups cannot reinstall after closure, and session receivers wake before shutdown returns. Rust callers should prefer explicit shutdown; ordinary drop remains a non-graceful fallback. The current C ABI version and managed APIs do not change.
+- Details: `requirements/2026-09-19-rust-sdk-explicit-shutdown/`, `agent/crates/core/src/agent/lifecycle.rs`, `sdks/rust/src/facade/lifecycle.rs`, `sdks/rust/src/facade/blocking.rs`, `sdks/c/src/lib.rs`
+
 ## ADR-20260919-first-party-computer-use
 
 - Date: 2026-09-19

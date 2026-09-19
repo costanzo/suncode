@@ -1,6 +1,9 @@
 use super::*;
 use sha2::{Digest, Sha256};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::atomic::{AtomicBool, Ordering},
+};
 use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
 use suncode_data::{McpServerRecord, McpTransportConfig, McpWorkingDirectory};
 use suncode_mcp::{Connection, ConnectionConfig, TlsConfig};
@@ -46,6 +49,7 @@ struct Inner {
     store: Store,
     application_data: PathBuf,
     projects: AsyncMutex<HashMap<String, ProjectRuntime>>,
+    closed: AtomicBool,
 }
 
 struct ProjectRuntime {
@@ -88,6 +92,7 @@ impl McpManager {
                 store,
                 application_data,
                 projects: AsyncMutex::new(HashMap::new()),
+                closed: AtomicBool::new(false),
             }),
         }
     }
@@ -97,6 +102,7 @@ impl McpManager {
         project_id: &str,
         root: &Path,
     ) -> Result<(), BusinessError> {
+        self.ensure_open()?;
         let created = {
             let mut projects = self.inner.projects.lock().await;
             if let Some(runtime) = projects.get_mut(project_id) {
@@ -270,6 +276,7 @@ impl McpManager {
         server_id: String,
         desired: Option<McpServerRecord>,
     ) -> Result<(), BusinessError> {
+        self.ensure_open()?;
         let (prepared, retired) = {
             let mut projects = self.inner.projects.lock().await;
             let project = projects
@@ -315,7 +322,7 @@ impl McpManager {
             }
         };
         if let Some(retired) = retired {
-            tokio::spawn(async move { retired.close().await });
+            retired.close().await;
         }
         let Some((generation, cancellation, root)) = prepared else {
             return Ok(());
@@ -337,6 +344,26 @@ impl McpManager {
                 return Ok(());
             }
         };
+        let connection = connected.connection.clone();
+        let retained = {
+            let mut projects = self.inner.projects.lock().await;
+            if self.inner.closed.load(Ordering::Acquire) {
+                false
+            } else if let Some(slot) = projects
+                .get_mut(&project_id)
+                .and_then(|project| project.slots.get_mut(&server_id))
+                .filter(|slot| slot.generation == generation && slot.revision == desired.revision)
+            {
+                slot.connection = Some(connection.clone());
+                true
+            } else {
+                false
+            }
+        };
+        if !retained {
+            connected.connection.close().await;
+            return Ok(());
+        }
         let definitions = match connected.connection.list_tools().await {
             Ok(tools) => build_catalog(&desired, generation, tools),
             Err(error) => Err(error),
@@ -350,7 +377,6 @@ impl McpManager {
                 return Ok(());
             }
         };
-        let connection = connected.connection.clone();
         let installed = {
             let mut projects = self.inner.projects.lock().await;
             if let Some(slot) = projects
@@ -383,6 +409,37 @@ impl McpManager {
                 .await;
         });
         Ok(())
+    }
+
+    pub(super) async fn shutdown(&self) {
+        if self.inner.closed.swap(true, Ordering::AcqRel) {
+            return;
+        }
+        let connections = {
+            let mut projects = self.inner.projects.lock().await;
+            projects
+                .drain()
+                .flat_map(|(_, project)| project.slots.into_values())
+                .filter_map(|slot| {
+                    slot.cancellation.cancel();
+                    slot.connection
+                })
+                .collect::<Vec<_>>()
+        };
+        for connection in connections {
+            connection.close().await;
+        }
+    }
+
+    fn ensure_open(&self) -> Result<(), BusinessError> {
+        if self.inner.closed.load(Ordering::Acquire) {
+            Err(BusinessError::new(
+                "agent_shutting_down",
+                "agent shutdown is in progress",
+            ))
+        } else {
+            Ok(())
+        }
     }
 
     async fn refresh_tools(&self, project_id: &str, server_id: &str, generation: u64) {
