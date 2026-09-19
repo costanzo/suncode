@@ -10,8 +10,8 @@ use std::{
 };
 use suncode_agent::logging::{self, Level};
 use suncode_agent::{
-    agent::Agent, AgentEvent, AgentLock, CheckpointItemRestoredPayload,
-    CheckpointRestoreFailedPayload, CheckpointRestoredPayload, EventPayload, SessionEventHub,
+    agent::Agent, AgentLock, CheckpointItemRestoredPayload, CheckpointRestoreFailedPayload,
+    CheckpointRestoredPayload, EventPayload, SessionEventHub,
 };
 use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
 use suncode_config::Config;
@@ -38,7 +38,9 @@ mod subscriptions;
 mod tests;
 mod turns;
 
-pub use subscriptions::{SessionEventStream, SessionEventStreamControl, SubscriptionError};
+pub use subscriptions::{
+    SessionEventStream, SessionEventStreamControl, SessionWatch, SubscriptionError,
+};
 
 #[derive(Clone)]
 struct AgentState {
@@ -631,18 +633,17 @@ fn detail_string(error: &BusinessError, name: &str) -> SdkResult<String> {
 }
 
 fn emit_event(state: &AgentState, session_id: &str, payload: EventPayload) -> SdkResult<()> {
-    let event_type = payload.event_type();
-    let projected = state.store.append_content(
-        session_id,
-        event_type.as_str(),
-        &payload.clone().into_value(),
-    )?;
-    state.events.publish(AgentEvent {
-        session_id: session_id.to_string(),
-        occurred_at: projected.occurred_at,
-        payload,
-    });
-    Ok(())
+    state
+        .events
+        .publish_projected(session_id, payload, |payload| {
+            let event_type = payload.event_type();
+            let projected = state.store.append_content(
+                session_id,
+                event_type.as_str(),
+                &payload.clone().into_value(),
+            )?;
+            Ok(projected.occurred_at)
+        })
 }
 
 fn sanitize_image_extension(value: &str) -> SdkResult<String> {

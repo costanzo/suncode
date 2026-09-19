@@ -12,11 +12,11 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 The agent handle owns the Tokio runtime and all agent services. Host wrappers may share one handle inside a process. The Rust facade exposes a typed pull-based `SessionEventStream`; native bindings adapt that stream to their host runtime. C subscriptions must be closed before the final agent handle is released. Closing a C subscription signals its stream and stops callback delivery before returning.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 9. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 10. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
 ## Methods
 
-The Rust API uses typed inputs and outputs. The C ABI exposes one named function per operation. Complex evolving results may be returned as method-specific UTF-8 JSON payloads owned by the SDK; this is DTO serialization, not generic routing.
+The Rust API uses typed inputs and outputs. The C ABI exposes one named function per operation currently consumed by native bindings. Rust-only composition helpers may be introduced before their binding lifecycle is defined; they do not authorize a language binding to reconstruct the behavior itself. Complex evolving results may be returned as method-specific UTF-8 JSON payloads owned by the SDK; this is DTO serialization, not generic routing.
 
 | SDK method | Purpose |
 | --- | --- |
@@ -77,6 +77,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `add_session_image` | Save one uploaded image file plus thumbnail metadata for a session |
 | `remove_session_image` | Remove one pending persisted image; submitted message attachments cannot be removed |
 | `session_snapshot` | Read the normalized session projection; the cursor argument is ignored for compatibility |
+| Rust `watch_session` | Atomically register a typed session stream and read the normalized snapshot under one session gate |
 | `session_usage` | Read cumulative provider-reported token usage for a session |
 | `list_provider_exchanges` | List session turns and normalized provider call summaries for a trace tree |
 | `provider_exchange` | Inspect one normalized provider call with correlated messages and tool uses |
@@ -92,6 +93,8 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `reply_question` | Submit ordered answer arrays for one pending question request |
 | `reject_question` | Skip one pending question request and resume with an explicit rejected result |
 | `subscribe_session_events` / C `subscribe_session` | Deliver subsequent typed live events; lagged subscribers must reload `session_snapshot` |
+| C `watch_session` | Return the atomic session snapshot and a dormant callback subscription handle |
+| C `subscription_start` | Start callback delivery for one dormant subscription exactly once |
 
 Rust-generated project, session, turn, approval, checkpoint, event, and message identifiers remain authoritative. Hosts do not manufacture IDs except idempotency keys.
 
@@ -195,7 +198,11 @@ Todo state is turn-scoped and stored in the Rust-owned `session_turn_todo` table
 
 Subscription establishment registers a bounded queue for one session. There is no SQLite replay phase. If a Rust receiver lags, `SessionEventStream` returns `SubscriptionError::Lagged`; the C adapter converts that outcome to `resync.required`. The host must reload `session_snapshot` and establish a fresh subscription before continuing. Dropping or closing a stream releases its hub registration and wakes a blocking receiver.
 
-The Rust facade does not own callback threads, C strings, or raw callback pointers. The C binding runs callbacks on a C-binding-owned worker thread and serializes typed events only at that boundary. Callback hosts must copy the payload and marshal delivery to their runtime thread: Avalonia uses `Dispatcher.UIThread`. Callback payload memory is valid only for the duration of the callback unless copied by the host. Future Node.js and Python bindings adapt the typed stream with their own thread-safe-function or event-loop mechanisms rather than reusing the C callback worker.
+Rust hosts should use `watch_session` for initial load and resynchronization. Core serializes event projection-plus-publish and watch establishment through one in-memory gate per session. The watch registers its stream before reading the snapshot while holding that gate. An event projection completed before the watch acquired the gate is visible in the snapshot; an event projection beginning afterward publishes into the returned stream. Live-only events also wait for the gate and enter the returned stream after snapshot creation. Snapshot failure unregisters the provisional subscriber. Some normalized lifecycle writes, including turn admission, intentionally precede their corresponding notification projection, so hosts must continue applying stream events idempotently. This ordering is process-local and does not create a durable event cursor or replay log.
+
+The existing standalone `session_snapshot` and `subscribe_session` methods remain compatibility operations and do not jointly provide the atomic watch guarantee. C `watch_session` invokes the Rust atomic operation, returns snapshot JSON, and keeps the typed stream dormant. The host applies the snapshot and calls `subscription_start` exactly once when its presentation state is ready; events queue in the bounded stream before activation. Closing a dormant handle releases it without creating a callback thread. C# exposes this lifecycle as typed `SessionWatch.Snapshot`, `Start`, and `Dispose`.
+
+The Rust facade does not own callback threads, C strings, or raw callback pointers. The C binding starts callbacks only after explicit activation, runs them on a C-binding-owned worker thread, and serializes typed events only at that boundary. Callback hosts must copy the payload and marshal delivery to their runtime thread: Avalonia uses `Dispatcher.UIThread`. Callback payload memory is valid only for the duration of the callback unless copied by the host. Future Node.js and Python bindings adapt the typed stream with their own thread-safe-function or event-loop mechanisms rather than reusing the C callback worker.
 
 ## Authority and secrets
 
@@ -207,4 +214,4 @@ MCP calls have `ExternalTool` risk. Interactive policy requires approval unless 
 
 ## Language bindings
 
-Avalonia references the hand-written `sdks/csharp` C# SDK and keeps native calls off the UI thread. The managed SDK owns typed request/response models, native handle lifetime, UTF-8 conversion, JSON envelope parsing, and the Cargo build integration for `sdks/c`. The C binding crate emits a `cdylib` beside the managed executable. Future TypeScript and Python SDKs expose idiomatic async APIs over the same Rust methods and subscription semantics. They do not open SQLite, call providers, or implement agent behavior independently.
+Avalonia references the hand-written `sdks/csharp` C# SDK and keeps native calls off the UI thread. The managed SDK owns typed request/response models, dormant watch lifetime and activation, UTF-8 conversion, JSON envelope parsing, and the Cargo build integration for `sdks/c`. Primary-session loading applies the atomic snapshot and auxiliary presentation state, installs the watch as the current subscription, then explicitly starts callbacks. A stale or failed load disposes the dormant handle. The C binding crate emits a `cdylib` beside the managed executable. Future TypeScript and Python SDKs expose idiomatic async APIs over the same Rust methods and subscription semantics. They do not open SQLite, call providers, or implement agent behavior independently.

@@ -5,14 +5,18 @@ use std::{
     os::raw::{c_char, c_void},
     panic::{catch_unwind, AssertUnwindSafe},
     ptr,
-    sync::Mutex,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Mutex,
+    },
     thread::JoinHandle,
 };
 use suncode_common::BusinessError;
 use suncode_sdk::logging_module::{self as logging, Level};
 use suncode_sdk::{
     AgentEvent, AgentSdk, LanguageServerWriteRequest, McpServerWriteRequest, SdkResult,
-    SessionEventStreamControl, SubscriptionError, SUNCODE_AGENT_SDK_ABI_VERSION,
+    SessionEventStream, SessionEventStreamControl, SubscriptionError,
+    SUNCODE_AGENT_SDK_ABI_VERSION,
 };
 
 pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
@@ -23,7 +27,66 @@ pub struct SunCodeAgentHandle {
 
 pub struct SunCodeAgentSubscriptionHandle {
     control: SessionEventStreamControl,
+    stream: Mutex<Option<SessionEventStream>>,
     join: Mutex<Option<JoinHandle<()>>>,
+    callback: SunCodeEventCallback,
+    user_data: usize,
+    session_id: String,
+    started: AtomicBool,
+}
+
+impl SunCodeAgentSubscriptionHandle {
+    fn new(stream: SessionEventStream, callback: SunCodeEventCallback, user_data: usize) -> Self {
+        let session_id = stream.session_id().to_string();
+        let control = stream.control();
+        Self {
+            control,
+            stream: Mutex::new(Some(stream)),
+            join: Mutex::new(None),
+            callback,
+            user_data,
+            session_id,
+            started: AtomicBool::new(false),
+        }
+    }
+
+    fn start(&self) -> SdkResult<()> {
+        if self.started.swap(true, Ordering::AcqRel) {
+            return Err(BusinessError::new(
+                "conflict",
+                "session subscription is already started",
+            ));
+        }
+        let stream = self
+            .stream
+            .lock()
+            .map_err(|_| BusinessError::unavailable("session subscription state unavailable"))?
+            .take()
+            .ok_or_else(|| BusinessError::new("conflict", "session subscription is unavailable"))?;
+        let callback = self.callback;
+        let user_data = self.user_data;
+        let session_id = self.session_id.clone();
+        let join = std::thread::Builder::new()
+            .name("suncode-sdk-c-events".into())
+            .spawn(move || run_subscription(stream, callback, user_data, session_id))
+            .map_err(|error| {
+                BusinessError::unavailable(format!(
+                    "session event callback thread could not start: {error}"
+                ))
+            });
+        match join {
+            Ok(join) => {
+                *self.join.lock().map_err(|_| {
+                    BusinessError::unavailable("session subscription join state unavailable")
+                })? = Some(join);
+                Ok(())
+            }
+            Err(error) => {
+                self.control.close();
+                Err(error)
+            }
+        }
+    }
 }
 
 impl Drop for SunCodeAgentSubscriptionHandle {
@@ -897,44 +960,11 @@ pub unsafe extern "C" fn suncode_agent_sdk_subscribe_session(
             .ok_or_else(|| BusinessError::unavailable("agent handle is null"))?;
         let callback = callback.ok_or_else(|| BusinessError::invalid("callback is null"))?;
         let session_id = c_string(session_id, "session_id")?;
-        let mut stream = handle.sdk.subscribe_session_events(&session_id)?;
-        let control = stream.control();
-        let user_data = user_data as usize;
-        let log_session_id = session_id.clone();
-        let join = std::thread::Builder::new()
-            .name("suncode-sdk-c-events".into())
-            .spawn(move || loop {
-                match stream.blocking_recv() {
-                    Ok(event) => emit_agent_event(callback, user_data, &event),
-                    Err(SubscriptionError::Lagged { missed }) => {
-                        logging::write(
-                            Level::Warn,
-                            "sdk.subscribe",
-                            format!("lagged session={log_session_id} missed={missed}"),
-                        );
-                        emit_resync_required(callback, user_data, &log_session_id, missed);
-                        break;
-                    }
-                    Err(SubscriptionError::Closed) => {
-                        logging::write(
-                            Level::Debug,
-                            "sdk.subscribe",
-                            format!("thread_exit session={log_session_id} reason=closed"),
-                        );
-                        break;
-                    }
-                    Err(SubscriptionError::Empty) => continue,
-                }
-            })
-            .map_err(|error| {
-                BusinessError::unavailable(format!(
-                    "session event callback thread could not start: {error}"
-                ))
-            })?;
-        Ok(SunCodeAgentSubscriptionHandle {
-            control,
-            join: Mutex::new(Some(join)),
-        })
+        let stream = handle.sdk.subscribe_session_events(&session_id)?;
+        let subscription =
+            SunCodeAgentSubscriptionHandle::new(stream, callback, user_data as usize);
+        subscription.start()?;
+        Ok(subscription)
     }));
     match result {
         Ok(Ok(subscription)) => Box::into_raw(Box::new(subscription)),
@@ -959,6 +989,122 @@ pub unsafe extern "C" fn suncode_agent_sdk_subscribe_session(
                 into_c_string("agent_unavailable: subscription panicked".to_string()),
             );
             ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_watch_session(
+    handle: *mut SunCodeAgentHandle,
+    session_id: *const c_char,
+    callback: Option<SunCodeEventCallback>,
+    user_data: *mut c_void,
+    snapshot_out: *mut *mut c_char,
+    error_out: *mut *mut c_char,
+) -> *mut SunCodeAgentSubscriptionHandle {
+    write_error_out(snapshot_out, ptr::null_mut());
+    write_error_out(error_out, ptr::null_mut());
+    let result = catch_unwind(AssertUnwindSafe(|| -> SdkResult<_> {
+        let handle = handle
+            .as_ref()
+            .ok_or_else(|| BusinessError::unavailable("agent handle is null"))?;
+        let callback = callback.ok_or_else(|| BusinessError::invalid("callback is null"))?;
+        let session_id = c_string(session_id, "session_id")?;
+        let watch = handle.sdk.watch_session(&session_id)?;
+        let snapshot = serde_json::to_string(&watch.snapshot).map_err(|error| {
+            BusinessError::unavailable(format!("session snapshot serialization failed: {error}"))
+        })?;
+        Ok((
+            SunCodeAgentSubscriptionHandle::new(watch.events, callback, user_data as usize),
+            snapshot,
+        ))
+    }));
+    match result {
+        Ok(Ok((subscription, snapshot))) => {
+            write_error_out(snapshot_out, into_c_string(snapshot));
+            Box::into_raw(Box::new(subscription))
+        }
+        Ok(Err(error)) => {
+            logging::write_business_error("sdk.watch", "watch_session", &error, "boundary=native");
+            write_error_out(error_out, into_c_string(error.to_string()));
+            ptr::null_mut()
+        }
+        Err(_) => {
+            logging::write(
+                Level::Error,
+                "sdk.watch",
+                "operation=watch_session panic=true",
+            );
+            write_error_out(
+                error_out,
+                into_c_string("agent_unavailable: session watch panicked".to_string()),
+            );
+            ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_subscription_start(
+    subscription: *mut SunCodeAgentSubscriptionHandle,
+    error_out: *mut *mut c_char,
+) -> u8 {
+    write_error_out(error_out, ptr::null_mut());
+    let result = catch_unwind(AssertUnwindSafe(|| -> SdkResult<()> {
+        let subscription = subscription
+            .as_ref()
+            .ok_or_else(|| BusinessError::unavailable("subscription handle is null"))?;
+        subscription.start()
+    }));
+    match result {
+        Ok(Ok(())) => 1,
+        Ok(Err(error)) => {
+            logging::write_business_error(
+                "sdk.subscription",
+                "subscription_start",
+                &error,
+                "boundary=native",
+            );
+            write_error_out(error_out, into_c_string(error.to_string()));
+            0
+        }
+        Err(_) => {
+            write_error_out(
+                error_out,
+                into_c_string("agent_unavailable: subscription start panicked".to_string()),
+            );
+            0
+        }
+    }
+}
+
+fn run_subscription(
+    mut stream: SessionEventStream,
+    callback: SunCodeEventCallback,
+    user_data: usize,
+    session_id: String,
+) {
+    loop {
+        match stream.blocking_recv() {
+            Ok(event) => emit_agent_event(callback, user_data, &event),
+            Err(SubscriptionError::Lagged { missed }) => {
+                logging::write(
+                    Level::Warn,
+                    "sdk.subscribe",
+                    format!("lagged session={session_id} missed={missed}"),
+                );
+                emit_resync_required(callback, user_data, &session_id, missed);
+                break;
+            }
+            Err(SubscriptionError::Closed) => {
+                logging::write(
+                    Level::Debug,
+                    "sdk.subscribe",
+                    format!("thread_exit session={session_id} reason=closed"),
+                );
+                break;
+            }
+            Err(SubscriptionError::Empty) => continue,
         }
     }
 }
@@ -1120,6 +1266,7 @@ fn into_c_string(value: String) -> *mut c_char {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Mutex as StdMutex, OnceLock};
 
     unsafe extern "C" fn collect_event(event_json: *const c_char, user_data: *mut c_void) {
         let sender = &*(user_data as *const std::sync::mpsc::Sender<String>);
@@ -1129,7 +1276,7 @@ mod tests {
 
     #[test]
     fn exposes_the_current_abi_version() {
-        assert_eq!(suncode_agent_sdk_abi_version(), 9);
+        assert_eq!(suncode_agent_sdk_abi_version(), 10);
     }
 
     #[test]
@@ -1167,5 +1314,94 @@ mod tests {
         assert_eq!(envelope["session_id"], "session-1");
         assert_eq!(envelope["event_type"], "turn.state");
         assert_eq!(envelope["payload"]["turn_id"], "turn-1");
+    }
+
+    #[test]
+    fn native_watch_is_dormant_until_started_and_start_is_single_use() {
+        static ENVIRONMENT: OnceLock<StdMutex<()>> = OnceLock::new();
+        let _guard = ENVIRONMENT
+            .get_or_init(|| StdMutex::new(()))
+            .lock()
+            .unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let data_directory = directory.path().join("data");
+        std::env::set_var("SUNCODE_DATA_DIRECTORY", &data_directory);
+        std::env::remove_var("SUNCODE_DATABASE_PATH");
+        std::env::set_var("SUNCODE_NON_INTERACTIVE", "false");
+
+        let sdk = AgentSdk::open_default("test-native-watch").unwrap();
+        let project_root = directory.path().join("project");
+        std::fs::create_dir_all(&project_root).unwrap();
+        let project = sdk
+            .open_project(project_root.to_str().unwrap(), Some("Project"))
+            .unwrap();
+        let session = sdk
+            .create_session(&project.project_id, Some("Session"), None)
+            .unwrap();
+        let mut handle = SunCodeAgentHandle { sdk };
+        let session_id = CString::new(session.session_id).unwrap();
+        let (sender, _receiver) = std::sync::mpsc::channel::<String>();
+        let mut snapshot = ptr::null_mut();
+        let mut error = ptr::null_mut();
+
+        let subscription = unsafe {
+            suncode_agent_sdk_watch_session(
+                &mut handle,
+                session_id.as_ptr(),
+                Some(collect_event),
+                &sender as *const _ as *mut c_void,
+                &mut snapshot,
+                &mut error,
+            )
+        };
+        assert!(!subscription.is_null());
+        assert!(error.is_null());
+        assert!(!snapshot.is_null());
+        let snapshot_json = unsafe { CStr::from_ptr(snapshot) }.to_str().unwrap();
+        let snapshot_value: Value = serde_json::from_str(snapshot_json).unwrap();
+        assert_eq!(
+            snapshot_value["session"]["sessionId"],
+            session_id.to_str().unwrap()
+        );
+        unsafe { suncode_agent_sdk_string_free(snapshot) };
+        assert!(!unsafe { &*subscription }.started.load(Ordering::Acquire));
+        assert!(unsafe { &*subscription }.join.lock().unwrap().is_none());
+
+        assert_eq!(
+            unsafe { suncode_agent_sdk_subscription_start(subscription, &mut error) },
+            1
+        );
+        assert!(error.is_null());
+        assert!(unsafe { &*subscription }.started.load(Ordering::Acquire));
+        assert!(unsafe { &*subscription }.join.lock().unwrap().is_some());
+
+        assert_eq!(
+            unsafe { suncode_agent_sdk_subscription_start(subscription, &mut error) },
+            0
+        );
+        assert!(!error.is_null());
+        unsafe { suncode_agent_sdk_string_free(error) };
+        unsafe { suncode_agent_sdk_subscription_close(subscription) };
+
+        let mut dormant_snapshot = ptr::null_mut();
+        let mut dormant_error = ptr::null_mut();
+        let dormant = unsafe {
+            suncode_agent_sdk_watch_session(
+                &mut handle,
+                session_id.as_ptr(),
+                Some(collect_event),
+                &sender as *const _ as *mut c_void,
+                &mut dormant_snapshot,
+                &mut dormant_error,
+            )
+        };
+        assert!(!dormant.is_null());
+        assert!(dormant_error.is_null());
+        assert!(!unsafe { &*dormant }.started.load(Ordering::Acquire));
+        unsafe { suncode_agent_sdk_string_free(dormant_snapshot) };
+        unsafe { suncode_agent_sdk_subscription_close(dormant) };
+
+        std::env::remove_var("SUNCODE_DATA_DIRECTORY");
+        std::env::remove_var("SUNCODE_NON_INTERACTIVE");
     }
 }

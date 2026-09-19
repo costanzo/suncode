@@ -265,15 +265,17 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var loadVersion = _sessionLoadVersion;
         LogSession(operationId, sessionId, $"select.loading.begin version={loadVersion}");
         _ = RevealSessionLoadingAsync(sessionId, loadVersion);
+        SessionWatch? watch = null;
         try
         {
             var stageTimer = Stopwatch.StartNew();
-            LogSession(operationId, sessionId, $"snapshot.begin version={loadVersion}");
-            var snapshot = await _sdk!.GetSessionSnapshotAsync(sessionId);
-            LogSession(operationId, sessionId, $"snapshot.end elapsed_ms={stageTimer.Elapsed.TotalMilliseconds:F1} messages={snapshot.Messages.Count} turns={snapshot.ConversationTurns.Count}");
+            LogSession(operationId, sessionId, $"watch.begin version={loadVersion}");
+            watch = await _sdk!.WatchSessionAsync(sessionId, eventValue => OnNativeEvent(sessionId, eventValue));
+            var snapshot = watch.Snapshot;
+            LogSession(operationId, sessionId, $"watch.ready elapsed_ms={stageTimer.Elapsed.TotalMilliseconds:F1} messages={snapshot.Messages.Count} turns={snapshot.ConversationTurns.Count} state=dormant");
             if (!IsCurrentSessionLoad(sessionId, loadVersion))
             {
-                LogSession(operationId, sessionId, $"snapshot.discard reason=stale current={DescribeSessionContext()}");
+                LogSession(operationId, sessionId, $"watch.discard reason=stale current={DescribeSessionContext()}");
                 return;
             }
             var projection = await Task.Run(() => ProjectSnapshot(snapshot));
@@ -319,18 +321,24 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             await LoadChildSessionsAsync();
             if (!IsCurrentSessionLoad(sessionId, loadVersion)) return;
 
-            var subscription = _sdk.SubscribeTyped(sessionId, 0, eventValue => OnNativeEvent(sessionId, eventValue));
-            if (!IsCurrentSessionLoad(sessionId, loadVersion))
-            {
-                LogSession(operationId, sessionId, $"subscribe.discard reason=stale current={DescribeSessionContext()}");
-                subscription.Dispose();
-                return;
-            }
-
-            _subscription = subscription;
+            var activatedWatch = watch
+                ?? throw new SdkException("subscription_failed", "Session watch is unavailable");
+            _subscription = activatedWatch;
+            watch = null;
             _loadedSessionId = sessionId;
             StatusText = "Session loaded";
             ConnectionState = "connected";
+            try
+            {
+                activatedWatch.Start();
+            }
+            catch
+            {
+                _subscription = null;
+                _loadedSessionId = null;
+                activatedWatch.Dispose();
+                throw;
+            }
             LogSession(operationId, sessionId, $"select.completed elapsed_ms={operationTimer.Elapsed.TotalMilliseconds:F1} version={loadVersion}");
             if (enteringSession) SessionEntered?.Invoke();
         }
@@ -346,6 +354,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
         finally
         {
+            watch?.Dispose();
             if (IsCurrentSessionLoad(sessionId, loadVersion))
             {
                 IsSessionLoading = false;

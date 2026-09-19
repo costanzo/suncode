@@ -225,6 +225,26 @@ public sealed partial class AgentSdk
     public Task<SessionSnapshot> GetSessionSnapshotAsync(string sessionId) =>
         Typed<SessionSnapshot>(RawSessionSnapshotAsync(sessionId));
 
+    public async Task<SessionWatch> WatchSessionAsync(string sessionId, Action<AgentEvent> onEvent)
+    {
+        ArgumentNullException.ThrowIfNull(onEvent);
+        var raw = await RawWatchSessionAsync(sessionId, json =>
+        {
+            using var document = JsonDocument.Parse(json);
+            onEvent(document.RootElement.Deserialize<AgentEvent>(TypedJsonOptions)
+                ?? throw new SdkException("invalid_event", "Agent returned an empty event"));
+        }).ConfigureAwait(false);
+        try
+        {
+            return new SessionWatch(Deserialize<SessionSnapshot>(raw.Snapshot), raw.Start, raw);
+        }
+        catch
+        {
+            raw.Dispose();
+            throw;
+        }
+    }
+
     public Task<SessionUsageResult> GetSessionUsageAsync(string sessionId) =>
         Typed<SessionUsageResult>(RawSessionUsageAsync(sessionId));
 
@@ -286,5 +306,34 @@ public sealed partial class AgentSdk
             onEvent(document.RootElement.Deserialize<AgentEvent>(TypedJsonOptions)
                 ?? throw new SdkException("invalid_event", "Agent returned an empty event"));
         });
+    }
+}
+
+public sealed class SessionWatch : IDisposable
+{
+    private readonly Action _start;
+    private IDisposable? _subscription;
+    private int _started;
+
+    internal SessionWatch(SessionSnapshot snapshot, Action start, IDisposable subscription)
+    {
+        Snapshot = snapshot;
+        _start = start;
+        _subscription = subscription;
+    }
+
+    public SessionSnapshot Snapshot { get; }
+
+    public void Start()
+    {
+        ObjectDisposedException.ThrowIf(_subscription is null, this);
+        if (Interlocked.Exchange(ref _started, 1) != 0)
+            throw new InvalidOperationException("Session watch has already been started");
+        _start();
+    }
+
+    public void Dispose()
+    {
+        Interlocked.Exchange(ref _subscription, null)?.Dispose();
     }
 }

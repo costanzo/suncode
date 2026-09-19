@@ -84,6 +84,8 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_reply_question(IntPtr handle, IntPtr requestId, IntPtr answersJson);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_reject_question(IntPtr handle, IntPtr requestId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_subscribe_session(IntPtr handle, IntPtr sessionId, long after, EventCallback callback, IntPtr userData, out IntPtr errorOut);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_watch_session(IntPtr handle, IntPtr sessionId, EventCallback callback, IntPtr userData, out IntPtr snapshotOut, out IntPtr errorOut);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern byte suncode_agent_sdk_subscription_start(IntPtr subscription, out IntPtr errorOut);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern void suncode_agent_sdk_subscription_close(IntPtr subscription);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern void suncode_agent_sdk_string_free(IntPtr value);
 }

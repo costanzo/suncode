@@ -9,7 +9,7 @@ public sealed partial class AgentSdk : IDisposable
 {
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 9;
+    private const uint AbiVersion = 10;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -326,6 +326,13 @@ public sealed partial class AgentSdk : IDisposable
         return new Subscription(_handle, sessionId, after, onEvent);
     }
 
+    private Task<RawSessionWatch> RawWatchSessionAsync(string sessionId, Action<string> onEvent) => Task.Run(() =>
+    {
+        ThrowIfDisposed();
+        SdkDiagnosticLog.Debug("sdk.watch", $"begin session={sessionId}");
+        return new RawSessionWatch(_handle, sessionId, onEvent);
+    });
+
     private Task<JsonElement> CallAsync(
         Func<IntPtr, IntPtr> call,
         [CallerMemberName] string operation = "unknown") => Task.Run(() =>
@@ -434,9 +441,29 @@ public sealed partial class AgentSdk : IDisposable
         }
     }
 
+    private static readonly NativeMethods.EventCallback SubscriptionCallback = ReceiveSubscriptionEvent;
+
+    private static void ReceiveSubscriptionEvent(IntPtr eventJson, IntPtr userData)
+    {
+        if (eventJson == IntPtr.Zero || userData == IntPtr.Zero) return;
+        var json = Marshal.PtrToStringUTF8(eventJson);
+        if (json is null) return;
+        var handle = GCHandle.FromIntPtr(userData);
+        if (handle.Target is Action<string> callback)
+        {
+            try
+            {
+                callback(json);
+            }
+            catch (Exception exception)
+            {
+                SdkDiagnosticLog.Error("sdk.subscription.callback", exception, "native_callback=true");
+            }
+        }
+    }
+
     private sealed class Subscription : IDisposable
     {
-        private static readonly NativeMethods.EventCallback Callback = Receive;
         private GCHandle _callbackHandle;
         private IntPtr _subscription;
         private readonly string _sessionId;
@@ -452,7 +479,7 @@ public sealed partial class AgentSdk : IDisposable
                     agent,
                     session,
                     after,
-                    Callback,
+                    SubscriptionCallback,
                     GCHandle.ToIntPtr(_callbackHandle),
                     out var error);
                 if (_subscription == IntPtr.Zero)
@@ -471,25 +498,6 @@ public sealed partial class AgentSdk : IDisposable
             }
         }
 
-        private static void Receive(IntPtr eventJson, IntPtr userData)
-        {
-            if (eventJson == IntPtr.Zero || userData == IntPtr.Zero) return;
-            var json = Marshal.PtrToStringUTF8(eventJson);
-            if (json is null) return;
-            var handle = GCHandle.FromIntPtr(userData);
-            if (handle.Target is Action<string> callback)
-            {
-                try
-                {
-                    callback(json);
-                }
-                catch (Exception exception)
-                {
-                    SdkDiagnosticLog.Error("sdk.subscription.callback", exception, "native_callback=true");
-                }
-            }
-        }
-
         public void Dispose()
         {
             SdkDiagnosticLog.Debug("sdk.subscription", $"dispose begin session={_sessionId} native={_subscription != IntPtr.Zero}");
@@ -500,6 +508,79 @@ public sealed partial class AgentSdk : IDisposable
             }
             if (_callbackHandle.IsAllocated) _callbackHandle.Free();
             SdkDiagnosticLog.Debug("sdk.subscription", $"dispose end session={_sessionId}");
+        }
+    }
+
+    private sealed class RawSessionWatch : IDisposable
+    {
+        private GCHandle _callbackHandle;
+        private IntPtr _subscription;
+        private readonly string _sessionId;
+        private bool _disposed;
+
+        public RawSessionWatch(IntPtr agent, string sessionId, Action<string> onEvent)
+        {
+            _sessionId = sessionId;
+            _callbackHandle = GCHandle.Alloc(onEvent);
+            var session = Marshal.StringToCoTaskMemUTF8(sessionId);
+            try
+            {
+                _subscription = NativeMethods.suncode_agent_sdk_watch_session(
+                    agent,
+                    session,
+                    SubscriptionCallback,
+                    GCHandle.ToIntPtr(_callbackHandle),
+                    out var snapshot,
+                    out var error);
+                if (_subscription == IntPtr.Zero)
+                {
+                    var message = TakeString(error, true) ?? "Session watch could not be created";
+                    _callbackHandle.Free();
+                    throw new SdkException("subscription_failed", message);
+                }
+
+                var snapshotJson = TakeString(snapshot, true)
+                    ?? throw new SdkException("invalid_response", "Session watch returned no snapshot");
+                using var document = JsonDocument.Parse(snapshotJson);
+                Snapshot = document.RootElement.Clone();
+                SdkDiagnosticLog.Info("sdk.watch", $"ready session={sessionId} state=dormant");
+            }
+            catch
+            {
+                Dispose();
+                throw;
+            }
+            finally
+            {
+                Marshal.FreeCoTaskMem(session);
+            }
+        }
+
+        public JsonElement Snapshot { get; }
+
+        public void Start()
+        {
+            if (_disposed || _subscription == IntPtr.Zero) throw new ObjectDisposedException(nameof(RawSessionWatch));
+            if (NativeMethods.suncode_agent_sdk_subscription_start(_subscription, out var error) == 0)
+            {
+                var message = TakeString(error, true) ?? "Session event delivery could not be started";
+                throw new SdkException("subscription_failed", message);
+            }
+            SdkDiagnosticLog.Info("sdk.watch", $"started session={_sessionId}");
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            SdkDiagnosticLog.Debug("sdk.watch", $"dispose begin session={_sessionId} native={_subscription != IntPtr.Zero}");
+            if (_subscription != IntPtr.Zero)
+            {
+                NativeMethods.suncode_agent_sdk_subscription_close(_subscription);
+                _subscription = IntPtr.Zero;
+            }
+            if (_callbackHandle.IsAllocated) _callbackHandle.Free();
+            SdkDiagnosticLog.Debug("sdk.watch", $"dispose end session={_sessionId}");
         }
     }
 }

@@ -2,6 +2,24 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260919-native-dormant-session-watch
+
+- Date: 2026-09-19
+- Status: Accepted
+- Context: Rust `watch_session` atomically established a snapshot and stream, but immediately starting a native callback worker would allow events to reach C# before Avalonia had applied the matching snapshot. Keeping the old desktop order preserved a notification-loss window.
+- Decision: Advance the C ABI to version 10 with `watch_session` and single-use `subscription_start`. Native watch returns snapshot JSON plus an opaque dormant subscription handle; events queue in its bounded typed stream without a worker. C# exposes `SessionWatch` with typed `Snapshot`, `Start`, and `Dispose`. Avalonia applies snapshot and auxiliary session state, revalidates the latest-selection load token, installs the watch as its current subscription, then starts callback delivery. Stale and failed loads dispose dormant handles. Keep the existing immediate subscription function as a compatibility path.
+- Consequences: Primary desktop session load and `resync.required` recovery consume the Rust atomic watch guarantee without changing visuals or event envelopes. Callback delivery cannot begin against incomplete or stale presentation state. Dormant overflow still fails closed through the existing lag/resync behavior. Child-session read-only inspection remains snapshot-only. Native clients must rebuild for ABI 10.
+- Details: `requirements/2026-09-19-native-dormant-session-watch/`, `sdks/c/src/lib.rs`, `sdks/csharp/src/AgentSdk.cs`, `apps/desktop-avalonia/ViewModels/DesktopViewModel.ProjectActions.cs`, `contracts/agent-sdk/README.md`
+
+## ADR-20260919-atomic-rust-session-watch
+
+- Date: 2026-09-19
+- Status: Accepted
+- Context: Separate snapshot and subscription calls leave a boundary race. Reading the snapshot first can miss an event published before subscriber registration, while subscribing first can deliver an event already represented by the later snapshot. The typed event stream intentionally has no durable replay cursor.
+- Decision: Add one in-memory synchronization gate per session. Event producers hold the gate across event projection and typed publication; live-only publishers use the same gate. Rust `watch_session` holds the gate while registering a bounded subscriber and reading the normalized snapshot, returning both as `SessionWatch`. An earlier event projection completes before the snapshot; a later event projection publishes after registration. Snapshot failure drops the provisional subscriber. Keep standalone snapshot and subscribe operations for compatibility, without claiming that their combination is atomic.
+- Consequences: Rust hosts can initialize or resynchronize without a notification falling into the snapshot/subscription gap and without adding a persistent event journal. Some normalized lifecycle writes intentionally precede notification projection, so stream application remains idempotent. Gates are session-scoped, so unrelated sessions do not block one another. The gate covers bounded local SQLite work only. C, C#, and Avalonia do not consume this helper until a later binding contract introduces dormant subscription creation and explicit callback activation after snapshot application.
+- Details: `requirements/2026-09-19-atomic-session-watch/`, `agent/crates/core/src/agent/event_hub.rs`, `sdks/rust/src/facade/sessions.rs`, `contracts/agent-sdk/README.md`
+
 ## ADR-20260919-rust-sdk-typed-session-events
 
 - Date: 2026-09-19

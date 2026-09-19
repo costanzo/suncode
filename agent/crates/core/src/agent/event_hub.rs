@@ -1,4 +1,4 @@
-use super::events::AgentEvent;
+use super::events::{AgentEvent, EventPayload};
 use std::{
     collections::HashMap,
     fmt,
@@ -47,6 +47,7 @@ struct Subscriber {
 struct SessionEventHubInner {
     capacity: usize,
     next_subscription_id: AtomicU64,
+    gates: Mutex<HashMap<String, Arc<Mutex<()>>>>,
     subscribers: Mutex<HashMap<String, HashMap<u64, Subscriber>>>,
 }
 
@@ -62,6 +63,7 @@ impl SessionEventHub {
             inner: Arc::new(SessionEventHubInner {
                 capacity,
                 next_subscription_id: AtomicU64::new(1),
+                gates: Mutex::new(HashMap::new()),
                 subscribers: Mutex::new(HashMap::new()),
             }),
         }
@@ -69,6 +71,58 @@ impl SessionEventHub {
 
     pub fn subscribe(&self, session_id: impl Into<String>) -> AgentEventSubscription {
         let session_id = session_id.into();
+        let gate = self.session_gate(&session_id);
+        let _guard = gate.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        self.subscribe_locked(session_id)
+    }
+
+    pub fn subscribe_with_snapshot<T, E>(
+        &self,
+        session_id: impl Into<String>,
+        snapshot: impl FnOnce() -> Result<T, E>,
+    ) -> Result<(T, AgentEventSubscription), E> {
+        let session_id = session_id.into();
+        let gate = self.session_gate(&session_id);
+        let _guard = gate.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let subscription = self.subscribe_locked(session_id);
+        let snapshot = snapshot()?;
+        Ok((snapshot, subscription))
+    }
+
+    pub fn publish_projected<E>(
+        &self,
+        session_id: &str,
+        payload: EventPayload,
+        project: impl FnOnce(&EventPayload) -> Result<String, E>,
+    ) -> Result<(), E> {
+        let gate = self.session_gate(session_id);
+        let _guard = gate.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let occurred_at = project(&payload)?;
+        self.publish_locked(AgentEvent {
+            session_id: session_id.to_string(),
+            occurred_at,
+            payload,
+        });
+        Ok(())
+    }
+
+    pub fn publish(&self, event: AgentEvent) {
+        let gate = self.session_gate(&event.session_id);
+        let _guard = gate.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        self.publish_locked(event);
+    }
+
+    fn session_gate(&self, session_id: &str) -> Arc<Mutex<()>> {
+        self.inner
+            .gates
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .entry(session_id.to_string())
+            .or_insert_with(|| Arc::new(Mutex::new(())))
+            .clone()
+    }
+
+    fn subscribe_locked(&self, session_id: String) -> AgentEventSubscription {
         let subscription_id = self
             .inner
             .next_subscription_id
@@ -101,7 +155,7 @@ impl SessionEventHub {
         }
     }
 
-    pub fn publish(&self, event: AgentEvent) {
+    fn publish_locked(&self, event: AgentEvent) {
         let event = Arc::new(event);
         let mut sessions = self
             .inner
@@ -132,6 +186,17 @@ impl SessionEventHub {
         if subscribers.is_empty() {
             sessions.remove(&event.session_id);
         }
+    }
+
+    #[cfg(test)]
+    fn subscriber_count(&self, session_id: &str) -> usize {
+        self.inner
+            .subscribers
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(session_id)
+            .map(HashMap::len)
+            .unwrap_or_default()
     }
 }
 
@@ -263,19 +328,24 @@ impl Drop for AgentEventSubscription {
 mod tests {
     use super::*;
     use crate::agent::events::{EventPayload, EventType, TurnStatePayload};
+    use std::sync::atomic::AtomicUsize;
 
     fn turn_event(session_id: &str, turn_id: &str) -> AgentEvent {
         AgentEvent {
             session_id: session_id.into(),
             occurred_at: "2026-09-19T00:00:00.000Z".into(),
-            payload: EventPayload::TurnState(TurnStatePayload {
-                turn_id: turn_id.into(),
-                state: "running".into(),
-                model_id: Some("gpt-5.5".into()),
-                submission_idempotency_key: Some("submission-1".into()),
-                reason: None,
-            }),
+            payload: turn_payload(turn_id),
         }
+    }
+
+    fn turn_payload(turn_id: &str) -> EventPayload {
+        EventPayload::TurnState(TurnStatePayload {
+            turn_id: turn_id.into(),
+            state: "running".into(),
+            model_id: Some("gpt-5.5".into()),
+            submission_idempotency_key: Some("submission-1".into()),
+            reason: None,
+        })
     }
 
     #[tokio::test]
@@ -338,5 +408,104 @@ mod tests {
             join.join().unwrap(),
             Err(EventReceiveError::Closed)
         ));
+    }
+
+    #[test]
+    fn committed_event_before_watch_appears_only_in_snapshot() {
+        let hub = SessionEventHub::new(4);
+        let state = AtomicUsize::new(0);
+
+        hub.publish_projected("session-1", turn_payload("turn-before"), |_| {
+            state.store(1, Ordering::Release);
+            Ok::<_, ()>("2026-09-19T00:00:00.000Z".into())
+        })
+        .unwrap();
+
+        let (snapshot, mut subscription) = hub
+            .subscribe_with_snapshot("session-1", || Ok::<_, ()>(state.load(Ordering::Acquire)))
+            .unwrap();
+
+        assert_eq!(snapshot, 1);
+        assert!(matches!(
+            subscription.try_recv(),
+            Err(EventReceiveError::Empty)
+        ));
+    }
+
+    #[test]
+    fn event_after_watch_appears_only_in_stream() {
+        let hub = SessionEventHub::new(4);
+        let state = AtomicUsize::new(0);
+        let (snapshot, mut subscription) = hub
+            .subscribe_with_snapshot("session-1", || Ok::<_, ()>(state.load(Ordering::Acquire)))
+            .unwrap();
+
+        hub.publish_projected("session-1", turn_payload("turn-after"), |_| {
+            state.store(1, Ordering::Release);
+            Ok::<_, ()>("2026-09-19T00:00:00.000Z".into())
+        })
+        .unwrap();
+
+        assert_eq!(snapshot, 0);
+        let event = subscription.blocking_recv().unwrap();
+        assert!(matches!(event.payload, EventPayload::TurnState(_)));
+    }
+
+    #[test]
+    fn live_publication_waits_until_watch_snapshot_finishes() {
+        let hub = SessionEventHub::new(4);
+        let publisher = hub.clone();
+        let (watch_entered_tx, watch_entered_rx) = std::sync::mpsc::channel();
+        let (publish_attempted_tx, publish_attempted_rx) = std::sync::mpsc::channel();
+        let join = std::thread::spawn(move || {
+            watch_entered_rx.recv().unwrap();
+            publish_attempted_tx.send(()).unwrap();
+            publisher.publish(turn_event("session-1", "turn-live"));
+        });
+
+        let (_, mut subscription) = hub
+            .subscribe_with_snapshot("session-1", || {
+                watch_entered_tx.send(()).unwrap();
+                publish_attempted_rx.recv().unwrap();
+                Ok::<_, ()>(())
+            })
+            .unwrap();
+
+        join.join().unwrap();
+        let event = subscription.blocking_recv().unwrap();
+        assert_eq!(event.session_id, "session-1");
+    }
+
+    #[test]
+    fn failed_snapshot_unregisters_provisional_subscription() {
+        let hub = SessionEventHub::new(4);
+        let result: Result<((), AgentEventSubscription), &str> =
+            hub.subscribe_with_snapshot("session-1", || Err("snapshot failed"));
+
+        assert!(matches!(result, Err("snapshot failed")));
+        assert_eq!(hub.subscriber_count("session-1"), 0);
+    }
+
+    #[test]
+    fn different_session_gates_do_not_block_each_other() {
+        let hub = SessionEventHub::new(4);
+        let publisher = hub.clone();
+        let (watch_entered_tx, watch_entered_rx) = std::sync::mpsc::channel();
+        let (published_tx, published_rx) = std::sync::mpsc::channel();
+        let join = std::thread::spawn(move || {
+            watch_entered_rx.recv().unwrap();
+            publisher.publish(turn_event("session-2", "turn-other"));
+            published_tx.send(()).unwrap();
+        });
+
+        let _ = hub
+            .subscribe_with_snapshot("session-1", || {
+                watch_entered_tx.send(()).unwrap();
+                published_rx.recv().unwrap();
+                Ok::<_, ()>(())
+            })
+            .unwrap();
+
+        join.join().unwrap();
     }
 }

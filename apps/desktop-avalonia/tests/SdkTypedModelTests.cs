@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Reflection;
 using SunCode.Sdk;
 using SunCode.Sdk.Models;
 
@@ -6,12 +7,50 @@ namespace SunCode.Desktop.Tests;
 
 public sealed class SdkTypedModelTests
 {
+    private sealed class TrackingDisposable : IDisposable
+    {
+        public bool Disposed { get; private set; }
+        public void Dispose() => Disposed = true;
+    }
+
     [Fact]
     public async Task VersionComesFromTheRustAgentCore()
     {
         var version = await AgentSdk.GetVersionAsync();
 
         Assert.Equal("0.1.0", version.Version);
+    }
+
+    [Fact]
+    public void SessionWatchStartsOnceAndDisposesItsDormantSubscription()
+    {
+        var snapshot = new SessionSnapshot(
+            new SessionRecord(
+                "session-1", "project-1", "Session", "gpt-5.5", "high", "primary",
+                null, null, null, "active", "now", "now", "now", null, null),
+            Array.Empty<AgentMessage>(),
+            Array.Empty<SessionConversationTurn>(),
+            Array.Empty<SessionImage>(),
+            null);
+        var starts = 0;
+        var subscription = new TrackingDisposable();
+        var constructor = typeof(SessionWatch)
+            .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)
+            .Single();
+        var watch = (SessionWatch)constructor.Invoke([
+            snapshot,
+            (Action)(() => starts++),
+            subscription
+        ]);
+
+        Assert.Same(snapshot, watch.Snapshot);
+        watch.Start();
+        Assert.Equal(1, starts);
+        Assert.Throws<InvalidOperationException>(watch.Start);
+
+        watch.Dispose();
+        Assert.True(subscription.Disposed);
+        Assert.Throws<ObjectDisposedException>(watch.Start);
     }
 
     private static readonly JsonSerializerOptions Options = new()

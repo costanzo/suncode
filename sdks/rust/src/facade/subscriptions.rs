@@ -4,6 +4,8 @@ use suncode_agent::{
     AgentEvent, AgentEventSubscription, AgentEventSubscriptionControl, EventReceiveError,
 };
 
+use crate::SessionSnapshot;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubscriptionError {
     Lagged { missed: u64 },
@@ -52,6 +54,11 @@ impl SessionEventStreamControl {
 pub struct SessionEventStream {
     session_id: String,
     inner: AgentEventSubscription,
+}
+
+pub struct SessionWatch {
+    pub snapshot: SessionSnapshot,
+    pub events: SessionEventStream,
 }
 
 impl SessionEventStream {

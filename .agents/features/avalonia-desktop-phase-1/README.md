@@ -7,7 +7,7 @@ SunCode's only Phase 1 production client is the .NET 10 Avalonia application und
 ## Implemented workflows
 
 - Project hub, recent/open projects, independent project windows, duplicate-window activation, a Workspace title-bar project switcher, and project-scoped session create/select/rename/archive/reopen/pin.
-- Conversation streaming with normalized snapshots, latest-selection-wins loading, lagged-subscription resync, stable variable-height layout, copyable final responses, expandable process history, cancellation, queued input, and retryable loading errors.
+- Conversation streaming with atomic snapshot-plus-dormant-subscription establishment, callback activation only after presentation state is ready, latest-selection-wins loading, lagged-subscription resync through the same atomic path, stable variable-height layout, copyable final responses, expandable process history, cancellation, queued input, and retryable loading errors.
 - Hierarchical provider-and-model selection through one chat-composer menu, collapsible Settings provider navigation, editable and resettable provider URLs, credential status/store/remove, project default model, reasoning-effort control, tool-call budget, dark/light theme, and persisted diagnostics/logging settings.
 - Network Settings includes global no-proxy, system-proxy, and custom HTTP/HTTPS proxy modes with write-only Basic credentials and multiline bypass rules, alongside the existing HTTPS certificate controls.
 - Language Server Settings manages global local-stdio definitions, project runtime status, language scope, enable/retry/edit/delete actions, and write-only environment patches through the embedded SDK. It does not make the read-only editor editable.

@@ -15,3 +15,5 @@ It does not open a second database or implement provider/tool behavior independe
 - `src/facade/tests.rs` keeps facade behavior tests beside the implementation; C ABI tests remain in `sdks/c`.
 
 The `events` module re-exports the non-exhaustive typed core event catalog. Rust hosts receive `Arc<AgentEvent>` values and can use async `recv`, blocking `blocking_recv`, or nonblocking `try_recv`. Native callback adaptation belongs to each language binding.
+
+Rust hosts should establish session state with `AgentSdk::watch_session`. It returns `SessionWatch { snapshot, events }` atomically relative to durable event projection and live publication. The standalone snapshot and subscribe methods remain available for compatibility but do not collectively close the boundary race.

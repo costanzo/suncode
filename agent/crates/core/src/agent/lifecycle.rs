@@ -4,17 +4,14 @@ impl Agent {
         session_id: &str,
         event: EventPayload,
     ) -> Result<(), BusinessError> {
-        let event_type = event.event_type();
-        let payload = event.clone().into_value();
-        let projected = self
-            .store
-            .append_content(session_id, event_type.as_str(), &payload)?;
-        self.events.publish(AgentEvent {
-            session_id: session_id.to_string(),
-            occurred_at: projected.occurred_at,
-            payload: event,
-        });
-        Ok(())
+        self.events.publish_projected(session_id, event, |event| {
+            let event_type = event.event_type();
+            let payload = event.clone().into_value();
+            let projected =
+                self.store
+                    .append_content(session_id, event_type.as_str(), &payload)?;
+            Ok(projected.occurred_at)
+        })
     }
 
     fn emit_live(&self, session_id: &str, event: EventPayload) {

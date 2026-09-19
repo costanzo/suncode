@@ -2,6 +2,20 @@ use super::*;
 use suncode_agent::domain::{SessionImageRecord, SessionRecord};
 
 impl AgentSdk {
+    pub fn watch_session(&self, session_id: &str) -> SdkResult<SessionWatch> {
+        self.session_for_user(session_id)?;
+        let (snapshot, subscription) = self
+            .state
+            .events
+            .subscribe_with_snapshot(session_id.to_string(), || {
+                self.session_snapshot(session_id, 0)
+            })?;
+        Ok(SessionWatch {
+            snapshot,
+            events: SessionEventStream::new(session_id.to_string(), subscription),
+        })
+    }
+
     pub fn create_session(
         &self,
         project_id: &str,

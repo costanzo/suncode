@@ -1210,3 +1210,85 @@ fn subscription_delivers_live_events_without_replay() {
     assert!(matches!(received.payload, EventPayload::TurnState(_)));
     subscription.close();
 }
+
+#[test]
+fn watch_session_returns_snapshot_and_atomic_typed_stream() {
+    let directory = tempfile::tempdir().unwrap();
+    let state = test_state(directory.path());
+    let project = state
+        .store
+        .project(directory.path().to_str().unwrap(), "Test")
+        .unwrap();
+    let session = state
+        .store
+        .create_session(
+            &project.project_id,
+            Some("First"),
+            Some("deepseek-v4-flash"),
+        )
+        .unwrap();
+    state
+        .events
+        .publish_projected(
+            &session.session_id,
+            EventPayload::TurnState(TurnStatePayload {
+                turn_id: "turn-before".into(),
+                state: "completed".into(),
+                model_id: Some("deepseek-v4-flash".into()),
+                submission_idempotency_key: Some("submission-before".into()),
+                reason: None,
+            }),
+            |payload| {
+                let projected = state.store.append_content(
+                    &session.session_id,
+                    payload.event_type().as_str(),
+                    &payload.clone().into_value(),
+                )?;
+                Ok::<_, BusinessError>(projected.occurred_at)
+            },
+        )
+        .unwrap();
+    let sdk = AgentSdk::from_state_for_test(state);
+
+    let mut watch = sdk.watch_session(&session.session_id).unwrap();
+
+    assert!(watch
+        .snapshot
+        .conversation_turns
+        .iter()
+        .any(|turn| turn.turn_id == "turn-before"));
+    assert!(matches!(
+        watch.events.try_recv(),
+        Err(SubscriptionError::Empty)
+    ));
+
+    sdk.state
+        .events
+        .publish_projected(
+            &session.session_id,
+            EventPayload::TurnState(TurnStatePayload {
+                turn_id: "turn-after".into(),
+                state: "calling_model".into(),
+                model_id: Some("deepseek-v4-flash".into()),
+                submission_idempotency_key: Some("submission-after".into()),
+                reason: None,
+            }),
+            |payload| {
+                let projected = sdk.state.store.append_content(
+                    &session.session_id,
+                    payload.event_type().as_str(),
+                    &payload.clone().into_value(),
+                )?;
+                Ok::<_, BusinessError>(projected.occurred_at)
+            },
+        )
+        .unwrap();
+
+    assert!(!watch
+        .snapshot
+        .conversation_turns
+        .iter()
+        .any(|turn| turn.turn_id == "turn-after"));
+    let event = watch.events.blocking_recv().unwrap();
+    assert!(matches!(event.payload, EventPayload::TurnState(_)));
+}
