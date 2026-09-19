@@ -14,9 +14,14 @@
     <AvaloniaVersion>12.1.1</AvaloniaVersion>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
+    <BrowserRuntimeTarget Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">darwin-arm64</BrowserRuntimeTarget>
+    <BrowserRuntimeTarget Condition="'$(RuntimeIdentifier)' == 'win-x64'">win32-x64</BrowserRuntimeTarget>
+    <BrowserRuntimeTarget Condition="'$(RuntimeIdentifier)' == 'linux-x64'">linux-x64</BrowserRuntimeTarget>
+    <BrowserRuntimeSource Condition="'$(BrowserRuntimeTarget)' != ''">$(MSBuildProjectDirectory)/../../artifacts/browser-runtime/$(BrowserRuntimeTarget)</BrowserRuntimeSource>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
     <ProjectReference Include="../../sdks/csharp/SunCode.Sdk.csproj" />
     <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
@@ -25,8 +30,26 @@
     <PackageReference Include="AvaloniaEdit.TextMate" Version="12.0.0" />
     <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.15" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
-    <PackageReference Include="LiveMarkdown.Avalonia" Version="2.4.2" />
+   <PackageReference Include="LiveMarkdown.Avalonia" Version="2.4.3" />
   </ItemGroup>
+
+  <Target Name="EnsureBrowserRuntimePresent" BeforeTargets="Publish"
+          Condition="'$(BrowserRuntimeTarget)' != ''">
+    <Error Condition="!Exists('$(BrowserRuntimeSource)/runtime-manifest.json')"
+           Text="The packaged Browser Use runtime for $(BrowserRuntimeTarget) is missing. Build and verify $(BrowserRuntimeSource) before publishing." />
+  </Target>
+
+  <Target Name="CopyWindowsBrowserRuntime" AfterTargets="Publish"
+          Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(BrowserRuntimeTarget)' == 'win32-x64' And Exists('$(BrowserRuntimeSource)')">
+    <RemoveDir Directories="$(PublishDir)browser-runtime" />
+    <Exec Command="cmd /c &quot;robocopy &quot;&quot;$(BrowserRuntimeSource)&quot;&quot; &quot;&quot;$(PublishDir)browser-runtime&quot;&quot; /E /NFL /NDL /NJH /NJS /NP &amp; IF ERRORLEVEL 8 exit /B 8 &amp; exit /B 0&quot;" />
+  </Target>
+
+  <Target Name="CopyLinuxBrowserRuntime" AfterTargets="Publish"
+          Condition="$([MSBuild]::IsOSPlatform('Linux')) And '$(BrowserRuntimeTarget)' == 'linux-x64' And Exists('$(BrowserRuntimeSource)')">
+    <RemoveDir Directories="$(PublishDir)browser-runtime" />
+    <Exec Command="/bin/cp -a &quot;$(BrowserRuntimeSource)&quot; &quot;$(PublishDir)browser-runtime&quot;" />
+  </Target>
 
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
@@ -46,5 +69,9 @@
     <Copy SourceFiles="@(SunCodePublishedFiles)" DestinationFolder="$(SunCodeAppBundle)/Contents/MacOS/%(RecursiveDir)" />
     <Copy SourceFiles="Info.plist" DestinationFolder="$(SunCodeAppBundle)/Contents" />
     <Copy SourceFiles="Assets/suncode-desktop.icns" DestinationFolder="$(SunCodeAppBundle)/Contents/Resources" />
+    <RemoveDir Directories="$(SunCodeAppBundle)/Contents/Resources/browser-runtime"
+               Condition="'$(BrowserRuntimeTarget)' == 'darwin-arm64' And Exists('$(BrowserRuntimeSource)')" />
+    <Exec Command="/usr/bin/ditto &quot;$(BrowserRuntimeSource)&quot; &quot;$(SunCodeAppBundle)/Contents/Resources/browser-runtime&quot;"
+          Condition="'$(BrowserRuntimeTarget)' == 'darwin-arm64' And Exists('$(BrowserRuntimeSource)')" />
   </Target>
 </Project>
