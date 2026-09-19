@@ -14,8 +14,10 @@
 - [x] Add mock capture tests and coordinate transforms.
 - [x] Add macOS capture and input permission status/request APIs.
 - [ ] Complete macOS production permission and coordinate conformance.
-- [ ] Implement Windows capture and DPI-consistent coordinates.
-- [ ] Implement X11 capture in the root coordinate space.
+- [x] Implement Windows GDI capture in the existing physical-pixel coordinate space.
+- [ ] Validate Windows capture/input round trips across DPI scales, multi-display layouts, and UIPI boundaries.
+- [x] Implement X11 RandR primary-display capture in the root coordinate space.
+- [ ] Validate X11 capture/input round trips across scaling and multi-display layouts.
 - [ ] Unify Wayland RemoteDesktop and ScreenCast through one portal session.
 - [ ] Replace the XDG absolute-pointer workaround and expose capability truth.
 

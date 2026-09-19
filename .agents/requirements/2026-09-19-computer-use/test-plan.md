@@ -47,7 +47,10 @@ Verify the Enigo capture/input backend, screenshot coordinate space, Claude clie
 
 - `cargo check --all-features` in the Enigo repository — passed.
 - `cargo test screen::tests --lib` in the Enigo repository — passed, 3 tests; no real input was generated.
-- `cargo check --all-features` in Enigo — passed after adding macOS permission status/request APIs at revision `36c08bbe4a00150d2b1817553985a2c115169e3a`.
+- `cargo check --all-features` in Enigo — passed at revision `707ab1300c004336a58cbfa4c64ad14a38894b65` after adding macOS permission APIs and the Windows/X11 capture implementations.
+- `cargo check --target x86_64-pc-windows-msvc` in Enigo — passed for the Windows GDI capture implementation.
+- `cargo check --target x86_64-unknown-linux-gnu --no-default-features --features x11rb` in Enigo — passed for the X11 RandR/root-window capture implementation; one pre-existing `ModifierBitflag` dead-code warning remains.
+- `cargo check -p suncode-computer --target x86_64-pc-windows-msvc` and `--target x86_64-unknown-linux-gnu` — passed against pinned Enigo revision `707ab1300c004336a58cbfa4c64ad14a38894b65`.
 - `cargo test -p suncode-computer` — passed, 8 tests, including provider resize, resized-coordinate mapping, and frame retirement; no real input was generated.
 - `cargo test -p suncode-agent computer_context_tests --lib` — passed, proving older screenshot bytes are pruned without dropping correlated tool results.
 - `cargo check --manifest-path agent/Cargo.toml -p suncode-computer -p suncode-agent` — passed.

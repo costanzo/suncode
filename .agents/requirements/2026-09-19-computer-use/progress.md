@@ -20,15 +20,17 @@
 - Avalonia Settings now exposes enablement, selected-model support, backend/display state, redacted permission state, input authority copy, and a working emergency stop through the Rust/C/C# SDK path.
 - Emergency stop persists disabled state, makes active cooperative execution observe cancellation, and releases held input before returning.
 - Agent SDK, persistence, SQLite, architecture, and decision documentation now include the current Computer Use contracts.
-- Enigo revision `36c08bbe4a00150d2b1817553985a2c115169e3a` exposes cross-platform permission status, macOS Screen Recording preflight/request, and macOS Accessibility check/request.
+- Enigo revision `707ab1300c004336a58cbfa4c64ad14a38894b65` exposes cross-platform permission status, macOS Screen Recording/Accessibility requests, Windows GDI capture, and X11 RandR primary-display capture.
 - Avalonia Settings now invokes permission prompts only from explicit user actions and refreshes the redacted runtime state afterward.
 - Provider screenshots now preserve aspect ratio and input-coordinate mapping while limiting the image to a 1568-pixel edge, 1,000,000 pixels, and a 5 MiB PNG payload.
 - Provider context retains image bytes for only the two newest Computer Use screenshots; older tool results remain correlated but carry an omission marker.
 - User/agent desktop-control handoff is exclusive; user takeover cooperatively cancels actions and releases input, and either handoff retires the coordinate frame.
+- Windows capture uses a per-monitor-DPI-aware GDI path and the same physical-pixel space as cursor location and absolute input.
+- X11 capture resolves the RandR primary output/CRTC, captures that root-window region, decodes server byte order and visual masks, and retains the CRTC root offset as input bounds.
 
 ## In progress
 
-- Remaining platform capture implementations and explicit operating-system permission probes.
+- Real Windows and X11 capture/input conformance across DPI, scaling, and multi-display layouts.
 - Complete batch halt behavior across durable approval continuation.
 - Cross-platform capture backends and platform conformance.
 

@@ -594,7 +594,7 @@ dependencies = [
 [[package]]
 name = "enigo"
 version = "0.6.1"
-source = "git+https://github.com/costanzo/enigo.git?rev=36c08bbe4a00150d2b1817553985a2c115169e3a#36c08bbe4a00150d2b1817553985a2c115169e3a"
+source = "git+https://github.com/costanzo/enigo.git?rev=707ab1300c004336a58cbfa4c64ad14a38894b65#707ab1300c004336a58cbfa4c64ad14a38894b65"
 dependencies = [
  "core-foundation 0.10.1",
  "core-graphics",
