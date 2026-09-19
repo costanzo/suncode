@@ -1,67 +1,87 @@
-use super::*;
-use std::{ffi::CString, os::raw::c_void, thread::JoinHandle};
-pub struct AgentSubscription {
-    pub(super) session_id: String,
-    pub(super) cancellation: CancellationToken,
-    pub(super) join: Mutex<Option<JoinHandle<()>>>,
+use std::{fmt, sync::Arc};
+
+use suncode_agent::{
+    AgentEvent, AgentEventSubscription, AgentEventSubscriptionControl, EventReceiveError,
+};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SubscriptionError {
+    Lagged { missed: u64 },
+    Closed,
+    Empty,
 }
 
-impl AgentSubscription {
-    pub(crate) fn close(&self) {
-        logging::write(
-            Level::Debug,
-            "subscription_close",
-            format!("cancel_begin session={}", self.session_id),
-        );
-        self.cancellation.cancel();
-        if let Ok(mut join) = self.join.lock() {
-            if let Some(join) = join.take() {
-                logging::write(
-                    Level::Debug,
-                    "subscription_close",
-                    format!("join_begin session={}", self.session_id),
-                );
-                let _ = join.join();
-                logging::write(
-                    Level::Debug,
-                    "subscription_close",
-                    format!("join_end session={}", self.session_id),
-                );
+impl fmt::Display for SubscriptionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Lagged { missed } => {
+                write!(
+                    formatter,
+                    "session event stream lagged by at least {missed} event(s)"
+                )
             }
+            Self::Closed => formatter.write_str("session event stream is closed"),
+            Self::Empty => formatter.write_str("no session event is currently available"),
         }
-        logging::write(
-            Level::Debug,
-            "subscription_close",
-            format!("end session={}", self.session_id),
-        );
     }
 }
 
-impl Drop for AgentSubscription {
-    fn drop(&mut self) {
-        self.close();
+impl std::error::Error for SubscriptionError {}
+
+impl From<EventReceiveError> for SubscriptionError {
+    fn from(value: EventReceiveError) -> Self {
+        match value {
+            EventReceiveError::Lagged { missed } => Self::Lagged { missed },
+            EventReceiveError::Closed => Self::Closed,
+            EventReceiveError::Empty => Self::Empty,
+        }
     }
 }
-pub(super) fn emit_sdk_event(
-    callback: SunCodeEventCallback,
-    user_data: usize,
-    event: &SessionEvent,
-) {
-    let Ok(value) = serde_json::to_string(event) else {
-        logging::write(
-            Level::Error,
-            "sdk.event",
-            "operation=serialize_event failed=true",
-        );
-        return;
-    };
-    let Ok(value) = CString::new(value) else {
-        logging::write(
-            Level::Error,
-            "sdk.event",
-            "operation=marshal_event failed=true",
-        );
-        return;
-    };
-    unsafe { callback(value.as_ptr(), user_data as *mut c_void) };
+
+#[derive(Clone)]
+pub struct SessionEventStreamControl {
+    inner: AgentEventSubscriptionControl,
+}
+
+impl SessionEventStreamControl {
+    pub fn close(&self) {
+        self.inner.close();
+    }
+}
+
+pub struct SessionEventStream {
+    session_id: String,
+    inner: AgentEventSubscription,
+}
+
+impl SessionEventStream {
+    pub(super) fn new(session_id: String, inner: AgentEventSubscription) -> Self {
+        Self { session_id, inner }
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn control(&self) -> SessionEventStreamControl {
+        SessionEventStreamControl {
+            inner: self.inner.control(),
+        }
+    }
+
+    pub async fn recv(&mut self) -> Result<Arc<AgentEvent>, SubscriptionError> {
+        self.inner.recv().await.map_err(Into::into)
+    }
+
+    pub fn blocking_recv(&mut self) -> Result<Arc<AgentEvent>, SubscriptionError> {
+        self.inner.blocking_recv().map_err(Into::into)
+    }
+
+    pub fn try_recv(&mut self) -> Result<Arc<AgentEvent>, SubscriptionError> {
+        self.inner.try_recv().map_err(Into::into)
+    }
+
+    pub fn close(&self) {
+        self.inner.close();
+    }
 }

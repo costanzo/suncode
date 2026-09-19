@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260919-rust-sdk-typed-session-events
+
+- Date: 2026-09-19
+- Status: Accepted
+- Context: Core constructed typed event payloads but converted them to string-plus-JSON values before broadcasting them through one global channel. The Rust SDK then exposed a C callback and raw pointer, created one OS thread per subscription, and filtered unrelated session traffic after receipt. This weakened Rust type safety, placed FFI concerns in the reusable facade, and let activity from one session create lag pressure for another.
+- Decision: Preserve non-exhaustive typed `AgentEvent` values through core and the Rust SDK. Route them through bounded session-scoped subscriber queues and expose a pull-based Rust `SessionEventStream` with async, blocking, and nonblocking receive methods plus explicit close control. Keep live events non-durable and require snapshot resync after lag. Move callback threads, C strings, raw pointers, legacy JSON envelope serialization, and `resync.required` compatibility translation into `sdks/c` without changing the C ABI version or Avalonia wire shape.
+- Consequences: Rust hosts no longer parse JSON or depend on C-shaped callbacks, unrelated sessions cannot fill one another's queues, and each native binding owns adaptation to its host runtime. Slow subscribers fail closed with a typed lag outcome. Atomic snapshot-plus-stream establishment and the async-first SDK facade remain follow-up work; this decision does not introduce event replay or a persisted event journal.
+- Details: `requirements/2026-09-19-rust-sdk-event-stream/`, `agent/crates/core/src/agent/events.rs`, `agent/crates/core/src/agent/event_hub.rs`, `sdks/rust/src/facade/subscriptions.rs`, `sdks/c/src/lib.rs`, `contracts/agent-sdk/README.md`
+
 ## ADR-20260919-bundled-playwright-browser-runtime
 
 - Date: 2026-09-19

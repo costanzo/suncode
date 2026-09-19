@@ -1,5 +1,4 @@
 use super::*;
-use std::os::raw::c_void;
 use suncode_agent::{agent::TurnResponse, domain::ApprovalRecord};
 
 impl AgentSdk {
@@ -180,82 +179,22 @@ impl AgentSdk {
         })
     }
 
-    pub fn subscribe_session_events(
-        &self,
-        session_id: String,
-        _after: i64,
-        callback: SunCodeEventCallback,
-        user_data: *mut c_void,
-    ) -> SdkResult<AgentSubscription> {
+    pub fn subscribe_session_events(&self, session_id: &str) -> SdkResult<SessionEventStream> {
         logging::write(
             Level::Debug,
             "subscribe",
-            format!("begin session={session_id} after={_after}"),
+            format!("begin session={session_id}"),
         );
-        self.session_for_user(&session_id)?;
-
-        // Events are live-only. Hosts recover durable state by reading a fresh snapshot.
-        let mut receiver = self.state.events.subscribe();
-        let cancellation = CancellationToken::new();
-        let cancellation_for_thread = cancellation.clone();
-        let handle = self.runtime.handle().clone();
-        let user_data = user_data as usize;
-        let log_session_id = session_id.clone();
-        let subscribed_session_id = session_id.clone();
-        let join = std::thread::spawn(move || loop {
-            let next = handle.block_on(async {
-                tokio::select! {
-                    _ = cancellation_for_thread.cancelled() => None,
-                    value = receiver.recv() => Some(value),
-                }
-            });
-            match next {
-                None => {
-                    logging::write(
-                        Level::Debug,
-                        "subscribe",
-                        format!("thread_exit session={log_session_id} reason=cancelled"),
-                    );
-                    break;
-                }
-                Some(Ok(event)) if event.session_id == subscribed_session_id => {
-                    subscriptions::emit_sdk_event(callback, user_data, &event);
-                }
-                Some(Ok(_)) => {}
-                Some(Err(broadcast::error::RecvError::Lagged(_))) => {
-                    logging::write(
-                        Level::Warn,
-                        "subscribe",
-                        format!("lagged session={log_session_id}"),
-                    );
-                    let event = SessionEvent {
-                        session_id: subscribed_session_id.clone(),
-                        occurred_at: chrono::Utc::now()
-                            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                        event_type: "resync.required".into(),
-                        payload: json!({"reason":"subscriber_lagged"}),
-                    };
-                    subscriptions::emit_sdk_event(callback, user_data, &event);
-                }
-                Some(Err(broadcast::error::RecvError::Closed)) => {
-                    logging::write(
-                        Level::Error,
-                        "subscribe",
-                        format!("thread_exit session={log_session_id} reason=channel_closed unexpected=true"),
-                    );
-                    break;
-                }
-            }
-        });
+        self.session_for_user(session_id)?;
+        let stream = SessionEventStream::new(
+            session_id.to_string(),
+            self.state.events.subscribe(session_id.to_string()),
+        );
         logging::write(
             Level::Info,
             "subscribe",
             format!("ready session={session_id}"),
         );
-        Ok(AgentSubscription {
-            session_id,
-            cancellation,
-            join: Mutex::new(Some(join)),
-        })
+        Ok(stream)
     }
 }

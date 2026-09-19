@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
-use std::os::raw::{c_char, c_void};
 use suncode_agent::domain::{
     CheckpointItem, CheckpointManifest, Message, ProjectDependencyRecord, ProjectRecord,
     ProviderExchange, SessionCallMessage, SessionCallToolUse, SessionImageRecord, SessionRecord,
@@ -12,7 +11,6 @@ use suncode_llm::ModelDescriptor;
 
 pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 9;
 pub type SdkResult<T> = Result<T, BusinessError>;
-pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
 
 #[derive(Debug, Serialize)]
 pub struct VersionResult {

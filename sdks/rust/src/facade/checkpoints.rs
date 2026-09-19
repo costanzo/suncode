@@ -64,11 +64,13 @@ impl AgentSdk {
                     emit_event(
                         &self.state,
                         session_id,
-                        "checkpoint.item_restored",
-                        json!({
-                            "manifest_id": manifest_id,
-                            "checkpoint_id": item.checkpoint_id,
-                            "path": result.get("path")
+                        EventPayload::CheckpointItemRestored(CheckpointItemRestoredPayload {
+                            manifest_id: manifest_id.to_string(),
+                            checkpoint_id: item.checkpoint_id.clone(),
+                            path: result
+                                .get("path")
+                                .and_then(Value::as_str)
+                                .map(str::to_string),
                         }),
                     )?;
                 }
@@ -78,8 +80,14 @@ impl AgentSdk {
                     emit_event(
                         &self.state,
                         session_id,
-                        "checkpoint.restore_failed",
-                        json!({"manifest_id": manifest_id, "status": status, "code": error.get("code")}),
+                        EventPayload::CheckpointRestoreFailed(CheckpointRestoreFailedPayload {
+                            manifest_id: manifest_id.to_string(),
+                            status: status.to_string(),
+                            code: error
+                                .get("code")
+                                .and_then(Value::as_str)
+                                .map(str::to_string),
+                        }),
                     )?;
                     return Err(BusinessError::new(
                         error
@@ -100,8 +108,10 @@ impl AgentSdk {
         emit_event(
             &self.state,
             session_id,
-            "checkpoint.restored",
-            json!({"manifest_id": manifest_id, "restored_items": restored}),
+            EventPayload::CheckpointRestored(CheckpointRestoredPayload {
+                manifest_id: manifest_id.to_string(),
+                restored_items: restored,
+            }),
         )?;
         Ok(RestoreOutcome {
             manifest_id: manifest_id.to_string(),

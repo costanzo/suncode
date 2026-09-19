@@ -28,7 +28,7 @@ The Rust agent writes rotating `agent.log` diagnostics. SDK facade and C binding
 
 Every machine-affecting call passes argument validation, declared-risk policy evaluation, approval when required, audit, and the narrow in-process operations dispatcher. Filesystem mutations capture pre-images and expose turn-level checkpoint manifests for conflict-aware undo. Process execution uses explicit structured or platform-native shell semantics, filtered environment, project-scoped working directories, bounded artifacts, process-tree cancellation, and honest failure states. WebFetch is approval-gated, same-origin redirect limited, text-only, bounded to 5 MiB, and previewed to 64 KiB.
 
-Startup acquires a single-instance data-directory lock, opens the current SQLite schema, reconciles interrupted work, and reports unknown completion instead of replaying blindly. Live events are in-memory notifications; lagged subscribers receive `resync.required` and reload a normalized snapshot.
+Startup acquires a single-instance data-directory lock, opens the current SQLite schema, reconciles interrupted work, and reports unknown completion instead of replaying blindly. Live events are typed in core and delivered through bounded session-scoped streams, so unrelated sessions do not share lag pressure. Rust subscribers receive a typed lag outcome; the C adapter retains `resync.required` for Avalonia, which reloads a normalized snapshot and establishes a fresh subscription.
 
 Core event producers construct `EventPayload` enum variants with named Rust payload structs. The variant selects the stable dotted event type, preventing event-name/payload mismatches before projection; native bindings continue to serialize the established SDK event envelope.
 

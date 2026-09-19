@@ -9,7 +9,10 @@ use std::{
     },
 };
 use suncode_agent::logging::{self, Level};
-use suncode_agent::{agent::Agent, domain::SessionEvent, AgentLock};
+use suncode_agent::{
+    agent::Agent, AgentEvent, AgentLock, CheckpointItemRestoredPayload,
+    CheckpointRestoreFailedPayload, CheckpointRestoredPayload, EventPayload, SessionEventHub,
+};
 use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
 use suncode_config::Config;
 use suncode_data::{LlmModelProviderInput, LlmModelProviderRecord, Store};
@@ -17,8 +20,6 @@ use suncode_llm::{
     ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
     OpenAiCompatibleProvider,
 };
-use tokio::sync::broadcast;
-use tokio_util::sync::CancellationToken;
 
 use crate::types::*;
 
@@ -37,7 +38,7 @@ mod subscriptions;
 mod tests;
 mod turns;
 
-pub use subscriptions::AgentSubscription;
+pub use subscriptions::{SessionEventStream, SessionEventStreamControl, SubscriptionError};
 
 #[derive(Clone)]
 struct AgentState {
@@ -45,7 +46,7 @@ struct AgentState {
     user_id: String,
     operations: Arc<suncode_tool::Operations>,
     active_project: Arc<Mutex<Option<String>>>,
-    events: broadcast::Sender<SessionEvent>,
+    events: SessionEventHub,
     verify_https_certificates: Arc<AtomicBool>,
     use_system_certificates: Arc<AtomicBool>,
     certificate_path: Arc<RwLock<Option<PathBuf>>>,
@@ -277,7 +278,7 @@ where
             .map(|configuration| configuration.clone())
             .unwrap_or_default(),
     );
-    let (events, _) = broadcast::channel(256);
+    let events = SessionEventHub::new(256);
     let mut providers = registry_from_store(
         &store,
         Arc::new(SqliteApiKeyResolver {
@@ -629,16 +630,18 @@ fn detail_string(error: &BusinessError, name: &str) -> SdkResult<String> {
         .ok_or_else(|| BusinessError::unavailable(format!("approval outcome is missing {name}")))
 }
 
-fn emit_event(
-    state: &AgentState,
-    session_id: &str,
-    event_type: &str,
-    payload: Value,
-) -> SdkResult<()> {
-    let event = state
-        .store
-        .append_content(session_id, event_type, &payload)?;
-    let _ = state.events.send(event);
+fn emit_event(state: &AgentState, session_id: &str, payload: EventPayload) -> SdkResult<()> {
+    let event_type = payload.event_type();
+    let projected = state.store.append_content(
+        session_id,
+        event_type.as_str(),
+        &payload.clone().into_value(),
+    )?;
+    state.events.publish(AgentEvent {
+        session_id: session_id.to_string(),
+        occurred_at: projected.occurred_at,
+        payload,
+    });
     Ok(())
 }
 

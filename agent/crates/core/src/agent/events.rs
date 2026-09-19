@@ -27,6 +27,22 @@ pub enum EventType {
     QuestionRejected,
     TodoUpdated,
     CheckpointCaptured,
+    CheckpointItemRestored,
+    CheckpointRestoreFailed,
+    CheckpointRestored,
+}
+
+#[derive(Debug, Clone)]
+pub struct AgentEvent {
+    pub session_id: String,
+    pub occurred_at: String,
+    pub payload: EventPayload,
+}
+
+impl AgentEvent {
+    pub const fn event_type(&self) -> EventType {
+        self.payload.event_type()
+    }
 }
 
 impl EventType {
@@ -55,6 +71,9 @@ impl EventType {
             Self::QuestionRejected => "question.rejected",
             Self::TodoUpdated => "todo.updated",
             Self::CheckpointCaptured => "checkpoint.captured",
+            Self::CheckpointItemRestored => "checkpoint.item_restored",
+            Self::CheckpointRestoreFailed => "checkpoint.restore_failed",
+            Self::CheckpointRestored => "checkpoint.restored",
         }
     }
 }
@@ -91,7 +110,11 @@ payload!(QuestionAnsweredPayload { pub request_id: String, pub turn_id: String, 
 payload!(TodoEventItem { pub content: String, pub status: String, pub priority: String, });
 payload!(TodoUpdatedPayload { pub turn_id: String, pub call_id: Option<String>, pub tool_call_id: String, pub todos: Vec<TodoEventItem>, });
 payload!(CheckpointCapturedPayload { pub turn_id: String, pub tool_call_id: String, pub manifest_id: String, pub checkpoint_id: String, pub path: Option<String>, pub ordinal: i64, });
+payload!(CheckpointItemRestoredPayload { pub manifest_id: String, pub checkpoint_id: String, pub path: Option<String>, });
+payload!(CheckpointRestoreFailedPayload { pub manifest_id: String, pub status: String, pub code: Option<String>, });
+payload!(CheckpointRestoredPayload { pub manifest_id: String, pub restored_items: usize, });
 
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum EventPayload {
     TurnState(TurnStatePayload),
@@ -117,6 +140,9 @@ pub enum EventPayload {
     QuestionRejected(QuestionAnsweredPayload),
     TodoUpdated(TodoUpdatedPayload),
     CheckpointCaptured(CheckpointCapturedPayload),
+    CheckpointItemRestored(CheckpointItemRestoredPayload),
+    CheckpointRestoreFailed(CheckpointRestoreFailedPayload),
+    CheckpointRestored(CheckpointRestoredPayload),
 }
 
 impl EventPayload {
@@ -145,6 +171,9 @@ impl EventPayload {
             Self::QuestionRejected(_) => EventType::QuestionRejected,
             Self::TodoUpdated(_) => EventType::TodoUpdated,
             Self::CheckpointCaptured(_) => EventType::CheckpointCaptured,
+            Self::CheckpointItemRestored(_) => EventType::CheckpointItemRestored,
+            Self::CheckpointRestoreFailed(_) => EventType::CheckpointRestoreFailed,
+            Self::CheckpointRestored(_) => EventType::CheckpointRestored,
         }
     }
 
@@ -178,6 +207,9 @@ impl EventPayload {
             Self::QuestionRejected(v) => serialize!(v),
             Self::TodoUpdated(v) => serialize!(v),
             Self::CheckpointCaptured(v) => serialize!(v),
+            Self::CheckpointItemRestored(v) => serialize!(v),
+            Self::CheckpointRestoreFailed(v) => serialize!(v),
+            Self::CheckpointRestored(v) => serialize!(v),
         }
     }
 }
@@ -185,6 +217,7 @@ impl EventPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn payload_selects_the_stable_event_name() {
         let event = EventPayload::TurnState(TurnStatePayload {

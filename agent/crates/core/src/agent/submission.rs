@@ -3,7 +3,7 @@ impl Agent {
         store: Store,
         providers: P,
         operations: Arc<suncode_tool::Operations>,
-        events: broadcast::Sender<SessionEvent>,
+        events: SessionEventHub,
         non_interactive: bool,
     ) -> Self
     where
@@ -23,7 +23,7 @@ impl Agent {
         store: Store,
         providers: P,
         operations: Arc<suncode_tool::Operations>,
-        events: broadcast::Sender<SessionEvent>,
+        events: SessionEventHub,
         non_interactive: bool,
         application_data: PathBuf,
     ) -> Self
@@ -54,7 +54,7 @@ impl Agent {
         store: Store,
         providers: P,
         operations: Arc<suncode_tool::Operations>,
-        events: broadcast::Sender<SessionEvent>,
+        events: SessionEventHub,
         non_interactive: bool,
         application_data: PathBuf,
         user_id: String,

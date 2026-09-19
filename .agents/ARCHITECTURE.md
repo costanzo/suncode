@@ -92,7 +92,7 @@ One agent instance exists per data directory. Its host process acquires a single
 
 The Rust core contains one immutable catalog of six built-in specialist definitions. A primary session may invoke the core-owned `delegate_agent` conversation tool, which creates one linked child session and a durable invocation correlation. Child sessions inherit project, model, and reasoning effort, advertise only their role allowlist, revalidate every tool call, cannot use MCP or `question`, and cannot delegate again. They are inspection and authority surfaces for SDK clients, not independent user conversations. Parent cancellation propagates to an active child; pending child approvals resume through the ordinary durable approval path.
 
-The Avalonia client embeds and opens the agent, fetches a session snapshot, then receives live events through a direct subscription. A lagged subscription or reconnect reloads the normalized snapshot and never treats client cache as authoritative. A second process cannot attach to an active agent; replacement IPC requires a new architectural decision.
+The Avalonia client embeds and opens the agent, fetches a session snapshot, then receives live events through a direct subscription. Core routes non-exhaustive typed events through bounded session-scoped streams; the Rust SDK is pull-based, while the C binding owns callback-thread and JSON-envelope adaptation for Avalonia. A lagged subscription or reconnect reloads the normalized snapshot, establishes a fresh subscription, and never treats client cache as authoritative. A second process cannot attach to an active agent; replacement IPC requires a new architectural decision.
 
 ## 5. SDK Contract
 

@@ -7,8 +7,9 @@ mod policy;
 
 pub use agent::events::*;
 pub use agent::{
-    BrowserInstallationState, BrowserRuntimeInfo, BrowserRuntimeState, BrowserVisibilityCapability,
-    LanguageServerRuntimeState, LanguageServerRuntimeStatus, TurnResponse,
+    AgentEventSubscription, AgentEventSubscriptionControl, BrowserInstallationState,
+    BrowserRuntimeInfo, BrowserRuntimeState, BrowserVisibilityCapability, EventReceiveError,
+    LanguageServerRuntimeState, LanguageServerRuntimeStatus, SessionEventHub, TurnResponse,
 };
 pub use agent_lock::AgentLock;
 pub use domain::{

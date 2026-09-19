@@ -454,7 +454,7 @@ mod tests {
             .unwrap();
         let operations =
             Arc::new(suncode_tool::Operations::new(directory.join(".operations")).unwrap());
-        let (events, _) = broadcast::channel(64);
+        let events = SessionEventHub::new(64);
         let provider = Arc::new(OpenAiCompatibleProvider::new(
             "deepseek",
             "DeepSeek",

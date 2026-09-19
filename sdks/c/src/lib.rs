@@ -5,20 +5,38 @@ use std::{
     os::raw::{c_char, c_void},
     panic::{catch_unwind, AssertUnwindSafe},
     ptr,
+    sync::Mutex,
+    thread::JoinHandle,
 };
 use suncode_common::BusinessError;
 use suncode_sdk::logging_module::{self as logging, Level};
 use suncode_sdk::{
-    AgentSdk, AgentSubscription, LanguageServerWriteRequest, McpServerWriteRequest, SdkResult,
-    SunCodeEventCallback, SUNCODE_AGENT_SDK_ABI_VERSION,
+    AgentEvent, AgentSdk, LanguageServerWriteRequest, McpServerWriteRequest, SdkResult,
+    SessionEventStreamControl, SubscriptionError, SUNCODE_AGENT_SDK_ABI_VERSION,
 };
+
+pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
 
 pub struct SunCodeAgentHandle {
     sdk: AgentSdk,
 }
 
 pub struct SunCodeAgentSubscriptionHandle {
-    _subscription: AgentSubscription,
+    control: SessionEventStreamControl,
+    join: Mutex<Option<JoinHandle<()>>>,
+}
+
+impl Drop for SunCodeAgentSubscriptionHandle {
+    fn drop(&mut self) {
+        self.control.close();
+        if let Ok(mut join) = self.join.lock() {
+            if let Some(join) = join.take() {
+                if join.thread().id() != std::thread::current().id() {
+                    let _ = join.join();
+                }
+            }
+        }
+    }
 }
 
 #[no_mangle]
@@ -867,7 +885,7 @@ ffi_one_string!(
 pub unsafe extern "C" fn suncode_agent_sdk_subscribe_session(
     handle: *mut SunCodeAgentHandle,
     session_id: *const c_char,
-    after: i64,
+    _after: i64,
     callback: Option<SunCodeEventCallback>,
     user_data: *mut c_void,
     error_out: *mut *mut c_char,
@@ -878,17 +896,48 @@ pub unsafe extern "C" fn suncode_agent_sdk_subscribe_session(
             .as_ref()
             .ok_or_else(|| BusinessError::unavailable("agent handle is null"))?;
         let callback = callback.ok_or_else(|| BusinessError::invalid("callback is null"))?;
-        handle.sdk.subscribe_session_events(
-            c_string(session_id, "session_id")?,
-            after,
-            callback,
-            user_data,
-        )
+        let session_id = c_string(session_id, "session_id")?;
+        let mut stream = handle.sdk.subscribe_session_events(&session_id)?;
+        let control = stream.control();
+        let user_data = user_data as usize;
+        let log_session_id = session_id.clone();
+        let join = std::thread::Builder::new()
+            .name("suncode-sdk-c-events".into())
+            .spawn(move || loop {
+                match stream.blocking_recv() {
+                    Ok(event) => emit_agent_event(callback, user_data, &event),
+                    Err(SubscriptionError::Lagged { missed }) => {
+                        logging::write(
+                            Level::Warn,
+                            "sdk.subscribe",
+                            format!("lagged session={log_session_id} missed={missed}"),
+                        );
+                        emit_resync_required(callback, user_data, &log_session_id, missed);
+                        break;
+                    }
+                    Err(SubscriptionError::Closed) => {
+                        logging::write(
+                            Level::Debug,
+                            "sdk.subscribe",
+                            format!("thread_exit session={log_session_id} reason=closed"),
+                        );
+                        break;
+                    }
+                    Err(SubscriptionError::Empty) => continue,
+                }
+            })
+            .map_err(|error| {
+                BusinessError::unavailable(format!(
+                    "session event callback thread could not start: {error}"
+                ))
+            })?;
+        Ok(SunCodeAgentSubscriptionHandle {
+            control,
+            join: Mutex::new(Some(join)),
+        })
     }));
     match result {
-        Ok(Ok(subscription)) => Box::into_raw(Box::new(SunCodeAgentSubscriptionHandle {
-            _subscription: subscription,
-        })),
+        Ok(Ok(subscription)) => Box::into_raw(Box::new(subscription)),
         Ok(Err(error)) => {
             logging::write_business_error(
                 "sdk.subscribe",
@@ -912,6 +961,46 @@ pub unsafe extern "C" fn suncode_agent_sdk_subscribe_session(
             ptr::null_mut()
         }
     }
+}
+
+fn emit_agent_event(callback: SunCodeEventCallback, user_data: usize, event: &AgentEvent) {
+    let value = json!({
+        "session_id": event.session_id,
+        "occurred_at": event.occurred_at,
+        "event_type": event.event_type().as_str(),
+        "payload": event.payload.clone().into_value(),
+    });
+    emit_event_json(callback, user_data, value);
+}
+
+fn emit_resync_required(
+    callback: SunCodeEventCallback,
+    user_data: usize,
+    session_id: &str,
+    missed: u64,
+) {
+    emit_event_json(
+        callback,
+        user_data,
+        json!({
+            "session_id": session_id,
+            "occurred_at": chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            "event_type": "resync.required",
+            "payload": {"reason": "subscriber_lagged", "missed": missed},
+        }),
+    );
+}
+
+fn emit_event_json(callback: SunCodeEventCallback, user_data: usize, value: Value) {
+    let Ok(value) = CString::new(value.to_string()) else {
+        logging::write(
+            Level::Error,
+            "sdk.event",
+            "operation=marshal_event failed=true boundary=native",
+        );
+        return;
+    };
+    unsafe { callback(value.as_ptr(), user_data as *mut c_void) };
 }
 
 #[no_mangle]
@@ -1032,6 +1121,12 @@ fn into_c_string(value: String) -> *mut c_char {
 mod tests {
     use super::*;
 
+    unsafe extern "C" fn collect_event(event_json: *const c_char, user_data: *mut c_void) {
+        let sender = &*(user_data as *const std::sync::mpsc::Sender<String>);
+        let value = CStr::from_ptr(event_json).to_string_lossy().to_string();
+        let _ = sender.send(value);
+    }
+
     #[test]
     fn exposes_the_current_abi_version() {
         assert_eq!(suncode_agent_sdk_abi_version(), 9);
@@ -1049,5 +1144,28 @@ mod tests {
         unsafe { suncode_agent_sdk_string_free(pointer) };
         let response: Value = serde_json::from_str(&response).unwrap();
         assert_eq!(response["body"]["version"], expected);
+    }
+
+    #[test]
+    fn typed_event_preserves_the_legacy_json_envelope() {
+        let (sender, receiver) = std::sync::mpsc::channel::<String>();
+        let event = AgentEvent {
+            session_id: "session-1".into(),
+            occurred_at: "2026-09-19T00:00:00.000Z".into(),
+            payload: suncode_sdk::AgentEventPayload::TurnState(
+                suncode_sdk::events::TurnStatePayload {
+                    turn_id: "turn-1".into(),
+                    state: "calling_model".into(),
+                    model_id: Some("gpt-5.5".into()),
+                    submission_idempotency_key: Some("submission-1".into()),
+                    reason: None,
+                },
+            ),
+        };
+        emit_agent_event(collect_event, &sender as *const _ as usize, &event);
+        let envelope: Value = serde_json::from_str(&receiver.recv().unwrap()).unwrap();
+        assert_eq!(envelope["session_id"], "session-1");
+        assert_eq!(envelope["event_type"], "turn.state");
+        assert_eq!(envelope["payload"]["turn_id"], "turn-1");
     }
 }

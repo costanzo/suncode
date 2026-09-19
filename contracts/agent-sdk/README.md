@@ -10,7 +10,7 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 `open_default(user_id)` validates and binds a non-empty user identifier, then loads configuration, acquires the data-directory lock, opens and initializes the current SQLite schema, initializes operations and providers, performs recovery, and returns an opaque agent handle. Project and project-derived session APIs are filtered to that immutable user scope. The Phase 1 Avalonia host supplies `os:<Environment.UserName>`; this is logical ownership, not authentication. A second process opening the same data directory receives `agent_already_active`. An incompatible database is rejected.
 
-The agent handle owns the Tokio runtime and all agent services. Host wrappers may share one handle inside a process. Subscriptions must be closed before the final agent handle is released. Closing a subscription stops callback delivery before returning.
+The agent handle owns the Tokio runtime and all agent services. Host wrappers may share one handle inside a process. The Rust facade exposes a typed pull-based `SessionEventStream`; native bindings adapt that stream to their host runtime. C subscriptions must be closed before the final agent handle is released. Closing a C subscription signals its stream and stops callback delivery before returning.
 
 The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 9. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
@@ -91,7 +91,7 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `resolve_approval` | Resolve one pending approval with `allow_once`, `allow_session`, or `deny` |
 | `reply_question` | Submit ordered answer arrays for one pending question request |
 | `reject_question` | Skip one pending question request and resume with an explicit rejected result |
-| `subscribe_session` | Deliver subsequent live events; lagged subscribers must reload `session_snapshot` |
+| `subscribe_session_events` / C `subscribe_session` | Deliver subsequent typed live events; lagged subscribers must reload `session_snapshot` |
 
 Rust-generated project, session, turn, approval, checkpoint, event, and message identifiers remain authoritative. Hosts do not manufacture IDs except idempotency keys.
 
@@ -183,7 +183,7 @@ Panics are contained at native binding boundaries and converted to `agent_unavai
 
 Session events are live-only in-memory notifications. Normalized messages, turns, calls, tools, approvals, and checkpoints are the durable source of truth. Events do not carry a durable sequence.
 
-Inside the Rust agent, event emission is strongly typed: `EventPayload` is an enum whose variants carry named payload structs, and each variant determines its `EventType`. Agent code cannot independently pair an arbitrary event-name string with an unrelated JSON object. At the native SDK boundary these types retain the existing `{ session_id, occurred_at, event_type, payload }` JSON envelope and dotted event names for C and C# compatibility.
+Inside the Rust agent, event emission is strongly typed: `EventPayload` is a non-exhaustive enum whose variants carry named Rust payload structs, and each variant determines its `EventType`. Agent code cannot independently pair an arbitrary event-name string with an unrelated JSON object. Core publishes `AgentEvent` values through bounded session-scoped subscriber queues, so traffic from another session cannot fill or lag the selected session's queue. The Rust SDK exposes async, blocking, and nonblocking receive methods without JSON parsing. At the C SDK boundary these types retain the existing `{ session_id, occurred_at, event_type, payload }` JSON envelope and dotted event names for C and C# compatibility.
 
 Provider exchange lifecycle events are durable: `provider.exchange.started`, `provider.exchange.completed`, and `provider.exchange.failed`. They project into the provider-exchange query surface and may be used by clients to refresh an open trace drawer.
 
@@ -193,9 +193,9 @@ Process tools also emit live-only `tool.output` events while a command is runnin
 
 Todo state is turn-scoped and stored in the Rust-owned `session_turn_todo` table. The model-facing `todowrite` tool replaces the complete list with at most 100 items, and each item has `content`, `status` (`pending`, `in_progress`, `completed`, or `cancelled`), and `priority` (`high`, `medium`, or `low`). Successful calls emit a live `todo.updated` event containing `turn_id`, `tool_call_id`, and the complete `todos` list. Clients restore the current list from `conversationTurns[*].todos`; the corresponding `todowrite` tool result remains call history and is not the progress source.
 
-Subscription establishment registers for live events. There is no SQLite replay phase. If a receiver lags, the subscription reports `resync.required`; the host must reload `session_snapshot`, then continue receiving live events.
+Subscription establishment registers a bounded queue for one session. There is no SQLite replay phase. If a Rust receiver lags, `SessionEventStream` returns `SubscriptionError::Lagged`; the C adapter converts that outcome to `resync.required`. The host must reload `session_snapshot` and establish a fresh subscription before continuing. Dropping or closing a stream releases its hub registration and wakes a blocking receiver.
 
-Callbacks run on an SDK-owned thread. Hosts must copy the callback payload and marshal delivery to their runtime thread: Avalonia uses `Dispatcher.UIThread`, Node.js uses a thread-safe function, and Python acquires the GIL and schedules on the target event loop. Callback payload memory is valid only for the duration of the callback unless copied by the host.
+The Rust facade does not own callback threads, C strings, or raw callback pointers. The C binding runs callbacks on a C-binding-owned worker thread and serializes typed events only at that boundary. Callback hosts must copy the payload and marshal delivery to their runtime thread: Avalonia uses `Dispatcher.UIThread`. Callback payload memory is valid only for the duration of the callback unless copied by the host. Future Node.js and Python bindings adapt the typed stream with their own thread-safe-function or event-loop mechanisms rather than reusing the C callback worker.
 
 ## Authority and secrets
 

@@ -5,23 +5,25 @@ impl Agent {
         event: EventPayload,
     ) -> Result<(), BusinessError> {
         let event_type = event.event_type();
-        let payload = event.into_value();
-        let event = self
+        let payload = event.clone().into_value();
+        let projected = self
             .store
             .append_content(session_id, event_type.as_str(), &payload)?;
-        let _ = self.events.send(event);
+        self.events.publish(AgentEvent {
+            session_id: session_id.to_string(),
+            occurred_at: projected.occurred_at,
+            payload: event,
+        });
         Ok(())
     }
 
     fn emit_live(&self, session_id: &str, event: EventPayload) {
-        let event_type = event.event_type();
-        let event = SessionEvent {
+        let event = AgentEvent {
             session_id: session_id.to_string(),
             occurred_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-            event_type: event_type.as_str().to_string(),
-            payload: event.into_value(),
+            payload: event,
         };
-        let _ = self.events.send(event);
+        self.events.publish(event);
     }
     fn turn_state(
         &self,
@@ -68,7 +70,20 @@ impl Agent {
 
     pub async fn recover(&self) -> Result<(), BusinessError> {
         for event in self.store.recover_startup()? {
-            let _ = self.events.send(event);
+            let payload = EventPayload::TurnState(TurnStatePayload {
+                turn_id: event.payload["turn_id"].as_str().unwrap_or_default().to_string(),
+                state: event.payload["state"].as_str().unwrap_or_default().to_string(),
+                model_id: event.payload["model_id"].as_str().map(str::to_string),
+                submission_idempotency_key: event.payload["submission_idempotency_key"]
+                    .as_str()
+                    .map(str::to_string),
+                reason: event.payload["reason"].as_str().map(str::to_string),
+            });
+            self.events.publish(AgentEvent {
+                session_id: event.session_id,
+                occurred_at: event.occurred_at,
+                payload,
+            });
         }
         for suspended in self.store.resuming_turns()? {
             let mut continuation: Continuation = serde_json::from_value(suspended.snapshot)

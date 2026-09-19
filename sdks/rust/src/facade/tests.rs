@@ -1,10 +1,6 @@
 use super::*;
 use std::collections::BTreeMap;
-use std::{
-    ffi::CStr,
-    os::raw::{c_char, c_void},
-};
-use suncode_agent::domain::Message;
+use suncode_agent::{domain::Message, AgentEvent, EventPayload, TurnStatePayload};
 
 fn test_sdk(directory: &std::path::Path) -> AgentSdk {
     let state = test_state(directory);
@@ -35,7 +31,7 @@ fn test_state(directory: &std::path::Path) -> AgentState {
     store
         .set_llm_provider_api_key("deepseek", "test-key")
         .unwrap();
-    let (events, _) = broadcast::channel(16);
+    let events = SessionEventHub::new(16);
     let providers = Arc::new(
         registry_from_store(
             &store,
@@ -1171,12 +1167,6 @@ fn session_snapshot_serializes_normalized_conversation_turns() {
     );
 }
 
-unsafe extern "C" fn collect_event(event_json: *const c_char, user_data: *mut c_void) {
-    let sender = &*(user_data as *const std::sync::mpsc::Sender<String>);
-    let value = CStr::from_ptr(event_json).to_string_lossy().to_string();
-    let _ = sender.send(value);
-}
-
 #[test]
 fn subscription_delivers_live_events_without_replay() {
     let directory = tempfile::tempdir().unwrap();
@@ -1196,15 +1186,7 @@ fn subscription_delivers_live_events_without_replay() {
     let sender_for_live = state.events.clone();
     let store_for_live = state.store.clone();
     let sdk = AgentSdk::from_state_for_test(state);
-    let (sender, receiver) = std::sync::mpsc::channel::<String>();
-    let subscription = sdk
-        .subscribe_session_events(
-            session.session_id.clone(),
-            0,
-            collect_event,
-            &sender as *const _ as *mut c_void,
-        )
-        .unwrap();
+    let mut subscription = sdk.subscribe_session_events(&session.session_id).unwrap();
     let live = store_for_live
         .append_content(
             &session.session_id,
@@ -1212,13 +1194,19 @@ fn subscription_delivers_live_events_without_replay() {
             &json!({"turn_id": "turn-1", "state": "calling_model"}),
         )
         .unwrap();
-    let _ = sender_for_live.send(live.clone());
-    let received: SessionEvent = serde_json::from_str(
-        &receiver
-            .recv_timeout(std::time::Duration::from_secs(2))
-            .unwrap(),
-    )
-    .unwrap();
-    assert_eq!(received.event_type, live.event_type);
+    sender_for_live.publish(AgentEvent {
+        session_id: session.session_id,
+        occurred_at: live.occurred_at,
+        payload: EventPayload::TurnState(TurnStatePayload {
+            turn_id: "turn-1".into(),
+            state: "calling_model".into(),
+            model_id: None,
+            submission_idempotency_key: None,
+            reason: None,
+        }),
+    });
+    let received = subscription.blocking_recv().unwrap();
+    assert_eq!(received.event_type().as_str(), "turn.state");
+    assert!(matches!(received.payload, EventPayload::TurnState(_)));
     subscription.close();
 }

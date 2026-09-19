@@ -1,6 +1,6 @@
 use crate::{
     context,
-    domain::{Message, SessionEvent, ToolCall, Usage},
+    domain::{Message, ToolCall, Usage},
     logging,
     policy::{evaluate, tool_risk, Decision, Risk},
 };
@@ -18,11 +18,13 @@ use std::{
 use suncode_common::BusinessError;
 use suncode_data::{ApprovalInput, Store};
 use suncode_llm::{CompletionRequest, ModelProviderRegistry, ModelRoute};
-use tokio::sync::{broadcast, mpsc, Mutex as AsyncMutex};
+use tokio::sync::{mpsc, Mutex as AsyncMutex};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 pub mod builtin_agents;
+mod event_hub;
+pub use event_hub::*;
 pub mod events;
 use events::*;
 mod lsp;
@@ -140,7 +142,7 @@ pub struct Agent {
     pub(crate) user_id: String,
     providers: Arc<ModelProviderRegistry>,
     operations: Arc<suncode_tool::Operations>,
-    events: broadcast::Sender<SessionEvent>,
+    events: SessionEventHub,
     cancellations: Arc<Mutex<HashMap<String, CancellationToken>>>,
     active_turns: Arc<Mutex<HashMap<String, String>>>,
     queued_messages: Arc<Mutex<HashMap<String, VecDeque<QueuedMessage>>>>,
