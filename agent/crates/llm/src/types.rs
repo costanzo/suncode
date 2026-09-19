@@ -16,6 +16,8 @@ pub struct ToolCall {
     pub call_id: String,
     pub name: String,
     pub arguments: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub toolset_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -69,6 +71,14 @@ pub struct ToolDefinition {
     pub parameters: Value,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ClientToolsetDefinition {
+    pub type_name: String,
+    pub toolset_name: String,
+    #[serde(default)]
+    pub configuration: Value,
+}
+
 #[derive(Debug, Clone)]
 pub struct Completion {
     pub text: String,
@@ -87,6 +97,7 @@ pub struct ModelCapabilities {
     pub structured_output: bool,
     pub cancellation: bool,
     pub reasoning_effort: bool,
+    pub computer_use: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -114,7 +125,9 @@ pub struct CompletionRequest<'a> {
     pub messages: &'a [Message],
     pub wire_model: &'a str,
     pub tools: &'a [ToolDefinition],
+    pub client_toolsets: &'a [ClientToolsetDefinition],
     pub reasoning_effort: Option<&'a str>,
+    pub max_output_tokens: Option<u64>,
 }
 
 pub type CompletionFuture<'a> =

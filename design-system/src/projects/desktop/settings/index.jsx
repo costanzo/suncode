@@ -61,6 +61,7 @@ const navItems = [
   { id: "appearance", label: "Appearance", icon: "sun" },
   { id: "shortcuts", label: "Keyboard shortcuts", icon: "keyboard" },
   { id: "network", label: "Network", icon: "platform" },
+  { id: "computer", label: "Computer use", icon: "activity" },
   { id: "browser", label: "Browser use", icon: "tool" },
   { id: "mcp", label: "MCP servers", icon: "server" },
   { id: "lsp", label: "Language servers", icon: "file-code" },
@@ -70,13 +71,14 @@ const navItems = [
 const settingsGuide = {
   tabs: {
     actions: [
-      "Choose Defaults, Appearance, Keyboard shortcuts, Network, Browser use, MCP servers, Language servers, Agents, or Logging from the left navigation.",
+      "Choose Defaults, Appearance, Keyboard shortcuts, Network, Computer use, Browser use, MCP servers, Language servers, Agents, or Logging from the left navigation.",
       "Use the chevrons beside Agents and Model providers to collapse or expand their fixed catalogs.",
       "Select an agent beneath Agents to inspect its immutable identity, tool allowlist, and authority boundaries.",
       "Select a provider to edit its OpenAI-compatible URL or credential.",
       "A provider is shown without a stored key so its recovery path and available models can be reviewed.",
       "Use Reset default to restore a provider's built-in URL.",
       "Use Network to choose no proxy, system proxy, or a custom proxy and to review certificate verification and trust states.",
+      "Use Computer use to inspect selected-model support, enable the built-in desktop backend, and review real-desktop permission and control state.",
       "Use Browser use to inspect the bundled runtime, enable the capability, and hand an active project browser between the agent and the user.",
       "Use the folder buttons in Logging to choose log and image storage directories.",
       "Use MCP servers to add, edit, delete, enable, disable, and retry local or remote servers.",
@@ -105,6 +107,8 @@ const settingsGuide = {
       "Language server definitions are global desired state, while indexing and readiness belong to the current project runtime.",
       "Language servers run as local processes with user authority. Their caches and toolchain side effects are not covered by SunCode undo.",
       "Browser use is globally enabled but lazily started per project. Browser profiles and remote site changes are outside filesystem undo.",
+      "Computer use targets the real primary display, remains approval-gated for input, and is unavailable to non-interactive turns.",
+      "Computer use screenshots are transient provider context and external desktop changes are outside filesystem undo.",
       "Node.js, Playwright, and Chromium paths are fixed read-only installation facts; Settings never selects an external runtime.",
       "Server-requested file edits and command execution are refused; the surface specifies semantic read capabilities only.",
       "Settings reopens to the last valid destination, including the selected provider and its expanded navigation state.",
@@ -595,6 +599,132 @@ function NetworkPanel({ onSave }) {
               : "Custom certificate required"
             : "Review required"}
         </span>
+      </div>
+    </div>
+  );
+}
+
+function ComputerUsePanel({ onSave }) {
+  const [enabled, setEnabled] = useState(false);
+
+  const toggleEnabled = (nextEnabled) => {
+    setEnabled(nextEnabled);
+    onSave(
+      nextEnabled
+        ? "Computer Use enabled. Desktop input still requires approval."
+        : "Computer Use disabled and held input was released.",
+    );
+  };
+  const emergencyStop = () => {
+    setEnabled(false);
+    onSave("Computer Use stopped. Held input was released.");
+  };
+
+  return (
+    <div className="settings-panel-content settings-computer-content">
+      <div className="settings-panel-heading">
+        <h2>Computer use</h2>
+        <p>
+          Let supported models observe and operate the real primary display. Screenshots may be sent
+          to the selected provider, and changes in other applications are outside filesystem undo.
+        </p>
+      </div>
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Availability</span>
+        <SettingRow
+          label="Enable Computer Use"
+          hint="Makes the built-in desktop tools available when the selected model and operating system support them."
+        >
+          <label className="settings-switch">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(event) => toggleEnabled(event.target.checked)}
+              aria-label="Enable Computer Use"
+            />
+            <span className="settings-switch-track">
+              <span />
+            </span>
+            <b>{enabled ? "On" : "Off"}</b>
+          </label>
+        </SettingRow>
+        <div className="computer-runtime-summary" aria-live="polite">
+          <div className="computer-runtime-state is-ready">
+            <span className="settings-status-dot" />
+            <div>
+              <strong>Supported</strong>
+              <span>Selected model · claude-sonnet-5</span>
+            </div>
+          </div>
+          <div className={`computer-runtime-state ${enabled ? "is-ready" : "is-disabled"}`}>
+            <span className="settings-status-dot" />
+            <div>
+              <strong>{enabled ? "Ready" : "Disabled"}</strong>
+              <span>Built-in desktop backend</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Desktop access</span>
+        <SettingRow label="Primary display" hint="Initial Computer Use is limited to one display.">
+          <code className="computer-readonly-value">Built-in display · 3024 × 1964 px</code>
+        </SettingRow>
+        <SettingRow label="Screen capture" hint="Required to send screenshots to the selected provider.">
+          <span className="computer-inline-status is-ready">
+            <span className="settings-status-dot" />
+            Allowed
+          </span>
+        </SettingRow>
+        <SettingRow label="Input control" hint="Required for mouse and keyboard actions after approval.">
+          <span className="computer-inline-status is-ready">
+            <span className="settings-status-dot" />
+            Allowed
+          </span>
+        </SettingRow>
+        <SettingRow label="Current control owner" hint="The user and agent never control desktop input simultaneously.">
+          <code className="computer-readonly-value">{enabled ? "Agent · idle" : "User"}</code>
+        </SettingRow>
+        <div className="settings-actions">
+          <Button size="sm" disabled>
+            Test screenshot
+          </Button>
+          <Button size="sm" disabled>
+            Test input control
+          </Button>
+          <span className="settings-save-status">Permission tests are not available in this build.</span>
+        </div>
+      </div>
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Safety and limits</span>
+        <SettingRow label="Input approval" hint="Full Control does not bypass Computer Use approval.">
+          <code className="computer-readonly-value">Once per input batch</code>
+        </SettingRow>
+        <SettingRow label="Execution mode" hint="Computer Use is denied in scripts and other non-interactive runs.">
+          <code className="computer-readonly-value">Interactive only</code>
+        </SettingRow>
+        <SettingRow label="Emergency stop" hint="Releases held keys and mouse buttons and invalidates prior coordinates.">
+          <Button variant="danger" size="sm" disabled={!enabled} onClick={emergencyStop}>
+            Stop Computer Use
+          </Button>
+        </SettingRow>
+        <SettingRow label="Temporary screenshots" hint="Screenshot bytes are retained only for the active turn.">
+          <Button size="sm" disabled>
+            Clear temporary screenshots
+          </Button>
+        </SettingRow>
+      </div>
+      <div className="computer-authority-note">
+        <Icon name="lock" size={15} />
+        <div>
+          <strong>Computer Use controls the real desktop, not a sandbox</strong>
+          <span>
+            On-screen content is untrusted and cannot grant authority. Secure desktops and locked
+            sessions are unavailable, and actions in external applications cannot be undone by SunCode.
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -2432,6 +2562,7 @@ export function SettingsPage({ initialPage = "defaults" }) {
     if (page === "appearance") return <AppearancePanel onSave={save} />;
     if (page === "shortcuts") return <ShortcutsPanel />;
     if (page === "network") return <NetworkPanel onSave={save} />;
+    if (page === "computer") return <ComputerUsePanel onSave={save} />;
     if (page === "browser") return <BrowserUsePanel onSave={save} />;
     if (page === "mcp")
       return <McpServersPanel servers={mcpServers} setServers={setMcpServers} onSave={save} />;
@@ -2484,7 +2615,7 @@ export function SettingsPage({ initialPage = "defaults" }) {
     <>
       <PageHeader
         title="Settings"
-        description="The Avalonia desktop settings window for local defaults, keyboard shortcuts, security, Browser Use, MCP servers, language servers, built-in agents, diagnostics, and provider credentials."
+        description="The Avalonia desktop settings window for local defaults, keyboard shortcuts, security, Computer Use, Browser Use, MCP servers, language servers, built-in agents, diagnostics, and provider credentials."
         path="projects/desktop/settings/"
       />
       <WindowSizeNote width="900" height="672" minimumWidth="720" minimumHeight="552" />
@@ -2496,7 +2627,7 @@ export function SettingsPage({ initialPage = "defaults" }) {
         <WorkspaceGuideState
           className="settings-guide-state"
           title="Settings controls"
-          description="Navigate local defaults, keyboard shortcuts, security, Browser Use, MCP servers, language servers, built-in agents, diagnostics, and provider credentials."
+          description="Navigate local defaults, keyboard shortcuts, security, Computer Use, Browser Use, MCP servers, language servers, built-in agents, diagnostics, and provider credentials."
           guide={settingsGuide}
           side="right"
           open={guideOpen}

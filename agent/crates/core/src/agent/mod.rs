@@ -35,6 +35,9 @@ use browser::BrowserManager;
 pub use browser::{
     BrowserInstallationState, BrowserRuntimeInfo, BrowserRuntimeState, BrowserVisibilityCapability,
 };
+mod computer;
+use computer::ComputerManager;
+pub use computer::ComputerRuntimeInfo;
 mod mcp;
 use mcp::McpManager;
 pub use mcp::{McpLoadProgress, McpRuntimeState, McpRuntimeStatus};
@@ -109,6 +112,10 @@ struct Continuation {
     pending_call: Option<ToolCall>,
     #[serde(default)]
     pending_mcp_generation: Option<u64>,
+    #[serde(default)]
+    approved_computer_call_ids: Vec<String>,
+    #[serde(default)]
+    computer_batch_failed: bool,
     remaining_calls: Vec<ToolCall>,
     #[serde(default)]
     context_compacted: bool,
@@ -151,6 +158,7 @@ pub struct Agent {
     mcp: McpManager,
     lsp: LanguageServerManager,
     browser: BrowserManager,
+    computer: ComputerManager,
 }
 
 include!("submission.rs");

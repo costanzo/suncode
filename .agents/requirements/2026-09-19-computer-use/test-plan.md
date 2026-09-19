@@ -45,7 +45,16 @@ Verify the Enigo capture/input backend, screenshot coordinate space, Claude clie
 
 ## Commands and results
 
-- Pending implementation.
+- `cargo check --all-features` in the Enigo repository — passed.
+- `cargo test screen::tests --lib` in the Enigo repository — passed, 3 tests; no real input was generated.
+- `cargo test -p suncode-computer` — passed, 5 tests.
+- `cargo check --manifest-path agent/Cargo.toml -p suncode-computer -p suncode-agent` — passed.
+- `cargo check --manifest-path sdks/c/Cargo.toml` — passed after runtime-info and emergency-stop wiring.
+- `dotnet build sdks/csharp/SunCode.Sdk.csproj --no-restore` — passed with zero warnings and errors.
+- `dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj --no-restore` — passed with zero warnings and errors.
+- `npm run build` in `design-system` — passed; Vite reported only its existing large-chunk advisory.
+- `git diff --check` in SunCode — passed.
+- The broad Enigo `cargo test --lib` suite was intentionally discontinued because it operates the real mouse and keyboard. Before the Retina normalization change it exposed two existing 2× coordinate failures, which motivated the physical-pixel fix; broad real-input verification remains a controlled manual/platform test.
 
 ## Residual risks
 

@@ -48,6 +48,10 @@ impl Agent {
             }
             self.tool_state(context, call, "requested", None)?;
             self.tool_state(context, call, "validating", None)?;
+            if computer::is_computer_call(call) && context.computer_batch_failed {
+                self.record_computer_skipped(context, call)?;
+                continue;
+            }
             if !context.allowed_tools.is_empty()
                 && !context.allowed_tools.iter().any(|allowed| allowed == &call.name)
             {
@@ -78,7 +82,7 @@ impl Agent {
                 self.execute_delegate_agent(context, call, token.clone()).await?;
                 continue;
             }
-            if !mcp::is_mcp_tool(&call.name) {
+            if !mcp::is_mcp_tool(&call.name) && !computer::is_computer_call(call) {
                 if let Err(error) = self.validate_dependency_call(context, call) {
                     if !self.record_recoverable_call_error(context, call, &error)? {
                         return Err(error);
@@ -87,7 +91,7 @@ impl Agent {
                 }
             }
             let mut mcp_generation = None;
-            let (approval_operation, approval_arguments) = if mcp::is_mcp_tool(&call.name) {
+            let (mut approval_operation, mut approval_arguments) = if mcp::is_mcp_tool(&call.name) {
                 match self
                     .mcp
                     .approval_target(&context.project_id, &call.name, &call.arguments)
@@ -121,10 +125,22 @@ impl Agent {
                         continue;
                     }
                 }
+            } else if computer::is_computer_call(call) {
+                (
+                    format!("computer.{}", call.name),
+                    json!({"toolsetName":"computer","member":call.name,"input":call.arguments}),
+                )
             } else {
                 (call.name.clone(), call.arguments.clone())
             };
-            if let Err(error) = validate_before_policy(&call.name, &call.arguments) {
+            let validation = if computer::is_computer_call(call) {
+                suncode_computer::ComputerAction::from_member(&call.name, &call.arguments)
+                    .map(|_| ())
+                    .map_err(|error| BusinessError::invalid(error.to_string()))
+            } else {
+                validate_before_policy(&call.name, &call.arguments)
+            };
+            if let Err(error) = validation {
                 if !self.record_recoverable_call_error(context, call, &error)? {
                     return Err(error);
                 }
@@ -146,7 +162,7 @@ impl Agent {
                 let request_id = format!("que_{}", Uuid::new_v4());
                 context.pending_call = Some(call.clone());
                 context.remaining_calls = calls[index + 1..].to_vec();
-                let snapshot = serde_json::to_value(&*context).map_err(|_| {
+                let snapshot = continuation_snapshot(context).map_err(|_| {
                     BusinessError::new("agent_unavailable", "turn continuation could not be stored")
                 })?;
                 self.store
@@ -165,11 +181,25 @@ impl Agent {
                 continue;
             }
             self.tool_state(context, call, "policy_check", None)?;
-            let decision = evaluate(
-                tool_risk(&call.name),
-                self.non_interactive,
-                self.store.session_full_control(&context.session_id)?,
-            );
+            let risk = if computer::is_computer_call(call) {
+                computer::risk(&call.name)
+            } else {
+                tool_risk(&call.name)
+            };
+            let computer_batch_approved = computer::is_computer_call(call)
+                && context
+                    .approved_computer_call_ids
+                    .iter()
+                    .any(|call_id| call_id == &call.call_id);
+            let decision = if computer_batch_approved {
+                Decision::Allow
+            } else {
+                evaluate(
+                    risk,
+                    self.non_interactive,
+                    self.store.session_full_control(&context.session_id)?,
+                )
+            };
             match decision {
                 Decision::Deny => {
                     self.execute_allowed_calls(
@@ -197,10 +227,28 @@ impl Agent {
                         "awaiting_approval",
                         Some("risk_requires_approval"),
                     )?;
+                    if computer::is_computer_call(call) {
+                        let batch = calls[index..]
+                            .iter()
+                            .take_while(|candidate| computer::is_computer_call(candidate))
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        context.approved_computer_call_ids =
+                            batch.iter().map(|candidate| candidate.call_id.clone()).collect();
+                        approval_operation = "computer.batch".into();
+                        approval_arguments = json!({
+                            "toolsetName":"computer",
+                            "actions":batch.iter().map(|candidate| json!({
+                                "toolCallId":candidate.call_id,
+                                "member":candidate.name,
+                                "input":candidate.arguments,
+                            })).collect::<Vec<_>>(),
+                        });
+                    }
                     context.pending_call = Some(call.clone());
                     context.pending_mcp_generation = mcp_generation;
                     context.remaining_calls = calls[index + 1..].to_vec();
-                    let snapshot = serde_json::to_value(&*context).map_err(|_| {
+                    let snapshot = continuation_snapshot(context).map_err(|_| {
                         BusinessError::new(
                             "agent_unavailable",
                             "turn continuation could not be stored",
@@ -215,14 +263,30 @@ impl Agent {
                         arguments: &approval_arguments,
                         snapshot: &snapshot,
                     })?;
-                    self.emit(&context.session_id, EventPayload::ApprovalRequested(ApprovalRequestedPayload { turn_id: context.turn_id.clone(), tool_call_id: call.call_id.clone(), approval_id: approval.approval_id.clone(), operation: approval_operation, arguments: call.arguments.clone() }))?;
+                    self.emit(&context.session_id, EventPayload::ApprovalRequested(ApprovalRequestedPayload { turn_id: context.turn_id.clone(), tool_call_id: call.call_id.clone(), approval_id: approval.approval_id.clone(), operation: approval_operation, arguments: approval_arguments }))?;
                     return Err(BusinessError::new("approval_required",format!("Tool call requires approval: {}",call.name)).details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id})));
                 }
-                Decision::Allow => allowed_calls.push(call.clone()),
+                Decision::Allow => {
+                    if computer::is_computer_call(call) {
+                        context
+                            .approved_computer_call_ids
+                            .retain(|call_id| call_id != &call.call_id);
+                        self.execute_allowed_calls(
+                            context,
+                            std::mem::take(&mut allowed_calls),
+                            token.clone(),
+                        )
+                        .await?;
+                        self.execute_call(context, call, token.clone(), None).await?;
+                    } else {
+                        allowed_calls.push(call.clone());
+                    }
+                }
             }
         }
         self.execute_allowed_calls(context, allowed_calls, token)
             .await?;
+        context.computer_batch_failed = false;
         Ok(())
     }
 
@@ -522,6 +586,23 @@ impl Agent {
             };
             return self.record_call_success(context, call, result);
         }
+        if computer::is_computer_call(call) {
+            let result = match self
+                .computer
+                .execute(&call.name, &call.arguments, token)
+                .await
+            {
+                Ok(result) => result,
+                Err(error) => {
+                    if !self.record_recoverable_call_error(context, call, &error)? {
+                        return Err(error);
+                    }
+                    context.computer_batch_failed = true;
+                    return Ok(());
+                }
+            };
+            return self.record_computer_success(context, call, result);
+        }
         let (project_root, mut params) = match self.prepare_call(context, call) {
             Ok(prepared) => prepared,
             Err(error) => {
@@ -578,6 +659,7 @@ impl Agent {
             if !error.code.starts_with("mcp_")
                 && !error.code.starts_with("lsp_")
                 && !error.code.starts_with("browser_")
+                && !error.code.starts_with("computer_")
             {
                 return Ok(false);
             }
@@ -676,6 +758,86 @@ impl Agent {
             "tool",
             serde_json::to_string(&normalized_result).unwrap_or_else(|_| "{}".into()),
         );
+        tool.tool_call_id = Some(call.call_id.clone());
+        context.messages.push(tool.clone());
+        self.emit(
+            &context.session_id,
+            EventPayload::MessageTool(MessageToolPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: tool }),
+        )?;
+        Ok(())
+    }
+
+    fn record_computer_success(
+        &self,
+        context: &mut Continuation,
+        call: &ToolCall,
+        outcome: suncode_computer::ActionOutcome,
+    ) -> Result<(), BusinessError> {
+        let (metadata, message) = match outcome {
+            suncode_computer::ActionOutcome::Text(text) => {
+                let metadata = json!({"type":"computer_text","text":text});
+                (metadata, Message::text("tool", text))
+            }
+            suncode_computer::ActionOutcome::Image(frame) => {
+                let png = frame
+                    .png()
+                    .map_err(|error| BusinessError::new("computer_capture_failed", error.to_string()))?;
+                let metadata = json!({
+                    "type":"computer_image",
+                    "pixelWidth":frame.display.pixel_width,
+                    "pixelHeight":frame.display.pixel_height,
+                    "displayGeneration":frame.display.generation,
+                });
+                let mut message = Message::text("tool", "Computer screenshot captured.");
+                message.content.push(crate::domain::ContentPart {
+                    kind: "image_url".into(),
+                    text: format!("data:image/png;base64,{}", STANDARD.encode(png)),
+                });
+                (metadata, message)
+            }
+        };
+        self.tool_state(context, call, "succeeded", None)?;
+        self.emit(
+            &context.session_id,
+            EventPayload::ToolResult(ToolResultPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), result: metadata.clone() }),
+        )?;
+        let mut provider_message = message;
+        provider_message.tool_call_id = Some(call.call_id.clone());
+        context.messages.push(provider_message);
+        let mut redacted = Message::text(
+            "tool",
+            serde_json::to_string(&metadata).unwrap_or_else(|_| "{}".into()),
+        );
+        redacted.tool_call_id = Some(call.call_id.clone());
+        self.emit(
+            &context.session_id,
+            EventPayload::MessageTool(MessageToolPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: redacted }),
+        )?;
+        Ok(())
+    }
+
+    fn record_computer_skipped(
+        &self,
+        context: &mut Continuation,
+        call: &ToolCall,
+    ) -> Result<(), BusinessError> {
+        self.tool_state(
+            context,
+            call,
+            "failed",
+            Some("computer_batch_halted"),
+        )?;
+        let result = json!({
+            "error": {
+                "code": "computer_batch_halted",
+                "message": suncode_computer::HALT_MESSAGE,
+            }
+        });
+        self.emit(
+            &context.session_id,
+            EventPayload::ToolResult(ToolResultPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), result: result.clone() }),
+        )?;
+        let mut tool = Message::text("tool", suncode_computer::HALT_MESSAGE);
         tool.tool_call_id = Some(call.call_id.clone());
         context.messages.push(tool.clone());
         self.emit(

@@ -115,6 +115,12 @@
                 <TextBlock Grid.Column="1" Text="Network" VerticalAlignment="Center" />
               </Grid>
             </Button>
+            <Button x:Name="ComputerNavigation" Classes="navigation" Click="ShowComputer">
+              <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="Computer use" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
             <Button x:Name="BrowserNavigation" Classes="navigation" Click="ShowBrowser">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/tool.svg" Css="{DynamicResource IconSvgCss}" />
@@ -218,6 +224,8 @@
         <settings:AppearanceSettingsControl x:Name="AppearancePage" IsVisible="False" />
 
         <settings:ShortcutsSettingsControl x:Name="ShortcutsPage" IsVisible="False" />
+
+        <settings:ComputerUseSettingsControl x:Name="ComputerPage" IsVisible="False" />
 
         <settings:BrowserUseSettingsControl x:Name="BrowserPage" IsVisible="False" />
 

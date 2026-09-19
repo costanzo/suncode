@@ -108,6 +108,13 @@ fn initialize(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
                 )
                 .map_err(crate::database_error)?;
         }
+        if !schema::llm_model_includes_computer_use(connection)? {
+            connection
+                .batch_execute(
+                    "ALTER TABLE llm_model ADD COLUMN supports_computer_use INTEGER NOT NULL DEFAULT 0 CHECK(supports_computer_use IN (0,1));",
+                )
+                .map_err(crate::database_error)?;
+        }
         if !schema::session_includes_subagent_columns(connection)? {
             connection
                 .batch_execute(
@@ -146,6 +153,11 @@ fn initialize(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
                 .batch_execute(script)
                 .map_err(crate::database_error)?;
         }
+        connection
+            .batch_execute(
+                "UPDATE llm_model_provider SET adapter_type='anthropic',updated_at='2026-09-19T00:00:00.000Z' WHERE provider_id='claude' AND adapter_type='openai' AND endpoint=default_endpoint AND default_endpoint='https://api.anthropic.com/v1';",
+            )
+            .map_err(crate::database_error)?;
         Ok(())
     })?;
     Ok(())

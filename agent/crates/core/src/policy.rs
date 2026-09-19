@@ -6,6 +6,8 @@ pub enum Risk {
     NetworkAccess,
     ExternalTool,
     BrowserAccess,
+    ComputerObserve,
+    ComputerInput,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,6 +21,9 @@ pub fn evaluate(risk: Option<Risk>, non_interactive: bool, full_control: bool) -
     match risk {
         None => Decision::Deny,
         Some(Risk::ReadOnly) => Decision::Allow,
+        Some(Risk::ComputerObserve) => Decision::Allow,
+        Some(Risk::ComputerInput) if non_interactive => Decision::Deny,
+        Some(Risk::ComputerInput) => Decision::ApprovalRequired,
         Some(Risk::BrowserAccess) if non_interactive => Decision::Deny,
         Some(Risk::BrowserAccess) => Decision::ApprovalRequired,
         Some(_) if full_control => Decision::Allow,

@@ -160,6 +160,7 @@ impl SseParser {
                             "Provider returned invalid tool arguments",
                         )
                     })?,
+                    toolset_name: None,
                 })
             })
             .collect::<Result<Vec<_>, BusinessError>>()?;

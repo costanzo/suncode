@@ -169,6 +169,17 @@ impl OpenAiCompatibleProvider {
         cancellation: &CancellationToken,
         deltas: mpsc::UnboundedSender<String>,
     ) -> Result<Completion, BusinessError> {
+        if !request.client_toolsets.is_empty() {
+            return Err(BusinessError::provider(
+                "provider_capability_unsupported",
+                format!(
+                    "{} does not support native client toolsets through the OpenAI-compatible adapter",
+                    self.provider_label
+                ),
+                false,
+                None,
+            ));
+        }
         let key = self.keys.api_key(&self.provider_id).ok_or_else(|| {
             BusinessError::new(
                 "provider_unconfigured",
@@ -191,6 +202,9 @@ impl OpenAiCompatibleProvider {
         });
         if let Some(reasoning_effort) = request.reasoning_effort {
             body["reasoning_effort"] = json!(reasoning_effort);
+        }
+        if let Some(max_output_tokens) = request.max_output_tokens {
+            body["max_tokens"] = json!(max_output_tokens);
         }
         let client = self.client()?;
         let response = tokio::select! {
@@ -405,7 +419,9 @@ mod tests {
                     messages: &messages,
                     wire_model: "company-model-v1",
                     tools: &tools,
+                    client_toolsets: &[],
                     reasoning_effort: Some("high"),
+                    max_output_tokens: Some(4096),
                 },
                 &CancellationToken::new(),
                 sender,
@@ -480,7 +496,9 @@ mod tests {
                     messages: &messages,
                     wire_model: "company-model-v1",
                     tools: &tools,
+                    client_toolsets: &[],
                     reasoning_effort: None,
+                    max_output_tokens: None,
                 },
                 &CancellationToken::new(),
                 sender,

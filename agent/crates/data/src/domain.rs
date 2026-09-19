@@ -153,6 +153,7 @@ pub struct LlmModelRecord {
     pub supports_structured_output: bool,
     pub supports_cancellation: bool,
     pub supports_reasoning_effort: bool,
+    pub supports_computer_use: bool,
     /// Comma-separated values persisted in SQLite, exposed as normalized efforts.
     pub reasoning_efforts: Vec<String>,
     pub enabled: bool,
@@ -187,6 +188,7 @@ pub struct LlmModelInput<'a> {
     pub supports_structured_output: bool,
     pub supports_cancellation: bool,
     pub supports_reasoning_effort: bool,
+    pub supports_computer_use: bool,
     pub reasoning_efforts: &'a str,
     pub enabled: bool,
     pub sort_order: i64,
@@ -204,6 +206,8 @@ pub struct ToolCall {
     pub call_id: String,
     pub name: String,
     pub arguments: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub toolset_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -30,6 +30,7 @@ Rust SunCode agent core
     |- filesystem, search, process, and artifacts
     |- project-scoped language-server protocol clients
     |- project-scoped Browser Use lifecycle and audited browser tools
+    |- first-party Computer Use lifecycle and audited desktop input/capture
     `- checkpoints and operation journal
 
 Bundled Browser Use worker (lazy, one per active browser project)
@@ -40,7 +41,7 @@ Bundled Browser Use worker (lazy, one per active browser project)
 Future TypeScript N-API and Python PyO3 bindings embed the same SDK.
 ```
 
-There is no agent-to-core process boundary and no client-facing server. Operations are Rust modules called in-process after policy authorization. The old TypeScript runtime, core client, runtime server, JSON-RPC stdio core, and loopback HTTP/SSE adapter are not production architecture. Provider adapters still make outbound HTTPS requests to configured model providers. Browser Use is the narrow exception to the otherwise Rust-only process topology: Rust may launch the exact bundled Node.js worker over a private framed stdio protocol, but that worker is a browser driver rather than an agent, provider, database owner, or extension host.
+There is no agent-to-core process boundary and no client-facing server. Operations are Rust modules called in-process after policy authorization. The old TypeScript runtime, core client, runtime server, JSON-RPC stdio core, and loopback HTTP/SSE adapter are not production architecture. Provider adapters still make outbound HTTPS requests to configured model providers. Computer Use remains in-process and Rust-owned through a pinned Enigo backend. Browser Use is the narrow exception to the otherwise Rust-only process topology: Rust may launch the exact bundled Node.js worker over a private framed stdio protocol, but that worker is a browser driver rather than an agent, provider, database owner, or extension host.
 
 ## 3. Ownership Boundaries
 
@@ -64,6 +65,7 @@ The Rust agent packages own:
 - project boundary checks and machine-affecting operations
 - project-scoped language-server definitions, lifecycle, document synchronization, and bounded semantic queries
 - bundled-browser validation, project-scoped Browser Use lifecycle, control handoff, policy enforcement, and artifact promotion
+- first-party Computer Use enablement, display-frame lifetime, approval, emergency stop, and transient screenshot handling
 - checkpoints, undo, managed artifacts, and operation reconciliation
 
 Provider and orchestration modules cannot perform project operations directly. They construct typed operation requests which pass through policy and the agent operation dispatcher.
@@ -102,7 +104,7 @@ Mutating calls carry idempotency keys where replay could duplicate work. Session
 
 ## 6. Provider Boundary
 
-The seeded providers are DeepSeek, Zhipu GLM, OpenAI, Kimi, Claude, and Gemini. The seeded database catalog currently exposes two models per provider: `deepseek-v4-flash` and `deepseek-v4-pro`; `glm-5.2` and `glm-5.3`; `gpt-5.5` and `gpt-5.6-sol`; `kimi-k2.7-code` and `kimi-k3`; `claude-sonnet-5` and `claude-opus-5`; and `gemini-3.5` and `gemini-3.6-flash`. Users may add provider and model rows for custom OpenAI-compatible gateways. One trusted adapter serves each provider, while each model route supplies its own vendor wire model. Kimi, Claude, and Gemini use their documented OpenAI-compatible chat-completions surfaces. Vendor request and streaming response shapes remain inside `suncode-llm`. Clients receive canonical messages, tool activity, usage, and redacted errors only.
+The seeded providers are DeepSeek, Zhipu GLM, OpenAI, Kimi, Claude, and Gemini. The seeded database catalog currently exposes two models per provider: `deepseek-v4-flash` and `deepseek-v4-pro`; `glm-5.2` and `glm-5.3`; `gpt-5.5` and `gpt-5.6-sol`; `kimi-k2.7-code` and `kimi-k3`; `claude-sonnet-5` and `claude-opus-5`; and `gemini-3.5` and `gemini-3.6-flash`. Users may add provider and model rows for custom OpenAI-compatible gateways. One trusted adapter serves each provider, while each model route supplies its own vendor wire model. Claude's built-in route uses Anthropic Messages so it can advertise native client toolsets; custom Claude-compatible gateways remain unchanged unless explicitly configured for a supported adapter. Other seeded compatible routes use their documented chat-completions surfaces. Vendor request and streaming response shapes remain inside `suncode-llm`. Clients receive canonical messages, tool activity, usage, and redacted errors only.
 
 The API key is read exclusively from the plaintext `llm_model_provider.api_key` column in SQLite. Provider endpoints and required `adapter_type` values are read from `llm_model_provider`; model request codes, context lengths, auto-compaction thresholds, output limits, capability flags, and enabled/order state are read from `llm_model`. A custom provider must select an adapter implemented by `suncode-llm`; the current persisted adapter is `openai` for OpenAI-compatible endpoints. Plaintext credentials never enter protocol responses, events, or logs. Provider API-key environment variables are not read in either interactive or non-interactive mode. Global `verify_https_certificates` defaults to `true` and controls server certificate-chain and hostname verification for built-in provider and WebFetch HTTPS requests. Disabling it is an explicit insecure mode equivalent to `curl -k`; it does not weaken other authority or URL controls.
 
@@ -134,6 +136,8 @@ Built-in agent tool lists are capability ceilings, not authority grants. Child c
 Approval precedes execution. Approval requests and suspended continuations are durable and single-use. A restart may reconcile an operation with a durable idempotency record but must not blindly replay a provider call with unknown completion.
 
 Browser capability enablement is not browser authority. In the initial implementation, every Browser Use tool call requires interactive approval and is not bypassed by general Full Control; non-interactive calls fail closed. Page content is untrusted and cannot authorize an operation. Fine-grained origin/action classification and preflight descriptors remain delivery work before lower-risk observations can use narrower policy. Browser changes to external systems and browser profiles are not covered by filesystem undo.
+
+Computer capability enablement is not desktop authority. Observation-only Computer Use actions may follow the interactive default, while any input-producing batch requires one interactive approval and is not bypassed by general Full Control. Non-interactive Computer Use fails closed. On-screen content is untrusted and cannot authorize an operation. Emergency stop disables the capability, cooperatively cancels active work, releases held input, and requires explicit re-enablement. Screenshots are transient provider context; external application changes are not covered by filesystem undo.
 
 ## 9. Reversibility and Recovery
 

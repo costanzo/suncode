@@ -156,6 +156,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 item.Availability,
                 item.Capabilities.ReasoningEffort,
                 item.Capabilities.Vision,
+                item.Capabilities.ComputerUse,
                 item.ApiBase,
                 item.DefaultApiBase,
                 item.ReasoningEfforts

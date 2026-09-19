@@ -243,6 +243,17 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Rows:** Each row places the operation name on the left and a right-aligned combination of compact `<kbd>` keycaps on the right. Use the existing mono data font, raised surface, hairline border, and compact 4px keycap radius.
 - **Platform note:** The review surface may use macOS notation for the specimen, but the page should state that Windows and Linux use `Ctrl` where applicable. The catalog should describe shortcuts that are actually implemented by the desktop client.
 
+### Computer Use Settings
+
+- **Placement:** Computer use is a first-level Settings destination immediately after Network and before Browser use. It configures the built-in real-desktop capability and never appears under MCP or Browser use.
+- **Primary decision:** The global `Enable Computer Use` toggle is the first row. Enabling advertises the capability only when the selected model and local backend both support it; it never grants input authority or bypasses approval.
+- **Runtime truth:** The page separately reports selected-model support, the primary display target, capture availability, input-control availability, backend status, and the current control owner. Unsupported, permission-missing, ready, active, interrupted, and failed states use the existing compact status-dot language rather than dashboard cards.
+- **Permissions:** Screen capture and input control are distinct operating-system permissions. A missing permission stays visible beside specific platform guidance; Settings never claims that opening a system pane or enabling the feature granted permission.
+- **Control and safety:** Computer input remains interactive-only and approval-gated even under Full Control. Emergency stop releases held keys and mouse buttons, cancels pending Computer Use actions, transfers control back to the user, and requires a fresh screenshot before later coordinates may be used.
+- **Tests and temporary data:** Screenshot and input tests are explicit user actions and identify when an implementation is not yet available. Temporary screenshots are turn-scoped by default; cleanup removes only transient Computer Use images, never project files or general image attachments.
+- **Authority copy:** The page states that Computer Use operates the real desktop, is not an OS sandbox, may send screenshots to the selected provider, cannot operate secure desktops, and cannot undo changes made in external applications.
+- **Layout:** Reuse Settings headings, sections, rows, hairline dividers, compact buttons, native toggles, status dots, and monospace runtime data. Do not introduce a desktop preview, permission dashboard, decorative monitor illustration, or Browser Use terminology.
+
 ### Browser Use Settings
 
 - **Placement:** Browser use is a first-level Settings destination immediately after Network and before MCP servers. It configures one bundled first-party capability rather than a catalog, so it never expands into navigation children.

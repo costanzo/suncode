@@ -17,7 +17,7 @@ use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
 use suncode_config::Config;
 use suncode_data::{LlmModelProviderInput, LlmModelProviderRecord, Store};
 use suncode_llm::{
-    ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
+    AnthropicProvider, ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
     OpenAiCompatibleProvider,
 };
 
@@ -27,6 +27,7 @@ mod agents;
 pub mod blocking;
 mod browser;
 mod checkpoints;
+mod computer;
 mod language_servers;
 mod lifecycle;
 mod mcp;
@@ -140,6 +141,7 @@ fn provider_models(
                 structured_output: model.supports_structured_output,
                 cancellation: model.supports_cancellation,
                 reasoning_effort: model.supports_reasoning_effort,
+                computer_use: model.supports_computer_use,
             },
             reasoning_efforts: model.reasoning_efforts.clone(),
             limits: ModelLimits {
@@ -152,7 +154,7 @@ fn provider_models(
         .collect())
 }
 
-fn openai_provider(
+fn provider_adapter(
     provider: &LlmModelProviderRecord,
     keys: Arc<dyn suncode_llm::ApiKeyResolver>,
     verify_https_certificates: Arc<AtomicBool>,
@@ -173,6 +175,16 @@ fn openai_provider(
                 proxy_configuration,
             ),
         )),
+        "anthropic" => Ok(Arc::new(AnthropicProvider::new_with_network_configuration(
+            provider.provider_id.clone(),
+            provider.display_name.clone(),
+            provider.endpoint.clone(),
+            keys,
+            verify_https_certificates,
+            use_system_certificates,
+            certificate_path,
+            proxy_configuration,
+        ))),
         adapter_type => Err(BusinessError::new(
             "provider_adapter_unsupported",
             format!("provider adapter is not supported: {adapter_type}"),
@@ -209,6 +221,7 @@ fn registry_from_store(
                     structured_output: model.supports_structured_output,
                     cancellation: model.supports_cancellation,
                     reasoning_effort: model.supports_reasoning_effort,
+                    computer_use: model.supports_computer_use,
                 },
                 reasoning_efforts: model.reasoning_efforts.clone(),
                 limits: ModelLimits {
@@ -222,7 +235,7 @@ fn registry_from_store(
         if provider_models.is_empty() {
             continue;
         }
-        let adapter = openai_provider(
+        let adapter = provider_adapter(
             &provider,
             keys.clone(),
             verify_https_certificates.clone(),
@@ -311,6 +324,16 @@ where
             .map(|configuration| configuration.clone())
             .unwrap_or_default(),
     );
+    if global_bool_setting(&store, "computer_use_enabled", false)? {
+        match suncode_computer::EnigoBackend::new() {
+            Ok(backend) => agent.install_computer_backend(Box::new(backend))?,
+            Err(error) => logging::write(
+                Level::Warn,
+                "computer.backend",
+                format!("state=unavailable error={error}"),
+            ),
+        }
+    }
     let state = AgentState {
         store,
         user_id: user_id.to_owned(),
@@ -461,16 +484,14 @@ fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
         }
         return Ok(());
     }
-    if key == "browser_use_enabled" {
+    if matches!(key, "browser_use_enabled" | "computer_use_enabled") {
         if scope != "global" {
-            return Err(BusinessError::invalid(
-                "browser_use_enabled is a global-only setting",
-            ));
+            return Err(BusinessError::invalid(format!(
+                "{key} is a global-only setting"
+            )));
         }
         if !value.is_boolean() {
-            return Err(BusinessError::invalid(
-                "browser_use_enabled must be a boolean",
-            ));
+            return Err(BusinessError::invalid(format!("{key} must be a boolean")));
         }
         return Ok(());
     }

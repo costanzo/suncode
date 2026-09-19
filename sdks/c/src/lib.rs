@@ -172,6 +172,25 @@ ffi_no_args!(suncode_agent_sdk_list_models, list_models);
 ffi_no_args!(suncode_agent_sdk_list_credentials, list_credentials);
 ffi_no_args!(suncode_agent_sdk_list_projects, list_projects);
 ffi_no_args!(suncode_agent_sdk_list_agents, list_agents);
+ffi_no_args!(
+    suncode_agent_sdk_computer_runtime_info,
+    computer_runtime_info
+);
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_set_computer_use_enabled(
+    handle: *mut SunCodeAgentHandle,
+    enabled: u8,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| sdk.set_computer_use_enabled(enabled != 0))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_emergency_stop_computer_use(
+    handle: *mut SunCodeAgentHandle,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| sdk.emergency_stop_computer_use())
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_browser_runtime_info(

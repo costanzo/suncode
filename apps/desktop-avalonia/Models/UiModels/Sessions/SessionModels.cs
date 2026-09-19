@@ -55,6 +55,7 @@ public sealed record ModelItem(
     string Availability,
     bool SupportsReasoningEffort,
     bool SupportsVision = false,
+    bool SupportsComputerUse = false,
     string ApiBase = "",
     string DefaultApiBase = "",
     IReadOnlyList<string>? ReasoningEfforts = null)

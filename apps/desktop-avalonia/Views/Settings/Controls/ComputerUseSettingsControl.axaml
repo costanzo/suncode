@@ -1,0 +1,136 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.ComputerUseSettingsControl">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Classes="settings-panel-content">
+      <StackPanel Classes="settings-panel-heading">
+        <TextBlock Text="Computer use" Classes="sc-text-title" />
+        <TextBlock Classes="settings-hint" TextWrapping="Wrap"
+                   Text="Let supported models observe and operate the real primary display. Screenshots may be sent to the selected provider, and changes in other applications are outside filesystem undo." />
+      </StackPanel>
+
+      <StackPanel Classes="settings-panel-section">
+        <TextBlock Classes="section-label" Text="AVAILABILITY" />
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Enable Computer Use" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap"
+                       Text="Makes the built-in desktop tools available when the selected model and operating system support them." />
+          </StackPanel>
+          <ToggleSwitch x:Name="EnabledToggle" Grid.Column="1" Classes="sc-toggle-switch"
+                        OnContent="On" OffContent="Off" HorizontalAlignment="Right"
+                        Click="OnEnabledChanged" />
+        </Grid>
+        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1" Padding="0,13" Margin="0,6,0,0">
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="24">
+            <Grid ColumnDefinitions="10,*" ColumnSpacing="9">
+              <Ellipse x:Name="ModelStatusDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" Margin="0,5,0,0" />
+              <StackPanel Grid.Column="1" Spacing="3">
+                <TextBlock x:Name="ModelSupportText" Text="Unknown" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock x:Name="ModelNameText" Text="No model selected" Classes="settings-row-hint" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </Grid>
+            <Grid Grid.Column="1" ColumnDefinitions="10,*" ColumnSpacing="9">
+              <Ellipse x:Name="BackendStatusDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" Margin="0,5,0,0" />
+              <StackPanel Grid.Column="1" Spacing="3">
+                <TextBlock x:Name="BackendStateText" Text="Unavailable" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="Built-in desktop backend" Classes="settings-row-hint" />
+              </StackPanel>
+            </Grid>
+          </Grid>
+        </Border>
+        <TextBlock x:Name="StatusText" Classes="sc-text-status" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <Border Classes="settings-divider" />
+      <StackPanel Classes="settings-panel-section">
+        <TextBlock Classes="section-label" Text="DESKTOP ACCESS" />
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Primary display" />
+            <TextBlock Classes="settings-row-hint" Text="Initial Computer Use is limited to one display." />
+          </StackPanel>
+          <TextBlock x:Name="TargetDisplayText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="—" />
+        </Grid>
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Screen capture" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="Required to send screenshots to the selected provider." />
+          </StackPanel>
+          <Grid Grid.Column="1" ColumnDefinitions="10,Auto" ColumnSpacing="8" HorizontalAlignment="Right">
+            <Ellipse x:Name="CapturePermissionDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+            <TextBlock x:Name="CapturePermissionText" Grid.Column="1" Text="Unknown" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+          </Grid>
+        </Grid>
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Input control" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="Required for mouse and keyboard actions after approval." />
+          </StackPanel>
+          <Grid Grid.Column="1" ColumnDefinitions="10,Auto" ColumnSpacing="8" HorizontalAlignment="Right">
+            <Ellipse x:Name="InputPermissionDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+            <TextBlock x:Name="InputPermissionText" Grid.Column="1" Text="Unknown" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+          </Grid>
+        </Grid>
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Current control owner" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="The user and agent never control desktop input simultaneously." />
+          </StackPanel>
+          <TextBlock x:Name="ControlOwnerText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="User" />
+        </Grid>
+        <WrapPanel Classes="settings-actions">
+          <Button Classes="compact quiet sc-button" Content="Test screenshot" IsEnabled="False" />
+          <Button Classes="compact quiet sc-button" Content="Test input control" IsEnabled="False" />
+          <TextBlock Classes="sc-text-status" Text="Permission tests are not available in this build." VerticalAlignment="Center" TextWrapping="Wrap" />
+        </WrapPanel>
+      </StackPanel>
+
+      <Border Classes="settings-divider" />
+      <StackPanel Classes="settings-panel-section">
+        <TextBlock Classes="section-label" Text="SAFETY AND LIMITS" />
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Input approval" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="Full Control does not bypass Computer Use approval." />
+          </StackPanel>
+          <TextBlock Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="Once per input batch" />
+        </Grid>
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Execution mode" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="Computer Use is denied in scripts and other non-interactive runs." />
+          </StackPanel>
+          <TextBlock Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="Interactive only" />
+        </Grid>
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Emergency stop" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="Releases held keys and mouse buttons and invalidates prior coordinates." />
+          </StackPanel>
+          <Button x:Name="EmergencyStopButton" Grid.Column="1" Classes="compact danger sc-button" HorizontalAlignment="Right" Content="Stop Computer Use" Click="OnEmergencyStop" />
+        </Grid>
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="Temporary screenshots" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="Screenshot bytes are retained only for the active turn." />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="compact quiet sc-button" HorizontalAlignment="Right" Content="Clear temporary screenshots" IsEnabled="False" />
+        </Grid>
+      </StackPanel>
+
+      <Border Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}"
+              BorderThickness="1" Classes="settings-warning" Margin="0,28,0,0">
+        <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
+          <svg:Svg Width="15" Height="15" Path="/Assets/icons/lock.svg" Css="{DynamicResource IconSvgCss}" />
+          <StackPanel Grid.Column="1" Spacing="3">
+            <TextBlock Text="Computer Use controls the real desktop, not a sandbox" FontSize="11" FontWeight="SemiBold" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap"
+                       Text="On-screen content is untrusted and cannot grant authority. Secure desktops and locked sessions are unavailable, and actions in external applications cannot be undone by SunCode." />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

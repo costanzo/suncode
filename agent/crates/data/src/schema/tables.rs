@@ -74,6 +74,7 @@ diesel::table! {
         supports_structured_output -> Integer,
         supports_cancellation -> Integer,
         supports_reasoning_effort -> Integer,
+        supports_computer_use -> Integer,
         reasoning_efforts -> Text,
         enabled -> Integer,
         sort_order -> Integer,

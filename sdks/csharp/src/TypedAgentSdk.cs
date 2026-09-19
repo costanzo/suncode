@@ -5,6 +5,15 @@ namespace SunCode.Sdk;
 
 public sealed partial class AgentSdk
 {
+    public Task<ComputerRuntimeInfo> GetComputerRuntimeInfoAsync() =>
+        Typed<ComputerRuntimeInfo>(RawComputerRuntimeInfoAsync());
+
+    public Task<ComputerRuntimeInfo> SetComputerUseEnabledAsync(bool enabled) =>
+        Typed<ComputerRuntimeInfo>(RawSetComputerUseEnabledAsync(enabled));
+
+    public Task<ComputerRuntimeInfo> EmergencyStopComputerUseAsync() =>
+        Typed<ComputerRuntimeInfo>(RawEmergencyStopComputerUseAsync());
+
     private static readonly JsonSerializerOptions TypedJsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,

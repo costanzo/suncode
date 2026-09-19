@@ -100,3 +100,19 @@ pub(crate) fn llm_model_provider_includes_default_endpoint(
         .iter()
         .any(|column| column.name == "default_endpoint"))
 }
+
+pub(crate) fn llm_model_includes_computer_use(
+    connection: &mut SqliteConnection,
+) -> Result<bool, crate::BusinessError> {
+    #[derive(diesel::QueryableByName)]
+    struct ColumnRow {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        name: String,
+    }
+    let columns = sql_query("PRAGMA table_info(llm_model)")
+        .load::<ColumnRow>(connection)
+        .map_err(crate::database_error)?;
+    Ok(columns
+        .iter()
+        .any(|column| column.name == "supports_computer_use"))
+}

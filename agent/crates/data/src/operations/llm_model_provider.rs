@@ -43,11 +43,12 @@ impl Store {
         let name = input.display_name.trim();
         let endpoint = input.endpoint.trim().trim_end_matches('/');
         let default_endpoint = input.default_endpoint.trim().trim_end_matches('/');
+        let adapter_type = input.adapter_type.trim();
         if provider.is_empty()
             || name.is_empty()
             || endpoint.is_empty()
             || default_endpoint.is_empty()
-            || input.adapter_type.trim() != "openai"
+            || !matches!(adapter_type, "openai" | "anthropic")
             || input.sort_order < 0
         {
             return Err(BusinessError::invalid("model provider has invalid fields"));
@@ -56,7 +57,7 @@ impl Store {
         let timestamp = now();
         sql_query("INSERT INTO llm_model_provider(provider_id,display_name,endpoint,default_endpoint,adapter_type,api_key,enabled,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(provider_id) DO UPDATE SET display_name=excluded.display_name,endpoint=excluded.endpoint,default_endpoint=excluded.default_endpoint,adapter_type=excluded.adapter_type,enabled=excluded.enabled,sort_order=excluded.sort_order,updated_at=excluded.updated_at")
             .bind::<Text, _>(provider).bind::<Text, _>(name).bind::<Text, _>(endpoint).bind::<Text, _>(default_endpoint)
-            .bind::<Text, _>("openai").bind::<Nullable<Text>, _>(None::<String>).bind::<Integer, _>(input.enabled as i32)
+            .bind::<Text, _>(adapter_type).bind::<Nullable<Text>, _>(None::<String>).bind::<Integer, _>(input.enabled as i32)
             .bind::<Integer, _>(input.sort_order as i32).bind::<Text, _>(&timestamp).bind::<Text, _>(&timestamp)
             .execute(&mut *connection).map_err(crate::database_error)?;
         Ok(())

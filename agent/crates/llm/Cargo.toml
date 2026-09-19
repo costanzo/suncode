@@ -8,6 +8,7 @@ name = "suncode_llm"
 path = "src/lib.rs"
 
 [dependencies]
+base64 = "0.22"
 futures-util = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "system-proxy"] }
 suncode-common = { path = "../common" }

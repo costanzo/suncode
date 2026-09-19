@@ -479,6 +479,7 @@ mod tests {
                     structured_output: false,
                     cancellation: true,
                     reasoning_effort: false,
+                    computer_use: false,
                 },
                 reasoning_efforts: Vec::new(),
                 limits: ModelLimits {

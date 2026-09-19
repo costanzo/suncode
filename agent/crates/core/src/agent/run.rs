@@ -123,12 +123,20 @@ impl Agent {
                     tool_definitions.extend(self.mcp.catalog(&context.project_id).await);
                     tool_definitions.extend(self.browser.catalog().await);
                 }
+                let client_toolsets = self
+                    .computer
+                    .catalog(self.providers.supports_computer_use(&context.model));
                 let provider_call = provider.provider.complete(
                     CompletionRequest {
                         messages: &llm_messages,
                         wire_model: &provider.wire_model,
                         tools: &tool_definitions,
+                        client_toolsets: &client_toolsets,
                         reasoning_effort: context.reasoning_effort.as_deref(),
+                        max_output_tokens: self
+                            .providers
+                            .limits(&context.model)
+                            .and_then(|limits| limits.max_output_tokens),
                     },
                     &token,
                     delta_sender,
@@ -195,6 +203,7 @@ impl Agent {
                     call_id: call.call_id.clone(),
                     name: call.name.clone(),
                     arguments: call.arguments.clone(),
+                    toolset_name: call.toolset_name.clone(),
                 })
                 .collect::<Vec<_>>();
             if let Some(usage) = &usage {
@@ -244,6 +253,7 @@ impl Agent {
                 return Ok(response);
             }
             self.turn_state(&context, "resolving_calls", None)?;
+            context.computer_batch_failed = false;
             self.resolve_calls(&mut context, tool_calls, token.clone())
                 .await?;
             self.drain_queued_messages(&mut context)?;

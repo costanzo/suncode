@@ -55,6 +55,8 @@ pub(crate) struct ModelRow {
     #[diesel(sql_type = Integer)]
     pub supports_reasoning_effort: i32,
     #[diesel(sql_type = Integer)]
+    pub supports_computer_use: i32,
+    #[diesel(sql_type = Integer)]
     pub enabled: i32,
     #[diesel(sql_type = Integer)]
     pub sort_order: i32,

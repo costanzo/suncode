@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260919-first-party-computer-use
+
+- Date: 2026-09-19
+- Status: Accepted; implementation in progress
+- Context: SunCode needs to observe and operate native desktop applications without treating Browser Use or MCP as the desktop-control boundary. Claude's native Computer Use protocol requires ordered member calls and image-bearing results, while real-desktop input needs stricter authority and privacy behavior than ordinary project tools.
+- Decision: Implement Computer Use as a first-party Rust capability. Pin the maintained Enigo fork for primary-display capture, coordinate mapping, and mouse/keyboard input; keep provider-neutral execution in `suncode-computer`; use Anthropic Messages and `computer_toolset_20260801` for the first provider route. Observation actions may follow the interactive default, but every input batch requires approval, Full Control does not bypass it, and non-interactive use is denied. Screenshot bytes remain transient provider context. Settings exposes only built-in enablement and redacted runtime state, never an MCP server, external executable, or backend path.
+- Consequences: Computer Use remains independent of Browser Use and cannot claim an OS sandbox or undo for external applications. Emergency stop disables the capability, cooperatively cancels work, and releases held input. macOS, Windows, X11, and Wayland need platform capture/permission conformance before each is described as stable; Wayland additionally needs a unified portal ScreenCast and RemoteDesktop session.
+- Details: `requirements/2026-09-19-computer-use/`, `DESIGN.md`, `contracts/agent-sdk/README.md`
+
 ## ADR-20260919-rust-sdk-standard-session-stream
 
 - Date: 2026-09-19

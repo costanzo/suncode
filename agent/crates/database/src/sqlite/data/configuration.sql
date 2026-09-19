@@ -13,4 +13,5 @@ VALUES
     ('global', 'proxy_password', '""', '1970-01-01T00:00:00.000Z'),
     ('global', 'proxy_bypass', '[]', '1970-01-01T00:00:00.000Z'),
     ('global', 'browser_use_enabled', 'false', '1970-01-01T00:00:00.000Z'),
+    ('global', 'computer_use_enabled', 'false', '1970-01-01T00:00:00.000Z'),
     ('global', 'image_directory', '""', '1970-01-01T00:00:00.000Z');

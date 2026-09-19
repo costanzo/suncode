@@ -1,0 +1,14 @@
+[package]
+name = "suncode-computer"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "suncode_computer"
+path = "src/lib.rs"
+
+[dependencies]
+enigo = { git = "https://github.com/costanzo/enigo.git", rev = "d7d79da211ae38dba48e5e72e809be98f1331347" }
+image = { version = "0.25", default-features = false, features = ["png"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

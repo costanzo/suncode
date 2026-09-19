@@ -35,7 +35,8 @@ public sealed record ModelCapabilities(
     bool Vision,
     [property: JsonPropertyName("structured_output")] bool StructuredOutput,
     bool Cancellation,
-    [property: JsonPropertyName("reasoning_effort")] bool ReasoningEffort);
+    [property: JsonPropertyName("reasoning_effort")] bool ReasoningEffort,
+    [property: JsonPropertyName("computer_use")] bool ComputerUse);
 
 public sealed record ModelLimits(
     [property: JsonPropertyName("max_input_tokens")] ulong? MaxInputTokens,
@@ -118,6 +119,19 @@ public sealed record BrowserRuntimeInfo(
     string? Error);
 
 public sealed record BrowserProfileClearResult(string ProjectId, bool Cleared);
+
+public sealed record ComputerRuntimeInfo(
+    bool Enabled,
+    bool BackendAvailable,
+    string TargetDisplay,
+    uint? InputWidth,
+    uint? InputHeight,
+    uint? PixelWidth,
+    uint? PixelHeight,
+    string CapturePermission,
+    string InputPermission,
+    string ControlOwner,
+    string? Error);
 
 public sealed record McpServer(
     string McpServerId,

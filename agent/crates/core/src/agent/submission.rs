@@ -33,6 +33,7 @@ impl Agent {
         let mcp = McpManager::new(store.clone(), application_data.clone());
         let lsp = LanguageServerManager::new(store.clone());
         let browser = BrowserManager::new(store.clone(), application_data.clone());
+        let computer = ComputerManager::new(&store);
         Self {
             user_id: "default".into(),
             store,
@@ -47,6 +48,7 @@ impl Agent {
             mcp,
             lsp,
             browser,
+            computer,
         }
     }
 
@@ -276,6 +278,8 @@ impl Agent {
             usage: Usage::default(),
             pending_call: None,
             pending_mcp_generation: None,
+            approved_computer_call_ids: Vec::new(),
+            computer_batch_failed: false,
             remaining_calls: Vec::new(),
             context_compacted: false,
             last_tool_signature: None,

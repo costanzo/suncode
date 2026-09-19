@@ -704,6 +704,7 @@ fn to_llm_message(message: &Message) -> suncode_llm::Message {
                 call_id: call.call_id.clone(),
                 name: call.name.clone(),
                 arguments: call.arguments.clone(),
+                toolset_name: call.toolset_name.clone(),
             })
             .collect(),
         tool_call_id: message.tool_call_id.clone(),
@@ -749,6 +750,22 @@ fn redacted_trace_message(message: &suncode_llm::Message) -> suncode_llm::Messag
         }
     }
     redacted
+}
+
+fn continuation_snapshot(context: &Continuation) -> Result<Value, serde_json::Error> {
+    let mut redacted = context.clone();
+    for message in &mut redacted.messages {
+        if message.role != "tool" {
+            continue;
+        }
+        for part in &mut message.content {
+            if part.kind == "image_url" {
+                part.kind = "text".into();
+                part.text = "[computer screenshot omitted from durable continuation]".into();
+            }
+        }
+    }
+    serde_json::to_value(redacted)
 }
 
 fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -> Value {

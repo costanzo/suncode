@@ -378,6 +378,9 @@ impl Agent {
                 expected_mcp_generation,
             )
                 .await?;
+            continuation
+                .approved_computer_call_ids
+                .retain(|call_id| call_id != &call.call_id);
         }
         let siblings = std::mem::take(&mut continuation.remaining_calls);
         self.resolve_calls(continuation, siblings, token.clone())

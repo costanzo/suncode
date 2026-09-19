@@ -107,7 +107,7 @@ Built-in or custom provider row keyed by `provider_id`. It stores display name, 
 
 ### `llm_model`
 
-Model row keyed by `model_id` and associated with `llm_model_provider` by `provider_id`. It stores display/request identifiers, context and auto-compaction token limits, optional output limit, capability flags including `supports_reasoning_effort`, a comma-separated `reasoning_efforts` catalog, enabled/order state, and timestamps. `auto_compact_tokens` is positive and smaller than `context_tokens`. When this capability is true, the OpenAI-compatible adapter accepts values from that model's catalog as a turn's reasoning effort.
+Model row keyed by `model_id` and associated with `llm_model_provider` by `provider_id`. It stores display/request identifiers, context and auto-compaction token limits, optional output limit, capability flags including `supports_reasoning_effort` and `supports_computer_use`, a comma-separated `reasoning_efforts` catalog, enabled/order state, and timestamps. `auto_compact_tokens` is positive and smaller than `context_tokens`. `supports_computer_use` means the model route may receive a provider-native Computer Use toolset when global enablement and the local backend are also available; it does not grant desktop authority.
 
 ## Projection Rules
 

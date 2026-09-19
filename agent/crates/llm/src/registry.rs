@@ -146,6 +146,16 @@ impl ModelProviderRegistry {
         })
     }
 
+    pub fn supports_computer_use(&self, model_id: &str) -> bool {
+        self.state.read().is_ok_and(|state| {
+            state
+                .models
+                .iter()
+                .find(|model| model.id == model_id)
+                .is_some_and(|model| model.capabilities.computer_use)
+        })
+    }
+
     pub fn route(&self, model_id: &str) -> Option<ModelRoute> {
         let state = self.state.read().ok()?;
         let model = state.models.iter().find(|model| model.id == model_id)?;
@@ -264,6 +274,7 @@ mod tests {
                 structured_output: false,
                 cancellation: true,
                 reasoning_effort: false,
+                computer_use: false,
             },
             reasoning_efforts: Vec::new(),
             limits: ModelLimits {

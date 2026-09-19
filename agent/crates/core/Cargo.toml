@@ -24,6 +24,7 @@ suncode-llm = { path = "../llm" }
 suncode-mcp = { path = "../mcp" }
 suncode-lsp = { path = "../lsp" }
 suncode-browser = { path = "../browser" }
+suncode-computer = { path = "../computer" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
 tokio-util = "0.7"
 uuid = { version = "1", features = ["v4", "serde"] }

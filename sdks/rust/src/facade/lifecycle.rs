@@ -136,7 +136,7 @@ impl AsyncAgentSdk {
                 "provider has no enabled models",
             ));
         }
-        let adapter = openai_provider(
+        let adapter = provider_adapter(
             &provider,
             Arc::new(SqliteApiKeyResolver {
                 store: self.state.store.clone(),

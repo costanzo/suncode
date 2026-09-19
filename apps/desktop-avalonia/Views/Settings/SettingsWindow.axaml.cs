@@ -52,7 +52,9 @@ public sealed partial class SettingsWindow : Window
     private LanguageServerEditorWindow? _languageServerEditorWindow;
     private readonly DispatcherTimer _mcpPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly DispatcherTimer _languageServerPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private readonly DispatcherTimer _computerPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly DispatcherTimer _browserPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private bool _refreshingComputerPage;
     private bool _refreshingBrowserPage;
     
     private int _baselineToolCallLimit;
@@ -93,6 +95,8 @@ public sealed partial class SettingsWindow : Window
         NetworkPage.ProxyTextChanged += ProxyTextChanged;
         NetworkPage.RemoveProxyPasswordRequested += RemoveProxyPassword;
         NetworkPage.SaveProxyRequested += SaveProxy;
+        ComputerPage.EnabledChanged += ComputerEnabledChanged;
+        ComputerPage.EmergencyStopRequested += EmergencyStopComputerUse;
         BrowserPage.EnabledChanged += BrowserEnabledChanged;
         BrowserPage.VerifyRequested += VerifyBrowserRuntime;
         BrowserPage.StartRequested += StartBrowserRuntime;
@@ -112,6 +116,7 @@ public sealed partial class SettingsWindow : Window
         LanguageServersPage.DeleteRequested += DeleteLanguageServer;
         _mcpPollTimer.Tick += McpPollTick;
         _languageServerPollTimer.Tick += LanguageServerPollTick;
+        _computerPollTimer.Tick += ComputerPollTick;
         _browserPollTimer.Tick += BrowserPollTick;
         WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
@@ -121,6 +126,8 @@ public sealed partial class SettingsWindow : Window
         {
             RebindViewModelSubscriptions();
             await ViewModel.LoadProjectToolCallLimitAsync();
+            await ViewModel.LoadComputerRuntimeAsync();
+            RefreshComputerPresentation();
             await ViewModel.LoadBrowserRuntimeAsync();
             RefreshBrowserPresentation();
             RefreshModelSelector();
@@ -198,6 +205,7 @@ public sealed partial class SettingsWindow : Window
         {
             _mcpPollTimer.Stop();
             _languageServerPollTimer.Stop();
+            _computerPollTimer.Stop();
             _browserPollTimer.Stop();
             _mcpEditorWindow?.Close();
             _languageServerEditorWindow?.Close();
@@ -218,6 +226,7 @@ public sealed partial class SettingsWindow : Window
     private void ShowAppearance(object? sender, RoutedEventArgs e) => SelectPage("appearance", sender as Button);
     private void ShowShortcuts(object? sender, RoutedEventArgs e) => SelectPage("shortcuts", sender as Button);
     private void ShowNetwork(object? sender, RoutedEventArgs e) => SelectPage("network", sender as Button);
+    private void ShowComputer(object? sender, RoutedEventArgs e) => SelectPage("computer", sender as Button);
     private void ShowBrowser(object? sender, RoutedEventArgs e) => SelectPage("browser", sender as Button);
     private void ShowMcp(object? sender, RoutedEventArgs e) => SelectPage("mcp", sender as Button);
     private void ShowLanguageServers(object? sender, RoutedEventArgs e) => SelectPage("lsp", sender as Button);
@@ -318,6 +327,7 @@ public sealed partial class SettingsWindow : Window
         AppearancePage.IsVisible = page == "appearance";
         ShortcutsPage.IsVisible = page == "shortcuts";
         NetworkPage.IsVisible = page == "network";
+        ComputerPage.IsVisible = page == "computer";
         BrowserPage.IsVisible = page == "browser";
         LoggingPage.IsVisible = page == "logging";
         McpPage.IsVisible = page == "mcp";
@@ -343,6 +353,15 @@ public sealed partial class SettingsWindow : Window
         {
             _languageServerPollTimer.Stop();
         }
+        if (page == "computer")
+        {
+            _ = LoadAndRefreshComputerAsync();
+            _computerPollTimer.Start();
+        }
+        else
+        {
+            _computerPollTimer.Stop();
+        }
         if (page == "browser")
         {
             _ = LoadAndRefreshBrowserAsync();
@@ -358,6 +377,7 @@ public sealed partial class SettingsWindow : Window
         if (page == "appearance") AppearanceNavigation.Classes.Set("selected", true);
         if (page == "shortcuts") ShortcutsNavigation.Classes.Set("selected", true);
         if (page == "network") NetworkNavigation.Classes.Set("selected", true);
+        if (page == "computer") ComputerNavigation.Classes.Set("selected", true);
         if (page == "browser") BrowserNavigation.Classes.Set("selected", true);
         if (page == "logging") LoggingNavigation.Classes.Set("selected", true);
         if (page == "mcp") McpNavigation.Classes.Set("selected", true);
@@ -371,6 +391,7 @@ public sealed partial class SettingsWindow : Window
         : AppearancePage.IsVisible ? "appearance"
         : ShortcutsPage.IsVisible ? "shortcuts"
         : NetworkPage.IsVisible ? "network"
+        : ComputerPage.IsVisible ? "computer"
         : BrowserPage.IsVisible ? "browser"
         : McpPage.IsVisible ? "mcp"
         : LanguageServersPage.IsVisible ? "lsp"
@@ -386,6 +407,87 @@ public sealed partial class SettingsWindow : Window
     private async void LanguageServerPollTick(object? sender, EventArgs e)
     {
         if (LanguageServersPage.IsVisible) await ViewModel.LoadLanguageServersAsync();
+    }
+
+    private async void ComputerPollTick(object? sender, EventArgs e)
+    {
+        if (ComputerPage.IsVisible) await LoadAndRefreshComputerAsync();
+    }
+
+    private async Task LoadAndRefreshComputerAsync()
+    {
+        await ViewModel.LoadComputerRuntimeAsync();
+        RefreshComputerPresentation();
+    }
+
+    private async void ComputerEnabledChanged(object? sender, RoutedEventArgs e)
+    {
+        if (!_ready || _refreshingComputerPage) return;
+        await ViewModel.SetComputerUseEnabledAsync(ComputerPage.EnabledToggleControl.IsChecked == true);
+        RefreshComputerPresentation();
+    }
+
+    private void RefreshComputerPresentation()
+    {
+        var runtime = ViewModel.ComputerRuntime;
+        if (runtime is null) return;
+        _refreshingComputerPage = true;
+        try
+        {
+            var model = ViewModel.SelectedModel;
+            var modelSupported = model?.SupportsComputerUse == true;
+            ComputerPage.EnabledToggleControl.IsChecked = runtime.Enabled;
+            ComputerPage.ModelSupportTextControl.Text = model is null
+                ? "No model selected"
+                : modelSupported ? "Supported" : "Not supported";
+            ComputerPage.ModelNameTextControl.Text = model?.Id ?? "No model selected";
+            ComputerPage.ModelStatusDotControl.Fill = this.FindResource(
+                modelSupported ? "SuccessBrush" : model is null ? "TextMutedBrush" : "WarningBrush") as IBrush;
+            ComputerPage.BackendStateTextControl.Text = !runtime.Enabled
+                ? "Disabled"
+                : runtime.BackendAvailable ? "Ready" : "Unavailable";
+            ComputerPage.BackendStatusDotControl.Fill = this.FindResource(
+                !runtime.Enabled ? "TextMutedBrush" : runtime.BackendAvailable ? "SuccessBrush" : "DangerBrush") as IBrush;
+            ComputerPage.TargetDisplayTextControl.Text = runtime.PixelWidth is { } width && runtime.PixelHeight is { } height
+                ? $"{FormatComputerValue(runtime.TargetDisplay)} · {width} × {height} px"
+                : FormatComputerValue(runtime.TargetDisplay);
+            ComputerPage.CapturePermissionTextControl.Text = FormatComputerValue(runtime.CapturePermission);
+            ComputerPage.CapturePermissionDotControl.Fill = ComputerPermissionBrush(runtime.CapturePermission);
+            ComputerPage.InputPermissionTextControl.Text = FormatComputerValue(runtime.InputPermission);
+            ComputerPage.InputPermissionDotControl.Fill = ComputerPermissionBrush(runtime.InputPermission);
+            ComputerPage.ControlOwnerTextControl.Text = FormatComputerValue(runtime.ControlOwner);
+            ComputerPage.StatusTextControl.Text = string.IsNullOrWhiteSpace(ViewModel.ComputerStatusText)
+                ? runtime.Error ?? string.Empty
+                : ViewModel.ComputerStatusText;
+            ComputerPage.EmergencyStopButtonControl.IsEnabled = runtime.Enabled && runtime.BackendAvailable;
+        }
+        finally
+        {
+            _refreshingComputerPage = false;
+        }
+    }
+
+    private static string FormatComputerValue(string value) => string.IsNullOrWhiteSpace(value)
+        ? "—"
+        : string.Join(
+            " ",
+            value.Split('_', StringSplitOptions.RemoveEmptyEntries)
+                .Select((part, index) => index == 0
+                    ? char.ToUpperInvariant(part[0]) + part[1..]
+                    : part));
+
+    private IBrush? ComputerPermissionBrush(string permission) => permission switch
+    {
+        "allowed" => this.FindResource("SuccessBrush") as IBrush,
+        "denied" => this.FindResource("DangerBrush") as IBrush,
+        "unsupported" => this.FindResource("WarningBrush") as IBrush,
+        _ => this.FindResource("TextMutedBrush") as IBrush
+    };
+
+    private async void EmergencyStopComputerUse(object? sender, RoutedEventArgs e)
+    {
+        await ViewModel.EmergencyStopComputerUseAsync();
+        RefreshComputerPresentation();
     }
 
     private async void BrowserPollTick(object? sender, EventArgs e)
@@ -646,7 +748,11 @@ public sealed partial class SettingsWindow : Window
 
     private async void DefaultModelChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (_ready && DefaultsPage.ModelSelector.SelectedItem?.Value is ModelItem model) await ViewModel.SaveDefaultModelAsync(model);
+        if (_ready && DefaultsPage.ModelSelector.SelectedItem?.Value is ModelItem model)
+        {
+            await ViewModel.SaveDefaultModelAsync(model);
+            RefreshComputerPresentation();
+        }
     }
 
     private async void ThemeChanged(object? sender, SelectionChangedEventArgs e)
@@ -968,6 +1074,7 @@ public sealed partial class SettingsWindow : Window
     private void ModelsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         RefreshModelSelector();
+        RefreshComputerPresentation();
         if (!string.IsNullOrWhiteSpace(ProviderManager.SelectedProviderId))
         {
             RefreshProvider();

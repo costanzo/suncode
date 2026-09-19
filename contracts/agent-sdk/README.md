@@ -12,7 +12,7 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 The async Rust facade owns agent services but no executor; `AsyncAgentSdk::open_default(...).await` and all runtime-dependent methods execute on the host's Tokio runtime. Pure local persistence and DTO operations remain synchronous and explicit. The root compatibility `AgentSdk` is the blocking wrapper: it owns one Tokio runtime, dereferences to the async facade for synchronous methods, and adapts only awaited operations with `block_on`. C embeds that blocking wrapper. Host wrappers may share one handle inside a process. The Rust facade exposes a typed `SessionEventStream` implementing standard `Stream` and `FusedStream` contracts plus direct receive methods; native bindings adapt that stream to their host runtime. C subscriptions must be closed before the final agent handle is released. Closing a C subscription signals its stream and stops callback delivery before returning.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 10. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 11. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
 ## Methods
 
@@ -32,6 +32,9 @@ The Rust API uses typed inputs and outputs. Async Rust hosts use `AsyncAgentSdk`
 | `set_credential` | Store or replace one provider API key |
 | `remove_credential` | Remove one provider API key |
 | `set_provider_endpoint` | Validate, persist, and apply one provider API base URL |
+| `computer_runtime_info` | Read global Computer Use enablement, backend availability, primary-display geometry, redacted permission state, control owner, and safe error state |
+| `set_computer_use_enabled` | Persist global Computer Use availability, install the built-in backend when enabling, and release held input when disabling |
+| `emergency_stop_computer_use` | Persist disabled state, cooperatively cancel active Computer Use work, and release held keys and mouse buttons |
 | `browser_runtime_info` | Read global Browser Use enablement, packaged component identity, installation health, and optional project runtime/profile state |
 | `set_browser_use_enabled` | Persist global Browser Use availability and stop active project runtimes when disabling |
 | `verify_browser_runtime` | Probe the bundled Node.js worker and validate its identity against the runtime lock |
@@ -115,6 +118,10 @@ MCP stdio processes receive a Rust-owned, OS-specific environment allowlist on e
 Language-server definitions are global desired state while processes, initialization, document versions, capabilities, and failures are project-scoped memory. The write DTO contains `displayName`, `command`, `arguments`, `languageIds`, `rootMarkers`, `initializationOptions`, write-only `environment` changes, startup/request timeouts, enabled state, and ordering. Read DTOs expose environment key names only. Runtime states are `not_started`, `disabled`, `starting`, `indexing`, `ready`, and `failed`. Processes launch without a shell in the project root and receive a filtered environment. The first delivery supports only local stdio servers and does not accept server-requested edits or arbitrary command execution.
 
 `browser_use_enabled` is a global-only boolean defaulting to `false`. The bundled Browser Use runtime is fixed by the installed application and cannot be replaced through SDK or Settings paths. `browser_runtime_info` reports installation state (`disabled`, `ready`, `missing`, `invalid`, `unsupported`, or `verifying`), project runtime state (`not_started`, `starting`, `background`, `user_controlled`, `stopping`, or `failed`), target, Node.js/Playwright/Chromium identity and paths, worker protocol, integrity, control owner, profile path/size, active page count, visibility capability, and a bounded safe error. Runtime state is memory-only; project profiles live under the agent data directory and are identified by a one-way project-ID-derived directory name.
+
+`computer_use_enabled` is a global-only boolean defaulting to `false`. Enabling installs the built-in Enigo-backed runtime and does not grant input authority. `computer_runtime_info` reports only redacted runtime facts: backend availability, primary-display input and screenshot dimensions, capture and input permission state (`allowed`, `denied`, `unknown`, or `unsupported`), current control owner, and a bounded safe error. Permission state may remain `unknown` where the backend cannot inspect it without performing a user-visible operation. Emergency stop disables the capability, makes active cooperative execution observe cancellation, and releases held input before returning. A later explicit enable is required to resume.
+
+Computer Use is interactive-only in the initial delivery. Observation actions follow the interactive default policy; any input-producing batch requires approval even when the session otherwise has Full Control. Screenshot bytes are transient provider context and are not returned by management DTOs or stored in durable continuation JSON.
 
 Browser runtime management never grants site authority. User-control handoff is exclusive and agent browser actions remain unavailable until control returns. Clearing a profile requires the runtime to be stopped and deletes browser cookies, login state, and site storage without changing project files. Chromium keeps ordinary certificate verification and does not inherit the global insecure certificate toggle.
 
