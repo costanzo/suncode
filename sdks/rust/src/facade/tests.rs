@@ -789,6 +789,7 @@ fn logging_settings_are_global_and_typed() {
     assert!(validate_setting("global", "log_retention", &json!(0)).is_ok());
     assert!(validate_setting("global", "verify_https_certificates", &json!(true)).is_ok());
     assert!(validate_setting("global", "image_directory", &json!("")).is_ok());
+    assert!(validate_setting("global", "browser_use_enabled", &json!(false)).is_ok());
 
     assert!(validate_setting("project", "log_level", &json!("INFO")).is_err());
     assert!(validate_setting("global", "log_level", &json!("VERBOSE")).is_err());
@@ -797,6 +798,8 @@ fn logging_settings_are_global_and_typed() {
     assert!(validate_setting("global", "log_retention", &json!(101)).is_err());
     assert!(validate_setting("project", "image_directory", &json!("/tmp/images")).is_err());
     assert!(validate_setting("global", "image_directory", &json!(9)).is_err());
+    assert!(validate_setting("project", "browser_use_enabled", &json!(true)).is_err());
+    assert!(validate_setting("global", "browser_use_enabled", &json!("yes")).is_err());
     assert!(validate_setting("session", "full_control", &json!(true)).is_ok());
     assert!(validate_setting("global", "full_control", &json!(true)).is_err());
     assert!(validate_setting("session", "full_control", &json!("yes")).is_err());
@@ -809,6 +812,31 @@ fn logging_settings_are_global_and_typed() {
     assert!(validate_setting("project", "tool_call_limit", &json!(64.0)).is_err());
     assert!(validate_setting("project", "verify_https_certificates", &json!(true)).is_err());
     assert!(validate_setting("global", "verify_https_certificates", &json!("yes")).is_err());
+}
+
+#[test]
+fn browser_use_enablement_is_global_and_reports_packaged_runtime_identity() {
+    let directory = tempfile::tempdir().unwrap();
+    let sdk = test_sdk(directory.path());
+    let disabled = sdk.browser_runtime_info(None).unwrap();
+    assert!(!disabled.enabled);
+    assert_eq!(disabled.node_version, "24.11.1");
+    assert_eq!(disabled.playwright_version, "1.55.0");
+    assert_eq!(disabled.chromium_revision, "1187");
+
+    let enabled = sdk.set_browser_use_enabled(true).unwrap();
+    assert!(enabled.enabled);
+    assert_eq!(
+        sdk.state
+            .store
+            .settings(None, None)
+            .unwrap()
+            .into_iter()
+            .find(|setting| setting.key == "browser_use_enabled")
+            .unwrap()
+            .value,
+        json!(true)
+    );
 }
 
 #[test]

@@ -5,6 +5,7 @@ pub enum Risk {
     ProcessExecution,
     NetworkAccess,
     ExternalTool,
+    BrowserAccess,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,6 +19,8 @@ pub fn evaluate(risk: Option<Risk>, non_interactive: bool, full_control: bool) -
     match risk {
         None => Decision::Deny,
         Some(Risk::ReadOnly) => Decision::Allow,
+        Some(Risk::BrowserAccess) if non_interactive => Decision::Deny,
+        Some(Risk::BrowserAccess) => Decision::ApprovalRequired,
         Some(_) if full_control => Decision::Allow,
         Some(_) if non_interactive => Decision::Deny,
         Some(_) => Decision::ApprovalRequired,
@@ -27,6 +30,9 @@ pub fn evaluate(risk: Option<Risk>, non_interactive: bool, full_control: bool) -
 pub fn tool_risk(name: &str) -> Option<Risk> {
     if name.starts_with("mcp__") {
         return Some(Risk::ExternalTool);
+    }
+    if name.starts_with("browser_") {
+        return Some(Risk::BrowserAccess);
     }
     match name {
         "read" | "glob" | "grep" | "lsp_diagnostics" | "lsp_definition" | "lsp_references"
@@ -66,6 +72,14 @@ mod tests {
             evaluate(tool_risk("mcp__github__search"), true, false),
             Decision::Deny
         );
+        assert_eq!(
+            evaluate(tool_risk("browser_click"), false, false),
+            Decision::ApprovalRequired
+        );
+        assert_eq!(
+            evaluate(tool_risk("browser_snapshot"), true, false),
+            Decision::Deny
+        );
     }
 
     #[test]
@@ -75,6 +89,10 @@ mod tests {
         assert_eq!(
             evaluate(tool_risk("webfetch"), false, true),
             Decision::Allow
+        );
+        assert_eq!(
+            evaluate(tool_risk("browser_click"), false, true),
+            Decision::ApprovalRequired
         );
         assert_eq!(evaluate(tool_risk("unknown"), false, true), Decision::Deny);
     }

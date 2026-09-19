@@ -29,12 +29,18 @@ Rust SunCode agent core
     |- SQLite, settings, events, and credentials
     |- filesystem, search, process, and artifacts
     |- project-scoped language-server protocol clients
+    |- project-scoped Browser Use lifecycle and audited browser tools
     `- checkpoints and operation journal
+
+Bundled Browser Use worker (lazy, one per active browser project)
+    |- fixed Node.js runtime
+    |- fixed Playwright package
+    `- fixed Chromium build and project-isolated persistent profile
 
 Future TypeScript N-API and Python PyO3 bindings embed the same SDK.
 ```
 
-There is no agent-to-core process boundary and no client-facing server. Operations are Rust modules called in-process after policy authorization. The old TypeScript runtime, core client, runtime server, JSON-RPC stdio core, and loopback HTTP/SSE adapter are not production architecture. Provider adapters still make outbound HTTPS requests to configured model providers.
+There is no agent-to-core process boundary and no client-facing server. Operations are Rust modules called in-process after policy authorization. The old TypeScript runtime, core client, runtime server, JSON-RPC stdio core, and loopback HTTP/SSE adapter are not production architecture. Provider adapters still make outbound HTTPS requests to configured model providers. Browser Use is the narrow exception to the otherwise Rust-only process topology: Rust may launch the exact bundled Node.js worker over a private framed stdio protocol, but that worker is a browser driver rather than an agent, provider, database owner, or extension host.
 
 ## 3. Ownership Boundaries
 
@@ -57,6 +63,7 @@ The Rust agent packages own:
 - global, project, and session configuration through the unified `configuration` table
 - project boundary checks and machine-affecting operations
 - project-scoped language-server definitions, lifecycle, document synchronization, and bounded semantic queries
+- bundled-browser validation, project-scoped Browser Use lifecycle, control handoff, policy enforcement, and artifact promotion
 - checkpoints, undo, managed artifacts, and operation reconciliation
 
 Provider and orchestration modules cannot perform project operations directly. They construct typed operation requests which pass through policy and the agent operation dispatcher.
@@ -72,6 +79,12 @@ The registry accepts trusted in-process Rust implementations of `LlmProvider` wi
 Tools are narrow Rust modules in the `suncode-tool` package inside the agent. The package owns the built-in model-facing tool catalog and canonical path validation, bounded reads/searches, read-only Git repository inspection, mutations, process execution, checkpoint payloads, artifacts, and operation journal records. It does not own provider semantics, conversation state, UI DTOs, or policy grants. Agent core converts the package's neutral tool definitions to provider request DTOs and remains responsible for policy, approval, orchestration, and conversation-only tool handling.
 
 This internal boundary is for auditability and testing. It is not a child-process security boundary.
+
+### 3.5 Browser Use worker
+
+The Browser Use worker is first-party, version-locked JavaScript running on the bundled Node.js executable. It owns Playwright objects, Chromium pages, accessibility snapshots, semantic locator resolution, and the private worker protocol. It receives dedicated profile, temporary, and staging directories plus a filtered environment. It cannot open SQLite, call model providers, choose policy, issue approvals, inspect project files, load plugins or browser extensions, or execute arbitrary model-authored JavaScript.
+
+Rust owns the worker and Chromium process tree, validates the runtime handshake against the packaged manifest, serializes project operations, and fails closed on a version, target, integrity, protocol, path, or generation mismatch. This containment is an auditable ownership boundary, not an OS sandbox.
 
 ## 4. Agent Lifecycle
 
@@ -95,6 +108,8 @@ The API key is read exclusively from the plaintext `llm_model_provider.api_key` 
 
 Global proxy configuration is stored in the unified `configuration` table and applies to every SunCode-owned HTTP client: built-in and persisted OpenAI-compatible providers, WebFetch, and remote Streamable HTTP MCP connections. Modes are no proxy, supported system proxy discovery, and custom HTTP/HTTPS proxy with Basic credentials and bypass rules. PAC, SOCKS, local MCP child-process traffic, and trusted third-party provider internals are outside this guarantee. `proxy_password` follows the current plaintext SQLite policy but is removed from settings read projections, which expose only `proxy_password_configured`.
 
+Bundled Chromium receives the effective no-proxy, system-proxy, or custom-proxy configuration through the Rust-owned Browser Use launch boundary. Chromium retains its normal certificate verification and never inherits `verify_https_certificates=false`; SunCode does not bypass browser HTTPS interstitials. Custom trust-file support for Chromium is outside the first Browser Use delivery.
+
 ## 7. Persistence
 
 Rust is the only database owner. Avalonia, providers, and future extensions never open the database.
@@ -117,6 +132,8 @@ Every tool call is validated, assigned a declared risk, evaluated by policy, and
 Built-in agent tool lists are capability ceilings, not authority grants. Child calls still pass the same validation, project scope, policy, approval, audit, checkpoint, and operation dispatcher as primary calls. Unknown or disallowed tools fail before policy evaluation.
 
 Approval precedes execution. Approval requests and suspended continuations are durable and single-use. A restart may reconcile an operation with a durable idempotency record but must not blindly replay a provider call with unknown completion.
+
+Browser capability enablement is not browser authority. In the initial implementation, every Browser Use tool call requires interactive approval and is not bypassed by general Full Control; non-interactive calls fail closed. Page content is untrusted and cannot authorize an operation. Fine-grained origin/action classification and preflight descriptors remain delivery work before lower-risk observations can use narrower policy. Browser changes to external systems and browser profiles are not covered by filesystem undo.
 
 ## 9. Reversibility and Recovery
 
@@ -144,6 +161,8 @@ agent/crates/llm/       provider-neutral LLM contracts, catalog, registry, and a
 agent/crates/tools/      `suncode-tool` package for built-in definitions and audited in-process machine operations
 agent/crates/mcp/        bounded MCP client transports, discovery, invocation, and result normalization
 agent/crates/lsp/        bounded local-stdio LSP framing, lifecycle, document sync, and semantic requests
+agent/crates/browser/    bounded Browser Use worker protocol, runtime validation, and process lifecycle
+browser-runtime/        fixed JavaScript worker plus target-specific Node.js, Playwright, and Chromium packaging inputs
 sdks/rust/                typed Rust SDK facade over the agent harness
     sdks/c/                   stable C ABI/native library
     sdks/csharp/              typed managed SDK and native integration for Avalonia
@@ -164,8 +183,8 @@ The old `typescript/` packages and retired `rust/` workspace were migration sour
 - The LLM crate does not depend on the database, agent core, SDK, desktop, or tools crates.
 - The Rust SDK composition supplies credentials to the LLM crate through its provider-neutral resolver interface; the agent core supplies tool schemas through provider-neutral request DTOs.
 - Tools do not depend on agent, provider, persistence projections, or client DTOs.
-- No production TypeScript or Node.js process remains in Phase 1.
+- No production TypeScript agent path remains in Phase 1. The only production Node.js process is the fixed bundled Playwright Browser Use worker; no other package may depend on it or use it as a general execution or extension host.
 
 ## 12. Deferred Scope
 
-Phase 1 defers TypeScript and Python package implementation, CLI/TUI/Web clients, cross-process IPC, executable or dynamically loaded provider plugins, MCP prompts/resources/OAuth, client creation/removal of custom provider and model catalog entries, PTY interaction, hosted execution, collaboration, telemetry, filesystem indexing/watchers, Git mutations and remote operations, other VCS-aware semantic operations, and cross-platform OS sandbox profiles. Settings may manage tools-only MCP servers over local stdio and remote Streamable HTTP through the Rust-owned SDK. Local MCP processes are lifecycle-contained and policy-mediated but are not OS-sandboxed; the client and approval surfaces state that authority and undo limitation explicitly.
+Phase 1 defers TypeScript and Python package implementation, CLI/TUI/Web clients, client-facing cross-process IPC, executable or dynamically loaded provider plugins, MCP prompts/resources/OAuth, client creation/removal of custom provider and model catalog entries, PTY interaction, hosted execution, collaboration, telemetry, filesystem indexing/watchers, Git mutations and remote operations, other VCS-aware semantic operations, arbitrary browser script execution, external browser profiles, non-Chromium browsers, and cross-platform OS sandbox profiles. Settings may manage tools-only MCP servers over local stdio and remote Streamable HTTP through the Rust-owned SDK. Local MCP, LSP, Browser Use worker, and Chromium processes are lifecycle-contained and policy-mediated but are not OS-sandboxed; the client and approval surfaces state their authority and undo limitations explicitly.

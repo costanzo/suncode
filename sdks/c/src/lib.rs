@@ -93,6 +93,69 @@ ffi_no_args!(suncode_agent_sdk_list_projects, list_projects);
 ffi_no_args!(suncode_agent_sdk_list_agents, list_agents);
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_browser_runtime_info(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let project_id = optional_c_string(project_id, "project_id")?;
+        sdk.browser_runtime_info(project_id.as_deref())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_set_browser_use_enabled(
+    handle: *mut SunCodeAgentHandle,
+    enabled: u8,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| sdk.set_browser_use_enabled(enabled != 0))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_verify_browser_runtime(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let project_id = optional_c_string(project_id, "project_id")?;
+        sdk.verify_browser_runtime(project_id.as_deref())
+    })
+}
+
+macro_rules! browser_project_ffi {
+    ($function:ident, $method:ident) => {
+        #[no_mangle]
+        pub unsafe extern "C" fn $function(
+            handle: *mut SunCodeAgentHandle,
+            project_id: *const c_char,
+        ) -> *mut c_char {
+            ffi_call(handle, |sdk| {
+                sdk.$method(&c_string(project_id, "project_id")?)
+            })
+        }
+    };
+}
+
+browser_project_ffi!(
+    suncode_agent_sdk_start_browser_project,
+    start_browser_project
+);
+browser_project_ffi!(suncode_agent_sdk_take_browser_control, take_browser_control);
+browser_project_ffi!(
+    suncode_agent_sdk_return_browser_control,
+    return_browser_control
+);
+browser_project_ffi!(
+    suncode_agent_sdk_restart_browser_runtime,
+    restart_browser_runtime
+);
+browser_project_ffi!(suncode_agent_sdk_stop_browser_runtime, stop_browser_runtime);
+browser_project_ffi!(
+    suncode_agent_sdk_clear_browser_profile,
+    clear_browser_profile
+);
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_list_mcp_servers(
     handle: *mut SunCodeAgentHandle,
     project_id: *const c_char,
@@ -971,7 +1034,7 @@ mod tests {
 
     #[test]
     fn exposes_the_current_abi_version() {
-        assert_eq!(suncode_agent_sdk_abi_version(), 8);
+        assert_eq!(suncode_agent_sdk_abi_version(), 9);
     }
 
     #[test]

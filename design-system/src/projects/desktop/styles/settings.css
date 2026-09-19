@@ -341,6 +341,139 @@
   margin: 28px 0;
   background: var(--border);
 }
+.browser-runtime-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+  padding: 13px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.browser-runtime-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  color: var(--text-muted);
+}
+.browser-runtime-state.is-ready,
+.browser-runtime-state.is-background {
+  color: var(--success);
+}
+.browser-runtime-state.is-verifying,
+.browser-runtime-state.is-starting,
+.browser-runtime-state.is-user_controlled {
+  color: var(--warning);
+}
+.browser-runtime-state.is-invalid,
+.browser-runtime-state.is-failed {
+  color: var(--danger);
+}
+.browser-runtime-state > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.browser-runtime-state strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.browser-runtime-state span:last-child {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.browser-component-list {
+  display: grid;
+  border-top: 1px solid var(--border);
+}
+.browser-component-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 30px;
+  gap: 14px;
+  align-items: center;
+  min-height: 58px;
+  border-bottom: 1px solid var(--border);
+}
+.browser-component-row > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.browser-component-row > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.browser-component-row code,
+.browser-readonly-value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font: 10px/1.4 var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.browser-component-row small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font: 9px/1.4 var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.browser-integrity-note,
+.browser-control-note,
+.browser-authority-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 12px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.browser-integrity-note {
+  margin-top: 14px;
+}
+.browser-control-note {
+  margin-top: 20px;
+}
+.browser-authority-note {
+  margin-top: 28px;
+}
+.browser-integrity-note .ds-icon {
+  color: var(--success);
+}
+.browser-control-note .ds-icon {
+  color: var(--accent);
+}
+.browser-authority-note .ds-icon {
+  color: var(--warning);
+}
+.browser-integrity-note > div,
+.browser-control-note > div,
+.browser-authority-note > div {
+  display: grid;
+  gap: 3px;
+}
+.browser-integrity-note strong,
+.browser-control-note strong,
+.browser-authority-note strong {
+  color: var(--text);
+  font-size: 11px;
+}
+.browser-integrity-note span,
+.browser-control-note span,
+.browser-authority-note span {
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.browser-runtime-actions {
+  align-items: stretch;
+}
 .settings-switch {
   display: inline-flex;
   align-items: center;
@@ -1485,6 +1618,14 @@
   }
   .settings-row-control {
     width: 100%;
+  }
+  .browser-runtime-summary {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .browser-component-row {
+    grid-template-columns: 88px minmax(0, 1fr) 30px;
+    gap: 10px;
   }
   .settings-switch {
     justify-content: flex-start;

@@ -25,6 +25,15 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_set_provider_endpoint(IntPtr handle, IntPtr provider, IntPtr endpoint);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_projects(IntPtr handle);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_agents(IntPtr handle);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_browser_runtime_info(IntPtr handle, IntPtr projectId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_set_browser_use_enabled(IntPtr handle, byte enabled);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_verify_browser_runtime(IntPtr handle, IntPtr projectId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_start_browser_project(IntPtr handle, IntPtr projectId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_take_browser_control(IntPtr handle, IntPtr projectId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_return_browser_control(IntPtr handle, IntPtr projectId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_restart_browser_runtime(IntPtr handle, IntPtr projectId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_stop_browser_runtime(IntPtr handle, IntPtr projectId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_clear_browser_profile(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_mcp_servers(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_create_mcp_server(IntPtr handle, IntPtr projectId, IntPtr idempotencyKey, IntPtr requestJson);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_update_mcp_server(IntPtr handle, IntPtr projectId, IntPtr serverId, ulong expectedRevision, IntPtr idempotencyKey, IntPtr requestJson);

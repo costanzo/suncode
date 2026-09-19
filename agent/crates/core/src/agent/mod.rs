@@ -28,6 +28,11 @@ use events::*;
 mod lsp;
 use lsp::LanguageServerManager;
 pub use lsp::{LanguageServerRuntimeState, LanguageServerRuntimeStatus};
+mod browser;
+use browser::BrowserManager;
+pub use browser::{
+    BrowserInstallationState, BrowserRuntimeInfo, BrowserRuntimeState, BrowserVisibilityCapability,
+};
 mod mcp;
 use mcp::McpManager;
 pub use mcp::{McpLoadProgress, McpRuntimeState, McpRuntimeStatus};
@@ -143,6 +148,7 @@ pub struct Agent {
     session_locks: Arc<AsyncMutex<HashMap<String, Arc<AsyncMutex<()>>>>>,
     mcp: McpManager,
     lsp: LanguageServerManager,
+    browser: BrowserManager,
 }
 
 include!("submission.rs");

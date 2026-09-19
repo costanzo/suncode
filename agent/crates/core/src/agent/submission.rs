@@ -30,8 +30,9 @@ impl Agent {
     where
         P: Into<Arc<ModelProviderRegistry>>,
     {
-        let mcp = McpManager::new(store.clone(), application_data);
+        let mcp = McpManager::new(store.clone(), application_data.clone());
         let lsp = LanguageServerManager::new(store.clone());
+        let browser = BrowserManager::new(store.clone(), application_data.clone());
         Self {
             user_id: "default".into(),
             store,
@@ -45,6 +46,7 @@ impl Agent {
             session_locks: Arc::new(AsyncMutex::new(HashMap::new())),
             mcp,
             lsp,
+            browser,
         }
     }
 

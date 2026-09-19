@@ -121,6 +121,7 @@ impl Agent {
                 } else {
                     tool_definitions.push(delegate_agent_definition());
                     tool_definitions.extend(self.mcp.catalog(&context.project_id).await);
+                    tool_definitions.extend(self.browser.catalog().await);
                 }
                 let provider_call = provider.provider.complete(
                     CompletionRequest {

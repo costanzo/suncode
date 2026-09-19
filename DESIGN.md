@@ -243,6 +243,18 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Rows:** Each row places the operation name on the left and a right-aligned combination of compact `<kbd>` keycaps on the right. Use the existing mono data font, raised surface, hairline border, and compact 4px keycap radius.
 - **Platform note:** The review surface may use macOS notation for the specimen, but the page should state that Windows and Linux use `Ctrl` where applicable. The catalog should describe shortcuts that are actually implemented by the desktop client.
 
+### Browser Use Settings
+
+- **Placement:** Browser use is a first-level Settings destination immediately after Network and before MCP servers. It configures one bundled first-party capability rather than a catalog, so it never expands into navigation children.
+- **Primary decision:** The global `Enable Browser Use` toggle is the first row. It states that enabling makes the capability available but neither launches Chromium immediately nor grants authority over websites or consequential actions.
+- **Runtime truth:** Installation health and the current project's runtime state are separate. Installation uses disabled, ready, verifying, invalid, unsupported, and missing-dependency states. Project runtime uses not-started, starting, background, user-controlled, stopping, and failed states.
+- **Component identity:** A compact read-only component list shows target, Node.js, Playwright, Chromium, worker protocol, and integrity. Machine paths and versions use the data font, elide in the middle where necessary, remain selectable/copyable, and never become editable fields.
+- **Project scope:** With a current project, one section shows the persistent per-project profile path, approximate size, active page count, visibility capability, and safe last error. Without a project, the same section becomes one quiet explanatory empty state rather than showing invented global browser state.
+- **Control handoff:** `Show browser and take control` is an explicit neutral action. While user control is active, the page replaces it with `Return control to agent`; copy explains that browser tools are paused and that returning control invalidates old page references. Agent and user never appear to own the browser simultaneously.
+- **Recovery and deletion:** Retry, restart, and stop are contextual quiet actions. `Clear browser data` is a danger action using the shared confirmation window, names the current project, requires the runtime to stop first, and explains that saved logins and site data will be removed while project files remain unchanged.
+- **Authority copy:** The page states that websites and browser profiles are outside filesystem undo, that page content is untrusted, and that sensitive or consequential web actions still require confirmation. It does not describe the bundled worker or Chromium as sandboxed.
+- **Layout:** Reuse Settings headings, sections, rows, hairline dividers, native toggles, compact buttons, status dots, and monospace data. Do not introduce equal-weight runtime cards, large version metrics, decorative browser illustrations, or a separate dashboard grammar.
+
 ### MCP Server Settings
 
 - **Placement:** MCP servers is a first-level Settings destination. Individual servers stay in the content list rather than becoming navigation children, so the navigation remains stable as the catalog grows.

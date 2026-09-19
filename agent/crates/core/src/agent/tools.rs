@@ -501,6 +501,27 @@ impl Agent {
             };
             return self.record_call_success(context, call, result);
         }
+        if browser::is_browser_tool(&call.name) {
+            let result = match self
+                .browser
+                .call(
+                    &context.project_id,
+                    &call.name,
+                    call.arguments.clone(),
+                    token,
+                )
+                .await
+            {
+                Ok(result) => result,
+                Err(error) => {
+                    if !self.record_recoverable_call_error(context, call, &error)? {
+                        return Err(error);
+                    }
+                    return Ok(());
+                }
+            };
+            return self.record_call_success(context, call, result);
+        }
         let (project_root, mut params) = match self.prepare_call(context, call) {
             Ok(prepared) => prepared,
             Err(error) => {
@@ -554,7 +575,10 @@ impl Agent {
             error.code.as_str(),
             "invalid_arguments" | "malformed_tool_call"
         ) {
-            if !error.code.starts_with("mcp_") && !error.code.starts_with("lsp_") {
+            if !error.code.starts_with("mcp_")
+                && !error.code.starts_with("lsp_")
+                && !error.code.starts_with("browser_")
+            {
                 return Ok(false);
             }
         }

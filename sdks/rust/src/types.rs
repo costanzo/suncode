@@ -10,7 +10,7 @@ use suncode_agent::domain::{
 use suncode_common::BusinessError;
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 8;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 9;
 pub type SdkResult<T> = Result<T, BusinessError>;
 pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
 
@@ -80,6 +80,13 @@ pub struct SettingUpdate {
     pub key: String,
     pub scope: String,
     pub scope_id: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BrowserProfileClearResult {
+    pub project_id: String,
+    pub cleared: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]

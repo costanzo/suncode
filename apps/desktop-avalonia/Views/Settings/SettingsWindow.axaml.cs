@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia.Controls;
 using Avalonia;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -51,6 +52,8 @@ public sealed partial class SettingsWindow : Window
     private LanguageServerEditorWindow? _languageServerEditorWindow;
     private readonly DispatcherTimer _mcpPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly DispatcherTimer _languageServerPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private readonly DispatcherTimer _browserPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private bool _refreshingBrowserPage;
     
     private int _baselineToolCallLimit;
     private string _baselineLogDirectory = string.Empty;
@@ -90,6 +93,17 @@ public sealed partial class SettingsWindow : Window
         NetworkPage.ProxyTextChanged += ProxyTextChanged;
         NetworkPage.RemoveProxyPasswordRequested += RemoveProxyPassword;
         NetworkPage.SaveProxyRequested += SaveProxy;
+        BrowserPage.EnabledChanged += BrowserEnabledChanged;
+        BrowserPage.VerifyRequested += VerifyBrowserRuntime;
+        BrowserPage.StartRequested += StartBrowserRuntime;
+        BrowserPage.TakeControlRequested += TakeBrowserControl;
+        BrowserPage.ReturnControlRequested += ReturnBrowserControl;
+        BrowserPage.RestartRequested += RestartBrowserRuntime;
+        BrowserPage.StopRequested += StopBrowserRuntime;
+        BrowserPage.ClearRequested += ClearBrowserProfile;
+        BrowserPage.CopyNodePathRequested += CopyBrowserNodePath;
+        BrowserPage.CopyChromiumPathRequested += CopyBrowserChromiumPath;
+        BrowserPage.CopyProfilePathRequested += CopyBrowserProfilePath;
         McpPage.AddRequested += AddMcpServer;
         McpPage.EditRequested += EditMcpServer;
         McpPage.DeleteRequested += DeleteMcpServer;
@@ -98,6 +112,7 @@ public sealed partial class SettingsWindow : Window
         LanguageServersPage.DeleteRequested += DeleteLanguageServer;
         _mcpPollTimer.Tick += McpPollTick;
         _languageServerPollTimer.Tick += LanguageServerPollTick;
+        _browserPollTimer.Tick += BrowserPollTick;
         WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
@@ -106,6 +121,8 @@ public sealed partial class SettingsWindow : Window
         {
             RebindViewModelSubscriptions();
             await ViewModel.LoadProjectToolCallLimitAsync();
+            await ViewModel.LoadBrowserRuntimeAsync();
+            RefreshBrowserPresentation();
             RefreshModelSelector();
             AppearancePage.ThemeSelectorControl.ItemsSource = ThemeOptions;
             AppearancePage.ThemeSelectorControl.SelectedItem = ThemeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ThemeMode));
@@ -181,6 +198,7 @@ public sealed partial class SettingsWindow : Window
         {
             _mcpPollTimer.Stop();
             _languageServerPollTimer.Stop();
+            _browserPollTimer.Stop();
             _mcpEditorWindow?.Close();
             _languageServerEditorWindow?.Close();
         };
@@ -200,6 +218,7 @@ public sealed partial class SettingsWindow : Window
     private void ShowAppearance(object? sender, RoutedEventArgs e) => SelectPage("appearance", sender as Button);
     private void ShowShortcuts(object? sender, RoutedEventArgs e) => SelectPage("shortcuts", sender as Button);
     private void ShowNetwork(object? sender, RoutedEventArgs e) => SelectPage("network", sender as Button);
+    private void ShowBrowser(object? sender, RoutedEventArgs e) => SelectPage("browser", sender as Button);
     private void ShowMcp(object? sender, RoutedEventArgs e) => SelectPage("mcp", sender as Button);
     private void ShowLanguageServers(object? sender, RoutedEventArgs e) => SelectPage("lsp", sender as Button);
     private void ShowLogging(object? sender, RoutedEventArgs e) => SelectPage("logging", sender as Button);
@@ -299,6 +318,7 @@ public sealed partial class SettingsWindow : Window
         AppearancePage.IsVisible = page == "appearance";
         ShortcutsPage.IsVisible = page == "shortcuts";
         NetworkPage.IsVisible = page == "network";
+        BrowserPage.IsVisible = page == "browser";
         LoggingPage.IsVisible = page == "logging";
         McpPage.IsVisible = page == "mcp";
         LanguageServersPage.IsVisible = page == "lsp";
@@ -323,12 +343,22 @@ public sealed partial class SettingsWindow : Window
         {
             _languageServerPollTimer.Stop();
         }
+        if (page == "browser")
+        {
+            _ = LoadAndRefreshBrowserAsync();
+            _browserPollTimer.Start();
+        }
+        else
+        {
+            _browserPollTimer.Stop();
+        }
         foreach (var button in this.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("navigation")))
             button.Classes.Set("selected", button == selected);
         if (page == "defaults") DefaultsNavigation.Classes.Set("selected", true);
         if (page == "appearance") AppearanceNavigation.Classes.Set("selected", true);
         if (page == "shortcuts") ShortcutsNavigation.Classes.Set("selected", true);
         if (page == "network") NetworkNavigation.Classes.Set("selected", true);
+        if (page == "browser") BrowserNavigation.Classes.Set("selected", true);
         if (page == "logging") LoggingNavigation.Classes.Set("selected", true);
         if (page == "mcp") McpNavigation.Classes.Set("selected", true);
         if (page == "lsp") LanguageServersNavigation.Classes.Set("selected", true);
@@ -341,6 +371,7 @@ public sealed partial class SettingsWindow : Window
         : AppearancePage.IsVisible ? "appearance"
         : ShortcutsPage.IsVisible ? "shortcuts"
         : NetworkPage.IsVisible ? "network"
+        : BrowserPage.IsVisible ? "browser"
         : McpPage.IsVisible ? "mcp"
         : LanguageServersPage.IsVisible ? "lsp"
         : AgentsPage.IsVisible ? "agents"
@@ -355,6 +386,194 @@ public sealed partial class SettingsWindow : Window
     private async void LanguageServerPollTick(object? sender, EventArgs e)
     {
         if (LanguageServersPage.IsVisible) await ViewModel.LoadLanguageServersAsync();
+    }
+
+    private async void BrowserPollTick(object? sender, EventArgs e)
+    {
+        if (BrowserPage.IsVisible) await LoadAndRefreshBrowserAsync();
+    }
+
+    private async Task LoadAndRefreshBrowserAsync()
+    {
+        await ViewModel.LoadBrowserRuntimeAsync();
+        RefreshBrowserPresentation();
+    }
+
+    private async void BrowserEnabledChanged(object? sender, RoutedEventArgs e)
+    {
+        if (!_ready || _refreshingBrowserPage) return;
+        await ViewModel.SetBrowserUseEnabledAsync(BrowserPage.EnabledToggleControl.IsChecked == true);
+        RefreshBrowserPresentation();
+    }
+
+    private async void VerifyBrowserRuntime(object? sender, RoutedEventArgs e)
+    {
+        await ViewModel.VerifyBrowserRuntimeAsync();
+        RefreshBrowserPresentation();
+    }
+
+    private async void StartBrowserRuntime(object? sender, RoutedEventArgs e)
+    {
+        await ViewModel.StartBrowserProjectAsync();
+        RefreshBrowserPresentation();
+    }
+
+    private async void TakeBrowserControl(object? sender, RoutedEventArgs e)
+    {
+        await ViewModel.TakeBrowserControlAsync();
+        RefreshBrowserPresentation();
+    }
+
+    private async void ReturnBrowserControl(object? sender, RoutedEventArgs e)
+    {
+        await ViewModel.ReturnBrowserControlAsync();
+        RefreshBrowserPresentation();
+    }
+
+    private async void RestartBrowserRuntime(object? sender, RoutedEventArgs e)
+    {
+        await ViewModel.RestartBrowserRuntimeAsync();
+        RefreshBrowserPresentation();
+    }
+
+    private async void StopBrowserRuntime(object? sender, RoutedEventArgs e)
+    {
+        await ViewModel.StopBrowserRuntimeAsync();
+        RefreshBrowserPresentation();
+    }
+
+    private void ClearBrowserProfile(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedProject is not { } project) return;
+        var dialog = new ConfirmationWindow(
+            "Clear browser data?",
+            "Saved logins, cookies, site storage, and browsing state for this project will be removed. Project files are unchanged.",
+            project.DisplayName,
+            () => _ = ClearBrowserProfileConfirmedAsync(),
+            "PROJECT BROWSER PROFILE",
+            "Clear browser data");
+        IsEnabled = false;
+        dialog.Closed += (_, _) => IsEnabled = true;
+        _ = dialog.ShowDialog(this);
+    }
+
+    private async Task ClearBrowserProfileConfirmedAsync()
+    {
+        await ViewModel.ClearBrowserProfileAsync();
+        RefreshBrowserPresentation();
+    }
+
+    private async void CopyBrowserNodePath(object? sender, RoutedEventArgs e) =>
+        await CopyBrowserValueAsync(ViewModel.BrowserRuntime?.NodePath);
+
+    private async void CopyBrowserChromiumPath(object? sender, RoutedEventArgs e) =>
+        await CopyBrowserValueAsync(ViewModel.BrowserRuntime?.ChromiumPath);
+
+    private async void CopyBrowserProfilePath(object? sender, RoutedEventArgs e) =>
+        await CopyBrowserValueAsync(ViewModel.BrowserRuntime?.ProfilePath);
+
+    private async Task CopyBrowserValueAsync(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard) return;
+        await clipboard.SetTextAsync(value);
+        BrowserPage.StatusTextControl.Text = "Copied to clipboard.";
+    }
+
+    private void RefreshBrowserPresentation()
+    {
+        var runtime = ViewModel.BrowserRuntime;
+        if (runtime is null) return;
+        _refreshingBrowserPage = true;
+        try
+        {
+            BrowserPage.EnabledToggleControl.IsChecked = runtime.Enabled;
+            BrowserPage.InstallationStateTextControl.Text = FormatBrowserState(runtime.InstallationState);
+            BrowserPage.RuntimeStateTextControl.Text = FormatBrowserState(runtime.RuntimeState);
+            BrowserPage.InstallationStatusDotControl.Fill = BrowserStateBrush(runtime.InstallationState);
+            BrowserPage.RuntimeStatusDotControl.Fill = BrowserStateBrush(runtime.RuntimeState);
+            BrowserPage.RuntimeScopeTextControl.Text = ViewModel.SelectedProject is { } project
+                ? $"Project: {project.DisplayName}"
+                : "No project selected";
+            BrowserPage.TargetTextControl.Text = EmptyAsDash(runtime.Target);
+            BrowserPage.NodeVersionTextControl.Text = EmptyAsDash(runtime.NodeVersion);
+            BrowserPage.NodePathTextControl.Text = EmptyAsDash(runtime.NodePath);
+            ToolTip.SetTip(BrowserPage.NodePathTextControl, runtime.NodePath);
+            BrowserPage.CopyNodePathButtonControl.IsEnabled = !string.IsNullOrWhiteSpace(runtime.NodePath);
+            BrowserPage.PlaywrightVersionTextControl.Text = EmptyAsDash(runtime.PlaywrightVersion);
+            BrowserPage.ChromiumVersionTextControl.Text = string.IsNullOrWhiteSpace(runtime.ChromiumRevision)
+                ? EmptyAsDash(runtime.ChromiumVersion)
+                : $"{runtime.ChromiumVersion} · revision {runtime.ChromiumRevision}";
+            BrowserPage.ChromiumPathTextControl.Text = EmptyAsDash(runtime.ChromiumPath);
+            ToolTip.SetTip(BrowserPage.ChromiumPathTextControl, runtime.ChromiumPath);
+            BrowserPage.CopyChromiumPathButtonControl.IsEnabled = !string.IsNullOrWhiteSpace(runtime.ChromiumPath);
+            BrowserPage.WorkerProtocolTextControl.Text = runtime.WorkerProtocolVersion.ToString();
+            BrowserPage.IntegrityTextControl.Text = runtime.IntegrityState switch
+            {
+                "verified" => "Integrity verified",
+                "unverified" => "Integrity not yet verified",
+                _ => "Integrity unavailable"
+            };
+            var hasProject = ViewModel.SelectedProject is not null;
+            BrowserPage.ProjectSectionControl.IsVisible = hasProject;
+            BrowserPage.NoProjectSectionControl.IsVisible = !hasProject;
+            BrowserPage.ProfilePathTextControl.Text = EmptyAsDash(runtime.ProfilePath);
+            ToolTip.SetTip(BrowserPage.ProfilePathTextControl, runtime.ProfilePath);
+            BrowserPage.CopyProfilePathButtonControl.IsEnabled = !string.IsNullOrWhiteSpace(runtime.ProfilePath);
+            BrowserPage.ProfileUsageTextControl.Text = runtime.ProfileSizeBytes is { } bytes
+                ? $"{FormatByteSize(bytes)} · {runtime.ActivePageCount} active pages"
+                : "—";
+            BrowserPage.VisibilityTextControl.Text = FormatBrowserState(runtime.VisibilityCapability);
+            var userControlled = runtime.RuntimeState == "user_controlled";
+            BrowserPage.ControlTitleTextControl.Text = userControlled
+                ? "You control Chromium"
+                : "Agent control is active";
+            BrowserPage.ControlHintTextControl.Text = userControlled
+                ? "Browser tools are paused. Returning control invalidates previous element references."
+                : "Showing the browser transfers exclusive control to you and pauses browser tools.";
+            BrowserPage.ErrorTextControl.Text = runtime.Error ?? string.Empty;
+            BrowserPage.ErrorTextControl.IsVisible = !string.IsNullOrWhiteSpace(runtime.Error);
+            BrowserPage.StatusTextControl.Text = ViewModel.BrowserStatusText;
+            var installationReady = runtime.Enabled && runtime.InstallationState == "ready";
+            var notStarted = runtime.RuntimeState == "not_started";
+            BrowserPage.VerifyButtonControl.IsEnabled = runtime.Enabled;
+            BrowserPage.StartButtonControl.IsVisible = hasProject && notStarted;
+            BrowserPage.StartButtonControl.IsEnabled = installationReady;
+            BrowserPage.TakeControlButtonControl.IsVisible = hasProject && runtime.RuntimeState == "background";
+            BrowserPage.TakeControlButtonControl.IsEnabled = installationReady;
+            BrowserPage.ReturnControlButtonControl.IsVisible = hasProject && userControlled;
+            BrowserPage.RestartButtonControl.IsEnabled = installationReady && !notStarted && !userControlled;
+            BrowserPage.StopButtonControl.IsEnabled = !notStarted;
+            BrowserPage.ClearButtonControl.IsEnabled = hasProject && notStarted;
+        }
+        finally
+        {
+            _refreshingBrowserPage = false;
+        }
+    }
+
+    private static string FormatBrowserState(string value) => string.Join(
+        " ",
+        value.Split('_', StringSplitOptions.RemoveEmptyEntries)
+            .Select((part, index) => index == 0
+                ? char.ToUpperInvariant(part[0]) + part[1..]
+                : part));
+
+    private static string EmptyAsDash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+
+    private IBrush? BrowserStateBrush(string state) => state switch
+    {
+        "ready" or "background" => this.FindResource("SuccessBrush") as IBrush,
+        "verifying" or "starting" or "stopping" or "user_controlled" => this.FindResource("WarningBrush") as IBrush,
+        "missing" or "invalid" or "unsupported" or "failed" => this.FindResource("DangerBrush") as IBrush,
+        _ => this.FindResource("TextMutedBrush") as IBrush
+    };
+
+    private static string FormatByteSize(ulong value)
+    {
+        if (value >= 1024UL * 1024UL * 1024UL) return $"{value / (1024d * 1024d * 1024d):0.0} GB";
+        if (value >= 1024UL * 1024UL) return $"{value / (1024d * 1024d):0.0} MB";
+        if (value >= 1024UL) return $"{value / 1024d:0.0} KB";
+        return $"{value} B";
     }
 
     private void AddMcpServer() => OpenMcpEditor(null);

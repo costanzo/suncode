@@ -22,7 +22,7 @@ Before non-trivial work:
 - Clients consume the client API or Rust SDK facade; they do not access SQLite or model providers directly. Phase 1 ships the Avalonia desktop client, and CLI/TUI/Web are deferred.
 - The production desktop application uses .NET 10 and Avalonia. Other desktop UI toolkits and Electron are not supported production dependencies.
 - Protocol contracts are written documents, hand-implemented per language, and verified by focused implementation tests. Nothing is generated.
-- The agent core is Rust. Node.js and Bun are prohibited as Phase 1 production runtime dependencies.
+- The agent core is Rust. The sole Phase 1 production Node.js exception is the fixed, bundled first-party Playwright Browser Use worker approved by `ADR-20260919-bundled-playwright-browser-runtime`; it is not an agent, provider, plugin host, or general execution surface. Bun and every other production Node.js path remain prohibited.
 - The Rust boundary is not an OS-enforced sandbox around the agent. Its value is containing third-party code and providing one auditable path. Do not write designs that assume it isolates a compromised agent.
 - Phase 1 uses an embedded desktop agent. Do not add tenancy, remote identity, or hosted-infrastructure assumptions without an approved requirement.
 - Vocabulary: **project** (a directory tree the user opened), **session** (one conversation), **turn** (one user submission and its execution). "Workspace" and "task" are retired as domain nouns.

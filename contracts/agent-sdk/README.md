@@ -12,7 +12,7 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 The agent handle owns the Tokio runtime and all agent services. Host wrappers may share one handle inside a process. Subscriptions must be closed before the final agent handle is released. Closing a subscription stops callback delivery before returning.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 8. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 9. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
 ## Methods
 
@@ -32,6 +32,15 @@ The Rust API uses typed inputs and outputs. The C ABI exposes one named function
 | `set_credential` | Store or replace one provider API key |
 | `remove_credential` | Remove one provider API key |
 | `set_provider_endpoint` | Validate, persist, and apply one provider API base URL |
+| `browser_runtime_info` | Read global Browser Use enablement, packaged component identity, installation health, and optional project runtime/profile state |
+| `set_browser_use_enabled` | Persist global Browser Use availability and stop active project runtimes when disabling |
+| `verify_browser_runtime` | Probe the bundled Node.js worker and validate its identity against the runtime lock |
+| `start_browser_project` | Lazily start the selected project's persistent Chromium runtime |
+| `take_browser_control` | Show the project browser and transfer its exclusive control lease to the user |
+| `return_browser_control` | Return control to the agent and invalidate previous browser references |
+| `restart_browser_runtime` | Restart the project worker and Chromium while preserving its profile |
+| `stop_browser_runtime` | Stop the project worker and Chromium while preserving its profile |
+| `clear_browser_profile` | Remove one stopped project's persistent browser data |
 | `list_mcp_servers` | List global MCP definitions with the selected project's runtime status and redacted secret key names |
 | `create_mcp_server` | Validate, persist, and reconcile one stdio or Streamable HTTP server |
 | `update_mcp_server` | Replace one server definition using an optimistic revision and secret patch |
@@ -101,6 +110,10 @@ Local transports receive a structured executable and argument list and are start
 MCP stdio processes receive a Rust-owned, OS-specific environment allowlist on every launch. Unix-like launches provide standard executable lookup (`PATH` with Homebrew, user-local, Cargo, system, and host entries), `HOME`, user/login/shell identity, locale (`LANG`, `LC_ALL`), terminal/display session values, `TMPDIR`, XDG directories, and the canonical working directory (`PWD`). Windows launches provide `PATH`, `SystemRoot`/`WINDIR`, profile/application-data directories, `ComSpec`, `PATHEXT`, username/OS identity, and `TEMP`/`TMP`. Missing host values use deterministic safe defaults; MCP-configured entries are applied last and override the baseline. Loader/code-injection variables are excluded from implicit inheritance.
 
 Language-server definitions are global desired state while processes, initialization, document versions, capabilities, and failures are project-scoped memory. The write DTO contains `displayName`, `command`, `arguments`, `languageIds`, `rootMarkers`, `initializationOptions`, write-only `environment` changes, startup/request timeouts, enabled state, and ordering. Read DTOs expose environment key names only. Runtime states are `not_started`, `disabled`, `starting`, `indexing`, `ready`, and `failed`. Processes launch without a shell in the project root and receive a filtered environment. The first delivery supports only local stdio servers and does not accept server-requested edits or arbitrary command execution.
+
+`browser_use_enabled` is a global-only boolean defaulting to `false`. The bundled Browser Use runtime is fixed by the installed application and cannot be replaced through SDK or Settings paths. `browser_runtime_info` reports installation state (`disabled`, `ready`, `missing`, `invalid`, `unsupported`, or `verifying`), project runtime state (`not_started`, `starting`, `background`, `user_controlled`, `stopping`, or `failed`), target, Node.js/Playwright/Chromium identity and paths, worker protocol, integrity, control owner, profile path/size, active page count, visibility capability, and a bounded safe error. Runtime state is memory-only; project profiles live under the agent data directory and are identified by a one-way project-ID-derived directory name.
+
+Browser runtime management never grants site authority. User-control handoff is exclusive and agent browser actions remain unavailable until control returns. Clearing a profile requires the runtime to be stopped and deletes browser cookies, login state, and site storage without changing project files. Chromium keeps ordinary certificate verification and does not inherit the global insecure certificate toggle.
 
 The model-facing semantic catalog is fixed to `lsp_diagnostics`, `lsp_definition`, `lsp_references`, `lsp_hover`, and `lsp_symbols`. These calls are read-only, use one-based source positions, synchronize at most 1 MiB of UTF-8 text through the audited project/dependency read path, and normalize returned locations to project-relative paths or registered dependency aliases. Absolute external locations are not exposed. Missing servers, capabilities, timeouts, crashes, and malformed responses are recoverable `lsp_*` tool results.
 

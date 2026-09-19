@@ -23,6 +23,7 @@ use tokio_util::sync::CancellationToken;
 use crate::types::*;
 
 mod agents;
+mod browser;
 mod checkpoints;
 mod language_servers;
 mod lifecycle;
@@ -299,6 +300,12 @@ where
         config.data_dir.clone(),
         user_id.to_owned(),
     );
+    agent.set_browser_proxy_configuration(
+        proxy_configuration
+            .read()
+            .map(|configuration| configuration.clone())
+            .unwrap_or_default(),
+    );
     let state = AgentState {
         store,
         user_id: user_id.to_owned(),
@@ -446,6 +453,19 @@ fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
         }
         if !value.is_string() {
             return Err(BusinessError::invalid("image_directory must be a string"));
+        }
+        return Ok(());
+    }
+    if key == "browser_use_enabled" {
+        if scope != "global" {
+            return Err(BusinessError::invalid(
+                "browser_use_enabled is a global-only setting",
+            ));
+        }
+        if !value.is_boolean() {
+            return Err(BusinessError::invalid(
+                "browser_use_enabled must be a boolean",
+            ));
         }
         return Ok(());
     }

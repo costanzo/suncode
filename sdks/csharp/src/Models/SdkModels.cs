@@ -97,6 +97,28 @@ public sealed record ProjectRecord(
 
 public sealed record ProjectsResult(IReadOnlyList<ProjectRecord> Projects);
 
+public sealed record BrowserRuntimeInfo(
+    bool Enabled,
+    string InstallationState,
+    string RuntimeState,
+    string Target,
+    string NodePath,
+    string NodeVersion,
+    string PlaywrightVersion,
+    string ChromiumPath,
+    string ChromiumVersion,
+    string ChromiumRevision,
+    uint WorkerProtocolVersion,
+    string IntegrityState,
+    string? ControlOwner,
+    string? ProfilePath,
+    ulong? ProfileSizeBytes,
+    int ActivePageCount,
+    string VisibilityCapability,
+    string? Error);
+
+public sealed record BrowserProfileClearResult(string ProjectId, bool Cleared);
+
 public sealed record McpServer(
     string McpServerId,
     string DisplayName,

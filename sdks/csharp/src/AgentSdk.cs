@@ -9,7 +9,7 @@ public sealed partial class AgentSdk : IDisposable
 {
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 8;
+    private const uint AbiVersion = 9;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -69,6 +69,33 @@ public sealed partial class AgentSdk : IDisposable
     private Task<JsonElement> RawListModelsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_models);
     private Task<JsonElement> RawListCredentialsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_credentials);
     private Task<JsonElement> RawListProjectsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_projects);
+
+    private Task<JsonElement> RawBrowserRuntimeInfoAsync(string? projectId) => WithNullableUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_browser_runtime_info(_handle, values[0]));
+
+    private Task<JsonElement> RawSetBrowserUseEnabledAsync(bool enabled) =>
+        CallAsync(handle => NativeMethods.suncode_agent_sdk_set_browser_use_enabled(handle, enabled ? (byte)1 : (byte)0));
+
+    private Task<JsonElement> RawVerifyBrowserRuntimeAsync(string? projectId) => WithNullableUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_verify_browser_runtime(_handle, values[0]));
+
+    private Task<JsonElement> RawStartBrowserProjectAsync(string projectId) => WithUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_start_browser_project(_handle, values[0]));
+
+    private Task<JsonElement> RawTakeBrowserControlAsync(string projectId) => WithUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_take_browser_control(_handle, values[0]));
+
+    private Task<JsonElement> RawReturnBrowserControlAsync(string projectId) => WithUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_return_browser_control(_handle, values[0]));
+
+    private Task<JsonElement> RawRestartBrowserRuntimeAsync(string projectId) => WithUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_restart_browser_runtime(_handle, values[0]));
+
+    private Task<JsonElement> RawStopBrowserRuntimeAsync(string projectId) => WithUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_stop_browser_runtime(_handle, values[0]));
+
+    private Task<JsonElement> RawClearBrowserProfileAsync(string projectId) => WithUtf8Async(
+        [projectId], values => NativeMethods.suncode_agent_sdk_clear_browser_profile(_handle, values[0]));
 
     private Task<JsonElement> RawListMcpServersAsync(string? projectId) => WithNullableUtf8Async(
         [projectId], values => NativeMethods.suncode_agent_sdk_list_mcp_servers(_handle, values[0]));

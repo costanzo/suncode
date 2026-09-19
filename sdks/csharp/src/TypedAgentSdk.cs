@@ -26,6 +26,33 @@ public sealed partial class AgentSdk
     public Task<CredentialsResult> GetCredentialsAsync() => Typed<CredentialsResult>(RawListCredentialsAsync());
     public Task<ProjectsResult> GetProjectsAsync() => Typed<ProjectsResult>(RawListProjectsAsync());
 
+    public Task<BrowserRuntimeInfo> GetBrowserRuntimeInfoAsync(string? projectId = null) =>
+        Typed<BrowserRuntimeInfo>(RawBrowserRuntimeInfoAsync(projectId));
+
+    public Task<BrowserRuntimeInfo> SetBrowserUseEnabledAsync(bool enabled) =>
+        Typed<BrowserRuntimeInfo>(RawSetBrowserUseEnabledAsync(enabled));
+
+    public Task<BrowserRuntimeInfo> VerifyBrowserRuntimeAsync(string? projectId = null) =>
+        Typed<BrowserRuntimeInfo>(RawVerifyBrowserRuntimeAsync(projectId));
+
+    public Task<BrowserRuntimeInfo> StartBrowserProjectAsync(string projectId) =>
+        Typed<BrowserRuntimeInfo>(RawStartBrowserProjectAsync(projectId));
+
+    public Task<BrowserRuntimeInfo> TakeBrowserControlAsync(string projectId) =>
+        Typed<BrowserRuntimeInfo>(RawTakeBrowserControlAsync(projectId));
+
+    public Task<BrowserRuntimeInfo> ReturnBrowserControlAsync(string projectId) =>
+        Typed<BrowserRuntimeInfo>(RawReturnBrowserControlAsync(projectId));
+
+    public Task<BrowserRuntimeInfo> RestartBrowserRuntimeAsync(string projectId) =>
+        Typed<BrowserRuntimeInfo>(RawRestartBrowserRuntimeAsync(projectId));
+
+    public Task<BrowserRuntimeInfo> StopBrowserRuntimeAsync(string projectId) =>
+        Typed<BrowserRuntimeInfo>(RawStopBrowserRuntimeAsync(projectId));
+
+    public Task<BrowserProfileClearResult> ClearBrowserProfileAsync(string projectId) =>
+        Typed<BrowserProfileClearResult>(RawClearBrowserProfileAsync(projectId));
+
     public Task<McpServersResult> GetMcpServersAsync(string? projectId = null) =>
         Typed<McpServersResult>(RawListMcpServersAsync(projectId));
 

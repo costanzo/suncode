@@ -78,6 +78,13 @@ impl AgentSdk {
                     .map(PathBuf::from);
             }
         }
+        if scope == "global" && key == "browser_use_enabled" {
+            self.runtime.block_on(
+                self.state
+                    .agent
+                    .set_browser_use_enabled(value.as_bool().unwrap_or(false)),
+            );
+        }
         if scope == "global" && (key == "use_system_certificates" || key == "certificate_path") {
             self.state.operations.set_certificate_configuration(
                 self.state.use_system_certificates.load(Ordering::SeqCst),
@@ -149,6 +156,9 @@ impl AgentSdk {
             .set_proxy_configuration(configuration.clone());
         self.runtime
             .block_on(self.state.agent.reconcile_mcp_network_configuration())?;
+        self.state
+            .agent
+            .set_browser_proxy_configuration(configuration.clone());
         Ok(proxy_configuration_result(&configuration))
     }
 }

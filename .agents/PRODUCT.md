@@ -40,7 +40,7 @@ CLI, TUI, web, mobile, and IDE-plugin surfaces are future directions. They are d
 
 ## Constraints
 
-- Rust is the only supported Phase 1 agent implementation; Node.js and Bun are not production runtime dependencies.
+- Rust is the only supported Phase 1 agent implementation. One fixed, bundled Node.js runtime is permitted solely for the first-party Playwright Browser Use worker; it contains no provider access, agent loop, persistence, plugin loading, or general code-execution surface. Bun and other production Node.js paths remain prohibited.
 - The production desktop application uses .NET 10 and Avalonia; other desktop UI toolkits and Electron are not supported production dependencies.
 - The trusted OS layer is Rust.
 - Protocol contracts are written as documentation and hand-implemented in each language. Contract-driven code generation is not used.

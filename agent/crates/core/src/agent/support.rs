@@ -169,6 +169,9 @@ fn translate_arguments_with_root(
 }
 
 fn validate_before_policy(name: &str, value: &Value) -> Result<(), BusinessError> {
+    if browser::is_browser_tool(name) {
+        return browser::validate_browser_arguments(name, value);
+    }
     if lsp::is_lsp_tool(name) {
         return validate_lsp_arguments(name, value);
     }
