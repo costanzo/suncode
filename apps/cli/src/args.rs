@@ -1,15 +1,23 @@
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Parser)]
-#[command(name = "suncode", version, about = "SunCode coding agent CLI")]
+#[command(
+    name = "suncode",
+    version,
+    about = "SunCode coding agent CLI",
+    after_help = "EXAMPLES:\n  suncode doctor\n  suncode run ./project --prompt \"Explain the failing test\"\n  printf '%s\\n' \"Fix the test\" | suncode run ./project --stdin\n  suncode session list ./project\n  suncode session resume SESSION_ID --prompt \"Continue the fix\"\n\nENVIRONMENT:\n  SunCode-owned environment variables use the SUNCODE_ prefix. Use --help on a command for its detailed options."
+)]
 pub struct Cli {
+    /// Output format. `text` is human-readable; `jsonl` is automation-friendly.
     #[arg(long, global = true, value_enum)]
     pub output: Option<OutputMode>,
 
+    /// Color policy for human-readable output.
     #[arg(long, global = true, value_enum)]
     pub color: Option<ColorMode>,
 
-    #[arg(long, global = true)]
+    /// Logical local user ID used for SDK ownership and data-directory scope.
+    #[arg(long, global = true, value_name = "USER_ID")]
     pub user_id: Option<String>,
 
     #[command(subcommand)]
@@ -18,11 +26,14 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Inspect the embedded agent and local configuration health.
+    /// Inspect embedded agent, database, provider, and host capability health.
     Doctor,
-    /// List configured models and availability.
+    /// List configured models, capabilities, and availability.
     Models,
     /// Run one coding turn against a project.
+    #[command(
+        after_help = "EXAMPLES:\n  suncode run --prompt \"Review this project\"\n  printf '%s\\n' \"Fix the build\" | suncode run ./project --stdin\n  suncode --output jsonl run ./project --prompt \"Summarize the diff\"\n\nThe command creates a new primary session. Use `session resume` to add a turn to an existing session."
+    )]
     Run {
         /// Project directory, defaulting to the current directory.
         path: Option<String>,
@@ -39,7 +50,7 @@ pub enum Command {
         #[arg(long, env = "SUNCODE_REASONING_EFFORT")]
         reasoning_effort: Option<String>,
     },
-    /// Manage provider credentials.
+    /// Manage provider credentials stored by the Rust SDK.
     Auth {
         #[command(subcommand)]
         command: AuthCommand,
@@ -49,7 +60,7 @@ pub enum Command {
         #[command(subcommand)]
         command: ConfigCommand,
     },
-    /// Inspect and manage saved sessions.
+    /// List, resume, and archive saved primary sessions.
     Session {
         #[command(subcommand)]
         command: SessionCommand,
@@ -58,17 +69,23 @@ pub enum Command {
 
 #[derive(Debug, Subcommand)]
 pub enum AuthCommand {
-    /// List provider credential status.
+    /// List configured/not-configured status without revealing secrets.
     List,
     /// Read and store a provider credential without terminal echo.
-    Set { provider: String },
+    Set {
+        /// Provider ID, for example `deepseek`, `openai`, or `claude`.
+        provider: String,
+    },
     /// Remove a provider credential.
-    Remove { provider: String },
+    Remove {
+        /// Provider ID whose stored credential should be removed.
+        provider: String,
+    },
 }
 
 #[derive(Debug, Subcommand)]
 pub enum ConfigCommand {
-    /// List effective global non-secret settings.
+    /// List effective global non-secret settings and redacted status values.
     List,
 }
 
@@ -80,9 +97,16 @@ pub enum SessionCommand {
         path: Option<String>,
     },
     /// Archive a primary session.
-    Archive { session_id: String },
+    Archive {
+        /// Stable session ID returned by `session list` or `run` JSONL events.
+        session_id: String,
+    },
     /// Submit one new turn to an existing primary session.
+    #[command(
+        after_help = "EXAMPLES:\n  suncode session resume SESSION_ID --prompt \"Continue the previous task\"\n  printf '%s\\n' \"Run the tests again\" | suncode session resume SESSION_ID --stdin\n  suncode --output jsonl session resume SESSION_ID --prompt \"Summarize the result\"\n\nResume reopens archived primary sessions and reuses durable conversation context. It returns status 4 instead of bypassing a pending approval or structured question."
+    )]
     Resume {
+        /// Stable primary session ID returned by `session list` or a previous turn.
         session_id: String,
         /// Prompt text. Exactly one of `--prompt` and `--stdin` is required.
         #[arg(long, conflicts_with = "stdin", required_unless_present = "stdin")]
@@ -183,5 +207,20 @@ mod tests {
             } if session_id == "session-1" && prompt == "continue"
         ));
         assert!(Cli::try_parse_from(["suncode", "session", "resume", "session-1"]).is_err());
+    }
+
+    #[test]
+    fn help_contains_root_and_resume_guidance() {
+        let root_help = Cli::try_parse_from(["suncode", "--help"])
+            .unwrap_err()
+            .to_string();
+        assert!(root_help.contains("suncode session resume SESSION_ID"));
+        assert!(root_help.contains("SUNCODE_"));
+
+        let resume_help = Cli::try_parse_from(["suncode", "session", "resume", "--help"])
+            .unwrap_err()
+            .to_string();
+        assert!(resume_help.contains("Continue the previous task"));
+        assert!(resume_help.contains("pending approval"));
     }
 }
