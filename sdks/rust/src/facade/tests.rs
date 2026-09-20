@@ -66,6 +66,52 @@ fn test_state(directory: &std::path::Path) -> AgentState {
     }
 }
 
+#[test]
+fn pending_approval_is_exposed_by_validated_session() {
+    let directory = tempfile::tempdir().unwrap();
+    let state = test_state(directory.path());
+    let store = state.store.clone();
+    let sdk = AsyncAgentSdk {
+        _lock: None,
+        data_dir: directory.path().to_path_buf(),
+        state,
+    };
+    let project = store
+        .project_for_user(
+            "default",
+            directory.path().to_str().unwrap(),
+            "Approval project",
+        )
+        .unwrap();
+    let session = store
+        .create_session(&project.project_id, Some("Approval session"), None)
+        .unwrap();
+    let turn = store
+        .begin_turn(
+            &session.session_id,
+            "approval-turn",
+            "write",
+            "deepseek-v4-flash",
+        )
+        .unwrap();
+    let approval = store
+        .create_approval(suncode_data::ApprovalInput {
+            project_id: Some(&project.project_id),
+            session_id: &session.session_id,
+            turn_id: &turn.turn_id,
+            tool_call_id: "tool-1",
+            operation: "write",
+            arguments: &serde_json::json!({"path":"README.md"}),
+            snapshot: &serde_json::json!({}),
+        })
+        .unwrap();
+
+    let pending = sdk.pending_approval(&session.session_id).unwrap().unwrap();
+    assert_eq!(pending.approval_id, approval.approval_id);
+    assert_eq!(pending.operation, "write");
+    assert!(sdk.pending_approval("missing-session").is_err());
+}
+
 #[tokio::test(flavor = "current_thread")]
 async fn async_sdk_opens_and_shuts_down_inside_an_existing_tokio_runtime() {
     let _guard = ENVIRONMENT

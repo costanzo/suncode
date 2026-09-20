@@ -96,6 +96,11 @@ impl AsyncAgentSdk {
         Ok(approval)
     }
 
+    pub fn pending_approval(&self, session_id: &str) -> SdkResult<Option<ApprovalRecord>> {
+        self.session_for_user(session_id)?;
+        self.state.store.pending_approval(session_id)
+    }
+
     pub async fn resolve_approval(
         &self,
         approval_id: &str,

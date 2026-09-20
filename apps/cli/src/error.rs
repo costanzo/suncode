@@ -24,6 +24,14 @@ impl CliError {
         }
     }
 
+    pub fn interrupted() -> Self {
+        Self {
+            code: "interrupted".into(),
+            message: "operation interrupted by user".into(),
+            exit_code: 130,
+        }
+    }
+
     pub fn from_business(error: BusinessError) -> Self {
         let exit_code = match error.code.as_str() {
             "invalid_arguments" | "serialization_error" => 2,

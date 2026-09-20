@@ -97,6 +97,7 @@ The Rust API uses typed inputs and outputs. Async Rust hosts use `AsyncAgentSdk`
 | `cancel_turn` | Cooperatively cancel a running turn |
 | `retry_last_turn` | Re-submit the most recently failed turn in a session using its persisted input and model; creates a new turn with a fresh idempotency key |
 | `get_approval` | Read one approval state |
+| `pending_approval` | Read the current pending approval for one validated session, if present (Rust facade) |
 | `resolve_approval` | Resolve one pending approval with `allow_once`, `allow_session`, or `deny` |
 | `reply_question` | Submit ordered answer arrays for one pending question request |
 | `reject_question` | Skip one pending question request and resume with an explicit rejected result |

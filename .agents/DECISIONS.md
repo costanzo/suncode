@@ -2,13 +2,41 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260920-cli-one-shot-session-resume
+
+- Date: 2026-09-20
+- Status: Accepted and implemented
+- Supersedes: the conclusion in `ADR-20260920-cli-session-administration` that resume must wait for interactive chat
+- Context: Users need to continue durable session context from scripts and line-oriented commands, but do not require an interactive multi-turn chat client. A resumed command must not bypass an unresolved durable approval or structured question.
+- Decision: Implement `session resume SESSION_ID (--prompt TEXT | --stdin)` as exactly one new turn in an existing primary session. Reopen archived sessions, establish atomic watch, and reuse the same typed event/cancellation/tail-drain driver as `run`. Add a narrow Rust SDK `pending_approval(session_id)` query; combine it with snapshot `pendingQuestion` and return exit status 4 before provider submission when suspended state exists. Emit `session.resume.result` on success. Keep interactive chat deferred.
+- Consequences: CLI users can build on persisted conversation context without a TUI or prompt loop. Resume does not print history or resolve human interaction, child sessions remain read-only, and the CLI still has no persistence dependency. The Rust-only query adds no schema or C ABI change.
+- Details: `requirements/2026-09-20-cli-session-resume/`, `features/cli-session-resume/`, `apps/cli/`, `sdks/rust/`, `contracts/cli.md`
+
+## ADR-20260920-cli-session-administration
+
+- Date: 2026-09-20
+- Status: Accepted and implemented
+- Context: One-shot `run` creates durable sessions, but the CLI had no way to discover or archive them. The complete command contract also names `session resume`, whose correct behavior is interactive conversation continuation rather than administrative snapshot output.
+- Decision: Add `session list [PATH]` and `session archive SESSION_ID` as typed SDK adapters. List opens the canonical project and returns all primary sessions plus SDK-projected states; archive delegates ownership and lifecycle validation to `archive_session`. This delivery did not expose a placeholder resume command.
+- Consequences: Users can inspect and archive CLI or desktop-created sessions without direct persistence access. The command grammar remains add-only, child-session lifecycle remains SDK-owned, and no schema, provider, policy, C ABI, or desktop change is introduced. The later resume shape is defined by `ADR-20260920-cli-one-shot-session-resume`.
+- Details: `requirements/2026-09-20-cli-session-administration/`, `features/cli-session-administration/`, `apps/cli/`, `contracts/cli.md`
+
+## ADR-20260920-cli-one-shot-run
+
+- Date: 2026-09-20
+- Status: Accepted and implemented
+- Context: The administrative CLI foundation proved SDK startup, configuration, output, and shutdown, but it could not yet execute a coding turn. The async SDK already exposed project/session operations, atomic watch, a standard typed stream, cancellation, and terminal turn responses.
+- Decision: Implement `suncode run [PATH] (--prompt TEXT | --stdin)` as one new-session turn. Establish `watch_session` before submission, consume typed events with deterministic signal/event priority, drain events queued before the submission future returns, and re-watch after lag. Emit progress on stderr plus final assistant text on stdout in text mode, or typed event envelopes followed by `run.result` in JSONL mode. The first interrupt requests `cancel_turn`; the second returns 130. Approval or question suspension returns 4 without reusing prompt stdin. Model and reasoning defaults use `SUNCODE_MODEL` and `SUNCODE_REASONING_EFFORT`, with explicit flags taking precedence.
+- Consequences: The CLI is now a usable non-interactive one-shot coding client without duplicating provider, policy, persistence, or operation behavior. It still does not provide interactive continuation, session resume/list/archive, or a general CI authority profile. Browser and Computer capabilities remain unavailable in this host. `TurnResponse` is re-exported by the Rust SDK so the CLI does not depend on agent core directly.
+- Details: `requirements/2026-09-20-cli-run-command/`, `features/cli-run/`, `apps/cli/`, `contracts/cli.md`
+
 ## ADR-20260920-cli-foundation-commands
 
 - Date: 2026-09-20
 - Status: Accepted and implemented
 - Context: The approved CLI architecture needed a real executable foundation before conversational event, approval, and signal behavior could be added safely. Administrative SDK methods already existed and provided a bounded first vertical slice.
 - Decision: Create an independent `apps/cli` Rust package producing `suncode`. Implement doctor, models, auth list/set/remove, and config list; explicit-over-`SUNCODE_` configuration; text and JSONL reports; stable exit mapping; no-echo interactive credential input; CLI host capabilities; and consuming SDK shutdown before success output. Do not expose placeholder run/chat/session commands.
-- Consequences: CLI is partially implemented and can administer/diagnose the embedded agent, but it is not yet a conversational coding client. JSONL foundation output and exit codes follow `contracts/cli.md`. Credentials remain SQLite-only. The next delivery owns project/session selection, atomic watch, live rendering, approval/question prompts, signals, and turns.
+- Consequences: CLI can administer and diagnose the embedded agent. JSONL foundation output and exit codes follow `contracts/cli.md`. Credentials remain SQLite-only. One-shot turn execution was added by `ADR-20260920-cli-one-shot-run`; interactive approval/question prompts and session workflows remain later work.
 - Details: `requirements/2026-09-20-cli-foundation-implementation/`, `features/cli-foundation/`, `apps/cli/`, `contracts/cli.md`
 
 ## ADR-20260920-sdk-host-capability-ceiling

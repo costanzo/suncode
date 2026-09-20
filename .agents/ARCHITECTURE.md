@@ -40,7 +40,7 @@ Bundled Browser Use worker (lazy, one per active browser project)
 
 Future TypeScript N-API and Python PyO3 bindings embed the same SDK.
 
-Approved Rust CLI (administrative foundation implemented)
+Approved Rust CLI (administration and one-shot new/resumed turns implemented)
 `apps/cli`
     | direct async Rust calls
 `sdks/rust::AsyncAgentSdk`
@@ -55,7 +55,7 @@ There is no agent-to-core process boundary and no client-facing server. Operatio
 
 Avalonia XAML and C# view models own presentation, navigation, and transient interaction state. They consume agent DTOs and live events through the SDK facade. They never open SQLite, contact model providers, read project files directly, or invoke operation modules.
 
-The CLI is a line-oriented native Rust client under `apps/cli`. Its implemented foundation owns administrative argument parsing, text/JSONL adaptation, credential terminal input, exit status, and explicit SDK lifecycle for doctor, model, credential, and configuration commands. It calls `AsyncAgentSdk` directly with a typed host capability ceiling that disables Browser and Computer Use without changing shared settings. It never calls the C ABI, opens SQLite, contacts providers, invokes operation modules, or implements policy. Conversational rendering, prompts, signals, and session workflows remain unimplemented. Its normative design is `contracts/cli.md`.
+The CLI is a line-oriented native Rust client under `apps/cli`. It owns administrative, session-administration, and one-shot-turn argument parsing, text/JSONL adaptation, typed event rendering, credential terminal input, interrupt handling, exit status, and explicit SDK lifecycle. `run` opens a project and creates a primary session; `session resume` reopens an existing primary session and adds one turn using durable history. Both establish atomic watch before submission, consume the typed event stream, drain queued terminal events, and request SDK cancellation on interrupt. Resume queries typed pending approval/question state and fails closed rather than bypassing it. Session list/archive call the typed SDK facade and do not interpret or mutate persistence directly. The CLI calls `AsyncAgentSdk` with a typed host capability ceiling that disables Browser and Computer Use without changing shared settings. It never calls the C ABI, opens SQLite, contacts providers, invokes operation modules, or implements policy. Interactive chat and interactive approval/question prompts remain unimplemented. Its normative design is `contracts/cli.md`.
 
 The Avalonia desktop remains the implemented Phase 1 reference client. TUI, Web, mobile, and IDE clients remain deferred.
 
@@ -163,7 +163,7 @@ Startup marks non-recoverable in-memory turn execution interrupted, discovers ad
 
 ```text
 apps/desktop-avalonia/    .NET 10 Avalonia desktop client
-apps/cli/                 native Rust CLI foundation and future conversational commands
+apps/cli/                 native Rust CLI administration and one-shot turn client
 contracts/                hand-written protocols and contract documentation
 agent/crates/core/      agent harness and core services
 agent/crates/config/    Rust-owned bootstrap configuration crate
@@ -201,4 +201,4 @@ The old `typescript/` packages and retired `rust/` workspace were migration sour
 
 ## 12. Deferred Scope
 
-The CLI still defers conversational `run`/`chat`, session workflows, TUI, PTY, daemon/attach, Browser Use, Computer Use, shell-parent mutation, auto-update, and hosted modes as specified in `contracts/cli.md`. The broader product still defers TypeScript and Python package implementation, TUI/Web/mobile/IDE clients, client-facing cross-process IPC, executable or dynamically loaded provider plugins, MCP prompts/resources/OAuth, client creation/removal of custom provider and model catalog entries, hosted execution, collaboration, telemetry, filesystem indexing/watchers, Git mutations and remote operations, other VCS-aware semantic operations, arbitrary browser script execution, external browser profiles, non-Chromium browsers, and cross-platform OS sandbox profiles. Settings may manage tools-only MCP servers over local stdio and remote Streamable HTTP through the Rust-owned SDK. Local MCP, LSP, Browser Use worker, and Chromium processes are lifecycle-contained and policy-mediated but are not OS-sandboxed; the client and approval surfaces state their authority and undo limitations explicitly.
+The CLI still defers interactive `chat`, interactive approval/question continuation, TUI, PTY, daemon/attach, Browser Use, Computer Use, shell-parent mutation, auto-update, and hosted modes as specified in `contracts/cli.md`. The broader product still defers TypeScript and Python package implementation, TUI/Web/mobile/IDE clients, client-facing cross-process IPC, executable or dynamically loaded provider plugins, MCP prompts/resources/OAuth, client creation/removal of custom provider and model catalog entries, hosted execution, collaboration, telemetry, filesystem indexing/watchers, Git mutations and remote operations, other VCS-aware semantic operations, arbitrary browser script execution, external browser profiles, non-Chromium browsers, and cross-platform OS sandbox profiles. Settings may manage tools-only MCP servers over local stdio and remote Streamable HTTP through the Rust-owned SDK. Local MCP, LSP, Browser Use worker, and Chromium processes are lifecycle-contained and policy-mediated but are not OS-sandboxed; the client and approval surfaces state their authority and undo limitations explicitly.

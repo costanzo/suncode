@@ -13,6 +13,48 @@ pub struct CommandReport {
     pub text: String,
 }
 
+pub fn write_event(mode: OutputMode, event: &suncode_sdk::AgentEvent) -> Result<(), CliError> {
+    let data = event.payload.clone().into_value();
+    let event_type = event.event_type().as_str();
+    match mode {
+        OutputMode::Text => {
+            match event_type {
+                "turn.state" => eprintln!("turn: {}", data["state"].as_str().unwrap_or("unknown")),
+                "tool.requested" => {
+                    eprintln!("tool: {}", data["name"].as_str().unwrap_or("unknown"))
+                }
+                "tool.state" => eprintln!(
+                    "tool {}: {}",
+                    data["name"].as_str().unwrap_or("unknown"),
+                    data["state"].as_str().unwrap_or("unknown")
+                ),
+                "context.compacted" => eprintln!("context compacted"),
+                _ => {}
+            }
+            Ok(())
+        }
+        OutputMode::Jsonl => {
+            let envelope = JsonEnvelope {
+                schema_version: 1,
+                event_type,
+                occurred_at: event.occurred_at.clone(),
+                session_id: Some(&event.session_id),
+                turn_id: event_turn_id(&data),
+                data: &data,
+            };
+            let stdout = io::stdout();
+            let mut writer = stdout.lock();
+            serde_json::to_writer(&mut writer, &envelope)
+                .map_err(|error| CliError::io(error.to_string()))?;
+            writeln!(writer).map_err(CliError::from)
+        }
+    }
+}
+
+fn event_turn_id(data: &Value) -> Option<&str> {
+    data.get("turn_id").and_then(Value::as_str)
+}
+
 #[derive(Serialize)]
 struct JsonEnvelope<'a> {
     schema_version: u8,

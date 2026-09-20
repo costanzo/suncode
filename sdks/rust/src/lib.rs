@@ -9,6 +9,7 @@ pub use facade::{
     SubscriptionError,
 };
 pub use suncode_agent::logging as logging_module;
+pub use suncode_agent::{agent::TurnResponse, domain::ApprovalRecord};
 pub mod events {
     pub use suncode_agent::agent::events::*;
 }

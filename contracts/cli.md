@@ -1,12 +1,12 @@
 # SunCode CLI Contract
 
-Status: Foundation commands implemented; conversational commands remain in delivery.
+Status: Administrative commands, one-shot `run`, and session list/resume/archive implemented; interactive `chat` remains deferred.
 
 ## Purpose and boundary
 
 The SunCode CLI is the next approved production client after the Avalonia desktop reference client. It is a native Rust executable under `apps/cli` that embeds `suncode-sdk::AsyncAgentSdk` in-process on one Tokio runtime. It does not call the C ABI, open SQLite directly, contact providers directly, duplicate policy or agent behavior, start a client-facing server, or attach to another SunCode process.
 
-The CLI owns argument parsing, terminal capability detection, text and JSONL rendering, interactive approval and question prompts, signal handling, and exit status. Rust core and the SDK continue owning projects, sessions, turns, providers, credentials, policy, operations, persistence, recovery, undo, MCP, LSP, and runtime resources.
+The CLI owns argument parsing, prompt-source input, text and JSONL rendering, signal handling, and exit status. Rust core and the SDK continue owning projects, sessions, turns, providers, credentials, policy, approvals, questions, operations, persistence, recovery, undo, MCP, LSP, and runtime resources.
 
 ## Initial capability profile
 
@@ -22,13 +22,12 @@ Cross-process attach, a background daemon, socket discovery, and desktop-to-CLI 
 
 ## Command surface
 
-The complete initial command families are:
+The implemented line-oriented command families are:
 
 ```text
-suncode chat [PATH]
 suncode run [PATH] (--prompt TEXT | --stdin)
 suncode session list [PATH]
-suncode session resume SESSION_ID
+suncode session resume SESSION_ID (--prompt TEXT | --stdin)
 suncode session archive SESSION_ID
 suncode models
 suncode auth list
@@ -38,32 +37,33 @@ suncode config list
 suncode doctor
 ```
 
-`chat` is an interactive multi-turn terminal conversation. `run` performs one submitted turn and exits after completion, denial, cancellation, question rejection, or failure. Both commands open or select the canonical project represented by `PATH`, defaulting to the current directory. They create a primary session unless a session ID is explicitly resumed.
+`run` creates a primary session in the canonical project represented by `PATH`, submits one turn, and exits. `session resume` reopens an existing primary session, submits one new turn using its durable conversation context, and exits. Both require exactly one prompt source and finish after completion, suspension, cancellation, or failure.
 
-The currently implemented foundation subset is `doctor`, `models`, `auth list`, `auth set`, `auth remove`, and `config list`. Unimplemented `run`, `chat`, and session commands are rejected by argument parsing rather than exposed as placeholders.
+`session list` opens the selected project through the SDK and includes active and archived primary sessions; `session archive` applies the SDK-owned lifecycle transition. Interactive `chat` is not part of the implemented command surface and remains rejected by argument parsing.
+
+Resume does not print existing history or resolve a suspended interaction. If the session has a durable pending approval or question, it fails closed with exit status 4 without contacting the provider. A future interactive client may resolve those states through the named SDK methods.
 
 The command grammar is add-only within the first major CLI contract. A later full-screen TUI must use a separate subcommand or executable mode and must not silently replace line-oriented CLI behavior.
 
 ## Turn and event flow
 
-For a new or resumed session the CLI:
+The shared one-shot `run`/`session resume` flow:
 
 1. opens `AsyncAgentSdk`;
-2. opens/selects the project and creates or resolves the session;
-3. calls atomic `watch_session` and renders its normalized snapshot;
-4. consumes the typed fused event stream while a turn is submitted;
-5. applies events idempotently;
-6. repeats atomic watch after lag;
-7. resolves approvals and questions through named SDK methods;
-8. calls consuming SDK shutdown before exit.
+2. creates a new primary session or reopens the supplied primary session;
+3. calls atomic `watch_session` before submitting the turn;
+4. for resume, rejects a durable pending approval or question before submission;
+5. consumes and renders the typed fused event stream while the turn is submitted;
+6. drains events already published before rendering the terminal response;
+7. repeats atomic watch after lag;
+8. reports a new approval or question suspension with exit status 4;
+9. calls consuming SDK shutdown before exit.
 
 The CLI never combines standalone snapshot and subscription calls as if they were atomic.
 
 ## Approvals and questions
 
-Interactive approval prompts show the operation name, declared risk, bounded arguments, project/session context, and the exact choices `deny`, `allow_once`, and `allow_session`. The CLI does not invent broader grants. Structured questions preserve the SDK prompt order, available choices, multiple-selection rule, and custom-answer rule.
-
-Prompts require an attached interactive terminal. A non-interactive stdin/stdout pipeline never attempts to read an approval or question from stdin after the user prompt has been consumed. Without a matching pre-authorized policy profile, an operation requiring approval fails closed and a structured question produces the documented non-interactive outcome.
+The implemented CLI never reads an approval or question answer from stdin after the turn prompt has been consumed. `run` and `session resume` return exit status 4 for either suspension. Without a matching pre-authorized policy profile, an operation requiring approval fails closed and a structured question produces the documented non-interactive outcome.
 
 The initial interactive CLI may ship before named non-interactive policy profiles. General-purpose CI execution is not complete until Rust core owns persisted or explicitly selected profiles with bounded risk, project, command, network, and external-tool grants. CLI flags may select a profile but cannot implement or widen policy themselves.
 
@@ -118,7 +118,7 @@ All SunCode-owned environment variables begin with `SUNCODE_`. The approved CLI 
 | `SUNCODE_DATABASE_PATH` | Override the SQLite database path |
 | `SUNCODE_NON_INTERACTIVE` | Force fail-closed non-interactive policy behavior |
 | `SUNCODE_USER_ID` | Override the logical local user ID |
-| `SUNCODE_MODEL` | Select the default model for a new CLI session |
+| `SUNCODE_MODEL` | Select or override the model for a CLI turn |
 | `SUNCODE_REASONING_EFFORT` | Select the default reasoning effort when supported |
 | `SUNCODE_OUTPUT` | Select `text` or `jsonl` output |
 | `SUNCODE_POLICY_PROFILE` | Select a future Rust-owned non-interactive policy profile |
@@ -134,6 +134,7 @@ The CLI is built as a Rust binary depending on `sdks/rust`; it is not part of th
 
 ## Deferred CLI scope
 
+- Interactive multi-turn `chat` and terminal approval/question resolution.
 - Full-screen TUI and alternate-screen rendering.
 - PTY sessions and interactive child processes.
 - Background daemon or cross-process attach.

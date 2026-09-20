@@ -19,6 +19,10 @@ It does not open a second database or implement provider/tool behavior independe
 
 The `events` module re-exports the non-exhaustive typed core event catalog. Async Rust hosts can use `StreamExt::next` and other standard stream combinators over `Result<Arc<AgentEvent>, SubscriptionError>` items. Normal close is end-of-stream; lag is returned once and then the fused stream terminates so the host can establish a fresh atomic watch. Direct async `recv`, blocking `blocking_recv`, and nonblocking `try_recv` remain available. Native callback adaptation belongs to each language binding.
 
+The crate root also re-exports `TurnResponse`, allowing Rust clients to handle completed, approval-suspended, question-suspended, and queued submission outcomes without depending on the agent-core crate directly.
+
+`AsyncAgentSdk::pending_approval(session_id)` returns the current durable pending `ApprovalRecord`, if any, after ordinary session/user validation. `ApprovalRecord` is re-exported at the crate root. Rust terminal hosts use it with atomic snapshot `pending_question` state to avoid submitting a new turn through an unresolved interaction.
+
 Rust hosts should establish session state with `AgentSdk::watch_session`. It returns `SessionWatch { snapshot, events }` atomically relative to durable event projection and live publication. The standalone snapshot and subscribe methods remain available for compatibility but do not collectively close the boundary race.
 
 Async hosts should use `AsyncAgentSdk::watch_session`; the compatibility wording above applies equally because `watch_session` itself is a synchronous local composition method. Blocking hosts use the root `AgentSdk`. Calling the blocking wrapper from inside an async runtime is unsupported; use `AsyncAgentSdk` instead.

@@ -17,23 +17,24 @@ pub(crate) fn by_id(
     id: &str,
 ) -> Result<Option<ApprovalRecord>, BusinessError> {
     let row = sql_query("SELECT approval_id,project_id,session_id,turn_id,tool_call_id,operation,arguments_json,status,decision,decision_source,created_at,updated_at FROM approval_request WHERE approval_id=?").bind::<Text,_>(id).get_result::<crate::rows::ApprovalRow>(c).optional().map_err(crate::database_error)?;
-    row.map(|r| {
-        Ok(ApprovalRecord {
-            approval_id: r.approval_id,
-            project_id: r.project_id,
-            session_id: r.session_id,
-            turn_id: r.turn_id,
-            tool_call_id: r.tool_call_id,
-            operation: r.operation,
-            arguments: serde_json::from_str(&r.arguments_json)?,
-            status: r.status,
-            decision: r.decision,
-            decision_source: r.decision_source,
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-        })
+    row.map(to_record).transpose()
+}
+
+fn to_record(row: crate::rows::ApprovalRow) -> Result<ApprovalRecord, BusinessError> {
+    Ok(ApprovalRecord {
+        approval_id: row.approval_id,
+        project_id: row.project_id,
+        session_id: row.session_id,
+        turn_id: row.turn_id,
+        tool_call_id: row.tool_call_id,
+        operation: row.operation,
+        arguments: serde_json::from_str(&row.arguments_json)?,
+        status: row.status,
+        decision: row.decision,
+        decision_source: row.decision_source,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
     })
-    .transpose()
 }
 
 impl Store {
@@ -70,6 +71,19 @@ impl Store {
     pub fn approval(&self, id: &str) -> Result<Option<ApprovalRecord>, BusinessError> {
         let mut c = lock(&self.connection)?;
         by_id(&mut c, id)
+    }
+    pub fn pending_approval(
+        &self,
+        session_id: &str,
+    ) -> Result<Option<ApprovalRecord>, BusinessError> {
+        let mut c = lock(&self.connection)?;
+        sql_query("SELECT approval_id,project_id,session_id,turn_id,tool_call_id,operation,arguments_json,status,decision,decision_source,created_at,updated_at FROM approval_request WHERE session_id=? AND status='pending' ORDER BY created_at DESC,approval_id DESC LIMIT 1")
+            .bind::<Text, _>(session_id)
+            .get_result::<crate::rows::ApprovalRow>(&mut *c)
+            .optional()
+            .map_err(crate::database_error)?
+            .map(to_record)
+            .transpose()
     }
     pub fn resolve_approval(
         &self,

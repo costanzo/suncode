@@ -54,7 +54,48 @@ async fn main() -> ExitCode {
         }
     };
 
-    let command_result = commands::execute(&sdk, &cli.command).await;
+    let command_result = match &cli.command {
+        args::Command::Run {
+            path,
+            prompt,
+            stdin,
+            model,
+            reasoning_effort,
+        } => {
+            commands::run(
+                &sdk,
+                path.as_deref(),
+                prompt.as_deref(),
+                *stdin,
+                model.as_deref(),
+                reasoning_effort.as_deref(),
+                config.output,
+            )
+            .await
+        }
+        args::Command::Session {
+            command:
+                args::SessionCommand::Resume {
+                    session_id,
+                    prompt,
+                    stdin,
+                    model,
+                    reasoning_effort,
+                },
+        } => {
+            commands::resume(
+                &sdk,
+                session_id,
+                prompt.as_deref(),
+                *stdin,
+                model.as_deref(),
+                reasoning_effort.as_deref(),
+                config.output,
+            )
+            .await
+        }
+        command => commands::execute(&sdk, command).await,
+    };
     let shutdown_result = sdk.shutdown().await.map_err(CliError::from_business);
     let result = match (command_result, shutdown_result) {
         (Err(error), _) => Err(error),
