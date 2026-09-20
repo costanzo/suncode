@@ -1320,7 +1320,10 @@ mod tests {
 
     #[test]
     fn exposes_the_current_abi_version() {
-        assert_eq!(suncode_agent_sdk_abi_version(), 10);
+        assert_eq!(
+            suncode_agent_sdk_abi_version(),
+            SUNCODE_AGENT_SDK_ABI_VERSION
+        );
     }
 
     #[test]

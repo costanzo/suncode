@@ -77,6 +77,7 @@ struct Inner {
     projects: AsyncMutex<HashMap<String, BrowserSlot>>,
     verification_worker: AsyncMutex<Option<Arc<WorkerProcess>>>,
     closed: AtomicBool,
+    host_available: bool,
 }
 
 struct BrowserSlot {
@@ -97,7 +98,7 @@ struct WorkerState {
 }
 
 impl BrowserManager {
-    pub(super) fn new(store: Store, data_dir: PathBuf) -> Self {
+    pub(super) fn new(store: Store, data_dir: PathBuf, host_available: bool) -> Self {
         let enabled = store
             .settings(None, None)
             .ok()
@@ -108,10 +109,15 @@ impl BrowserManager {
                     .and_then(|setting| setting.value.as_bool())
             })
             .unwrap_or(false);
-        Self::new_with_runtime_root(data_dir, default_runtime_root(), enabled)
+        Self::new_with_runtime_root(data_dir, default_runtime_root(), enabled, host_available)
     }
 
-    fn new_with_runtime_root(data_dir: PathBuf, runtime_root: PathBuf, enabled: bool) -> Self {
+    fn new_with_runtime_root(
+        data_dir: PathBuf,
+        runtime_root: PathBuf,
+        enabled: bool,
+        host_available: bool,
+    ) -> Self {
         Self {
             inner: Arc::new(Inner {
                 data_dir,
@@ -123,6 +129,7 @@ impl BrowserManager {
                 projects: AsyncMutex::new(HashMap::new()),
                 verification_worker: AsyncMutex::new(None),
                 closed: AtomicBool::new(false),
+                host_available,
             }),
         }
     }
@@ -132,7 +139,17 @@ impl BrowserManager {
         project_id: Option<&str>,
     ) -> Result<BrowserRuntimeInfo, BusinessError> {
         let enabled = self.inner.enabled.load(Ordering::SeqCst);
-        let (layout, lock, installation_state, error) = self.installation_snapshot(enabled);
+        let (layout, lock, installation_state, error) = if self.inner.host_available {
+            self.installation_snapshot(enabled)
+        } else {
+            let layout = runtime_layout(&self.inner.runtime_root);
+            (
+                layout,
+                read_lock(&self.inner.runtime_root),
+                BrowserInstallationState::Unsupported,
+                Some("Browser Use is unavailable in this host".into()),
+            )
+        };
         let integrity_verified = self.inner.verified.load(Ordering::SeqCst);
         let installation_ready = matches!(installation_state, BrowserInstallationState::Ready);
         let (runtime_state, control_owner, active_page_count, runtime_error) =
@@ -202,6 +219,9 @@ impl BrowserManager {
     }
 
     pub(super) async fn catalog(&self) -> Vec<suncode_llm::ToolDefinition> {
+        if !self.inner.host_available {
+            return Vec::new();
+        }
         let enabled = self.inner.enabled.load(Ordering::SeqCst);
         if !enabled {
             return Vec::new();
@@ -295,6 +315,9 @@ impl BrowserManager {
     }
 
     pub(super) async fn set_enabled(&self, enabled: bool) {
+        if enabled && !self.inner.host_available {
+            return;
+        }
         if enabled && self.inner.closed.load(Ordering::Acquire) {
             return;
         }
@@ -642,6 +665,12 @@ impl BrowserManager {
     }
 
     fn require_enabled(&self) -> Result<(), BusinessError> {
+        if !self.inner.host_available {
+            return Err(BusinessError::new(
+                "browser_host_unavailable",
+                "Browser Use is unavailable in this host",
+            ));
+        }
         if self.inner.closed.load(Ordering::Acquire) {
             return Err(BusinessError::new(
                 "agent_shutting_down",
@@ -1073,6 +1102,33 @@ fn validate_browser_url(value: &str) -> Result<(), BusinessError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn unavailable_host_exposes_no_browser_tools_or_runtime_start() {
+        let store = Store::open_memory().unwrap();
+        store
+            .set_setting(
+                "global",
+                "global",
+                "browser_use_enabled",
+                &Value::Bool(true),
+            )
+            .unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let manager = BrowserManager::new(store, directory.path().to_path_buf(), false);
+
+        assert!(manager.catalog().await.is_empty());
+        let info = manager.info(None).await.unwrap();
+        assert!(info.enabled);
+        assert_eq!(
+            info.installation_state,
+            BrowserInstallationState::Unsupported
+        );
+        assert_eq!(
+            manager.start_project("project-1").await.unwrap_err().code,
+            "browser_host_unavailable"
+        );
+    }
 
     #[test]
     fn project_profile_directory_does_not_disclose_project_identifier() {

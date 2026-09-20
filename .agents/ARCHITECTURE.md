@@ -4,11 +4,11 @@
 
 **Date:** 2026-08-08
 
-**Scope:** Phase 1 process topology, ownership boundaries, authority, persistence, protocols, and repository layout
+**Scope:** Embedded agent process topology, approved native clients, ownership boundaries, authority, persistence, protocols, and repository layout
 
 ## 1. Purpose
 
-SunCode is a general-purpose coding agent. Phase 1 embeds one Rust agent SDK inside the .NET 10 Avalonia desktop process. Rust owns the complete agent: provider integration, agent behavior, policy, durable state, the SDK API, and machine-affecting operations.
+SunCode is a general-purpose coding agent. Phase 1 embeds one Rust agent SDK inside the .NET 10 Avalonia desktop process. A native Rust CLI is approved as the next production client and will embed the async SDK facade directly. Rust owns the complete agent: provider integration, agent behavior, policy, durable state, the SDK API, and machine-affecting operations.
 
 The architecture favors explicit ownership, reviewable authority, and one authoritative agent. It does not claim that a process running as the user is an OS sandbox.
 
@@ -39,17 +39,25 @@ Bundled Browser Use worker (lazy, one per active browser project)
     `- fixed Chromium build and project-isolated persistent profile
 
 Future TypeScript N-API and Python PyO3 bindings embed the same SDK.
+
+Approved Rust CLI (administrative foundation implemented)
+`apps/cli`
+    | direct async Rust calls
+`sdks/rust::AsyncAgentSdk`
+    `- same Rust SunCode agent core and ownership boundaries
 ```
 
 There is no agent-to-core process boundary and no client-facing server. Operations are Rust modules called in-process after policy authorization. The old TypeScript runtime, core client, runtime server, JSON-RPC stdio core, and loopback HTTP/SSE adapter are not production architecture. Provider adapters still make outbound HTTPS requests to configured model providers. Computer Use remains in-process and Rust-owned through a pinned Enigo backend. Browser Use is the narrow exception to the otherwise Rust-only process topology: Rust may launch the exact bundled Node.js worker over a private framed stdio protocol, but that worker is a browser driver rather than an agent, provider, database owner, or extension host.
 
 ## 3. Ownership Boundaries
 
-### 3.1 Avalonia desktop
+### 3.1 Product clients
 
 Avalonia XAML and C# view models own presentation, navigation, and transient interaction state. They consume agent DTOs and live events through the SDK facade. They never open SQLite, contact model providers, read project files directly, or invoke operation modules.
 
-Phase 1 has no CLI, TUI, Web, mobile, or IDE client.
+The CLI is a line-oriented native Rust client under `apps/cli`. Its implemented foundation owns administrative argument parsing, text/JSONL adaptation, credential terminal input, exit status, and explicit SDK lifecycle for doctor, model, credential, and configuration commands. It calls `AsyncAgentSdk` directly with a typed host capability ceiling that disables Browser and Computer Use without changing shared settings. It never calls the C ABI, opens SQLite, contacts providers, invokes operation modules, or implements policy. Conversational rendering, prompts, signals, and session workflows remain unimplemented. Its normative design is `contracts/cli.md`.
+
+The Avalonia desktop remains the implemented Phase 1 reference client. TUI, Web, mobile, and IDE clients remain deferred.
 
 ### 3.2 Rust agent
 
@@ -98,7 +106,7 @@ The Avalonia client embeds and opens the agent through the explicit runtime-owni
 
 ## 5. SDK Contract
 
-Phase 1 keeps the embedded SDK contract in `contracts/agent-sdk/`. C# calls named methods through the stable C ABI using P/Invoke. Future TypeScript and Python packages wrap the same Rust facade through native bindings. DTOs are hand-implemented in Rust and each host language and verified by focused contract tests. Contract generation is prohibited.
+Phase 1 keeps the embedded SDK contract in `contracts/agent-sdk/`. C# calls named methods through the stable C ABI using P/Invoke. The approved CLI calls the async Rust facade directly and adapts typed DTOs/events to the terminal contract in `contracts/cli.md`. Future TypeScript and Python packages wrap the same Rust facade through native bindings. DTOs are hand-implemented in Rust and each host language and verified by focused contract tests. Contract generation is prohibited.
 
 Mutating calls carry idempotency keys where replay could duplicate work. Session snapshots read normalized tables directly. Subscriptions deliver live in-memory events only; if a subscriber lags, it receives `resync.required` and reloads a snapshot.
 
@@ -155,6 +163,7 @@ Startup marks non-recoverable in-memory turn execution interrupted, discovers ad
 
 ```text
 apps/desktop-avalonia/    .NET 10 Avalonia desktop client
+apps/cli/                 native Rust CLI foundation and future conversational commands
 contracts/                hand-written protocols and contract documentation
 agent/crates/core/      agent harness and core services
 agent/crates/config/    Rust-owned bootstrap configuration crate
@@ -179,6 +188,7 @@ The old `typescript/` packages and retired `rust/` workspace were migration sour
 ## 11. Dependency Rules
 
 - Avalonia depends only on .NET/Avalonia and the native SDK contract.
+- The CLI depends on `sdks/rust` plus terminal/argument/serialization libraries; it does not depend on C, C#, SQLite/data, provider, or operation crates.
 - Native binding functions call typed agent services, never SQLite or provider wire types directly.
 - Agent and provider modules call operations through the authorized dispatcher.
 - The database crate does not depend on the agent core, Avalonia, native bindings, operations, or provider wire types.
@@ -191,4 +201,4 @@ The old `typescript/` packages and retired `rust/` workspace were migration sour
 
 ## 12. Deferred Scope
 
-Phase 1 defers TypeScript and Python package implementation, CLI/TUI/Web clients, client-facing cross-process IPC, executable or dynamically loaded provider plugins, MCP prompts/resources/OAuth, client creation/removal of custom provider and model catalog entries, PTY interaction, hosted execution, collaboration, telemetry, filesystem indexing/watchers, Git mutations and remote operations, other VCS-aware semantic operations, arbitrary browser script execution, external browser profiles, non-Chromium browsers, and cross-platform OS sandbox profiles. Settings may manage tools-only MCP servers over local stdio and remote Streamable HTTP through the Rust-owned SDK. Local MCP, LSP, Browser Use worker, and Chromium processes are lifecycle-contained and policy-mediated but are not OS-sandboxed; the client and approval surfaces state their authority and undo limitations explicitly.
+The CLI still defers conversational `run`/`chat`, session workflows, TUI, PTY, daemon/attach, Browser Use, Computer Use, shell-parent mutation, auto-update, and hosted modes as specified in `contracts/cli.md`. The broader product still defers TypeScript and Python package implementation, TUI/Web/mobile/IDE clients, client-facing cross-process IPC, executable or dynamically loaded provider plugins, MCP prompts/resources/OAuth, client creation/removal of custom provider and model catalog entries, hosted execution, collaboration, telemetry, filesystem indexing/watchers, Git mutations and remote operations, other VCS-aware semantic operations, arbitrary browser script execution, external browser profiles, non-Chromium browsers, and cross-platform OS sandbox profiles. Settings may manage tools-only MCP servers over local stdio and remote Streamable HTTP through the Rust-owned SDK. Local MCP, LSP, Browser Use worker, and Chromium processes are lifecycle-contained and policy-mediated but are not OS-sandboxed; the client and approval surfaces state their authority and undo limitations explicitly.

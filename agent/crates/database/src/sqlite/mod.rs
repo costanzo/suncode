@@ -59,6 +59,10 @@ pub fn data_scripts() -> &'static [&'static str] {
     DATA_SCRIPTS
 }
 
+pub fn llm_model_provider_schema() -> &'static str {
+    include_str!("schema/llm_model_provider.sql")
+}
+
 /// Ensures the SQLite file and its parent directory exist without opening it.
 /// Diesel remains exclusively responsible for opening and using the connection.
 pub fn ensure_database(path: &Path) -> io::Result<bool> {

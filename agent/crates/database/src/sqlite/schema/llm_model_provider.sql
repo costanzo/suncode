@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS llm_model_provider (
     display_name TEXT NOT NULL CHECK(length(display_name) > 0),
     endpoint TEXT NOT NULL CHECK(length(endpoint) > 0),
     default_endpoint TEXT NOT NULL CHECK(length(default_endpoint) > 0),
-    adapter_type TEXT NOT NULL DEFAULT 'openai' CHECK(adapter_type IN ('openai')),
+    adapter_type TEXT NOT NULL DEFAULT 'openai' CHECK(adapter_type IN ('openai', 'anthropic')),
     api_key TEXT,
     enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),
     sort_order INTEGER NOT NULL DEFAULT 0 CHECK(sort_order >= 0),

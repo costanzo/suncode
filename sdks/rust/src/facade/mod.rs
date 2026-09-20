@@ -10,7 +10,8 @@ use std::{
 };
 use suncode_agent::logging::{self, Level};
 use suncode_agent::{
-    agent::Agent, AgentLock, CheckpointItemRestoredPayload, CheckpointRestoreFailedPayload,
+    agent::{Agent, AgentHostCapabilities},
+    AgentLock, CheckpointItemRestoredPayload, CheckpointRestoreFailedPayload,
     CheckpointRestoredPayload, EventPayload, SessionEventHub,
 };
 use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
@@ -58,6 +59,7 @@ struct AgentState {
     proxy_configuration: Arc<RwLock<HttpProxyConfiguration>>,
     agent: Agent,
     providers: Arc<ModelProviderRegistry>,
+    host_capabilities: SdkHostCapabilities,
 }
 
 impl AsyncAgentSdk {
@@ -255,6 +257,7 @@ fn registry_from_store(
 async fn build_state<F>(
     config: &Config,
     user_id: &str,
+    options: SdkOpenOptions,
     configure_providers: F,
 ) -> SdkResult<AgentState>
 where
@@ -309,7 +312,7 @@ where
     configure_providers(&mut providers)
         .map_err(|error| BusinessError::new("provider_registration_failed", error.to_string()))?;
     let providers = Arc::new(providers);
-    let agent = Agent::new_with_user_id(
+    let agent = Agent::new_with_user_id_and_capabilities(
         store.clone(),
         providers.clone(),
         operations.clone(),
@@ -317,6 +320,10 @@ where
         config.non_interactive,
         config.data_dir.clone(),
         user_id.to_owned(),
+        AgentHostCapabilities {
+            browser_use: options.host_capabilities.browser_use,
+            computer_use: options.host_capabilities.computer_use,
+        },
     );
     agent.set_browser_proxy_configuration(
         proxy_configuration
@@ -324,7 +331,9 @@ where
             .map(|configuration| configuration.clone())
             .unwrap_or_default(),
     );
-    if global_bool_setting(&store, "computer_use_enabled", false)? {
+    if options.host_capabilities.computer_use
+        && global_bool_setting(&store, "computer_use_enabled", false)?
+    {
         match suncode_computer::EnigoBackend::new() {
             Ok(backend) => agent.install_computer_backend(Box::new(backend))?,
             Err(error) => logging::write(
@@ -346,6 +355,7 @@ where
         proxy_configuration,
         agent,
         providers,
+        host_capabilities: options.host_capabilities,
     };
     state.agent.recover().await?;
     Ok(state)

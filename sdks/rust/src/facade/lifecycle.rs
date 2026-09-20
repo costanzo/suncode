@@ -8,12 +8,33 @@ impl AsyncAgentSdk {
     }
 
     pub async fn open_default(user_id: &str) -> SdkResult<Self> {
-        Self::open_default_with_providers(user_id, |_| Ok(())).await
+        Self::open_with_options(user_id, SdkOpenOptions::default()).await
+    }
+
+    pub async fn open_with_options(user_id: &str, options: SdkOpenOptions) -> SdkResult<Self> {
+        Self::open_with_options_and_providers(user_id, options, |_| Ok(())).await
     }
 
     /// Opens the agent after extending the built-in registry with trusted providers.
     pub async fn open_default_with_providers<F>(
         user_id: &str,
+        configure_providers: F,
+    ) -> SdkResult<Self>
+    where
+        F: FnOnce(&mut ModelProviderRegistry) -> Result<(), BusinessError>,
+    {
+        Self::open_with_options_and_providers(
+            user_id,
+            SdkOpenOptions::default(),
+            configure_providers,
+        )
+        .await
+    }
+
+    /// Opens the agent with a typed host capability ceiling and trusted providers.
+    pub async fn open_with_options_and_providers<F>(
+        user_id: &str,
+        options: SdkOpenOptions,
         configure_providers: F,
     ) -> SdkResult<Self>
     where
@@ -28,7 +49,7 @@ impl AsyncAgentSdk {
                 BusinessError::unavailable(format!("agent lock unavailable: {error}"))
             }
         })?;
-        let state = build_state(&config, &user_id, configure_providers).await?;
+        let state = build_state(&config, &user_id, options, configure_providers).await?;
         logging::write(Level::Info, "agent", "open completed");
         Ok(Self {
             _lock: Some(lock),

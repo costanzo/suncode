@@ -47,6 +47,21 @@ const MAX_INSTRUCTION_FILE_BYTES: u64 = 32 * 1024;
 const MAX_NEARBY_INSTRUCTION_FILES: usize = 16;
 const MAX_NEARBY_INSTRUCTION_BYTES: usize = 64 * 1024;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AgentHostCapabilities {
+    pub browser_use: bool,
+    pub computer_use: bool,
+}
+
+impl Default for AgentHostCapabilities {
+    fn default() -> Self {
+        Self {
+            browser_use: true,
+            computer_use: true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct TodoEntry {
     content: String,

@@ -10,7 +10,7 @@ Three commitments differentiate SunCode. Every architectural tradeoff should be 
 
 1. **Broad coding utility.** SunCode is designed for coding work across languages, frameworks, and project types rather than for one narrow development workflow. The current desktop release works with projects the user opens and keeps its application state in the embedded agent.
 2. **Reviewable authority.** Every machine-affecting action the agent takes passes through one narrow, audited path with a stated scope. Users can see what the agent is permitted to do, what it did, and undo its filesystem changes. Approval is a real decision with real granularity, not a modal that trains users to click through.
-3. **One embedded agent core, several native bindings.** One Rust SDK implementation owns session state and machine behavior inside its host process. Phase 1 embeds it in the .NET Avalonia client; future TypeScript and Python packages wrap the same implementation rather than connecting to a service or duplicating agent logic.
+3. **One embedded agent core, several native clients and bindings.** One Rust SDK implementation owns session state and machine behavior inside its host process. The .NET Avalonia client embeds it through native bindings, and the approved Rust CLI will embed the async facade directly. Future TypeScript and Python packages wrap the same implementation rather than connecting to a service or duplicating agent logic.
 
 ## Users and primary jobs
 
@@ -27,9 +27,9 @@ The user is a software developer working in code repositories. The jobs SunCode 
 
 ## Scope
 
-The committed Phase 1 production surface is the Avalonia desktop application and it is the reference consumer of the Rust SDK facade.
+The committed Phase 1 production surface is the Avalonia desktop application and it remains the reference consumer of the Rust SDK facade. The native Rust CLI foundation now implements administrative commands; conversational and session workflows remain the next client delivery under `contracts/cli.md`.
 
-CLI, TUI, web, mobile, and IDE-plugin surfaces are future directions. They are deferred and must not shape current Phase 1 client implementation.
+TUI, web, mobile, and IDE-plugin surfaces remain future directions. The approved CLI must reuse the same embedded Rust agent and must not reshape or duplicate desktop-owned presentation behavior.
 
 ## Non-goals
 
@@ -47,4 +47,4 @@ CLI, TUI, web, mobile, and IDE-plugin surfaces are future directions. They are d
 
 ## Current status
 
-The architecture in `ARCHITECTURE.md` is approved. The agent core, Avalonia client, SQLite schema, and key SDK facade paths exist and have focused verification. Built-in provider support covers six providers with two static models each. The primary agent can delegate to six immutable Rust-defined specialists—Architect, UI/UX, Product, Software Engineering, QA, and SRE—whose linked child sessions and restricted tools remain visible through the desktop and SDK. Settings can manage tools-only MCP servers over local stdio and remote Streamable HTTP, plus project-scoped local stdio language servers used by five bounded semantic tools. These processes are policy-mediated but not presented as OS-sandboxed. Describe a component as working only when source and focused verification exist.
+The architecture in `ARCHITECTURE.md` is approved. The agent core, Avalonia client, SQLite schema, and key SDK facade paths exist and have focused verification. The native CLI foundation implements doctor, model, credential, and configuration commands; conversational and session workflows remain unimplemented. Built-in provider support covers six providers with two static models each. The primary agent can delegate to six immutable Rust-defined specialists—Architect, UI/UX, Product, Software Engineering, QA, and SRE—whose linked child sessions and restricted tools remain visible through the desktop and SDK. Settings can manage tools-only MCP servers over local stdio and remote Streamable HTTP, plus project-scoped local stdio language servers used by five bounded semantic tools. These processes are policy-mediated but not presented as OS-sandboxed. Describe a component as working only when source and focused verification exist.

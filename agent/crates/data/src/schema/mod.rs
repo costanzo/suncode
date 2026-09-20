@@ -101,6 +101,17 @@ pub(crate) fn llm_model_provider_includes_default_endpoint(
         .any(|column| column.name == "default_endpoint"))
 }
 
+pub(crate) fn llm_model_provider_supports_anthropic(
+    connection: &mut SqliteConnection,
+) -> Result<bool, crate::BusinessError> {
+    let sql =
+        sql_query("SELECT sql FROM sqlite_schema WHERE type='table' AND name='llm_model_provider'")
+            .get_result::<SqlRow>(connection)
+            .map_err(crate::database_error)?
+            .sql;
+    Ok(sql.contains("'anthropic'"))
+}
+
 pub(crate) fn llm_model_includes_computer_use(
     connection: &mut SqliteConnection,
 ) -> Result<bool, crate::BusinessError> {

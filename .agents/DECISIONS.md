@@ -2,6 +2,34 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260920-cli-foundation-commands
+
+- Date: 2026-09-20
+- Status: Accepted and implemented
+- Context: The approved CLI architecture needed a real executable foundation before conversational event, approval, and signal behavior could be added safely. Administrative SDK methods already existed and provided a bounded first vertical slice.
+- Decision: Create an independent `apps/cli` Rust package producing `suncode`. Implement doctor, models, auth list/set/remove, and config list; explicit-over-`SUNCODE_` configuration; text and JSONL reports; stable exit mapping; no-echo interactive credential input; CLI host capabilities; and consuming SDK shutdown before success output. Do not expose placeholder run/chat/session commands.
+- Consequences: CLI is partially implemented and can administer/diagnose the embedded agent, but it is not yet a conversational coding client. JSONL foundation output and exit codes follow `contracts/cli.md`. Credentials remain SQLite-only. The next delivery owns project/session selection, atomic watch, live rendering, approval/question prompts, signals, and turns.
+- Details: `requirements/2026-09-20-cli-foundation-implementation/`, `features/cli-foundation/`, `apps/cli/`, `contracts/cli.md`
+
+## ADR-20260920-sdk-host-capability-ceiling
+
+- Date: 2026-09-20
+- Status: Accepted
+- Context: Persisted Browser and Computer enablement represented user preference but not whether a particular SDK host had packaging or interaction UX for those capabilities. The approved CLI must not initialize or advertise them, even when it shares settings previously enabled by the desktop.
+- Decision: Add typed `SdkOpenOptions` and `SdkHostCapabilities` to async and blocking Rust startup. Defaults enable both capabilities for compatibility. Map options to immutable core `AgentHostCapabilities`; enforce them in Browser/Computer runtime information, catalogs, backend initialization, execution, permission/control calls, and SDK mutations. Reject unavailable mutations before persistence.
+- Consequences: The future CLI can safely share a data directory without changing desktop preferences or exposing unsupported model tools. Capability ceilings remain distinct from policy and cannot grant authority. C ABI 13 and managed startup remain unchanged on default capabilities. Additional ceilings require a concrete host need.
+- Details: `requirements/2026-09-20-sdk-host-capabilities/`, `sdks/rust/src/types.rs`, `sdks/rust/src/facade/lifecycle.rs`, `agent/crates/core/src/agent/browser.rs`, `agent/crates/core/src/agent/computer.rs`
+
+## ADR-20260920-rust-cli-production-surface
+
+- Date: 2026-09-20
+- Status: Accepted; administrative foundation implemented, conversational client incomplete
+- Supersedes: the CLI deferral portion of ADR-20260816-avalonia-desktop-client; Avalonia remains the sole desktop client and TUI/Web remain deferred
+- Context: CLI was deferred while the Rust SDK had a hidden runtime, callback-shaped subscriptions, a snapshot/subscription race, and drop-only cleanup. The SDK now has a caller-owned async facade, typed fused event streams, atomic session watch, and consuming shutdown. Developers also need a line-oriented interactive client and a future script/CI surface without duplicating the agent or introducing IPC.
+- Decision: Approve a native Rust CLI under `apps/cli` as the next production client. It embeds `AsyncAgentSdk` directly on Tokio and owns only arguments, terminal rendering, prompts, signals, JSONL output, and exit codes. Preserve the one-process-per-data-directory lock; do not add a daemon or desktop attach. Initial CLI startup uses the typed SDK host capability ceiling to exclude Browser and Computer Use; their focused packaging/UX remains later work. Interactive CLI may precede general CI support, but pre-authorized non-interactive execution requires Rust-owned named policy profiles. All SunCode CLI environment variables use the `SUNCODE_` prefix and provider credentials remain SQLite-only.
+- Consequences: CLI is no longer deferred and now has buildable administrative commands with focused tests, but it must not be described as a conversational coding client until run/chat/session/event/approval behavior exists. The desktop remains the Phase 1 reference client. TUI, PTY, IPC, Browser/Computer terminal UX, and hosted modes remain deferred. The CLI contract is versioned independently of human terminal formatting and does not change agent authority.
+- Details: `requirements/2026-09-20-cli-foundation-and-architecture/`, `contracts/cli.md`, `PRODUCT.md`, `ARCHITECTURE.md`
+
 ## ADR-20260919-explicit-rust-sdk-shutdown
 
 - Date: 2026-09-19

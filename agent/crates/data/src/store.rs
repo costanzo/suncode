@@ -108,6 +108,21 @@ fn initialize(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
                 )
                 .map_err(crate::database_error)?;
         }
+        if !schema::llm_model_provider_supports_anthropic(connection)? {
+            connection
+                .batch_execute(
+                    "DROP INDEX IF EXISTS llm_model_provider_enabled_order_idx; ALTER TABLE llm_model_provider RENAME TO llm_model_provider_legacy;",
+                )
+                .map_err(crate::database_error)?;
+            connection
+                .batch_execute(sqlite::llm_model_provider_schema())
+                .map_err(crate::database_error)?;
+            connection
+                .batch_execute(
+                    "INSERT INTO llm_model_provider(provider_id,display_name,endpoint,default_endpoint,adapter_type,api_key,enabled,sort_order,created_at,updated_at) SELECT provider_id,display_name,endpoint,default_endpoint,adapter_type,api_key,enabled,sort_order,created_at,updated_at FROM llm_model_provider_legacy; DROP TABLE llm_model_provider_legacy;",
+                )
+                .map_err(crate::database_error)?;
+        }
         if !schema::llm_model_includes_computer_use(connection)? {
             connection
                 .batch_execute(

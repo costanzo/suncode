@@ -42,4 +42,4 @@ Native calls run off the UI thread, subscription payloads are copied and marshal
 dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj
 ```
 
-CLI, TUI, Web, mobile, IDE-plugin, hosted, and Electron surfaces remain deferred.
+The native Rust CLI administrative foundation is implemented separately and does not change this desktop boundary. Its conversational/session workflows and all TUI, Web, mobile, IDE-plugin, hosted, and Electron surfaces remain deferred.

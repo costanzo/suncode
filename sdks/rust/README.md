@@ -2,6 +2,8 @@
 
 This crate is the typed Rust SDK facade over the `suncode-agent` harness. `AsyncAgentSdk` is the runtime-free primary Rust facade: async hosts supply Tokio and await runtime-dependent operations directly. `blocking::AgentSdk` owns one Tokio runtime for synchronous hosts and remains re-exported at the crate root as `AgentSdk` for compatibility. Both surfaces share the same state, validation, DTO, persistence, policy, and event implementation. The Avalonia-facing C ABI is implemented separately by [`../c`](../c).
 
+`SdkOpenOptions` carries an immutable `SdkHostCapabilities` ceiling. Defaults preserve Browser and Computer Use behavior for existing desktop/native hosts. A terminal host can disable either capability without mutating shared persisted settings; core then suppresses its model tools and external initialization, while host-facing management calls fail with stable host-unavailable errors.
+
 The `version` method returns the embedded `suncode-agent` core package version without opening agent state. Client bindings use it for About-window component version display.
 
 It does not open a second database or implement provider/tool behavior independently; those remain owned by the Rust agent crates.

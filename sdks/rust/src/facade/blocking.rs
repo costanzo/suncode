@@ -28,16 +28,36 @@ impl AgentSdk {
     }
 
     pub fn open_default(user_id: &str) -> SdkResult<Self> {
-        Self::open_default_with_providers(user_id, |_| Ok(()))
+        Self::open_with_options(user_id, SdkOpenOptions::default())
+    }
+
+    pub fn open_with_options(user_id: &str, options: SdkOpenOptions) -> SdkResult<Self> {
+        Self::open_with_options_and_providers(user_id, options, |_| Ok(()))
     }
 
     pub fn open_default_with_providers<F>(user_id: &str, configure_providers: F) -> SdkResult<Self>
     where
         F: FnOnce(&mut ModelProviderRegistry) -> Result<(), BusinessError>,
     {
-        let runtime = build_runtime()?;
-        let inner = runtime.block_on(AsyncAgentSdk::open_default_with_providers(
+        Self::open_with_options_and_providers(
             user_id,
+            SdkOpenOptions::default(),
+            configure_providers,
+        )
+    }
+
+    pub fn open_with_options_and_providers<F>(
+        user_id: &str,
+        options: SdkOpenOptions,
+        configure_providers: F,
+    ) -> SdkResult<Self>
+    where
+        F: FnOnce(&mut ModelProviderRegistry) -> Result<(), BusinessError>,
+    {
+        let runtime = build_runtime()?;
+        let inner = runtime.block_on(AsyncAgentSdk::open_with_options_and_providers(
+            user_id,
+            options,
             configure_providers,
         ))?;
         Ok(Self { inner, runtime })

@@ -30,12 +30,42 @@ impl Agent {
     where
         P: Into<Arc<ModelProviderRegistry>>,
     {
+        Self::new_with_user_id_and_capabilities(
+            store,
+            providers,
+            operations,
+            events,
+            non_interactive,
+            application_data,
+            "default".into(),
+            AgentHostCapabilities::default(),
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_user_id_and_capabilities<P>(
+        store: Store,
+        providers: P,
+        operations: Arc<suncode_tool::Operations>,
+        events: SessionEventHub,
+        non_interactive: bool,
+        application_data: PathBuf,
+        user_id: String,
+        host_capabilities: AgentHostCapabilities,
+    ) -> Self
+    where
+        P: Into<Arc<ModelProviderRegistry>>,
+    {
         let mcp = McpManager::new(store.clone(), application_data.clone());
         let lsp = LanguageServerManager::new(store.clone());
-        let browser = BrowserManager::new(store.clone(), application_data.clone());
-        let computer = ComputerManager::new(&store);
+        let browser = BrowserManager::new(
+            store.clone(),
+            application_data.clone(),
+            host_capabilities.browser_use,
+        );
+        let computer = ComputerManager::new(&store, host_capabilities.computer_use);
         Self {
-            user_id: "default".into(),
+            user_id,
             store,
             providers: providers.into(),
             operations,
@@ -65,16 +95,16 @@ impl Agent {
     where
         P: Into<Arc<ModelProviderRegistry>>,
     {
-        let mut agent = Self::new_with_mcp_configuration(
+        Self::new_with_user_id_and_capabilities(
             store,
             providers,
             operations,
             events,
             non_interactive,
             application_data,
-        );
-        agent.user_id = user_id;
-        agent
+            user_id,
+            AgentHostCapabilities::default(),
+        )
     }
 
     #[cfg(test)]

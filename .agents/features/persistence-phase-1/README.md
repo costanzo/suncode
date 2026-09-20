@@ -6,7 +6,7 @@ Rust is the sole database owner. `suncode-database` owns SQLite resources, manif
 
 ## Current storage model
 
-Phase 1 has one current 18-table schema with no schema-version metadata or general migration runner. Initialization applies schema and seed manifests transactionally, is idempotent for the current schema, supports the narrow additive language-server, MCP, and built-in-agent compatibility steps, and rejects unexpected or incompatible application tables without conversion.
+Phase 1 has one current 18-table schema with no schema-version metadata or general migration runner. Initialization applies schema and seed manifests transactionally, is idempotent for the current schema, supports the narrow additive language-server, MCP, built-in-agent, and provider-adapter compatibility steps, and rejects unexpected or incompatible application tables without conversion. The provider table accepts the `openai` and `anthropic` adapters; opening the immediately previous current-schema constraint narrowly rebuilds only that table while preserving provider configuration and credentials.
 
 The normalized tables are:
 

@@ -12,6 +12,26 @@ use suncode_llm::ModelDescriptor;
 pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 13;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SdkHostCapabilities {
+    pub browser_use: bool,
+    pub computer_use: bool,
+}
+
+impl Default for SdkHostCapabilities {
+    fn default() -> Self {
+        Self {
+            browser_use: true,
+            computer_use: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct SdkOpenOptions {
+    pub host_capabilities: SdkHostCapabilities,
+}
+
 #[derive(Debug, Serialize)]
 pub struct VersionResult {
     pub version: &'static str,

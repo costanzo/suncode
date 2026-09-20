@@ -3,6 +3,77 @@ use diesel::{connection::SimpleConnection, Connection, SqliteConnection};
 use serde_json::json;
 use std::collections::BTreeMap;
 
+const PREVIOUS_PROVIDER_SCHEMA: &str = r#"
+    CREATE TABLE IF NOT EXISTS llm_model_provider (
+        provider_id TEXT PRIMARY KEY CHECK(length(provider_id) > 0),
+        display_name TEXT NOT NULL CHECK(length(display_name) > 0),
+        endpoint TEXT NOT NULL CHECK(length(endpoint) > 0),
+        default_endpoint TEXT NOT NULL CHECK(length(default_endpoint) > 0),
+        adapter_type TEXT NOT NULL DEFAULT 'openai' CHECK(adapter_type IN ('openai')),
+        api_key TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),
+        sort_order INTEGER NOT NULL DEFAULT 0 CHECK(sort_order >= 0),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS llm_model_provider_enabled_order_idx
+        ON llm_model_provider(enabled, sort_order, provider_id);
+"#;
+
+#[test]
+fn previous_provider_constraint_is_rebuilt_for_anthropic_without_losing_configuration() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("agent.sqlite3");
+    let mut connection = SqliteConnection::establish(path.to_str().unwrap()).unwrap();
+    for script in suncode_database::sqlite::schema_scripts() {
+        if script.contains("CREATE TABLE IF NOT EXISTS llm_model_provider") {
+            connection.batch_execute(PREVIOUS_PROVIDER_SCHEMA).unwrap();
+        } else {
+            connection.batch_execute(script).unwrap();
+        }
+    }
+    for script in suncode_database::sqlite::data_scripts() {
+        let compatible = script.replace("'anthropic', NULL, 1, 50", "'openai', NULL, 1, 50");
+        connection.batch_execute(&compatible).unwrap();
+    }
+    connection
+        .batch_execute(
+            "UPDATE llm_model_provider SET api_key='preserved-key',enabled=0,sort_order=77 WHERE provider_id='claude';",
+        )
+        .unwrap();
+    drop(connection);
+
+    let store = Store::open(&path).unwrap();
+    let claude = store
+        .llm_model_providers(false)
+        .unwrap()
+        .into_iter()
+        .find(|provider| provider.provider_id == "claude")
+        .unwrap();
+    assert_eq!(claude.adapter_type, "anthropic");
+    assert_eq!(claude.endpoint, "https://api.anthropic.com/v1");
+    assert_eq!(claude.default_endpoint, "https://api.anthropic.com/v1");
+    assert!(!claude.enabled);
+    assert_eq!(claude.sort_order, 77);
+    assert_eq!(claude.created_at, "2026-08-19T00:00:00.000Z");
+    assert_eq!(claude.updated_at, "2026-09-19T00:00:00.000Z");
+    store
+        .upsert_llm_model_provider(LlmModelProviderInput {
+            provider_id: &claude.provider_id,
+            display_name: &claude.display_name,
+            endpoint: &claude.endpoint,
+            default_endpoint: &claude.default_endpoint,
+            adapter_type: &claude.adapter_type,
+            enabled: true,
+            sort_order: claude.sort_order,
+        })
+        .unwrap();
+    assert_eq!(
+        store.llm_provider_api_key("claude").unwrap(),
+        Some("preserved-key".into())
+    );
+}
+
 #[test]
 fn existing_sixteen_table_database_without_mcp_receives_additive_table() {
     let directory = tempfile::tempdir().unwrap();

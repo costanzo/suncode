@@ -4,6 +4,8 @@ use std::collections::BTreeMap;
 use std::sync::OnceLock;
 use suncode_agent::{domain::Message, AgentEvent, EventPayload, TurnStatePayload};
 
+static ENVIRONMENT: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
+
 fn test_sdk(directory: &std::path::Path) -> AgentSdk {
     let state = test_state(directory);
     AgentSdk::from_async_for_test(AsyncAgentSdk {
@@ -60,12 +62,12 @@ fn test_state(directory: &std::path::Path) -> AgentState {
         proxy_configuration,
         agent,
         providers,
+        host_capabilities: SdkHostCapabilities::default(),
     }
 }
 
 #[tokio::test(flavor = "current_thread")]
 async fn async_sdk_opens_and_shuts_down_inside_an_existing_tokio_runtime() {
-    static ENVIRONMENT: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
     let _guard = ENVIRONMENT
         .get_or_init(|| tokio::sync::Mutex::new(()))
         .lock()
@@ -90,6 +92,92 @@ async fn async_sdk_opens_and_shuts_down_inside_an_existing_tokio_runtime() {
         .unwrap();
     reopened.shutdown().await.unwrap();
 
+    std::env::remove_var("SUNCODE_DATA_DIRECTORY");
+    std::env::remove_var("SUNCODE_NON_INTERACTIVE");
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn host_capability_ceiling_disables_browser_and_computer_without_mutating_settings() {
+    let _guard = ENVIRONMENT
+        .get_or_init(|| tokio::sync::Mutex::new(()))
+        .lock()
+        .await;
+    let directory = tempfile::tempdir().unwrap();
+    let data_directory = directory.path().join("data");
+    std::env::set_var("SUNCODE_DATA_DIRECTORY", &data_directory);
+    std::env::remove_var("SUNCODE_DATABASE_PATH");
+    std::env::set_var("SUNCODE_NON_INTERACTIVE", "false");
+
+    let config = Config::load().unwrap();
+    let store = Store::open(&config.database_path).unwrap();
+    store
+        .set_setting(
+            "global",
+            "global",
+            "browser_use_enabled",
+            &Value::Bool(true),
+        )
+        .unwrap();
+    store
+        .set_setting(
+            "global",
+            "global",
+            "computer_use_enabled",
+            &Value::Bool(true),
+        )
+        .unwrap();
+    drop(store);
+
+    let sdk = AsyncAgentSdk::open_with_options(
+        "capability-test-user",
+        SdkOpenOptions {
+            host_capabilities: SdkHostCapabilities {
+                browser_use: false,
+                computer_use: false,
+            },
+        },
+    )
+    .await
+    .unwrap();
+
+    let browser = sdk.browser_runtime_info(None).await.unwrap();
+    assert!(browser.enabled);
+    assert_eq!(
+        browser.installation_state,
+        suncode_agent::BrowserInstallationState::Unsupported
+    );
+    assert_eq!(
+        browser.error.as_deref(),
+        Some("Browser Use is unavailable in this host")
+    );
+    let computer = sdk.computer_runtime_info().unwrap();
+    assert!(computer.enabled);
+    assert!(!computer.backend_available);
+    assert_eq!(computer.capture_permission, "unsupported");
+    assert_eq!(computer.input_permission, "unsupported");
+    assert_eq!(computer.control_owner, "user");
+
+    let browser_error = sdk.set_browser_use_enabled(false).await.unwrap_err();
+    assert_eq!(browser_error.code, "browser_host_unavailable");
+    let computer_error = sdk.set_computer_use_enabled(false).unwrap_err();
+    assert_eq!(computer_error.code, "computer_host_unavailable");
+    let settings = sdk.list_settings(None, None).unwrap().settings;
+    assert_eq!(
+        settings
+            .iter()
+            .find(|setting| setting.key == "browser_use_enabled")
+            .map(|setting| &setting.value),
+        Some(&Value::Bool(true))
+    );
+    assert_eq!(
+        settings
+            .iter()
+            .find(|setting| setting.key == "computer_use_enabled")
+            .map(|setting| &setting.value),
+        Some(&Value::Bool(true))
+    );
+
+    sdk.shutdown().await.unwrap();
     std::env::remove_var("SUNCODE_DATA_DIRECTORY");
     std::env::remove_var("SUNCODE_NON_INTERACTIVE");
 }

@@ -13,4 +13,5 @@ pub mod events {
     pub use suncode_agent::agent::events::*;
 }
 pub use events::{AgentEvent, EventPayload as AgentEventPayload, EventType};
+pub use suncode_common::BusinessError;
 pub use types::*;

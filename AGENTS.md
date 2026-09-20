@@ -4,7 +4,7 @@ This repository is SunCode, a general-purpose coding agent. Unless the user requ
 
 ## Current state
 
-The project has started implementation. A .NET 10 Avalonia desktop client and the Rust Phase 1 agent exist and were focused-tested. Migration to a reusable Rust SDK facade is in progress; do not describe it as complete until provider, agent loop, policy, SQLite, credentials, API, operations, approvals, recovery, and undo are all Rust-owned and the obsolete TypeScript production path is removed. CLI/TUI/Web and executable extensions remain deferred.
+The project has started implementation. A .NET 10 Avalonia desktop client and the Rust Phase 1 agent exist and were focused-tested. Migration to a reusable Rust SDK facade is in progress; do not describe it as complete until provider, agent loop, policy, SQLite, credentials, API, operations, approvals, recovery, and undo are all Rust-owned and the obsolete TypeScript production path is removed. The native Rust CLI foundation implements administrative commands under `apps/cli`; conversational `run`/`chat` and session workflows are not implemented yet. TUI, Web, and executable extensions remain deferred.
 
 ## Start here
 
@@ -19,7 +19,7 @@ Before non-trivial work:
 
 - The agent workspace owns the complete Rust implementation. Keep machine operations behind a narrow internal audited dispatcher, separate from provider and agent semantics.
 - TypeScript is migration-only and must not remain a Phase 1 production dependency.
-- Clients consume the client API or Rust SDK facade; they do not access SQLite or model providers directly. Phase 1 ships the Avalonia desktop client, and CLI/TUI/Web are deferred.
+- Clients consume the client API or Rust SDK facade; they do not access SQLite or model providers directly. Phase 1 ships the Avalonia desktop client. The CLI foundation embeds `AsyncAgentSdk` directly; its conversational workflows plus TUI and Web remain deferred.
 - The production desktop application uses .NET 10 and Avalonia. Other desktop UI toolkits and Electron are not supported production dependencies.
 - Protocol contracts are written documents, hand-implemented per language, and verified by focused implementation tests. Nothing is generated.
 - The agent core is Rust. The sole Phase 1 production Node.js exception is the fixed, bundled first-party Playwright Browser Use worker approved by `ADR-20260919-bundled-playwright-browser-runtime`; it is not an agent, provider, plugin host, or general execution surface. Bun and every other production Node.js path remain prohibited.

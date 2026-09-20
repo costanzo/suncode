@@ -40,6 +40,12 @@ impl AsyncAgentSdk {
         value: &Value,
     ) -> SdkResult<SettingUpdate> {
         validate_setting(scope, key, value)?;
+        if scope == "global" && key == "browser_use_enabled" {
+            self.ensure_browser_host_available()?;
+        }
+        if scope == "global" && key == "computer_use_enabled" {
+            self.ensure_computer_host_available()?;
+        }
         if let Some(project_id) = project_id {
             self.project_for_user(project_id)?;
         }

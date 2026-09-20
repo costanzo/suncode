@@ -43,6 +43,7 @@ pub(super) struct ComputerManager {
 
 struct Inner {
     enabled: AtomicBool,
+    host_available: bool,
     control_owner: AtomicU8,
     executor: Mutex<Option<ComputerExecutor<Box<dyn ComputerBackend>>>>,
 }
@@ -51,7 +52,7 @@ const CONTROL_USER: u8 = 0;
 const CONTROL_AGENT: u8 = 1;
 
 impl ComputerManager {
-    pub(super) fn new(store: &Store) -> Self {
+    pub(super) fn new(store: &Store, host_available: bool) -> Self {
         let enabled = store
             .settings(None, None)
             .ok()
@@ -65,6 +66,7 @@ impl ComputerManager {
         Self {
             inner: Arc::new(Inner {
                 enabled: AtomicBool::new(enabled),
+                host_available,
                 control_owner: AtomicU8::new(if enabled { CONTROL_AGENT } else { CONTROL_USER }),
                 executor: Mutex::new(None),
             }),
@@ -75,6 +77,7 @@ impl ComputerManager {
         &self,
         backend: Box<dyn ComputerBackend>,
     ) -> Result<(), BusinessError> {
+        self.ensure_host_available()?;
         let mut executor =
             self.inner.executor.lock().map_err(|_| {
                 BusinessError::unavailable("Computer Use backend lock is unavailable")
@@ -84,6 +87,9 @@ impl ComputerManager {
     }
 
     pub(super) fn set_enabled(&self, enabled: bool) -> Result<(), BusinessError> {
+        if enabled {
+            self.ensure_host_available()?;
+        }
         self.inner.enabled.store(enabled, Ordering::SeqCst);
         self.inner.control_owner.store(
             if enabled { CONTROL_AGENT } else { CONTROL_USER },
@@ -105,6 +111,7 @@ impl ComputerManager {
     }
 
     pub(super) fn take_user_control(&self) -> Result<(), BusinessError> {
+        self.ensure_host_available()?;
         self.inner
             .control_owner
             .store(CONTROL_USER, Ordering::SeqCst);
@@ -120,6 +127,7 @@ impl ComputerManager {
     }
 
     pub(super) fn return_agent_control(&self) -> Result<(), BusinessError> {
+        self.ensure_host_available()?;
         if !self.inner.enabled.load(Ordering::SeqCst) {
             return Err(BusinessError::new(
                 "computer_use_disabled",
@@ -140,6 +148,21 @@ impl ComputerManager {
     }
 
     pub(super) fn info(&self) -> ComputerRuntimeInfo {
+        if !self.inner.host_available {
+            return ComputerRuntimeInfo {
+                enabled: self.inner.enabled.load(Ordering::SeqCst),
+                backend_available: false,
+                target_display: "primary".into(),
+                input_width: None,
+                input_height: None,
+                pixel_width: None,
+                pixel_height: None,
+                capture_permission: "unsupported".into(),
+                input_permission: "unsupported".into(),
+                control_owner: "user".into(),
+                error: Some("Computer Use is unavailable in this host".into()),
+            };
+        }
         let mut input_width = None;
         let mut input_height = None;
         let mut pixel_width = None;
@@ -199,6 +222,9 @@ impl ComputerManager {
         &self,
         model_supports_computer_use: bool,
     ) -> Vec<suncode_llm::ClientToolsetDefinition> {
+        if !self.inner.host_available {
+            return Vec::new();
+        }
         let info = self.info();
         if !info.enabled
             || !info.backend_available
@@ -220,6 +246,7 @@ impl ComputerManager {
         input: &Value,
         cancellation: CancellationToken,
     ) -> Result<suncode_computer::ActionOutcome, BusinessError> {
+        self.ensure_host_available()?;
         if !self.inner.enabled.load(Ordering::SeqCst) {
             return Err(BusinessError::new(
                 "computer_use_disabled",
@@ -255,6 +282,17 @@ impl ComputerManager {
         .await
         .map_err(|_| BusinessError::unavailable("Computer Use executor stopped unexpectedly"))?
     }
+
+    pub(super) fn ensure_host_available(&self) -> Result<(), BusinessError> {
+        if self.inner.host_available {
+            Ok(())
+        } else {
+            Err(BusinessError::new(
+                "computer_host_unavailable",
+                "Computer Use is unavailable in this host",
+            ))
+        }
+    }
 }
 
 impl Agent {
@@ -280,14 +318,18 @@ impl Agent {
         Ok(self.computer.info())
     }
 
-    pub fn request_computer_capture_permission(&self) -> ComputerRuntimeInfo {
+    pub fn request_computer_capture_permission(
+        &self,
+    ) -> Result<ComputerRuntimeInfo, BusinessError> {
+        self.computer.ensure_host_available()?;
         let _ = EnigoBackend::request_capture_permission();
-        self.computer.info()
+        Ok(self.computer.info())
     }
 
-    pub fn request_computer_input_permission(&self) -> ComputerRuntimeInfo {
+    pub fn request_computer_input_permission(&self) -> Result<ComputerRuntimeInfo, BusinessError> {
+        self.computer.ensure_host_available()?;
         let _ = EnigoBackend::request_input_permission();
-        self.computer.info()
+        Ok(self.computer.info())
     }
 
     pub fn install_computer_backend(
@@ -308,5 +350,34 @@ const fn permission_name(permission: PermissionState) -> &'static str {
         PermissionState::Denied => "denied",
         PermissionState::Unknown => "unknown",
         PermissionState::Unsupported => "unsupported",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unavailable_host_exposes_no_computer_toolset_or_backend() {
+        let store = Store::open_memory().unwrap();
+        store
+            .set_setting(
+                "global",
+                "global",
+                "computer_use_enabled",
+                &Value::Bool(true),
+            )
+            .unwrap();
+        let manager = ComputerManager::new(&store, false);
+
+        assert!(manager.catalog(true).is_empty());
+        let info = manager.info();
+        assert!(info.enabled);
+        assert!(!info.backend_available);
+        assert_eq!(info.capture_permission, "unsupported");
+        assert_eq!(
+            manager.set_enabled(true).unwrap_err().code,
+            "computer_host_unavailable"
+        );
     }
 }
