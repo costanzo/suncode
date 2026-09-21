@@ -7,16 +7,16 @@ INSERT INTO llm_model (
 ) VALUES
     ('deepseek-v4-flash', 'deepseek', 'DeepSeek V4 Flash', 'deepseek-v4-flash-vision-exp', 1000000, 983616, 128000, 1, 1, 1, 0, 1, 0, 0, 1, 10, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', ''),
     ('deepseek-v4-pro', 'deepseek', 'DeepSeek V4 Pro', 'deepseek-v4-pro', 1000000, 983616, 128000, 1, 1, 0, 0, 1, 0, 0, 1, 20, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', ''),
-    ('glm-5.2', 'zhipu', 'GLM 5.2', 'glm-5.2', 1000000, 983616, 128000, 1, 1, 0, 0, 1, 1, 0, 1, 30, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high'),
-    ('glm-5.3', 'zhipu', 'GLM 5.3', 'glm-5.3', 1000000, 983616, 128000, 1, 1, 0, 0, 1, 1, 0, 1, 40, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,high'),
-    ('gpt-5.6-sol', 'openai', 'GPT 5.6 SOL', 'gpt-5.6-sol', 1048576, 1032192, 128000, 1, 1, 1, 1, 1, 1, 0, 1, 50, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high'),
-    ('gpt-5.5', 'openai', 'GPT 5.6 Terra (legacy SunCode ID)', 'gpt-5.6-terra', 1048576, 1032192, 128000, 1, 1, 1, 1, 1, 1, 0, 1, 60, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high'),
-    ('kimi-k2.7-code', 'kimi', 'Kimi K2.7 Code', 'kimi-k2.7-code', 262144, 245760, 262144, 1, 1, 1, 0, 1, 1, 0, 1, 70, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high'),
-    ('kimi-k3', 'kimi', 'Kimi K3', 'kimi-k3', 1000000, 983616, 262144, 1, 1, 1, 0, 1, 1, 0, 1, 80, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high'),
-    ('claude-opus-5', 'claude', 'Claude Opus 5', 'claude-opus-5', 1000000, 983616, 128000, 1, 1, 1, 1, 1, 1, 1, 1, 90, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high'),
-    ('claude-sonnet-5', 'claude', 'Claude Sonnet 5', 'claude-sonnet-5', 1000000, 983616, 128000, 1, 1, 1, 1, 1, 1, 1, 1, 100, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high'),
-    ('gemini-3.6-flash', 'gemini', 'Gemini 3.6 Flash', 'gemini-3.6-flash', 1048576, 1032192, 65536, 1, 1, 1, 1, 1, 1, 0, 1, 110, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high'),
-    ('gemini-3.5', 'gemini', 'Gemini 3.5 Flash (legacy SunCode ID)', 'gemini-3.5-flash', 1048576, 1032192, 65536, 1, 1, 1, 1, 1, 1, 0, 1, 120, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high')
+    ('glm-5.2', 'zhipu', 'GLM 5.2', 'glm-5.2', 1000000, 983616, 128000, 1, 1, 0, 0, 1, 1, 0, 1, 30, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'high,max'),
+    ('glm-5.3', 'zhipu', 'GLM 5.3', 'glm-5.3', 1000000, 983616, 128000, 1, 1, 0, 0, 1, 1, 0, 1, 40, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,high,max'),
+    ('gpt-5.6-sol', 'openai', 'GPT 5.6 SOL', 'gpt-5.6-sol', 1048576, 1032192, 128000, 1, 1, 1, 1, 1, 1, 0, 1, 50, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'none,low,medium,high,xhigh,max'),
+    ('gpt-5.5', 'openai', 'GPT 5.6 Terra (legacy SunCode ID)', 'gpt-5.6-terra', 1048576, 1032192, 128000, 1, 1, 1, 1, 1, 1, 0, 1, 60, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'none,low,medium,high,xhigh,max'),
+    ('kimi-k2.7-code', 'kimi', 'Kimi K2.7 Code', 'kimi-k2.7-code', 262144, 245760, 262144, 1, 1, 1, 0, 1, 0, 0, 1, 70, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', ''),
+    ('kimi-k3', 'kimi', 'Kimi K3', 'kimi-k3', 1000000, 983616, 262144, 1, 1, 1, 0, 1, 1, 0, 1, 80, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,high,max'),
+    ('claude-opus-5', 'claude', 'Claude Opus 5', 'claude-opus-5', 1000000, 983616, 128000, 1, 1, 1, 1, 1, 1, 1, 1, 90, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high,xhigh,max'),
+    ('claude-sonnet-5', 'claude', 'Claude Sonnet 5', 'claude-sonnet-5', 1000000, 983616, 128000, 1, 1, 1, 1, 1, 1, 1, 1, 100, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high,xhigh,max'),
+    ('gemini-3.6-flash', 'gemini', 'Gemini 3.6 Flash', 'gemini-3.6-flash', 1048576, 1032192, 65536, 1, 1, 1, 1, 1, 1, 0, 1, 110, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'minimal,low,medium,high'),
+    ('gemini-3.5', 'gemini', 'Gemini 3.5 Flash (legacy SunCode ID)', 'gemini-3.5-flash', 1048576, 1032192, 65536, 1, 1, 1, 1, 1, 1, 0, 1, 120, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'minimal,low,medium,high')
 ON CONFLICT(model_id) DO UPDATE SET
     display_name = excluded.display_name,
     request_model = excluded.request_model,
