@@ -483,5 +483,6 @@ public sealed record DiffLineItem(string Kind, string Text, string OldLine, stri
     public bool IsAddition => Kind == "addition";
     public bool IsDeletion => Kind == "deletion";
     public bool IsHunk => Kind == "hunk";
+    public bool IsContext => Kind == "context";
     public string DisplayText => IsHunk ? Text : $"{(IsAddition ? "+" : IsDeletion ? "-" : " ")}{Text}";
 }

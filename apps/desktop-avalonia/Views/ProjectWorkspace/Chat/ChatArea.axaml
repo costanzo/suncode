@@ -283,10 +283,9 @@
                       ToolTip.Tip="View in Tool activity"
                       AutomationProperties.Name="{Binding ToolSummaryText, StringFormat=View {0} in Tool activity}">
                 <Grid ColumnDefinitions="18,*,Auto,16">
-                  <svg:Svg Grid.Column="0" Width="13" Height="13" Margin="0,1,0,0" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" />
                   <TextBlock Grid.Column="1" Text="{Binding ToolSummaryText}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
-                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="{Binding ToolStateText}" FontSize="10" Foreground="{DynamicResource WarningBrush}" />
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" Margin="12,0">
+                    <TextBlock Text="{Binding ToolStateText}" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource WarningBrush}" />
                     <Ellipse Width="6" Height="6" Fill="{DynamicResource WarningBrush}" VerticalAlignment="Center" />
                   </StackPanel>
                   <svg:Svg Grid.Column="3" Width="12" Height="12" HorizontalAlignment="Right" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
@@ -320,7 +319,7 @@
           <!-- Runtime status is part of the conversation timeline. It stays
                after the latest message/tool row and scrolls with the content,
                matching the design-system conversation specimen. -->
-          <StackPanel Margin="12,2,0,0"
+          <StackPanel Margin="12,12,0,0"
                       HorizontalAlignment="Left"
                       Orientation="Horizontal"
                       Spacing="4"

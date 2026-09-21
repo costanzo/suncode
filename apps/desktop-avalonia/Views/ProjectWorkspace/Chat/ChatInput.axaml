@@ -192,7 +192,7 @@
                Classes.unavailable="{Binding IsModelUnavailable}"
                Grid.Row="0"
                Grid.ColumnSpan="2"
-               Text="{Binding ComposerText}"
+               Text="{Binding ComposerText, UpdateSourceTrigger=PropertyChanged}"
                Margin="0,0,0,5"
                PlaceholderText="{Binding ComposerPlaceholder}"
                AcceptsReturn="True"

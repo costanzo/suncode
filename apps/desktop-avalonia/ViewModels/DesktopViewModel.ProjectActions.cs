@@ -75,6 +75,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         CloseSubscription();
         ClearSession();
         ClearRecentContents();
+        ClearAllComposerDrafts();
         await RunAsync(async () =>
         {
             await _sdk!.SelectProjectAsync(project.ProjectId);
@@ -202,6 +203,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 CloseSubscription();
                 ClearSession();
             }
+            ForgetComposerDraft(session.SessionId);
             await _sdk!.ArchiveSessionAsync(session.SessionId);
             await LoadSessionsAsync();
         }, "Session archived");
@@ -221,7 +223,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     {
         ClearSelectedChildSession();
         CloseEditor();
-        var enteringSession = SelectedSession?.SessionId != session.SessionId;
+        var outgoingSessionId = SelectedSession?.SessionId;
+        var enteringSession = outgoingSessionId != session.SessionId;
+        SaveCurrentComposerDraft();
         var operationId = Guid.NewGuid().ToString("N")[..8];
         var operationTimer = Stopwatch.StartNew();
         LogSession(operationId, session.SessionId, $"select.begin selected={SelectedSession?.SessionId ?? "<none>"} loaded={_loadedSessionId ?? "<none>"} version={_sessionLoadVersion} loading={IsSessionLoading}");
@@ -256,6 +260,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         // that the resulting selection callback cannot start a second load and subscription.
         IsSessionLoading = true;
         SelectedSession = session;
+        RestoreComposerDraft(session.SessionId);
         // A session owns its model selection. Apply it immediately so the
         // composer cannot briefly display the previous session's model.
         RememberRecentSession(session);
@@ -372,9 +377,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var text = ComposerText.Trim();
         if (!EnsureSdk() || SelectedSession is null || SelectedModel?.Configured != true || text.Length == 0 || IsTurnActive) return;
         var attachments = ComposerAttachments.ToArray();
-        // Clear before waiting for native turn admission so the composer is
-        // responsive even when the queue or provider is slow.
         ComposerText = string.Empty;
+        ResetCurrentComposerDraft();
         ComposerAttachments.Clear();
         DisposeSubmittedAttachments();
         _submittedAttachments = attachments;
@@ -411,6 +415,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         catch (Exception exception)
         {
             ComposerText = text;
+            BindComposerDraftToCurrent(SelectedSession.SessionId);
             foreach (var attachment in attachments) ComposerAttachments.Add(attachment);
             _submittedAttachments = [];
             ReportError(exception);

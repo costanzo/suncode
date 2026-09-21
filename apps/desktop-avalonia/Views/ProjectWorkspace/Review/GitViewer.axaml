@@ -116,6 +116,7 @@
                     <TextBlock Grid.Column="3" Text="{Binding DisplayText}" Classes="mono" Foreground="{DynamicResource GitSuccessBrush}" FontSize="11" Margin="10,0,16,0" VerticalAlignment="Center" TextWrapping="NoWrap" IsVisible="{Binding IsAddition}"/>
                     <TextBlock Grid.Column="3" Text="{Binding DisplayText}" Classes="mono" Foreground="{DynamicResource GitDangerBrush}" FontSize="11" Margin="10,0,16,0" VerticalAlignment="Center" TextWrapping="NoWrap" IsVisible="{Binding IsDeletion}"/>
                     <TextBlock Grid.Column="3" Text="{Binding DisplayText}" Classes="mono" Foreground="{DynamicResource GitAccentBrush}" FontSize="11" Margin="10,0,16,0" VerticalAlignment="Center" TextWrapping="NoWrap" IsVisible="{Binding IsHunk}"/>
+                    <TextBlock Grid.Column="3" Text="{Binding DisplayText}" Classes="mono" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="10,0,16,0" VerticalAlignment="Center" TextWrapping="NoWrap" IsVisible="{Binding IsContext}"/>
                   </Grid>
                 </DataTemplate>
               </ListBox.ItemTemplate>
