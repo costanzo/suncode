@@ -11,11 +11,13 @@
   <UserControl.Styles>
     <Style Selector="Button.tool-card">
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-      <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="6" />
-      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="14" />
+      <Setter Property="Margin" Value="-1,6,0,0" />
     </Style>
     <Style Selector="TextBlock.assistant-duration">
       <Setter Property="Margin" Value="0,2,0,0" />
@@ -34,7 +36,7 @@
     </Style>
     <Style Selector="Button.tool-card:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <Style Selector="Ellipse.running-dot">
       <Setter Property="Width" Value="5" />
@@ -282,13 +284,13 @@
                       Click="OpenToolDetail"
                       ToolTip.Tip="View in Tool activity"
                       AutomationProperties.Name="{Binding ToolSummaryText, StringFormat=View {0} in Tool activity}">
-                <Grid ColumnDefinitions="6,*,Auto,16">
-                  <TextBlock Grid.Column="1" Text="{Binding ToolSummaryText}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
-                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" Margin="12,0">
+                <Grid ColumnDefinitions="*,Auto,16">
+                  <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="{Binding ToolSummaryText}" FontSize="12" Opacity="0.72" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6" Margin="12,0">
                     <TextBlock Text="{Binding ToolStateText}" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource WarningBrush}" />
                     <Ellipse Width="6" Height="6" Fill="{DynamicResource WarningBrush}" VerticalAlignment="Center" />
                   </StackPanel>
-                  <svg:Svg Grid.Column="3" Width="12" Height="12" HorizontalAlignment="Right" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
+                  <svg:Svg Grid.Column="2" Width="12" Height="12" HorizontalAlignment="Right" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
                 </Grid>
               </Button>
 
@@ -315,10 +317,7 @@
           </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-
-          <!-- Runtime status is part of the conversation timeline. It stays
-               after the latest message/tool row and scrolls with the content,
-               matching the design-system conversation specimen. -->
+          
           <StackPanel Margin="12,12,0,0"
                       HorizontalAlignment="Left"
                       Orientation="Horizontal"
