@@ -117,7 +117,7 @@
             </Button>
             <Button x:Name="ComputerNavigation" Classes="navigation" Click="ShowComputer">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
-                <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" />
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/computer.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="Computer use" VerticalAlignment="Center" />
               </Grid>
             </Button>

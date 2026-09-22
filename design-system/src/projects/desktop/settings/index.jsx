@@ -61,7 +61,7 @@ const navItems = [
   { id: "appearance", label: "Appearance", icon: "sun" },
   { id: "shortcuts", label: "Keyboard shortcuts", icon: "keyboard" },
   { id: "network", label: "Network", icon: "platform" },
-  { id: "computer", label: "Computer use", icon: "activity" },
+  { id: "computer", label: "Computer use", icon: "computer" },
   { id: "browser", label: "Browser use", icon: "tool" },
   { id: "mcp", label: "MCP servers", icon: "server" },
   { id: "lsp", label: "Language servers", icon: "file-code" },

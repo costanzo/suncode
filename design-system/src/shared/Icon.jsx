@@ -176,6 +176,13 @@ const paths = {
       <path d="M3 12h4l2-6 4 12 2-6h6" />
     </>
   ),
+  computer: (
+    <>
+      <rect x="2.5" y="4" width="13" height="10" rx="2" />
+      <path d="M7 20h6M10 14v3" />
+      <path d="M14 10l6 2.3-2.6 1 .9 2.6-1.5.6-.9-2.6-2 1.6z" />
+    </>
+  ),
   settings: (
     <>
       <circle cx="12" cy="12" r="3" />
