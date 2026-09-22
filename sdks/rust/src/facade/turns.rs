@@ -194,8 +194,7 @@ impl AsyncAgentSdk {
     }
 
     pub fn subscribe_session_events(&self, session_id: &str) -> SdkResult<SessionEventStream> {
-        logging::write(
-            Level::Debug,
+        logging::debug(
             "subscribe",
             format!("begin session={session_id}"),
         );
@@ -204,8 +203,7 @@ impl AsyncAgentSdk {
             session_id.to_string(),
             self.state.events.subscribe(session_id.to_string()),
         );
-        logging::write(
-            Level::Info,
+        logging::info(
             "subscribe",
             format!("ready session={session_id}"),
         );

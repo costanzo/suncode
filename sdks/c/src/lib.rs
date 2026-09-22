@@ -12,7 +12,7 @@ use std::{
     thread::JoinHandle,
 };
 use suncode_common::BusinessError;
-use suncode_sdk::logging_module::{self as logging, Level};
+use suncode_sdk::logging_module::{self as logging};
 use suncode_sdk::{
     AgentEvent, AgentSdk, LanguageServerWriteRequest, McpServerWriteRequest, SdkResult,
     SessionEventStream, SessionEventStreamControl, SubscriptionError,
@@ -134,11 +134,7 @@ pub unsafe extern "C" fn suncode_agent_sdk_open_default(
             ptr::null_mut()
         }
         Err(_) => {
-            logging::write(
-                Level::Error,
-                "sdk.open",
-                "operation=open_default panic=true",
-            );
+            logging::error("sdk.open", "operation=open_default panic=true");
             write_error_out(
                 error_out,
                 into_c_string("agent_unavailable: agent initialization panicked".to_string()),
@@ -151,7 +147,7 @@ pub unsafe extern "C" fn suncode_agent_sdk_open_default(
 #[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_close(handle: *mut SunCodeAgentHandle) {
     if !handle.is_null() {
-        logging::write(Level::Info, "sdk.close", "handle_close begin");
+        logging::info("sdk.close", "handle_close begin");
         match catch_unwind(AssertUnwindSafe(|| {
             let SunCodeAgentHandle { sdk } = *Box::from_raw(handle);
             sdk.shutdown()
@@ -160,9 +156,9 @@ pub unsafe extern "C" fn suncode_agent_sdk_close(handle: *mut SunCodeAgentHandle
             Ok(Err(error)) => {
                 logging::write_business_error("sdk.close", "shutdown", &error, "phase=cleanup")
             }
-            Err(_) => logging::write(Level::Error, "sdk.close", "operation=shutdown panic=true"),
+            Err(_) => logging::error("sdk.close", "operation=shutdown panic=true"),
         }
-        logging::write(Level::Info, "sdk.close", "handle_close end");
+        logging::info("sdk.close", "handle_close end");
     }
 }
 
@@ -1023,8 +1019,7 @@ pub unsafe extern "C" fn suncode_agent_sdk_subscribe_session(
             ptr::null_mut()
         }
         Err(_) => {
-            logging::write(
-                Level::Error,
+            logging::error(
                 "sdk.subscribe",
                 "operation=subscribe_session panic=true",
             );
@@ -1074,8 +1069,7 @@ pub unsafe extern "C" fn suncode_agent_sdk_watch_session(
             ptr::null_mut()
         }
         Err(_) => {
-            logging::write(
-                Level::Error,
+            logging::error(
                 "sdk.watch",
                 "operation=watch_session panic=true",
             );
@@ -1132,8 +1126,7 @@ fn run_subscription(
         match stream.blocking_recv() {
             Ok(event) => emit_agent_event(callback, user_data, &event),
             Err(SubscriptionError::Lagged { missed }) => {
-                logging::write(
-                    Level::Warn,
+                logging::warn(
                     "sdk.subscribe",
                     format!("lagged session={session_id} missed={missed}"),
                 );
@@ -1141,8 +1134,7 @@ fn run_subscription(
                 break;
             }
             Err(SubscriptionError::Closed) => {
-                logging::write(
-                    Level::Debug,
+                logging::debug(
                     "sdk.subscribe",
                     format!("thread_exit session={session_id} reason=closed"),
                 );
@@ -1183,8 +1175,7 @@ fn emit_resync_required(
 
 fn emit_event_json(callback: SunCodeEventCallback, user_data: usize, value: Value) {
     let Ok(value) = CString::new(value.to_string()) else {
-        logging::write(
-            Level::Error,
+        logging::error(
             "sdk.event",
             "operation=marshal_event failed=true boundary=native",
         );
@@ -1227,8 +1218,7 @@ where
             result_envelope::<T>(Err(error))
         }
         Err(_) => {
-            logging::write(
-                Level::Error,
+            logging::error(
                 "sdk.ffi",
                 "operation=ffi_call panic=true boundary=native",
             );
@@ -1242,8 +1232,7 @@ fn result_envelope<T: Serialize>(result: SdkResult<T>) -> *mut c_char {
         Ok(body) => match serde_json::to_value(body) {
             Ok(body) => json!({"ok": true, "body": body}),
             Err(error) => {
-                logging::write(
-                    Level::Error,
+                logging::error(
                     "sdk.envelope",
                     format!(
                         "operation=serialize_response code=serialization_error error_type={}",

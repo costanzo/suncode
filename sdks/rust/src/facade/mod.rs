@@ -8,7 +8,7 @@ use std::{
         Arc, Mutex, RwLock,
     },
 };
-use suncode_agent::logging::{self, Level};
+use suncode_agent::logging::{self};
 use suncode_agent::{
     agent::{Agent, AgentHostCapabilities},
     AgentLock, CheckpointItemRestoredPayload, CheckpointRestoreFailedPayload,
@@ -336,8 +336,7 @@ where
     {
         match suncode_computer::EnigoBackend::new() {
             Ok(backend) => agent.install_computer_backend(Box::new(backend))?,
-            Err(error) => logging::write(
-                Level::Warn,
+            Err(error) => logging::warn(
                 "computer.backend",
                 format!("state=unavailable error={error}"),
             ),

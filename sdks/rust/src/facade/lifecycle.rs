@@ -50,7 +50,7 @@ impl AsyncAgentSdk {
             }
         })?;
         let state = build_state(&config, &user_id, options, configure_providers).await?;
-        logging::write(Level::Info, "agent", "open completed");
+        logging::info("agent", "open completed");
         Ok(Self {
             _lock: Some(lock),
             data_dir: config.data_dir,
@@ -59,10 +59,10 @@ impl AsyncAgentSdk {
     }
 
     pub async fn shutdown(self) -> SdkResult<()> {
-        logging::write(Level::Info, "agent", "shutdown begin");
+        logging::info("agent", "shutdown begin");
         let result = self.state.agent.shutdown().await;
         match &result {
-            Ok(()) => logging::write(Level::Info, "agent", "shutdown completed"),
+            Ok(()) => logging::info("agent", "shutdown completed"),
             Err(error) => {
                 logging::write_business_error("agent", "shutdown", error, "phase=cleanup")
             }

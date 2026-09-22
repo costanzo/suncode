@@ -50,13 +50,6 @@
               <TextBlock Text="Working directory" Classes="eyebrow" />
               <TextBlock Text="{Binding PendingApproval.WorkingDirectoryText}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
             </StackPanel>
-            <Expander Header="View raw request" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
-              <Border Margin="0,7,0,0" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="9">
-                <ScrollViewer MaxHeight="130" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                  <SelectableTextBlock Text="{Binding PendingApproval.Arguments}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
-                </ScrollViewer>
-              </Border>
-            </Expander>
             <Grid ColumnDefinitions="*,8,*">
               <Button Grid.Column="0" Classes="compact primary" Content="Allow once" Click="ApproveOnce" />
               <Button Grid.Column="2" Classes="compact danger" Content="Deny" Click="DenyApproval" />

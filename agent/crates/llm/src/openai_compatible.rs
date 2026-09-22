@@ -10,6 +10,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, RwLock,
 };
+use suncode_common::{self, logging};
 use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -206,6 +207,15 @@ impl OpenAiCompatibleProvider {
         if let Some(max_output_tokens) = request.max_output_tokens {
             body["max_tokens"] = json!(max_output_tokens);
         }
+        logging::debug(
+            "llm",
+            format!(
+                "{}/{} request: {}",
+                self.provider_label,
+                request.wire_model,
+                serde_json::to_string(&body).unwrap_or_default()
+            ),
+        );
         let client = self.client()?;
         let response = tokio::select! {
             _ = cancellation.cancelled() => return Err(cancelled()),
@@ -226,9 +236,16 @@ impl OpenAiCompatibleProvider {
         });
         if !response.status().is_success() {
             let status = response.status();
-            let message = response
-                .json::<Value>()
-                .await
+            let response_body = response.text().await.unwrap_or_default();
+            logging::error(
+                "llm",
+                format!(
+                    "{}/{} request failed with status {status}: {response_body}",
+                    self.provider_label,
+                    request.wire_model
+                ),
+            );
+            let message = serde_json::from_str::<Value>(&response_body)
                 .ok()
                 .and_then(|value| {
                     value

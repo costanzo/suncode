@@ -212,8 +212,7 @@ impl AsyncAgentSdk {
         let path = PathBuf::from(&removed.storage_path);
         if let Err(error) = std::fs::remove_file(&path) {
             if error.kind() != std::io::ErrorKind::NotFound {
-                logging::write(
-                    Level::Warn,
+                logging::warn(
                     "session_image",
                     format!(
                         "remove_file_failed session={} image={} error={}",
@@ -233,18 +232,13 @@ impl AsyncAgentSdk {
     }
 
     pub fn session_snapshot(&self, session_id: &str, _after: i64) -> SdkResult<SessionSnapshot> {
-        logging::write(
-            Level::Debug,
-            "session_snapshot",
-            format!("begin session={session_id}"),
-        );
+        logging::debug("session_snapshot", format!("begin session={session_id}"));
         let session = self.session_for_user(session_id)?;
         let messages = self.state.store.messages(session_id)?;
         let images = self.state.store.session_images(session_id)?;
         let conversation_turns = self.state.store.session_conversation_turns(session_id)?;
         let pending_question = self.state.store.pending_question(session_id)?;
-        logging::write(
-            Level::Debug,
+        logging::debug(
             "session_snapshot",
             format!("end session={session_id} messages={}", messages.len()),
         );

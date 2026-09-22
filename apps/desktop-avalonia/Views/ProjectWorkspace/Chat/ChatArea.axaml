@@ -282,7 +282,7 @@
                       Click="OpenToolDetail"
                       ToolTip.Tip="View in Tool activity"
                       AutomationProperties.Name="{Binding ToolSummaryText, StringFormat=View {0} in Tool activity}">
-                <Grid ColumnDefinitions="18,*,Auto,16">
+                <Grid ColumnDefinitions="6,*,Auto,16">
                   <TextBlock Grid.Column="1" Text="{Binding ToolSummaryText}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" Margin="12,0">
                     <TextBlock Text="{Binding ToolStateText}" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource WarningBrush}" />
