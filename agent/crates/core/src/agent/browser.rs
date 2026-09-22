@@ -934,7 +934,8 @@ fn default_runtime_root() -> PathBuf {
     }
     #[cfg(debug_assertions)]
     {
-        return PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../browser-runtime");
+        let dev_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../browser-runtime");
+        return fs::canonicalize(&dev_root).unwrap_or(dev_root);
     }
     #[cfg(not(debug_assertions))]
     sibling
