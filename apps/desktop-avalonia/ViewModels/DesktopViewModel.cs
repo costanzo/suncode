@@ -503,6 +503,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool HasMessages => Messages.Count > 0;
     public bool HasActivities => Activities.Count > 0;
     public bool HasCurrentTodos => CurrentTodos.Count > 0;
+    public bool IsReviewTodosVisible => HasCurrentTodos && IsReviewRunning;
     public bool HasCheckpoints => Checkpoints.Count > 0;
     public bool HasFilteredGitFiles => FilteredGitFiles.Count > 0;
     public bool HasProviderTraces => ProviderTraces.Count > 0;
@@ -574,6 +575,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsReviewFailed));
         OnPropertyChanged(nameof(IsReviewChangesVisible));
         OnPropertyChanged(nameof(IsReviewCheckpointVisible));
+        OnPropertyChanged(nameof(IsReviewTodosVisible));
     }
     public string ProjectTitle => SelectedProject?.DisplayName ?? "SunCode";
     public string SessionTitle => SelectedSession?.DisplayTitle ?? "No session selected";

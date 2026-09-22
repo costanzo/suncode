@@ -507,6 +507,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasToolActivityTurns));
         OnPropertyChanged(nameof(ToolActivitySummary));
         OnPropertyChanged(nameof(HasCurrentTodos));
+        OnPropertyChanged(nameof(IsReviewTodosVisible));
         OnPropertyChanged(nameof(LatestActivityText));
     }
 
@@ -665,6 +666,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 .Select(item => item!)
                 .ToArray());
             OnPropertyChanged(nameof(HasCurrentTodos));
+            OnPropertyChanged(nameof(IsReviewTodosVisible));
             Activities.Add(new ActivityItem(type, text, Activities.Count + 1, payload.State ?? string.Empty, "todowrite"));
             OnPropertyChanged(nameof(HasActivities));
             OnPropertyChanged(nameof(LatestActivityText));
@@ -720,6 +722,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             {
                 CurrentTodos.Clear();
                 OnPropertyChanged(nameof(HasCurrentTodos));
+                OnPropertyChanged(nameof(IsReviewTodosVisible));
             }
             ActiveTurnId = IsTerminalTurnState(state) ? string.Empty : turnId;
             ActiveTurnState = state;

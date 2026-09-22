@@ -152,7 +152,7 @@
             <Button Classes="compact primary" Content="Retry turn" Click="RetryTurn" />
           </StackPanel>
         </Border>
-        <Border Classes="process-card" Padding="11" CornerRadius="6" IsVisible="{Binding IsReviewRunning}">
+        <Border Classes="process-card" Padding="11" CornerRadius="6" IsVisible="{Binding IsReviewTodosVisible}">
           <StackPanel Spacing="7">
             <Grid ColumnDefinitions="*,Auto"><TextBlock Text="TODO" Classes="section-label" /><TextBlock Grid.Column="1" Text="{Binding CurrentTodos.Count, StringFormat={}{0} items}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" /></Grid>
             <ItemsControl ItemsSource="{Binding CurrentTodos}">
