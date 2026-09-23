@@ -34,7 +34,7 @@ public sealed record ProviderTraceItem(
     IReadOnlyList<ProviderTraceToolItem> Tools)
 {
     public bool IsExpanded { get; set; }
-    public string Title => $"{Provider} · {ModelId}";
+    public string Title => $"{ModelId}";
     public string CallText => $"Call {Iteration}";
     public string TurnText => $"turn {Short(TurnId)}";
     public string IdentifierText => Short(ExchangeId);

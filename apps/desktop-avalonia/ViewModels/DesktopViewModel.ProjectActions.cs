@@ -302,12 +302,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 LogSession(operationId, sessionId, $"images.discard reason=stale current={DescribeSessionContext()}");
                 return;
             }
-            await LoadSessionUsageAsync(sessionId, loadVersion);
-            if (!IsCurrentSessionLoad(sessionId, loadVersion))
-            {
-                LogSession(operationId, sessionId, $"usage.discard reason=stale current={DescribeSessionContext()}");
-                return;
-            }
             await LoadCheckpointsAsync(sessionId, loadVersion);
             if (!IsCurrentSessionLoad(sessionId, loadVersion))
             {

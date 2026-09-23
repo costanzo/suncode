@@ -113,6 +113,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
         RefreshRecentSessionReferences();
         OnPropertyChanged(nameof(HasSessions));
+        NotifyRunningSessionsChanged();
         var savedState = RestoreRecentContentState();
         await RestoreSavedChildRecentContentsAsync(savedState);
         var savedSessionId = preferredSessionId
@@ -314,15 +315,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         FullControlEnabled = setting is not null
             && setting.Value.ValueKind is JsonValueKind.True or JsonValueKind.False
             && setting.Value.GetBoolean();
-    }
-
-    private async Task LoadSessionUsageAsync(string? requestedSessionId = null, long? loadVersion = null)
-    {
-        if (_sdk is null || SelectedSession is null) return;
-        var sessionId = requestedSessionId ?? SelectedSession.SessionId;
-        var result = await _sdk.GetSessionUsageAsync(sessionId);
-        if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
-        SessionTotalTokens = (long)result.TotalTokens;
     }
 
     private async Task LoadCheckpointsAsync(string? requestedSessionId = null, long? loadVersion = null)
@@ -713,6 +705,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
         if (type == "question.asked") PendingQuestion = PendingQuestionItem.FromSdk(payload);
         if (type is "question.replied" or "question.rejected") PendingQuestion = null;
+        if (live && type is "approval.requested" or "approval.resolved" or "question.asked" or "question.replied"
+                or "question.rejected")
+            SyncSelectedSessionAgentStateFromReview();
         if (type == "turn.state")
         {
             var state = payload.State ?? string.Empty;
@@ -749,8 +744,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             SyncActiveToolRow();
             OnPropertyChanged(nameof(ToolActivitySummary));
         }
+
+        if (live && type == "turn.state") SyncSelectedSessionAgentStateFromReview();
         if (live && type.StartsWith("checkpoint.", StringComparison.Ordinal)) _ = LoadCheckpointsAsync();
-        if (live && type == "usage.updated") _ = LoadSessionUsageAsync();
         if (live && type.StartsWith("provider.exchange.", StringComparison.Ordinal) && ProviderTraceVisible) _ = RefreshProviderTracesAsync();
         if (live && (type == "tool.result" || (type == "turn.state" && IsTerminalTurnState(payload.State ?? string.Empty)))) _ = LoadChildSessionsAsync();
         if (live && (type.StartsWith("checkpoint.", StringComparison.Ordinal) || pathAdded)) _ = RefreshGitAsync();

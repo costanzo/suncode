@@ -124,7 +124,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ActiveTurnId = string.Empty;
         ActiveTurnState = string.Empty;
         UpdateActiveTurnTiming(string.Empty, null);
-        SessionTotalTokens = 0;
         if (clearSelection) SelectedSession = null;
         OnPropertyChanged(nameof(HasActivities));
         OnPropertyChanged(nameof(HasCheckpoints));
@@ -415,13 +414,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ShowGitDiffEmpty));
         OnPropertyChanged(nameof(ShowGitDiffStats));
         OnPropertyChanged(nameof(GitEmptyMessage));
-    }
-
-    private static string CompactNumber(long value)
-    {
-        if (value < 1_000) return value.ToString("N0");
-        if (value < 1_000_000) return $"{value / 1_000d:0.#}k";
-        return $"{value / 1_000_000d:0.#}m";
     }
 
     private void ReplaceComposerAttachments(IEnumerable<ComposerAttachment> attachments)

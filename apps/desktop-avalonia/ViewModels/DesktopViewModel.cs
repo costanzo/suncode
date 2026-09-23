@@ -88,7 +88,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private int _gitChangedFiles;
     private int _gitAdditions;
     private int _gitDeletions;
-    private long _sessionTotalTokens;
     private long _sessionLoadVersion;
     private string? _loadedSessionId;
     private bool _navigationVisible = true;
@@ -402,7 +401,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool GitDiffTruncated { get => _gitDiffTruncated; private set => SetProperty(ref _gitDiffTruncated, value); }
     public int GitDiffAdditions { get => _gitDiffAdditions; private set => SetProperty(ref _gitDiffAdditions, value); }
     public int GitDiffDeletions { get => _gitDiffDeletions; private set => SetProperty(ref _gitDiffDeletions, value); }
-    public long SessionTotalTokens { get => _sessionTotalTokens; private set { if (SetProperty(ref _sessionTotalTokens, value)) OnPropertyChanged(nameof(SessionTokenText)); } }
     public bool NavigationVisible { get => _navigationVisible; set { if (SetProperty(ref _navigationVisible, value)) { NotifyNavigationLayoutChanged(); SaveRegionState(); } } }
     public bool ExplorerVisible { get => _explorerVisible; set { if (SetProperty(ref _explorerVisible, value)) { NotifyNavigationLayoutChanged(); SaveRegionState(); } } }
     public bool ReviewVisible { get => _reviewVisible; set { if (SetProperty(ref _reviewVisible, value)) { if (value && _childSessionsVisible) { _childSessionsVisible = false; OnPropertyChanged(nameof(ChildSessionsVisible)); } NotifyReviewLayoutChanged(); SaveRegionState(); } } }
@@ -579,7 +577,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     }
     public string ProjectTitle => SelectedProject?.DisplayName ?? "SunCode";
     public string SessionTitle => SelectedSession?.DisplayTitle ?? "No session selected";
-    public string SessionTokenText => $"Session {CompactNumber(SessionTotalTokens)} tokens";
     public string SelectedModelName => SelectedModel?.Id ?? string.Empty;
     public string LatestActivityText => Activities.LastOrDefault()?.Text ?? "No tool activity yet";
     public string ComposerPlaceholder => SelectedSession is null

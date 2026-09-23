@@ -27,6 +27,8 @@ public sealed record SessionItem(string SessionId, string Title, string LastActi
     public bool IsWaitingForAnswer => AgentState == "question";
     public bool IsFailed => AgentState == "failed";
     public bool HasAgentState => AgentState != "idle";
+    public bool IsTurnActive => IsRunning || IsWaitingForApproval || IsWaitingForAnswer;
+    public bool IsWaitingOnUser => IsWaitingForApproval || IsWaitingForAnswer;
     public string AgentStateLabel => AgentState switch
     {
         "running" => "Agent running",

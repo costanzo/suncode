@@ -56,7 +56,7 @@
       <!-- Monospace glyphs sit optically high even when their line box is mathematically centered. -->
       <Setter Property="Margin" Value="0,1,0,0" />
     </Style>
-    <Style Selector="Border.footer-status-divider">
+    <Style Selector="Ellipse.footer-running-dot">
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="ProgressBar.mcp-progress">
@@ -231,14 +231,13 @@
               <TextBlock Text="{Binding McpLoadText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding WorkspaceStatusDetailsVisible}" />
               <ProgressBar Classes="mcp-progress" Minimum="0" Maximum="100" Value="{Binding McpLoadPercent}" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasSelectedSession}" Height="20" VerticalAlignment="Center">
-              <TextBlock Text="{Binding SelectedModelName}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" MaxWidth="180" TextTrimming="CharacterEllipsis" />
-              <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding WorkspaceStatusDetailsVisible}" Height="20" VerticalAlignment="Center">
-              <Border Classes="footer-status-divider" Width="1" Height="10" Background="{DynamicResource BorderBrush}" />
-              <TextBlock Text="{Binding SessionTokenText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
-              <Border Classes="footer-status-divider" Width="1" Height="10" Background="{DynamicResource BorderBrush}" />
-              <TextBlock Text="{Binding ProviderTraceSummary}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
-              </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasRunningSessions}" Height="20" VerticalAlignment="Center" ToolTip.Tip="{Binding RunningSessionText}" AutomationProperties.Name="{Binding RunningSessionText}">
+              <Ellipse Classes="footer-running-dot" Width="7" Height="7" Fill="{DynamicResource AccentBrush}" />
+              <TextBlock Text="{Binding RunningSessionText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding WorkspaceStatusDetailsVisible}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding HasWaitingSessions}" Height="20" VerticalAlignment="Center" ToolTip.Tip="{Binding WaitingSessionText}" AutomationProperties.Name="{Binding WaitingSessionText}">
+              <svg:Svg Width="10" Height="10" Path="/Assets/icons/message.svg" Css="{DynamicResource WarningSvgCss}" />
+              <TextBlock Text="{Binding WaitingSessionText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding WorkspaceStatusDetailsVisible}" />
             </StackPanel>
           </StackPanel>
         </Grid>
