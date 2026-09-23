@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Styling;
 using LiveMarkdown.Avalonia;
 
 namespace SunCode.Desktop.Controls;
@@ -31,8 +32,11 @@ public sealed class MarkdownText : ContentControl
 
     public MarkdownText()
     {
+        MarkdownSyntaxThemes.Register();
         HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
         _renderer.MarkdownBuilder = _markdownBuilder;
+        ActualThemeVariantChanged += HandleActualThemeVariantChanged;
+        UpdateCodeBlockTheme();
         _renderer.AddHandler(
             CodeBlock.CopyingToClipboardEvent,
             HandleCopyingToClipboard,
@@ -44,6 +48,15 @@ public sealed class MarkdownText : ContentControl
             RoutingStrategies.Bubble,
             handledEventsToo: true);
         Content = _renderer;
+    }
+    
+    private void HandleActualThemeVariantChanged(object? sender, EventArgs e) => UpdateCodeBlockTheme();
+
+    private void UpdateCodeBlockTheme()
+    {
+        _renderer.CodeBlockCustomColorTheme = ActualThemeVariant == ThemeVariant.Dark 
+            ? MarkdownSyntaxThemes.DarkName 
+            : MarkdownSyntaxThemes.LightName;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

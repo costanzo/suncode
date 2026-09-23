@@ -189,8 +189,8 @@
             Background="{TemplateBinding Background}"
             BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="1"
-            CornerRadius="8"
-            Padding="16,14">
+            CornerRadius="6"
+            Padding="12,6">
             <Grid>
               <ScrollViewer
                 x:Name="PART_ScrollViewer"
@@ -211,10 +211,10 @@
                 Height="30"
                 MinHeight="30"
                 Padding="0"
-                Margin="0,-8,-10,0"
+                Margin="0,0,-6,0"
                 CornerRadius="6"
                 Background="{DynamicResource SurfaceRaisedBrush}"
-                BorderBrush="{DynamicResource BorderStrongBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="1"
                 Foreground="{DynamicResource TextMutedBrush}"
                 HorizontalAlignment="Right"
@@ -224,7 +224,7 @@
                 AutomationProperties.Name="Copy code">
                 <Grid>
                   <Viewbox x:Name="CopyGlyph" Width="14" Height="14">
-                  <Path Width="24" Height="24" Stroke="{DynamicResource TextMutedBrush}" StrokeThickness="2">
+                  <Path Width="24" Height="24" Stroke="{DynamicResource ForegroundColor}" StrokeThickness="2">
                     <Path.Data>
                       <GeometryGroup>
                         <RectangleGeometry RadiusX="2" RadiusY="2" Rect="8,8,14,14" />
