@@ -47,6 +47,25 @@ public sealed partial class AgentSdk
     public Task<CredentialsResult> GetCredentialsAsync() => Typed<CredentialsResult>(RawListCredentialsAsync());
     public Task<ProjectsResult> GetProjectsAsync() => Typed<ProjectsResult>(RawListProjectsAsync());
 
+    public Task<AttentionCandidatesResult> ListAttentionCandidatesAsync(string? since = null, int limit = 256) =>
+        Typed<AttentionCandidatesResult>(RawListAttentionCandidatesAsync(since, (nuint)Math.Clamp(limit, 1, 512)));
+
+    public IDisposable SubscribeAttention(Action<AttentionStreamMessage> onMessage)
+    {
+        ArgumentNullException.ThrowIfNull(onMessage);
+        return new AttentionSubscription(_handle, json =>
+        {
+            using var document = JsonDocument.Parse(json);
+            var message = document.RootElement.Deserialize<AttentionStreamMessage>(TypedJsonOptions)
+                ?? throw new SdkException("invalid_event", "Agent returned an empty attention message");
+            if (message.Type == "event" && message.Event is null)
+                throw new SdkException("invalid_event", "Agent returned an attention event without a payload");
+            if (message.Type is not ("event" or "resync_required"))
+                throw new SdkException("invalid_event", "Agent returned an unknown attention message");
+            onMessage(message);
+        });
+    }
+
     public Task<BrowserRuntimeInfo> GetBrowserRuntimeInfoAsync(string? projectId = null) =>
         Typed<BrowserRuntimeInfo>(RawBrowserRuntimeInfoAsync(projectId));
 

@@ -12,7 +12,7 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 The async Rust facade owns agent services but no executor; `AsyncAgentSdk::open_default(...).await` and all runtime-dependent methods execute on the host's Tokio runtime. `AsyncAgentSdk::shutdown(self).await` consumes the handle, rejects new agent work, cancels turns, clears queued input, releases Computer Use state, drains Browser/MCP/LSP processes, waits a bounded five seconds for active turns, closes event streams, and releases the data-directory lock. Pure local persistence and DTO operations remain synchronous and explicit. The root compatibility `AgentSdk` is the blocking wrapper: it owns one Tokio runtime, dereferences to the async facade for synchronous methods, adapts awaited operations with `block_on`, and keeps that runtime alive through its consuming `shutdown(self)`. C embeds that blocking wrapper. Host wrappers may share one handle inside a process. The Rust facade exposes a typed `SessionEventStream` implementing standard `Stream` and `FusedStream` contracts plus direct receive methods; native bindings adapt that stream to their host runtime. C subscriptions must be closed before the final agent handle is released. Closing a C subscription signals its stream and stops callback delivery before returning. Final native handle release invokes blocking shutdown; its unchanged `void` close function logs cleanup errors.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 13. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 14. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
 ## Methods
 
@@ -104,6 +104,10 @@ The Rust API uses typed inputs and outputs. Async Rust hosts use `AsyncAgentSdk`
 | `subscribe_session_events` / C `subscribe_session` | Deliver subsequent typed live events; lagged subscribers must reload `session_snapshot` |
 | C `watch_session` | Return the atomic session snapshot and a dormant callback subscription handle |
 | C `subscription_start` | Start callback delivery for one dormant subscription exactly once |
+| `list_attention_candidates` | Return a bounded reconciliation view of recent primary completion/failure plus pending primary/child approvals and primary questions |
+| `subscribe_attention_events` / C `subscribe_attention` | Deliver bounded global attention events; lag terminates with a typed resync-required message |
+
+Attention events carry only kind, stable correlation ID, project/session labels and IDs, session kind, optional parent session ID, turn ID, and occurrence time. They contain no prompt, assistant content, tool input/result, path, or provider error. The stream includes primary turn completion/failure, primary or child approval requests, and primary questions. Child completion/failure and cancelled/interrupted turns are excluded. The C callback envelope is `{ "type": "event", "event": ... }` or `{ "type": "resync_required", "missed": N }`; managed consumers reconcile and establish a fresh subscription after lag.
 
 Rust-generated project, session, turn, approval, checkpoint, event, and message identifiers remain authoritative. Hosts do not manufacture IDs except idempotency keys.
 

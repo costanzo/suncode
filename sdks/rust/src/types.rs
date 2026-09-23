@@ -9,7 +9,7 @@ use suncode_agent::domain::{
 use suncode_common::BusinessError;
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 13;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 14;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -358,6 +358,12 @@ pub struct SessionsResult {
     pub sessions: Vec<SessionRecord>,
     #[serde(rename = "sessionStates")]
     pub session_states: std::collections::HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AttentionCandidatesResult {
+    pub candidates: Vec<suncode_agent::AgentAttentionEvent>,
 }
 
 #[derive(Debug, Serialize)]

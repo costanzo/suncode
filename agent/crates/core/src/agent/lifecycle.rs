@@ -59,6 +59,7 @@ impl Agent {
         .is_ok();
 
         self.events.close_all();
+        self.attention_events.close_all();
 
         computer_result?;
         if !cancellation_state_available {
@@ -79,14 +80,100 @@ impl Agent {
         session_id: &str,
         event: EventPayload,
     ) -> Result<(), BusinessError> {
-        self.events.publish_projected(session_id, event, |event| {
+        let attention_payload = event.clone();
+        let occurred_at = self.events.publish_projected(session_id, event, |event| {
             let event_type = event.event_type();
             let payload = event.clone().into_value();
             let projected =
                 self.store
                     .append_content(session_id, event_type.as_str(), &payload)?;
-            Ok(projected.occurred_at)
-        })
+            Ok::<String, BusinessError>(projected.occurred_at)
+        })?;
+        self.publish_attention(session_id, &occurred_at, &attention_payload);
+        Ok(())
+    }
+
+    pub fn attention_event_hub(&self) -> AttentionEventHub {
+        self.attention_events.clone()
+    }
+
+    fn publish_attention(&self, session_id: &str, occurred_at: &str, event: &EventPayload) {
+        let (kind, turn_id, correlation_id) = match event {
+            EventPayload::TurnCompleted(payload) => (
+                AttentionKind::PrimaryTurnCompleted,
+                payload.turn_id.as_str(),
+                payload.turn_id.as_str(),
+            ),
+            EventPayload::TurnState(payload) if payload.state == "failed" => (
+                AttentionKind::PrimaryTurnFailed,
+                payload.turn_id.as_str(),
+                payload.turn_id.as_str(),
+            ),
+            EventPayload::ApprovalRequested(payload) => (
+                AttentionKind::ApprovalRequested,
+                payload.turn_id.as_str(),
+                payload.approval_id.as_str(),
+            ),
+            EventPayload::QuestionAsked(payload) => (
+                AttentionKind::QuestionAsked,
+                payload.turn_id.as_str(),
+                payload.request_id.as_str(),
+            ),
+            _ => return,
+        };
+        let session = match self.store.session_by_id(session_id) {
+            Ok(Some(session)) => session,
+            Ok(None) => return,
+            Err(error) => {
+                logging::write_business_error(
+                    "attention",
+                    "resolve_session",
+                    &error,
+                    "delivery=skipped",
+                );
+                return;
+            }
+        };
+        if matches!(
+            kind,
+            AttentionKind::PrimaryTurnCompleted
+                | AttentionKind::PrimaryTurnFailed
+                | AttentionKind::QuestionAsked
+        ) && session.kind != "primary"
+        {
+            return;
+        }
+        let Some(project_id) = session.project_id.clone() else {
+            return;
+        };
+        let project = match self
+            .store
+            .project_by_id_for_user(&self.user_id, &project_id)
+        {
+            Ok(Some(project)) => project,
+            Ok(None) => return,
+            Err(error) => {
+                logging::write_business_error(
+                    "attention",
+                    "resolve_project",
+                    &error,
+                    "delivery=skipped",
+                );
+                return;
+            }
+        };
+        self.attention_events.publish(AgentAttentionEvent {
+            kind,
+            correlation_id: correlation_id.to_string(),
+            project_id,
+            project_display_name: project.display_name,
+            session_id: session.session_id,
+            session_title: session.title.unwrap_or_default(),
+            session_kind: session.kind,
+            parent_session_id: session.parent_session_id,
+            turn_id: turn_id.to_string(),
+            occurred_at: occurred_at.to_string(),
+        });
     }
 
     fn emit_live(&self, session_id: &str, event: EventPayload) {

@@ -98,6 +98,28 @@ public sealed record ProjectRecord(
 
 public sealed record ProjectsResult(IReadOnlyList<ProjectRecord> Projects);
 
+public sealed record AttentionEvent(
+    string Kind,
+    string CorrelationId,
+    string ProjectId,
+    string ProjectDisplayName,
+    string SessionId,
+    string SessionTitle,
+    string SessionKind,
+    string? ParentSessionId,
+    string TurnId,
+    string OccurredAt);
+
+public sealed record AttentionStreamMessage(
+    string Type,
+    AttentionEvent? Event,
+    ulong Missed)
+{
+    public bool RequiresResync => string.Equals(Type, "resync_required", StringComparison.Ordinal);
+}
+
+public sealed record AttentionCandidatesResult(IReadOnlyList<AttentionEvent> Candidates);
+
 public sealed record BrowserRuntimeInfo(
     bool Enabled,
     string InstallationState,

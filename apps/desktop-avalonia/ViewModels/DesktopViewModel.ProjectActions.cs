@@ -372,6 +372,24 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
+    internal async Task<bool> NavigateToSessionAsync(
+        string sessionId,
+        string? parentSessionId = null,
+        string? childSessionId = null)
+    {
+        if (!await EnsureSdkReadyAsync()) return false;
+        var primaryId = parentSessionId ?? sessionId;
+        var primary = Sessions.FirstOrDefault(item => item.SessionId == primaryId);
+        if (primary is null) return false;
+        await SelectSessionAsync(primary);
+        if (childSessionId is null) return true;
+        await LoadChildSessionsAsync();
+        var child = ChildSessions.FirstOrDefault(item => item.SessionId == childSessionId);
+        if (child is null || child.ParentSessionId != primaryId) return false;
+        await SelectChildSessionAsync(child);
+        return true;
+    }
+
     public async Task SubmitTurnAsync()
     {
         var text = ComposerText.Trim();

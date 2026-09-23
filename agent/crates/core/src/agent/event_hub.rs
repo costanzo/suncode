@@ -95,16 +95,16 @@ impl SessionEventHub {
         session_id: &str,
         payload: EventPayload,
         project: impl FnOnce(&EventPayload) -> Result<String, E>,
-    ) -> Result<(), E> {
+    ) -> Result<String, E> {
         let gate = self.session_gate(session_id);
         let _guard = gate.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let occurred_at = project(&payload)?;
         self.publish_locked(AgentEvent {
             session_id: session_id.to_string(),
-            occurred_at,
+            occurred_at: occurred_at.clone(),
             payload,
         });
-        Ok(())
+        Ok(occurred_at)
     }
 
     pub fn publish(&self, event: AgentEvent) {

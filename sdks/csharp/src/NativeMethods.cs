@@ -25,6 +25,7 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_set_provider_endpoint(IntPtr handle, IntPtr provider, IntPtr endpoint);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_projects(IntPtr handle);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_agents(IntPtr handle);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_attention_candidates(IntPtr handle, IntPtr since, nuint limit);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_computer_runtime_info(IntPtr handle);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_request_computer_capture_permission(IntPtr handle);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_request_computer_input_permission(IntPtr handle);
@@ -91,8 +92,10 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_reply_question(IntPtr handle, IntPtr requestId, IntPtr answersJson);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_reject_question(IntPtr handle, IntPtr requestId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_subscribe_session(IntPtr handle, IntPtr sessionId, long after, EventCallback callback, IntPtr userData, out IntPtr errorOut);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_subscribe_attention(IntPtr handle, EventCallback callback, IntPtr userData, out IntPtr errorOut);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_watch_session(IntPtr handle, IntPtr sessionId, EventCallback callback, IntPtr userData, out IntPtr snapshotOut, out IntPtr errorOut);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern byte suncode_agent_sdk_subscription_start(IntPtr subscription, out IntPtr errorOut);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern void suncode_agent_sdk_subscription_close(IntPtr subscription);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern void suncode_agent_sdk_attention_subscription_close(IntPtr subscription);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern void suncode_agent_sdk_string_free(IntPtr value);
 }

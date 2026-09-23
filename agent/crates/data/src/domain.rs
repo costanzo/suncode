@@ -417,6 +417,20 @@ pub struct SessionRecord {
     pub pin_at: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AttentionCandidateRecord {
+    pub kind: String,
+    pub correlation_id: String,
+    pub project_id: String,
+    pub project_display_name: String,
+    pub session_id: String,
+    pub session_title: String,
+    pub session_kind: String,
+    pub parent_session_id: Option<String>,
+    pub turn_id: String,
+    pub occurred_at: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubagentInvocationRecord {

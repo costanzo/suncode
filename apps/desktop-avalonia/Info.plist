@@ -16,6 +16,17 @@
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
   <string>0.0.1</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>dev.suncode.desktop.activation</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>suncode</string>
+      </array>
+    </dict>
+  </array>
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSPrefersDisplaySafeAreaCompatibilityMode</key>

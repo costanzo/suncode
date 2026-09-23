@@ -70,6 +70,7 @@ impl Agent {
             providers: providers.into(),
             operations,
             events,
+            attention_events: AttentionEventHub::new(64),
             cancellations: Arc::new(Mutex::new(HashMap::new())),
             active_turns: Arc::new(Mutex::new(HashMap::new())),
             queued_messages: Arc::new(Mutex::new(HashMap::new())),

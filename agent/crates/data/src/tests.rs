@@ -215,6 +215,99 @@ fn diesel_store_round_trips_project_and_session() {
 }
 
 #[test]
+fn attention_candidates_include_only_eligible_normalized_state() {
+    let store = Store::open_memory().unwrap();
+    let project = store
+        .project_for_user("attention-user", "/tmp/suncode-attention", "Attention")
+        .unwrap();
+    let primary = store
+        .create_session(&project.project_id, Some("Primary"), Some("gpt-5.5"))
+        .unwrap();
+    let child = store
+        .create_child_session(
+            &project.project_id,
+            &primary.session_id,
+            "builtin.swe.v1",
+            1,
+            "Child",
+            "gpt-5.5",
+        )
+        .unwrap();
+
+    let completed = store
+        .begin_turn(&primary.session_id, "completed", "done", "gpt-5.5")
+        .unwrap();
+    store
+        .complete_turn(&primary.session_id, "completed", &json!({"ok":true}))
+        .unwrap();
+    let failed = store
+        .begin_turn(&primary.session_id, "failed", "fail", "gpt-5.5")
+        .unwrap();
+    store
+        .fail_turn(
+            &primary.session_id,
+            "failed",
+            &json!({"code":"provider_error"}),
+        )
+        .unwrap();
+    let child_completed = store
+        .begin_turn(&child.session_id, "child-completed", "done", "gpt-5.5")
+        .unwrap();
+    store
+        .complete_turn(&child.session_id, "child-completed", &json!({"ok":true}))
+        .unwrap();
+
+    let child_waiting = store
+        .begin_turn(&child.session_id, "child-approval", "write", "gpt-5.5")
+        .unwrap();
+    let child_approval = store
+        .create_approval(ApprovalInput {
+            project_id: Some(&project.project_id),
+            session_id: &child.session_id,
+            turn_id: &child_waiting.turn_id,
+            tool_call_id: "tool-1",
+            operation: "write",
+            arguments: &json!({"path":"README.md"}),
+            snapshot: &json!({"turn_id":child_waiting.turn_id,"pending_call":{"name":"write"}}),
+        })
+        .unwrap();
+
+    let question_turn = store
+        .begin_turn(&primary.session_id, "question", "ask", "gpt-5.5")
+        .unwrap();
+    store
+        .create_question(
+            "question-1",
+            &question_turn.turn_id,
+            &json!({"turn_id":question_turn.turn_id,"pending_call":{"name":"question","call_id":"call-1","arguments":{"questions":[]}}}),
+        )
+        .unwrap();
+
+    let candidates = store
+        .attention_candidates("attention-user", "2000-01-01T00:00:00.000Z", 512)
+        .unwrap();
+    let keys = candidates
+        .iter()
+        .map(|candidate| (candidate.kind.as_str(), candidate.correlation_id.as_str()))
+        .collect::<Vec<_>>();
+
+    assert!(keys.contains(&("primary_turn_completed", completed.turn_id.as_str())));
+    assert!(keys.contains(&("primary_turn_failed", failed.turn_id.as_str())));
+    assert!(keys.contains(&("approval_requested", child_approval.approval_id.as_str())));
+    assert!(keys.contains(&("question_asked", "question-1")));
+    assert!(!keys.iter().any(|(_, id)| *id == child_completed.turn_id));
+    let child_candidate = candidates
+        .iter()
+        .find(|candidate| candidate.correlation_id == child_approval.approval_id)
+        .unwrap();
+    assert_eq!(child_candidate.session_kind, "child");
+    assert_eq!(
+        child_candidate.parent_session_id.as_deref(),
+        Some(primary.session_id.as_str())
+    );
+}
+
+#[test]
 fn child_sessions_are_linked_hidden_from_primary_lists_and_interrupted_on_recovery() {
     let store = Store::open_memory().unwrap();
     let project = store.project("/tmp/suncode-child", "Child").unwrap();

@@ -50,12 +50,14 @@ fn test_state(directory: &std::path::Path) -> AgentState {
         events.clone(),
         false,
     );
+    let attention_events = agent.attention_event_hub();
     AgentState {
         store,
         user_id: "default".into(),
         operations,
         active_project: Arc::new(Mutex::new(None)),
         events,
+        attention_events,
         verify_https_certificates,
         use_system_certificates: Arc::new(AtomicBool::new(true)),
         certificate_path: Arc::new(RwLock::new(None)),

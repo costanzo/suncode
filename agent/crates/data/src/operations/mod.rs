@@ -1,6 +1,7 @@
 //! Table-owned Diesel operations. Cross-table event projection is kept in `projection`.
 
 pub(crate) mod approval_request;
+pub(crate) mod attention;
 pub(crate) mod checkpoint;
 pub(crate) mod checkpoint_manifest;
 pub(crate) mod configuration;

@@ -21,8 +21,11 @@ public sealed partial class App : Application
     private ProjectHubWindow? _hubWindow;
     private SettingsWindow? _settingsWindow;
     private AboutWindow? _aboutWindow;
+    private SessionAttentionCoordinator? _attentionCoordinator;
     private readonly Dictionary<string, WorkspaceWindow> _projectWindows = [];
     private readonly HashSet<string> _openingProjects = [];
+    private readonly Dictionary<string, TaskCompletionSource<bool>> _openingProjectSignals = [];
+    private readonly SemaphoreSlim _activationGate = new(1, 1);
 
     public override void Initialize()
     {
@@ -45,11 +48,25 @@ public sealed partial class App : Application
             MacOSDockIcon.Apply();
             _viewModel.ThemeChanged += ApplyTheme;
             _hubWindow = new ProjectHubWindow { DataContext = _viewModel };
+            if (Program.InstanceCoordinator is { } instance)
+            {
+                instance.ActivationReceived += OnActivationReceived;
+                foreach (var request in instance.DrainPending()) OnActivationReceived(request);
+            }
             desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
             _hubWindow.Show();
+            _attentionCoordinator = new SessionAttentionCoordinator(
+                IsApplicationForeground,
+                ActivateAsync,
+                SystemNotificationBackend.Create(),
+                AppDataPaths.DataDirectory);
+            _ = _attentionCoordinator.StartAsync();
             desktop.Exit += (_, _) =>
             {
                 DiagnosticLog.Info("app.lifecycle", "exit begin");
+                if (Program.InstanceCoordinator is { } instance) instance.ActivationReceived -= OnActivationReceived;
+                _attentionCoordinator?.Dispose();
+                _attentionCoordinator = null;
                 _settingsWindow?.Close();
                 _aboutWindow?.Close();
                 foreach (var window in _projectWindows.Values.ToArray()) window.Close();
@@ -102,8 +119,14 @@ public sealed partial class App : Application
             existing.Activate();
             return;
         }
-        if (disposition == ProjectWindowDisposition.AwaitOpening) return;
+        if (disposition == ProjectWindowDisposition.AwaitOpening)
+        {
+            if (_openingProjectSignals.TryGetValue(project.ProjectId, out var signal)) await signal.Task;
+            return;
+        }
         if (!_openingProjects.Add(project.ProjectId)) return;
+        var openingSignal = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _openingProjectSignals[project.ProjectId] = openingSignal;
 
         var viewModel = new DesktopViewModel(_uiStateStore);
         viewModel.ThemeChanged += ApplyTheme;
@@ -135,7 +158,80 @@ public sealed partial class App : Application
         finally
         {
             _openingProjects.Remove(project.ProjectId);
+            _openingProjectSignals.Remove(project.ProjectId);
+            openingSignal.TrySetResult(_projectWindows.ContainsKey(project.ProjectId));
         }
+    }
+
+    private bool IsApplicationForeground()
+    {
+        if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop) return false;
+        return NotificationForegroundEvaluator.IsForeground(desktop.Windows.Select(window => (
+            window.IsActive,
+            window.IsVisible,
+            window.WindowState == WindowState.Minimized)));
+    }
+
+    private void OnActivationReceived(DesktopActivationRequest request) =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+        {
+            await _activationGate.WaitAsync();
+            try { await ActivateAsync(request); }
+            finally { _activationGate.Release(); }
+        });
+
+    private async Task ActivateAsync(DesktopActivationRequest request)
+    {
+        try
+        {
+            request.Validate();
+            if (request.Kind == "activate.application")
+            {
+                ActivateFallbackWindow();
+                return;
+            }
+            if (_viewModel is null || request.ProjectId is null || request.SessionId is null)
+            {
+                ActivateFallbackWindow();
+                return;
+            }
+            await _viewModel.InitializeAsync();
+            var project = _viewModel.Projects.FirstOrDefault(item => item.ProjectId == request.ProjectId);
+            if (project is null)
+            {
+                ActivateFallbackWindow();
+                return;
+            }
+            await OpenProjectWindowAsync(project);
+            if (!_projectWindows.TryGetValue(project.ProjectId, out var window)
+                || window.DataContext is not DesktopViewModel viewModel)
+            {
+                ActivateFallbackWindow();
+                return;
+            }
+            var navigated = await viewModel.NavigateToSessionAsync(
+                request.SessionId,
+                request.ParentSessionId,
+                request.ChildSessionId);
+            if (!navigated) DiagnosticLog.Warn("notification.activation", "route_rejected=true reason=ownership_or_missing");
+            window.Show();
+            if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+            window.Activate();
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Warn("notification.activation", $"route_failed=true error={exception.Message}");
+            ActivateFallbackWindow();
+        }
+    }
+
+    private void ActivateFallbackWindow()
+    {
+        var window = _projectWindows.Values.FirstOrDefault(value => value.IsVisible) ?? (Window?)_hubWindow;
+        if (window is null) return;
+        window.Show();
+        if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+        window.Activate();
     }
 
     internal void ShowSettings(Window owner)

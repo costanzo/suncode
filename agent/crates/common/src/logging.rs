@@ -1,3 +1,4 @@
+use crate::BusinessError;
 use chrono::{Local, SecondsFormat};
 use std::{
     fmt::Display,
@@ -7,7 +8,6 @@ use std::{
     sync::{Arc, Mutex, OnceLock},
     thread,
 };
-use crate::BusinessError;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Level {
@@ -290,7 +290,7 @@ mod tests {
             true,
             Some("request\r123".into()),
         )
-            .with_details(serde_json::json!({"payload": secret}));
+        .with_details(serde_json::json!({"payload": secret}));
 
         let rendered = format!(
             "operation={} code={} retryable={} provider_request_id={}",

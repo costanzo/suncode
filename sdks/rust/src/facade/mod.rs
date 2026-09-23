@@ -11,7 +11,7 @@ use std::{
 use suncode_agent::logging::{self};
 use suncode_agent::{
     agent::{Agent, AgentHostCapabilities},
-    AgentLock, CheckpointItemRestoredPayload, CheckpointRestoreFailedPayload,
+    AgentLock, AttentionEventHub, CheckpointItemRestoredPayload, CheckpointRestoreFailedPayload,
     CheckpointRestoredPayload, EventPayload, SessionEventHub,
 };
 use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
@@ -25,6 +25,7 @@ use suncode_llm::{
 use crate::types::*;
 
 mod agents;
+mod attention;
 pub mod blocking;
 mod browser;
 mod checkpoints;
@@ -43,7 +44,8 @@ mod turns;
 
 pub use blocking::AgentSdk;
 pub use subscriptions::{
-    SessionEventStream, SessionEventStreamControl, SessionWatch, SubscriptionError,
+    AttentionEventStream, AttentionEventStreamControl, SessionEventStream,
+    SessionEventStreamControl, SessionWatch, SubscriptionError,
 };
 
 #[derive(Clone)]
@@ -53,6 +55,7 @@ struct AgentState {
     operations: Arc<suncode_tool::Operations>,
     active_project: Arc<Mutex<Option<String>>>,
     events: SessionEventHub,
+    attention_events: AttentionEventHub,
     verify_https_certificates: Arc<AtomicBool>,
     use_system_certificates: Arc<AtomicBool>,
     certificate_path: Arc<RwLock<Option<PathBuf>>>,
@@ -325,6 +328,7 @@ where
             computer_use: options.host_capabilities.computer_use,
         },
     );
+    let attention_events = agent.attention_event_hub();
     agent.set_browser_proxy_configuration(
         proxy_configuration
             .read()
@@ -348,6 +352,7 @@ where
         operations,
         active_project: Arc::new(Mutex::new(None)),
         events,
+        attention_events,
         verify_https_certificates,
         use_system_certificates,
         certificate_path,
@@ -669,6 +674,7 @@ fn emit_event(state: &AgentState, session_id: &str, payload: EventPayload) -> Sd
             )?;
             Ok(projected.occurred_at)
         })
+        .map(|_| ())
 }
 
 fn sanitize_image_extension(value: &str) -> SdkResult<String> {

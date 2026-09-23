@@ -91,6 +91,28 @@ public sealed class SdkTypedModelTests
     }
 
     [Fact]
+    public void Deserializes_attention_event_and_resync_envelopes_without_null_pseudo_events()
+    {
+        const string eventJson = """
+            {"type":"event","event":{"kind":"approval_requested","correlationId":"approval-1","projectId":"project-1","projectDisplayName":"Project","sessionId":"child-1","sessionTitle":"Review","sessionKind":"child","parentSessionId":"parent-1","turnId":"turn-1","occurredAt":"2026-09-23T00:00:00.000Z"},"missed":0}
+            """;
+        var message = JsonSerializer.Deserialize<AttentionStreamMessage>(eventJson, Options);
+
+        Assert.NotNull(message);
+        Assert.False(message.RequiresResync);
+        Assert.Equal("approval-1", message.Event?.CorrelationId);
+        Assert.Equal("parent-1", message.Event?.ParentSessionId);
+
+        const string resyncJson = """{"type":"resync_required","event":null,"missed":3}""";
+        var resync = JsonSerializer.Deserialize<AttentionStreamMessage>(resyncJson, Options);
+
+        Assert.NotNull(resync);
+        Assert.True(resync.RequiresResync);
+        Assert.Null(resync.Event);
+        Assert.Equal((ulong)3, resync.Missed);
+    }
+
+    [Fact]
     public void Deserializes_built_in_agent_and_child_session_contracts()
     {
         const string agentsJson = """

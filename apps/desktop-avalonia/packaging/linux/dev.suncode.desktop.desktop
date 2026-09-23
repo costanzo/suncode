@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=SunCode
+Comment=General-purpose coding agent
+Exec=SunCode %u
+Icon=suncode
+Terminal=false
+Categories=Development;
+MimeType=x-scheme-handler/suncode;
+StartupNotify=true

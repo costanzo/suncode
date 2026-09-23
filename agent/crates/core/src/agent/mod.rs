@@ -22,7 +22,9 @@ use tokio::sync::{mpsc, Mutex as AsyncMutex};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
+mod attention_hub;
 pub mod builtin_agents;
+pub use attention_hub::*;
 mod event_hub;
 pub use event_hub::*;
 pub mod events;
@@ -165,6 +167,7 @@ pub struct Agent {
     providers: Arc<ModelProviderRegistry>,
     operations: Arc<suncode_tool::Operations>,
     events: SessionEventHub,
+    attention_events: AttentionEventHub,
     cancellations: Arc<Mutex<HashMap<String, CancellationToken>>>,
     active_turns: Arc<Mutex<HashMap<String, String>>>,
     queued_messages: Arc<Mutex<HashMap<String, VecDeque<QueuedMessage>>>>,

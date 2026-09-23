@@ -241,8 +241,7 @@ impl OpenAiCompatibleProvider {
                 "llm",
                 format!(
                     "{}/{} request failed with status {status}: {response_body}",
-                    self.provider_label,
-                    request.wire_model
+                    self.provider_label, request.wire_model
                 ),
             );
             let message = serde_json::from_str::<Value>(&response_body)

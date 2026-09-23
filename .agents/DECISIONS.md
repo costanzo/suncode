@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260923-desktop-notification-activation-ipc
+
+- Date: 2026-09-23
+- Status: Accepted; implementation complete, installed-platform smoke tests pending
+- Context: Background agent work can complete, fail, or suspend for approval or a question while the Avalonia client is not foreground. The desktop watches only its selected primary session and has no process-activation channel. The embedded SDK decision excludes cross-process agent attach, but notification activation may launch a second desktop process that must hand navigation to the process already owning the agent data directory.
+- Decision: Add a Rust-owned typed global attention stream and bounded normalized reconciliation query for primary completion/failure, primary or child approval requests, and primary questions. Avalonia suppresses notifications whenever any SunCode window is foreground, records delivered or foreground-suppressed correlation IDs in a bounded local presentation ledger, and owns native macOS, Windows, and Linux notification adapters. Add a versioned desktop-only activation IPC channel keyed by agent data directory: current-user Named Pipe on Windows and restricted Unix Domain Socket on macOS/Linux. A secondary activation process forwards one bounded `activate.session` request and exits before opening the SDK. The primary process revalidates IDs through the SDK and navigates to the relevant primary session or child approval surface. The IPC never proxies SDK calls, SQLite, provider traffic, operations, approvals, or question answers.
+- Consequences: Notification monitoring no longer depends on the selected-session watch, and notification clicks can reuse the existing project window without creating a second agent owner. The C ABI gains attention subscription/query symbols, platform packaging gains notification activation metadata, and installed-application verification is required on all three desktop platforms. This decision narrows the prior IPC deferral only for desktop activation; general client-facing IPC, daemon attach, and shared live-agent access remain deferred. Foreground-suppressed events are not replayed later, child completion/failure do not notify, and cancelled/interrupted turns do not notify.
+- Details: `requirements/2026-09-23-session-attention-notifications/`
+
 ## ADR-20260920-cli-one-shot-session-resume
 
 - Date: 2026-09-20

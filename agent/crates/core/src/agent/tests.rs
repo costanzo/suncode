@@ -503,6 +503,7 @@ mod tests {
     #[tokio::test]
     async fn read_tool_round_trip_completes() {
         let (agent, store, root, server, session_id) = fixture().await;
+        let mut attention = agent.attention_event_hub().subscribe();
         fs::write(root.join("AGENTS.md"), "Always run focused tests.").unwrap();
         let response = agent
             .submit(&session_id, "read-1", "read the file", None, None)
@@ -537,6 +538,10 @@ mod tests {
         assert_eq!(usage["cache_miss_tokens"], 2);
         assert_eq!(usage["cache_write_tokens"], serde_json::Value::Null);
         assert_eq!(usage["reasoning_tokens"], 1);
+        let event = attention.recv().await.unwrap();
+        assert_eq!(event.kind, AttentionKind::PrimaryTurnCompleted);
+        assert_eq!(event.session_id, session_id);
+        assert_eq!(event.correlation_id, event.turn_id);
         server.abort();
     }
 
@@ -872,6 +877,7 @@ mod tests {
     #[tokio::test]
     async fn write_waits_for_approval_and_captures_checkpoint() {
         let (agent, store, root, server, session_id) = fixture().await;
+        let mut attention = agent.attention_event_hub().subscribe();
         let error = agent
             .submit(&session_id, "write-1", "write the file", None, None)
             .await
@@ -882,6 +888,10 @@ mod tests {
             "hello"
         );
         let approval_id = error.details["approval_id"].as_str().unwrap().to_string();
+        let event = attention.recv().await.unwrap();
+        assert_eq!(event.kind, AttentionKind::ApprovalRequested);
+        assert_eq!(event.correlation_id, approval_id);
+        assert_eq!(event.session_kind, "primary");
         assert!(agent
             .resolve_approval(&approval_id, "allow_once")
             .await

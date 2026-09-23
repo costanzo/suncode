@@ -6,6 +6,8 @@ namespace SunCode.Desktop;
 
 internal static class Program
 {
+    internal static DesktopInstanceCoordinator? InstanceCoordinator { get; private set; }
+
     [STAThread]
     public static void Main(string[] args)
     {
@@ -16,6 +18,15 @@ internal static class Program
         DiagnosticLog.Info("app", "started");
         try
         {
+            var activation = ParseActivation(args) ?? DesktopActivationRequest.Application();
+            InstanceCoordinator = DesktopInstanceCoordinator.Acquire(AppDataPaths.DataDirectory);
+            if (!InstanceCoordinator.IsPrimary)
+            {
+                if (!InstanceCoordinator.ForwardAsync(activation).GetAwaiter().GetResult())
+                    DiagnosticLog.Warn("desktop.ipc", "secondary_forward_failed=true");
+                return;
+            }
+            InstanceCoordinator.StartServer();
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         catch (Exception exception)
@@ -25,8 +36,32 @@ internal static class Program
         }
         finally
         {
+            InstanceCoordinator?.Dispose();
+            InstanceCoordinator = null;
             DiagnosticLog.Info("app", "stopped");
         }
+    }
+
+    private static DesktopActivationRequest? ParseActivation(string[] args)
+    {
+        for (var index = 0; index < args.Length; index++)
+        {
+            var value = args[index];
+            if (value.StartsWith("suncode://activate/", StringComparison.OrdinalIgnoreCase))
+            {
+                var uri = new Uri(value);
+                var payload = uri.Query.TrimStart('?')
+                    .Split('&', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(part => part.Split('=', 2))
+                    .FirstOrDefault(part => part.Length == 2 && part[0] == "payload")?[1];
+                if (DesktopActivationRequest.TryParseLaunchArgument(Uri.UnescapeDataString(payload ?? string.Empty), out var uriRequest))
+                    return uriRequest;
+            }
+            if (value == "--suncode-activate" && index + 1 < args.Length
+                && DesktopActivationRequest.TryParseLaunchArgument(args[index + 1], out var request))
+                return request;
+        }
+        return null;
     }
 
     private static void OnUnhandledException(object? sender, UnhandledExceptionEventArgs args)

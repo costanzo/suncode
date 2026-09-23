@@ -14,9 +14,9 @@ use std::{
 use suncode_common::BusinessError;
 use suncode_sdk::logging_module::{self as logging};
 use suncode_sdk::{
-    AgentEvent, AgentSdk, LanguageServerWriteRequest, McpServerWriteRequest, SdkResult,
-    SessionEventStream, SessionEventStreamControl, SubscriptionError,
-    SUNCODE_AGENT_SDK_ABI_VERSION,
+    AgentAttentionEvent, AgentEvent, AgentSdk, AttentionEventStream, AttentionEventStreamControl,
+    LanguageServerWriteRequest, McpServerWriteRequest, SdkResult, SessionEventStream,
+    SessionEventStreamControl, SubscriptionError, SUNCODE_AGENT_SDK_ABI_VERSION,
 };
 
 pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
@@ -33,6 +33,73 @@ pub struct SunCodeAgentSubscriptionHandle {
     user_data: usize,
     session_id: String,
     started: AtomicBool,
+}
+
+pub struct SunCodeAttentionSubscriptionHandle {
+    control: AttentionEventStreamControl,
+    stream: Mutex<Option<AttentionEventStream>>,
+    join: Mutex<Option<JoinHandle<()>>>,
+    callback: SunCodeEventCallback,
+    user_data: usize,
+}
+
+impl SunCodeAttentionSubscriptionHandle {
+    fn new(stream: AttentionEventStream, callback: SunCodeEventCallback, user_data: usize) -> Self {
+        let control = stream.control();
+        Self {
+            control,
+            stream: Mutex::new(Some(stream)),
+            join: Mutex::new(None),
+            callback,
+            user_data,
+        }
+    }
+
+    fn start(&self) -> SdkResult<()> {
+        let stream = self
+            .stream
+            .lock()
+            .map_err(|_| BusinessError::unavailable("attention subscription state unavailable"))?
+            .take()
+            .ok_or_else(|| {
+                BusinessError::new("conflict", "attention subscription is unavailable")
+            })?;
+        let callback = self.callback;
+        let user_data = self.user_data;
+        let join = std::thread::Builder::new()
+            .name("suncode-sdk-c-attention".into())
+            .spawn(move || run_attention_subscription(stream, callback, user_data))
+            .map_err(|error| {
+                BusinessError::unavailable(format!(
+                    "attention callback thread could not start: {error}"
+                ))
+            });
+        match join {
+            Ok(join) => {
+                *self.join.lock().map_err(|_| {
+                    BusinessError::unavailable("attention subscription join state unavailable")
+                })? = Some(join);
+                Ok(())
+            }
+            Err(error) => {
+                self.control.close();
+                Err(error)
+            }
+        }
+    }
+}
+
+impl Drop for SunCodeAttentionSubscriptionHandle {
+    fn drop(&mut self) {
+        self.control.close();
+        if let Ok(mut join) = self.join.lock() {
+            if let Some(join) = join.take() {
+                if join.thread().id() != std::thread::current().id() {
+                    let _ = join.join();
+                }
+            }
+        }
+    }
 }
 
 impl SunCodeAgentSubscriptionHandle {
@@ -177,6 +244,18 @@ ffi_no_args!(suncode_agent_sdk_list_models, list_models);
 ffi_no_args!(suncode_agent_sdk_list_credentials, list_credentials);
 ffi_no_args!(suncode_agent_sdk_list_projects, list_projects);
 ffi_no_args!(suncode_agent_sdk_list_agents, list_agents);
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_list_attention_candidates(
+    handle: *mut SunCodeAgentHandle,
+    since: *const c_char,
+    limit: usize,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let since = optional_c_string(since, "since")?;
+        sdk.list_attention_candidates(since.as_deref(), limit)
+    })
+}
 ffi_no_args!(
     suncode_agent_sdk_computer_runtime_info,
     computer_runtime_info
@@ -703,6 +782,48 @@ ffi_one_string!(
     select_project,
     "project_id"
 );
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_subscribe_attention(
+    handle: *mut SunCodeAgentHandle,
+    callback: Option<SunCodeEventCallback>,
+    user_data: *mut c_void,
+    error_out: *mut *mut c_char,
+) -> *mut SunCodeAttentionSubscriptionHandle {
+    write_error_out(error_out, ptr::null_mut());
+    let result = catch_unwind(AssertUnwindSafe(|| -> SdkResult<_> {
+        let handle = handle
+            .as_ref()
+            .ok_or_else(|| BusinessError::unavailable("agent handle is null"))?;
+        let callback = callback.ok_or_else(|| BusinessError::invalid("callback is null"))?;
+        let stream = handle.sdk.subscribe_attention_events()?;
+        let subscription =
+            SunCodeAttentionSubscriptionHandle::new(stream, callback, user_data as usize);
+        subscription.start()?;
+        Ok(subscription)
+    }));
+    match result {
+        Ok(Ok(subscription)) => Box::into_raw(Box::new(subscription)),
+        Ok(Err(error)) => {
+            logging::write_business_error(
+                "sdk.attention",
+                "subscribe_attention",
+                &error,
+                "boundary=native",
+            );
+            write_error_out(error_out, into_c_string(error.to_string()));
+            ptr::null_mut()
+        }
+        Err(_) => {
+            logging::error("sdk.attention", "operation=subscribe_attention panic=true");
+            write_error_out(
+                error_out,
+                into_c_string("agent_unavailable: attention subscription panicked".to_string()),
+            );
+            ptr::null_mut()
+        }
+    }
+}
 ffi_one_string!(suncode_agent_sdk_git_status, git_status, "project_id");
 ffi_one_string!(suncode_agent_sdk_list_sessions, list_sessions, "project_id");
 ffi_one_string!(
@@ -1019,10 +1140,7 @@ pub unsafe extern "C" fn suncode_agent_sdk_subscribe_session(
             ptr::null_mut()
         }
         Err(_) => {
-            logging::error(
-                "sdk.subscribe",
-                "operation=subscribe_session panic=true",
-            );
+            logging::error("sdk.subscribe", "operation=subscribe_session panic=true");
             write_error_out(
                 error_out,
                 into_c_string("agent_unavailable: subscription panicked".to_string()),
@@ -1069,10 +1187,7 @@ pub unsafe extern "C" fn suncode_agent_sdk_watch_session(
             ptr::null_mut()
         }
         Err(_) => {
-            logging::error(
-                "sdk.watch",
-                "operation=watch_session panic=true",
-            );
+            logging::error("sdk.watch", "operation=watch_session panic=true");
             write_error_out(
                 error_out,
                 into_c_string("agent_unavailable: session watch panicked".to_string()),
@@ -1155,6 +1270,42 @@ fn emit_agent_event(callback: SunCodeEventCallback, user_data: usize, event: &Ag
     emit_event_json(callback, user_data, value);
 }
 
+fn run_attention_subscription(
+    mut stream: AttentionEventStream,
+    callback: SunCodeEventCallback,
+    user_data: usize,
+) {
+    loop {
+        match stream.blocking_recv() {
+            Ok(event) => emit_attention_event(callback, user_data, &event),
+            Err(SubscriptionError::Lagged { missed }) => {
+                emit_event_json(
+                    callback,
+                    user_data,
+                    json!({"type":"resync_required","missed":missed}),
+                );
+                break;
+            }
+            Err(SubscriptionError::Closed) => break,
+            Err(SubscriptionError::Empty) => continue,
+        }
+    }
+}
+
+fn emit_attention_event(
+    callback: SunCodeEventCallback,
+    user_data: usize,
+    event: &AgentAttentionEvent,
+) {
+    match serde_json::to_value(event) {
+        Ok(value) => emit_event_json(callback, user_data, json!({"type":"event","event":value})),
+        Err(error) => logging::error(
+            "sdk.attention",
+            format!("operation=serialize_event failed=true error={error}"),
+        ),
+    }
+}
+
 fn emit_resync_required(
     callback: SunCodeEventCallback,
     user_data: usize,
@@ -1194,6 +1345,15 @@ pub unsafe extern "C" fn suncode_agent_sdk_subscription_close(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_attention_subscription_close(
+    subscription: *mut SunCodeAttentionSubscriptionHandle,
+) {
+    if !subscription.is_null() {
+        let _ = catch_unwind(AssertUnwindSafe(|| drop(Box::from_raw(subscription))));
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_string_free(value: *mut c_char) {
     if !value.is_null() {
         drop(CString::from_raw(value));
@@ -1218,10 +1378,7 @@ where
             result_envelope::<T>(Err(error))
         }
         Err(_) => {
-            logging::error(
-                "sdk.ffi",
-                "operation=ffi_call panic=true boundary=native",
-            );
+            logging::error("sdk.ffi", "operation=ffi_call panic=true boundary=native");
             result_envelope::<T>(Err(BusinessError::unavailable("SDK call panicked")))
         }
     }
@@ -1350,6 +1507,29 @@ mod tests {
         assert_eq!(envelope["session_id"], "session-1");
         assert_eq!(envelope["event_type"], "turn.state");
         assert_eq!(envelope["payload"]["turn_id"], "turn-1");
+    }
+
+    #[test]
+    fn attention_event_uses_a_discriminated_envelope() {
+        let (sender, receiver) = std::sync::mpsc::channel::<String>();
+        let event = AgentAttentionEvent {
+            kind: suncode_sdk::AttentionKind::ApprovalRequested,
+            correlation_id: "approval-1".into(),
+            project_id: "project-1".into(),
+            project_display_name: "Project".into(),
+            session_id: "child-1".into(),
+            session_title: "Child".into(),
+            session_kind: "child".into(),
+            parent_session_id: Some("parent-1".into()),
+            turn_id: "turn-1".into(),
+            occurred_at: "2026-09-23T00:00:00.000Z".into(),
+        };
+
+        emit_attention_event(collect_event, &sender as *const _ as usize, &event);
+        let envelope: Value = serde_json::from_str(&receiver.recv().unwrap()).unwrap();
+        assert_eq!(envelope["type"], "event");
+        assert_eq!(envelope["event"]["correlationId"], "approval-1");
+        assert_eq!(envelope["event"]["parentSessionId"], "parent-1");
     }
 
     #[test]

@@ -9,7 +9,7 @@ public sealed partial class AgentSdk : IDisposable
 {
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 13;
+    private const uint AbiVersion = 14;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -69,6 +69,11 @@ public sealed partial class AgentSdk : IDisposable
     private Task<JsonElement> RawListModelsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_models);
     private Task<JsonElement> RawListCredentialsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_credentials);
     private Task<JsonElement> RawListProjectsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_projects);
+
+    private Task<JsonElement> RawListAttentionCandidatesAsync(string? since, nuint limit) =>
+        WithNullableUtf8Async(
+            [since],
+            values => NativeMethods.suncode_agent_sdk_list_attention_candidates(_handle, values[0], limit));
 
     private Task<JsonElement> RawComputerRuntimeInfoAsync() =>
         CallAsync(NativeMethods.suncode_agent_sdk_computer_runtime_info);
@@ -529,6 +534,36 @@ public sealed partial class AgentSdk : IDisposable
             }
             if (_callbackHandle.IsAllocated) _callbackHandle.Free();
             SdkDiagnosticLog.Debug("sdk.subscription", $"dispose end session={_sessionId}");
+        }
+    }
+
+    private sealed class AttentionSubscription : IDisposable
+    {
+        private GCHandle _callbackHandle;
+        private IntPtr _subscription;
+
+        public AttentionSubscription(IntPtr agent, Action<string> onEvent)
+        {
+            _callbackHandle = GCHandle.Alloc(onEvent);
+            _subscription = NativeMethods.suncode_agent_sdk_subscribe_attention(
+                agent,
+                SubscriptionCallback,
+                GCHandle.ToIntPtr(_callbackHandle),
+                out var error);
+            if (_subscription != IntPtr.Zero) return;
+            var message = TakeString(error, true) ?? "Attention events could not be subscribed";
+            _callbackHandle.Free();
+            throw new SdkException("subscription_failed", message);
+        }
+
+        public void Dispose()
+        {
+            if (_subscription != IntPtr.Zero)
+            {
+                NativeMethods.suncode_agent_sdk_attention_subscription_close(_subscription);
+                _subscription = IntPtr.Zero;
+            }
+            if (_callbackHandle.IsAllocated) _callbackHandle.Free();
         }
     }
 
