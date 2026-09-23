@@ -479,6 +479,19 @@ pub struct SuspendedTurn {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DormantCancellation {
+    pub session_id: String,
+    pub turn_id: String,
+    pub submission_idempotency_key: Option<String>,
+    pub model_id: Option<String>,
+    pub pending_request_id: Option<String>,
+    pub pending_tool_call_id: Option<String>,
+    pub pending_call_id: Option<String>,
+    pub pending_tool_name: Option<String>,
+    pub pending_kind: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CheckpointManifest {
     pub manifest_id: String,

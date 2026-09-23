@@ -482,4 +482,70 @@ impl Agent {
         token.cancel();
         true
     }
+
+    pub fn cancel_dormant_turn(&self, session_id: &str, turn_id: &str) -> Result<bool, BusinessError> {
+        let Some(details) = self.store.cancel_dormant_turn(session_id, turn_id)? else {
+            return Ok(false);
+        };
+        let tool_call_id = details.pending_tool_call_id.clone();
+        let call_id = details.pending_call_id.clone();
+        let tool_name = details.pending_tool_name.clone();
+        self.emit(
+            &details.session_id,
+            EventPayload::TurnState(TurnStatePayload {
+                turn_id: details.turn_id.clone(),
+                state: "cancelled".into(),
+                model_id: details.model_id.clone(),
+                submission_idempotency_key: details.submission_idempotency_key.clone(),
+                reason: Some("user_cancelled".into()),
+            }),
+        )?;
+        match details.pending_kind.as_deref() {
+            Some("approval") => {
+                if let (Some(request_id), Some(tool_call_id), Some(tool_name)) = (
+                    details.pending_request_id.as_deref(),
+                    tool_call_id.as_deref(),
+                    tool_name.as_deref(),
+                ) {
+                    self.emit(
+                        &details.session_id,
+                        EventPayload::ToolState(ToolStatePayload {
+                            turn_id: details.turn_id.clone(),
+                            call_id: call_id.clone(),
+                            tool_call_id: tool_call_id.to_string(),
+                            name: tool_name.to_string(),
+                            state: "denied".into(),
+                            reason: Some("user_cancelled".into()),
+                        }),
+                    )?;
+                    self.emit(
+                        &details.session_id,
+                        EventPayload::ApprovalResolved(ApprovalResolvedPayload {
+                            approval_id: request_id.to_string(),
+                            turn_id: details.turn_id.clone(),
+                            decision: "deny".into(),
+                        }),
+                    )?;
+                }
+            }
+            Some("question") => {
+                if let (Some(request_id), Some(tool_call_id)) = (details.pending_request_id.as_deref(), tool_call_id.as_deref()) {
+                    self.emit(
+                        &details.session_id,
+                        EventPayload::QuestionRejected(QuestionAnsweredPayload {
+                            request_id: request_id.to_string(),
+                            turn_id: details.turn_id.clone(),
+                            tool_call_id: tool_call_id.to_string(),
+                            answers: Vec::new(),
+                        }),
+                    )?;
+                }
+            }
+            _ => {}
+        }
+        self.clear_queued_messages(&details.session_id);
+        self.active_turns.lock().ok().map(|mut values| values.remove(&details.session_id));
+        self.cancellations.lock().ok().map(|mut values| values.remove(&details.turn_id));
+        Ok(true)
+    }
 }

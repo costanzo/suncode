@@ -65,13 +65,22 @@ impl AsyncAgentSdk {
         }
     }
 
-    pub fn cancel_turn(&self, _session_id: &str, turn_id: &str) -> SdkResult<CancellationOutcome> {
-        if !self.state.agent.cancel(turn_id) {
-            return Err(BusinessError::new("conflict", "turn is not running"));
+    pub fn cancel_turn(&self, session_id: &str, turn_id: &str) -> SdkResult<CancellationOutcome> {
+        self.session_for_user(session_id)?;
+        if self.state.agent.cancel(turn_id) {
+            return Ok(CancellationOutcome {
+                turn_id: turn_id.to_string(),
+                status: "cancellation_requested",
+            });
         }
+        let cancelled = self.state.agent.cancel_dormant_turn(session_id, turn_id)?;
         Ok(CancellationOutcome {
             turn_id: turn_id.to_string(),
-            status: "cancellation_requested",
+            status: if cancelled {
+                "cancelled"
+            } else {
+                "not_running"
+            }
         })
     }
 

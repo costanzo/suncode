@@ -278,4 +278,128 @@ impl Store {
         sql_query("UPDATE session_turn SET recovery_status=?,recovery_updated_at=?,recovery_snapshot_json=CASE WHEN ? THEN '{}' ELSE recovery_snapshot_json END WHERE recovery_approval_id=?").bind::<Text,_>(status).bind::<Text,_>(&now()).bind::<Integer,_>(terminal as i32).bind::<Text,_>(id).execute(&mut *c).map_err(crate::database_error)?;
         Ok(())
     }
+
+    pub fn cancel_dormant_turn(
+        &self,
+        session_id: &str,
+        turn_id: &str,
+    ) -> Result<Option<DormantCancellation>, BusinessError> {
+        #[derive(QueryableByName)]
+        struct TurnRow {
+            #[diesel(sql_type=Text)]
+            state: String,
+            #[diesel(sql_type=Nullable<Text>)]
+            submission_idempotency_key: Option<String>,
+            #[diesel(sql_type=Nullable<Text>)]
+            model_id: Option<String>,
+            #[diesel(sql_type=Nullable<Text>)]
+            recovery_approval_id: Option<String>,
+            #[diesel(sql_type=Nullable<Text>)]
+            recovery_status: Option<String>,
+            #[diesel(sql_type=Nullable<Text>)]
+            recovery_snapshot_json: Option<String>,
+        }
+        #[derive(QueryableByName)]
+        struct ApprovalRow {
+            #[diesel(sql_type=Nullable<Text>)]
+            tool_call_id: Option<String>,
+        }
+        #[derive(QueryableByName)]
+        struct ToolUseRow {
+            #[diesel(sql_type=Nullable<Text>)]
+            session_call_id: Option<String>,
+            #[diesel(sql_type=Nullable<Text>)]
+            name: Option<String>,
+        }
+        let mut c = lock(&self.connection)?;
+        let row = sql_query(
+            "SELECT state,submission_idempotency_key,model_id,recovery_approval_id,recovery_status,recovery_snapshot_json FROM session_turn WHERE session_id=? AND turn_id=?"
+        ).bind::<Text,_>(session_id)
+            .bind::<Text,_>(turn_id)
+            .get_result::<TurnRow>(&mut *c)
+            .optional()
+            .map_err(crate::database_error)?;
+        let Some(row) = row else {
+            return Ok(None);
+        };
+        if matches!(
+            row.state.as_str(),
+            "completed" | "failed" | "cancelled" | "interrupted"
+        ) {
+            return Ok(None);
+        }
+        let pending_kind = match row.recovery_status.as_deref() {
+            Some("pending") => {
+                let is_question = row
+                    .recovery_snapshot_json
+                    .as_deref().and_then(|v| serde_json::from_str::<Value>(v).ok())
+                    .and_then(|v|{
+                        v.get("pending_call")
+                            .and_then(|c| c.get("name"))
+                            .and_then(Value::as_str)
+                            .map(|name| name == "question")
+                    })
+                    .unwrap_or(false);
+                Some(if is_question { "question" } else { "approval" }.to_string())
+            }
+            _ => None,
+        };
+        let pending_request_id = row.recovery_approval_id.clone();
+        let pending_tool_call_id = if let Some(request_id) = pending_request_id.as_deref() {
+            sql_query("SELECT tool_call_id FROM approval_request WHERE approval_id=?")
+                .bind::<Text,_>(request_id)
+                .get_result::<ApprovalRow>(&mut *c)
+                .optional()
+                .map_err(crate::database_error)?
+                .and_then(|r| r.tool_call_id)
+        } else {
+            None
+        };
+        let (pending_call_id, pending_tool_name) =
+            if let Some(tool_call_id) = pending_tool_call_id.as_deref() {
+                sql_query("SELECT session_call_id,name FROM session_tool_use WHERE turn_id=? AND tool_call_id=?")
+                    .bind::<Text,_>(turn_id)
+                    .bind::<Text,_>(tool_call_id)
+                    .get_result::<ToolUseRow>(&mut *c)
+                    .optional()
+                    .map_err(crate::database_error)?
+                    .map(|r| (r.session_call_id, r.name))
+                    .unwrap_or((None, None))
+            } else {
+                (None, None)
+            };
+
+        let t = now();
+        let changed = business_transaction(&mut c, |c| {
+            if let Some(request_id) = pending_request_id.as_deref() {
+                sql_query("UPDATE approval_request SET status='denied', decision='deny', decision_source='user_cancelled', updated_at=? WHERE approval_id=? AND status='pending'")
+                    .bind::<Text, _>(&t)
+                    .bind::<Text, _>(request_id)
+                    .execute(c)
+                    .map_err(crate::database_error)?;
+            }
+            sql_query("UPDATE session_turn SET state='cancelled', error_code='user_cancelled', completed_at=COALESCE(completed_at,?), updated_at=?, recovery_status='denied', recovery_snapshot_json='{}', recovery_updated_at=? WHERE session_id=? AND turn_id=? AND state NOT IN ('completed','failed','cancelled','interrupted')")
+                .bind::<Text, _>(&t)
+                .bind::<Text, _>(&t)
+                .bind::<Text, _>(&t)
+                .bind::<Text, _>(session_id)
+                .bind::<Text, _>(turn_id)
+                .execute(c)
+                .map_err(crate::database_error)
+        })?;
+        if changed == 0 {
+            return Ok(None);
+        }
+        Ok(Some(DormantCancellation {
+            session_id: session_id.to_string(),
+            turn_id: turn_id.to_string(),
+            submission_idempotency_key: row.submission_idempotency_key,
+            model_id: row.model_id,
+            pending_request_id,
+            pending_tool_call_id,
+            pending_call_id,
+            pending_tool_name,
+            pending_kind
+        }))
+    }
 }
