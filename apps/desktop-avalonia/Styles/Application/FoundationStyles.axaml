@@ -353,6 +353,8 @@
     <Setter Property="Padding" Value="0" />
     <Setter Property="Margin" Value="0,0,0,4" />
     <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="Transparent" />
   </Style>
   <Style Selector="ListBox.git-files ListBoxItem">
     <Setter Property="Margin" Value="4,1" />
