@@ -160,6 +160,8 @@
                 SelectedItem="{Binding SelectedEditorFile, Mode=OneWay}"
                 SelectionChanged="ExplorerSelectionChanged"
                 DoubleTapped="ExplorerDoubleTapped"
+                AutoScrollToSelectedItem="False"
+                ScrollViewer.BringIntoViewOnFocusChange="False"
                 ScrollViewer.HorizontalScrollBarVisibility="Auto">
         <TreeView.DataTemplates>
           <TreeDataTemplate DataType="models:ExplorerNode" ItemsSource="{Binding Children}">
