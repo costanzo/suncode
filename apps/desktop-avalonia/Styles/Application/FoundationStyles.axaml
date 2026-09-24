@@ -292,6 +292,14 @@
   <Style Selector="Ellipse.review-status-dot.failed">
     <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
   </Style>
+  <Style Selector="Ellipse.gutter-attention">
+    <Setter Property="Width" Value="7" />
+    <Setter Property="Height" Value="7" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="Margin" Value="0,2,2,0" />
+    <Setter Property="Fill" Value="{DynamicResource WarningBrush}" />
+  </Style>
   <Style Selector="Border.question-option">
     <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />

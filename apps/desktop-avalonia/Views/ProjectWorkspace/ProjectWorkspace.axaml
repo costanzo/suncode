@@ -207,10 +207,14 @@
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-right.svg" IsVisible="{Binding !ReviewVisible}" />
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-right.svg" IsVisible="{Binding ReviewVisible}" />
+                <Ellipse Classes="gutter-attention" IsVisible="{Binding ReviewGutterAttention}" />
               </Grid>
             </Button>
             <Button Classes="icon gutter" Classes.active="{Binding ChildSessionsVisible}" Click="ToggleChildSessions" ToolTip.Tip="Show or hide child sessions" AutomationProperties.Name="Show or hide child sessions" Margin="0,6,0,0">
-              <svg:Svg Width="15" Height="15" Path="/Assets/icons/agent.svg" />
+              <Grid>
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/agent.svg" />
+                <Ellipse Classes="gutter-attention" IsVisible="{Binding ChildSessionsGutterAttention}" />
+              </Grid>
             </Button>
           </StackPanel>
         </Grid>

@@ -272,11 +272,12 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public ApprovalItem? PendingApproval
     {
         get => _pendingApproval;
-        private set
+        internal set
         {
             if (SetProperty(ref _pendingApproval, value))
             {
                 OnPropertyChanged(nameof(HasPendingApproval));
+                OnPropertyChanged(nameof(ReviewGutterAttention));
                 NotifyReviewPresentationChanged();
             }
         }
@@ -285,11 +286,12 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public PendingQuestionItem? PendingQuestion
     {
         get => _pendingQuestion;
-        private set
+        internal set
         {
             if (SetProperty(ref _pendingQuestion, value))
             {
                 OnPropertyChanged(nameof(HasPendingQuestion));
+                OnPropertyChanged(nameof(ReviewGutterAttention));
                 NotifyReviewPresentationChanged();
             }
         }
@@ -403,8 +405,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public int GitDiffDeletions { get => _gitDiffDeletions; private set => SetProperty(ref _gitDiffDeletions, value); }
     public bool NavigationVisible { get => _navigationVisible; set { if (SetProperty(ref _navigationVisible, value)) { NotifyNavigationLayoutChanged(); SaveRegionState(); } } }
     public bool ExplorerVisible { get => _explorerVisible; set { if (SetProperty(ref _explorerVisible, value)) { NotifyNavigationLayoutChanged(); SaveRegionState(); } } }
-    public bool ReviewVisible { get => _reviewVisible; set { if (SetProperty(ref _reviewVisible, value)) { if (value && _childSessionsVisible) { _childSessionsVisible = false; OnPropertyChanged(nameof(ChildSessionsVisible)); } NotifyReviewLayoutChanged(); SaveRegionState(); } } }
-    public bool ChildSessionsVisible { get => _childSessionsVisible; set { if (SetProperty(ref _childSessionsVisible, value)) { if (value && _reviewVisible) { _reviewVisible = false; OnPropertyChanged(nameof(ReviewVisible)); } NotifyReviewLayoutChanged(); SaveRegionState(); } } }
+    public bool ReviewVisible { get => _reviewVisible; set { if (SetProperty(ref _reviewVisible, value)) { if (value && _childSessionsVisible) { _childSessionsVisible = false; OnPropertyChanged(nameof(ChildSessionsVisible)); } NotifyReviewLayoutChanged(); OnPropertyChanged(nameof(ReviewGutterAttention));OnPropertyChanged(nameof(ChildSessionsGutterAttention)); SaveRegionState(); } } }
+    public bool ChildSessionsVisible { get => _childSessionsVisible; set { if (SetProperty(ref _childSessionsVisible, value)) { if (value && _reviewVisible) { _reviewVisible = false; OnPropertyChanged(nameof(ReviewVisible)); } NotifyReviewLayoutChanged(); OnPropertyChanged(nameof(ReviewGutterAttention));OnPropertyChanged(nameof(ChildSessionsGutterAttention)); SaveRegionState(); } } }
     public bool NavigationPinned { get => _navigationPinned; set => SetProperty(ref _navigationPinned, value); }
     public bool GitVisible { get => _gitVisible; set { if (SetProperty(ref _gitVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveGitVisible)); SaveRegionState(); } } }
     public bool ProviderTraceVisible { get => _providerTraceVisible; set { if (SetProperty(ref _providerTraceVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveProviderTraceVisible)); SaveRegionState(); } } }
@@ -447,10 +449,13 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public ApprovalItem? ChildPendingApproval
     {
         get => _childPendingApproval;
-        private set
+        internal set
         {
             if (SetProperty(ref _childPendingApproval, value))
+            {
                 OnPropertyChanged(nameof(HasChildPendingApproval));
+                OnPropertyChanged(nameof(ChildSessionsGutterAttention));
+            }
         }
     }
     public double NavigationPaneWidth { get => _navigationPaneWidth; set { if (SetProperty(ref _navigationPaneWidth, value)) { NotifyNavigationLayoutChanged(); SavePanelGeometry(); } } }
@@ -511,6 +516,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool HasChildSessions => ChildSessions.Count > 0;
     public bool HasSelectedChildSession => SelectedChildSession is not null;
     public bool HasChildPendingApproval => ChildPendingApproval is not null;
+    public bool ReviewGutterAttention => (HasPendingApproval || HasPendingQuestion) && !ReviewVisible;
+    public bool ChildSessionsGutterAttention => HasChildPendingApproval && !ChildSessionsVisible;
     public bool IsChildSessionVisible => SelectedChildSession is not null;
     public string ChildSessionTitle => SelectedChildSession?.Title ?? string.Empty;
     public string ToolActivitySummary => $"{ToolActivityTurns.Count} {(ToolActivityTurns.Count == 1 ? "turn" : "turns")} · {ToolActivityTurns.Sum(turn => turn.Tools.Count)} calls";
