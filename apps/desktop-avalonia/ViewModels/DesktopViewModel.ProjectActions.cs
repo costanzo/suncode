@@ -388,6 +388,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     {
         var text = ComposerText.Trim();
         if (!EnsureSdk() || SelectedSession is null || SelectedModel?.Configured != true || text.Length == 0 || IsTurnActive) return;
+        var submittedModelId = SelectedModel.Id;
+        var submittedReasoningEffort = SelectedReasoningEffort;
         var attachments = ComposerAttachments.ToArray();
         ComposerText = string.Empty;
         ResetCurrentComposerDraft();
@@ -401,8 +403,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 SelectedSession.SessionId,
                 text,
                 Guid.NewGuid().ToString("N"),
-                SelectedModel.Id,
-                SelectedReasoningEffort,
+                submittedModelId,
+                submittedReasoningEffort,
                 attachments.Select(attachment => attachment.ImageId).ToArray()));
             var submissionStatus = result.Status;
             StatusText = submissionStatus switch
@@ -415,8 +417,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             {
                 var updated = session with
                 {
-                    ModelId = SelectedModel?.Id ?? string.Empty,
-                    ReasoningEffort = SelectedReasoningEffort ?? string.Empty
+                    ModelId = submittedModelId,
+                    ReasoningEffort = submittedReasoningEffort ?? string.Empty
                 };
                 var index = Sessions.IndexOf(session);
                 if (index >= 0) Sessions[index] = updated;

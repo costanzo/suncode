@@ -201,7 +201,7 @@ public sealed partial class ChatInput : UserControl
         // presentation items whenever model data changes, so its item payload
         // must not become a second source of model state.
         var model = ViewModel.Models.FirstOrDefault(item => item.Id == selected.Id) ?? selected;
-        ViewModel.SelectedModel = model;
+        ViewModel.SelectComposerModel(model);
     }
 
     private void ReasoningSelectionChanged(object? sender, SelectionChangedEventArgs e) =>
