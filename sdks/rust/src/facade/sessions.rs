@@ -238,6 +238,8 @@ impl AsyncAgentSdk {
         let images = self.state.store.session_images(session_id)?;
         let conversation_turns = self.state.store.session_conversation_turns(session_id)?;
         let pending_question = self.state.store.pending_question(session_id)?;
+        let pending_approval = self.state.store.pending_approval(session_id)?
+            .map(|record|serde_json::to_value(record).unwrap_or(Value::Null));
         logging::debug(
             "session_snapshot",
             format!("end session={session_id} messages={}", messages.len()),
@@ -248,6 +250,7 @@ impl AsyncAgentSdk {
             conversation_turns,
             images,
             pending_question,
+            pending_approval,
         })
     }
 

@@ -417,6 +417,8 @@ pub struct SessionSnapshot {
     pub images: Vec<SessionImageRecord>,
     #[serde(rename = "pendingQuestion", skip_serializing_if = "Option::is_none")]
     pub pending_question: Option<Value>,
+    #[serde(rename = "pendingApproval", skip_serializing_if = "Option::is_none")]
+    pub pending_approval: Option<Value>,
 }
 
 #[derive(Debug, Serialize)]

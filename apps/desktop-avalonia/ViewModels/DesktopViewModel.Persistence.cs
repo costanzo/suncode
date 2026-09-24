@@ -344,7 +344,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         IReadOnlyList<TodoItem> currentTodos = [];
         var changedPaths = new List<string>();
         var changedPathSet = new HashSet<string>(StringComparer.Ordinal);
-        ApprovalItem? pendingApproval = null;
+        ApprovalItem? pendingApproval = snapshot.PendingApproval is { } approval
+            ? ApprovalItem.FromSdk(approval)
+            : null;
         PendingQuestionItem? pendingQuestion = snapshot.PendingQuestion is { } pending
             ? PendingQuestionItem.FromSdk(pending)
             : null;

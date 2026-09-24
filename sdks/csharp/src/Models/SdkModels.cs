@@ -526,7 +526,8 @@ public sealed record SessionSnapshot(
     IReadOnlyList<AgentMessage> Messages,
     [property: JsonPropertyName("conversationTurns")] IReadOnlyList<SessionConversationTurn> ConversationTurns,
     IReadOnlyList<SessionImage> Images,
-    [property: JsonPropertyName("pendingQuestion")] PendingQuestion? PendingQuestion);
+    [property: JsonPropertyName("pendingQuestion")] PendingQuestion? PendingQuestion,
+    [property: JsonPropertyName("pendingApproval")] ApprovalRecord? PendingApproval);
 
 public sealed record SessionUsageResult(
     [property: JsonPropertyName("session_id")] string SessionId,
