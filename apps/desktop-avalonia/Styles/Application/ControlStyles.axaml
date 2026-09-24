@@ -10,6 +10,7 @@
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SettingsStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/NumericUpDownStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SCNumericInputStyles.axaml" />
+  <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SCStatusDotStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/ToggleSwitchStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/SCModalStyles.axaml" />
   <StyleInclude Source="avares://SunCode/Styles/Application/Controls/ProjectSwitcherStyles.axaml" />

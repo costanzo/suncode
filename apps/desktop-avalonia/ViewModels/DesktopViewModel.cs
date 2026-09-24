@@ -545,6 +545,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool HasFailedTurn => ActiveTurnState == "failed";
     public string ReviewHeadingText => HasFailedTurn ? "Turn stopped" : IsTurnCompacting ? "Compacting context" : IsTurnActive ? "1 active process" : HasPendingApproval || HasPendingQuestion ? "Awaiting input" : "No active process";
     public string ReviewStatusText => HasFailedTurn ? "Turn failed" : IsTurnCompacting ? "Compacting conversation context" : IsTurnActive ? "Agent running" : HasPendingApproval ? "Waiting for approval" : HasPendingQuestion ? "Waiting for answer" : "Agent idle";
+    public string ReviewStatusState => HasFailedTurn ? "failed" : IsTurnCompacting ? "compacting" : IsTurnActive ? "running" : HasPendingApproval ? "approval" : HasPendingQuestion ? "question" : "idle";
     public bool IsReviewIdle => !IsTurnActive && !HasPendingApproval && !HasPendingQuestion && !HasFailedTurn && !IsTurnCompacting;
     public bool IsReviewRunning => IsTurnActive && !IsTurnCompacting && !HasFailedTurn;
     public bool IsReviewCompacting => IsTurnCompacting;
@@ -572,6 +573,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     {
         OnPropertyChanged(nameof(ReviewHeadingText));
         OnPropertyChanged(nameof(ReviewStatusText));
+        OnPropertyChanged(nameof(ReviewStatusState));
         OnPropertyChanged(nameof(IsReviewIdle));
         OnPropertyChanged(nameof(IsReviewRunning));
         OnPropertyChanged(nameof(IsReviewCompacting));

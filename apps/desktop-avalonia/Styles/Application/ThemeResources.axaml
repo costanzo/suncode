@@ -102,6 +102,10 @@
       <SolidColorBrush x:Key="DangerBrush" Color="#e68a83" />
       <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#2a1919" />
       <SolidColorBrush x:Key="DangerBorderBrush" Color="#633735" />
+      <SolidColorBrush x:Key="AccentAuraBrush" Color="#2Ed9e0e6" />
+      <SolidColorBrush x:Key="SuccessAuraBrush" Color="#2E9fb3c3" />
+      <SolidColorBrush x:Key="WarningAuraBrush" Color="#24d5ad6f" />
+      <SolidColorBrush x:Key="DangerAuraBrush" Color="#2Ee68a83" />
       <SolidColorBrush x:Key="ContentSessionBrush" Color="#aeb4ed" />
       <SolidColorBrush x:Key="ContentSessionSurfaceBrush" Color="#272a3e" />
       <SolidColorBrush x:Key="ContentFileBrush" Color="#91c9b8" />
@@ -208,6 +212,10 @@
       <SolidColorBrush x:Key="DangerBrush" Color="#b6463f" />
       <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#fae6e4" />
       <SolidColorBrush x:Key="DangerBorderBrush" Color="#dda09b" />
+      <SolidColorBrush x:Key="AccentAuraBrush" Color="#2E2c3742" />
+      <SolidColorBrush x:Key="SuccessAuraBrush" Color="#2E4f6d82" />
+      <SolidColorBrush x:Key="WarningAuraBrush" Color="#24966a25" />
+      <SolidColorBrush x:Key="DangerAuraBrush" Color="#2Eb6463f" />
       <SolidColorBrush x:Key="ContentSessionBrush" Color="#6269a8" />
       <SolidColorBrush x:Key="ContentSessionSurfaceBrush" Color="#eceefa" />
       <SolidColorBrush x:Key="ContentFileBrush" Color="#347866" />

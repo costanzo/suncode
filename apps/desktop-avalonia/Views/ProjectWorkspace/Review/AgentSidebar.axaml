@@ -3,6 +3,7 @@
              xmlns:models="using:SunCode.Desktop.Models"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:controls="using:SunCode.Desktop.Controls"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Review.AgentSidebar"
              x:DataType="vm:DesktopViewModel">
   <Border Classes="inspector-card">
@@ -10,7 +11,7 @@
       <StackPanel Margin="12,14" Spacing="12">
         <Grid ColumnDefinitions="*,Auto" MinHeight="24" Margin="0,0,0, -2">
           <TextBlock Text="{Binding ReviewHeadingText}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <Ellipse Grid.Column="1" Width="7" Height="7" Classes="review-status-dot" Classes.running="{Binding IsReviewRunning}" Classes.compacting="{Binding IsReviewCompacting}" Classes.approval="{Binding IsReviewApproval}" Classes.question="{Binding IsReviewQuestion}" Classes.failed="{Binding IsReviewFailed}" VerticalAlignment="Center" ToolTip.Tip="{Binding ReviewStatusText}" />
+          <controls:SCStatusDot Grid.Column="1" Status="{Binding ReviewStatusState}" ToolTip.Tip="{Binding ReviewStatusText}" />
         </Grid>
         <Border Padding="30,28" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="6" IsVisible="{Binding IsReviewIdle}">
           <StackPanel Spacing="7" HorizontalAlignment="Center">
