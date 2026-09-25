@@ -41,6 +41,13 @@ public sealed partial class ProjectWorkspace : UserControl
     internal void ScrollConversationToEndForSessionEntry() =>
         ChatArea.ScrollConversationToEndForSessionEntry();
 
+    internal void SetMergedTabs(Control? tabs)
+    {
+        ProjectTabsHost.Child = tabs;
+        ProjectTabsHost.Height = tabs is null ? 0 : 38;
+        ProjectTabsHost.IsVisible = tabs is not null;
+    }
+
     internal void ClampGitViewerHeight()
     {
         if (TopLevel.GetTopLevel(this) is not Window window) return;

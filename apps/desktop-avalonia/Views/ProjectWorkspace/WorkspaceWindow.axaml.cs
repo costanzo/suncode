@@ -12,7 +12,7 @@ using SunCode.Desktop.ViewModels;
 
 namespace SunCode.Desktop.Views.ProjectWorkspace;
 
-public sealed partial class WorkspaceWindow : Window
+public partial class WorkspaceWindow : Window
 {
     private readonly DispatcherTimer _mcpLoadTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private bool _initialized;
@@ -23,6 +23,7 @@ public sealed partial class WorkspaceWindow : Window
     private bool _isFullScreen;
     private bool _isFullScreenTransition;
     private NativeMenuItem? _toggleNavigationMenuItem;
+    private NativeMenuItem? _mergeWindowsMenuItem;
     private NativeMenu? _recentProjectsMenu;
     private bool _restoringWindowGeometry;
 
@@ -46,6 +47,8 @@ public sealed partial class WorkspaceWindow : Window
     }
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
+    internal ProjectWorkspace Workspace => ProjectWorkspaceView;
+    internal virtual bool IsMergedHost => false;
 
     private async void OnOpened(object? sender, EventArgs e)
     {
@@ -53,10 +56,16 @@ public sealed partial class WorkspaceWindow : Window
         _initialized = true;
         ViewModel.SessionEntered += SessionEntered;
         await ViewModel.InitializeAsync();
+        if (IsMergedHost)
+        {
+            RestoreWindowGeometry();
+            UpdateNativeProjectMenu();
+            return;
+        }
         await ViewModel.StartMcpProjectAsync();
         if (ViewModel.IsMcpLoading) _mcpLoadTimer.Start();
         RestoreWindowGeometry();
-        ConfigureProjectWindow();
+        if (!IsMergedHost) ConfigureProjectWindow();
         UpdateNativeProjectMenu();
         if (ViewModel.SelectedSession != null) SessionEntered();
     }
@@ -202,12 +211,22 @@ public sealed partial class WorkspaceWindow : Window
 
         var menu = new NativeMenu();
         menu.Items.Add(new NativeMenuItem { Header = "Project actions", Menu = projectActions });
+        var windowActions = new NativeMenu();
+        _mergeWindowsMenuItem = new NativeMenuItem { Header = "Merge All Windows" };
+        _mergeWindowsMenuItem.Click += (_, _) =>
+        {
+            if (Application.Current is App app) _ = app.MergeAllProjectWindowsAsync();
+        };
+        windowActions.Items.Add(_mergeWindowsMenuItem);
+        menu.Items.Add(new NativeMenuItem { Header = "Window", Menu = windowActions });
         menu.NeedsUpdate += (_, _) => UpdateNativeProjectMenu();
         NativeMenu.SetMenu(this, menu);
     }
 
     private void UpdateNativeProjectMenu()
     {
+        if (_mergeWindowsMenuItem is not null)
+            _mergeWindowsMenuItem.IsEnabled = Application.Current is App app && app.CanMergeWindows;
         if (_toggleNavigationMenuItem is not null)
             _toggleNavigationMenuItem.Header = ViewModel.NavigationVisible ? "Hide Project Navigation" : "Show Project Navigation";
         if (_recentProjectsMenu is null) return;
@@ -386,6 +405,13 @@ public sealed partial class WorkspaceWindow : Window
         MinHeight = 620;
         ResizeAndCenter(1440, 900);
         ViewModel.UpdateLayoutWidth(1440);
+    }
+
+    internal void RestoreAsProjectWindow()
+    {
+        ConfigureProjectWindow();
+        Show();
+        Activate();
     }
 
     private void ResizeAndCenter(double width, double height)

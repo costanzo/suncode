@@ -13,6 +13,27 @@ export function WorkspacePage() {
       <Section id="workspace-window" title="Project workspace">
         <WorkspaceWindow />
       </Section>
+      <Section
+        id="workspace-window-tabs"
+        title="Project window tabs"
+        description="Window > Merge All Windows groups open project windows into one workspace. Tabs keep each project's independent session and panel state; dragging a tab beyond the tear-off threshold restores it as a separate window."
+      >
+        <div className="workspace-tabs-specimen" role="tablist" aria-label="Open projects">
+          <button className="workspace-project-tab is-active" role="tab" aria-selected="true">
+            <span className="workspace-project-tab-mark" />
+            <span>suncode</span>
+          </button>
+          <button className="workspace-project-tab" role="tab" aria-selected="false">
+            <span className="workspace-project-tab-mark" />
+            <span>desktop-avalonia</span>
+          </button>
+          <button className="workspace-project-tab" role="tab" aria-selected="false">
+            <span className="workspace-project-tab-mark" />
+            <span>design-system</span>
+          </button>
+        </div>
+        <p className="workspace-tabs-note">Window menu: Merge All Windows</p>
+      </Section>
       <Section id="workspace-modules" title="Focused workspace surfaces">
         <div className="module-card-grid">
           <ModuleLink

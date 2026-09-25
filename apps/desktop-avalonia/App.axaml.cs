@@ -22,10 +22,12 @@ public sealed partial class App : Application
     private SettingsWindow? _settingsWindow;
     private AboutWindow? _aboutWindow;
     private SessionAttentionCoordinator? _attentionCoordinator;
+    private MergedWorkspaceWindow? _mergedWindow;
     private readonly Dictionary<string, WorkspaceWindow> _projectWindows = [];
     private readonly HashSet<string> _openingProjects = [];
     private readonly Dictionary<string, TaskCompletionSource<bool>> _openingProjectSignals = [];
     private readonly SemaphoreSlim _activationGate = new(1, 1);
+    internal bool CanMergeWindows => _projectWindows.Count >= 2;
 
     public override void Initialize()
     {
@@ -90,6 +92,7 @@ public sealed partial class App : Application
         {
             window.RequestedThemeVariant = variant;
         }
+        if (_mergedWindow is not null) _mergedWindow.RequestedThemeVariant = variant;
     }
 
     internal async Task OpenProjectPathAsync(string path)
@@ -115,6 +118,13 @@ public sealed partial class App : Application
         if (disposition == ProjectWindowDisposition.ActivateExisting &&
             _projectWindows.TryGetValue(project.ProjectId, out var existing))
         {
+            if (_mergedWindow?.ContainsProject(project.ProjectId) == true)
+            {
+                _mergedWindow.SelectProject(project.ProjectId);
+                _mergedWindow.Show();
+                _mergedWindow.Activate();
+                return;
+            }
             existing.Show();
             existing.Activate();
             return;
@@ -160,6 +170,82 @@ public sealed partial class App : Application
             _openingProjects.Remove(project.ProjectId);
             _openingProjectSignals.Remove(project.ProjectId);
             openingSignal.TrySetResult(_projectWindows.ContainsKey(project.ProjectId));
+        }
+    }
+
+    internal Task MergeAllProjectWindowsAsync()
+    {
+        if (_mergedWindow is { } existingMerged)
+        {
+            foreach (var (projectId, source) in _projectWindows.ToArray())
+            {
+                if (existingMerged.ContainsProject(projectId)) continue;
+                existingMerged.AddProject(projectId, source);
+                source.Hide();
+            }
+            existingMerged.Activate();
+            return Task.CompletedTask;
+        }
+        if (_projectWindows.Count < 2) return Task.CompletedTask;
+        var sources = _projectWindows.ToArray();
+        var first = sources[0].Value;
+        if (first.DataContext is not DesktopViewModel firstViewModel) return Task.CompletedTask;
+
+        var merged = new MergedWorkspaceWindow(firstViewModel);
+        merged.ProjectTornOff += TearOffProject;
+        merged.HostClosed += MergedHostClosed;
+        _mergedWindow = merged;
+        foreach (var (projectId, source) in sources)
+        {
+            merged.AddProject(projectId, source);
+            source.Hide();
+        }
+        _hubWindow?.Hide();
+        merged.Show();
+        merged.Activate();
+        return Task.CompletedTask;
+    }
+
+    private void TearOffProject(string projectId, PixelPoint pointer)
+    {
+        if (_mergedWindow is not { } merged) return;
+        var source = merged.RemoveProject(projectId);
+        if (source is null) return;
+        source.Content = source.Workspace;
+        source.Position = new PixelPoint(pointer.X - 240, pointer.Y - 18);
+        source.RestoreAsProjectWindow();
+
+        if (merged.ProjectIds.Count == 0)
+        {
+            _mergedWindow = null;
+            merged.CloseWithoutNotification();
+            return;
+        }
+        if (merged.ProjectIds.Count == 1) UnmergeRemainingProject(merged);
+    }
+
+    private void UnmergeRemainingProject(MergedWorkspaceWindow merged)
+    {
+        var remaining = merged.ProjectIds.ToArray();
+        _mergedWindow = null;
+        foreach (var projectId in remaining)
+        {
+            var source = merged.RemoveProject(projectId);
+            if (source is null) continue;
+            source.Content = source.Workspace;
+            source.RestoreAsProjectWindow();
+        }
+        merged.CloseWithoutNotification();
+    }
+
+    private void MergedHostClosed(MergedWorkspaceWindow merged)
+    {
+        if (!ReferenceEquals(_mergedWindow, merged)) return;
+        _mergedWindow = null;
+        foreach (var projectId in merged.ProjectIds.ToArray())
+        {
+            merged.RemoveProject(projectId);
+            if (_projectWindows.TryGetValue(projectId, out var source)) source.Close();
         }
     }
 
@@ -214,9 +300,19 @@ public sealed partial class App : Application
                 request.ParentSessionId,
                 request.ChildSessionId);
             if (!navigated) DiagnosticLog.Warn("notification.activation", "route_rejected=true reason=ownership_or_missing");
-            window.Show();
-            if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
-            window.Activate();
+            if (_mergedWindow?.ContainsProject(project.ProjectId) == true)
+            {
+                _mergedWindow.SelectProject(project.ProjectId);
+                _mergedWindow.Show();
+                if (_mergedWindow.WindowState == WindowState.Minimized) _mergedWindow.WindowState = WindowState.Normal;
+                _mergedWindow.Activate();
+            }
+            else
+            {
+                window.Show();
+                if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+                window.Activate();
+            }
         }
         catch (Exception exception)
         {
@@ -227,7 +323,9 @@ public sealed partial class App : Application
 
     private void ActivateFallbackWindow()
     {
-        var window = _projectWindows.Values.FirstOrDefault(value => value.IsVisible) ?? (Window?)_hubWindow;
+        var window = (Window?)(_mergedWindow?.IsVisible == true ? _mergedWindow : null)
+            ?? (Window?)_projectWindows.Values.FirstOrDefault(value => value.IsVisible)
+            ?? _hubWindow;
         if (window is null) return;
         window.Show();
         if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
@@ -297,6 +395,13 @@ public sealed partial class App : Application
             if (owner is not null) ShowAbout(owner);
         };
         menu.Items.Add(about);
+        var windowActions = new NativeMenu();
+        var mergeWindows = new NativeMenuItem { Header = "Merge All Windows", IsEnabled = CanMergeWindows };
+        mergeWindows.Click += (_, _) => _ = MergeAllProjectWindowsAsync();
+        windowActions.Items.Add(mergeWindows);
+        var windowMenu = new NativeMenuItem { Header = "Window", Menu = windowActions };
+        windowMenu.Menu!.NeedsUpdate += (_, _) => mergeWindows.IsEnabled = CanMergeWindows;
+        menu.Items.Add(windowMenu);
         NativeMenu.SetMenu(this, menu);
     }
 

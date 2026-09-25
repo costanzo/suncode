@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:workspace="using:SunCode.Desktop.Views.ProjectWorkspace"
+             x:Class="SunCode.Desktop.Views.ProjectWorkspace.MergedWorkspaceTabs">
+  <UserControl.Styles>
+    <Style Selector="Button.merged-project-tab">
+      <Setter Property="MinWidth" Value="120" />
+      <Setter Property="MaxWidth" Value="240" />
+      <Setter Property="Height" Value="26" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="Padding" Value="12,0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="5,5,5,5" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.merged-project-tab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+    <Style Selector="Button.merged-project-tab:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+    </Style>
+    <Style Selector="Button.merged-project-tab.selected">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1,1,1,1" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.merged-project-tab:focus-visible">
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+    </Style>
+    <Style Selector="Border.merged-project-tab-marker">
+      <Setter Property="BorderBrush" Value="{DynamicResource TextMutedBrush}" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.merged-project-tab-marker.selected">
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+      <Setter Property="Background" Value="{DynamicResource AccentBorderBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Height="30"
+          Margin="34,0"
+          Background="Transparent"
+          BorderBrush="Transparent"
+          BorderThickness="0,0,0,1">
+    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                  VerticalScrollBarVisibility="Disabled">
+      <ItemsControl x:Name="TabsList">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" Spacing="2" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="workspace:MergedProjectTab">
+            <Button Classes="merged-project-tab"
+                    Classes.selected="{Binding IsSelected}"
+                    AutomationProperties.Name="{Binding Title}"
+                    Click="SelectTab"
+                    PointerPressed="TabPointerPressed"
+                    PointerMoved="TabPointerMoved"
+                    PointerReleased="TabPointerReleased">
+              <Grid ColumnDefinitions="8,8,*">
+                <Border Grid.Column="0"
+                        Classes="merged-project-tab-marker"
+                        Classes.selected="{Binding IsSelected}"
+                        Width="8"
+                        Height="8"
+                        CornerRadius="2"
+                        BorderThickness="1"
+                        VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2"
+                           Text="{Binding Title}"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Border>
+</UserControl>
