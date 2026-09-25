@@ -96,7 +96,6 @@ fn configure(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
 
 fn initialize(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
     business_transaction(connection, |connection| {
-        schema::rename_legacy_session_tables(connection)?;
         for script in sqlite::schema_scripts() {
             connection
                 .batch_execute(script)

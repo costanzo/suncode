@@ -34,16 +34,16 @@ const SCHEMA_SCRIPTS: &[&str] = &[
     include_str!("schema/session_turn_todo.sql"),
     include_str!("schema/session_call.sql"),
     include_str!("schema/session_tool_use.sql"),
-    include_str!("schema/approval_request.sql"),
-    include_str!("schema/checkpoint_manifest.sql"),
-    include_str!("schema/checkpoint.sql"),
+    include_str!("schema/session_approval_request.sql"),
+    include_str!("schema/session_checkpoint_manifest.sql"),
+    include_str!("schema/session_checkpoint.sql"),
     include_str!("schema/session_message.sql"),
     include_str!("schema/session_image.sql"),
     include_str!("schema/language_server.sql"),
     include_str!("schema/llm_model_provider.sql"),
     include_str!("schema/llm_model.sql"),
     include_str!("schema/mcp_server.sql"),
-    include_str!("schema/subagent_invocation.sql"),
+    include_str!("schema/session_subagent_invocation.sql"),
 ];
 
 const DATA_SCRIPTS: &[&str] = &[

@@ -180,36 +180,6 @@ fn immediately_previous_schema_receives_subagent_table_and_session_columns() {
 }
 
 #[test]
-fn legacy_session_table_names_are_renamed_without_losing_rows() {
-    let directory = tempfile::tempdir().unwrap();
-    let path = directory.path().join("agent.sqlite3");
-    let mut connection = SqliteConnection::establish(path.to_str().unwrap()).unwrap();
-    for script in suncode_database::sqlite::schema_scripts() {
-        let legacy = script
-            .replace("session_approval_request", "approval_request")
-            .replace("session_checkpoint_manifest", "checkpoint_manifest")
-            .replace("session_checkpoint", "checkpoint")
-            .replace("session_subagent_invocation", "subagent_invocation");
-        connection.batch_execute(&legacy).unwrap();
-    }
-    connection
-        .batch_execute(
-            "INSERT INTO project(project_id,user_id,canonical_root,display_name,created_at,updated_at,last_opened_at) VALUES ('p','u','/tmp/legacy','Legacy','t','t','t');
-             INSERT INTO session(session_id,project_id,kind,status,created_at,updated_at,last_activity_at) VALUES ('s','p','primary','active','t','t','t');
-             INSERT INTO approval_request(approval_id,session_id,turn_id,tool_call_id,operation,arguments_json,idempotency_key,status,created_at,updated_at) VALUES ('a','s','t','c','write','{}','k','pending','t','t');",
-        )
-        .unwrap();
-    drop(connection);
-
-    let store = Store::open(&path).unwrap();
-    assert!(store.approval("a").unwrap().is_some());
-    let mut connection = store.connection.lock().unwrap();
-    let names = schema::table_names(&mut connection).unwrap();
-    assert!(names.contains(&"session_approval_request".to_string()));
-    assert!(!names.contains(&"approval_request".to_string()));
-}
-
-#[test]
 fn diesel_store_round_trips_project_and_session() {
     let store = Store::open_memory().unwrap();
     assert_eq!(
