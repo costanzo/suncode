@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Avalonia.Input;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 using SunCode.Desktop.Views.ProjectWorkspace;
@@ -25,7 +26,22 @@ public sealed partial class AgentSidebar : UserControl
     private async void DenyApproval(object? sender, RoutedEventArgs e) =>
         await ViewModel.ResolveApprovalAsync("deny");
 
-    private void SelectQuestionOption(object? sender, RoutedEventArgs e)
+    private void SelectQuestionOption(object? sender, PointerPressedEventArgs e)
+    {
+        ToggleQuestionOption(sender);
+        e.Handled = true;
+    }
+
+    private void SelectQuestionOptionOnKey(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Space or Key.Enter)
+        {
+            ToggleQuestionOption(sender);
+            e.Handled = true;
+        }
+    }
+    
+    private void ToggleQuestionOption(object? sender)
     {
         if ((sender as Control)?.DataContext is QuestionOptionItem option)
             ViewModel.ToggleQuestionOption(option);

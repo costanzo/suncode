@@ -551,6 +551,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool IsReviewCompacting => IsTurnCompacting;
     public bool IsReviewApproval => HasPendingApproval;
     public bool IsReviewQuestion => !HasPendingApproval && HasPendingQuestion;
+    public bool IsReviewWaiting => HasPendingApproval || HasPendingQuestion;
     public bool IsReviewFailed => HasFailedTurn;
     public bool IsReviewChangesVisible => !IsReviewIdle && !IsReviewCompacting && !IsReviewFailed && (IsTurnActive || HasChangedPaths);
     public bool IsReviewCheckpointVisible => IsReviewRunning && HasCheckpoints;
@@ -579,6 +580,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsReviewCompacting));
         OnPropertyChanged(nameof(IsReviewApproval));
         OnPropertyChanged(nameof(IsReviewQuestion));
+        OnPropertyChanged(nameof(IsReviewWaiting));
         OnPropertyChanged(nameof(IsReviewFailed));
         OnPropertyChanged(nameof(IsReviewChangesVisible));
         OnPropertyChanged(nameof(IsReviewCheckpointVisible));

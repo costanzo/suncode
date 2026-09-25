@@ -13,7 +13,7 @@
           <TextBlock Text="{Binding ReviewHeadingText}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
           <controls:SCStatusDot Grid.Column="1" Status="{Binding ReviewStatusState}" ToolTip.Tip="{Binding ReviewStatusText}" />
         </Grid>
-        <Border Padding="30,28" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="6" IsVisible="{Binding IsReviewIdle}">
+        <Border Padding="16,30" MinHeight="150" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="6" IsVisible="{Binding IsReviewIdle}">
           <StackPanel Spacing="7" HorizontalAlignment="Center">
             <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
             <TextBlock Text="Agent is idle" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
@@ -27,7 +27,8 @@
             <Button Grid.Column="3" Classes="compact danger" Content="Turn off" Click="DisableFullControl" Margin="8,0,0,0" />
           </Grid>
         </Border>
-        <TextBlock Classes="section-label" Text="REVIEW" />
+        <Border Height="1" Margin="0,2" Background="{DynamicResource BorderBrush}" IsVisible="{Binding IsReviewWaiting}" />
+        <TextBlock Classes="section-label" Text="REVIEW QUEUE" IsVisible="{Binding IsReviewWaiting}" />
         <Border Padding="11" CornerRadius="6" Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="{Binding HasPendingApproval}">
           <StackPanel Spacing="11">
             <Grid ColumnDefinitions="*,Auto">
@@ -35,27 +36,24 @@
                 <TextBlock Text="Approval required" Foreground="{DynamicResource WarningBrush}" FontSize="12" FontWeight="SemiBold" />
                 <TextBlock Text="{Binding PendingApproval.ActionText}" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" />
               </StackPanel>
-              <Border Grid.Column="1" Background="{DynamicResource WarningBrush}" CornerRadius="5" Padding="7,4" VerticalAlignment="Top">
-                <TextBlock Text="REVIEW" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource WarningSurfaceBrush}" />
+              <Border Grid.Column="1" Background="{DynamicResource WarningBrush}" CornerRadius="4" Padding="5,3" VerticalAlignment="Top">
+                <TextBlock Text="REVIEW" Classes="mono" FontSize="8" FontWeight="SemiBold" Foreground="{DynamicResource WarningSurfaceBrush}" />
               </Border>
             </Grid>
-            <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7" Padding="10" IsVisible="{Binding PendingApproval.HasDetail}">
-              <StackPanel Spacing="6">
-                <TextBlock Text="{Binding PendingApproval.DetailLabel}" Classes="eyebrow" />
-                <ScrollViewer MaxHeight="148" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                  <SelectableTextBlock Text="{Binding PendingApproval.DetailText}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap" />
-                </ScrollViewer>
-              </StackPanel>
+            <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="7" IsVisible="{Binding PendingApproval.HasDetail}">
+              <ScrollViewer MaxHeight="148" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <SelectableTextBlock Text="{Binding PendingApproval.DetailText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+              </ScrollViewer>
             </Border>
             <StackPanel Spacing="4" IsVisible="{Binding PendingApproval.HasWorkingDirectory}">
               <TextBlock Text="Working directory" Classes="eyebrow" />
               <TextBlock Text="{Binding PendingApproval.WorkingDirectoryText}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
             </StackPanel>
-            <Grid ColumnDefinitions="*,8,*">
-              <Button Grid.Column="0" Classes="compact primary" Content="Allow once" Click="ApproveOnce" />
-              <Button Grid.Column="2" Classes="compact danger" Content="Deny" Click="DenyApproval" />
+            <Grid ColumnDefinitions="*,5,*">
+              <Button Grid.Column="0" Classes="compact primary" Content="Allow once" Click="ApproveOnce" HorizontalAlignment="Stretch" FontSize="9"/>
+              <Button Grid.Column="2" Classes="compact danger" Content="Deny" Click="DenyApproval" HorizontalAlignment="Stretch" FontSize="9" />
             </Grid>
-            <Button Classes="compact" Content="Allow for session" Foreground="{DynamicResource WarningBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" Click="ApproveForSession" />
+            <Button Classes="compact" Content="Allow for session" Foreground="{DynamicResource WarningBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" Click="ApproveForSession" HorizontalAlignment="Stretch" FontSize="9"/>
           </StackPanel>
         </Border>
         <Border Padding="11" CornerRadius="6" Background="{DynamicResource AccentSurfaceBrush}" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1" IsVisible="{Binding HasPendingQuestion}">
@@ -65,8 +63,8 @@
                 <TextBlock Text="Clarification needed" Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold" />
                 <TextBlock Text="The agent is waiting for your answer" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" />
               </StackPanel>
-              <Border Grid.Column="1" Background="{DynamicResource AccentBrush}" CornerRadius="5" Padding="7,4" VerticalAlignment="Top">
-                <TextBlock Text="ANSWER" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource SurfaceBrush}" />
+              <Border Grid.Column="1" Background="{DynamicResource AccentBrush}" CornerRadius="4" Padding="5,3" VerticalAlignment="Top">
+                <TextBlock Text="ANSWER" Classes="mono" FontSize="8" FontWeight="SemiBold" Foreground="{DynamicResource AccentInkBrush}" />
               </Border>
             </Grid>
             <ItemsControl ItemsSource="{Binding PendingQuestion.Questions}">
@@ -78,25 +76,28 @@
                     <ItemsControl ItemsSource="{Binding Options}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="models:QuestionOptionItem">
-                          <Border Classes="question-option" Classes.selected="{Binding IsSelected}" Margin="0,0,0,4">
-                            <RadioButton Classes="compact" GroupName="QuestionOption" HorizontalContentAlignment="Left" Click="SelectQuestionOption" IsChecked="{Binding IsSelected, Mode=OneWay}" AutomationProperties.Name="{Binding Label}">
-                              <StackPanel Spacing="2">
+                          <Border Classes="question-option" Classes.selected="{Binding IsSelected}" Margin="0,0,0,4" Focusable="True" PointerPressed="SelectQuestionOption" AutomationProperties.Name="{Binding Label}" KeyDown="SelectQuestionOptionOnKey" Cursor="Hand">
+                            <Grid ColumnDefinitions="18,*,Auto" ColumnSpacing="8">
+                              <Border Grid.Column="0" Classes="question-radio-ring" Classes.selected="{Binding IsSelected}" Width="16" Height="16" CornerRadius="8" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" Background="Transparent" VerticalAlignment="Top" Margin="1,1,0,0">
+                                <Ellipse Width="8" Height="8" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsSelected}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                              </Border>
+                              <StackPanel Grid.Column="1" Spacing="2">
                                 <TextBlock Text="{Binding Label}" FontSize="10" FontWeight="SemiBold" TextWrapping="Wrap" />
                                 <TextBlock Text="{Binding Description}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
                               </StackPanel>
-                            </RadioButton>
+                            </Grid>
                           </Border>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBox Text="{Binding CustomAnswer, Mode=TwoWay}" PlaceholderText="Add a custom answer" IsVisible="{Binding AllowCustom}" TextWrapping="Wrap" />
+                    <TextBox Text="{Binding CustomAnswer, Mode=TwoWay}" PlaceholderText="Add a custom answer" IsVisible="{Binding AllowCustom}" TextWrapping="Wrap" FontSize="10" MinHeight="34" Padding="9,7" CornerRadius="5" />
                   </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Grid ColumnDefinitions="*,8,*">
-              <Button Grid.Column="0" Classes="compact primary" Content="Submit answers" Click="ReplyQuestion" />
-              <Button Grid.Column="2" Classes="compact danger" Content="Skip" Click="RejectQuestion" />
+            <Grid ColumnDefinitions="*,5,*">
+              <Button Grid.Column="0" Classes="compact primary" Content="Submit answers" Click="ReplyQuestion" HorizontalAlignment="Stretch" FontSize="9" />
+              <Button Grid.Column="2" Classes="compact danger" Content="Skip" Click="RejectQuestion" HorizontalAlignment="Stretch" FontSize="9" />
             </Grid>
           </StackPanel>
         </Border>
@@ -110,68 +111,71 @@
             <svg:Svg Grid.Column="2" Width="12" Height="12" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
           </Grid>
         </Button>
-        <StackPanel Spacing="7">
+        <StackPanel Spacing="7" IsVisible="{Binding HasChangedPaths}">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Classes="section-label" Text="TOUCHED FILES" />
             <TextBlock Grid.Column="1" Text="{Binding ChangedPaths.Count}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
           </Grid>
-          <ItemsControl ItemsSource="{Binding ChangedPaths}" IsVisible="{Binding HasChangedPaths}">
+          <ItemsControl ItemsSource="{Binding ChangedPaths}">
             <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Classes="mono" FontSize="10" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}" Margin="2,3" /></DataTemplate></ItemsControl.ItemTemplate>
           </ItemsControl>
-          <TextBlock Text="No files touched yet" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding !HasChangedPaths}" />
         </StackPanel>
-        <Border Classes="process-card" Classes.active="{Binding IsTurnActive}" Padding="11" CornerRadius="6" IsVisible="{Binding IsReviewRunning}">
+        <Border Classes="process-card" Padding="11" CornerRadius="6" IsVisible="{Binding IsReviewRunning}">
           <StackPanel Spacing="7">
-            <Grid ColumnDefinitions="Auto,8,*,Auto">
-              <Border Width="13" Height="13" CornerRadius="7" Background="{DynamicResource AccentSurfaceBrush}" IsVisible="{Binding IsTurnActive}" VerticalAlignment="Center">
-                <Ellipse Width="7" Height="7" Classes="process-dot" Classes.active="{Binding IsTurnActive}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-              </Border>
-              <Ellipse Width="7" Height="7" Classes="process-dot" VerticalAlignment="Center" IsVisible="{Binding !IsTurnActive}" />
-              <TextBlock Grid.Column="2" Text="Agent loop" FontWeight="SemiBold" />
-              <TextBlock Grid.Column="3" Text="Running" FontSize="10" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsTurnActive}" />
-              <TextBlock Grid.Column="3" Text="Ready" FontSize="10" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding !IsTurnActive}" />
+            <Grid ColumnDefinitions="7,7,*,Auto">
+              <Ellipse Width="7" Height="7" Classes="process-dot" Classes.active="{Binding IsTurnActive}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="2" Text="Agent loop" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="3" Text="Running" FontSize="9" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsTurnActive}" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="3" Text="Ready" FontSize="9" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding !IsTurnActive}" VerticalAlignment="Center"/>
             </Grid>
-            <TextBlock Text="{Binding LastTurnId, StringFormat=Turn  {0}}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="{Binding SelectedModelName, StringFormat=Model  {0}}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="{Binding LatestActivityText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="2" IsVisible="{Binding IsTurnActive}" />
+            <TextBlock Text="{Binding LastTurnId, StringFormat=Turn  {0}}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding SelectedModelName, StringFormat=Model  {0}}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding LatestActivityText}" FontSize="9" Classes="mono" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsTurnActive}" />
           </StackPanel>
         </Border>
         <Border Padding="11" CornerRadius="6" Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" IsVisible="{Binding HasFailedTurn}">
-          <StackPanel Spacing="8">
+          <StackPanel Spacing="9">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Text="TURN STOPPED" Classes="eyebrow" Foreground="{DynamicResource DangerBrush}" />
-              <TextBlock Grid.Column="1" Text="FAILED" Classes="mono" FontSize="9" Foreground="{DynamicResource DangerBrush}" />
+              <Border Grid.Column="1" Background="{DynamicResource DangerBrush}" CornerRadius="4" Padding="5,3">
+                <TextBlock Text="FAILED" Classes="mono" FontSize="8" FontWeight="SemiBold" Foreground="{DynamicResource DangerSurfaceBrush}" />  
+              </Border>
             </Grid>
             <TextBlock Text="Provider request failed" FontSize="11" FontWeight="SemiBold" />
-            <TextBlock Text="The turn ended before completion. No further tool calls will run." FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            <TextBlock Text="The turn ended before completion. No further tool calls will run." FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            <!-- A Horizontal line -->
+            <Border Height="1" Background="{DynamicResource DangerBorderBrush}" Opacity="0.72" HorizontalAlignment="Stretch" />
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,2,0,0">
               <TextBlock Text="Reason" Classes="eyebrow" />
               <TextBlock Grid.Column="1" Text="Network unavailable" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Right" />
               <TextBlock Grid.Row="1" Text="Turn" Classes="eyebrow" />
               <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LastTurnId}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Right" />
             </Grid>
-            <Button Classes="compact primary" Content="Retry turn" Click="RetryTurn" />
+            <Button Classes="compact primary" Content="Retry turn" Click="RetryTurn" HorizontalAlignment="Stretch"/>
           </StackPanel>
         </Border>
         <Border Classes="process-card" Padding="11" CornerRadius="6" IsVisible="{Binding IsReviewTodosVisible}">
           <StackPanel Spacing="7">
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="TODO" Classes="section-label" /><TextBlock Grid.Column="1" Text="{Binding CurrentTodos.Count, StringFormat={}{0} items}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" /></Grid>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="TODO" Classes="section-label" /><TextBlock Grid.Column="1" Text="{Binding CurrentTodos.Count, StringFormat={}{0} items}" Classes="mono" FontSize="8" Foreground="{DynamicResource TextMutedBrush}" /></Grid>
             <ItemsControl ItemsSource="{Binding CurrentTodos}">
-              <ItemsControl.ItemTemplate><DataTemplate x:DataType="models:TodoItem"><Grid ColumnDefinitions="Auto,*,Auto" Margin="0,1"><TextBlock Text="{Binding StatusMarker}" Classes="mono" FontSize="10" /><TextBlock Grid.Column="1" Text="{Binding Content}" FontSize="10" TextWrapping="Wrap" Margin="6,0" /><TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" /></Grid></DataTemplate></ItemsControl.ItemTemplate>
+              <ItemsControl.ItemTemplate><DataTemplate x:DataType="models:TodoItem"><Grid ColumnDefinitions="13,*,Auto" Margin="0,1"><TextBlock Text="{Binding StatusMarker}" Classes="mono" FontSize="9" /><TextBlock Grid.Column="1" Text="{Binding Content}" FontSize="9" TextWrapping="Wrap" Margin="6,0,0,0" /><TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="8" Foreground="{DynamicResource TextMutedBrush}" /></Grid></DataTemplate></ItemsControl.ItemTemplate>
             </ItemsControl>
           </StackPanel>
         </Border>
         <ItemsControl ItemsSource="{Binding Checkpoints}" IsVisible="{Binding IsReviewCheckpointVisible}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="models:CheckpointItem">
-              <Border Classes="raised" Padding="9" Margin="0,0,0,6" CornerRadius="6">
-                <StackPanel Spacing="5">
+              <Border Classes="raised" Padding="11" Margin="0,0,0,8" CornerRadius="6">
+                <StackPanel Spacing="9">
                   <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="{Binding FileCount}" FontSize="12" />
-                    <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="11" Foreground="{DynamicResource WarningBrush}" />
+                    <TextBlock Text="CHECKPOINT" Classes="section-label" />
+                    <TextBlock Grid.Column="1" Text="{Binding FileCount}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
                   </Grid>
-                  <TextBlock Classes="mono" Text="{Binding PathsText}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" MaxLines="2" />
-                  <Button Classes="compact" Content="Undo" HorizontalAlignment="Left" Click="RestoreCheckpoint" IsEnabled="{Binding CanReview}" />
+                  <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" />
+                  <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8">
+                    <TextBlock Classes="mono" Text="{Binding PathsText}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" MaxLines="2" />  
+                  </Border>
+                  <Button Classes="compact" Content="Undo" HorizontalAlignment="Stretch" Click="RestoreCheckpoint" IsEnabled="{Binding CanReview}" />
                 </StackPanel>
               </Border>
             </DataTemplate>
