@@ -60,7 +60,10 @@ public sealed record ModelItem(
     bool SupportsComputerUse = false,
     string ApiBase = "",
     string DefaultApiBase = "",
-    IReadOnlyList<string>? ReasoningEfforts = null)
+    IReadOnlyList<string>? ReasoningEfforts = null,
+    ulong? MaxInputTokens = null,
+    ulong? AutoCompactTokens = null,
+    ulong? MaxOutputTokens = null)
 {
     public bool Configured => Availability == "configured";
     // Availability is represented by the composer state after selection; keep
