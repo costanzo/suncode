@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
-import { SessionPanel } from "../WorkspacePrimitives.jsx";
+import { archivedSessions, SessionPanel } from "../WorkspacePrimitives.jsx";
 import { DialogWindowConfirmation } from "../../dialog-window/index.jsx";
 
 const sessionGuides = {
@@ -89,6 +89,27 @@ const sessionGuides = {
       ],
     },
   },
+  archived: {
+    title: "Archived sessions",
+    side: "right",
+    tabs: {
+      actions: [
+        "Open Archived sessions at the bottom of the sidebar to reveal the drawer.",
+        "Select an archived session to review its history in read-only mode.",
+        "Use Restore or Delete permanently from the archived session actions menu; both require confirmation.",
+      ],
+      style: [
+        "The archived drawer overlays the lower half of the sidebar so the active session list remains present underneath.",
+        "Archived rows keep the 48px session rhythm and replace live process status with a quiet Archived label.",
+        "The drawer uses a raised surface, strong top border, and restrained shadow to separate it from active navigation.",
+      ],
+      logic: [
+        "Archived sessions are excluded from the active list but remain available through the drawer.",
+        "Restore returns the session to the active list and makes its conversation editable again.",
+        "Permanent deletion removes the session and its related durable records and cannot be undone.",
+      ],
+    },
+  },
 };
 
 export function WorkspaceSessionsPage() {
@@ -110,6 +131,11 @@ export function WorkspaceSessionsPage() {
     { title: "Production build approval", time: "4 min ago", status: "approval" },
     { title: "Layout decision needed", time: "12 min ago", status: "question" },
     { title: "Provider request failed", time: "Yesterday", status: "failed" },
+  ];
+  const activeSessionsWithArchive = [
+    { title: "Workspace information architecture", time: "2 min ago", pinned: true, status: "running" },
+    { title: "Provider migration review", time: "Yesterday", status: "approval" },
+    { title: "Desktop navigation polish", time: "Aug 26" },
   ];
   const states = [
     {
@@ -135,6 +161,13 @@ export function WorkspaceSessionsPage() {
       title: "Agent status states",
       description: "Five sessions mapped to the Review panel status variants.",
       sessions: sessionsByAgentStatus,
+    },
+    {
+      id: "archived",
+      title: "Archived sessions",
+      description: "Active sessions remain visible while archived history opens in a half-height overlay drawer.",
+      sessions: activeSessionsWithArchive,
+      archivedSessions,
     },
   ];
   return (
@@ -163,6 +196,7 @@ export function WorkspaceSessionsPage() {
                 <SessionPanel
                   standalone
                   initialSessions={state.sessions}
+                  initialArchivedSessions={state.archivedSessions}
                   onArchiveRequest={setArchiveRequest}
                 />
               </WorkspaceGuideState>
