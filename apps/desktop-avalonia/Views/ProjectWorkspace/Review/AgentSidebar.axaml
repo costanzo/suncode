@@ -6,6 +6,56 @@
              xmlns:controls="using:SunCode.Desktop.Controls"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Review.AgentSidebar"
              x:DataType="vm:DesktopViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.context-usage">
+      <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Border.context-usage.warning">
+      <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}" />
+    </Style>
+    <Style Selector="Border.context-usage.danger">
+      <Setter Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}" />
+    </Style>
+    <Style Selector="Border.context-usage.unknown">
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.context-usage-toggle">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="ToggleButton.context-usage-toggle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="ToggleButton.context-usage-toggle:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="ProgressBar.context-usage">
+      <Setter Property="Height" Value="4" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+    </Style>
+    <Style Selector="ProgressBar.context-usage.warning">
+      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+    </Style>
+    <Style Selector="ProgressBar.context-usage.danger">
+      <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+    </Style>
+    <Style Selector="TextBlock.context-usage-percent.warning">
+      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+    </Style>
+    <Style Selector="TextBlock.context-usage-percent.danger">
+      <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+    </Style>
+  </UserControl.Styles>
   <Border Classes="inspector-card">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled">
       <StackPanel Margin="12,14" Spacing="12">
@@ -13,6 +63,42 @@
           <TextBlock Text="{Binding ReviewHeadingText}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
           <controls:SCStatusDot Grid.Column="1" Status="{Binding ReviewStatusState}" ToolTip.Tip="{Binding ReviewStatusText}" />
         </Grid>
+        <Border Classes="context-usage"
+                Classes.warning="{Binding ContextUsageIsWarning}"
+                Classes.danger="{Binding ContextUsageIsDanger}"
+                Classes.unknown="{Binding ContextUsageIsUnknown}"
+                Padding="10,9,10,10">
+          <StackPanel Spacing="7">
+            <ToggleButton Classes="context-usage-toggle"
+                          IsChecked="{Binding ContextUsageExpanded, Mode=TwoWay}"
+                          AutomationProperties.Name="Context window usage"
+                          AutomationProperties.HelpText="Shows input, output, and cached token counts.">
+              <Grid ColumnDefinitions="*,Auto,14" ColumnSpacing="8">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="CONTEXT WINDOW" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+                  <TextBlock Text="{Binding ContextUsageText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{Binding ContextUsagePercentText}" Classes="mono context-usage-percent" Classes.warning="{Binding ContextUsageIsWarning}" Classes.danger="{Binding ContextUsageIsDanger}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                <svg:Svg Grid.Column="2" Width="12" Height="12" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
+              </Grid>
+            </ToggleButton>
+            <ProgressBar Classes="context-usage"
+                         Classes.warning="{Binding ContextUsageIsWarning}"
+                         Classes.danger="{Binding ContextUsageIsDanger}"
+                         Minimum="0"
+                         Maximum="100"
+                         Value="{Binding ContextUsagePercent}"
+                         AutomationProperties.Name="Context window used" />
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4" IsVisible="{Binding ContextUsageExpanded}">
+              <TextBlock Text="Input" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+              <TextBlock Grid.Column="1" Text="{Binding ContextInputTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+              <TextBlock Grid.Row="1" Text="Output" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ContextOutputTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+              <TextBlock Grid.Row="2" Text="Cached" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ContextCachedTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+            </Grid>
+          </StackPanel>
+        </Border>
         <Border Padding="16,30" MinHeight="150" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="6" IsVisible="{Binding IsReviewIdle}">
           <StackPanel Spacing="7" HorizontalAlignment="Center">
             <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />

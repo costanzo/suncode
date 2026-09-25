@@ -169,7 +169,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 item.DefaultApiBase,
                 item.ReasoningEfforts
                     .Where(value => !string.IsNullOrWhiteSpace(value))
-                    .ToArray()));
+                    .ToArray(),
+                item.Limits.MaxInputTokens,
+                item.Limits.AutoCompactTokens,
+                item.Limits.MaxOutputTokens));
         }
         foreach (var group in Models.GroupBy(model => model.Provider, StringComparer.Ordinal))
         {
@@ -540,6 +543,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var type = value.EventType;
         var payload = value.Payload;
         var text = EventText(type, payload);
+
+        if (payload.Usage is { } usage && type.StartsWith("provider.exchange.", StringComparison.Ordinal))
+            UpdateContextUsage(usage);
 
         if (type == "assistant.delta")
         {

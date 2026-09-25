@@ -336,10 +336,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 LogSession(operationId, sessionId, $"checkpoints.discard reason=stale current={DescribeSessionContext()}");
                 return;
             }
-            if (ProviderTraceVisible)
-            {
-                await RefreshProviderTracesAsync(sessionId, loadVersion);
-            }
+            await RefreshProviderTracesAsync(sessionId, loadVersion);
             if (!IsCurrentSessionLoad(sessionId, loadVersion))
             {
                 LogSession(operationId, sessionId, $"provider_traces.discard reason=stale current={DescribeSessionContext()}");
