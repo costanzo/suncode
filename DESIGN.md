@@ -323,6 +323,10 @@ The About window presents the installed `Desktop` and `Agent SDK` product versio
 
 The right bay contains approval, turn changes, touched files, and runtime health in that order. Approval is the only state allowed to interrupt the visual hierarchy; its amber surface and explicit “Approve once” / “Deny” actions keep authority decisions legible.
 
+The Agent sidebar also shows a compact **Context window** status row directly below its heading and before approval or runtime cards. The row displays the current request context footprint as `used / limit tokens` and a rounded percentage, with a 4px progress bar as redundant visual feedback. The value is the provider's current prompt/context token count for the selected model, not cumulative session usage; cumulative input/output totals remain in Provider trace. The row is one compact raised surface, uses the data font, and expands in place to show input, output, and cached token components without opening a new panel. The whole row is keyboard focusable and announces its percentage through the progressbar semantics.
+
+Context thresholds are neutral below 75%, warning from 75% through 89%, and danger at 90% or higher. Threshold colors apply to the percentage, bar, and border only; they do not animate or interrupt the conversation. When the provider cannot report a current context size or model limit, show `Unavailable` and `--` with a dashed neutral border and no invented percentage. The component must keep a stable compact height when collapsed, elide long token values safely, and remain usable when the Agent sidebar is constrained.
+
 ### Markdown Content
 
 Assistant messages are rendered as Markdown and use the same semantic content tokens in both themes. The review pages must show the complete reading surface: heading hierarchy, paragraphs, bold/italic/deleted text, links, ordered and unordered lists, task lists, blockquotes, horizontal rules, inline code, fenced code blocks, and tables.
