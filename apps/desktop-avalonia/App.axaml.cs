@@ -193,6 +193,7 @@ public sealed partial class App : Application
 
         var merged = new MergedWorkspaceWindow(firstViewModel);
         merged.ProjectTornOff += TearOffProject;
+        merged.ProjectCloseRequested += CloseMergedProject;
         merged.HostClosed += MergedHostClosed;
         _mergedWindow = merged;
         foreach (var (projectId, source) in sources)
@@ -204,6 +205,24 @@ public sealed partial class App : Application
         merged.Show();
         merged.Activate();
         return Task.CompletedTask;
+    }
+
+    private void CloseMergedProject(string projectId)
+    {
+        if (_mergedWindow is not { } merged) return;
+        var source = merged.RemoveProject(projectId);
+        if (source is null) return;
+        source.Close();
+
+        if (merged.ProjectIds.Count == 0)
+        {
+            _mergedWindow = null;
+            merged.CloseWithoutNotification();
+        }
+        else if (merged.ProjectIds.Count == 1)
+        {
+            UnmergeRemainingProject(merged);
+        }
     }
 
     private void TearOffProject(string projectId, PixelPoint pointer)

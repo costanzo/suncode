@@ -16,6 +16,7 @@ internal sealed partial class MergedWorkspaceTabs : UserControl
 
     internal ObservableCollection<MergedProjectTab> Tabs { get; } = [];
     internal event Action<string>? ProjectSelected;
+    internal event Action<string>? ProjectCloseRequested;
     internal event Action<string, PixelPoint>? ProjectTornOff;
 
     public MergedWorkspaceTabs()
@@ -42,6 +43,15 @@ internal sealed partial class MergedWorkspaceTabs : UserControl
     {
         if ((sender as Control)?.DataContext is MergedProjectTab tab)
             ProjectSelected?.Invoke(tab.ProjectId);
+    }
+
+    private void CloseTab(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is MergedProjectTab tab)
+        {
+            ProjectCloseRequested?.Invoke(tab.ProjectId);
+            e.Handled = true;
+        }
     }
 
     private void TabPointerPressed(object? sender, PointerPressedEventArgs e)

@@ -1,4 +1,5 @@
 import { ModuleLink, PageHeader, Section } from "../../../shared/PagePrimitives.jsx";
+import { Icon } from "../../../shared/Icon.jsx";
 import { McpLoadingStatus, WorkspaceWindow } from "./WorkspacePrimitives.jsx";
 import { WindowSizeNote } from "../WindowSizeNote.jsx";
 
@@ -16,21 +17,36 @@ export function WorkspacePage() {
       <Section
         id="workspace-window-tabs"
         title="Project window tabs"
-        description="Window > Merge All Windows groups open project windows into one workspace. Tabs keep each project's independent session and panel state; dragging a tab beyond the tear-off threshold restores it as a separate window."
+        description="Window > Merge All Windows groups open project windows into one workspace. Tabs keep each project's independent session and panel state, expose a close action on hover, and can be dragged beyond the tear-off threshold to return to a separate window."
       >
         <div className="workspace-tabs-specimen" role="tablist" aria-label="Open projects">
-          <button className="workspace-project-tab is-active" role="tab" aria-selected="true">
-            <span className="workspace-project-tab-mark" />
-            <span>suncode</span>
-          </button>
-          <button className="workspace-project-tab" role="tab" aria-selected="false">
-            <span className="workspace-project-tab-mark" />
-            <span>desktop-avalonia</span>
-          </button>
-          <button className="workspace-project-tab" role="tab" aria-selected="false">
-            <span className="workspace-project-tab-mark" />
-            <span>design-system</span>
-          </button>
+          <div className="workspace-project-tab-shell">
+            <button className="workspace-project-tab is-active" role="tab" aria-selected="true">
+              <span className="workspace-project-tab-mark" />
+              <span>suncode</span>
+            </button>
+            <button className="workspace-project-tab-close" type="button" aria-label="Close suncode project" title="Close project">
+              <Icon name="close" size={12} />
+            </button>
+          </div>
+          <div className="workspace-project-tab-shell">
+            <button className="workspace-project-tab" role="tab" aria-selected="false">
+              <span className="workspace-project-tab-mark" />
+              <span>desktop-avalonia</span>
+            </button>
+            <button className="workspace-project-tab-close" type="button" aria-label="Close desktop-avalonia project" title="Close project">
+              <Icon name="close" size={12} />
+            </button>
+          </div>
+          <div className="workspace-project-tab-shell">
+            <button className="workspace-project-tab" role="tab" aria-selected="false">
+              <span className="workspace-project-tab-mark" />
+              <span>design-system</span>
+            </button>
+            <button className="workspace-project-tab-close" type="button" aria-label="Close design-system project" title="Close project">
+              <Icon name="close" size={12} />
+            </button>
+          </div>
         </div>
         <p className="workspace-tabs-note">Window menu: Merge All Windows</p>
       </Section>

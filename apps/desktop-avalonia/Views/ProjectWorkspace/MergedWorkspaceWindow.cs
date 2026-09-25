@@ -15,6 +15,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
 
     internal override bool IsMergedHost => true;
     internal event Action<string, PixelPoint>? ProjectTornOff;
+    internal event Action<string>? ProjectCloseRequested;
     internal event Action<MergedWorkspaceWindow>? HostClosed;
     internal IReadOnlyList<string> ProjectIds => _tabs.Tabs.Select(item => item.ProjectId).ToArray();
 
@@ -22,6 +23,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
     {
         DataContext = initialViewModel;
         _tabs.ProjectSelected += SelectProject;
+        _tabs.ProjectCloseRequested += projectId => ProjectCloseRequested?.Invoke(projectId);
         _tabs.ProjectTornOff += (projectId, pointer) => ProjectTornOff?.Invoke(projectId, pointer);
         Content = _content;
         Closed += (_, _) =>
