@@ -10,7 +10,13 @@ impl AsyncAgentSdk {
         model: Option<&str>,
         reasoning_effort: Option<&str>,
     ) -> SdkResult<TurnResponse> {
-        self.session_for_user(session_id)?;
+        let session = self.session_for_user(session_id)?;
+        if session.status == "archived" {
+            return Err(BusinessError::new(
+                "archived_session_read_only",
+                "archived sessions cannot receive new turns",
+            ));
+        }
         self.submit_turn_with_attachments(
             session_id,
             input,
@@ -31,6 +37,13 @@ impl AsyncAgentSdk {
         reasoning_effort: Option<&str>,
         image_ids: &[String],
     ) -> SdkResult<TurnResponse> {
+        let session = self.session_for_user(session_id)?;
+        if session.status == "archived" {
+            return Err(BusinessError::new(
+                "archived_session_read_only",
+                "archived sessions cannot receive new turns",
+            ));
+        }
         if input.is_empty() {
             return Err(BusinessError::invalid("input is required"));
         }
@@ -80,7 +93,7 @@ impl AsyncAgentSdk {
                 "cancelled"
             } else {
                 "not_running"
-            }
+            },
         })
     }
 

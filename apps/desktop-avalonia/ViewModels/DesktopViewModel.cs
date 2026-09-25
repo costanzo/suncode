@@ -107,6 +107,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private double _navigationPaneWidth = DefaultNavigationPaneWidth;
     private double _reviewPaneWidth = DefaultReviewPaneWidth;
     private double _bottomDrawerHeight = DefaultBottomDrawerHeight;
+    private double _archivedDrawerHeight = 300;
+    private bool _archivedDrawerOpen;
     private bool _isBusy;
     private bool _isSessionLoading;
     private bool _isSessionLoadingVisible;
@@ -120,6 +122,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<ProjectItem> Projects { get; } = [];
     public ObservableCollection<SessionItem> Sessions { get; } = [];
+    public ObservableCollection<SessionItem> ArchivedSessions { get; } = [];
     public ObservableCollection<ProviderItem> Providers { get; } = [];
     public ObservableCollection<ModelItem> Models { get; } = [];
     public IReadOnlyList<string> ReasoningEffortOptions =>
@@ -186,6 +189,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(CanChooseModel));
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
             OnPropertyChanged(nameof(HasSelectedSession));
+            OnPropertyChanged(nameof(ShowChatInput));
             OnPropertyChanged(nameof(ComposerPlaceholder));
             OnPropertyChanged(nameof(IsModelUnavailable));
             SaveProjectUiState(saved => SaveCurrentContentState(saved));
@@ -503,6 +507,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public GridLength BottomDrawerGap => EffectiveGitVisible || EffectiveProviderTraceVisible || EffectiveToolActivityVisible ? new GridLength(4) : new GridLength(0);
     public bool WorkspaceStatusDetailsVisible => _layoutWidth > CompactWorkspaceBreakpoint;
     public bool HasSessions => Sessions.Count > 0;
+    public bool HasArchivedSessions => ArchivedSessions.Count > 0;
+    public bool ArchivedDrawerOpen { get => _archivedDrawerOpen; set => SetProperty(ref _archivedDrawerOpen, value); }
+    public double ArchivedDrawerHeight { get => _archivedDrawerHeight; private set => SetProperty(ref _archivedDrawerHeight, value); }
+    internal void UpdateArchivedDrawerHeight(double sidebarHeight) => ArchivedDrawerHeight = Math.Max(180, sidebarHeight / 2d);
     public bool HasMessages => Messages.Count > 0;
     public bool HasActivities => Activities.Count > 0;
     public bool HasCurrentTodos => CurrentTodos.Count > 0;
@@ -530,6 +538,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public string GitFileCountText => $"{FilteredGitFiles.Count} {(FilteredGitFiles.Count == 1 ? "file" : "files")}";
     public string ProviderTraceCountText => $"{FilteredProviderTraceTurns.Count} turns · {FilteredProviderTraceTurns.Sum(turn => turn.Calls.Count)} calls";
     public bool HasSelectedSession => SelectedSession is not null;
+    public bool ShowChatInput => SelectedSession is not null && !SelectedSession.IsArchived;
     public bool HasPendingApproval => PendingApproval is not null;
     public bool HasPendingQuestion => PendingQuestion is not null;
     public bool HasChangedPaths => ChangedPaths.Count > 0;
@@ -557,9 +566,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool IsReviewCheckpointVisible => IsReviewRunning && HasCheckpoints;
     public bool UseSystemCertificates { get => _useSystemCertificates; set => SetProperty(ref _useSystemCertificates, value); }
     public string CertificatePath { get => _certificatePath; set => SetProperty(ref _certificatePath, value); }
-    public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && SelectedModel?.Configured == true && !HasSessionLoadError;
-    public bool CanSubmit => SelectedSession is not null && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsTurnActive && !IsSessionLoading && !HasSessionLoadError;
-    public bool CanChooseModel => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !HasSessionLoadError;
+    public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !SelectedSession.IsArchived && SelectedModel?.Configured == true && !HasSessionLoadError;
+    public bool CanSubmit => SelectedSession is not null && !SelectedSession.IsArchived && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsTurnActive && !IsSessionLoading && !HasSessionLoadError;
+    public bool CanChooseModel => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !SelectedSession.IsArchived && !HasSessionLoadError;
     public bool CanChooseReasoningEffort => CanCompose && SelectedModel?.SupportsReasoningEffort == true;
     public bool CanAttachImages => CanCompose && SelectedModel?.SupportsVision == true && !IsTurnActive;
 

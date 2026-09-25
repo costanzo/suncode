@@ -195,18 +195,46 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     public async Task ArchiveSessionAsync(SessionItem session)
     {
-        if (!EnsureSdk()) return;
+        if (!EnsureSdk() || session.IsArchived || session.IsTurnActive) return;
         await RunAsync(async () =>
         {
-            if (SelectedSession?.SessionId == session.SessionId)
+            var wasSelected = SelectedSession?.SessionId == session.SessionId;
+            await _sdk!.ArchiveSessionAsync(session.SessionId);
+            ForgetComposerDraft(session.SessionId);
+            if (wasSelected)
             {
                 CloseSubscription();
                 ClearSession();
             }
-            ForgetComposerDraft(session.SessionId);
-            await _sdk!.ArchiveSessionAsync(session.SessionId);
             await LoadSessionsAsync();
         }, "Session archived");
+    }
+
+    public async Task RestoreSessionAsync(SessionItem session)
+    {
+        if (!EnsureSdk() || !session.IsArchived) return;
+        await RunAsync(async () =>
+        {
+            await _sdk!.ReopenSessionAsync(session.SessionId);
+            await LoadSessionsAsync(session.SessionId);
+        }, "Session restored");
+    }
+
+    public async Task DeleteSessionPermanentlyAsync(SessionItem session)
+    {
+        if (!EnsureSdk() || !session.IsArchived) return;
+        await RunAsync(async () =>
+        {
+            var wasSelected = SelectedSession?.SessionId == session.SessionId;
+            await _sdk!.DeleteSessionAsync(session.SessionId);
+            ForgetComposerDraft(session.SessionId);
+            if (wasSelected)
+            {
+                CloseSubscription();
+                ClearSession();
+            }
+            await LoadSessionsAsync();
+        }, "Session permanently deleted");
     }
 
     public async Task SetSessionPinnedAsync(SessionItem session, bool pinned)

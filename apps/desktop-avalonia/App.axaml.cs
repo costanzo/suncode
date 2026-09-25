@@ -389,13 +389,24 @@ public sealed partial class App : Application
         _ = _aboutWindow.ShowDialog(owner);
     }
 
-    internal void ShowArchiveConfirmation(Window owner, SessionItem session, Action confirm)
-    {
-        var dialog = new DialogWindow(
+    internal void ShowArchiveConfirmation(Window owner, SessionItem session, Action confirm) =>
+        ShowSessionConfirmation(
+            owner,
             "Archive this session?",
             "It will leave the active session list, but can be reopened later.",
             session.DisplayTitle,
-            confirm);
+            confirm,
+            "Archive session");
+
+    internal void ShowSessionConfirmation(
+        Window owner,
+        string title,
+        string description,
+        string target,
+        Action confirm,
+        string confirmLabel)
+    {
+        var dialog = new DialogWindow(title, description, target, confirm, confirmLabel: confirmLabel);
         SetOtherWindowsEnabled(owner, false);
         dialog.Closed += (_, _) => SetOtherWindowsEnabled(owner, true);
         _ = dialog.ShowDialog(owner);

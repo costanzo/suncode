@@ -12,7 +12,7 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 The async Rust facade owns agent services but no executor; `AsyncAgentSdk::open_default(...).await` and all runtime-dependent methods execute on the host's Tokio runtime. `AsyncAgentSdk::shutdown(self).await` consumes the handle, rejects new agent work, cancels turns, clears queued input, releases Computer Use state, drains Browser/MCP/LSP processes, waits a bounded five seconds for active turns, closes event streams, and releases the data-directory lock. Pure local persistence and DTO operations remain synchronous and explicit. The root compatibility `AgentSdk` is the blocking wrapper: it owns one Tokio runtime, dereferences to the async facade for synchronous methods, adapts awaited operations with `block_on`, and keeps that runtime alive through its consuming `shutdown(self)`. C embeds that blocking wrapper. Host wrappers may share one handle inside a process. The Rust facade exposes a typed `SessionEventStream` implementing standard `Stream` and `FusedStream` contracts plus direct receive methods; native bindings adapt that stream to their host runtime. C subscriptions must be closed before the final agent handle is released. Closing a C subscription signals its stream and stops callback delivery before returning. Final native handle release invokes blocking shutdown; its unchanged `void` close function logs cleanup errors.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 14. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 15. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
 ## Methods
 
@@ -74,13 +74,14 @@ The Rust API uses typed inputs and outputs. Async Rust hosts use `AsyncAgentSdk`
 | `read_project_file` | Read one bounded UTF-8 project or dependency file for the desktop viewer |
 | `git_status` | Read the bounded Git index/worktree status and aggregate change counts for a project |
 | `git_diff_file` | Read one bounded structured file diff for the all, staged, or unstaged scope |
-| `list_sessions` | List active sessions in a project, including the persisted model and reasoning-effort preference |
+| `list_sessions` | List primary sessions in a project, including archived status and the persisted model and reasoning-effort preference |
 | `list_child_sessions` | List delegated child sessions and invocation state for one primary session |
 | `create_session` | Create a session with an optional title and selected model |
 | `rename_session` | Rename a session |
 | `archive_session` | Recoverably archive a session |
 | `set_session_pinned` | Persist or clear a session's project-local pinned state in `session.pin_at` |
 | `reopen_session` | Reopen an archived session |
+| `delete_session` | Permanently delete an archived primary session, its child sessions, durable rows, and SunCode-managed image files |
 | `list_session_images` | List persisted images that are still pending in one session composer |
 | `add_session_image` | Save one uploaded image file plus thumbnail metadata for a session |
 | `remove_session_image` | Remove one pending persisted image; submitted message attachments cannot be removed |
@@ -151,6 +152,8 @@ The model-facing semantic catalog is fixed to `lsp_diagnostics`, `lsp_definition
 
 `image_directory` is a global-only string setting that defaults to the empty string. Empty means `<data directory>/data/images`. Each persisted session image is written under `{resolved_image_directory}/{sessionId}/{imageId}.{ext}`. The `session_image` row also stores the exact saved file path so older images remain readable after the global directory changes.
 
+Session lifecycle operations are status guarded in Rust. Archive rejects primary sessions whose own or delegated child turn is running or waiting for approval or an answer. Archived sessions reject rename and turn submission. Permanent deletion accepts archived primary sessions only, removes their descendant sessions and session-owned rows in one SQLite transaction, and deletes returned image files only when they resolve inside the configured SunCode image directory; source paths recorded in `original_path` are never removed.
+
 Image upload accepts PNG, JPEG, GIF, WebP, BMP, and AVIF file extensions. Original files are bounded to 20 MiB and thumbnail payloads to 1 MiB. `submit_turn_with_attachments` accepts at most three unique IDs, verifies same-session ownership and file availability, and rejects models that do not advertise `capabilities.vision`. Accepted user messages persist `image_ref` content parts; provider requests resolve those references to data URLs only at call time, while provider trace input stores a redacted `[image attachment]` marker. Image-bearing submissions are rejected rather than queued behind an active turn so their files cannot be removed before admission. The original text-only ABI remains a compatibility wrapper with an empty image list.
 
 Models advertise `capabilities.reasoning_effort` and a `reasoning_efforts` catalog. Avalonia presents the selected model's advertised values beside the model selector; unsupported models disable that selector and omit the parameter. When a turn omits effort, Rust selects the first advertised value when one exists. For OpenAI-compatible providers, a selected value is sent as the `reasoning_effort` request field, persisted with the session's selected model at turn admission, and retained in the in-memory turn continuation across approval or question suspension.
@@ -199,7 +202,7 @@ An SDK error contains:
 }
 ```
 
-Messages and details are bounded and redacted. Important codes include `invalid_arguments`, `agent_already_active`, `agent_unavailable`, `project_not_found`, `session_not_found`, `model_unavailable`, `provider_unconfigured`, `approval_required`, `authorization_denied`, `checkpoint_unavailable`, `restore_conflict`, `conflict`, `scope_denied`, `mcp_server_conflict`, `mcp_server_revision_conflict`, `mcp_tool_unavailable`, `not_git_repository`, `unsupported_git_repository`, `git_read_failed`, `git_diff_not_found`, `iteration_budget_exceeded`, `tool_budget_exceeded`, `cancelled`, and `resync_required`.
+Messages and details are bounded and redacted. Important codes include `invalid_arguments`, `agent_already_active`, `agent_unavailable`, `project_not_found`, `session_not_found`, `model_unavailable`, `provider_unconfigured`, `approval_required`, `authorization_denied`, `archived_session_read_only`, `child_session_read_only`, `checkpoint_unavailable`, `restore_conflict`, `conflict`, `scope_denied`, `mcp_server_conflict`, `mcp_server_revision_conflict`, `mcp_tool_unavailable`, `not_git_repository`, `unsupported_git_repository`, `git_read_failed`, `git_diff_not_found`, `iteration_budget_exceeded`, `tool_budget_exceeded`, `cancelled`, and `resync_required`.
 
 Panics are contained at native binding boundaries and converted to `agent_unavailable`; they never unwind into a host language.
 

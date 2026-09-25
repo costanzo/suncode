@@ -9,7 +9,7 @@ public sealed partial class AgentSdk : IDisposable
 {
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 14;
+    private const uint AbiVersion = 15;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -269,6 +269,9 @@ public sealed partial class AgentSdk : IDisposable
 
     private Task<JsonElement> RawReopenSessionAsync(string sessionId) => WithUtf8Async(
         [sessionId], values => NativeMethods.suncode_agent_sdk_reopen_session(_handle, values[0]));
+
+    private Task<JsonElement> RawDeleteSessionAsync(string sessionId) => WithUtf8Async(
+        [sessionId], values => NativeMethods.suncode_agent_sdk_delete_session(_handle, values[0]));
 
     private Task<JsonElement> RawListSessionImagesAsync(string sessionId) => WithUtf8Async(
         [sessionId], values => NativeMethods.suncode_agent_sdk_list_session_images(_handle, values[0]));

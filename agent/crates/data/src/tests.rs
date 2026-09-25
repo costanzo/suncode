@@ -1,5 +1,9 @@
 use super::*;
-use diesel::{connection::SimpleConnection, Connection, SqliteConnection};
+use diesel::sql_types::BigInt;
+use diesel::{
+    connection::SimpleConnection, sql_query, Connection, QueryableByName, RunQueryDsl,
+    SqliteConnection,
+};
 use serde_json::json;
 use std::collections::BTreeMap;
 
@@ -527,6 +531,157 @@ fn session_ui_state_tracks_running_failure_and_idle_turns() {
         )
         .unwrap();
     assert_eq!(store.session_ui_state(&session.session_id).unwrap(), "idle");
+}
+
+#[test]
+fn deleting_archived_session_removes_descendants_and_all_owned_rows() {
+    #[derive(QueryableByName)]
+    struct CountRow {
+        #[diesel(sql_type = BigInt)]
+        count: i64,
+    }
+
+    let store = Store::open_memory().unwrap();
+    let project = store.project("/tmp/suncode-delete", "Delete").unwrap();
+    let parent = store
+        .create_session(&project.project_id, Some("Parent"), Some("gpt-5.5"))
+        .unwrap();
+    let child = store
+        .create_child_session(
+            &project.project_id,
+            &parent.session_id,
+            "builtin.qa.v1",
+            1,
+            "Child",
+            "gpt-5.5",
+        )
+        .unwrap();
+    let parent_turn = store
+        .begin_turn(&parent.session_id, "parent-key", "Inspect", "gpt-5.5")
+        .unwrap();
+    let _child_turn = store
+        .begin_turn(&child.session_id, "child-key", "Inspect", "gpt-5.5")
+        .unwrap();
+    store
+        .append_content(
+            &parent.session_id,
+            "message.user",
+            &json!({"message_id":"message-delete","turn_id":parent_turn.turn_id,"message":{"role":"user","content":[{"type":"text","text":"Inspect"}]}}),
+        )
+        .unwrap();
+    store
+        .append_content(
+            &parent.session_id,
+            "todo.updated",
+            &json!({"turn_id":parent_turn.turn_id,"todos":[{"content":"Inspect","status":"completed","priority":"high"}]}),
+        )
+        .unwrap();
+    store
+        .append_content(
+            &parent.session_id,
+            "tool.requested",
+            &json!({"turn_id":parent_turn.turn_id,"tool_call_id":"tool-delete","name":"read","arguments":{"path":"README.md"}}),
+        )
+        .unwrap();
+    store
+        .append_content(
+            &parent.session_id,
+            "provider.exchange.started",
+            &json!({"exchange_id":"call-delete","turn_id":parent_turn.turn_id,"provider":"openai","model_id":"gpt-5.5","wire_model":"gpt-5.5","iteration":1}),
+        )
+        .unwrap();
+    store
+        .append_content(
+            &parent.session_id,
+            "checkpoint.captured",
+            &json!({"checkpoint_id":"checkpoint-delete","manifest_id":"manifest-delete","turn_id":parent_turn.turn_id,"path":"README.md"}),
+        )
+        .unwrap();
+    {
+        let mut connection = store.connection.lock().unwrap();
+        sql_query("INSERT INTO session_checkpoint_manifest(manifest_id,session_id,turn_id,status,created_at,updated_at,expires_at) VALUES ('manifest-delete',? ,? ,'available','now','now','2099-01-01')")
+            .bind::<diesel::sql_types::Text, _>(&parent.session_id)
+            .bind::<diesel::sql_types::Text, _>(&parent_turn.turn_id)
+            .execute(&mut *connection)
+            .unwrap();
+    }
+    store
+        .create_approval(ApprovalInput {
+            project_id: Some(&project.project_id),
+            session_id: &parent.session_id,
+            turn_id: &parent_turn.turn_id,
+            tool_call_id: "tool-delete",
+            operation: "read",
+            arguments: &json!({"path":"README.md"}),
+            snapshot: &json!({"turn_id":parent_turn.turn_id}),
+        })
+        .unwrap();
+    store
+        .create_subagent_invocation(
+            "invocation-delete",
+            &parent.session_id,
+            &parent_turn.turn_id,
+            "tool-delete",
+            &child.session_id,
+            "builtin.qa.v1",
+            1,
+            &json!({"text":"Inspect"}),
+            &json!(["read"]),
+            "gpt-5.5",
+        )
+        .unwrap();
+    store
+        .set_setting("session", &parent.session_id, "full_control", &json!(true))
+        .unwrap();
+    store
+        .set_session_archived(&parent.session_id, true)
+        .unwrap();
+
+    let managed_path = tempfile::NamedTempFile::new().unwrap();
+    let managed_path = managed_path.path().to_string_lossy().to_string();
+    store
+        .insert_session_image(
+            "image-delete",
+            &parent.session_id,
+            "diagram.png",
+            "file",
+            Some("/source/diagram.png"),
+            std::path::Path::new(&managed_path),
+            "dGh1bWI=",
+        )
+        .unwrap();
+
+    let returned_paths = store.delete_session(&parent.session_id).unwrap();
+    assert_eq!(returned_paths, vec![managed_path]);
+    assert!(store.session_by_id(&parent.session_id).unwrap().is_none());
+    assert!(store.session_by_id(&child.session_id).unwrap().is_none());
+
+    let mut connection = store.connection.lock().unwrap();
+    for table in [
+        "session_turn_todo",
+        "session_tool_use",
+        "session_approval_request",
+        "session_call",
+        "session_message",
+        "session_checkpoint",
+        "session_checkpoint_manifest",
+        "session_image",
+        "configuration",
+        "session_subagent_invocation",
+        "session_turn",
+        "session",
+    ] {
+        let query = if table == "configuration" {
+            format!("SELECT COUNT(*) AS count FROM {table} WHERE session_id IS NOT NULL")
+        } else {
+            format!("SELECT COUNT(*) AS count FROM {table}")
+        };
+        let count = sql_query(query)
+            .get_result::<CountRow>(&mut *connection)
+            .unwrap()
+            .count;
+        assert_eq!(count, 0, "table {table} still contains session data");
+    }
 }
 
 #[test]

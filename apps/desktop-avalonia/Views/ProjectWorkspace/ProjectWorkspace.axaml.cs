@@ -120,6 +120,22 @@ public sealed partial class ProjectWorkspace : UserControl
         Owner?.ShowArchiveConfirmation(session);
     }
 
+    internal void ShowRestoreDialog(SessionItem session) =>
+        Owner?.ShowSessionConfirmation(
+            session,
+            "Restore this session?",
+            "It will return to the active session list and become editable again.",
+            "Restore session",
+            () => _ = ViewModel.RestoreSessionAsync(session));
+
+    internal void ShowPermanentDeleteDialog(SessionItem session) =>
+        Owner?.ShowSessionConfirmation(
+            session,
+            "Delete this session permanently?",
+            "This permanently removes the conversation, child sessions, delegated work, and managed images. It cannot be undone.",
+            "Delete permanently",
+            () => _ = ViewModel.DeleteSessionPermanentlyAsync(session));
+
     internal void ShowDependencyDeleteDialog(ExplorerNode node)
     {
         _pendingDependencyDeletion = node;

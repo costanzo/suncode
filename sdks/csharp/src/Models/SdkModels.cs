@@ -369,6 +369,10 @@ public sealed record SessionRecord(
     string? ArchivedAt,
     string? PinAt);
 
+public sealed record SessionDeletionResult(
+    [property: JsonPropertyName("sessionId")] string SessionId,
+    bool Deleted);
+
 public sealed record SessionsResult(
     [property: JsonPropertyName("project_id")] string ProjectId,
     IReadOnlyList<SessionRecord> Sessions,
@@ -527,7 +531,7 @@ public sealed record SessionSnapshot(
     [property: JsonPropertyName("conversationTurns")] IReadOnlyList<SessionConversationTurn> ConversationTurns,
     IReadOnlyList<SessionImage> Images,
     [property: JsonPropertyName("pendingQuestion")] PendingQuestion? PendingQuestion,
-    [property: JsonPropertyName("pendingApproval")] ApprovalRecord? PendingApproval);
+    [property: JsonPropertyName("pendingApproval")] ApprovalRecord? PendingApproval = null);
 
 public sealed record SessionUsageResult(
     [property: JsonPropertyName("session_id")] string SessionId,

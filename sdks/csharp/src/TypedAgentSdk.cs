@@ -251,6 +251,9 @@ public sealed partial class AgentSdk
     public Task<SessionRecord> ReopenSessionAsync(string sessionId) =>
         Typed<SessionRecord>(RawReopenSessionAsync(sessionId));
 
+    public Task<SessionDeletionResult> DeleteSessionAsync(string sessionId) =>
+        Typed<SessionDeletionResult>(RawDeleteSessionAsync(sessionId));
+
     public Task<SessionImagesResult> ListSessionImagesAsync(string sessionId) =>
         Typed<SessionImagesResult>(RawListSessionImagesAsync(sessionId));
 
