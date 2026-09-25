@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
@@ -106,6 +107,53 @@ public sealed partial class ProjectSidebar : UserControl
         }
     }
 
+    private void ToggleArchivedSessions(object? sender, RoutedEventArgs e)
+    {
+        ViewModel.ArchivedDrawerOpen = !ViewModel.ArchivedDrawerOpen;
+        SetArchivedDrawerChevronAngle(ViewModel.ArchivedDrawerOpen ? 180 : 0);
+    }
+
+    private void CloseArchivedSessions(object? sender, RoutedEventArgs e)
+    {
+        ViewModel.ArchivedDrawerOpen = false;
+        SetArchivedDrawerChevronAngle(0);
+    }
+
+    private void SetArchivedDrawerChevronAngle(double angle)
+    {
+        if (ArchivedDrawerChevron.RenderTransform is RotateTransform rotation)
+            rotation.Angle = angle;
+        else
+            ArchivedDrawerChevron.RenderTransform = new RotateTransform(angle);
+    }
+
+    private void SidebarSizeChanged(object? sender, SizeChangedEventArgs e) =>
+        ViewModel.UpdateArchivedDrawerHeight(e.NewSize.Height);
+
+    private async void SelectArchivedSession(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { CommandParameter: SessionItem session })
+            await SelectSessionFromInputAsync(session, "archived_selection");
+    }
+
+    private void RestoreSessionItem(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { CommandParameter: SessionItem session })
+        {
+            CloseSessionActions(session);
+            Workspace?.ShowRestoreDialog(session);
+        }
+    }
+
+    private void DeleteSessionItem(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { CommandParameter: SessionItem session })
+        {
+            CloseSessionActions(session);
+            Workspace?.ShowPermanentDeleteDialog(session);
+        }
+    }
+
     private async void UnpinSessionItem(object? sender, RoutedEventArgs e)
     {
         if (sender is MenuItem { CommandParameter: SessionItem session })
@@ -117,7 +165,7 @@ public sealed partial class ProjectSidebar : UserControl
 
     private void CloseSessionActions(SessionItem session)
     {
-        var trigger = SessionList.GetVisualDescendants()
+        var trigger = this.GetVisualDescendants()
             .OfType<Button>()
             .FirstOrDefault(button => ReferenceEquals(button.DataContext, session) && button.Flyout?.IsOpen == true);
         trigger?.Flyout?.Hide();

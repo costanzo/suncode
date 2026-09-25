@@ -37,6 +37,12 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             _providerTraceDetailLoads.Clear();
             var exchanges = result.Exchanges.Select(ProviderTraceFromSdk).ToList();
             foreach (var exchange in exchanges) ProviderTraces.Add(exchange);
+            var latestUsage = result.Exchanges
+                .Where(item => item.Usage is not null && (SelectedModel is null || item.ModelId == SelectedModel.Id))
+                .OrderBy(item => item.StartedAt, StringComparer.Ordinal)
+                .ThenBy(item => item.Iteration)
+                .LastOrDefault()?.Usage;
+            if (latestUsage is not null) UpdateContextUsage(latestUsage);
             for (var index = 0; index < result.Turns.Count; index++)
             {
                 var item = result.Turns[index];

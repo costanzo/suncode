@@ -8,7 +8,7 @@ using SunCode.Desktop.Infrastructure;
 
 namespace SunCode.Desktop.Models;
 
-public sealed record SessionItem(string SessionId, string Title, string LastActivityAt, bool IsPinned, string AgentState = "idle", string ModelId = "", string ReasoningEffort = "")
+public sealed record SessionItem(string SessionId, string Title, string LastActivityAt, bool IsPinned, string AgentState = "idle", string ModelId = "", string ReasoningEffort = "", bool IsArchived = false)
 {
     public string DisplayTitle => string.IsNullOrWhiteSpace(Title) ? "Untitled session" : Title;
     public string RelativeActivity => RelativeActivityFor(LastActivityAt);
@@ -60,7 +60,10 @@ public sealed record ModelItem(
     bool SupportsComputerUse = false,
     string ApiBase = "",
     string DefaultApiBase = "",
-    IReadOnlyList<string>? ReasoningEfforts = null)
+    IReadOnlyList<string>? ReasoningEfforts = null,
+    ulong? MaxInputTokens = null,
+    ulong? AutoCompactTokens = null,
+    ulong? MaxOutputTokens = null)
 {
     public bool Configured => Availability == "configured";
     // Availability is represented by the composer state after selection; keep

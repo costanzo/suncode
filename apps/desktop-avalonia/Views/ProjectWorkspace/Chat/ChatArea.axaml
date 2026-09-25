@@ -393,7 +393,7 @@
         <TextBlock Text="Create or select a session to start a conversation." FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
       </StackPanel>
 
-      <chat:ChatInput x:Name="ChatInput" IsVisible="{Binding HasSelectedSession}" />
+      <chat:ChatInput x:Name="ChatInput" IsVisible="{Binding ShowChatInput}" />
     </Grid>
   </Border>
 </UserControl>

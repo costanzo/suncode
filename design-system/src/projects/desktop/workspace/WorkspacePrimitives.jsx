@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/universal/button/index.js";
 import { ModelDropdown, SingleDropdown } from "../../../components/universal/dropdown/index.js";
-import { Modal } from "../../../components/universal/modal/index.js";
+import { ConfirmationDialog, Modal } from "../../../components/universal/modal/index.js";
 import { Radio } from "../../../components/universal/radio/index.js";
 import { Icon } from "../../../shared/Icon.jsx";
 import { TrafficLights } from "../../../shared/TrafficLights.jsx";
@@ -31,6 +31,21 @@ export const primarySessions = [
   },
 ];
 const sessions = primarySessions;
+
+export const archivedSessions = [
+  {
+    id: "legacy-cli-session",
+    title: "Legacy CLI session",
+    time: "Aug 18",
+    archived: true,
+  },
+  {
+    id: "release-notes-draft",
+    title: "Release notes draft",
+    time: "Aug 12",
+    archived: true,
+  },
+];
 
 export const childSessions = [
   {
@@ -535,13 +550,18 @@ export function SessionPanel({
   compact = false,
   standalone = false,
   initialSessions = sessions,
+  initialArchivedSessions = archivedSessions,
   selectedSessionId,
   onArchiveRequest,
   onSelectSession,
 }) {
   const [selected, setSelected] = useState(0);
   const [items, setItems] = useState(initialSessions);
+  const [archivedItems, setArchivedItems] = useState(initialArchivedSessions);
   const [menu, setMenu] = useState(null);
+  const [archivedMenu, setArchivedMenu] = useState(null);
+  const [archiveDrawerOpen, setArchiveDrawerOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [renameOpen, setRenameOpen] = useState(false);
@@ -586,10 +606,35 @@ export function SessionPanel({
     onArchiveRequest?.({
       session: items[index],
       confirm: () => {
+        const session = items[index];
         setItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
+        setArchivedItems((current) => [{ ...session, archived: true }, ...current]);
         setSelected(0);
       },
     });
+  };
+  const openRestoreConfirmation = (index) => {
+    setArchivedMenu(null);
+    setConfirmation({ kind: "restore", session: archivedItems[index], index });
+  };
+  const openDeleteConfirmation = (index) => {
+    setArchivedMenu(null);
+    setConfirmation({ kind: "delete", session: archivedItems[index], index });
+  };
+  const confirmArchivedAction = () => {
+    if (!confirmation) return;
+    const { index, session, kind } = confirmation;
+    if (kind === "restore") {
+      const restored = { ...session, archived: false };
+      setArchivedItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
+      setItems((current) => [restored, ...current]);
+      setArchiveDrawerOpen(false);
+      setSelected(0);
+      onSelectSession?.(restored);
+    } else {
+      setArchivedItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    }
+    setConfirmation(null);
   };
   return (
     <aside
@@ -665,6 +710,108 @@ export function SessionPanel({
           </div>
         )}
       </div>
+      <button
+        type="button"
+        className={`workspace-archive-drawer-toggle ${archiveDrawerOpen ? "is-open" : ""}`}
+        aria-expanded={archiveDrawerOpen}
+        onClick={() => {
+          setArchiveDrawerOpen((open) => !open);
+          setArchivedMenu(null);
+        }}
+      >
+        <Icon name="arrow-up" size={13} />
+        <span>Archived sessions</span>
+        <small>{archivedItems.length}</small>
+      </button>
+      {archiveDrawerOpen && (
+        <div className="workspace-archived-drawer" aria-label="Archived sessions">
+          <div className="workspace-archived-drawer-header">
+            <span>ARCHIVED</span>
+            <button
+              type="button"
+              className="workspace-archive-close"
+              onClick={() => setArchiveDrawerOpen(false)}
+              aria-label="Close archived sessions"
+            >
+              <Icon name="close" size={13} />
+            </button>
+          </div>
+          <div className="workspace-session-list workspace-archived-list">
+            {archivedItems.map((session, index) => (
+              <div className="workspace-session-wrap" key={session.id ?? session.title}>
+                <button
+                  type="button"
+                  className="workspace-session"
+                  onClick={() => onSelectSession?.(session)}
+                >
+                  <span className="workspace-session-pin" />
+                  <span>
+                    <strong>{session.title}</strong>
+                    <small>{session.time}</small>
+                  </span>
+                </button>
+                <span className="workspace-session-archived-label">Archived</span>
+                <button
+                  type="button"
+                  className="workspace-session-more"
+                  aria-label={`Actions for ${session.title}`}
+                  aria-expanded={archivedMenu === index}
+                  onClick={() => setArchivedMenu(archivedMenu === index ? null : index)}
+                >
+                  <Icon name="more" size={14} />
+                </button>
+                {archivedMenu === index && (
+                  <div className="workspace-session-menu workspace-archived-menu">
+                    <button type="button" onClick={() => openRestoreConfirmation(index)}>
+                      Restore
+                    </button>
+                    <button
+                      type="button"
+                      className="is-danger"
+                      onClick={() => openDeleteConfirmation(index)}
+                    >
+                      Delete permanently
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {!archivedItems.length && (
+              <div className="workspace-session-empty">
+                <strong>No archived sessions</strong>
+                <span>Archived sessions will appear here.</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      <ConfirmationDialog
+        open={confirmation?.kind === "restore"}
+        title="Restore this session?"
+        description="It will return to the active session list and become editable again."
+        confirmLabel="Restore session"
+        confirmVariant="primary"
+        onCancel={() => setConfirmation(null)}
+        onConfirm={confirmArchivedAction}
+      >
+        <div className="confirmation-dialog-target">
+          <span>SESSION</span>
+          <strong>{confirmation?.session?.title}</strong>
+        </div>
+      </ConfirmationDialog>
+      <ConfirmationDialog
+        open={confirmation?.kind === "delete"}
+        title="Delete this session permanently?"
+        description="This permanently removes the conversation, child sessions, delegated work, and managed images from SunCode. It cannot be undone."
+        confirmLabel="Delete permanently"
+        onCancel={() => setConfirmation(null)}
+        onConfirm={confirmArchivedAction}
+      >
+        <div className="confirmation-dialog-target">
+          <span>SESSION</span>
+          <strong>{confirmation?.session?.title}</strong>
+        </div>
+      </ConfirmationDialog>
       <Modal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
@@ -1152,6 +1299,7 @@ export function ConversationPanel({
   const copyResetTimerRef = useRef(null);
   const hasSession = state !== "no-session";
   const hasContent = state !== "new-session" && hasSession;
+  const archived = state === "archived";
   const updating = state === "content-updating" || state === "live-tool-stream";
   const thinking = state === "content-thinking";
   const modelUnavailable = state === "model-unavailable";
@@ -1368,7 +1516,7 @@ export function ConversationPanel({
           )}
         </>
       )}
-      {hasSession && (
+      {hasSession && !archived && (
         <div className={`workspace-composer ${attachments.length ? "has-attachments" : ""}`}>
           {attachments.length > 0 && (
             <div className="workspace-attachment-strip" aria-label="Attached images">
@@ -1480,6 +1628,13 @@ export function ConversationPanel({
               />
             </div>
           </div>
+        </div>
+      )}
+      {archived && (
+        <div className="workspace-archived-readonly" role="status">
+          <Icon name="lock" size={14} />
+          <span>This session is archived and read-only.</span>
+          <small>Restore it from Archived sessions to continue the conversation.</small>
         </div>
       )}
       <Modal
@@ -1835,6 +1990,7 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
         </h3>
         <i role="status" aria-label={statusLabel} title={statusLabel} />
       </div>
+      <ContextUsage />
       {inactive && (
         <div className="workspace-review-empty">
           <Icon name="activity" size={22} />
@@ -2033,6 +2189,60 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
         </div>
       )}
     </aside>
+  );
+}
+
+function formatContextTokens(value) {
+  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10000 ? 1 : 1)}k`;
+  return `${value}`;
+}
+
+/**
+ * The current request footprint, separate from cumulative session usage.
+ * The production client should replace these specimen values with the provider's
+ * current prompt token count and model context-window limit.
+ */
+export function ContextUsage({ used = 18420, limit = 32768, input = 15240, output = 3180, cached = 0 }) {
+  const [expanded, setExpanded] = useState(false);
+  const percentage = limit > 0 ? Math.min(100, Math.max(0, (used / limit) * 100)) : null;
+  const tone = percentage === null ? "unknown" : percentage >= 90 ? "danger" : percentage >= 75 ? "warning" : "normal";
+  const valueLabel = percentage === null
+    ? "Unavailable"
+    : `${formatContextTokens(used)} / ${formatContextTokens(limit)} tokens`;
+
+  return (
+    <section className={`workspace-context-usage is-${tone}`} aria-label="Context window usage">
+      <button
+        type="button"
+        className="workspace-context-usage-toggle"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((open) => !open)}
+      >
+        <span>
+          <small>CONTEXT WINDOW</small>
+          <strong>{valueLabel}</strong>
+        </span>
+        <b>{percentage === null ? "--" : `${Math.round(percentage)}%`}</b>
+        <Icon name="chevron-right" size={12} />
+      </button>
+      <div
+        className="workspace-context-usage-bar"
+        role="progressbar"
+        aria-label="Context window used"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow={percentage === null ? undefined : Math.round(percentage)}
+      >
+        <span style={{ width: `${percentage ?? 0}%` }} />
+      </div>
+      {expanded && percentage !== null && (
+        <dl className="workspace-context-usage-details">
+          <div><dt>Input</dt><dd>{formatContextTokens(input)}</dd></div>
+          <div><dt>Output</dt><dd>{formatContextTokens(output)}</dd></div>
+          <div><dt>Cached</dt><dd>{formatContextTokens(cached)}</dd></div>
+        </dl>
+      )}
+    </section>
   );
 }
 
@@ -2897,6 +3107,7 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
   const [archiveRequest, setArchiveRequest] = useState(null);
   const activePrimarySession =
     sessions.find((session) => session.id === activeSessionId) ?? sessions[0];
+  const activeSessionArchived = currentContent.kind === "session" && currentContent.session?.archived;
   const visibleChildSessions = childSessions.filter(
     (child) => child.parentSessionId === activePrimarySession.id,
   );
@@ -2998,7 +3209,7 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
             ) : (
               <ConversationPanel
                 compact
-                state="content-updating"
+                state={activeSessionArchived ? "archived" : "content-updating"}
                 onViewChanges={() => setDrawer("git")}
                 onOpenToolActivity={() => setDrawer("tools")}
               />

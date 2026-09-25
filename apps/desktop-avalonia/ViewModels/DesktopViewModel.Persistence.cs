@@ -99,27 +99,34 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var result = await _sdk.ListSessionsAsync(SelectedProject.ProjectId);
         var sessionStates = result.SessionStates;
         Sessions.Clear();
+        ArchivedSessions.Clear();
         foreach (var item in result.Sessions)
         {
             var sessionId = item.SessionId;
-            Sessions.Add(new SessionItem(
+            var projected = new SessionItem(
                 sessionId,
                 item.Title ?? string.Empty,
                 item.LastActivityAt,
                 !string.IsNullOrWhiteSpace(item.PinAt),
                 sessionStates.TryGetValue(sessionId, out var state) ? state : string.Empty,
                 item.ModelId ?? string.Empty,
-                item.ReasoningEffort ?? string.Empty));
+                item.ReasoningEffort ?? string.Empty,
+                string.Equals(item.Status, "archived", StringComparison.Ordinal));
+            if (projected.IsArchived) ArchivedSessions.Add(projected);
+            else Sessions.Add(projected);
         }
         RefreshRecentSessionReferences();
         OnPropertyChanged(nameof(HasSessions));
+        OnPropertyChanged(nameof(HasArchivedSessions));
         NotifyRunningSessionsChanged();
         var savedState = RestoreRecentContentState();
         await RestoreSavedChildRecentContentsAsync(savedState);
         var savedSessionId = preferredSessionId
             ?? (savedState.CurrentContentKind == "session" ? savedState.CurrentSessionId : savedState.LastSessionId);
         var session = Sessions.FirstOrDefault(item => item.SessionId == savedSessionId)
+            ?? ArchivedSessions.FirstOrDefault(item => item.SessionId == savedSessionId)
             ?? Sessions.FirstOrDefault(item => item.SessionId == SelectedSession?.SessionId)
+            ?? ArchivedSessions.FirstOrDefault(item => item.SessionId == SelectedSession?.SessionId)
             ?? Sessions.FirstOrDefault();
         if (preferredSessionId is null && savedState.CurrentContentKind == "file" && savedState.CurrentFilePath is { Length: > 0 } filePath && IsSafeRelativePath(filePath))
         {
@@ -162,7 +169,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 item.DefaultApiBase,
                 item.ReasoningEfforts
                     .Where(value => !string.IsNullOrWhiteSpace(value))
-                    .ToArray()));
+                    .ToArray(),
+                item.Limits.MaxInputTokens,
+                item.Limits.AutoCompactTokens,
+                item.Limits.MaxOutputTokens));
         }
         foreach (var group in Models.GroupBy(model => model.Provider, StringComparer.Ordinal))
         {
@@ -533,6 +543,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var type = value.EventType;
         var payload = value.Payload;
         var text = EventText(type, payload);
+
+        if (payload.Usage is { } usage && type.StartsWith("provider.exchange.", StringComparison.Ordinal))
+            UpdateContextUsage(usage);
 
         if (type == "assistant.delta")
         {

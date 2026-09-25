@@ -460,6 +460,147 @@ fn built_in_agents_and_child_sessions_are_exposed_as_read_only_sdk_data() {
 }
 
 #[test]
+fn archive_restore_and_permanent_delete_enforce_session_lifecycle() {
+    let directory = tempfile::tempdir().unwrap();
+    let project_root = directory.path().join("archive-project");
+    std::fs::create_dir_all(&project_root).unwrap();
+    let sdk = test_sdk(directory.path());
+    let project = sdk
+        .open_project(project_root.to_str().unwrap(), None)
+        .unwrap();
+    let session = sdk
+        .create_session(
+            &project.project_id,
+            Some("Archive me"),
+            Some("deepseek-v4-flash"),
+        )
+        .unwrap();
+
+    let _running = sdk
+        .state
+        .store
+        .begin_turn(
+            &session.session_id,
+            "running-key",
+            "run",
+            "deepseek-v4-flash",
+        )
+        .unwrap();
+    assert_eq!(
+        sdk.archive_session(&session.session_id).unwrap_err().code,
+        "conflict"
+    );
+    sdk.state
+        .store
+        .fail_turn(&session.session_id, "running-key", &json!({"code":"test"}))
+        .unwrap();
+
+    let child = sdk
+        .state
+        .store
+        .create_child_session(
+            &project.project_id,
+            &session.session_id,
+            "builtin.qa.v1",
+            1,
+            "Child",
+            "deepseek-v4-flash",
+        )
+        .unwrap();
+    let _child_turn = sdk
+        .state
+        .store
+        .begin_turn(&child.session_id, "child-key", "run", "deepseek-v4-flash")
+        .unwrap();
+    assert_eq!(
+        sdk.archive_session(&session.session_id).unwrap_err().code,
+        "conflict"
+    );
+    sdk.state
+        .store
+        .fail_turn(&child.session_id, "child-key", &json!({"code":"test"}))
+        .unwrap();
+    assert_eq!(
+        sdk.state
+            .store
+            .session_ui_state(&session.session_id)
+            .unwrap(),
+        "failed"
+    );
+    assert_eq!(
+        sdk.state.store.session_ui_state(&child.session_id).unwrap(),
+        "failed"
+    );
+
+    let archived = sdk.archive_session(&session.session_id).unwrap();
+    assert_eq!(archived.status, "archived");
+    assert_eq!(
+        sdk.rename_session(&session.session_id, "Renamed")
+            .unwrap_err()
+            .code,
+        "archived_session_read_only"
+    );
+    assert_eq!(
+        sdk.submit_turn(
+            &session.session_id,
+            "cannot edit",
+            "archived-key",
+            Some("deepseek-v4-flash"),
+            None,
+        )
+        .unwrap_err()
+        .code,
+        "archived_session_read_only"
+    );
+
+    let restored = sdk.reopen_session(&session.session_id).unwrap();
+    assert_eq!(restored.status, "active");
+    assert_eq!(
+        sdk.rename_session(&session.session_id, "Editable again")
+            .unwrap()
+            .title
+            .as_deref(),
+        Some("Editable again")
+    );
+
+    let source_path = project_root.join("source.png");
+    std::fs::write(&source_path, b"source").unwrap();
+    let image = sdk
+        .add_session_image(
+            &session.session_id,
+            &json!({
+                "displayName":"source.png",
+                "sourceKind":"file",
+                "originalPath":source_path.to_str().unwrap(),
+                "extension":"png",
+                "bytesBase64":STANDARD.encode(b"managed"),
+                "thumbnailBase64":STANDARD.encode(b"thumb")
+            }),
+        )
+        .unwrap();
+    let managed_path = std::path::PathBuf::from(&image.storage_path);
+    assert!(managed_path.is_file());
+
+    sdk.archive_session(&session.session_id).unwrap();
+    let deleted = sdk.delete_session(&session.session_id).unwrap();
+    assert_eq!(deleted["deleted"], true);
+    assert!(sdk
+        .state
+        .store
+        .session_by_id(&session.session_id)
+        .unwrap()
+        .is_none());
+    assert!(sdk
+        .state
+        .store
+        .session_by_id(&child.session_id)
+        .unwrap()
+        .is_none());
+    assert!(!managed_path.exists());
+    assert!(source_path.exists());
+}
+
+#[test]
 fn project_listing_and_selection_are_user_scoped() {
     let directory = tempfile::tempdir().unwrap();
     let mut sdk_a = AgentSdk::from_state_for_test(test_state(directory.path()));

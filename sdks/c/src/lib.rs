@@ -733,6 +733,11 @@ ffi_one_string!(
     "session_id"
 );
 ffi_one_string!(
+    suncode_agent_sdk_delete_session,
+    delete_session,
+    "session_id"
+);
+ffi_one_string!(
     suncode_agent_sdk_list_checkpoints,
     list_checkpoints,
     "session_id"

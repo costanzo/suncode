@@ -2,7 +2,7 @@
 
 use crate::{
     domain::SessionRecord,
-    store::{lock, now, Store},
+    store::{business_transaction, lock, now, Store},
 };
 use diesel::prelude::*;
 use diesel::sql_query;
@@ -229,6 +229,111 @@ impl Store {
         .execute(&mut *connection)
         .map_err(crate::database_error)?;
         by_id(&mut connection, id)?.ok_or_else(|| BusinessError::invalid("session not found"))
+    }
+
+    /// Physically removes a primary session and all of its child session data.
+    /// The caller is responsible for deleting the returned SunCode-managed files.
+    pub fn delete_session(&self, id: &str) -> Result<Vec<String>, BusinessError> {
+        let mut connection = lock(&self.connection)?;
+        let root = by_id(&mut connection, id)?.ok_or_else(|| BusinessError::missing("session"))?;
+        if root.kind != "primary" {
+            return Err(BusinessError::new(
+                "child_session_read_only",
+                "child sessions are deleted with their parent",
+            ));
+        }
+        if root.status != "archived" {
+            return Err(BusinessError::new(
+                "conflict",
+                "only archived sessions can be deleted permanently",
+            ));
+        }
+
+        let mut session_ids = vec![id.to_string()];
+        let mut cursor = 0;
+        while cursor < session_ids.len() {
+            let parent_id = session_ids[cursor].clone();
+            let children =
+                sql_query("SELECT session_id AS value FROM session WHERE parent_session_id=?")
+                    .bind::<Text, _>(&parent_id)
+                    .load::<ValueRow>(&mut *connection)
+                    .map_err(crate::database_error)?;
+            session_ids.extend(children.into_iter().map(|row| row.value));
+            cursor += 1;
+        }
+
+        let mut managed_files = Vec::new();
+        for session_id in &session_ids {
+            let images =
+                sql_query("SELECT storage_path AS value FROM session_image WHERE session_id=?")
+                    .bind::<Text, _>(session_id)
+                    .load::<ValueRow>(&mut *connection)
+                    .map_err(crate::database_error)?;
+            managed_files.extend(images.into_iter().map(|row| row.value));
+        }
+
+        business_transaction(&mut connection, |connection| {
+            for session_id in session_ids.iter().rev() {
+                let turns =
+                    sql_query("SELECT turn_id AS value FROM session_turn WHERE session_id=?")
+                        .bind::<Text, _>(session_id)
+                        .load::<ValueRow>(connection)
+                        .map_err(crate::database_error)?;
+                for turn in turns {
+                    sql_query("DELETE FROM session_turn_todo WHERE turn_id=?")
+                        .bind::<Text, _>(&turn.value)
+                        .execute(connection)
+                        .map_err(crate::database_error)?;
+                    sql_query("DELETE FROM session_tool_use WHERE turn_id=?")
+                        .bind::<Text, _>(&turn.value)
+                        .execute(connection)
+                        .map_err(crate::database_error)?;
+                }
+                sql_query("DELETE FROM session_approval_request WHERE session_id=?")
+                    .bind::<Text, _>(session_id)
+                    .execute(connection)
+                    .map_err(crate::database_error)?;
+                sql_query("DELETE FROM session_call WHERE session_id=?")
+                    .bind::<Text, _>(session_id)
+                    .execute(connection)
+                    .map_err(crate::database_error)?;
+                sql_query("DELETE FROM session_message WHERE session_id=?")
+                    .bind::<Text, _>(session_id)
+                    .execute(connection)
+                    .map_err(crate::database_error)?;
+                sql_query("DELETE FROM session_checkpoint WHERE session_id=?")
+                    .bind::<Text, _>(session_id)
+                    .execute(connection)
+                    .map_err(crate::database_error)?;
+                sql_query("DELETE FROM session_checkpoint_manifest WHERE session_id=?")
+                    .bind::<Text, _>(session_id)
+                    .execute(connection)
+                    .map_err(crate::database_error)?;
+                sql_query("DELETE FROM session_image WHERE session_id=?")
+                    .bind::<Text, _>(session_id)
+                    .execute(connection)
+                    .map_err(crate::database_error)?;
+                sql_query("DELETE FROM configuration WHERE session_id=?")
+                    .bind::<Text, _>(session_id)
+                    .execute(connection)
+                    .map_err(crate::database_error)?;
+                sql_query("DELETE FROM session_subagent_invocation WHERE parent_session_id=? OR child_session_id=?")
+                    .bind::<Text, _>(session_id)
+                    .bind::<Text, _>(session_id)
+                    .execute(connection)
+                    .map_err(crate::database_error)?;
+                sql_query("DELETE FROM session_turn WHERE session_id=?")
+                    .bind::<Text, _>(session_id)
+                    .execute(connection)
+                    .map_err(crate::database_error)?;
+                sql_query("DELETE FROM session WHERE session_id=?")
+                    .bind::<Text, _>(session_id)
+                    .execute(connection)
+                    .map_err(crate::database_error)?;
+            }
+            Ok(())
+        })?;
+        Ok(managed_files)
     }
 
     pub fn set_session_pinned(

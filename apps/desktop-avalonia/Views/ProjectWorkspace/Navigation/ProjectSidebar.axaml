@@ -6,7 +6,7 @@
              xmlns:controls="using:SunCode.Desktop.Controls"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Navigation.ProjectSidebar"
              x:DataType="vm:DesktopViewModel">
-  <Border Classes="sidebar-card" PointerExited="NavigationPointerExited">
+  <Border Classes="sidebar-card" PointerExited="NavigationPointerExited" SizeChanged="SidebarSizeChanged">
     <Grid Margin="16,14,16,12" RowDefinitions="34,10,*">
       <Grid Grid.Row="0" ColumnDefinitions="*,30">
         <TextBlock Classes="section-label" Text="SESSIONS" VerticalAlignment="Center" />
@@ -14,8 +14,8 @@
           <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
       </Grid>
-      <Grid Grid.Row="2">
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+      <Grid Grid.Row="2" RowDefinitions="*,Auto">
+        <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <ListBox Classes="sessions"
                    x:Name="SessionList"
                    ItemsSource="{Binding Sessions}"
@@ -46,7 +46,7 @@
                             <Button Content="Rename" Classes="session-action" CommandParameter="{Binding}" Click="RenameSessionItem" />
                             <Button Content="Pin" Classes="session-action" CommandParameter="{Binding}" Click="PinSessionItem" IsVisible="{Binding !IsPinned}" />
                             <Button Content="Unpin" Classes="session-action" CommandParameter="{Binding}" Click="UnpinSessionItem" IsVisible="{Binding IsPinned}" />
-                            <Button Content="Archive" Classes="session-action" CommandParameter="{Binding}" Click="ArchiveSessionItem" />
+                            <Button Content="Archive" Classes="session-action" CommandParameter="{Binding}" Click="ArchiveSessionItem" IsEnabled="{Binding !IsTurnActive}" />
                           </StackPanel>
                         </Border>
                       </Flyout>
@@ -58,11 +58,69 @@
             </ListBox.ItemTemplate>
           </ListBox>
         </ScrollViewer>
-        <StackPanel IsVisible="{Binding !HasSessions}" Margin="0,44,0,32" Spacing="6" HorizontalAlignment="Center">
+        <StackPanel Grid.Row="0" IsVisible="{Binding !HasSessions}" Margin="0,44,0,32" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
           <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
           <TextBlock Text="No sessions yet" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" HorizontalAlignment="Center" />
           <TextBlock Text="Use + to create one." FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
         </StackPanel>
+        <Button Grid.Row="1" Classes="archive-drawer-toggle" Click="ToggleArchivedSessions" IsVisible="{Binding HasArchivedSessions}">
+          <Grid ColumnDefinitions="18,*,Auto">
+            <svg:Svg x:Name="ArchivedDrawerChevron" Width="13" Height="13" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%" Path="/Assets/icons/arrow-up.svg" Css="{DynamicResource IconSvgCss}">
+              <svg:Svg.RenderTransform>
+                <RotateTransform Angle="0">
+                  <RotateTransform.Transitions>
+                    <Transitions>
+                      <DoubleTransition Property="Angle" Duration="0:0:0.16" />
+                    </Transitions>
+                  </RotateTransform.Transitions>
+                </RotateTransform>
+              </svg:Svg.RenderTransform>
+            </svg:Svg>
+            <TextBlock Grid.Column="1" Text="Archived sessions" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="{Binding ArchivedSessions.Count}" Classes="mono" Foreground="{DynamicResource TextMutedBrush}" Margin="7,0,0,0" VerticalAlignment="Center" />
+          </Grid>
+        </Button>
+        <Border Grid.RowSpan="2" ZIndex="10" IsVisible="{Binding ArchivedDrawerOpen}" Height="{Binding ArchivedDrawerHeight}" VerticalAlignment="Bottom" Background="{DynamicResource CanvasBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1,1,1,1"
+                BoxShadow="0 -8 24 0 #44000000" CornerRadius="6">
+          <Grid RowDefinitions="34,*">
+            <Grid Grid.Row="0" ColumnDefinitions="*,28" Margin="16,0,5,0">
+              <TextBlock Text="ARCHIVED" Classes="section-label" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Classes="icon" Click="CloseArchivedSessions" ToolTip.Tip="Close archived sessions" AutomationProperties.Name="Close archived sessions">
+                <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
+              </Button>
+            </Grid>
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+              <ListBox x:Name="ArchivedSessionList" Classes="sessions" ItemsSource="{Binding ArchivedSessions}" Background="Transparent" BorderThickness="0" Padding="0">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="models:SessionItem">
+                    <Grid Height="48" ColumnDefinitions="18,*,Auto,28">
+                      <Button Grid.Column="1" Classes="quiet" Padding="4,4,10,4" HorizontalContentAlignment="Stretch" CommandParameter="{Binding}" Click="SelectArchivedSession">
+                        <StackPanel Spacing="2">
+                          <TextBlock Text="{Binding DisplayTitle}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding RelativeActivity}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+                        </StackPanel>
+                      </Button>
+                      <TextBlock Grid.Column="2" Text="Archived" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                      <Button Grid.Column="3" Classes="quiet session-actions-trigger" Width="28" Padding="6" ToolTip.Tip="Archived session actions" AutomationProperties.Name="Archived session actions">
+                        <Button.Flyout>
+                          <Flyout Placement="BottomEdgeAlignedRight" ShowMode="Standard" FlyoutPresenterClasses="session-actions-flyout">
+                            <Border Width="142" Padding="4">
+                              <StackPanel>
+                                <Button Content="Restore" Classes="session-action" CommandParameter="{Binding}" Click="RestoreSessionItem" />
+                                <Button Content="Delete permanently" Classes="session-action danger" CommandParameter="{Binding}" Click="DeleteSessionItem" />
+                              </StackPanel>
+                            </Border>
+                          </Flyout>
+                        </Button.Flyout>
+                        <svg:Svg Path="/Assets/icons/more-horizontal.svg" Css="{DynamicResource IconSvgCss}" />
+                      </Button>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </ScrollViewer>
+          </Grid>
+        </Border>
       </Grid>
     </Grid>
   </Border>

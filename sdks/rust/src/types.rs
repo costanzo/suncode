@@ -9,7 +9,7 @@ use suncode_agent::domain::{
 use suncode_common::BusinessError;
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 14;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 15;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

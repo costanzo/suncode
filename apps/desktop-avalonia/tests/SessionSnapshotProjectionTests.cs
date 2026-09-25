@@ -114,6 +114,18 @@ public sealed class SessionSnapshotProjectionTests
     }
 
     [Fact]
+    public void ArchivedSessionItemsAreMarkedReadOnlyAndKeepActiveStateSeparate()
+    {
+        var active = new SessionItem("active", "Active", "2026-09-12T00:00:00.000Z", false);
+        var archived = new SessionItem("archived", "Archived", "2026-09-12T00:00:00.000Z", false, IsArchived: true);
+
+        Assert.False(active.IsArchived);
+        Assert.True(archived.IsArchived);
+        Assert.False(archived.IsTurnActive);
+        Assert.Equal("Archived", archived.DisplayTitle);
+    }
+
+    [Fact]
     public void ToolMessagesShowAnOperationSummaryAndKeepDetailsForTheDialog()
     {
         var message = new MessageItem

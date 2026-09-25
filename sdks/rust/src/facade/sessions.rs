@@ -51,6 +51,12 @@ impl AsyncAgentSdk {
         if title.trim().is_empty() {
             return Err(BusinessError::invalid("title is required"));
         }
+        if session.status == "archived" {
+            return Err(BusinessError::new(
+                "archived_session_read_only",
+                "archived sessions cannot be renamed",
+            ));
+        }
         self.state.store.rename_session(session_id, title.trim())
     }
 
@@ -60,6 +66,39 @@ impl AsyncAgentSdk {
             return Err(BusinessError::new(
                 "child_session_read_only",
                 "child sessions follow their parent lifecycle",
+            ));
+        }
+        if session.status == "archived" {
+            return Err(BusinessError::new(
+                "conflict",
+                "session is already archived",
+            ));
+        }
+        let parent_is_active = matches!(
+            self.state.store.session_ui_state(session_id)?.as_str(),
+            "running" | "approval" | "question"
+        );
+        let child_is_active = self
+            .state
+            .store
+            .child_sessions_for_parent(session_id)?
+            .into_iter()
+            .try_fold(false, |active, child| {
+                Ok::<_, BusinessError>(
+                    active
+                        || matches!(
+                            self.state
+                                .store
+                                .session_ui_state(&child.session_id)?
+                                .as_str(),
+                            "running" | "approval" | "question"
+                        ),
+                )
+            })?;
+        if parent_is_active || child_is_active {
+            return Err(BusinessError::new(
+                "conflict",
+                "running or waiting sessions cannot be archived",
             ));
         }
         self.state.store.set_session_archived(session_id, true)
@@ -85,6 +124,38 @@ impl AsyncAgentSdk {
             ));
         }
         self.state.store.set_session_archived(session_id, false)
+    }
+
+    pub fn delete_session(&self, session_id: &str) -> SdkResult<Value> {
+        let session = self.session_for_user(session_id)?;
+        if session.kind != "primary" {
+            return Err(BusinessError::new(
+                "child_session_read_only",
+                "child sessions are deleted with their parent",
+            ));
+        }
+        if session.status != "archived" {
+            return Err(BusinessError::new(
+                "conflict",
+                "only archived sessions can be deleted permanently",
+            ));
+        }
+        let image_root = self.resolved_image_directory()?.canonicalize().ok();
+        let paths = self.state.store.delete_session(session_id)?;
+        for path in paths {
+            let path_buf = PathBuf::from(&path);
+            let allowed = image_root.as_ref().is_some_and(|root| {
+                path_buf
+                    .canonicalize()
+                    .ok()
+                    .and_then(|candidate| candidate.strip_prefix(root).ok().map(|_| ()))
+                    .is_some()
+            });
+            if allowed {
+                let _ = std::fs::remove_file(&path_buf);
+            }
+        }
+        Ok(serde_json::json!({"sessionId": session_id, "deleted": true}))
     }
 
     pub fn list_session_images(&self, session_id: &str) -> SdkResult<SessionImagesResult> {
@@ -238,8 +309,11 @@ impl AsyncAgentSdk {
         let images = self.state.store.session_images(session_id)?;
         let conversation_turns = self.state.store.session_conversation_turns(session_id)?;
         let pending_question = self.state.store.pending_question(session_id)?;
-        let pending_approval = self.state.store.pending_approval(session_id)?
-            .map(|record|serde_json::to_value(record).unwrap_or(Value::Null));
+        let pending_approval = self
+            .state
+            .store
+            .pending_approval(session_id)?
+            .map(|record| serde_json::to_value(record).unwrap_or(Value::Null));
         logging::debug(
             "session_snapshot",
             format!("end session={session_id} messages={}", messages.len()),

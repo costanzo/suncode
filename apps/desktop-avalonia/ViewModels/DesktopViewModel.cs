@@ -51,6 +51,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private string _activeTurnId = string.Empty;
     private string _activeTurnState = string.Empty;
     private string _lastTurnId = string.Empty;
+    private ulong? _contextInputTokens;
+    private ulong? _contextOutputTokens;
+    private ulong? _contextCachedTokens;
+    private bool _contextUsageExpanded;
     private string _themeMode = "light";
     private string _logLevel = "INFO";
     private string _logDirectory = string.Empty;
@@ -107,6 +111,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private double _navigationPaneWidth = DefaultNavigationPaneWidth;
     private double _reviewPaneWidth = DefaultReviewPaneWidth;
     private double _bottomDrawerHeight = DefaultBottomDrawerHeight;
+    private double _archivedDrawerHeight = 300;
+    private bool _archivedDrawerOpen;
     private bool _isBusy;
     private bool _isSessionLoading;
     private bool _isSessionLoadingVisible;
@@ -120,6 +126,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<ProjectItem> Projects { get; } = [];
     public ObservableCollection<SessionItem> Sessions { get; } = [];
+    public ObservableCollection<SessionItem> ArchivedSessions { get; } = [];
     public ObservableCollection<ProviderItem> Providers { get; } = [];
     public ObservableCollection<ModelItem> Models { get; } = [];
     public IReadOnlyList<string> ReasoningEffortOptions =>
@@ -186,6 +193,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(CanChooseModel));
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
             OnPropertyChanged(nameof(HasSelectedSession));
+            OnPropertyChanged(nameof(ShowChatInput));
             OnPropertyChanged(nameof(ComposerPlaceholder));
             OnPropertyChanged(nameof(IsModelUnavailable));
             SaveProjectUiState(saved => SaveCurrentContentState(saved));
@@ -215,6 +223,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(CanAttachImages));
                 OnPropertyChanged(nameof(ComposerPlaceholder));
                 OnPropertyChanged(nameof(IsModelUnavailable));
+                ResetContextUsage();
             }
         }
     }
@@ -503,6 +512,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public GridLength BottomDrawerGap => EffectiveGitVisible || EffectiveProviderTraceVisible || EffectiveToolActivityVisible ? new GridLength(4) : new GridLength(0);
     public bool WorkspaceStatusDetailsVisible => _layoutWidth > CompactWorkspaceBreakpoint;
     public bool HasSessions => Sessions.Count > 0;
+    public bool HasArchivedSessions => ArchivedSessions.Count > 0;
+    public bool ArchivedDrawerOpen { get => _archivedDrawerOpen; set => SetProperty(ref _archivedDrawerOpen, value); }
+    public double ArchivedDrawerHeight { get => _archivedDrawerHeight; private set => SetProperty(ref _archivedDrawerHeight, value); }
+    internal void UpdateArchivedDrawerHeight(double sidebarHeight) => ArchivedDrawerHeight = Math.Max(180, sidebarHeight / 2d);
     public bool HasMessages => Messages.Count > 0;
     public bool HasActivities => Activities.Count > 0;
     public bool HasCurrentTodos => CurrentTodos.Count > 0;
@@ -530,6 +543,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public string GitFileCountText => $"{FilteredGitFiles.Count} {(FilteredGitFiles.Count == 1 ? "file" : "files")}";
     public string ProviderTraceCountText => $"{FilteredProviderTraceTurns.Count} turns · {FilteredProviderTraceTurns.Sum(turn => turn.Calls.Count)} calls";
     public bool HasSelectedSession => SelectedSession is not null;
+    public bool ShowChatInput => SelectedSession is not null && !SelectedSession.IsArchived;
     public bool HasPendingApproval => PendingApproval is not null;
     public bool HasPendingQuestion => PendingQuestion is not null;
     public bool HasChangedPaths => ChangedPaths.Count > 0;
@@ -557,9 +571,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool IsReviewCheckpointVisible => IsReviewRunning && HasCheckpoints;
     public bool UseSystemCertificates { get => _useSystemCertificates; set => SetProperty(ref _useSystemCertificates, value); }
     public string CertificatePath { get => _certificatePath; set => SetProperty(ref _certificatePath, value); }
-    public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && SelectedModel?.Configured == true && !HasSessionLoadError;
-    public bool CanSubmit => SelectedSession is not null && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsTurnActive && !IsSessionLoading && !HasSessionLoadError;
-    public bool CanChooseModel => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !HasSessionLoadError;
+    public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !SelectedSession.IsArchived && SelectedModel?.Configured == true && !HasSessionLoadError;
+    public bool CanSubmit => SelectedSession is not null && !SelectedSession.IsArchived && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsTurnActive && !IsSessionLoading && !HasSessionLoadError;
+    public bool CanChooseModel => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !SelectedSession.IsArchived && !HasSessionLoadError;
     public bool CanChooseReasoningEffort => CanCompose && SelectedModel?.SupportsReasoningEffort == true;
     public bool CanAttachImages => CanCompose && SelectedModel?.SupportsVision == true && !IsTurnActive;
 
@@ -569,6 +583,46 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsTurnIndicatorDots));
         OnPropertyChanged(nameof(IsTurnThinking));
     }
+
+    private void ResetContextUsage()
+    {
+        _contextInputTokens = null;
+        _contextOutputTokens = null;
+        _contextCachedTokens = null;
+        ContextUsageExpanded = false;
+        NotifyContextUsageChanged();
+    }
+
+    private void UpdateContextUsage(SunCode.Sdk.Models.AgentUsage usage)
+    {
+        _contextInputTokens = usage.InputTokens;
+        _contextOutputTokens = usage.OutputTokens;
+        _contextCachedTokens = usage.CacheReadTokens ?? usage.CacheWriteTokens;
+        NotifyContextUsageChanged();
+    }
+
+    private void NotifyContextUsageChanged()
+    {
+        OnPropertyChanged(nameof(ContextUsageKnown));
+        OnPropertyChanged(nameof(ContextUsageLimit));
+        OnPropertyChanged(nameof(ContextUsageText));
+        OnPropertyChanged(nameof(ContextUsagePercentText));
+        OnPropertyChanged(nameof(ContextUsagePercent));
+        OnPropertyChanged(nameof(ContextUsageIsWarning));
+        OnPropertyChanged(nameof(ContextUsageIsDanger));
+        OnPropertyChanged(nameof(ContextUsageIsNormal));
+        OnPropertyChanged(nameof(ContextUsageIsUnknown));
+        OnPropertyChanged(nameof(ContextInputTokenText));
+        OnPropertyChanged(nameof(ContextOutputTokenText));
+        OnPropertyChanged(nameof(ContextCachedTokenText));
+    }
+
+    private static string CompactTokenCount(ulong value) => value switch
+    {
+        >= 1_000_000 => $"{value / 1_000_000d:0.#}m",
+        >= 1_000 => $"{value / 1_000d:0.#}k",
+        _ => value.ToString()
+    };
     
     private void NotifyReviewPresentationChanged()
     {
@@ -589,6 +643,27 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public string ProjectTitle => SelectedProject?.DisplayName ?? "SunCode";
     public string SessionTitle => SelectedSession?.DisplayTitle ?? "No session selected";
     public string SelectedModelName => SelectedModel?.Id ?? string.Empty;
+    public bool ContextUsageExpanded
+    {
+        get => _contextUsageExpanded;
+        set => SetProperty(ref _contextUsageExpanded, value);
+    }
+    public ulong? ContextUsageLimit => SelectedModel?.AutoCompactTokens ?? SelectedModel?.MaxInputTokens;
+    public bool ContextUsageKnown => _contextInputTokens.HasValue && ContextUsageLimit is > 0;
+    public string ContextUsageText => ContextUsageKnown
+        ? $"{CompactTokenCount(_contextInputTokens!.Value)} / {CompactTokenCount(ContextUsageLimit!.Value)} tokens"
+        : "Unavailable";
+    public string ContextUsagePercentText => ContextUsageKnown ? $"{ContextUsagePercent:0}%" : "--";
+    public double ContextUsagePercent => ContextUsageKnown
+        ? Math.Min(100d, _contextInputTokens!.Value * 100d / ContextUsageLimit!.Value)
+        : 0d;
+    public bool ContextUsageIsWarning => ContextUsageKnown && ContextUsagePercent >= 75d && ContextUsagePercent < 90d;
+    public bool ContextUsageIsDanger => ContextUsageKnown && ContextUsagePercent >= 90d;
+    public bool ContextUsageIsNormal => ContextUsageKnown && !ContextUsageIsWarning && !ContextUsageIsDanger;
+    public bool ContextUsageIsUnknown => !ContextUsageKnown;
+    public string ContextInputTokenText => _contextInputTokens is { } input ? CompactTokenCount(input) : "--";
+    public string ContextOutputTokenText => _contextOutputTokens is { } output ? CompactTokenCount(output) : "--";
+    public string ContextCachedTokenText => _contextCachedTokens is { } cached ? CompactTokenCount(cached) : "--";
     public string LatestActivityText => Activities.LastOrDefault()?.Text ?? "No tool activity yet";
     public string ComposerPlaceholder => SelectedSession is null
         ? "Create a session first..."

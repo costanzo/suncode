@@ -73,6 +73,7 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_archive_session(IntPtr handle, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_set_session_pinned(IntPtr handle, IntPtr sessionId, byte pinned);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_reopen_session(IntPtr handle, IntPtr sessionId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_delete_session(IntPtr handle, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_session_images(IntPtr handle, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_add_session_image(IntPtr handle, IntPtr sessionId, IntPtr imageJson);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_remove_session_image(IntPtr handle, IntPtr sessionId, IntPtr imageId);
