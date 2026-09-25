@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using SunCode.Desktop.Infrastructure;
 using System.Collections.ObjectModel;
 
@@ -21,6 +22,9 @@ internal sealed partial class MergedWorkspaceTabs : UserControl
     {
         InitializeComponent();
         TabsList.ItemsSource = Tabs;
+        AddHandler(PointerPressedEvent, TabPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(PointerMovedEvent, TabPointerMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(PointerReleasedEvent, TabPointerReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
     }
 
     internal void Select(string projectId)
@@ -42,7 +46,8 @@ internal sealed partial class MergedWorkspaceTabs : UserControl
 
     private void TabPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not Button button || button.DataContext is not MergedProjectTab tab ||
+        var button = FindTabButton(e.Source);
+        if (button?.DataContext is not MergedProjectTab tab ||
             !e.GetCurrentPoint(button).Properties.IsLeftButtonPressed) return;
         _dragButton = button;
         _dragProjectId = tab.ProjectId;
@@ -68,9 +73,15 @@ internal sealed partial class MergedWorkspaceTabs : UserControl
 
     private void TabPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (!ReferenceEquals(sender, _dragButton)) return;
+        if (_dragButton is null) return;
         _dragButton = null;
         _dragProjectId = null;
+    }
+
+    private static Button? FindTabButton(object? source)
+    {
+        var button = source as Button ?? (source as Visual)?.FindAncestorOfType<Button>();
+        return button?.Classes.Contains("merged-project-tab") == true ? button : null;
     }
 }
 

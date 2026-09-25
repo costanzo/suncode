@@ -62,10 +62,7 @@
             <Button Classes="merged-project-tab"
                     Classes.selected="{Binding IsSelected}"
                     AutomationProperties.Name="{Binding Title}"
-                    Click="SelectTab"
-                    PointerPressed="TabPointerPressed"
-                    PointerMoved="TabPointerMoved"
-                    PointerReleased="TabPointerReleased">
+                    Click="SelectTab">
               <Grid ColumnDefinitions="8,8,*">
                 <Border Grid.Column="0"
                         Classes="merged-project-tab-marker"
