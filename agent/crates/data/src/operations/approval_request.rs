@@ -1,4 +1,4 @@
-//! Operations for `approval_request`.
+//! Operations for `session_approval_request`.
 
 use crate::{
     domain::*,
@@ -16,7 +16,7 @@ pub(crate) fn by_id(
     c: &mut diesel::sqlite::SqliteConnection,
     id: &str,
 ) -> Result<Option<ApprovalRecord>, BusinessError> {
-    let row = sql_query("SELECT approval_id,project_id,session_id,turn_id,tool_call_id,operation,arguments_json,status,decision,decision_source,created_at,updated_at FROM approval_request WHERE approval_id=?").bind::<Text,_>(id).get_result::<crate::rows::ApprovalRow>(c).optional().map_err(crate::database_error)?;
+    let row = sql_query("SELECT approval_id,project_id,session_id,turn_id,tool_call_id,operation,arguments_json,status,decision,decision_source,created_at,updated_at FROM session_approval_request WHERE approval_id=?").bind::<Text,_>(id).get_result::<crate::rows::ApprovalRow>(c).optional().map_err(crate::database_error)?;
     row.map(to_record).transpose()
 }
 
@@ -47,12 +47,13 @@ impl Store {
             "{}:{}:{}:approval",
             input.session_id, input.turn_id, input.tool_call_id
         );
-        if let Some(row) =
-            sql_query("SELECT approval_id AS value FROM approval_request WHERE idempotency_key=?")
-                .bind::<Text, _>(&key)
-                .get_result::<StringRow>(&mut *c)
-                .optional()
-                .map_err(crate::database_error)?
+        if let Some(row) = sql_query(
+            "SELECT approval_id AS value FROM session_approval_request WHERE idempotency_key=?",
+        )
+        .bind::<Text, _>(&key)
+        .get_result::<StringRow>(&mut *c)
+        .optional()
+        .map_err(crate::database_error)?
         {
             return by_id(&mut c, &row.value)?
                 .ok_or_else(|| BusinessError::invalid("approval disappeared"));
@@ -62,7 +63,7 @@ impl Store {
         let args = serde_json::to_string(input.arguments)?;
         let snapshot = serde_json::to_string(input.snapshot)?;
         business_transaction(&mut c, |c| {
-            sql_query("INSERT INTO approval_request(approval_id,project_id,session_id,turn_id,tool_call_id,operation,arguments_json,idempotency_key,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?, 'pending',?,?)").bind::<Text,_>(&id).bind::<Nullable<Text>,_>(input.project_id).bind::<Text,_>(input.session_id).bind::<Text,_>(input.turn_id).bind::<Text,_>(input.tool_call_id).bind::<Text,_>(input.operation).bind::<Text,_>(&args).bind::<Text,_>(&key).bind::<Text,_>(&t).bind::<Text,_>(&t).execute(c).map_err(crate::database_error)?;
+            sql_query("INSERT INTO session_approval_request(approval_id,project_id,session_id,turn_id,tool_call_id,operation,arguments_json,idempotency_key,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?, 'pending',?,?)").bind::<Text,_>(&id).bind::<Nullable<Text>,_>(input.project_id).bind::<Text,_>(input.session_id).bind::<Text,_>(input.turn_id).bind::<Text,_>(input.tool_call_id).bind::<Text,_>(input.operation).bind::<Text,_>(&args).bind::<Text,_>(&key).bind::<Text,_>(&t).bind::<Text,_>(&t).execute(c).map_err(crate::database_error)?;
             sql_query("UPDATE session_turn SET recovery_approval_id=?,recovery_snapshot_json=?,recovery_status='pending',recovery_created_at=?,recovery_updated_at=? WHERE turn_id=?").bind::<Text,_>(&id).bind::<Text,_>(&snapshot).bind::<Text,_>(&t).bind::<Text,_>(&t).bind::<Text,_>(input.turn_id).execute(c).map_err(crate::database_error)?;
             Ok(())
         })?;
@@ -77,7 +78,7 @@ impl Store {
         session_id: &str,
     ) -> Result<Option<ApprovalRecord>, BusinessError> {
         let mut c = lock(&self.connection)?;
-        sql_query("SELECT approval_id,project_id,session_id,turn_id,tool_call_id,operation,arguments_json,status,decision,decision_source,created_at,updated_at FROM approval_request WHERE session_id=? AND status='pending' ORDER BY created_at DESC,approval_id DESC LIMIT 1")
+        sql_query("SELECT approval_id,project_id,session_id,turn_id,tool_call_id,operation,arguments_json,status,decision,decision_source,created_at,updated_at FROM session_approval_request WHERE session_id=? AND status='pending' ORDER BY created_at DESC,approval_id DESC LIMIT 1")
             .bind::<Text, _>(session_id)
             .get_result::<crate::rows::ApprovalRow>(&mut *c)
             .optional()
@@ -104,7 +105,7 @@ impl Store {
             snapshot: String,
         }
         let result = business_transaction(&mut c, |c| {
-            let n=sql_query("UPDATE approval_request SET status=?,decision=?,decision_source='user',updated_at=? WHERE approval_id=? AND status='pending'").bind::<Text,_>(if approved{"approved"}else{"denied"}).bind::<Text,_>(decision).bind::<Text,_>(&now()).bind::<Text,_>(id).execute(c).map_err(crate::database_error)?;
+            let n=sql_query("UPDATE session_approval_request SET status=?,decision=?,decision_source='user',updated_at=? WHERE approval_id=? AND status='pending'").bind::<Text,_>(if approved{"approved"}else{"denied"}).bind::<Text,_>(decision).bind::<Text,_>(&now()).bind::<Text,_>(id).execute(c).map_err(crate::database_error)?;
             if n == 0 {
                 return Ok(None);
             }

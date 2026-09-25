@@ -46,7 +46,7 @@ struct Row {
     completed_at: Option<String>,
 }
 
-const SELECT: &str = "SELECT invocation_id,parent_session_id,parent_turn_id,parent_tool_call_id,child_session_id,agent_id,agent_version,task_json,allowed_tools_json,model_id,state,result_json,error_code,created_at,started_at,completed_at FROM subagent_invocation";
+const SELECT: &str = "SELECT invocation_id,parent_session_id,parent_turn_id,parent_tool_call_id,child_session_id,agent_id,agent_version,task_json,allowed_tools_json,model_id,state,result_json,error_code,created_at,started_at,completed_at FROM session_subagent_invocation";
 
 fn to_record(row: Row) -> Result<SubagentInvocationRecord, BusinessError> {
     Ok(SubagentInvocationRecord {
@@ -92,7 +92,7 @@ impl Store {
     ) -> Result<SubagentInvocationRecord, BusinessError> {
         let mut connection = lock(&self.connection)?;
         let timestamp = now();
-        sql_query("INSERT INTO subagent_invocation(invocation_id,parent_session_id,parent_turn_id,parent_tool_call_id,child_session_id,agent_id,agent_version,task_json,allowed_tools_json,model_id,state,result_json,error_code,created_at,started_at,completed_at) VALUES (?,?,?,?,?,?,?,?,?,?,'created',NULL,NULL,?,NULL,NULL)")
+        sql_query("INSERT INTO session_subagent_invocation(invocation_id,parent_session_id,parent_turn_id,parent_tool_call_id,child_session_id,agent_id,agent_version,task_json,allowed_tools_json,model_id,state,result_json,error_code,created_at,started_at,completed_at) VALUES (?,?,?,?,?,?,?,?,?,?,'created',NULL,NULL,?,NULL,NULL)")
             .bind::<Text,_>(invocation_id)
             .bind::<Text,_>(parent_session_id)
             .bind::<Text,_>(parent_turn_id)
@@ -125,7 +125,7 @@ impl Store {
         let started_at = matches!(state, "running").then_some(timestamp.clone());
         let completed_at = matches!(state, "completed" | "failed" | "cancelled" | "interrupted")
             .then_some(timestamp);
-        sql_query("UPDATE subagent_invocation SET state=?,result_json=?,error_code=?,started_at=COALESCE(started_at,?),completed_at=? WHERE child_session_id=?")
+        sql_query("UPDATE session_subagent_invocation SET state=?,result_json=?,error_code=?,started_at=COALESCE(started_at,?),completed_at=? WHERE child_session_id=?")
             .bind::<Text,_>(state)
             .bind::<Nullable<Text>,_>(result.map(serde_json::to_string).transpose().map_err(|_| BusinessError::invalid("subagent result is invalid"))?)
             .bind::<Nullable<Text>,_>(error_code)

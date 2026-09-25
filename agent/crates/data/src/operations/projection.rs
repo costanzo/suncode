@@ -225,12 +225,12 @@ pub(crate) fn apply(
     }
     if event_type == "checkpoint.captured" {
         if let Some(id) = payload.get("checkpoint_id").and_then(Value::as_str) {
-            sql_query("INSERT OR IGNORE INTO checkpoint(checkpoint_id,manifest_id,session_id,turn_id,tool_call_id,relative_path,status,created_at,ordinal) VALUES (?,?,?,?,?,?,'available',?,?)").bind::<Text,_>(id).bind::<Nullable<Text>,_>(payload.get("manifest_id").and_then(Value::as_str)).bind::<Text,_>(session_id).bind::<Nullable<Text>,_>(payload.get("turn_id").and_then(Value::as_str)).bind::<Nullable<Text>,_>(payload.get("tool_call_id").and_then(Value::as_str)).bind::<Nullable<Text>,_>(payload.get("path").and_then(Value::as_str)).bind::<Text,_>(occurred_at).bind::<Nullable<Integer>,_>(payload.get("ordinal").and_then(Value::as_i64).map(|v|v as i32)).execute(connection).map_err(crate::database_error)?;
+            sql_query("INSERT OR IGNORE INTO session_checkpoint(checkpoint_id,manifest_id,session_id,turn_id,tool_call_id,relative_path,status,created_at,ordinal) VALUES (?,?,?,?,?,?,'available',?,?)").bind::<Text,_>(id).bind::<Nullable<Text>,_>(payload.get("manifest_id").and_then(Value::as_str)).bind::<Text,_>(session_id).bind::<Nullable<Text>,_>(payload.get("turn_id").and_then(Value::as_str)).bind::<Nullable<Text>,_>(payload.get("tool_call_id").and_then(Value::as_str)).bind::<Nullable<Text>,_>(payload.get("path").and_then(Value::as_str)).bind::<Text,_>(occurred_at).bind::<Nullable<Integer>,_>(payload.get("ordinal").and_then(Value::as_i64).map(|v|v as i32)).execute(connection).map_err(crate::database_error)?;
         }
     }
     if event_type == "checkpoint.item_restored" {
         if let Some(id) = payload.get("checkpoint_id").and_then(Value::as_str) {
-            sql_query("UPDATE checkpoint SET status='restored',restored_at=? WHERE checkpoint_id=? AND session_id=?").bind::<Text,_>(occurred_at).bind::<Text,_>(id).bind::<Text,_>(session_id).execute(connection).map_err(crate::database_error)?;
+            sql_query("UPDATE session_checkpoint SET status='restored',restored_at=? WHERE checkpoint_id=? AND session_id=?").bind::<Text,_>(occurred_at).bind::<Text,_>(id).bind::<Text,_>(session_id).execute(connection).map_err(crate::database_error)?;
         }
     }
     Ok(())

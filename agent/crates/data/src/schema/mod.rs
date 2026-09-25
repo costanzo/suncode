@@ -1,3 +1,4 @@
+use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sqlite::SqliteConnection;
@@ -23,6 +24,39 @@ pub(crate) fn table_names(
         .into_iter()
         .map(|row| row.name)
         .collect())
+}
+
+pub(crate) fn rename_legacy_session_tables(
+    connection: &mut SqliteConnection,
+) -> Result<(), crate::BusinessError> {
+    let tables = table_names(connection)?;
+    let renames = [
+        ("approval_request", "session_approval_request"),
+        ("checkpoint", "session_checkpoint"),
+        ("checkpoint_manifest", "session_checkpoint_manifest"),
+        ("subagent_invocation", "session_subagent_invocation"),
+    ];
+    for (legacy, current) in renames {
+        if tables.iter().any(|name| name == legacy) && !tables.iter().any(|name| name == current) {
+            connection
+                .batch_execute(&format!("ALTER TABLE {legacy} RENAME TO {current};"))
+                .map_err(crate::database_error)?;
+        }
+    }
+    for index in [
+        "approval_request_session_status_idx",
+        "checkpoint_manifest_ordinal_idx",
+        "checkpoint_manifest_session_status_idx",
+        "checkpoint_manifest_expiry_idx",
+        "checkpoint_manifest_turn_idx",
+        "subagent_invocation_parent_idx",
+        "subagent_invocation_turn_idx",
+    ] {
+        connection
+            .batch_execute(&format!("DROP INDEX IF EXISTS {index};"))
+            .map_err(crate::database_error)?;
+    }
+    Ok(())
 }
 
 pub(crate) fn session_message_excludes_tool_role(

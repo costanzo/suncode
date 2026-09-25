@@ -11,7 +11,7 @@ All six inherit the parent model and reasoning effort, deny MCP, deny `question`
 
 ## Invocation lifecycle
 
-`delegate_agent` is advertised only to primary continuations. Core validates the agent name and task, creates a `kind=child` session, creates `subagent_invocation`, and starts an internal child submission. State progresses through `created`, `running`, optional `awaiting_approval`, and a terminal `completed`, `failed`, `cancelled`, or `interrupted` result. Startup marks unfinished created/running invocations interrupted without automatic replay.
+`delegate_agent` is advertised only to primary continuations. Core validates the agent name and task, creates a `kind=child` session, creates `session_subagent_invocation`, and starts an internal child submission. State progresses through `created`, `running`, optional `awaiting_approval`, and a terminal `completed`, `failed`, `cancelled`, or `interrupted` result. Startup marks unfinished created/running invocations interrupted without automatic replay.
 
 Parent cancellation and an active child share one cancellation token. After a child suspends for approval the parent may finish with an awaiting result; normal approval resolution resumes the child and updates the invocation independently. Child checkpoints remain scoped to the child session.
 

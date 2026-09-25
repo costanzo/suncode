@@ -154,7 +154,7 @@ impl Store {
 
     pub fn session_ui_state(&self, session_id: &str) -> Result<String, BusinessError> {
         let mut connection = lock(&self.connection)?;
-        let pending_approval = sql_query("SELECT approval_id AS value FROM approval_request WHERE session_id=? AND status='pending' LIMIT 1")
+        let pending_approval = sql_query("SELECT approval_id AS value FROM session_approval_request WHERE session_id=? AND status='pending' LIMIT 1")
             .bind::<Text, _>(session_id).get_result::<ValueRow>(&mut *connection).optional().map_err(crate::database_error)?.is_some();
         if pending_approval {
             return Ok("approval".into());

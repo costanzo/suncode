@@ -1,7 +1,7 @@
 //! Diesel table declarations for the current SQLite schema.
 
 diesel::table! {
-    approval_request (approval_id) {
+    session_approval_request (approval_id) {
         approval_id -> Text,
         project_id -> Nullable<Text>,
         session_id -> Text,
@@ -19,7 +19,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    checkpoint (checkpoint_id) {
+    session_checkpoint (checkpoint_id) {
         checkpoint_id -> Text,
         manifest_id -> Nullable<Text>,
         session_id -> Text,
@@ -35,7 +35,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    checkpoint_manifest (manifest_id) {
+    session_checkpoint_manifest (manifest_id) {
         manifest_id -> Text,
         session_id -> Text,
         turn_id -> Nullable<Text>,
@@ -170,7 +170,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    subagent_invocation (invocation_id) {
+    session_subagent_invocation (invocation_id) {
         invocation_id -> Text,
         parent_session_id -> Text,
         parent_turn_id -> Text,
@@ -296,9 +296,9 @@ diesel::table! {
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
-    approval_request,
-    checkpoint,
-    checkpoint_manifest,
+    session_approval_request,
+    session_checkpoint,
+    session_checkpoint_manifest,
     configuration,
     language_server,
     llm_model,
@@ -313,5 +313,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     session_tool_use,
     session_turn,
     session_turn_todo,
-    subagent_invocation,
+    session_subagent_invocation,
 );

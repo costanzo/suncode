@@ -5,9 +5,6 @@ use std::io;
 use std::path::Path;
 
 pub const TABLE_NAMES: &[&str] = &[
-    "approval_request",
-    "checkpoint",
-    "checkpoint_manifest",
     "configuration",
     "language_server",
     "llm_model",
@@ -16,13 +13,16 @@ pub const TABLE_NAMES: &[&str] = &[
     "project",
     "project_dependency",
     "session",
+    "session_approval_request",
     "session_call",
+    "session_checkpoint",
+    "session_checkpoint_manifest",
     "session_image",
     "session_message",
+    "session_subagent_invocation",
     "session_tool_use",
     "session_turn",
     "session_turn_todo",
-    "subagent_invocation",
 ];
 
 const SCHEMA_SCRIPTS: &[&str] = &[

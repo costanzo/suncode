@@ -28,7 +28,7 @@ impl Store {
         let mut c = lock(&self.connection)?;
         let rows=sql_query("SELECT turn_id,session_id,submission_idempotency_key AS key,model_id FROM session_turn WHERE state NOT IN ('completed','failed','cancelled','interrupted') AND (recovery_status IS NULL OR recovery_status NOT IN ('pending','resuming'))").load::<Row>(&mut *c).map_err(crate::database_error)?;
         let timestamp = now();
-        sql_query("UPDATE subagent_invocation SET state='interrupted',error_code='runtime_restarted',completed_at=COALESCE(completed_at,?) WHERE state IN ('created','running')")
+        sql_query("UPDATE session_subagent_invocation SET state='interrupted',error_code='runtime_restarted',completed_at=COALESCE(completed_at,?) WHERE state IN ('created','running')")
             .bind::<Text,_>(&timestamp)
             .execute(&mut *c)
             .map_err(crate::database_error)?;

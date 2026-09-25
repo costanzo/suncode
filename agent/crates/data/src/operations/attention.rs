@@ -64,7 +64,7 @@ impl Store {
              WHERE project.user_id=? AND session.kind='primary' AND turn.state IN ('completed','failed') AND COALESCE(turn.completed_at,turn.updated_at)>=? \
              UNION ALL \
              SELECT 'approval_requested' AS kind,approval.approval_id AS correlation_id,project.project_id,project.display_name AS project_display_name,session.session_id,COALESCE(session.title,'') AS session_title,session.kind AS session_kind,session.parent_session_id,approval.turn_id,approval.created_at AS occurred_at \
-             FROM approval_request AS approval JOIN session ON session.session_id=approval.session_id JOIN project ON project.project_id=session.project_id \
+             FROM session_approval_request AS approval JOIN session ON session.session_id=approval.session_id JOIN project ON project.project_id=session.project_id \
              WHERE project.user_id=? AND approval.status='pending' AND approval.created_at>=? \
              UNION ALL \
              SELECT 'question_asked' AS kind,turn.recovery_approval_id AS correlation_id,project.project_id,project.display_name AS project_display_name,session.session_id,COALESCE(session.title,'') AS session_title,session.kind AS session_kind,session.parent_session_id,turn.turn_id,COALESCE(turn.recovery_created_at,turn.updated_at) AS occurred_at \

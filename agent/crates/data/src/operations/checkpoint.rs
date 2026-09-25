@@ -1,4 +1,4 @@
-//! Operations for `checkpoint`.
+//! Operations for `session_checkpoint`.
 
 use crate::{
     domain::*,
@@ -32,6 +32,6 @@ impl Store {
         manifest_id: &str,
     ) -> Result<Vec<CheckpointItem>, BusinessError> {
         let mut c = lock(&self.connection)?;
-        sql_query("SELECT checkpoint_id,manifest_id,session_id,turn_id,tool_call_id,relative_path,status,created_at,restored_at,invalidated_at,ordinal FROM checkpoint WHERE manifest_id=? ORDER BY ordinal DESC").bind::<Text,_>(manifest_id).load::<CheckpointRow>(&mut *c).map_err(crate::database_error)?.into_iter().map(from_row).collect()
+        sql_query("SELECT checkpoint_id,manifest_id,session_id,turn_id,tool_call_id,relative_path,status,created_at,restored_at,invalidated_at,ordinal FROM session_checkpoint WHERE manifest_id=? ORDER BY ordinal DESC").bind::<Text,_>(manifest_id).load::<CheckpointRow>(&mut *c).map_err(crate::database_error)?.into_iter().map(from_row).collect()
     }
 }

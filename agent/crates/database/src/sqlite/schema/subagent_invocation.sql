@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS subagent_invocation (
+CREATE TABLE IF NOT EXISTS session_subagent_invocation (
     invocation_id TEXT PRIMARY KEY CHECK(length(trim(invocation_id)) > 0),
     parent_session_id TEXT NOT NULL,
     parent_turn_id TEXT NOT NULL,
@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS subagent_invocation (
     completed_at TEXT
 );
 
-CREATE INDEX IF NOT EXISTS subagent_invocation_parent_idx
-    ON subagent_invocation(parent_session_id, created_at DESC, invocation_id);
+CREATE INDEX IF NOT EXISTS session_subagent_invocation_parent_idx
+    ON session_subagent_invocation(parent_session_id, created_at DESC, invocation_id);
 
-CREATE INDEX IF NOT EXISTS subagent_invocation_turn_idx
-    ON subagent_invocation(parent_turn_id, parent_tool_call_id);
+CREATE INDEX IF NOT EXISTS session_subagent_invocation_turn_idx
+    ON session_subagent_invocation(parent_turn_id, parent_tool_call_id);

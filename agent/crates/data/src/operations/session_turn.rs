@@ -332,8 +332,9 @@ impl Store {
             Some("pending") => {
                 let is_question = row
                     .recovery_snapshot_json
-                    .as_deref().and_then(|v| serde_json::from_str::<Value>(v).ok())
-                    .and_then(|v|{
+                    .as_deref()
+                    .and_then(|v| serde_json::from_str::<Value>(v).ok())
+                    .and_then(|v| {
                         v.get("pending_call")
                             .and_then(|c| c.get("name"))
                             .and_then(Value::as_str)
@@ -346,8 +347,8 @@ impl Store {
         };
         let pending_request_id = row.recovery_approval_id.clone();
         let pending_tool_call_id = if let Some(request_id) = pending_request_id.as_deref() {
-            sql_query("SELECT tool_call_id FROM approval_request WHERE approval_id=?")
-                .bind::<Text,_>(request_id)
+            sql_query("SELECT tool_call_id FROM session_approval_request WHERE approval_id=?")
+                .bind::<Text, _>(request_id)
                 .get_result::<ApprovalRow>(&mut *c)
                 .optional()
                 .map_err(crate::database_error)?
@@ -355,9 +356,10 @@ impl Store {
         } else {
             None
         };
-        let (pending_call_id, pending_tool_name) =
-            if let Some(tool_call_id) = pending_tool_call_id.as_deref() {
-                sql_query("SELECT session_call_id,name FROM session_tool_use WHERE turn_id=? AND tool_call_id=?")
+        let (pending_call_id, pending_tool_name) = if let Some(tool_call_id) =
+            pending_tool_call_id.as_deref()
+        {
+            sql_query("SELECT session_call_id,name FROM session_tool_use WHERE turn_id=? AND tool_call_id=?")
                     .bind::<Text,_>(turn_id)
                     .bind::<Text,_>(tool_call_id)
                     .get_result::<ToolUseRow>(&mut *c)
@@ -365,14 +367,14 @@ impl Store {
                     .map_err(crate::database_error)?
                     .map(|r| (r.session_call_id, r.name))
                     .unwrap_or((None, None))
-            } else {
-                (None, None)
-            };
+        } else {
+            (None, None)
+        };
 
         let t = now();
         let changed = business_transaction(&mut c, |c| {
             if let Some(request_id) = pending_request_id.as_deref() {
-                sql_query("UPDATE approval_request SET status='denied', decision='deny', decision_source='user_cancelled', updated_at=? WHERE approval_id=? AND status='pending'")
+                sql_query("UPDATE session_approval_request SET status='denied', decision='deny', decision_source='user_cancelled', updated_at=? WHERE approval_id=? AND status='pending'")
                     .bind::<Text, _>(&t)
                     .bind::<Text, _>(request_id)
                     .execute(c)
@@ -399,7 +401,7 @@ impl Store {
             pending_tool_call_id,
             pending_call_id,
             pending_tool_name,
-            pending_kind
+            pending_kind,
         }))
     }
 }

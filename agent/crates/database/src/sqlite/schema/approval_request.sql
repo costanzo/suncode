@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS approval_request (
+CREATE TABLE IF NOT EXISTS session_approval_request (
     approval_id TEXT PRIMARY KEY CHECK(length(approval_id) > 0),
     project_id TEXT,
     session_id TEXT NOT NULL,
@@ -14,5 +14,5 @@ CREATE TABLE IF NOT EXISTS approval_request (
     updated_at TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS approval_request_session_status_idx
-    ON approval_request(session_id, status, created_at);
+CREATE INDEX IF NOT EXISTS session_approval_request_session_status_idx
+    ON session_approval_request(session_id, status, created_at);

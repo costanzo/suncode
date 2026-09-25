@@ -83,7 +83,7 @@ impl Store {
 }
 
 pub(crate) const EXCHANGE_SELECT: &str = "SELECT call_id,session_id,turn_id,provider,model_id,wire_model,provider_request_id,provider_response_id,state,iteration,started_at,completed_at,input_messages_json,output_message_json,tool_calls_json,usage_json,finish_reason,error_json FROM session_call WHERE session_id=? ORDER BY started_at DESC,call_id DESC";
-pub(crate) const MANIFEST_SELECT: &str = "SELECT manifest_id,session_id,turn_id,status,created_at,updated_at,expires_at,restored_at FROM checkpoint_manifest WHERE session_id=? ORDER BY created_at DESC";
+pub(crate) const MANIFEST_SELECT: &str = "SELECT manifest_id,session_id,turn_id,status,created_at,updated_at,expires_at,restored_at FROM session_checkpoint_manifest WHERE session_id=? ORDER BY created_at DESC";
 
 fn configure(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
     connection
@@ -96,6 +96,7 @@ fn configure(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
 
 fn initialize(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
     business_transaction(connection, |connection| {
+        schema::rename_legacy_session_tables(connection)?;
         for script in sqlite::schema_scripts() {
             connection
                 .batch_execute(script)

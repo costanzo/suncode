@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS checkpoint (
+CREATE TABLE IF NOT EXISTS session_checkpoint (
     checkpoint_id TEXT PRIMARY KEY CHECK(length(checkpoint_id) > 0),
     session_id TEXT NOT NULL,
     turn_id TEXT,
@@ -12,5 +12,5 @@ CREATE TABLE IF NOT EXISTS checkpoint (
     ordinal INTEGER CHECK(ordinal IS NULL OR ordinal >= 0)
 );
 
-CREATE INDEX IF NOT EXISTS checkpoint_manifest_ordinal_idx
-    ON checkpoint(manifest_id, ordinal);
+CREATE INDEX IF NOT EXISTS session_checkpoint_manifest_ordinal_idx
+    ON session_checkpoint(manifest_id, ordinal);
