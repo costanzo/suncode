@@ -44,7 +44,6 @@ internal sealed partial class MergedWorkspaceTabs : UserControl
     {
         if (sender is not Button button || button.DataContext is not MergedProjectTab tab ||
             !e.GetCurrentPoint(button).Properties.IsLeftButtonPressed) return;
-        ProjectSelected?.Invoke(tab.ProjectId);
         _dragButton = button;
         _dragProjectId = tab.ProjectId;
         _dragStart = Avalonia.VisualExtensions.PointToScreen(button, e.GetPosition(button));
@@ -53,7 +52,8 @@ internal sealed partial class MergedWorkspaceTabs : UserControl
 
     private void TabPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (sender is not Button button || !ReferenceEquals(button, _dragButton) || _dragProjectId is null) return;
+        var button = _dragButton;
+        if (button is null || _dragProjectId is null) return;
         var current = Avalonia.VisualExtensions.PointToScreen(button, e.GetPosition(button));
         var deltaX = current.X - _dragStart.X;
         var deltaY = current.Y - _dragStart.Y;
@@ -71,7 +71,6 @@ internal sealed partial class MergedWorkspaceTabs : UserControl
         if (!ReferenceEquals(sender, _dragButton)) return;
         _dragButton = null;
         _dragProjectId = null;
-        e.Pointer.Capture(null);
     }
 }
 

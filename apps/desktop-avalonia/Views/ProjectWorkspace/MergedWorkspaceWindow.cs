@@ -49,11 +49,14 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
     {
         var selected = _tabs.Tabs.FirstOrDefault(item => item.ProjectId == projectId);
         if (selected is null || !_projectWindows.TryGetValue(projectId, out var source)) return;
-        if (_content.Content is ProjectWorkspace previousWorkspace && !ReferenceEquals(previousWorkspace, source.Workspace))
-            previousWorkspace.SetMergedTabs(null);
+        if (!ReferenceEquals(_content.Content, source.Workspace))
+        {
+            if (_content.Content is ProjectWorkspace previousWorkspace)
+                previousWorkspace.SetMergedTabs(null);
+            _content.Content = source.Workspace;
+            source.Workspace.SetMergedTabs(_tabs);
+        }
         _activeProjectId = selected.ProjectId;
-        _content.Content = source.Workspace;
-        source.Workspace.SetMergedTabs(_tabs);
         DataContext = source.DataContext;
         _tabs.Select(projectId);
         UpdateMergedTitle();

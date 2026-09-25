@@ -6,8 +6,8 @@
     <Style Selector="Button.merged-project-tab">
       <Setter Property="MinWidth" Value="120" />
       <Setter Property="MaxWidth" Value="240" />
-      <Setter Property="Height" Value="26" />
-      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="MinHeight" Value="30" />
       <Setter Property="Padding" Value="12,0" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
@@ -44,7 +44,7 @@
     </Style>
   </UserControl.Styles>
 
-  <Border Height="30"
+  <Border Height="34"
           Margin="34,0"
           Background="Transparent"
           BorderBrush="Transparent"

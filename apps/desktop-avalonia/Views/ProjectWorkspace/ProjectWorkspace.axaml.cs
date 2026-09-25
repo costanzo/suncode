@@ -43,9 +43,11 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal void SetMergedTabs(Control? tabs)
     {
+        var isVisible = tabs is not null;
+        if (ReferenceEquals(ProjectTabsHost.Child, tabs) && ProjectTabsHost.IsVisible == isVisible) return;
         ProjectTabsHost.Child = tabs;
         ProjectTabsHost.Height = tabs is null ? 0 : 38;
-        ProjectTabsHost.IsVisible = tabs is not null;
+        ProjectTabsHost.IsVisible = isVisible;
     }
 
     internal void ClampGitViewerHeight()
