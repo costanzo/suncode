@@ -332,26 +332,30 @@ public sealed partial class ChatInput : UserControl
         e.DragEffects = DragDropEffects.Copy;
         e.Handled = true;
 
-        foreach (var file in files.Take(MaxAttachments - ViewModel.ComposerAttachments.Count))
+        if (TryGetExplorerPayload(e.DataTransfer, out var payload) && payload is not null)
         {
-            try
+            if (IsImageName(payload.Name))
             {
-                var localPath = file.TryGetLocalPath();
-                await using var stream = await file.OpenReadAsync();
-                var bytes = await ReadImageBytesAsync(stream);
-                var thumbnail = await Task.Run(() => CreateThumbnailBytes(bytes));
-                var extension = ExtensionFromName(file.Name);
-                await ViewModel.AddSessionImageAsync(
-                    file.Name,
-                    "file",
-                    localPath,
-                    extension,
-                    bytes,
-                    thumbnail);
+                await AddImageFromPathAsync(payload.Name, payload.Path, payload.DependencyId);
             }
-            catch (Exception exception)
+            else
             {
-                ViewModel.ReportPresentationError($"Could not load image '{file.Name}': {exception.Message}");
+                InsertExplorerMention(payload);
+            }
+
+            return;
+        }
+        
+        // OS file drop
+        foreach (var file in files)
+        {
+            if (!IsImageName(file.Name))
+            {
+                await AddImageFromFileAsync(file);
+            }
+            else if (file.TryGetLocalPath() is { Length: > 0 } localPath)
+            {
+                InsertLocalFileMention(localPath);
             }
         }
     }
@@ -359,16 +363,120 @@ public sealed partial class ChatInput : UserControl
     private bool CanAcceptDrop(IDataTransfer data, out IReadOnlyList<IStorageFile> files)
     {
         files = Array.Empty<IStorageFile>();
-        if (!ViewModel.CanAttachImages || !data.Contains(DataFormat.File)) return false;
 
+        if (TryGetExplorerPayload(data, out _))
+        {
+            return true;
+        }
+
+        if (!data.Contains(DataFormat.File)) return false;
         var items = data.TryGetFiles();
         if (items is null || items.Length == 0) return false;
-
-        var images = items.OfType<IStorageFile>().Where(file => IsImageName(file.Name)).ToList();
-        if (images.Count == 0) return false;
         
-        files = images;
+        var hasImage = items.OfType<IStorageFile>().Any(file => IsImageName(file.Name));
+        var hasMentionable = items.OfType<IStorageFile>().Any(file => !IsImageName(file.Name) && !string.IsNullOrWhiteSpace(file.TryGetLocalPath()));
+        
+        if (hasImage && !ViewModel.CanAttachImages) return false;
+        if (!hasImage && !hasMentionable) return false;
+        if (!hasImage && !ViewModel.CanCompose) return false;
+
+        files = items.OfType<IStorageFile>().ToArray();
         return true;
+    }
+
+    private static bool TryGetExplorerPayload(IDataTransfer data, out ExplorerDragPayload? payload)
+    {
+        payload = null;
+        if (!data.Contains(DataFormat.Text)) return false;
+        var text = data.TryGetValue(DataFormat.Text);
+        payload = ExplorerDragPayload.Deserialize(text);
+        return payload is not null;
+    }
+
+    private void InsertExplorerMention(ExplorerDragPayload payload)
+    {
+        if (!ViewModel.CanCompose) return;
+        var node = new ExplorerNode(payload.Name, payload.Path, payload.Kind, payload.DependencyId);
+        InsertTokenAtCaret(ComposerMentionEngine.FormatExplorerReference(node));
+    }
+    
+    private void InsertLocalFileMention(string localPath)
+    {
+        if (!ViewModel.CanCompose) return;
+        InsertTokenAtCaret(ComposerMentionEngine.FormatLocalReference(ViewModel.SelectedProject?.CanonicalRoot, localPath));
+    }
+
+    private void InsertTokenAtCaret(string token)
+    {
+        var current = ComposerInput.Text ?? string.Empty;
+        var caret = ComposerInput.CaretIndex;
+        var prefix = caret > 0 && caret <= current.Length && !IsBoundarySeparator(current, caret - 1)
+            ? " "
+            : string.Empty;
+        var suffix = caret < current.Length && !IsBoundarySeparator(current, caret) ? " " : string.Empty;
+        var inserted = prefix + token + suffix;
+        var next = current.Insert(caret, inserted);
+        ComposerInput.Text = next;
+        ComposerInput.CaretIndex = caret + inserted.Length;
+        ViewModel.ComposerText = next;
+        ComposerInput.Focus();
+    }
+    
+    private static bool IsBoundarySeparator(string text, int index) =>
+        index < 0 || index >= text.Length || text[index] is ' ' or '\t' or '\n' or '\r';
+
+    private async Task AddImageFromFileAsync(IStorageFile file)
+    {
+        if (!ViewModel.CanAttachImages || ViewModel.ComposerAttachments.Count >= MaxAttachments) return;
+        try
+        {
+            var localPath = file.TryGetLocalPath();
+            await using var stream = await file.OpenReadAsync();
+            var bytes = await ReadImageBytesAsync(stream);
+            var thumbnail = await Task.Run(() => CreateThumbnailBytes(bytes));
+            var extension = ExtensionFromName(file.Name);
+            await ViewModel.AddSessionImageAsync(
+                file.Name,
+                "file",
+                localPath,
+                extension,
+                bytes,
+                thumbnail);
+        }
+        catch (Exception exception)
+        {
+            ViewModel.ReportPresentationError($"Could not load image '{file.Name}': {exception.Message}");
+        }
+    }
+    
+    private async Task AddImageFromPathAsync(string name, string relativePath, string? dependencyId)
+    {
+        if (!ViewModel.CanAttachImages || ViewModel.ComposerAttachments.Count >= MaxAttachments) return;
+        if (dependencyId is not null) return;
+        var root = ViewModel.SelectedProject?.CanonicalRoot;
+        if (string.IsNullOrWhiteSpace(root)) return;
+        var absolute = System.IO.Path.Combine(root, relativePath == "." ? string.Empty : relativePath);
+        var absolutePath = System.IO.Path.GetFullPath(absolute);
+        if (!System.IO.File.Exists(absolutePath)) return;
+
+        try
+        {
+            await using var stream = System.IO.File.OpenRead(absolutePath);
+            var bytes = await ReadImageBytesAsync(stream);
+            var thumbnail = await Task.Run(() => CreateThumbnailBytes(bytes));
+            var extension = ExtensionFromName(name);
+            await ViewModel.AddSessionImageAsync(
+                name,
+                "file",
+                absolutePath,
+                extension,
+                bytes,
+                thumbnail);
+        }
+        catch (Exception exception)
+        {
+            ViewModel.ReportPresentationError($"Could not load image '{name}': {exception.Message}");
+        }
     }
 
     private void RebindViewModelSubscriptions()
