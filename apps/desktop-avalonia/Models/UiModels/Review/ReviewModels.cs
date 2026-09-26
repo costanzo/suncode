@@ -39,8 +39,8 @@ public sealed record ProviderTraceItem(
     public string TurnText => $"turn {Short(TurnId)}";
     public string IdentifierText => Short(ExchangeId);
     public string TokenSummary => TotalTokens is { } total
-        ? $"{Compact(total)} tokens"
-        : "usage not reported";
+        ? $"{Compact(total)}"
+        : "N/A";
     public string UsageSummary => string.Join("  ",
         new[]
         {
