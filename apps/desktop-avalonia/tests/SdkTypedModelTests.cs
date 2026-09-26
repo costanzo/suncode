@@ -292,5 +292,16 @@ public sealed class SdkTypedModelTests
         Assert.Equal(3, agentEvent.Payload.ToolCalls?.GetInt32());
         Assert.Equal(100, agentEvent.Payload.OriginalCharacters);
         Assert.Equal(4, agentEvent.Payload.DroppedMessages);
+
+        const string transferJson = """
+            {"session_id":"session-1","occurred_at":"now","event_type":"provider.exchange.progress","payload":{"turn_id":"turn-1","exchange_id":"exchange-1","provider":"openai","model_id":"gpt-test","uploaded_bytes":1234,"downloaded_bytes":5678}}
+            """;
+        var transferEvent = JsonSerializer.Deserialize<AgentEvent>(transferJson, Options);
+
+        Assert.NotNull(transferEvent);
+        Assert.Equal("provider.exchange.progress", transferEvent.EventType);
+        Assert.Equal("exchange-1", transferEvent.Payload.ExchangeId);
+        Assert.Equal((ulong)1234, transferEvent.Payload.UploadedBytes);
+        Assert.Equal((ulong)5678, transferEvent.Payload.DownloadedBytes);
     }
 }

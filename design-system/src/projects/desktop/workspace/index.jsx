@@ -101,6 +101,34 @@ export function WorkspacePage() {
           </div>
         </div>
       </Section>
+      <Section
+        id="workspace-provider-traffic"
+        title="Provider transfer status"
+        description="Live HTTP body transfer rates for active LLM requests in the current session."
+      >
+        <div className="workspace-mcp-specimen-grid">
+          <div className="workspace-mcp-specimen">
+            <div className="workspace-mcp-specimen-label">
+              <strong>Active exchange</strong>
+              <span>Rates use provider request and response body bytes.</span>
+            </div>
+            <div className="workspace-mcp-specimen-footer workspace-provider-traffic-specimen" title="OpenAI / gpt-5.6-sol: 12.4 KiB uploaded, 84.2 KiB downloaded">
+              <span>↑ 12.4 KiB/s&nbsp;&nbsp; ↓ 84.2 KiB/s</span>
+              <code>gpt-5.6-sol</code>
+            </div>
+          </div>
+          <div className="workspace-mcp-specimen">
+            <div className="workspace-mcp-specimen-label">
+              <strong>Idle</strong>
+              <span>Zero rates stay visible between provider exchanges.</span>
+            </div>
+            <div className="workspace-mcp-specimen-footer is-complete">
+              <span className="workspace-provider-traffic-zero">↑ 0 B/s&nbsp;&nbsp; ↓ 0 B/s</span>
+              <code>gpt-5.6-sol</code>
+            </div>
+          </div>
+        </div>
+      </Section>
     </>
   );
 }

@@ -1,6 +1,6 @@
 use crate::{
     normalize::{cancelled, wire_message},
-    stream::SseParser,
+    stream::{tracked_json_body, SseParser},
     ApiKeyResolver, BusinessError, Completion, CompletionFuture, CompletionRequest, LlmProvider,
 };
 use futures_util::StreamExt;
@@ -216,10 +216,12 @@ impl OpenAiCompatibleProvider {
                 serde_json::to_string(&body).unwrap_or_default()
             ),
         );
+        let transfer_progress = request.transfer_progress.clone();
+        let request_body = tracked_json_body(&body, transfer_progress.clone())?;
         let client = self.client()?;
         let response = tokio::select! {
             _ = cancellation.cancelled() => return Err(cancelled()),
-            value = client.post(format!("{}/chat/completions", self.endpoint)).bearer_auth(key).json(&body).send() => value.map_err(|error| BusinessError::provider(
+            value = client.post(format!("{}/chat/completions", self.endpoint)).bearer_auth(key).header(reqwest::header::CONTENT_TYPE, "application/json").body(request_body).send() => value.map_err(|error| BusinessError::provider(
                 "transient",
                 format!("{} request failed: {error}", self.provider_label),
                 true,
@@ -236,7 +238,17 @@ impl OpenAiCompatibleProvider {
         });
         if !response.status().is_success() {
             let status = response.status();
-            let response_body = response.text().await.unwrap_or_default();
+            let mut response_body = Vec::new();
+            let mut response_stream = response.bytes_stream();
+            while let Some(chunk) = response_stream.next().await {
+                let Ok(chunk) = chunk else { break };
+                let _ = transfer_progress.send(crate::TransferProgressDelta {
+                    uploaded_bytes: 0,
+                    downloaded_bytes: chunk.len() as u64,
+                });
+                response_body.extend_from_slice(&chunk);
+            }
+            let response_body = String::from_utf8_lossy(&response_body).into_owned();
             logging::error(
                 "llm",
                 format!(
@@ -291,6 +303,10 @@ impl OpenAiCompatibleProvider {
                     provider_request_id.clone(),
                 )
             })?;
+            let _ = transfer_progress.send(crate::TransferProgressDelta {
+                uploaded_bytes: 0,
+                downloaded_bytes: chunk.len() as u64,
+            });
             let parsed = parser.push(&chunk).map_err(|mut error| {
                 error.provider_request_id = provider_request_id.clone();
                 error
@@ -353,7 +369,10 @@ impl LlmProvider for OpenAiCompatibleProvider {
 #[cfg(test)]
 mod tests {
     use super::OpenAiCompatibleProvider;
-    use crate::{ApiKeyResolver, CompletionRequest, LlmProvider, Message, ToolDefinition};
+    use crate::{
+        ApiKeyResolver, CompletionRequest, LlmProvider, Message, ToolDefinition,
+        TransferProgressDelta,
+    };
     use axum::{
         body::Bytes,
         http::{header, HeaderMap},
@@ -429,6 +448,7 @@ mod tests {
             parameters: json!({"type": "object"}),
         }];
         let (sender, mut receiver) = mpsc::unbounded_channel();
+        let (transfer_sender, mut transfer_receiver) = mpsc::unbounded_channel();
         let result = provider
             .complete(
                 CompletionRequest {
@@ -438,6 +458,7 @@ mod tests {
                     client_toolsets: &[],
                     reasoning_effort: Some("high"),
                     max_output_tokens: Some(4096),
+                    transfer_progress: transfer_sender,
                 },
                 &CancellationToken::new(),
                 sender,
@@ -457,6 +478,14 @@ mod tests {
         assert_eq!(usage.cache_write_tokens, None);
         assert_eq!(usage.reasoning_tokens, None);
         assert_eq!(receiver.recv().await.as_deref(), Some("hello"));
+        let mut uploaded = 0_u64;
+        let mut downloaded = 0_u64;
+        while let Ok(progress) = transfer_receiver.try_recv() {
+            uploaded += progress.uploaded_bytes;
+            downloaded += progress.downloaded_bytes;
+        }
+        assert!(uploaded > 0);
+        assert!(downloaded > 0);
         server.abort();
     }
 
@@ -506,6 +535,8 @@ mod tests {
         let messages = vec![Message::text("user", "hello")];
         let tools = Vec::<ToolDefinition>::new();
         let (sender, _receiver) = mpsc::unbounded_channel();
+        let (transfer_sender, _transfer_receiver) =
+            mpsc::unbounded_channel::<TransferProgressDelta>();
         let result = provider
             .complete(
                 CompletionRequest {
@@ -515,6 +546,7 @@ mod tests {
                     client_toolsets: &[],
                     reasoning_effort: None,
                     max_output_tokens: None,
+                    transfer_progress: transfer_sender,
                 },
                 &CancellationToken::new(),
                 sender,

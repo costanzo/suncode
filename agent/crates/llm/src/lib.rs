@@ -14,5 +14,5 @@ pub use suncode_common::BusinessError;
 pub use types::{
     ApiKeyResolver, ClientToolsetDefinition, Completion, CompletionFuture, CompletionRequest,
     ContentPart, LlmProvider, Message, ModelCapabilities, ModelDescriptor, ModelLimits, ToolCall,
-    ToolDefinition, Usage,
+    ToolDefinition, TransferProgressDelta, Usage,
 };

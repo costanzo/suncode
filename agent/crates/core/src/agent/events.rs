@@ -18,6 +18,7 @@ pub enum EventType {
     UsageUpdated,
     ContextCompacted,
     ProviderExchangeStarted,
+    ProviderExchangeProgress,
     ProviderExchangeCompleted,
     ProviderExchangeFailed,
     ApprovalRequested,
@@ -62,6 +63,7 @@ impl EventType {
             Self::UsageUpdated => "usage.updated",
             Self::ContextCompacted => "context.compacted",
             Self::ProviderExchangeStarted => "provider.exchange.started",
+            Self::ProviderExchangeProgress => "provider.exchange.progress",
             Self::ProviderExchangeCompleted => "provider.exchange.completed",
             Self::ProviderExchangeFailed => "provider.exchange.failed",
             Self::ApprovalRequested => "approval.requested",
@@ -100,6 +102,7 @@ payload!(UsageUpdatedPayload { pub turn_id: String, pub usage: Usage, });
 payload!(ContextSummaryPayload { pub objective: String, pub important_constraints: Vec<String>, pub completed_work: Vec<String>, pub active_work: Vec<String>, pub blockers: Vec<String>, pub next_action: String, });
 payload!(ContextCompactedPayload { pub exchange_id: String, pub turn_id: String, pub provider: String, pub model_id: String, pub wire_model: String, pub iteration: u32, pub started_at: String, pub original_characters: usize, pub retained_characters: usize, pub original_tokens: usize, pub retained_tokens: usize, pub dropped_messages: usize, pub summary: Option<ContextSummaryPayload>, });
 payload!(ProviderExchangeStartedPayload { pub exchange_id: String, pub turn_id: String, pub provider: String, pub model_id: String, pub wire_model: String, pub iteration: u32, pub input_messages: Vec<suncode_llm::Message>, });
+payload!(ProviderExchangeProgressPayload { pub exchange_id: String, pub turn_id: String, pub provider: String, pub model_id: String, pub uploaded_bytes: u64, pub downloaded_bytes: u64, });
 payload!(ProviderErrorPayload { pub code: String, pub message: String, pub retryable: bool, });
 payload!(ProviderExchangeFailedPayload { pub exchange_id: String, pub turn_id: String, pub error: ProviderErrorPayload, pub provider_request_id: Option<String>, });
 payload!(ProviderExchangeCompletedPayload { pub exchange_id: String, pub turn_id: String, pub output_message: Message, pub tool_calls: Vec<ToolCall>, pub usage: Option<suncode_llm::Usage>, pub provider_request_id: Option<String>, pub provider_response_id: Option<String>, pub finish_reason: String, });
@@ -131,6 +134,7 @@ pub enum EventPayload {
     UsageUpdated(UsageUpdatedPayload),
     ContextCompacted(ContextCompactedPayload),
     ProviderExchangeStarted(ProviderExchangeStartedPayload),
+    ProviderExchangeProgress(ProviderExchangeProgressPayload),
     ProviderExchangeCompleted(ProviderExchangeCompletedPayload),
     ProviderExchangeFailed(ProviderExchangeFailedPayload),
     ApprovalRequested(ApprovalRequestedPayload),
@@ -162,6 +166,7 @@ impl EventPayload {
             Self::UsageUpdated(_) => EventType::UsageUpdated,
             Self::ContextCompacted(_) => EventType::ContextCompacted,
             Self::ProviderExchangeStarted(_) => EventType::ProviderExchangeStarted,
+            Self::ProviderExchangeProgress(_) => EventType::ProviderExchangeProgress,
             Self::ProviderExchangeCompleted(_) => EventType::ProviderExchangeCompleted,
             Self::ProviderExchangeFailed(_) => EventType::ProviderExchangeFailed,
             Self::ApprovalRequested(_) => EventType::ApprovalRequested,
@@ -198,6 +203,7 @@ impl EventPayload {
             Self::UsageUpdated(v) => serialize!(v),
             Self::ContextCompacted(v) => serialize!(v),
             Self::ProviderExchangeStarted(v) => serialize!(v),
+            Self::ProviderExchangeProgress(v) => serialize!(v),
             Self::ProviderExchangeCompleted(v) => serialize!(v),
             Self::ProviderExchangeFailed(v) => serialize!(v),
             Self::ApprovalRequested(v) => serialize!(v),
@@ -231,5 +237,18 @@ mod tests {
         let payload = event.into_value();
         assert_eq!(payload["turn_id"], "turn-1");
         assert!(payload["reason"].is_null());
+
+        let progress = EventPayload::ProviderExchangeProgress(ProviderExchangeProgressPayload {
+            exchange_id: "exchange-1".into(),
+            turn_id: "turn-1".into(),
+            provider: "openai".into(),
+            model_id: "gpt-test".into(),
+            uploaded_bytes: 12,
+            downloaded_bytes: 34,
+        });
+        assert_eq!(progress.event_type().as_str(), "provider.exchange.progress");
+        let payload = progress.into_value();
+        assert_eq!(payload["uploaded_bytes"], 12);
+        assert_eq!(payload["downloaded_bytes"], 34);
     }
 }

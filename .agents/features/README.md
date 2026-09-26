@@ -17,3 +17,4 @@ Do not duplicate architecture, protocol, or migration history here.
 - [`rust-core-phase-1/`](rust-core-phase-1/README.md): audited filesystem, search, Git, process, artifact, checkpoint, and WebFetch operations.
 - [`persistence-phase-1/`](persistence-phase-1/README.md): current SQLite ownership, normalized storage model, and native SDK boundary.
 - [`avalonia-desktop-phase-1/`](avalonia-desktop-phase-1/README.md): implemented .NET 10 Avalonia workflows and client boundary.
+- [`provider-transfer-status/`](provider-transfer-status/README.md): transient provider HTTP body byte rates in the Workspace footer.

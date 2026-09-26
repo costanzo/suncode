@@ -106,6 +106,12 @@ impl Agent {
             )?;
             let result = {
                 let (delta_sender, mut delta_receiver) = mpsc::unbounded_channel();
+                let (transfer_sender, mut transfer_receiver) = mpsc::unbounded_channel();
+                let mut uploaded_bytes = 0_u64;
+                let mut downloaded_bytes = 0_u64;
+                let mut published_transfer = (0_u64, 0_u64);
+                let mut transfer_tick = tokio::time::interval(Duration::from_millis(100));
+                transfer_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
                 let mut tool_definitions = suncode_tool::definitions::all()
                     .into_iter()
                     .map(|definition| suncode_llm::ToolDefinition {
@@ -137,6 +143,7 @@ impl Agent {
                             .providers
                             .limits(&context.model)
                             .and_then(|limits| limits.max_output_tokens),
+                        transfer_progress: transfer_sender,
                     },
                     &token,
                     delta_sender,
@@ -148,6 +155,23 @@ impl Agent {
                         Some(delta) = delta_receiver.recv() => {
                             self.emit_live(&context.session_id, EventPayload::AssistantDelta(AssistantDeltaPayload { turn_id: context.turn_id.clone(), text: delta }));
                         }
+                        Some(progress) = transfer_receiver.recv() => {
+                            uploaded_bytes = uploaded_bytes.saturating_add(progress.uploaded_bytes);
+                            downloaded_bytes = downloaded_bytes.saturating_add(progress.downloaded_bytes);
+                        }
+                        _ = transfer_tick.tick() => {
+                            if published_transfer != (uploaded_bytes, downloaded_bytes) {
+                                self.emit_live(&context.session_id, EventPayload::ProviderExchangeProgress(ProviderExchangeProgressPayload {
+                                    exchange_id: exchange_id.clone(),
+                                    turn_id: context.turn_id.clone(),
+                                    provider: provider.provider_id.clone(),
+                                    model_id: context.model.clone(),
+                                    uploaded_bytes,
+                                    downloaded_bytes,
+                                }));
+                                published_transfer = (uploaded_bytes, downloaded_bytes);
+                            }
+                        }
                     }
                 };
                 while let Ok(delta) = delta_receiver.try_recv() {
@@ -155,6 +179,20 @@ impl Agent {
                         &context.session_id,
                         EventPayload::AssistantDelta(AssistantDeltaPayload { turn_id: context.turn_id.clone(), text: delta }),
                     );
+                }
+                while let Ok(progress) = transfer_receiver.try_recv() {
+                    uploaded_bytes = uploaded_bytes.saturating_add(progress.uploaded_bytes);
+                    downloaded_bytes = downloaded_bytes.saturating_add(progress.downloaded_bytes);
+                }
+                if published_transfer != (uploaded_bytes, downloaded_bytes) {
+                    self.emit_live(&context.session_id, EventPayload::ProviderExchangeProgress(ProviderExchangeProgressPayload {
+                        exchange_id: exchange_id.clone(),
+                        turn_id: context.turn_id.clone(),
+                        provider: provider.provider_id.clone(),
+                        model_id: context.model.clone(),
+                        uploaded_bytes,
+                        downloaded_bytes,
+                    }));
                 }
                 result
             };

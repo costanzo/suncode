@@ -1,8 +1,11 @@
+use crate::stream::tracked_json_body;
 use crate::{
     ApiKeyResolver, BusinessError, Completion, CompletionFuture, CompletionRequest, ContentPart,
     LlmProvider, Message, ToolCall, Usage,
 };
 use base64::{engine::general_purpose::STANDARD, Engine as _};
+use bytes::BytesMut;
+use futures_util::StreamExt;
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -134,13 +137,16 @@ impl AnthropicProvider {
         if let Some(effort) = request.reasoning_effort {
             body["output_config"] = json!({"effort": effort});
         }
+        let transfer_progress = request.transfer_progress.clone();
+        let request_body = tracked_json_body(&body, transfer_progress.clone())?;
 
         let response = tokio::select! {
             _ = cancellation.cancelled() => return Err(cancelled()),
             value = self.client()?.post(format!("{}/messages", self.endpoint))
                 .header("x-api-key", key)
                 .header("anthropic-version", ANTHROPIC_VERSION)
-                .json(&body)
+                .header(reqwest::header::CONTENT_TYPE, "application/json")
+                .body(request_body)
                 .send() => value.map_err(|error| BusinessError::provider(
                     "transient",
                     format!("{} request failed: {error}", self.provider_label),
@@ -158,9 +164,17 @@ impl AnthropicProvider {
         });
         if !response.status().is_success() {
             let status = response.status();
-            let message = response
-                .json::<Value>()
-                .await
+            let mut stream = response.bytes_stream();
+            let mut response_body = BytesMut::new();
+            while let Some(chunk) = stream.next().await {
+                let Ok(chunk) = chunk else { break };
+                let _ = transfer_progress.send(crate::TransferProgressDelta {
+                    uploaded_bytes: 0,
+                    downloaded_bytes: chunk.len() as u64,
+                });
+                response_body.extend_from_slice(&chunk);
+            }
+            let message = serde_json::from_slice::<Value>(&response_body)
                 .ok()
                 .and_then(|value| {
                     value
@@ -188,15 +202,36 @@ impl AnthropicProvider {
                 provider_request_id,
             ));
         }
-        let value = tokio::select! {
-            _ = cancellation.cancelled() => return Err(cancelled()),
-            value = response.json::<Value>() => value.map_err(|error| BusinessError::provider(
+        let mut stream = response.bytes_stream();
+        let mut response_body = BytesMut::new();
+        loop {
+            let chunk = tokio::select! {
+                _ = cancellation.cancelled() => return Err(cancelled()),
+                value = stream.next() => value,
+            };
+            let Some(chunk) = chunk else { break };
+            let chunk = chunk.map_err(|error| {
+                BusinessError::provider(
+                    "provider_protocol",
+                    format!("{} response stream failed: {error}", self.provider_label),
+                    true,
+                    provider_request_id.clone(),
+                )
+            })?;
+            let _ = transfer_progress.send(crate::TransferProgressDelta {
+                uploaded_bytes: 0,
+                downloaded_bytes: chunk.len() as u64,
+            });
+            response_body.extend_from_slice(&chunk);
+        }
+        let value = serde_json::from_slice::<Value>(&response_body).map_err(|error| {
+            BusinessError::provider(
                 "provider_protocol",
                 format!("{} response was invalid: {error}", self.provider_label),
                 false,
                 provider_request_id.clone(),
-            ))?,
-        };
+            )
+        })?;
         parse_completion(value, provider_request_id, &deltas)
     }
 }
@@ -467,6 +502,91 @@ fn cancelled() -> BusinessError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::{
+        body::Bytes, extract::Json, http::HeaderMap, response::IntoResponse, routing::post, Router,
+    };
+    use std::sync::atomic::AtomicBool;
+
+    struct TestKeys;
+
+    impl ApiKeyResolver for TestKeys {
+        fn api_key(&self, provider_id: &str) -> Option<String> {
+            (provider_id == "anthropic").then(|| "anthropic-test-key".into())
+        }
+    }
+
+    async fn mock_messages(headers: HeaderMap, body: Bytes) -> impl IntoResponse {
+        assert_eq!(
+            headers
+                .get("x-api-key")
+                .and_then(|value| value.to_str().ok()),
+            Some("anthropic-test-key")
+        );
+        let body: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["model"], "claude-test");
+        (
+            [("request-id", "anthropic-request-1")],
+            Json(json!({
+                "id":"msg_test",
+                "content":[{"type":"text","text":"hello"}],
+                "stop_reason":"end_turn",
+                "usage":{"input_tokens":2,"output_tokens":1}
+            })),
+        )
+    }
+
+    #[tokio::test]
+    async fn reports_upload_and_download_body_bytes() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            axum::serve(
+                listener,
+                Router::new().route("/messages", post(mock_messages)),
+            )
+            .await
+            .unwrap();
+        });
+        let provider = AnthropicProvider::new_with_network_configuration(
+            "anthropic",
+            "Anthropic",
+            format!("http://{address}"),
+            Arc::new(TestKeys),
+            Arc::new(AtomicBool::new(true)),
+            Arc::new(AtomicBool::new(true)),
+            Arc::new(RwLock::new(None)),
+            Arc::new(RwLock::new(HttpProxyConfiguration::default())),
+        );
+        let messages = vec![Message::text("user", "hello")];
+        let (delta_sender, _delta_receiver) = mpsc::unbounded_channel();
+        let (transfer_sender, mut transfer_receiver) = mpsc::unbounded_channel();
+        let result = provider
+            .complete(
+                CompletionRequest {
+                    messages: &messages,
+                    wire_model: "claude-test",
+                    tools: &[],
+                    client_toolsets: &[],
+                    reasoning_effort: None,
+                    max_output_tokens: Some(1024),
+                    transfer_progress: transfer_sender,
+                },
+                &CancellationToken::new(),
+                delta_sender,
+            )
+            .await
+            .unwrap();
+        assert_eq!(result.text, "hello");
+        let mut uploaded = 0_u64;
+        let mut downloaded = 0_u64;
+        while let Ok(progress) = transfer_receiver.try_recv() {
+            uploaded += progress.uploaded_bytes;
+            downloaded += progress.downloaded_bytes;
+        }
+        assert!(uploaded > 0);
+        assert!(downloaded > 0);
+        server.abort();
+    }
 
     #[test]
     fn preserves_computer_toolset_identity_and_image_results() {

@@ -232,6 +232,7 @@
             </StackPanel>
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsProjectOpen}" VerticalAlignment="Center" Height="20">
+            <TextBlock Text="{Binding ProviderTrafficText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsProviderTrafficVisible}" ToolTip.Tip="{Binding ProviderTrafficDetails}" AutomationProperties.Name="{Binding ProviderTrafficDetails}" />
             <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding IsMcpLoading}" Height="20" VerticalAlignment="Center" ToolTip.Tip="{Binding McpLoadDetails}">
               <svg:Svg Width="11" Height="11" Path="/Assets/icons/server.svg" Css="{DynamicResource IconSvgCss}" />
               <TextBlock Text="{Binding McpLoadText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding WorkspaceStatusDetailsVisible}" />

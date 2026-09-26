@@ -125,6 +125,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ActiveTurnId = string.Empty;
         ActiveTurnState = string.Empty;
         UpdateActiveTurnTiming(string.Empty, null);
+        ClearProviderTraffic();
         if (clearSelection) SelectedSession = null;
         OnPropertyChanged(nameof(HasActivities));
         OnPropertyChanged(nameof(HasCheckpoints));
@@ -448,6 +449,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         _disposed = true;
         _conversationDurationTimer.Stop();
         _conversationDurationTimer.Tick -= ConversationDurationTick;
+        ClearProviderTraffic();
         Interlocked.Increment(ref _sessionLoadVersion);
         CloseSubscription();
         DisposeMessages();

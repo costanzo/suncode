@@ -1,6 +1,35 @@
-use crate::{BusinessError, Completion, ToolCall, Usage};
+use crate::{BusinessError, Completion, ToolCall, TransferProgressDelta, Usage};
+use bytes::Bytes;
+use futures_util::stream;
 use serde_json::Value;
 use std::collections::BTreeMap;
+use tokio::sync::mpsc;
+
+const REQUEST_CHUNK_BYTES: usize = 16 * 1024;
+
+pub fn tracked_json_body(
+    value: &Value,
+    progress: mpsc::UnboundedSender<TransferProgressDelta>,
+) -> Result<reqwest::Body, BusinessError> {
+    let bytes = Bytes::from(serde_json::to_vec(value).map_err(|error| {
+        BusinessError::new(
+            "provider_protocol",
+            format!("request serialization failed: {error}"),
+        )
+    })?);
+    let chunks = (0..bytes.len())
+        .step_by(REQUEST_CHUNK_BYTES)
+        .map(|start| bytes.slice(start..(start + REQUEST_CHUNK_BYTES).min(bytes.len())))
+        .collect::<Vec<_>>();
+    let body = stream::iter(chunks.into_iter().map(move |chunk| {
+        let _ = progress.send(TransferProgressDelta {
+            uploaded_bytes: chunk.len() as u64,
+            downloaded_bytes: 0,
+        });
+        Ok::<_, std::io::Error>(chunk)
+    }));
+    Ok(reqwest::Body::wrap_stream(body))
+}
 
 pub struct SseParser {
     provider_label: String,

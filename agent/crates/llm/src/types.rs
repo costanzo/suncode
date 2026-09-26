@@ -128,6 +128,13 @@ pub struct CompletionRequest<'a> {
     pub client_toolsets: &'a [ClientToolsetDefinition],
     pub reasoning_effort: Option<&'a str>,
     pub max_output_tokens: Option<u64>,
+    pub transfer_progress: mpsc::UnboundedSender<TransferProgressDelta>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TransferProgressDelta {
+    pub uploaded_bytes: u64,
+    pub downloaded_bytes: u64,
 }
 
 pub type CompletionFuture<'a> =
