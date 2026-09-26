@@ -104,7 +104,7 @@ export function WorkspacePage() {
       <Section
         id="workspace-provider-traffic"
         title="Provider transfer status"
-        description="Live HTTP body transfer rates for active LLM requests in the current session."
+        description="Live HTTP body transfer rates for active LLM requests, refreshed every second using a one-second averaging interval."
       >
         <div className="workspace-mcp-specimen-grid">
           <div className="workspace-mcp-specimen">

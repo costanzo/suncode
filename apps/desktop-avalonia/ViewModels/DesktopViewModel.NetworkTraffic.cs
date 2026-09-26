@@ -5,7 +5,7 @@ namespace SunCode.Desktop.ViewModels;
 
 public sealed partial class DesktopViewModel
 {
-    private readonly DispatcherTimer _providerTrafficTimer = new() { Interval = TimeSpan.FromSeconds(3) };
+    private readonly DispatcherTimer _providerTrafficTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly Dictionary<string, ProviderTransferState> _providerTransfers = new(StringComparer.Ordinal);
     private DateTimeOffset _providerTrafficSampleAt;
     private ulong _providerUploadSampleBytes;

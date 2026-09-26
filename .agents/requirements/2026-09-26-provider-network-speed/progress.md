@@ -21,5 +21,9 @@
 
 - Requirement initialized after user approved design and development.
 - Implemented provider body-byte accounting, transient SDK events, and Workspace footer rates.
-- Updated the footer to persistent arrow indicators with three-second average rates and visible zero values while idle.
+- Updated the footer to persistent arrow indicators with one-second average rates and visible zero values while idle.
 - Verified Rust tests, .NET tests, design-system build, Rust formatting, and `git diff --check`.
+
+### 2026-09-26 follow-up
+
+- Changed provider traffic sampling and footer refresh from three seconds to one second; rates now represent bytes per second over each one-second interval.

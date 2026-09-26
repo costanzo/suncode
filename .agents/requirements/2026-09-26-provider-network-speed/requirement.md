@@ -6,7 +6,7 @@ The Avalonia project Workspace footer has a compact status area, but the Rust LL
 
 ## Goals
 
-- Show aggregate LLM request upload and download rates in the bottom-right Workspace footer, refreshed every three seconds using a three-second average.
+- Show aggregate LLM request upload and download rates in the bottom-right Workspace footer, refreshed every second using a one-second average.
 - Count provider HTTP request-body and response-body bytes in the Rust provider adapters.
 - Deliver transient progress through the existing session event stream without persisting it.
 - Keep the footer compact and expose provider/model details through its tooltip.
@@ -24,7 +24,7 @@ The Avalonia project Workspace footer has a compact status area, but the Rust LL
 - Events are coalesced before publication to avoid flooding the bounded session event stream, with a final cumulative sample on completion.
 - The Workspace footer shows current aggregate rates for active transfers.
 - The Workspace footer remains present while a project is open and shows zero rates when no transfer is active.
-- Rate values refresh every three seconds, average bytes transferred in that three-second interval, and use binary units consistently.
+- Rate values refresh every second, average bytes transferred in that one-second interval, and use binary units consistently.
 - Custom in-process providers remain source-compatible where practical; if a public trait change is required, update its contract and focused tests.
 
 ## Edge cases
