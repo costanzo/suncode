@@ -24,7 +24,6 @@ fn from_row(row: ExchangeRow) -> Result<ProviderExchange, BusinessError> {
         iteration: row.iteration as i64,
         started_at: row.started_at,
         completed_at: row.completed_at,
-        input_messages: serde_json::from_str(&row.input_messages_json)?,
         output_message: row
             .output_message_json
             .map(|v| serde_json::from_str(&v))
@@ -62,6 +61,6 @@ impl Store {
         exchange_id: &str,
     ) -> Result<Option<ProviderExchange>, BusinessError> {
         let mut c = lock(&self.connection)?;
-        sql_query("SELECT call_id,session_id,turn_id,provider,model_id,wire_model,provider_request_id,provider_response_id,state,iteration,started_at,completed_at,input_messages_json,output_message_json,tool_calls_json,usage_json,finish_reason,error_json FROM session_call WHERE session_id=? AND call_id=?").bind::<Text,_>(session_id).bind::<Text,_>(exchange_id).get_result::<ExchangeRow>(&mut *c).optional().map_err(crate::database_error)?.map(from_row).transpose()
+        sql_query("SELECT call_id,session_id,turn_id,provider,model_id,wire_model,provider_request_id,provider_response_id,state,iteration,started_at,completed_at,output_message_json,tool_calls_json,usage_json,finish_reason,error_json FROM session_call WHERE session_id=? AND call_id=?").bind::<Text,_>(session_id).bind::<Text,_>(exchange_id).get_result::<ExchangeRow>(&mut *c).optional().map_err(crate::database_error)?.map(from_row).transpose()
     }
 }

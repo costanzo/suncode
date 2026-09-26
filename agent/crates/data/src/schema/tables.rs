@@ -204,7 +204,6 @@ diesel::table! {
         iteration -> Integer,
         started_at -> Text,
         completed_at -> Nullable<Text>,
-        input_messages_json -> Text,
         output_message_json -> Nullable<Text>,
         tool_calls_json -> Text,
         usage_json -> Nullable<Text>,

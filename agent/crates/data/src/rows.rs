@@ -157,8 +157,6 @@ pub(crate) struct ExchangeRow {
     pub(crate) started_at: String,
     #[diesel(sql_type = Nullable<Text>)]
     pub(crate) completed_at: Option<String>,
-    #[diesel(sql_type = Text)]
-    pub(crate) input_messages_json: String,
     #[diesel(sql_type = Nullable<Text>)]
     pub(crate) output_message_json: Option<String>,
     #[diesel(sql_type = Text)]

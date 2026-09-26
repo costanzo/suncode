@@ -101,7 +101,7 @@ payload!(TurnCompletedPayload { pub turn_id: String, pub usage: Usage, pub itera
 payload!(UsageUpdatedPayload { pub turn_id: String, pub usage: Usage, });
 payload!(ContextSummaryPayload { pub objective: String, pub important_constraints: Vec<String>, pub completed_work: Vec<String>, pub active_work: Vec<String>, pub blockers: Vec<String>, pub next_action: String, });
 payload!(ContextCompactedPayload { pub exchange_id: String, pub turn_id: String, pub provider: String, pub model_id: String, pub wire_model: String, pub iteration: u32, pub started_at: String, pub original_characters: usize, pub retained_characters: usize, pub original_tokens: usize, pub retained_tokens: usize, pub dropped_messages: usize, pub summary: Option<ContextSummaryPayload>, });
-payload!(ProviderExchangeStartedPayload { pub exchange_id: String, pub turn_id: String, pub provider: String, pub model_id: String, pub wire_model: String, pub iteration: u32, pub input_messages: Vec<suncode_llm::Message>, });
+payload!(ProviderExchangeStartedPayload { pub exchange_id: String, pub turn_id: String, pub provider: String, pub model_id: String, pub wire_model: String, pub iteration: u32, });
 payload!(ProviderExchangeProgressPayload { pub exchange_id: String, pub turn_id: String, pub provider: String, pub model_id: String, pub uploaded_bytes: u64, pub downloaded_bytes: u64, });
 payload!(ProviderErrorPayload { pub code: String, pub message: String, pub retryable: bool, });
 payload!(ProviderExchangeFailedPayload { pub exchange_id: String, pub turn_id: String, pub error: ProviderErrorPayload, pub provider_request_id: Option<String>, });

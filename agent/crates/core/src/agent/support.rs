@@ -741,17 +741,6 @@ fn image_mime_type(storage_path: &str) -> Result<&'static str, BusinessError> {
     }
 }
 
-fn redacted_trace_message(message: &suncode_llm::Message) -> suncode_llm::Message {
-    let mut redacted = message.clone();
-    for part in &mut redacted.content {
-        if part.kind == "image_url" {
-            part.kind = "image_ref".into();
-            part.text = "[image attachment]".into();
-        }
-    }
-    redacted
-}
-
 fn continuation_snapshot(context: &Continuation) -> Result<Value, serde_json::Error> {
     let mut redacted = context.clone();
     for message in &mut redacted.messages {

@@ -1,0 +1,773 @@
+openapi: 3.1.0
+info:
+  title: SunCode Mobile Remote Control API
+  version: 1.0.0
+  description: |
+    HTTP API between the SunCode CMP Mobile client and the Java Remote Server.
+    The Remote Server relays bounded requests to an outbound Desktop connection.
+    It is not the Rust agent and never exposes provider wire payloads, secrets, or
+    absolute Desktop filesystem paths.
+  license:
+    name: SunCode project license
+servers:
+  - url: https://{remoteServerHost}
+    description: Remote Server HTTPS endpoint
+    variables:
+      remoteServerHost:
+        default: relay.suncode.example
+        description: Deployment-specific Remote Server host
+tags:
+  - name: Health
+  - name: Pairing
+  - name: Authentication
+  - name: Hosts
+  - name: Sessions
+  - name: Synchronization
+paths:
+  /v1/health:
+    get:
+      operationId: getHealth
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Remote Server health
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /v1/pairings/exchange:
+    post:
+      operationId: exchangePairingPayload
+      tags: [Pairing]
+      security: []
+      summary: Exchange a one-time Desktop QR payload
+      description: |
+        The payload is opaque to Mobile. A successful exchange consumes it
+        immediately. Reuse, expiry, or a failed Desktop pairing transaction never
+        returns a credential.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PairingExchangeRequest'
+      responses:
+        '200':
+          description: Mobile credential and paired Host
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingExchangeResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '409':
+          description: Pairing payload was already consumed or pairing is pending elsewhere
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Pairing payload expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/DesktopUnavailable'
+
+  /v1/auth/refresh:
+    post:
+      operationId: refreshAccessToken
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Rotated access credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/auth/logout:
+    post:
+      operationId: logoutCurrentDevice
+      tags: [Authentication]
+      summary: Log out the current Mobile device
+      description: This does not revoke any other Mobile device or Desktop pairing.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: Current device credential invalidated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/hosts:
+    get:
+      operationId: listHosts
+      tags: [Hosts]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Paired Hosts visible to the current Mobile device
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Host'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/hosts/{hostId}:
+    parameters:
+      - $ref: '#/components/parameters/HostId'
+    get:
+      operationId: getHost
+      tags: [Hosts]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Host detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/hosts/{hostId}/projects:
+    parameters:
+      - $ref: '#/components/parameters/HostId'
+    get:
+      operationId: listHostProjects
+      tags: [Hosts]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Projects exposed by the Host
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/sessions:
+    get:
+      operationId: listSessions
+      tags: [Sessions]
+      summary: List active primary Sessions across paired Hosts
+      description: |
+        Archived Sessions and child/subagent Sessions are excluded. The default
+        response is the global inbox; Host and Project filters are optional.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/HostFilter'
+        - $ref: '#/components/parameters/ProjectFilter'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Cursor-paginated active primary Sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createSession
+      tags: [Sessions]
+      summary: Create a primary Session on a Host Project
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Created primary Session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetail'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DesktopUnavailable'
+
+  /v1/sessions/{sessionId}:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    get:
+      operationId: getSession
+      tags: [Sessions]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Session snapshot and current pending interaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          description: Session was archived elsewhere and is no longer in the mobile active projection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/sessions/{sessionId}/messages:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    post:
+      operationId: sendSessionMessage
+      tags: [Sessions]
+      summary: Send one user message to a primary Session
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      responses:
+        '202':
+          description: Message accepted for Desktop delivery
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandAccepted'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DesktopUnavailable'
+
+  /v1/sessions/{sessionId}/approvals/{approvalId}:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+      - $ref: '#/components/parameters/ApprovalId'
+    post:
+      operationId: resolveApproval
+      tags: [Sessions]
+      summary: Resolve a pending Rust approval
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalResolutionRequest'
+      responses:
+        '202':
+          description: Approval resolution accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandAccepted'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Stale revision or approval already resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/sessions/{sessionId}/questions/{questionId}/reply:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+      - $ref: '#/components/parameters/QuestionId'
+    post:
+      operationId: replyQuestion
+      tags: [Sessions]
+      summary: Answer a pending structured question
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionReplyRequest'
+      responses:
+        '202':
+          description: Answer accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandAccepted'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /v1/sessions/{sessionId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    post:
+      operationId: cancelSessionTurn
+      tags: [Sessions]
+      summary: Request cooperative cancellation of the current turn
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Cancellation accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandAccepted'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /v1/sessions/{sessionId}/retry:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    post:
+      operationId: retryLastTurn
+      tags: [Sessions]
+      summary: Retry the last failed turn
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Retry accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandAccepted'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /v1/sync:
+    get:
+      operationId: syncMobileProjection
+      tags: [Synchronization]
+      summary: Resume the Mobile projection after offline time or cursor loss
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SyncCursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Incremental projection changes or a reset snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '410':
+          description: Cursor expired; response instructs the client to perform a full reset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  parameters:
+    HostId:
+      name: hostId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+    ApprovalId:
+      name: approvalId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+    QuestionId:
+      name: questionId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+    HostFilter:
+      name: hostId
+      in: query
+      required: false
+      schema: { type: string }
+    ProjectFilter:
+      name: projectId
+      in: query
+      required: false
+      schema: { type: string }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema: { type: string }
+    SyncCursor:
+      name: cursor
+      in: query
+      required: false
+      description: Last durable Mobile projection cursor. Omit for a full reset snapshot.
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Stable client-generated key for one logical mutation. Replays return the original result.
+      schema: { type: string, minLength: 8, maxLength: 200 }
+  responses:
+    InvalidRequest:
+      description: Request validation failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Unauthorized:
+      description: Access credential is missing, expired, or invalid
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Requested Host, Project, Session, or interaction was not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: State or idempotency conflict
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    DesktopUnavailable:
+      description: Remote Server is reachable but the selected Desktop is unavailable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ServiceUnavailable:
+      description: Remote Server health is not ready
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+  schemas:
+    PairingExchangeRequest:
+      type: object
+      required: [pairingPayload, deviceName]
+      properties:
+        pairingPayload:
+          type: string
+          minLength: 1
+          description: Opaque one-time value encoded by the Desktop QR code.
+        deviceName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        devicePublicKey:
+          type: string
+          description: Optional public-key binding for the mobile credential.
+        clientNonce:
+          type: string
+          minLength: 16
+    PairingExchangeResponse:
+      type: object
+      required: [schemaVersion, accessToken, refreshToken, accessTokenExpiresAt, host]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        accessTokenExpiresAt: { type: string, format: date-time }
+        host: { $ref: '#/components/schemas/HostDetail' }
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string }
+    TokenResponse:
+      type: object
+      required: [schemaVersion, accessToken, refreshToken, accessTokenExpiresAt]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        accessTokenExpiresAt: { type: string, format: date-time }
+    HealthResponse:
+      type: object
+      required: [schemaVersion, status, serverTime]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        status: { type: string, enum: [ok, degraded] }
+        serverTime: { type: string, format: date-time }
+    Host:
+      type: object
+      required: [id, displayName, endpoint, connectionState, projectCount, activeSessionCount, lastSeenAt]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        endpoint: { type: string, description: Redacted or display-safe Desktop endpoint. }
+        connectionState: { $ref: '#/components/schemas/ConnectionState' }
+        projectCount: { type: integer, minimum: 0 }
+        activeSessionCount: { type: integer, minimum: 0 }
+        lastSeenAt: { type: string, format: date-time, nullable: true }
+        desktopVersion: { type: string, nullable: true }
+        protocolVersion: { type: string, nullable: true }
+    HostDetail:
+      allOf:
+        - $ref: '#/components/schemas/Host'
+        - type: object
+          required: [relay, fingerprint, projects]
+          properties:
+            relay: { type: string }
+            fingerprint: { type: string }
+            projects:
+              type: array
+              items: { $ref: '#/components/schemas/Project' }
+    Project:
+      type: object
+      required: [id, displayName, activeSessionCount]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        relativeRoot: { type: string, nullable: true, description: Display-safe project-relative root; never an absolute path. }
+        activeSessionCount: { type: integer, minimum: 0 }
+    SessionPage:
+      type: object
+      required: [schemaVersion, items, nextCursor, hasMore]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/SessionSummary' }
+        nextCursor: { type: string, nullable: true }
+        hasMore: { type: boolean }
+    SessionSummary:
+      type: object
+      required: [id, title, kind, host, project, state, updatedAt, preview]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        kind: { type: string, const: primary }
+        host: { $ref: '#/components/schemas/HostRef' }
+        project: { $ref: '#/components/schemas/ProjectRef' }
+        state: { $ref: '#/components/schemas/SessionState' }
+        updatedAt: { type: string, format: date-time }
+        preview: { type: string, maxLength: 500 }
+        pendingApproval: { type: boolean }
+        pendingQuestion: { type: boolean }
+    SessionDetail:
+      allOf:
+        - $ref: '#/components/schemas/SessionSummary'
+        - type: object
+          required: [messages, revision, archived]
+          properties:
+            revision: { type: integer, minimum: 0 }
+            archived: { type: boolean, const: false }
+            messages:
+              type: array
+              items: { $ref: '#/components/schemas/Message' }
+            pendingApproval:
+              oneOf:
+                - $ref: '#/components/schemas/ApprovalRequest'
+                - type: 'null'
+            pendingQuestion:
+              oneOf:
+                - $ref: '#/components/schemas/QuestionRequest'
+                - type: 'null'
+    HostRef:
+      type: object
+      required: [id, displayName]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+    ProjectRef:
+      type: object
+      required: [id, displayName]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+    Message:
+      type: object
+      required: [id, role, text, createdAt]
+      properties:
+        id: { type: string }
+        role: { type: string, enum: [user, assistant, thinking] }
+        text: { type: string }
+        createdAt: { type: string, format: date-time }
+    ApprovalRequest:
+      type: object
+      required: [id, revision, risk, summary, createdAt]
+      properties:
+        id: { type: string }
+        revision: { type: integer, minimum: 0 }
+        risk: { type: string, enum: [filesystem, process, network, external, destructive, other] }
+        summary: { type: string }
+        detail: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    QuestionRequest:
+      type: object
+      required: [id, revision, prompt, options, createdAt]
+      properties:
+        id: { type: string }
+        revision: { type: integer, minimum: 0 }
+        prompt: { type: string }
+        options:
+          type: array
+          items: { type: string }
+        allowsFreeText: { type: boolean, default: false }
+        createdAt: { type: string, format: date-time }
+    CreateSessionRequest:
+      type: object
+      required: [hostId, projectId]
+      properties:
+        hostId: { type: string }
+        projectId: { type: string }
+        title: { type: string, maxLength: 200 }
+        firstMessage: { type: string, maxLength: 20000 }
+    SendMessageRequest:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 20000 }
+        clientMessageId: { type: string, description: Optional client-local ID for offline reconciliation. }
+    ApprovalResolutionRequest:
+      type: object
+      required: [action, expectedRevision]
+      properties:
+        action: { type: string, enum: [allow_once, allow_session, deny] }
+        expectedRevision: { type: integer, minimum: 0 }
+    QuestionReplyRequest:
+      type: object
+      required: [answers, expectedRevision]
+      properties:
+        answers:
+          type: array
+          items: { type: string }
+        expectedRevision: { type: integer, minimum: 0 }
+    CommandAccepted:
+      type: object
+      required: [schemaVersion, requestId, acceptedAt]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        requestId: { type: string }
+        acceptedAt: { type: string, format: date-time }
+    SyncResponse:
+      type: object
+      required: [schemaVersion, cursor, resetRequired, hosts, sessions, removedSessionIds]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        cursor: { type: string }
+        resetRequired: { type: boolean }
+        hosts:
+          type: array
+          items: { $ref: '#/components/schemas/Host' }
+        sessions:
+          type: array
+          items: { $ref: '#/components/schemas/SessionSummary' }
+        removedSessionIds:
+          type: array
+          items: { type: string }
+        hasMore: { type: boolean, default: false }
+    ConnectionState:
+      type: string
+      enum: [connected, connecting, degraded, offline, unauthorized, incompatible]
+    ErrorResponse:
+      type: object
+      required: [schemaVersion, code, message, retryable, requestId]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        code:
+          type: string
+          enum: [invalid_request, unauthorized, forbidden, not_found, pairing_expired, pairing_consumed, desktop_offline, remote_unavailable, session_archived, revision_conflict, idempotency_key_reused, cursor_expired, rate_limited, incompatible, internal_error]
+        message: { type: string, maxLength: 500 }
+        retryable: { type: boolean }
+        requestId: { type: string, nullable: true }
+        retryAfterSeconds: { type: integer, minimum: 0, nullable: true }

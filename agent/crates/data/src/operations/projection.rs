@@ -78,16 +78,12 @@ pub(crate) fn apply(
     }
 
     if event_type == "provider.exchange.started" {
-        let input = payload
-            .get("input_messages")
-            .cloned()
-            .unwrap_or_else(|| Value::Array(Vec::new()));
-        sql_query("INSERT INTO session_call(call_id,session_id,turn_id,provider,model_id,wire_model,state,iteration,started_at,input_messages_json,tool_calls_json) VALUES (?,?,?,?,? ,?,'started',?,?,?,?) ON CONFLICT(call_id) DO UPDATE SET input_messages_json=excluded.input_messages_json,state='started',started_at=excluded.started_at")
+        sql_query("INSERT INTO session_call(call_id,session_id,turn_id,provider,model_id,wire_model,state,iteration,started_at,tool_calls_json) VALUES (?,?,?,?,? ,?,'started',?,?,?) ON CONFLICT(call_id) DO UPDATE SET state='started',started_at=excluded.started_at")
             .bind::<Text, _>(required_any(payload, &["exchange_id", "call_id"])?).bind::<Text, _>(session_id)
             .bind::<Text, _>(required(payload, "turn_id")?).bind::<Text, _>(required(payload, "provider")?)
             .bind::<Text, _>(required(payload, "model_id")?).bind::<Text, _>(required(payload, "wire_model")?)
             .bind::<Integer, _>(payload.get("iteration").and_then(Value::as_i64).unwrap_or(1) as i32)
-            .bind::<Text, _>(occurred_at).bind::<Text, _>(&to_string(&input)?).bind::<Text, _>("[]").execute(connection).map_err(crate::database_error)?;
+            .bind::<Text, _>(occurred_at).bind::<Text, _>("[]").execute(connection).map_err(crate::database_error)?;
     }
 
     if event_type == "context.compacted" {
@@ -106,7 +102,7 @@ pub(crate) fn apply(
             "output_tokens": payload.get("retained_tokens").and_then(Value::as_u64).unwrap_or(0),
             "total_tokens": payload.get("retained_tokens").and_then(Value::as_u64).unwrap_or(0),
         });
-        sql_query("INSERT INTO session_call(call_id,session_id,turn_id,provider,model_id,wire_model,state,iteration,started_at,completed_at,input_messages_json,output_message_json,tool_calls_json,usage_json,finish_reason) VALUES (?,?,?,?,?,?, 'completed',?,?,?,?,?,?,?,?) ON CONFLICT(call_id) DO NOTHING")
+        sql_query("INSERT INTO session_call(call_id,session_id,turn_id,provider,model_id,wire_model,state,iteration,started_at,completed_at,output_message_json,tool_calls_json,usage_json,finish_reason) VALUES (?,?,?,?,?,?, 'completed',?,?,?,?,?,?,?) ON CONFLICT(call_id) DO NOTHING")
             .bind::<Text, _>(exchange_id)
             .bind::<Text, _>(session_id)
             .bind::<Text, _>(turn_id)
@@ -116,7 +112,6 @@ pub(crate) fn apply(
             .bind::<Integer, _>(payload.get("iteration").and_then(Value::as_i64).unwrap_or(0) as i32)
             .bind::<Text, _>(payload.get("started_at").and_then(Value::as_str).unwrap_or(occurred_at))
             .bind::<Text, _>(occurred_at)
-            .bind::<Text, _>("[]")
             .bind::<Nullable<Text>, _>(Some(to_string(&summary)?))
             .bind::<Text, _>("[]")
             .bind::<Nullable<Text>, _>(Some(to_string(&usage)?))

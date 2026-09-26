@@ -25,6 +25,23 @@ const PREVIOUS_PROVIDER_SCHEMA: &str = r#"
 "#;
 
 #[test]
+fn session_call_schema_does_not_retain_model_request_messages() {
+    let store = Store::open_memory().unwrap();
+    #[derive(QueryableByName)]
+    struct ColumnRow {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        name: String,
+    }
+    let mut connection = store.connection.lock().unwrap();
+    let columns = sql_query("PRAGMA table_info(session_call)")
+        .load::<ColumnRow>(&mut *connection)
+        .unwrap();
+    assert!(columns
+        .iter()
+        .all(|column| column.name != "input_messages_json"));
+}
+
+#[test]
 fn previous_provider_constraint_is_rebuilt_for_anthropic_without_losing_configuration() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("agent.sqlite3");

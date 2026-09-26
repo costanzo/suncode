@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS session_call (
     iteration INTEGER NOT NULL CHECK(iteration > 0),
     started_at TEXT NOT NULL,
     completed_at TEXT,
-    input_messages_json TEXT NOT NULL CHECK(json_valid(input_messages_json)),
     output_message_json TEXT CHECK(output_message_json IS NULL OR json_valid(output_message_json)),
     tool_calls_json TEXT NOT NULL CHECK(json_valid(tool_calls_json)),
     usage_json TEXT CHECK(usage_json IS NULL OR json_valid(usage_json)),

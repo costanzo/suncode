@@ -213,13 +213,6 @@
                     </ItemsControl>
                   </StackPanel>
 
-                  <StackPanel Spacing="6" IsVisible="{Binding SelectedProviderTraceDetails.HasInput}">
-                    <TextBlock Text="Model Request" FontSize="12" FontWeight="SemiBold" />
-                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
-                      <SelectableTextBlock Text="{Binding SelectedProviderTraceDetails.InputText}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
-                    </Border>
-                  </StackPanel>
-
                   <StackPanel Spacing="6" IsVisible="{Binding SelectedProviderTraceDetails.HasOutput}">
                     <TextBlock Text="{Binding SelectedProviderTraceDetails.IsCompaction, StringFormat={}Compaction result}" FontSize="12" FontWeight="SemiBold" IsVisible="{Binding SelectedProviderTraceDetails.IsCompaction}"/>
                     <TextBlock Text="Model Response" FontSize="12" FontWeight="SemiBold" IsVisible="{Binding !SelectedProviderTraceDetails.IsCompaction}"/>

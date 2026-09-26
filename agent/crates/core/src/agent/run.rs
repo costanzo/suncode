@@ -96,13 +96,9 @@ impl Agent {
                     .map(|message| self.to_llm_message_with_images(&context.session_id, message))
                     .collect::<Result<Vec<_>, _>>()?,
             );
-            let trace_messages = llm_messages
-                .iter()
-                .map(redacted_trace_message)
-                .collect::<Vec<_>>();
             self.emit(
                 &context.session_id,
-                EventPayload::ProviderExchangeStarted(ProviderExchangeStartedPayload { exchange_id: exchange_id.clone(), turn_id: context.turn_id.clone(), provider: provider.provider_id.clone(), model_id: context.model.clone(), wire_model: provider.wire_model.clone(), iteration: context.iterations, input_messages: trace_messages }),
+                EventPayload::ProviderExchangeStarted(ProviderExchangeStartedPayload { exchange_id: exchange_id.clone(), turn_id: context.turn_id.clone(), provider: provider.provider_id.clone(), model_id: context.model.clone(), wire_model: provider.wire_model.clone(), iteration: context.iterations }),
             )?;
             let result = {
                 let (delta_sender, mut delta_receiver) = mpsc::unbounded_channel();

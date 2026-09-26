@@ -1,0 +1,350 @@
+asyncapi: 3.0.0
+info:
+  title: SunCode Mobile Remote Control WebSocket
+  version: 1.0.0
+  description: |
+    Bidirectional live protocol between Mobile and the Java Remote Server.
+    The relay forwards bounded commands to an outbound Desktop connection and
+    publishes normalized Host, Project, Session, approval, question, and
+    connection events.
+servers:
+  remoteServer:
+    host: '{remoteServerHost}'
+    pathname: /v1/ws
+    protocol: wss
+    description: Remote Server WebSocket endpoint
+    variables:
+      remoteServerHost:
+        default: relay.suncode.example
+    security:
+      - bearerAuth: []
+channels:
+  control:
+    address: /v1/ws
+    messages:
+      clientCommand:
+        $ref: '#/components/messages/ClientCommand'
+      clientSubscribe:
+        $ref: '#/components/messages/ClientSubscribe'
+      clientUnsubscribe:
+        $ref: '#/components/messages/ClientUnsubscribe'
+      clientPing:
+        $ref: '#/components/messages/ClientPing'
+      serverEnvelope:
+        $ref: '#/components/messages/ServerEnvelope'
+operations:
+  sendCommand:
+    action: send
+    channel:
+      $ref: '#/channels/control'
+    summary: Send one idempotent command to the selected Desktop Session
+    messages:
+      - $ref: '#/channels/control/messages/clientCommand'
+  subscribe:
+    action: send
+    channel:
+      $ref: '#/channels/control'
+    summary: Subscribe to global, Host, Project, or Session events
+    messages:
+      - $ref: '#/channels/control/messages/clientSubscribe'
+  unsubscribe:
+    action: send
+    channel:
+      $ref: '#/channels/control'
+    messages:
+      - $ref: '#/channels/control/messages/clientUnsubscribe'
+  ping:
+    action: send
+    channel:
+      $ref: '#/channels/control'
+    messages:
+      - $ref: '#/channels/control/messages/clientPing'
+  receiveEvents:
+    action: receive
+    channel:
+      $ref: '#/channels/control'
+    summary: Receive readiness, command results, projection events, and errors
+    messages:
+      - $ref: '#/channels/control/messages/serverEnvelope'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  messages:
+    ClientCommand:
+      name: ClientCommand
+      title: Mobile command
+      summary: Idempotent mutation forwarded to a Desktop connection
+      payload:
+        $ref: '#/components/schemas/ClientCommandPayload'
+    ClientSubscribe:
+      name: ClientSubscribe
+      title: Subscribe
+      payload:
+        $ref: '#/components/schemas/SubscribePayload'
+    ClientUnsubscribe:
+      name: ClientUnsubscribe
+      title: Unsubscribe
+      payload:
+        $ref: '#/components/schemas/UnsubscribePayload'
+    ClientPing:
+      name: ClientPing
+      title: Ping
+      payload:
+        $ref: '#/components/schemas/PingPayload'
+    ServerEnvelope:
+      name: ServerEnvelope
+      title: Server event envelope
+      payload:
+        $ref: '#/components/schemas/ServerEnvelopePayload'
+  schemas:
+    ClientCommandPayload:
+      type: object
+      required: [schemaVersion, type, requestId, command, sentAt]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        type: { type: string, const: command }
+        requestId:
+          type: string
+          description: Idempotency and correlation key. Replays return the original result.
+        command:
+          type: string
+          enum: [create_session, send_message, resolve_approval, reply_question, cancel_turn, retry_turn]
+        hostId: { type: string, nullable: true }
+        sessionId: { type: string, nullable: true }
+        payload:
+          $ref: '#/components/schemas/CommandPayload'
+        sentAt: { type: string, format: date-time }
+    CommandPayload:
+      oneOf:
+        - $ref: '#/components/schemas/CreateSessionCommand'
+        - $ref: '#/components/schemas/SendMessageCommand'
+        - $ref: '#/components/schemas/ResolveApprovalCommand'
+        - $ref: '#/components/schemas/ReplyQuestionCommand'
+        - $ref: '#/components/schemas/EmptyCommand'
+    CreateSessionCommand:
+      type: object
+      required: [kind, projectId]
+      properties:
+        kind: { type: string, const: create_session }
+        projectId: { type: string }
+        title: { type: string, maxLength: 200 }
+        firstMessage: { type: string, maxLength: 20000 }
+    SendMessageCommand:
+      type: object
+      required: [kind, text]
+      properties:
+        kind: { type: string, const: send_message }
+        text: { type: string, minLength: 1, maxLength: 20000 }
+        clientMessageId: { type: string, nullable: true }
+    ResolveApprovalCommand:
+      type: object
+      required: [kind, approvalId, action, expectedRevision]
+      properties:
+        kind: { type: string, const: resolve_approval }
+        approvalId: { type: string }
+        action: { type: string, enum: [allow_once, allow_session, deny] }
+        expectedRevision: { type: integer, minimum: 0 }
+    ReplyQuestionCommand:
+      type: object
+      required: [kind, questionId, answers, expectedRevision]
+      properties:
+        kind: { type: string, const: reply_question }
+        questionId: { type: string }
+        answers:
+          type: array
+          items: { type: string }
+        expectedRevision: { type: integer, minimum: 0 }
+    EmptyCommand:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [cancel_turn, retry_turn] }
+    SubscribePayload:
+      type: object
+      required: [schemaVersion, type, subscriptionId]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        type: { type: string, const: subscribe }
+        subscriptionId: { type: string }
+        resumeCursor: { type: string, nullable: true }
+        hostIds:
+          type: array
+          items: { type: string }
+        projectIds:
+          type: array
+          items: { type: string }
+        sessionIds:
+          type: array
+          items: { type: string }
+    UnsubscribePayload:
+      type: object
+      required: [schemaVersion, type, subscriptionId]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        type: { type: string, const: unsubscribe }
+        subscriptionId: { type: string }
+    PingPayload:
+      type: object
+      required: [schemaVersion, type, nonce]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        type: { type: string, const: ping }
+        nonce: { type: string }
+    ServerEnvelopePayload:
+      type: object
+      required: [schemaVersion, type, eventId, occurredAt]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        type:
+          type: string
+          enum: [ready, command.accepted, command.completed, command.failed, host.updated, project.updated, session.updated, session.message.appended, turn.started, turn.completed, turn.failed, turn.cancelled, approval.requested, approval.resolved, question.asked, question.replied, question.rejected, sync.cursor, snapshot.required, pong, error]
+        eventId: { type: string }
+        requestId: { type: string, nullable: true }
+        occurredAt: { type: string, format: date-time }
+        cursor: { type: string, nullable: true }
+        data:
+          $ref: '#/components/schemas/ServerEventData'
+    ServerEventData:
+      oneOf:
+        - $ref: '#/components/schemas/ReadyEvent'
+        - $ref: '#/components/schemas/CommandAcceptedEvent'
+        - $ref: '#/components/schemas/CommandCompletedEvent'
+        - $ref: '#/components/schemas/CommandFailedEvent'
+        - $ref: '#/components/schemas/HostUpdatedEvent'
+        - $ref: '#/components/schemas/ProjectUpdatedEvent'
+        - $ref: '#/components/schemas/SessionUpdatedEvent'
+        - $ref: '#/components/schemas/MessageAppendedEvent'
+        - $ref: '#/components/schemas/TurnEvent'
+        - $ref: '#/components/schemas/ApprovalEvent'
+        - $ref: '#/components/schemas/QuestionEvent'
+        - $ref: '#/components/schemas/SnapshotRequiredEvent'
+        - $ref: '#/components/schemas/PongEvent'
+        - $ref: '#/components/schemas/ErrorEvent'
+    ReadyEvent:
+      type: object
+      required: [connectionId, serverTime, heartbeatSeconds]
+      properties:
+        connectionId: { type: string }
+        serverTime: { type: string, format: date-time }
+        heartbeatSeconds: { type: integer, minimum: 5 }
+        resumed: { type: boolean }
+    CommandAcceptedEvent:
+      type: object
+      required: [command]
+      properties:
+        command: { type: string }
+    CommandCompletedEvent:
+      type: object
+      required: [command, result]
+      properties:
+        command: { type: string }
+        result: {}
+    CommandFailedEvent:
+      type: object
+      required: [command, error]
+      properties:
+        command: { type: string }
+        error: { $ref: '#/components/schemas/Error' }
+    HostUpdatedEvent:
+      type: object
+      required: [host]
+      properties:
+        host: { $ref: '#/components/schemas/Host' }
+    ProjectUpdatedEvent:
+      type: object
+      required: [hostId, project]
+      properties:
+        hostId: { type: string }
+        project: { $ref: '#/components/schemas/Project' }
+    SessionUpdatedEvent:
+      type: object
+      required: [session]
+      properties:
+        session: { $ref: '#/components/schemas/SessionSummary' }
+    MessageAppendedEvent:
+      type: object
+      required: [sessionId, message]
+      properties:
+        sessionId: { type: string }
+        message: { $ref: '#/components/schemas/Message' }
+    TurnEvent:
+      type: object
+      required: [sessionId, turnId, state]
+      properties:
+        sessionId: { type: string }
+        turnId: { type: string }
+        state: { type: string, enum: [started, completed, failed, cancelled] }
+        error: { $ref: '#/components/schemas/Error', nullable: true }
+    ApprovalEvent:
+      type: object
+      required: [sessionId, approval]
+      properties:
+        sessionId: { type: string }
+        approval: {}
+    QuestionEvent:
+      type: object
+      required: [sessionId, question]
+      properties:
+        sessionId: { type: string }
+        question: {}
+    SnapshotRequiredEvent:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, enum: [cursor_expired, cursor_invalid, subscription_reset, server_restart] }
+        httpSyncPath: { type: string, const: /v1/sync }
+    PongEvent:
+      type: object
+      required: [nonce]
+      properties:
+        nonce: { type: string }
+    ErrorEvent:
+      type: object
+      required: [error]
+      properties:
+        error: { $ref: '#/components/schemas/Error' }
+    Error:
+      type: object
+      required: [code, message, retryable]
+      properties:
+        code: { type: string }
+        message: { type: string, maxLength: 500 }
+        retryable: { type: boolean }
+        retryAfterSeconds: { type: integer, minimum: 0, nullable: true }
+    Host:
+      type: object
+      required: [id, displayName, connectionState]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        connectionState: { type: string, enum: [connected, connecting, degraded, offline, unauthorized, incompatible] }
+        lastSeenAt: { type: string, format: date-time, nullable: true }
+    Project:
+      type: object
+      required: [id, displayName, activeSessionCount]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        activeSessionCount: { type: integer, minimum: 0 }
+    SessionSummary:
+      type: object
+      required: [id, title, hostId, projectId, state, updatedAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        hostId: { type: string }
+        projectId: { type: string }
+        state: { type: string, enum: [idle, running, waiting_for_approval, waiting_for_answer, failed] }
+        updatedAt: { type: string, format: date-time }
+        preview: { type: string, maxLength: 500 }
+    Message:
+      type: object
+      required: [id, role, text, createdAt]
+      properties:
+        id: { type: string }
+        role: { type: string, enum: [user, assistant, thinking] }
+        text: { type: string }
+        createdAt: { type: string, format: date-time }

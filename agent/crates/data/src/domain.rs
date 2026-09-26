@@ -281,7 +281,6 @@ pub struct ProviderExchange {
     pub iteration: i64,
     pub started_at: String,
     pub completed_at: Option<String>,
-    pub input_messages: Value,
     pub output_message: Option<Value>,
     pub tool_calls: Value,
     pub usage: Option<Value>,

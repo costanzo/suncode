@@ -379,8 +379,7 @@ fn named_sdk_methods_serve_project_session_and_model_dtos() {
                     "provider":"openai",
                     "model_id":"gpt-5.5",
                     "wire_model":"gpt-5.5",
-                    "iteration":1,
-                    "input_messages":[{"role":"user","content":[{"type":"text","text":"Inspect package.json"}]}]
+                    "iteration":1
                 }),
             )
             .unwrap();

@@ -26,7 +26,6 @@ public sealed record ProviderTraceItem(
     long? CacheWriteTokens,
     long? TotalTokens,
     string FinishReason,
-    string InputText,
     string OutputText,
     string ToolCallsText,
     string ErrorText,
@@ -81,7 +80,6 @@ public sealed record ProviderTraceItem(
     public bool IsCompleted => State == "completed";
     public bool IsFailed => State == "failed";
     public bool IsCompaction => ModelId == "context-compaction" || FinishReason == "context_compacted";
-    public bool HasInput => !string.IsNullOrWhiteSpace(InputText) && InputText != "[]";
     public bool HasOutput => !string.IsNullOrWhiteSpace(OutputText);
     public bool HasToolCalls => !string.IsNullOrWhiteSpace(ToolCallsText) && ToolCallsText != "[]";
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorText);

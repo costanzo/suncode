@@ -261,6 +261,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 SelectedProviderTraceDetails = null;
                 OnPropertyChanged(nameof(SelectedProviderTraceTitle));
                 OnPropertyChanged(nameof(HasSelectedProviderTrace));
+                OnPropertyChanged(nameof(ShowSelectedProviderTraceOverview));
             }
         }
     }
@@ -274,6 +275,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             {
                 OnPropertyChanged(nameof(SelectedProviderTraceTitle));
                 OnPropertyChanged(nameof(HasSelectedProviderTrace));
+                OnPropertyChanged(nameof(ShowSelectedProviderTraceOverview));
             }
         }
     }

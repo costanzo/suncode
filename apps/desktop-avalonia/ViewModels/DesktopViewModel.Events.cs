@@ -266,7 +266,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             || trace.WireModel.Contains(filter, StringComparison.OrdinalIgnoreCase)
             || trace.ProviderRequestId.Contains(filter, StringComparison.OrdinalIgnoreCase)
             || trace.ProviderResponseId.Contains(filter, StringComparison.OrdinalIgnoreCase)
-            || trace.InputText.Contains(filter, StringComparison.OrdinalIgnoreCase)
             || trace.OutputText.Contains(filter, StringComparison.OrdinalIgnoreCase)
             || trace.ToolCallsText.Contains(filter, StringComparison.OrdinalIgnoreCase);
     }
@@ -318,7 +317,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             usage?.CacheWriteTokens is { } cacheWrite ? (long)cacheWrite : null,
             usage is null ? null : (long)usage.TotalTokens,
             item.FinishReason ?? string.Empty,
-            JsonSerializer.Serialize(item.InputMessages, DisplayJson.Options),
             MessageDisplayText(item.OutputMessage),
             JsonSerializer.Serialize(item.ToolCalls, DisplayJson.Options),
             Pretty(item.Error),
@@ -361,7 +359,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             usage?.CacheWriteTokens is { } cacheWrite ? (long)cacheWrite : null,
             usage is null ? null : (long)usage.TotalTokens,
             item.FinishReason ?? string.Empty,
-            JsonSerializer.Serialize(item.InputMessages, DisplayJson.Options),
             MessageDisplayText(item.OutputMessage),
             JsonSerializer.Serialize(item.ToolCalls, DisplayJson.Options),
             Pretty(item.Error),

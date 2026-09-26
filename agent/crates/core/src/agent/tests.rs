@@ -520,19 +520,7 @@ mod tests {
         assert!(context.iter().any(|message| message.role == "tool"));
         let exchanges = store.provider_exchanges(&session_id).unwrap();
         assert_eq!(exchanges.len(), 2);
-        assert_eq!(
-            exchanges[0].input_messages[0],
-            exchanges[1].input_messages[0]
-        );
-        assert!(exchanges.iter().all(|exchange| exchange
-            .input_messages
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|message| message["role"] == "system"
-                && message["content"][0]["text"]
-                    .as_str()
-                    .is_some_and(|text| text.contains("Always run focused tests.")))));
+        assert!(exchanges.iter().all(|exchange| exchange.output_message.is_some()));
         let usage = exchanges[0].usage.as_ref().unwrap();
         assert_eq!(usage["cache_read_tokens"], 6);
         assert_eq!(usage["cache_miss_tokens"], 2);
