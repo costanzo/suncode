@@ -5,7 +5,7 @@ INSERT INTO llm_model (
     supports_structured_output, supports_cancellation, supports_reasoning_effort, supports_computer_use,
     enabled, sort_order, created_at, updated_at, reasoning_efforts
 ) VALUES
-    ('deepseek-v4-flash', 'deepseek', 'DeepSeek V4 Flash', 'deepseek-v4-flash-vision-exp', 1000000, 983616, 128000, 1, 1, 1, 0, 1, 0, 0, 1, 10, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', ''),
+    ('deepseek-v4-flash', 'deepseek', 'DeepSeek V4.1 Flash', 'deepseek-flash', 1000000, 983616, 384000, 1, 1, 1, 0, 1, 1, 0, 1, 10, '2026-08-19T00:00:00.000Z', '2026-09-26T00:00:00.000Z', 'low,high,max'),
     ('deepseek-v4-pro', 'deepseek', 'DeepSeek V4 Pro', 'deepseek-v4-pro', 1000000, 983616, 128000, 1, 1, 0, 0, 1, 0, 0, 1, 20, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', ''),
     ('glm-5.2', 'zhipu', 'GLM 5.2', 'glm-5.2', 1000000, 983616, 128000, 1, 1, 0, 0, 1, 1, 0, 1, 30, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'high,max'),
     ('glm-5.3', 'zhipu', 'GLM 5.3', 'glm-5.3', 1000000, 983616, 128000, 1, 1, 0, 0, 1, 1, 0, 1, 40, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,high,max'),
