@@ -301,6 +301,35 @@ export const primaryModules = [
           },
         ],
       },
+      {
+        path: "/projects/mobile",
+        label: "Mobile",
+        icon: "mobile",
+        keywords:
+          "cmp kotlin multiplatform sessions hosts settings remote server websocket qr pairing offline",
+        children: [
+          {
+            path: "/projects/mobile/shell",
+            label: "App shell",
+            keywords: "bottom navigation rail theme dark light system",
+          },
+          {
+            path: "/projects/mobile/sessions",
+            label: "Sessions",
+            keywords: "global inbox host project filter chat approval offline cache",
+          },
+          {
+            path: "/projects/mobile/hosts",
+            label: "Hosts",
+            keywords: "desktop pairing qr remote server websocket connected offline",
+          },
+          {
+            path: "/projects/mobile/settings",
+            label: "Settings",
+            keywords: "appearance notifications security cache version",
+          },
+        ],
+      },
     ],
   },
   {

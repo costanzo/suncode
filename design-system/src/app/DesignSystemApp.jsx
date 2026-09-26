@@ -42,6 +42,13 @@ import { SpecialistPromptPage } from "../agents/SpecialistPromptPage.jsx";
 import { ProjectHubPage } from "../projects/desktop/index.jsx";
 import { AboutPage } from "../projects/desktop/about/index.jsx";
 import { DesktopProjectPage } from "../projects/desktop/DesktopProjectPage.jsx";
+import {
+  MobileHostsPage,
+  MobileProjectPage,
+  MobileSessionsPage,
+  MobileSettingsPage,
+  MobileShellPage,
+} from "../projects/mobile/index.jsx";
 import { DialogWindowPage } from "../projects/desktop/dialog-window/index.jsx";
 import { SettingsPage } from "../projects/desktop/settings/index.jsx";
 import { WorkspacePage } from "../projects/desktop/workspace/index.jsx";
@@ -115,6 +122,11 @@ const routes = {
     ]),
   ),
   "/projects/desktop": DesktopProjectPage,
+  "/projects/mobile": MobileProjectPage,
+  "/projects/mobile/shell": MobileShellPage,
+  "/projects/mobile/sessions": MobileSessionsPage,
+  "/projects/mobile/hosts": MobileHostsPage,
+  "/projects/mobile/settings": MobileSettingsPage,
   "/projects/desktop/project-hub": ProjectHubPage,
   "/projects/desktop/dialog-window": DialogWindowPage,
   "/projects/desktop/about": AboutPage,

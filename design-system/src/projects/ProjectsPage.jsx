@@ -17,6 +17,14 @@ export function ProjectsPage() {
             title="Desktop"
             description="ProjectHub and the Avalonia desktop entry experience."
           />
+          <ModuleLink
+            to="/projects/mobile"
+            icon="mobile"
+            title="Mobile"
+            description="CMP mobile client for cross-host sessions, secure pairing, and offline review."
+            status="Review reference"
+            tone="implemented"
+          />
         </div>
       </Section>
     </>
