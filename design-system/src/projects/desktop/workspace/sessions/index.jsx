@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
-import { archivedSessions, SessionPanel } from "../WorkspacePrimitives.jsx";
+import { archivedSessions, SessionPanel } from "../panels/sessions/index.js";
 import { DialogWindowConfirmation } from "../../dialog-window/index.jsx";
 
 const sessionGuides = {
@@ -133,7 +133,12 @@ export function WorkspaceSessionsPage() {
     { title: "Provider request failed", time: "Yesterday", status: "failed" },
   ];
   const activeSessionsWithArchive = [
-    { title: "Workspace information architecture", time: "2 min ago", pinned: true, status: "running" },
+    {
+      title: "Workspace information architecture",
+      time: "2 min ago",
+      pinned: true,
+      status: "running",
+    },
     { title: "Provider migration review", time: "Yesterday", status: "approval" },
     { title: "Desktop navigation polish", time: "Aug 26" },
   ];
@@ -165,7 +170,8 @@ export function WorkspaceSessionsPage() {
     {
       id: "archived",
       title: "Archived sessions",
-      description: "Active sessions remain visible while archived history opens in a half-height overlay drawer.",
+      description:
+        "Active sessions remain visible while archived history opens in a half-height overlay drawer.",
       sessions: activeSessionsWithArchive,
       archivedSessions,
     },

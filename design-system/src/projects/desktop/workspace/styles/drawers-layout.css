@@ -1,0 +1,26 @@
+.workspace-drawer-state-grid {
+  grid-template-columns: minmax(0, 1fr);
+  width: min(var(--workspace-drawer-width), 100%);
+  max-width: 100%;
+  overflow: visible;
+}
+
+.workspace-drawer-state-grid > div {
+  min-width: 0;
+}
+
+.workspace-drawer-state-grid .workspace-git > header {
+  min-width: 760px;
+}
+
+.workspace-drawer-state-grid .workspace-git-body {
+  min-width: 760px;
+}
+
+.workspace-drawer-state-grid .workspace-trace > header {
+  min-width: 760px;
+}
+
+.workspace-drawer-state-grid .workspace-trace-body {
+  min-width: 700px;
+}

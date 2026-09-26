@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
-import { ReviewPanel } from "../WorkspacePrimitives.jsx";
+import { ReviewPanel } from "../panels/review/index.js";
 
 const reviewGuides = {
   idle: {

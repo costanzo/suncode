@@ -1,0 +1,8 @@
+/* Drawer styles stay in source order while each responsibility remains readable on its own. */
+@import "./drawers-layout.css";
+@import "./tool-activity-modal.css";
+@import "./drawer-shell.css";
+@import "./source-control.css";
+@import "./provider-trace.css";
+@import "./tool-activity.css";
+@import "./drawer-states.css";

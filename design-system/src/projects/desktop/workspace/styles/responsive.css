@@ -1,0 +1,377 @@
+@media (max-width: 1100px) {
+  .workspace-window-body .workspace-main-row > .workspace-review,
+  .workspace-window-body .workspace-main-row > .workspace-child-sessions {
+    display: none;
+  }
+  .workspace-trace-metrics {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 860px) {
+  .workspace-window-body .workspace-main-row > .workspace-sessions,
+  .workspace-window-body .workspace-main-row > .workspace-explorer {
+    display: none;
+  }
+  .workspace-git-body {
+    grid-template-columns: 230px 1px minmax(0, 1fr);
+  }
+  .workspace-trace-body {
+    grid-template-columns: 230px 1fr;
+  }
+  .workspace-tool-body {
+    grid-template-columns: 230px 1fr;
+  }
+  .workspace-child-detail-state-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-child-detail-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workspace-child-detail-meta > div:nth-child(2) {
+    border-right: 0;
+  }
+  .workspace-child-detail-meta > div:nth-child(n + 3) {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .workspace-git > header {
+    grid-template-columns: 16px 8px minmax(0, 1fr) minmax(120px, 210px) 8px 26px 8px 26px 8px 26px;
+    gap: 0;
+  }
+  .workspace-git > header > .workspace-git-icon {
+    grid-column: 1;
+  }
+  .workspace-git > header > strong {
+    grid-column: 3;
+  }
+  .workspace-git > header > .workspace-git-divider,
+  .workspace-git > header > .workspace-scope {
+    display: none;
+  }
+  .workspace-git > header > input {
+    grid-column: 4;
+    width: 100%;
+  }
+  .workspace-git > header > .workspace-icon-button:nth-last-child(3) {
+    grid-column: 6;
+  }
+  .workspace-git > header > .workspace-icon-button:nth-last-child(2) {
+    grid-column: 8;
+  }
+  .workspace-git > header > .workspace-icon-button:last-child {
+    grid-column: 10;
+  }
+}
+
+@media (max-width: 620px) {
+  .workspace-window {
+    min-height: 540px;
+  }
+  .workspace-titlebar,
+  .workspace-focused-titlebar {
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr) minmax(0, 1fr);
+  }
+  .workspace-project-title,
+  .workspace-focused-titlebar > strong {
+    display: none;
+  }
+  .project-switcher {
+    left: 42px;
+  }
+  .project-switcher-menu {
+    left: -34px;
+    width: min(300px, calc(100vw - 24px));
+  }
+  .content-switcher-trigger {
+    max-width: min(220px, calc(100vw - 250px));
+  }
+  .content-switcher-menu {
+    width: min(340px, calc(100vw - 24px));
+  }
+  .workspace-window-body {
+    min-height: 480px;
+  }
+  .workspace-window-body .workspace-gutter {
+    display: none;
+  }
+  .workspace-main-stack > .workspace-drawer {
+    display: none;
+  }
+  .workspace-conversation {
+    min-width: 0;
+    min-height: 480px;
+    padding: 16px 14px 122px;
+  }
+  .workspace-child-detail {
+    min-width: 0;
+    min-height: 480px;
+  }
+  .workspace-child-specimen-titlebar {
+    grid-template-columns: minmax(0, 1fr) minmax(140px, 1fr) minmax(0, 1fr);
+  }
+  .workspace-child-specimen-titlebar .content-switcher-trigger {
+    max-width: min(220px, calc(100vw - 72px));
+  }
+  .workspace-child-specimen-body > .workspace-child-sessions {
+    display: none;
+  }
+  .workspace-child-specimen-body > .workspace-child-detail {
+    width: 100%;
+    flex-basis: auto;
+  }
+  .workspace-child-detail-header {
+    grid-template-columns: 28px 30px minmax(0, 1fr);
+    padding-right: 10px;
+  }
+  .workspace-child-detail-state {
+    display: none;
+  }
+  .workspace-child-detail-scroll {
+    padding: 14px 14px 22px;
+  }
+  .workspace-child-detail-meta {
+    margin-bottom: 18px;
+  }
+  .workspace-child-event header {
+    display: grid;
+    gap: 3px;
+  }
+  .workspace-child-authority-note,
+  .workspace-child-failure-note {
+    margin-left: 0;
+  }
+  .workspace-message-user {
+    max-width: 88%;
+  }
+  .workspace-tool-row {
+    grid-template-columns: 16px minmax(0, 1fr) 12px;
+  }
+  .workspace-tool-row small {
+    display: none;
+  }
+  .workspace-composer-modal-content textarea {
+    min-height: 320px;
+  }
+  .workspace-statusbar {
+    padding-left: 12px;
+  }
+  .workspace-statusbar > div:first-child b,
+  .workspace-statusbar > div:first-child span,
+  .workspace-statusbar > div:first-child i,
+  .workspace-statusbar > div:last-child span {
+    display: none;
+  }
+  .workspace-statusbar > div:last-child .workspace-mcp-status,
+  .workspace-statusbar > div:last-child .workspace-mcp-progress,
+  .workspace-statusbar > div:last-child .workspace-mcp-progress > span {
+    display: inline-flex;
+  }
+  .workspace-statusbar > div:last-child .workspace-mcp-progress > span {
+    display: block;
+  }
+  .workspace-mcp-status {
+    min-width: 0;
+  }
+  .workspace-mcp-status-label {
+    display: none;
+  }
+  .workspace-mcp-progress {
+    width: 36px;
+  }
+  .workspace-mcp-specimen-grid {
+    grid-template-columns: 1fr;
+  }
+  .workspace-focused-frame {
+    min-height: 500px;
+  }
+  .workspace-focused-sidebar > .workspace-panel,
+  .workspace-focused-review > .workspace-review {
+    width: 100%;
+    min-height: 464px;
+    border: 0;
+  }
+  .workspace-focused-conversation > .workspace-conversation {
+    min-height: 464px;
+  }
+  .workspace-session-state-grid {
+    grid-template-columns: 1fr;
+  }
+  .workspace-editor-composition {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-x: visible;
+  }
+  .workspace-editor-composition > .workspace-explorer {
+    display: none;
+  }
+  .workspace-editor-meta span {
+    display: none;
+  }
+  .workspace-editor-mode-row {
+    align-items: start;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .workspace-editor-mode-row > div {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .workspace-state-grid {
+    grid-template-columns: 1fr;
+  }
+  .workspace-drawer-state-grid {
+    grid-template-columns: 1fr;
+    width: auto;
+    max-width: none;
+    overflow-x: visible;
+  }
+  .workspace-drawer-state-grid > div {
+    min-width: 0;
+  }
+  .workspace-drawer-state-grid .workspace-git > header,
+  .workspace-drawer-state-grid .workspace-git-body,
+  .workspace-drawer-state-grid .workspace-trace > header,
+  .workspace-drawer-state-grid .workspace-trace-body {
+    min-width: 0;
+  }
+  .workspace-session-state .workspace-session-list {
+    min-height: 0;
+  }
+  .workspace-drawer > header {
+    grid-template-columns: auto 1fr 28px 28px 28px;
+  }
+  .workspace-drawer > header > span {
+    display: none;
+  }
+  .workspace-trace > header > div {
+    display: none;
+  }
+  .workspace-tool-activity > header {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .workspace-tool-activity > header > span,
+  .workspace-tool-activity > header > div:not(.workspace-tool-activity-actions) {
+    display: none;
+  }
+  .workspace-git > header {
+    grid-template-columns: 16px 8px minmax(0, 1fr) 26px 8px 26px 8px 26px;
+    gap: 0;
+  }
+  .workspace-git > header > .workspace-git-icon {
+    grid-column: 1;
+  }
+  .workspace-git > header > strong {
+    grid-column: 3;
+  }
+  .workspace-git > header > .workspace-git-divider,
+  .workspace-git > header > .workspace-scope {
+    display: none;
+  }
+  .workspace-git > header > input {
+    display: none;
+  }
+  .workspace-git > header > .workspace-icon-button:nth-last-child(3) {
+    grid-column: 4;
+  }
+  .workspace-git > header > .workspace-icon-button:nth-last-child(2) {
+    grid-column: 6;
+  }
+  .workspace-git > header > .workspace-icon-button:last-child {
+    grid-column: 8;
+  }
+  .workspace-git > header input,
+  .workspace-git > header .workspace-scope {
+    display: none;
+  }
+  .workspace-git-body,
+  .workspace-trace-body {
+    grid-template-columns: 1fr;
+  }
+  .workspace-tool-body {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+  }
+  .workspace-tool-tree {
+    max-height: 190px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .workspace-tool-detail {
+    min-height: 300px;
+  }
+  .workspace-tool-activity.is-standalone {
+    height: auto;
+    min-height: 380px;
+  }
+  .workspace-git-body::before {
+    display: none;
+  }
+  .workspace-change-list,
+  .workspace-trace-list {
+    max-height: 210px;
+    overflow-y: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .workspace-trace-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .workspace-trace-content p {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .workspace-editor-composition {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-x: visible;
+  }
+  .workspace-editor-composition > .workspace-explorer {
+    display: none;
+  }
+  .workspace-editor-meta span {
+    display: none;
+  }
+  .workspace-editor-mode-row {
+    align-items: start;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .workspace-editor-mode-row > div {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .workspace-panel.is-standalone,
+  .workspace-review.is-standalone {
+    width: 100%;
+    height: auto;
+    min-height: 464px;
+  }
+  .workspace-conversation.is-standalone {
+    height: auto;
+    min-height: 464px;
+  }
+  .workspace-editor.is-standalone {
+    width: 100%;
+    height: auto;
+    min-height: 464px;
+  }
+  .workspace-editor.is-standalone {
+    width: 100%;
+    height: auto;
+    min-height: 464px;
+  }
+  .workspace-drawer.is-standalone {
+    height: auto;
+    min-height: 380px;
+  }
+  .workspace-drawer-state-grid .workspace-drawer.is-standalone {
+    overflow-x: hidden;
+  }
+  .workspace-session-state .workspace-panel.is-standalone {
+    height: var(--workspace-session-height);
+    min-height: var(--workspace-session-height);
+  }
+}

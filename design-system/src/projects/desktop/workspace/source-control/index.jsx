@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
-import { SourceControlPanel } from "../WorkspacePrimitives.jsx";
+import { SourceControlPanel } from "../panels/source-control/index.js";
 
 const sourceControlGuides = {
   clean: {

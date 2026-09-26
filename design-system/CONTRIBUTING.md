@@ -39,6 +39,15 @@ Each universal component belongs in its own folder under `src/components/univers
 
 The component folder owns its specimen, stable export, and visual rules. Module pages compose the specimen; they must not duplicate component implementation.
 
+## Keep Modules Readable
+
+- A page file should primarily compose sections and own page-level state; move reusable controls and section implementations into nearby `components/`, `sections/`, `panels/`, or `shell/` folders.
+- Keep fixture data, catalogs, labels, and sample documents in `data/` modules rather than above a large JSX tree.
+- Use a small `index.js` as the stable public entrypoint for a module. Consumers should not need to know where an internal panel or section lives.
+- Treat `Primitive` as a low-level, reusable control name. Business surfaces such as Sessions, Review, Conversation, and Provider trace belong in named panel modules.
+- When a CSS file grows beyond roughly 600–800 lines, split it by ownership such as shell, panel, responsive behavior, or animation. Keep one thin stylesheet entrypoint for application imports.
+- Prefer one main responsibility per file. A compatibility facade is acceptable during migration, but new implementation should live behind the focused module boundary.
+
 ## Styles
 
 - Add semantic values to `src/styles/tokens/` before using a new color, spacing value, radius, shadow, or control dimension.

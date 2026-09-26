@@ -1,0 +1,88 @@
+.workspace-tool-modal {
+  width: min(620px, 100%);
+}
+
+.workspace-tool-modal-content {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.workspace-tool-modal-heading {
+  display: flex !important;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.workspace-tool-modal-heading strong {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.workspace-tool-modal-heading span {
+  flex: 0 0 auto;
+}
+
+.workspace-tool-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--success-border);
+  border-radius: 999px;
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  font: 11px var(--font-mono);
+}
+
+.workspace-tool-modal-section {
+  display: grid;
+  gap: 5px;
+}
+
+.workspace-tool-modal-section > span {
+  color: var(--text-muted);
+  font: 9px var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.workspace-tool-modal-section code {
+  display: block;
+  min-height: 18px;
+  padding: 10px;
+  overflow: auto;
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: 11px/1.5 var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.workspace-tool-live-output {
+  min-height: 220px;
+  max-height: 280px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.workspace-tool-live-output code {
+  display: block;
+  min-height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

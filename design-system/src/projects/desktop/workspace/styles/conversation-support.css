@@ -1,0 +1,139 @@
+.workspace-copy {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  margin: 0 0 0 -6px;
+  place-items: center;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+.workspace-copy:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.workspace-turn-summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 2px 0;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.workspace-turn-summary-heading,
+.workspace-turn-summary-stats,
+.workspace-turn-summary-stat {
+  display: inline-flex;
+  align-items: center;
+}
+.workspace-turn-summary-heading {
+  gap: 4px;
+  color: var(--text-secondary);
+}
+.workspace-turn-summary-stats {
+  gap: 8px;
+}
+.workspace-turn-summary-stat {
+  gap: 4px;
+}
+.workspace-turn-summary-stat b {
+  font: 600 10px var(--font-mono);
+}
+.workspace-turn-summary-stat small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.workspace-image-modal {
+  width: min(720px, 100%);
+}
+.workspace-image-preview {
+  display: grid;
+  min-height: 220px;
+  margin-top: 18px;
+  place-items: center;
+  overflow: hidden;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.workspace-image-preview img {
+  display: block;
+  width: 100%;
+  max-height: 68vh;
+  object-fit: contain;
+}
+
+.workspace-attach,
+.workspace-expand-composer {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+.workspace-attach:hover,
+.workspace-expand-composer:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+.workspace-attach:focus-visible,
+.workspace-expand-composer:focus-visible {
+  color: var(--text);
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
+.workspace-attach:disabled {
+  color: var(--border-strong);
+  cursor: not-allowed;
+}
+
+.workspace-overflow-message-modal {
+  width: min(860px, 100%);
+}
+.workspace-overflow-message-modal-content {
+  display: grid;
+  gap: 12px;
+}
+.workspace-overflow-message-modal-body {
+  min-height: 320px;
+  max-height: 520px;
+  padding: 18px;
+  overflow: auto;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font: 14px/1.55 var(--font-ui);
+}
+.workspace-overflow-message-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  color: var(--text-secondary);
+  font: 11px var(--font-mono);
+}
+
+.workspace-compaction-card {
+  background: color-mix(in srgb, var(--success-surface) 48%, var(--surface-raised));
+  border-color: color-mix(in srgb, var(--success) 26%, var(--border));
+}
+.workspace-compaction-card i {
+  background: var(--success);
+  animation-duration: 1.6s;
+}
+.workspace-compaction-card small {
+  color: var(--success);
+}

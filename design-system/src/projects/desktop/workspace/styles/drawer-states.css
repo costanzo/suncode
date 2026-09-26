@@ -1,0 +1,104 @@
+.workspace-drawer-state-grid .workspace-drawer.is-standalone {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.workspace-tool-modal .dialog-title h3 {
+  margin-bottom: 0;
+  color: var(--text-muted);
+  font: 9px var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.workspace-tool-badge.is-running {
+  border-color: var(--warning-border);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+
+.workspace-tool-modal-section.is-error > span {
+  color: var(--danger);
+}
+
+.workspace-tool-modal-section.is-error code {
+  color: var(--danger);
+  background: var(--danger-surface);
+  border-color: var(--danger-border);
+}
+
+.workspace-tool-modal .dialog-actions {
+  margin-top: 18px;
+}
+
+.workspace-drawer.is-standalone {
+  width: var(--workspace-drawer-width);
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.workspace-git.is-standalone {
+  width: min(var(--workspace-drawer-width), 100%);
+  height: var(--workspace-git-height);
+  min-height: var(--workspace-git-min-height);
+  border-color: var(--border-strong);
+  box-shadow: none;
+}
+
+.workspace-trace.is-standalone {
+  height: var(--workspace-trace-height);
+  min-height: var(--workspace-trace-min-height);
+}
+
+.workspace-change-list > button.is-selected {
+  color: var(--text);
+  background: var(--git-accent-surface);
+  border-color: var(--git-accent);
+}
+
+.workspace-change-status.is-added {
+  color: var(--git-success);
+}
+
+.workspace-change-status.is-modified {
+  color: var(--git-warning);
+}
+
+.workspace-change-status.is-deleted {
+  color: var(--git-danger);
+}
+
+.workspace-trace-list > button:hover,
+.workspace-trace-list > button.is-selected {
+  color: var(--text);
+  background: var(--surface-active);
+}
+
+.workspace-trace-call:hover,
+.workspace-trace-call.is-selected {
+  color: var(--text);
+  background: var(--surface-active);
+}
+
+.workspace-trace-call.is-compaction {
+  background: color-mix(in srgb, var(--success-surface) 28%, var(--surface-raised));
+}
+
+.workspace-trace-call.is-compaction:hover,
+.workspace-trace-call.is-compaction.is-selected {
+  background: color-mix(in srgb, var(--success-surface) 48%, var(--surface-active));
+}
+
+.workspace-trace-content-row:hover,
+.workspace-trace-content-row.is-selected {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.workspace-trace-content-row.is-system > span:first-child {
+  color: var(--success);
+}

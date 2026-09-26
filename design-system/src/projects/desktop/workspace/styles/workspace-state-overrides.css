@@ -1,0 +1,37 @@
+@media (prefers-reduced-motion: reduce) {
+  .workspace-review-heading.is-running i,
+  .workspace-review-heading.is-compacting i,
+  .workspace-review-heading.is-approval i,
+  .workspace-review-heading.is-question i,
+  .workspace-process-card i,
+  .workspace-context-compaction > i,
+  .workspace-todo-item.is-in-progress .ds-icon,
+  .workspace-session-status {
+    animation: none;
+  }
+}
+
+.workspace-scope button.is-selected {
+  color: var(--text);
+  background: var(--surface-active);
+}
+
+.workspace-diff-line.diff-hunk {
+  color: var(--git-accent);
+  background: var(--git-accent-surface);
+}
+.workspace-diff-line.diff-addition {
+  color: var(--git-success);
+  background: var(--success-surface);
+}
+.workspace-diff-line.diff-deletion {
+  color: var(--git-danger);
+  background: var(--danger-surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-tool-tree-row > i.is-running,
+  .workspace-tool-tree-row > i.is-queued {
+    animation: none;
+  }
+}

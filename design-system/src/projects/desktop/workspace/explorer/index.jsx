@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
-import { ExplorerPanel } from "../WorkspacePrimitives.jsx";
+import { ExplorerPanel } from "../panels/explorer/index.js";
 
 const explorerGuides = {
   withoutDependencies: {

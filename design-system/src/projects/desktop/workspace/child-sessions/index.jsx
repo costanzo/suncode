@@ -7,7 +7,7 @@ import {
   ChildSessionsPanel,
   ContentSwitcher,
   primarySessions,
-} from "../WorkspacePrimitives.jsx";
+} from "../panels/child-sessions/index.js";
 
 const guide = {
   tabs: {

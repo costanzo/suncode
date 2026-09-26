@@ -1,6 +1,6 @@
 import { ModuleLink, PageHeader, Section } from "../../../shared/PagePrimitives.jsx";
 import { Icon } from "../../../shared/Icon.jsx";
-import { McpLoadingStatus, WorkspaceWindow } from "./WorkspacePrimitives.jsx";
+import { McpLoadingStatus, WorkspaceWindow } from "./shell/index.js";
 import { WindowSizeNote } from "../WindowSizeNote.jsx";
 
 export function WorkspacePage() {
@@ -25,7 +25,12 @@ export function WorkspacePage() {
               <span className="workspace-project-tab-mark" />
               <span>suncode</span>
             </button>
-            <button className="workspace-project-tab-close" type="button" aria-label="Close suncode project" title="Close project">
+            <button
+              className="workspace-project-tab-close"
+              type="button"
+              aria-label="Close suncode project"
+              title="Close project"
+            >
               <Icon name="close" size={12} />
             </button>
           </div>
@@ -34,7 +39,12 @@ export function WorkspacePage() {
               <span className="workspace-project-tab-mark" />
               <span>desktop-avalonia</span>
             </button>
-            <button className="workspace-project-tab-close" type="button" aria-label="Close desktop-avalonia project" title="Close project">
+            <button
+              className="workspace-project-tab-close"
+              type="button"
+              aria-label="Close desktop-avalonia project"
+              title="Close project"
+            >
               <Icon name="close" size={12} />
             </button>
           </div>
@@ -43,7 +53,12 @@ export function WorkspacePage() {
               <span className="workspace-project-tab-mark" />
               <span>design-system</span>
             </button>
-            <button className="workspace-project-tab-close" type="button" aria-label="Close design-system project" title="Close project">
+            <button
+              className="workspace-project-tab-close"
+              type="button"
+              aria-label="Close design-system project"
+              title="Close project"
+            >
               <Icon name="close" size={12} />
             </button>
           </div>
@@ -112,7 +127,10 @@ export function WorkspacePage() {
               <strong>Active exchange</strong>
               <span>Rates use provider request and response body bytes.</span>
             </div>
-            <div className="workspace-mcp-specimen-footer workspace-provider-traffic-specimen" title="OpenAI / gpt-5.6-sol: 12.4 KiB uploaded, 84.2 KiB downloaded">
+            <div
+              className="workspace-mcp-specimen-footer workspace-provider-traffic-specimen"
+              title="OpenAI / gpt-5.6-sol: 12.4 KiB uploaded, 84.2 KiB downloaded"
+            >
               <span>↑ 12.4 KiB/s&nbsp;&nbsp; ↓ 84.2 KiB/s</span>
               <code>gpt-5.6-sol</code>
             </div>

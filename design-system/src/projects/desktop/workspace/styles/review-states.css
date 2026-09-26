@@ -1,0 +1,112 @@
+.workspace-review.is-standalone {
+  width: var(--workspace-review-width);
+  height: 524px;
+  min-height: 524px;
+}
+
+.workspace-review-heading.is-idle i {
+  background: var(--text-disabled);
+}
+
+.workspace-review-heading.is-running i {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  animation: workspace-status-pulse 1.4s ease-in-out infinite;
+}
+
+.workspace-review-heading.is-compacting i {
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 18%, transparent);
+  animation: workspace-status-pulse 1.6s ease-in-out infinite;
+}
+
+.workspace-review-heading.is-approval i {
+  background: var(--warning);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning) 14%, transparent);
+  animation: workspace-status-pulse 1.6s ease-in-out infinite;
+}
+
+.workspace-review-heading.is-question i {
+  background: var(--success);
+  border: 2px solid var(--success);
+  box-sizing: border-box;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 30%, var(--surface));
+  animation: workspace-status-pulse 1.8s ease-in-out infinite;
+}
+
+.workspace-review-heading.is-failed i {
+  background: var(--danger);
+}
+
+.workspace-failure-card .btn {
+  width: 100%;
+  margin-top: 2px;
+}
+
+.workspace-todo-card p .ds-icon {
+  color: var(--text-muted);
+}
+
+.workspace-todo-item.is-completed {
+  opacity: 0.62;
+}
+
+.workspace-todo-item.is-completed .ds-icon {
+  color: var(--success);
+}
+
+.workspace-todo-item.is-in-progress .ds-icon {
+  color: var(--accent);
+}
+
+.workspace-todo-item.is-in-progress .ds-icon {
+  animation: workspace-status-pulse 1.4s ease-in-out infinite;
+}
+
+.workspace-todo-item.is-pending .ds-icon {
+  color: var(--text-muted);
+}
+
+.workspace-todo-item.is-cancelled {
+  opacity: 0.62;
+}
+
+.workspace-todo-item.is-cancelled .ds-icon {
+  color: var(--danger);
+}
+
+.workspace-turn-changes-summary-meta .is-added {
+  color: var(--success);
+}
+
+.workspace-turn-changes-summary-meta .is-deleted {
+  color: var(--danger);
+}
+
+.workspace-turn-changes-summary-meta .is-edited {
+  color: var(--text-secondary);
+}
+
+.workspace-turn-changes-summary-meta .is-live {
+  color: var(--accent);
+}
+
+.workspace-approval-card .btn {
+  width: 100%;
+  min-width: 0;
+  padding: 0 6px;
+  font-size: 9px;
+}
+
+.workspace-question-option.is-selected {
+  color: var(--text);
+  background: var(--surface-active);
+  border-color: var(--accent-border);
+}
+
+.workspace-question-actions .btn {
+  width: 100%;
+  min-width: 0;
+  padding: 0 6px;
+  font-size: 9px;
+}

@@ -1,0 +1,83 @@
+.workspace-change-list,
+.workspace-trace-list {
+  background: color-mix(in srgb, var(--surface) 94%, var(--canvas));
+  border-right: 1px solid var(--border);
+}
+
+.workspace-git .workspace-change-list {
+  background: var(--git-sidebar);
+}
+
+.workspace-change-list {
+  border-right: 0;
+}
+
+.workspace-drawer-label {
+  min-height: 30px;
+  padding: 0 12px;
+  color: var(--text-muted);
+  font: 11px/30px var(--font-mono);
+}
+
+.workspace-change-list > button {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: calc(100% - 8px);
+  height: 30px;
+  min-height: 30px;
+  margin: 1px 4px;
+  padding: 1px 8px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+
+.workspace-change-list > button:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.workspace-change-list > button b {
+  font: 700 12px var(--font-mono);
+}
+
+.workspace-change-list > button span {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  line-height: 1.2;
+}
+
+.workspace-change-list > button code,
+.workspace-change-list > button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-change-list > button code {
+  color: inherit;
+  font: 11px var(--font-mono);
+}
+
+.workspace-change-list > button span small {
+  color: var(--text-muted);
+  font: 10px var(--font-mono);
+}
+
+.workspace-change-list > button > small {
+  color: var(--text-secondary);
+  font: 10px var(--font-mono);
+  white-space: nowrap;
+}
+
+.workspace-change-empty {
+  padding: 24px 14px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}

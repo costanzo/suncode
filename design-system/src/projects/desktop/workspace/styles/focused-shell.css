@@ -1,0 +1,122 @@
+.workspace-focused-frame {
+  min-height: 560px;
+}
+
+.workspace-focused-titlebar {
+  grid-template-columns: minmax(0, 1fr) 260px minmax(0, 1fr);
+}
+
+.workspace-focused-titlebar > strong {
+  position: absolute;
+  left: 90px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.workspace-focused-sidebar {
+  background: var(--surface);
+}
+
+.workspace-focused-sidebar > .workspace-panel {
+  width: var(--workspace-navigation-width);
+  min-height: 524px;
+  border-width: 0 1px 0 0;
+  border-radius: 0;
+}
+
+.workspace-focused-conversation > .workspace-conversation {
+  min-height: 524px;
+  border: 0;
+  border-radius: 0;
+}
+
+.workspace-focused-review {
+  display: grid;
+  justify-items: end;
+  background: var(--surface);
+}
+
+.workspace-focused-review > .workspace-review {
+  width: var(--workspace-review-width);
+  min-height: 524px;
+  border-width: 0 0 0 1px;
+  border-radius: 0;
+}
+
+.workspace-git > header > .workspace-icon-button:nth-last-child(3) {
+  grid-column: 11;
+}
+
+.workspace-git > header > .workspace-icon-button:nth-last-child(2) {
+  grid-column: 13;
+}
+
+.workspace-git > header > .workspace-icon-button:last-child {
+  grid-column: 15;
+}
+
+.workspace-git > header > .workspace-icon-button {
+  width: 26px;
+  height: 26px;
+}
+
+.workspace-tool-activity-actions .workspace-icon-button {
+  width: 26px;
+  height: 26px;
+}
+
+.workspace-git > header .workspace-icon-button {
+  background: var(--surface-raised);
+  border-color: var(--border-strong);
+  border-radius: 8px;
+}
+
+.workspace-git > header .workspace-icon-button:hover {
+  background: var(--surface-hover);
+  border-color: var(--git-accent);
+}
+
+.workspace-titlebar > .traffic-lights,
+.workspace-focused-titlebar > .traffic-lights {
+  position: static;
+  grid-column: 1;
+  justify-self: start;
+  gap: 8px;
+  margin-left: 1px;
+}
+
+.workspace-icon-button.is-active {
+  color: var(--accent);
+  background: var(--surface-active);
+  border-color: var(--accent-border);
+}
+
+.workspace-panel.is-compact {
+  width: var(--workspace-navigation-width);
+  flex: 0 0 var(--workspace-navigation-width);
+}
+
+.workspace-panel.is-standalone {
+  width: var(--workspace-navigation-width);
+  height: 524px;
+  min-height: 524px;
+  box-shadow: var(--shadow-popover);
+}
+
+.workspace-session-state .workspace-panel.is-standalone {
+  width: 100%;
+  height: var(--workspace-session-height);
+  min-height: var(--workspace-session-height);
+}
+
+.workspace-statusbar .ds-icon {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.workspace-focused-titlebar > .ds-icon {
+  grid-column: 3;
+  justify-self: end;
+  margin-right: 6px;
+  color: var(--text-muted);
+}

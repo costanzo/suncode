@@ -17,6 +17,8 @@ Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before adding a module, route, compone
 - `src/platforms/` and `src/projects/` - platform and business-project review pages.
 - `src/agents/` - agent-specific review pages, including General and its Prompt catalog.
 - `src/shared/` - shared React primitives.
+- `src/projects/desktop/workspace/` - Workspace shell, focused panels, fixtures, shared controls, and owned styles.
+- `src/projects/desktop/settings/` - Settings page composition, section panels, catalogs, and settings-owned controls.
 - `src/styles/tokens/` - semantic token sources. `foundation.css` and `layout.css` provide global review foundations, while `components.css` imports colocated universal component styles. `browser.css` owns the catalog shell; `projects/desktop/styles/` and `projects/desktop/workspace/styles/` own Desktop page styles. `review.css` is a compatibility entrypoint for the remaining review surface.
 - `src/assets/` - source-imported logos, icons, fonts, and platform assets.
 - `public/assets/` - browser-direct assets such as the favicon.

@@ -1,0 +1,7 @@
+/* Shell styles stay in source order while each responsibility remains readable on its own. */
+@import "./shell-chrome.css";
+@import "./content-switcher.css";
+@import "./project-switcher.css";
+@import "./workspace-layout.css";
+@import "./statusbar.css";
+@import "./focused-shell.css";

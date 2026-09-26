@@ -1,0 +1,10 @@
+export { AppearancePanel } from "./AppearancePanel.jsx";
+export { DefaultsPanel } from "./DefaultsPanel.jsx";
+export { ShortcutsPanel } from "./ShortcutsPanel.jsx";
+export { AgentPanel, AgentsPanel, ProviderPanel, ProvidersPanel } from "./AgentProviderPanels.jsx";
+export { BrowserUsePanel } from "./BrowserUsePanel.jsx";
+export { ComputerUsePanel } from "./ComputerUsePanel.jsx";
+export { initialLanguageServers, LanguageServersPanel } from "./LanguageServersPanel.jsx";
+export { LoggingPanel } from "./LoggingPanel.jsx";
+export { initialMcpServers, McpServersPanel } from "./McpServersPanel.jsx";
+export { NetworkPanel } from "./NetworkPanel.jsx";

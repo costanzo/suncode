@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
-import { ProviderTracePanel } from "../WorkspacePrimitives.jsx";
+import { ProviderTracePanel } from "../panels/provider-trace/index.js";
 
 const providerTraceGuides = {
   noTurns: {

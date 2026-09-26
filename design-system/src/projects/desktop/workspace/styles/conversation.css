@@ -1,0 +1,5 @@
+/* Conversation styles stay in source order while each responsibility remains readable on its own. */
+@import "./conversation-surface.css";
+@import "./conversation-messages.css";
+@import "./conversation-composer.css";
+@import "./conversation-context.css";

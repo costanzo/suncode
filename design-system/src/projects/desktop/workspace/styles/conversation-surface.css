@@ -1,0 +1,148 @@
+.workspace-composer textarea:focus,
+.workspace-composer textarea:focus-visible,
+.workspace-composer-modal-content textarea:focus,
+.workspace-composer-modal-content textarea:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
+.workspace-conversation {
+  position: relative;
+  display: flex;
+  min-width: var(--workspace-conversation-min-width);
+  flex: 1 1 480px;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 24px 128px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.workspace-conversation-empty {
+  position: absolute;
+  inset: 0;
+  place-content: center;
+  padding: 24px;
+}
+
+.workspace-conversation-scroll {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 4px;
+  padding-bottom: 18px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--border-strong) 58%, transparent) transparent;
+}
+
+.workspace-conversation-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.workspace-conversation-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workspace-conversation-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--border-strong) 58%, transparent);
+  border-radius: 999px;
+}
+
+.workspace-scroll-to-bottom {
+  position: absolute;
+  right: 34px;
+  bottom: 140px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  box-shadow: var(--shadow-popover);
+  cursor: pointer;
+}
+
+.workspace-scroll-to-bottom:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+  border-color: var(--accent-border);
+}
+
+.workspace-scroll-to-bottom:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
+
+.workspace-running-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  min-height: 22px;
+  padding: 0 4px;
+}
+
+.workspace-running-indicator i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  animation: workspace-dot-bounce 0.9s ease-in-out infinite;
+}
+
+.workspace-running-indicator i:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.workspace-running-indicator i:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+.workspace-context-compaction {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 8px 10px;
+  color: var(--success);
+  background: color-mix(in srgb, var(--success-surface) 48%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--success) 26%, var(--border));
+  border-radius: var(--radius-sm);
+}
+
+.workspace-context-compaction > i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.workspace-context-compaction > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workspace-context-compaction strong {
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.workspace-context-compaction small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

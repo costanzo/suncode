@@ -1,0 +1,136 @@
+.workspace-turn-change {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  min-height: 24px;
+  padding: 3px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+}
+.workspace-turn-change:last-child {
+  border-bottom: 0;
+}
+.workspace-turn-change b {
+  font: 700 10px var(--font-mono);
+  text-align: center;
+}
+.workspace-turn-change code {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font: 9px var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-turn-change > small {
+  color: var(--text-muted);
+  font: 8px var(--font-mono);
+  white-space: nowrap;
+}
+
+.workspace-checkpoint-card {
+  background: var(--surface-raised);
+}
+.workspace-checkpoint-card code {
+  padding: 8px;
+  white-space: pre-line;
+  color: var(--text-muted);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font: 9px/1.5 var(--font-mono);
+}
+
+.workspace-scope {
+  display: flex;
+  padding: 2px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.workspace-scope button {
+  width: 72px;
+  min-height: 26px;
+  padding: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.workspace-diff {
+  grid-column: 3;
+  min-width: 0;
+  background: var(--git-workspace);
+}
+.workspace-diff-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+.workspace-diff-heading code {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font: 11px var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-diff-heading span {
+  font: 11px var(--font-mono);
+  white-space: nowrap;
+}
+.workspace-diff-heading b {
+  color: var(--git-success);
+}
+.workspace-diff-heading i {
+  color: var(--git-danger);
+  font-style: normal;
+}
+.workspace-diff pre {
+  height: calc(100% - 30px);
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  color: var(--text-secondary);
+  font: 11px/22px var(--font-mono);
+}
+.workspace-diff-empty {
+  display: grid;
+  height: 100%;
+  min-height: 120px;
+  place-items: center;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-align: center;
+}
+.workspace-diff-line {
+  display: grid;
+  grid-template-columns: 34px 34px 1px minmax(max-content, 1fr);
+  width: 100%;
+  min-width: max-content;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+  white-space: pre;
+}
+.workspace-diff-line > span {
+  padding-right: 8px;
+  color: var(--text-muted);
+  text-align: right;
+  user-select: none;
+}
+.workspace-diff-line > i {
+  background: var(--border);
+}
+.workspace-diff-line > code {
+  padding: 0 16px 0 10px;
+  color: inherit;
+  font: inherit;
+}

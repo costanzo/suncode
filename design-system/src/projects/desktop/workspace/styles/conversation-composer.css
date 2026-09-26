@@ -1,0 +1,215 @@
+.workspace-composer {
+  position: absolute;
+  right: 24px;
+  bottom: 10px;
+  left: 24px;
+  display: grid;
+  height: calc(var(--workspace-composer-height) - 24px);
+  min-height: calc(var(--workspace-composer-height) - 24px);
+  padding: 12px 12px 10px 16px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+}
+
+.workspace-composer textarea {
+  width: 100%;
+  min-height: 52px;
+  padding: 0;
+  resize: none;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: 14px var(--font-ui);
+}
+
+.workspace-composer textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.workspace-composer-status {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  left: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 18px;
+  color: var(--warning);
+  font-size: 10px;
+}
+
+.workspace-composer-status strong {
+  font-weight: 600;
+}
+
+.workspace-composer-status span {
+  color: var(--text-muted);
+}
+
+.workspace-composer textarea:disabled {
+  padding-top: 20px;
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.workspace-composer:has(textarea:disabled) {
+  border-color: var(--warning-border);
+}
+
+.workspace-composer:has(textarea:disabled) .workspace-composer-options {
+  opacity: 0.72;
+}
+
+.workspace-attachment-input {
+  display: none;
+}
+
+.workspace-attachment-strip {
+  position: absolute;
+  z-index: 2;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: flex;
+  gap: 7px;
+  min-height: 48px;
+}
+
+.workspace-attachment {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  overflow: visible;
+  background: var(--surface-inset);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-popover);
+}
+
+.workspace-attachment-preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  cursor: zoom-in;
+}
+
+.workspace-attachment-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.workspace-attachment-preview:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
+
+.workspace-attachment-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  padding: 0;
+  color: var(--surface);
+  background: var(--text);
+  border: 1px solid var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s ease;
+}
+
+.workspace-attachment:hover .workspace-attachment-remove,
+.workspace-attachment:focus-within .workspace-attachment-remove {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.workspace-attachment-remove:hover {
+  background: var(--text-secondary);
+}
+
+.workspace-attachment-remove:focus-visible {
+  opacity: 1;
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
+
+.workspace-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.workspace-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.workspace-composer-options {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.workspace-composer-modal {
+  width: min(860px, 100%);
+}
+
+.workspace-composer-modal-content {
+  display: grid;
+  gap: 12px;
+  margin-top: 0;
+}
+
+.workspace-composer-modal-content textarea {
+  width: 100%;
+  min-height: 420px;
+  padding: 18px 18px 22px;
+  resize: vertical;
+  color: var(--text);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: 0;
+  font: 14px/1.55 var(--font-ui);
+}
+
+.workspace-composer-modal-content textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.workspace-composer-modal-content textarea:focus-visible {
+  border-color: var(--border);
+}
+
+.workspace-composer-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.workspace-composer-modal-footer strong {
+  color: var(--text-secondary);
+  font: 11px var(--font-mono);
+}

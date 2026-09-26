@@ -1,0 +1,152 @@
+.workspace-window,
+.workspace-focused-frame {
+  overflow: hidden;
+  color: var(--text);
+  background: var(--canvas);
+  border: 0.5px solid var(--chrome);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.16);
+}
+
+.workspace-window {
+  min-height: 650px;
+}
+
+.workspace-titlebar,
+.workspace-focused-titlebar {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px minmax(0, 1fr);
+  align-items: center;
+  min-height: 36px;
+  padding: 0 7px;
+}
+
+.workspace-titlebar > span,
+.workspace-focused-titlebar > span {
+  grid-column: 2;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-titlebar > .workspace-icon-button {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.workspace-titlebar-actions {
+  position: relative;
+  grid-column: 3;
+  display: flex;
+  justify-self: end;
+  gap: 2px;
+}
+
+.workspace-tabs-specimen {
+  display: flex;
+  min-height: 44px;
+  align-items: stretch;
+  gap: 2px;
+  overflow-x: auto;
+  padding: 4px 8px 0;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border);
+}
+
+.workspace-project-tab-shell {
+  position: relative;
+  min-width: 120px;
+  max-width: 240px;
+  flex: 0 1 240px;
+}
+
+.workspace-project-tab {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 0 36px 0 12px;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.workspace-project-tab:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.workspace-project-tab.is-active {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--accent-border);
+  border-bottom-color: var(--accent);
+}
+
+.workspace-project-tab:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+
+.workspace-project-tab-mark {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border: 1px solid var(--text-muted);
+  border-radius: 2px;
+}
+
+.workspace-project-tab.is-active .workspace-project-tab-mark {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.workspace-project-tab-close {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-50%);
+}
+
+.workspace-project-tab-shell:hover .workspace-project-tab-close,
+.workspace-project-tab-shell:focus-within .workspace-project-tab-close {
+  opacity: 1;
+  visibility: visible;
+}
+
+.workspace-project-tab-close:hover,
+.workspace-project-tab-close:focus-visible {
+  color: var(--text);
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  outline: 0;
+}
+
+.workspace-tabs-note {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}

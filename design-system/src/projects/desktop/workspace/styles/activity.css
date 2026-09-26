@@ -1,0 +1,77 @@
+.workspace-state-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 16px;
+  align-items: start;
+}
+
+.workspace-state-grid > div {
+  position: relative;
+  min-width: 0;
+}
+
+.workspace-state-grid > div > h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.workspace-active-tool {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto 14px;
+  gap: 8px;
+  align-items: center;
+  width: min(100%, 620px);
+  min-height: 34px;
+  padding: 0 9px;
+  color: var(--text-secondary);
+  text-align: left;
+  background: color-mix(in srgb, var(--warning-surface) 34%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--border));
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+}
+.workspace-active-tool:hover {
+  color: var(--text);
+  border-color: var(--warning);
+}
+.workspace-active-tool:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+.workspace-active-tool span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-active-tool small {
+  color: var(--warning);
+  font: 9px var(--font-mono);
+}
+
+.workspace-assistant-duration {
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font: 10px/1.35 var(--font-mono);
+}
+.workspace-thinking-indicator {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font: 500 12px/1.2 var(--font-ui);
+  letter-spacing: 0.02em;
+}
+.workspace-thinking-indicator span {
+  position: relative;
+  color: color-mix(in srgb, var(--text-secondary) 28%, transparent);
+}
+.workspace-thinking-indicator span::after {
+  content: "Thinking";
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: var(--text);
+  white-space: nowrap;
+  animation: workspace-thinking-reveal 1.75s ease-in-out infinite;
+}

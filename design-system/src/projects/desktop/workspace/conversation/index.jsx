@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
-import { ConversationPanel, sampleConversationAttachments } from "../WorkspacePrimitives.jsx";
+import { ConversationPanel, sampleConversationAttachments } from "../panels/conversation/index.js";
 
 const conversationGuides = {
   noSession: {
@@ -248,7 +248,9 @@ export function WorkspaceConversationPage() {
       title: "Model unavailable",
       description: "The selected provider has no API key, so new messages cannot be sent.",
       side: "left",
-      content: <ConversationPanel standalone state="model-unavailable" onViewChanges={viewChanges} />,
+      content: (
+        <ConversationPanel standalone state="model-unavailable" onViewChanges={viewChanges} />
+      ),
     },
     {
       id: "waiting",
@@ -260,9 +262,12 @@ export function WorkspaceConversationPage() {
     {
       id: "intermediateAssistant",
       title: "Intermediate assistant message",
-      description: "A quieter in-turn update keeps progress context secondary to the final response.",
+      description:
+        "A quieter in-turn update keeps progress context secondary to the final response.",
       side: "right",
-      content: <ConversationPanel standalone state="intermediate-assistant" onViewChanges={viewChanges} />,
+      content: (
+        <ConversationPanel standalone state="intermediate-assistant" onViewChanges={viewChanges} />
+      ),
     },
     {
       id: "updating",
@@ -281,7 +286,8 @@ export function WorkspaceConversationPage() {
     {
       id: "attachments",
       title: "Two images attached",
-      description: "A specimen-only image-capable model shows two thumbnails before and after sending.",
+      description:
+        "A specimen-only image-capable model shows two thumbnails before and after sending.",
       side: "right",
       content: (
         <ConversationPanel
@@ -312,7 +318,9 @@ export function WorkspaceConversationPage() {
       title: "Expanded composer",
       description: "A large drafting modal opens from the compact composer when requested.",
       side: "left",
-      content: <ConversationPanel standalone state="immersive-composer" onViewChanges={viewChanges} />,
+      content: (
+        <ConversationPanel standalone state="immersive-composer" onViewChanges={viewChanges} />
+      ),
     },
     {
       id: "liveToolStream",

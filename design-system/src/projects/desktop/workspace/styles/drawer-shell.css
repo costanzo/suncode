@@ -1,0 +1,142 @@
+.workspace-drawer {
+  min-height: var(--workspace-git-height);
+  background: var(--surface);
+}
+
+.workspace-git {
+  --git-accent: #69c5b0;
+  --git-accent-hover: #7dd2be;
+  --git-accent-surface: #172824;
+  --git-sidebar: #0b0e12;
+  --git-workspace: #13171c;
+  --git-field: #15191e;
+  --git-success: #78c99b;
+  --git-warning: #ddb16c;
+  --git-danger: #e68a83;
+}
+
+[data-theme="light"] .workspace-git {
+  --git-accent: #2f8f7d;
+  --git-accent-hover: #277f6f;
+  --git-accent-surface: #e0f2ee;
+  --git-sidebar: #e9eef2;
+  --git-workspace: #f8fafb;
+  --git-field: #f4f7f9;
+  --git-success: #27845b;
+  --git-warning: #9a6a20;
+  --git-danger: #b6463f;
+}
+
+[data-theme="dark"] .workspace-git {
+  --git-success: #78c99b;
+  --git-warning: #ddb16c;
+  --git-danger: #e68a83;
+}
+
+.workspace-drawer > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto 1fr auto 26px 8px 26px 8px 26px;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.workspace-git > header {
+  grid-template-columns:
+    16px 8px minmax(0, 190px) 8px 1px 8px max-content minmax(0, 1fr)
+    210px 8px 26px 8px 26px 8px 26px;
+  gap: 0;
+  min-height: 36px;
+}
+
+.workspace-git > header > .workspace-git-icon {
+  grid-column: 1;
+  color: var(--git-accent);
+}
+
+.workspace-git > header > strong {
+  grid-column: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-git > header > .workspace-git-divider {
+  grid-column: 5;
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+}
+
+.workspace-git > header > .workspace-scope {
+  grid-column: 7;
+}
+
+.workspace-git > header > input {
+  grid-column: 9;
+}
+
+.workspace-trace > header {
+  min-height: 39px;
+}
+
+.workspace-tool-activity > header {
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr) auto;
+}
+
+.workspace-tool-activity-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
+}
+
+.workspace-drawer > header strong {
+  font: 11px var(--font-mono);
+}
+
+.workspace-git > header strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.workspace-drawer > header > span {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.workspace-git > header input {
+  width: 210px;
+  min-width: 0;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 10px;
+  color: var(--text);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+}
+
+.workspace-git-body {
+  display: grid;
+  grid-template-columns: clamp(228px, calc(28% - 22px), 300px) 1px minmax(0, 1fr);
+  height: calc(var(--workspace-git-height) - 37px);
+  min-height: calc(var(--workspace-git-height) - 37px);
+}
+
+.workspace-git-body::before {
+  grid-column: 2;
+  grid-row: 1;
+  background: var(--border);
+  content: "";
+}
+
+.workspace-trace-body {
+  display: grid;
+  grid-template-columns: 390px 1fr;
+  height: calc(var(--workspace-trace-height) - 39px);
+  min-height: calc(var(--workspace-trace-height) - 39px);
+}

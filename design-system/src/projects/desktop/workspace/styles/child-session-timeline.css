@@ -1,0 +1,145 @@
+.workspace-child-timeline {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.workspace-child-timeline::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 14px;
+  width: 1px;
+  background: var(--border);
+}
+
+.workspace-child-event {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.workspace-child-event-mark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.workspace-child-event.is-delegation .workspace-child-event-mark,
+.workspace-child-event.is-response .workspace-child-event-mark {
+  color: var(--content-agent);
+  background: var(--content-agent-surface);
+}
+
+.workspace-child-event > div {
+  min-width: 0;
+  padding-top: 3px;
+}
+
+.workspace-child-event header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workspace-child-event header strong {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.workspace-child-event header time {
+  color: var(--text-muted);
+  font: 9px var(--font-mono);
+  white-space: nowrap;
+}
+
+.workspace-child-event p {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.workspace-child-event code {
+  display: block;
+  margin-top: 7px;
+  padding: 8px 9px;
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font: 10px/1.5 var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.workspace-child-event ul {
+  display: grid;
+  gap: 5px;
+  margin: 9px 0 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.workspace-child-working {
+  display: inline-flex;
+  margin-top: 8px;
+  color: var(--accent);
+  font: 9px var(--font-mono);
+}
+
+.workspace-child-working::after {
+  content: "";
+  width: 12px;
+  margin-left: 6px;
+  border-bottom: 1px solid currentColor;
+  animation: workspace-child-working 1.4s ease-in-out infinite;
+}
+
+.workspace-child-authority-note,
+.workspace-child-failure-note {
+  margin-left: 40px;
+}
+
+.workspace-child-authority-note {
+  color: var(--warning);
+  background: var(--warning-surface);
+  border-color: var(--warning-border);
+}
+
+.workspace-child-failure-note {
+  color: var(--danger);
+  background: var(--danger-surface);
+  border-color: var(--danger-border);
+}
+
+.workspace-child-authority-note > div,
+.workspace-child-failure-note > div {
+  display: grid;
+  gap: 3px;
+}
+
+.workspace-child-authority-note strong,
+.workspace-child-failure-note strong {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.workspace-child-authority-note span,
+.workspace-child-failure-note span {
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.45;
+}

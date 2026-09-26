@@ -1,0 +1,56 @@
+.workspace-child-specimen {
+  overflow: hidden;
+  background: var(--canvas);
+  border: 0.5px solid var(--chrome);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.16);
+}
+
+.workspace-child-specimen-titlebar {
+  display: grid;
+  grid-template-columns: 1fr 280px 1fr;
+  align-items: center;
+  min-height: 36px;
+}
+
+.workspace-child-specimen-body {
+  display: flex;
+  gap: 4px;
+  min-height: 610px;
+  padding: 4px;
+}
+
+.workspace-child-detail-state-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 16px;
+}
+
+.workspace-child-detail-state-grid > div {
+  min-width: 0;
+}
+
+.workspace-child-detail-state-grid h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+.workspace-child-detail.is-standalone {
+  width: min(var(--workspace-conversation-width), 100%);
+  height: 620px;
+  min-height: 620px;
+  box-shadow: var(--shadow-popover);
+}
+
+.workspace-child-sessions.is-standalone {
+  width: var(--workspace-review-width);
+  height: 524px;
+  min-height: 524px;
+  box-shadow: var(--shadow-popover);
+}
+
+.workspace-child-detail-empty {
+  min-height: 420px;
+  padding: 32px;
+}

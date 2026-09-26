@@ -1,0 +1,127 @@
+.workspace-window-body {
+  display: flex;
+  gap: 4px;
+  min-height: 590px;
+  padding: 4px;
+}
+
+.workspace-main-stack {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workspace-main-row {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 4px;
+  min-height: 360px;
+}
+
+.workspace-main-stack > .workspace-drawer {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.workspace-main-stack > .workspace-git {
+  flex: 0 0 var(--workspace-git-height);
+  min-height: var(--workspace-git-min-height);
+}
+
+.workspace-main-stack > .workspace-trace {
+  flex: 0 0 var(--workspace-trace-height);
+  min-height: var(--workspace-trace-min-height);
+}
+
+.workspace-main-stack > .workspace-tool-activity {
+  flex: 0 0 var(--workspace-tool-height);
+  min-height: var(--workspace-tool-min-height);
+}
+
+.workspace-gutter {
+  display: flex;
+  width: 26px;
+  flex: 0 0 26px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 7px 0;
+}
+
+.workspace-gutter .ds-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.workspace-gutter > div {
+  display: grid;
+  gap: 6px;
+}
+
+.workspace-gutter-right {
+  gap: 6px;
+  justify-content: flex-start;
+}
+
+.workspace-icon-button {
+  display: grid;
+  width: 26px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.workspace-icon-button:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.workspace-icon-button:disabled {
+  color: var(--text-disabled);
+  background: transparent;
+  cursor: not-allowed;
+}
+
+.workspace-panel {
+  min-width: 0;
+  background: color-mix(in srgb, var(--surface) 94%, var(--canvas));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.workspace-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0 10px 0 14px;
+  color: var(--text-muted);
+  font: 10px var(--font-mono);
+  letter-spacing: 0.07em;
+}
+
+.workspace-panel-actions {
+  display: flex;
+  align-items: center;
+}
+
+.workspace-sessions .workspace-panel-header {
+  min-height: 34px;
+  margin: 14px 16px 10px;
+  padding: 0;
+  color: var(--text-secondary);
+  font: 600 12px var(--font-ui);
+  letter-spacing: 0;
+}
+
+.workspace-sessions .workspace-panel-header > .workspace-icon-button {
+  width: 30px;
+  height: 30px;
+}

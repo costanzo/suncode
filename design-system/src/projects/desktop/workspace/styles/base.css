@@ -1,0 +1,8 @@
+/* Base workspace rules stay in source order while each responsibility remains readable on its own. */
+@import "./tokens.css";
+@import "./guide.css";
+@import "./activity.css";
+@import "./conversation-support.css";
+@import "./review-diff.css";
+@import "./workspace-overrides.css";
+@import "./workspace-state-overrides.css";
