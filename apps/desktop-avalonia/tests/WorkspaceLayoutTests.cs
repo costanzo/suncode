@@ -123,4 +123,20 @@ public sealed class WorkspaceLayoutTests
         Assert.False(viewModel.ChildSessionsVisible);
         Assert.True(viewModel.EffectiveReviewInspectorVisible);
     }
+
+    [Fact]
+    public void TurnChangesStayHiddenUntilTheActiveTurnTouchesAFile()
+    {
+        using var viewModel = new DesktopViewModel();
+
+        viewModel.ApplySnapshot(new SessionSnapshotProjection(
+            [], [], [], [], [], null, null, "turn-1", "running"));
+
+        Assert.False(viewModel.IsReviewChangesVisible);
+
+        viewModel.ApplySnapshot(new SessionSnapshotProjection(
+            [], [], [], ["src/App.cs"], [], null, null, "turn-1", "running"));
+
+        Assert.True(viewModel.IsReviewChangesVisible);
+    }
 }

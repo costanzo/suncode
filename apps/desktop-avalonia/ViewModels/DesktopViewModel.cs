@@ -567,7 +567,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool IsReviewQuestion => !HasPendingApproval && HasPendingQuestion;
     public bool IsReviewWaiting => HasPendingApproval || HasPendingQuestion;
     public bool IsReviewFailed => HasFailedTurn;
-    public bool IsReviewChangesVisible => !IsReviewIdle && !IsReviewCompacting && !IsReviewFailed && (IsTurnActive || HasChangedPaths);
+    public bool IsReviewChangesVisible => !IsReviewIdle && !IsReviewCompacting && !IsReviewFailed && HasChangedPaths;
     public bool IsReviewCheckpointVisible => IsReviewRunning && HasCheckpoints;
     public bool UseSystemCertificates { get => _useSystemCertificates; set => SetProperty(ref _useSystemCertificates, value); }
     public string CertificatePath { get => _certificatePath; set => SetProperty(ref _certificatePath, value); }

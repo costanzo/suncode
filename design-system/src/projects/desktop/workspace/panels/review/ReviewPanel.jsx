@@ -68,8 +68,9 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
       description: "Provide a different behavior in your own words.",
     },
   ];
-  const showTurnChanges = !inactive && !noChanges && !failed && !compacting;
   const turnChangeRows = completedTurnChangeSet;
+  const showTurnChanges =
+    !inactive && !noChanges && !failed && !compacting && turnChangeRows.length > 0;
   const [turnChangesOpen, setTurnChangesOpen] = useState(false);
   return (
     <aside
