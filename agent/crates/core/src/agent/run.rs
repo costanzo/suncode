@@ -35,7 +35,7 @@ impl Agent {
             )?;
         }
         self.turn_state(&context, "preparing", None)?;
-        while context.iterations < 32 {
+        while context.iterations < 1024 {
             if token.is_cancelled() {
                 return self.fail_context(&context, "cancelled", "Turn was cancelled");
             }
