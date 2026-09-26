@@ -67,6 +67,7 @@
                 Classes.warning="{Binding ContextUsageIsWarning}"
                 Classes.danger="{Binding ContextUsageIsDanger}"
                 Classes.unknown="{Binding ContextUsageIsUnknown}"
+                IsVisible="{Binding HasSelectedSession}"
                 Padding="10,9,10,10">
           <StackPanel Spacing="7">
             <ToggleButton Classes="context-usage-toggle"

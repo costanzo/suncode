@@ -18,7 +18,8 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
   const running = state === "running" || state === "running-no-changes";
   const compacting = state === "compacting";
   const waiting = state === "approval" || state === "question";
-  const idle = state === "idle";
+  const noSession = state === "no-session";
+  const idle = state === "idle" || noSession;
   const failed = state === "failed";
   const noChanges = state === "running-no-changes";
   const inactive = idle;
@@ -33,19 +34,21 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
           : state === "approval"
             ? "approval"
             : "question";
-  const statusLabel = idle
-    ? "Agent idle"
-    : failed
-      ? "Turn failed"
-      : compacting
-        ? "Compacting conversation context"
-        : running
-          ? noChanges
-            ? "Agent running, no file changes"
-            : "Agent running"
-          : state === "approval"
-            ? "Waiting for approval"
-            : "Waiting for answer";
+  const statusLabel = noSession
+    ? "No session selected"
+    : idle
+      ? "Agent idle"
+      : failed
+        ? "Turn failed"
+        : compacting
+          ? "Compacting conversation context"
+          : running
+            ? noChanges
+              ? "Agent running, no file changes"
+              : "Agent running"
+            : state === "approval"
+              ? "Waiting for approval"
+              : "Waiting for answer";
   const [questionOption, setQuestionOption] = useState(null);
   const [customAnswer, setCustomAnswer] = useState("");
   const questionOptions = [
@@ -86,7 +89,7 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
         </h3>
         <i role="status" aria-label={statusLabel} title={statusLabel} />
       </div>
-      <ContextUsage />
+      {!noSession && <ContextUsage />}
       {inactive && (
         <div className="workspace-review-empty">
           <Icon name="activity" size={22} />

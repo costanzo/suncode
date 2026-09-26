@@ -4,6 +4,25 @@ import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
 import { ReviewPanel } from "../panels/review/index.js";
 
 const reviewGuides = {
+  noSession: {
+    tabs: {
+      actions: [
+        "Select a session from the Sessions sidebar to inspect agent activity.",
+        "Create a session when the project does not have one yet.",
+        "Context window usage appears after a session is selected.",
+      ],
+      style: [
+        "The right sidebar keeps its heading and idle guidance visible without a context card.",
+        "No unavailable token values are shown before a session provides a model context.",
+        "The state follows the same compact review-column spacing as the session states.",
+      ],
+      logic: [
+        "No primary session is selected in the project.",
+        "Session-scoped context usage is intentionally hidden until selection exists.",
+        "Selecting a session restores the context window row and its live values.",
+      ],
+    },
+  },
   idle: {
     tabs: {
       actions: [
@@ -142,6 +161,13 @@ const reviewGuides = {
 export function WorkspaceReviewPage() {
   const [openGuide, setOpenGuide] = useState(null);
   const states = [
+    {
+      id: "noSession",
+      title: "No session selected",
+      description: "The project is open, but no session is selected for inspection.",
+      side: "right",
+      content: <ReviewPanel standalone state="no-session" />,
+    },
     {
       id: "idle",
       title: "Idle",
