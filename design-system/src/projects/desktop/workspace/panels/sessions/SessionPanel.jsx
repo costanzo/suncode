@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { ConfirmationDialog } from "../../../../../components/universal/modal/index.js";
+import { ConfirmationDialog, Modal } from "../../../../../components/universal/modal/index.js";
 import { Icon } from "../../../../../shared/Icon.jsx";
 
 import {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "../../../../shared/Icon.jsx";
 import { workspaceRecentProjects } from "../data/projects.js";
 
