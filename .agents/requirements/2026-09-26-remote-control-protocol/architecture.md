@@ -35,7 +35,7 @@ The Java Remote Server owns the public HTTP and WebSocket surface. A paired Desk
 
 ## Compatibility and migration
 
-The path prefix `/v1` and `schemaVersion: 1` are stable compatibility boundaries. Additive fields and event types are allowed. Unknown fields and unknown event types must be ignored by clients unless the envelope marks the event as required. Breaking changes require `/v2`.
+The HTTP path prefix `/v1` is the stable compatibility boundary. WebSocket message `type` values and payload fields are versioned by the WebSocket path/protocol contract; additive fields and event types are allowed. Unknown fields and unknown event types must be ignored by clients unless the envelope marks the event as required. Breaking HTTP changes require `/v2`.
 
 ## Risks and rollback
 

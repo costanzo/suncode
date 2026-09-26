@@ -102,9 +102,8 @@ components:
   schemas:
     ClientCommandPayload:
       type: object
-      required: [schemaVersion, type, requestId, command, sentAt]
+      required: [type, requestId, command, sentAt]
       properties:
-        schemaVersion: { type: integer, const: 1 }
         type: { type: string, const: command }
         requestId:
           type: string
@@ -164,9 +163,8 @@ components:
         kind: { type: string, enum: [cancel_turn, retry_turn] }
     SubscribePayload:
       type: object
-      required: [schemaVersion, type, subscriptionId]
+      required: [type, subscriptionId]
       properties:
-        schemaVersion: { type: integer, const: 1 }
         type: { type: string, const: subscribe }
         subscriptionId: { type: string }
         resumeCursor: { type: string, nullable: true }
@@ -181,23 +179,20 @@ components:
           items: { type: string }
     UnsubscribePayload:
       type: object
-      required: [schemaVersion, type, subscriptionId]
+      required: [type, subscriptionId]
       properties:
-        schemaVersion: { type: integer, const: 1 }
         type: { type: string, const: unsubscribe }
         subscriptionId: { type: string }
     PingPayload:
       type: object
-      required: [schemaVersion, type, nonce]
+      required: [type, nonce]
       properties:
-        schemaVersion: { type: integer, const: 1 }
         type: { type: string, const: ping }
         nonce: { type: string }
     ServerEnvelopePayload:
       type: object
-      required: [schemaVersion, type, eventId, occurredAt]
+      required: [type, eventId, occurredAt]
       properties:
-        schemaVersion: { type: integer, const: 1 }
         type:
           type: string
           enum: [ready, command.accepted, command.completed, command.failed, host.updated, project.updated, session.updated, session.message.appended, turn.started, turn.completed, turn.failed, turn.cancelled, approval.requested, approval.resolved, question.asked, question.replied, question.rejected, sync.cursor, snapshot.required, pong, error]

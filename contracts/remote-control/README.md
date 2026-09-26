@@ -21,14 +21,14 @@ The Remote Server correlates mobile requests to the correct Desktop connection a
 ## Versioning and envelopes
 
 - HTTP paths are prefixed with `/v1`.
-- WebSocket envelopes include `schemaVersion: 1`.
+- The HTTP path prefix is `/v1`; WebSocket message `type` values and payload fields are the compatibility boundary.
 - New fields and event types are additive. Clients ignore unknown fields and non-required event types.
-- Breaking changes require `/v2` or `schemaVersion: 2`.
+- Breaking HTTP changes require `/v2`; breaking WebSocket changes require a new WebSocket path or protocol version.
 - Every response and event carries a stable `requestId` or `eventId` where applicable.
 
 ## Pairing and authority
 
-Desktop creates an opaque, short-lived, one-time QR payload. Mobile sends the payload to `POST /v1/pairings/exchange`; a successful exchange consumes it immediately and returns opaque access and refresh tokens bound to the current mobile device. Reusing the payload fails with `pairing_consumed`.
+Desktop creates an opaque, short-lived, one-time QR payload. Mobile sends the payload to `POST /v1/pairings/exchange`; a successful exchange consumes it immediately and returns opaque access and refresh tokens bound to the current mobile device. Reusing the payload fails with `pairing_consumed`. There is no Host discovery endpoint; Mobile learns a Host only through pairing or the projection of an already paired device.
 
 Mobile may inspect Hosts, Projects, active primary Sessions, cached content, approvals, and questions. It may create Sessions, send messages, cancel or retry turns, and resolve approvals/questions. It cannot archive Sessions, delete Sessions, revoke other mobile devices, or widen Rust policy.
 
@@ -49,7 +49,7 @@ Mobile may inspect Hosts, Projects, active primary Sessions, cached content, app
 
 ## Offline and reconnect behavior
 
-The local Mobile cache is authoritative for what can be displayed while disconnected, but never for remote mutation success. The WebSocket handshake accepts `resumeCursor`. If the cursor is resumable, the server sends missed events followed by `ready`; otherwise it sends `snapshot.required`, and Mobile calls `GET /v1/sync` with its last cursor before resubscribing. Unsent messages remain local and visibly unsent until a command completion is received.
+The local Mobile cache is authoritative for what can be displayed while disconnected, but never for remote mutation success. The WebSocket handshake accepts `resumeCursor`. If the cursor is resumable, the server sends missed events followed by `ready`; otherwise it sends `snapshot.required`, and Mobile calls `GET /v1/sync` with its last cursor before resubscribing. Unsent messages remain local and visibly unsent until a command completion is received. `POST /v1/sessions` returns only HTTP `201`; the created Session and its subsequent state arrive through WebSocket events.
 
 ## Connection states
 
