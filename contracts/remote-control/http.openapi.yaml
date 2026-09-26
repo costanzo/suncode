@@ -69,13 +69,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ApiBaseRetError'
         '410':
           description: Pairing payload expired
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ApiBaseRetError'
         '503':
           $ref: '#/components/responses/DesktopUnavailable'
 
@@ -130,7 +130,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Host'
+                $ref: '#/components/schemas/HostResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -150,13 +150,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required: [items]
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Project'
+                $ref: '#/components/schemas/ApiBaseRetProjects'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -183,7 +177,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionPage'
+                $ref: '#/components/schemas/ApiBaseRetSessionPage'
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:
@@ -228,7 +222,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionDetail'
+                $ref: '#/components/schemas/ApiBaseRetSessionDetail'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -238,7 +232,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ApiBaseRetError'
 
   /v1/sessions/{sessionId}/messages:
     parameters:
@@ -263,7 +257,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommandAccepted'
+                $ref: '#/components/schemas/ApiBaseRetCommandAccepted'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -299,7 +293,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommandAccepted'
+                $ref: '#/components/schemas/ApiBaseRetCommandAccepted'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -311,7 +305,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ApiBaseRetError'
 
   /v1/sessions/{sessionId}/questions/{questionId}/reply:
     parameters:
@@ -337,7 +331,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommandAccepted'
+                $ref: '#/components/schemas/ApiBaseRetCommandAccepted'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -364,7 +358,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommandAccepted'
+                $ref: '#/components/schemas/ApiBaseRetCommandAccepted'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -389,7 +383,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommandAccepted'
+                $ref: '#/components/schemas/ApiBaseRetCommandAccepted'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -413,7 +407,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SyncResponse'
+                $ref: '#/components/schemas/ApiBaseRetSync'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '410':
@@ -421,7 +415,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/ApiBaseRetError'
 
 components:
   securitySchemes:
@@ -487,33 +481,77 @@ components:
       description: Request validation failed
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          schema: { $ref: '#/components/schemas/ApiBaseRetError' }
     Unauthorized:
       description: Access credential is missing, expired, or invalid
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          schema: { $ref: '#/components/schemas/ApiBaseRetError' }
     NotFound:
       description: Requested Host, Project, Session, or interaction was not found
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          schema: { $ref: '#/components/schemas/ApiBaseRetError' }
     Conflict:
       description: State or idempotency conflict
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          schema: { $ref: '#/components/schemas/ApiBaseRetError' }
     DesktopUnavailable:
       description: Remote Server is reachable but the selected Desktop is unavailable
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          schema: { $ref: '#/components/schemas/ApiBaseRetError' }
     ServiceUnavailable:
       description: Remote Server health is not ready
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          schema: { $ref: '#/components/schemas/ApiBaseRetError' }
   schemas:
+    ApiBaseRet:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: integer
+          description: Application result code. Zero means success in the current Remote Server implementation.
+        message:
+          type: string
+          nullable: true
+        data:
+          nullable: true
+    ApiBaseRetProjects:
+      allOf:
+        - $ref: '#/components/schemas/ApiBaseRet'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/ProjectsData' }
+    ApiBaseRetSessionPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiBaseRet'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/SessionPageData' }
+    ApiBaseRetSessionDetail:
+      allOf:
+        - $ref: '#/components/schemas/ApiBaseRet'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/SessionDetailData' }
+    ApiBaseRetCommandAccepted:
+      allOf:
+        - $ref: '#/components/schemas/ApiBaseRet'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/CommandAcceptedData' }
+    ApiBaseRetSync:
+      allOf:
+        - $ref: '#/components/schemas/ApiBaseRet'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/SyncData' }
+    ApiBaseRetError:
+      $ref: '#/components/schemas/ApiBaseRet'
     PairingExchangeRequest:
       type: object
       required: [pairingPayload, deviceName]
@@ -533,6 +571,12 @@ components:
           type: string
           minLength: 16
     PairingExchangeResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiBaseRet'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/PairingExchangeData' }
+    PairingExchangeData:
       type: object
       required: [accessToken, refreshToken, accessTokenExpiresAt, host]
       properties:
@@ -546,6 +590,12 @@ components:
       properties:
         refreshToken: { type: string }
     TokenResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiBaseRet'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/TokenData' }
+    TokenData:
       type: object
       required: [accessToken, refreshToken, accessTokenExpiresAt]
       properties:
@@ -553,11 +603,23 @@ components:
         refreshToken: { type: string }
         accessTokenExpiresAt: { type: string, format: date-time }
     HealthResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiBaseRet'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/HealthData' }
+    HealthData:
       type: object
       required: [status, serverTime]
       properties:
         status: { type: string, enum: [ok, degraded] }
         serverTime: { type: string, format: date-time }
+    HostResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiBaseRet'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/Host' }
     Host:
       type: object
       required: [id, displayName, endpoint, connectionState, projectCount, activeSessionCount, lastSeenAt]
@@ -579,7 +641,14 @@ components:
         displayName: { type: string }
         relativeRoot: { type: string, nullable: true, description: Display-safe project-relative root; never an absolute path. }
         activeSessionCount: { type: integer, minimum: 0 }
-    SessionPage:
+    ProjectsData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Project' }
+    SessionPageData:
       type: object
       required: [items, nextCursor, hasMore]
       properties:
@@ -605,7 +674,7 @@ components:
     SessionState:
       type: string
       enum: [idle, running, waiting_for_approval, waiting_for_answer, failed]
-    SessionDetail:
+    SessionDetailData:
       allOf:
         - $ref: '#/components/schemas/SessionSummary'
         - type: object
@@ -694,13 +763,13 @@ components:
           type: array
           items: { type: string }
         expectedRevision: { type: integer, minimum: 0 }
-    CommandAccepted:
+    CommandAcceptedData:
       type: object
       required: [requestId, acceptedAt]
       properties:
         requestId: { type: string }
         acceptedAt: { type: string, format: date-time }
-    SyncResponse:
+    SyncData:
       type: object
       required: [cursor, resetRequired, hosts, sessions, removedSessionIds]
       properties:
@@ -719,14 +788,3 @@ components:
     ConnectionState:
       type: string
       enum: [connected, connecting, degraded, offline, unauthorized, incompatible]
-    ErrorResponse:
-      type: object
-      required: [code, message, retryable, requestId]
-      properties:
-        code:
-          type: string
-          enum: [invalid_request, unauthorized, forbidden, not_found, pairing_expired, pairing_consumed, desktop_offline, remote_unavailable, session_archived, revision_conflict, idempotency_key_reused, cursor_expired, rate_limited, incompatible, internal_error]
-        message: { type: string, maxLength: 500 }
-        retryable: { type: boolean }
-        requestId: { type: string, nullable: true }
-        retryAfterSeconds: { type: integer, minimum: 0, nullable: true }

@@ -39,6 +39,20 @@ Mobile may inspect Hosts, Projects, active primary Sessions, cached content, app
 - Refresh and logout operate on the current mobile device credential only.
 - Tokens are opaque and must not be written to logs, events, analytics, or Session content.
 
+## HTTP response envelope
+
+The Java Spring Boot Remote Server uses `ApiBaseRet<T>` for JSON responses:
+
+```json
+{
+  "code": 0,
+  "message": "optional",
+  "data": {}
+}
+```
+
+`code` is always present. `message` and `data` are omitted when null because the server uses Jackson `NON_NULL` inclusion. HTTP error status codes still apply, but their JSON body uses the same envelope. `POST /v1/sessions` is the exception specified by the API contract: a successful request returns `201` with no response body, and the created Session is announced through WebSocket events.
+
 ## Idempotency and concurrency
 
 - Every mutating HTTP request requires `Idempotency-Key`.
