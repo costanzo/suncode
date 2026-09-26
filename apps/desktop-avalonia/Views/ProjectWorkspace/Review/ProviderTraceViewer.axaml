@@ -98,7 +98,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="7">
                           <TextBlock Text="{Binding CallText}" FontSize="11" FontWeight="SemiBold" />
                         </StackPanel>
-                        <TextBlock Text="{Binding Title}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock MaxWidth="200" Text="{Binding Title}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
                       </StackPanel>
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
                         <TextBlock Text="{Binding StatusText}" Classes="mono" FontSize="10" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Right" IsVisible="{Binding IsRunning}" />

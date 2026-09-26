@@ -312,21 +312,64 @@ export const primaryModules = [
             path: "/projects/mobile/shell",
             label: "App shell",
             keywords: "bottom navigation rail theme dark light system",
+            children: [
+              {
+                path: "/projects/mobile/adaptive",
+                label: "Adaptive tablet",
+                keywords: "tablet rail two pane list detail expanded width",
+              },
+            ],
           },
           {
             path: "/projects/mobile/sessions",
             label: "Sessions",
             keywords: "global inbox host project filter chat approval offline cache",
+            children: [
+              {
+                path: "/projects/mobile/new-session",
+                label: "New session",
+                keywords: "create session host project title prompt primary",
+              },
+              {
+                path: "/projects/mobile/question",
+                label: "Question response",
+                keywords: "question answer approval turn options text",
+              },
+              {
+                path: "/projects/mobile/reconnect",
+                label: "Reconnect",
+                keywords: "remote server websocket offline retry recovery",
+              },
+            ],
           },
           {
             path: "/projects/mobile/hosts",
             label: "Hosts",
             keywords: "desktop pairing qr remote server websocket connected offline",
+            children: [
+              {
+                path: "/projects/mobile/pairing",
+                label: "QR pairing",
+                keywords: "scanner one-time qr fingerprint confirmation trust",
+              },
+              {
+                path: "/projects/mobile/host-detail",
+                label: "Host detail",
+                keywords: "host projects endpoint protocol connected",
+              },
+            ],
           },
           {
             path: "/projects/mobile/settings",
             label: "Settings",
             keywords: "appearance notifications security cache version",
+            children: [
+              {
+                path: "/projects/mobile/cache",
+                label: "Offline cache",
+                keywords: "cache sessions attachments metadata offline clear",
+              },
+            ],
           },
         ],
       },
