@@ -6,7 +6,7 @@ The mobile client is a CMP application with a UI-first repository placeholder. S
 
 ## Proposed design
 
-The Java Remote Server owns the public HTTP and WebSocket surface. A paired Desktop maintains an outbound authenticated WebSocket to the Remote Server. Mobile sends ordinary HTTP commands or WebSocket commands to the relay; the relay correlates the request, forwards a bounded command to the Desktop connection, and returns a normalized result. Desktop-originated state changes are projected to subscribed mobile clients as WebSocket events.
+The Java Remote Server owns the public HTTP and WebSocket surface. A paired Desktop maintains an outbound authenticated WebSocket to the Remote Server. Mobile sends HTTP commands to the relay; the WebSocket from Remote Server to Mobile carries only normalized Session-scoped Rust `AgentEvent` values. Desktop-originated state changes are projected to Mobile as those WebSocket events.
 
 ## Boundaries and dependencies
 
@@ -20,9 +20,9 @@ The Java Remote Server owns the public HTTP and WebSocket surface. A paired Desk
 1. Desktop creates a one-time pairing payload through the Remote Server and renders it as a QR code.
 2. Mobile exchanges the payload for an opaque access/refresh credential pair.
 3. Mobile lists Hosts, Projects, and active primary Sessions over HTTP.
-4. Mobile opens WebSocket `/v1/ws`, authenticates, subscribes with a known cursor, and receives live events.
-5. Mutations are accepted by the relay, correlated to the correct Desktop connection, and completed or failed with the same request ID.
-6. After reconnect, mobile resumes from the cursor or performs `/v1/sync` when the cursor cannot be resumed.
+4. Mobile opens WebSocket `/v1/ws` with the bearer credential and receives only live Session events.
+5. Mutations use HTTP and are accepted by the relay, correlated to the correct Desktop connection, and reflected later through Session events.
+6. After reconnect, Mobile performs `/v1/sync` and then resumes the event connection; there is no application-level WebSocket subscribe or snapshot message.
 
 ## Security and failure handling
 

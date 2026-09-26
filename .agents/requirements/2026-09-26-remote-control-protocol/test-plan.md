@@ -12,12 +12,13 @@ Documentation-level validation of the Mobile ↔ Remote Server HTTP and WebSocke
 
 - Parse both YAML documents with a YAML parser.
 - Assert the OpenAPI document declares `/v1/pairings/exchange`, `/v1/sessions`, `/v1/sync`, bearer auth, and `Idempotency-Key`.
-- Assert the AsyncAPI document declares the WebSocket server, client command, server event, cursor, and error message components.
+- Assert the AsyncAPI document declares a receive-only WebSocket operation and the full Rust `AgentEvent` event catalog.
 
 ## Regression checks
 
 - `git diff --check`.
-- Review that mobile cannot archive Sessions or revoke other devices.
+- Review that Mobile cannot archive Sessions or revoke other devices.
+- Review that the WebSocket has no application-level command, subscribe, ping, snapshot, or error message surface.
 - Review that tokens, provider payloads, and secrets are excluded from protocol DTOs.
 
 ## Manual checks

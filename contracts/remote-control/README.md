@@ -7,7 +7,7 @@ This directory defines the public protocol between the CMP Mobile client and the
 ## Documents
 
 - [`http.openapi.yaml`](http.openapi.yaml) — OpenAPI 3.1 HTTP request/response API.
-- [`websocket.asyncapi.yaml`](websocket.asyncapi.yaml) — AsyncAPI 3.0 bidirectional WebSocket protocol.
+- [`websocket.asyncapi.yaml`](websocket.asyncapi.yaml) — AsyncAPI 3.0 server-to-Mobile Session event stream.
 
 ## Topology
 
@@ -56,14 +56,18 @@ The Java Spring Boot Remote Server uses `ApiBaseRet<T>` for JSON responses:
 ## Idempotency and concurrency
 
 - Every mutating HTTP request requires `Idempotency-Key`.
-- Every mutating WebSocket command carries `requestId`, which is also the relay correlation key.
-- Replaying the same key with the same semantic request returns the original result.
+- HTTP mutations use `Idempotency-Key`; WebSocket has no application-level command channel.
+- Replaying the same HTTP key with the same semantic request returns the original result.
 - Reusing a key with a different request body fails with `idempotency_key_reused`.
 - Approval and question resolution additionally carry `expectedRevision`; a stale decision fails with `revision_conflict` and does not consume the pending interaction.
 
 ## Offline and reconnect behavior
 
-The local Mobile cache is authoritative for what can be displayed while disconnected, but never for remote mutation success. The WebSocket handshake accepts `resumeCursor`. If the cursor is resumable, the server sends missed events followed by `ready`; otherwise it sends `snapshot.required`, and Mobile calls `GET /v1/sync` with its last cursor before resubscribing. Unsent messages remain local and visibly unsent until a command completion is received. `POST /v1/sessions` returns only HTTP `201`; the created Session and its subsequent state arrive through WebSocket events.
+The local Mobile cache is authoritative for what can be displayed while disconnected, but never for remote mutation success. The WebSocket carries only live Session events and has no application-level subscribe, ready, ping, or snapshot messages. After reconnect, Mobile calls `GET /v1/sync` with its last cursor and then resumes the event connection. Unsent messages remain local and visibly unsent until a command completion is received. `POST /v1/sessions` returns only HTTP `201`; the created Session and its subsequent state arrive through WebSocket events.
+
+## WebSocket event shape
+
+The WebSocket is server-to-Mobile only and carries only Session-scoped Rust `AgentEvent` values. Each message has `session_id`, `occurred_at`, a transport-level `event_type` discriminator derived from `EventPayload::event_type()`, and the corresponding `payload`. The `event_type` field is added by the relay because the Rust struct stores the discriminator in the enum variant rather than as a separate field. The AsyncAPI document lists every current `EventType` and payload shape, including the shared `QuestionAnsweredPayload` used by both `question.replied` and `question.rejected`.
 
 ## Connection states
 
@@ -71,7 +75,7 @@ The local Mobile cache is authoritative for what can be displayed while disconne
 
 ## Error handling
 
-HTTP errors use the `ErrorResponse` schema. WebSocket errors use the `error` event. Both include a stable `code`, safe human-readable `message`, `retryable`, and `requestId` when a request exists. Provider errors and raw Desktop diagnostics stay behind the Remote Server boundary.
+HTTP errors use the `ApiBaseRet` envelope with a stable integer `code` and safe human-readable `message`. WebSocket carries no application-level error or command messages; provider errors and raw Desktop diagnostics stay behind the Remote Server boundary and appear only in the relevant Session event payloads.
 
 ## Desktop connection boundary
 
