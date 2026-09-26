@@ -28,8 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-
-private val repository: MobileRepository = FakeMobileRepository()
+import kotlinx.coroutines.launch
 
 private data class AppState(
     val tab: AppTab = AppTab.SESSIONS,
@@ -39,25 +38,28 @@ private data class AppState(
 )
 
 @Composable
-fun App() {
+fun App(
+    repository: MobileRepository = FakeMobileRepository(),
+    onScanPairing: (((String) -> Unit) -> Unit)? = null,
+) {
     var state by remember { mutableStateOf(AppState()) }
-    SunCodeTheme(state.theme) { MobileRoot(state) { state = it } }
+    SunCodeTheme(state.theme) { MobileRoot(repository, onScanPairing, state) { state = it } }
 }
 
 @Composable
-private fun MobileRoot(state: AppState, setState: (AppState) -> Unit) {
+private fun MobileRoot(repository: MobileRepository, onScanPairing: (((String) -> Unit) -> Unit)?, state: AppState, setState: (AppState) -> Unit) {
     val sessions by repository.observeSessions().collectAsStateWithLifecycle(emptyList())
     val hosts by repository.observeHosts().collectAsStateWithLifecycle(emptyList())
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
         if (maxWidth >= 700.dp) {
-            TabletShell(state, sessions, hosts, setState)
+            TabletShell(repository, onScanPairing, state, sessions, hosts, setState)
         } else {
             Scaffold(bottomBar = { if (state.session == null && state.host == null) BottomNav(state.tab) { setState(state.copy(tab = it)) } }) { padding ->
                 when {
-                    state.session != null -> SessionDetail(state.session, setState, Modifier.padding(padding))
+                    state.session != null -> SessionDetail(repository, state.session, setState, Modifier.padding(padding))
                     state.host != null -> HostDetail(state.host, setState, Modifier.padding(padding))
-                    state.tab == AppTab.SESSIONS -> SessionList(sessions, hosts, setState, Modifier.padding(padding))
-                    state.tab == AppTab.HOSTS -> HostList(hosts, setState, Modifier.padding(padding))
+                    state.tab == AppTab.SESSIONS -> SessionList(repository, sessions, hosts, setState, Modifier.padding(padding))
+                    state.tab == AppTab.HOSTS -> HostList(repository, onScanPairing, hosts, setState, Modifier.padding(padding))
                     else -> Settings(state.theme, setState, Modifier.padding(padding))
                 }
             }
@@ -66,7 +68,7 @@ private fun MobileRoot(state: AppState, setState: (AppState) -> Unit) {
 }
 
 @Composable
-private fun TabletShell(state: AppState, sessions: List<Session>, hosts: List<Host>, setState: (AppState) -> Unit) {
+private fun TabletShell(repository: MobileRepository, onScanPairing: (((String) -> Unit) -> Unit)?, state: AppState, sessions: List<Session>, hosts: List<Host>, setState: (AppState) -> Unit) {
     Row(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(Modifier.width(150.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surface).padding(12.dp)) {
             Text("SunCode", fontWeight = FontWeight.Bold, modifier = Modifier.padding(8.dp))
@@ -81,8 +83,8 @@ private fun TabletShell(state: AppState, sessions: List<Session>, hosts: List<Ho
         }
         Box(Modifier.weight(1f).fillMaxHeight().padding(16.dp)) {
             when {
-                state.session != null -> SessionDetail(state.session, setState, Modifier.fillMaxSize())
-                state.tab == AppTab.HOSTS -> HostList(hosts, setState, Modifier.fillMaxSize())
+                state.session != null -> SessionDetail(repository, state.session, setState, Modifier.fillMaxSize())
+                state.tab == AppTab.HOSTS -> HostList(repository, onScanPairing, hosts, setState, Modifier.fillMaxSize())
                 state.tab == AppTab.SETTINGS -> Settings(state.theme, setState, Modifier.fillMaxSize())
                 else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Select a session", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
@@ -91,10 +93,11 @@ private fun TabletShell(state: AppState, sessions: List<Session>, hosts: List<Ho
 }
 
 @Composable
-private fun SessionList(sessions: List<Session>, hosts: List<Host>, setState: (AppState) -> Unit, modifier: Modifier) {
+private fun SessionList(repository: MobileRepository, sessions: List<Session>, hosts: List<Host>, setState: (AppState) -> Unit, modifier: Modifier) {
     var hostFilter by remember { mutableStateOf("All hosts") }
     var projectFilter by remember { mutableStateOf("All projects") }
     var showNewSession by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val projects = hosts.flatMap { it.projects }.distinctBy { it.id }
     val visible = sessions.filter { (hostFilter == "All hosts" || it.hostName == hostFilter) && (projectFilter == "All projects" || it.projectName == projectFilter) }
     Scaffold(modifier, topBar = { TopAppBar(title = { Text("Sessions") }, actions = { IconButton({ showNewSession = true }) { Icon(Icons.Default.Add, "New session") } }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)) }) { padding ->
@@ -113,10 +116,13 @@ private fun SessionList(sessions: List<Session>, hosts: List<Host>, setState: (A
         NewSessionDialog(
             hosts = hosts,
             onCreate = { title, message ->
-                showNewSession = false
                 val host = hosts.firstOrNull() ?: return@NewSessionDialog
                 val project = host.projects.firstOrNull() ?: return@NewSessionDialog
-                setState(AppState(session = Session("new-session", title.ifBlank { "New session" }, host.id, host.name, project.id, project.name, SessionState.RUNNING, "Just now", message.ifBlank { "No message yet" })))
+                scope.launch {
+                    repository.createSession(host, project, title, message).onSuccess {
+                        showNewSession = false
+                    }
+                }
             },
             onDismiss = { showNewSession = false },
         )
@@ -124,33 +130,61 @@ private fun SessionList(sessions: List<Session>, hosts: List<Host>, setState: (A
 }
 
 @Composable
-private fun SessionDetail(session: Session, setState: (AppState) -> Unit, modifier: Modifier) {
+private fun SessionDetail(repository: MobileRepository, session: Session, setState: (AppState) -> Unit, modifier: Modifier) {
     var message by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
     Column(modifier.fillMaxSize()) {
         TopAppBar(title = { Text(session.title, maxLines = 1, overflow = TextOverflow.Ellipsis) }, navigationIcon = { IconButton({ setState(AppState()) }) { Icon(Icons.Default.ArrowBack, "Back") } }, actions = { IconButton({}) { Icon(Icons.Default.MoreVert, "More") } }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent))
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             ConnectionBanner("Connected to ${session.hostName}", HostConnectionState.CONNECTED)
             session.messages.forEach { MessageBubble(it) }
-            if (session.state == SessionState.WAITING_FOR_APPROVAL) ApprovalCard()
-            if (session.state == SessionState.WAITING_FOR_ANSWER) QuestionCard()
+            session.pendingApproval?.let { approval ->
+                ApprovalCard(approval) { action -> scope.launch { repository.resolveApproval(session.id, approval.id, action, approval.revision) } }
+            }
+            session.pendingQuestion?.let { question ->
+                QuestionCard(question) { answer -> scope.launch { repository.answerQuestion(session.id, answer) } }
+            }
         }
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(message, { message = it }, Modifier.weight(1f), placeholder = { Text("Message SunCode…") }, maxLines = 4)
-            IconButton({ message = "" }) { Icon(Icons.Default.Send, "Send message") }
+            IconButton({
+                if (message.isNotBlank()) {
+                    scope.launch { repository.sendMessage(session.id, message); message = "" }
+                }
+            }) { Icon(Icons.Default.Send, "Send message") }
         }
     }
 }
 
 @Composable
-private fun HostList(hosts: List<Host>, setState: (AppState) -> Unit, modifier: Modifier) {
+private fun HostList(repository: MobileRepository, onScanPairing: (((String) -> Unit) -> Unit)?, hosts: List<Host>, setState: (AppState) -> Unit, modifier: Modifier) {
     var showPairing by remember { mutableStateOf(false) }
-    Scaffold(modifier, topBar = { TopAppBar(title = { Text("Hosts") }, actions = { IconButton({ showPairing = true }) { Icon(Icons.Default.QrCodeScanner, "Scan QR code") } }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)) }) { padding ->
+    var pairingError by remember { mutableStateOf<String?>(null) }
+    var pairingInProgress by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    Scaffold(modifier, topBar = { TopAppBar(title = { Text("Hosts") }, actions = { IconButton({ pairingError = null; showPairing = true }) { Icon(Icons.Default.QrCodeScanner, "Scan QR code") } }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)) }) { padding ->
         Column(Modifier.padding(padding).padding(horizontal = 16.dp)) {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) { items(hosts, key = { it.id }) { HostRow(it) { setState(AppState(tab = AppTab.HOSTS, host = it)) } } }
             PairingCard { showPairing = true }
         }
     }
-    if (showPairing) PairingDialog { showPairing = false }
+    if (showPairing) PairingDialog(
+        onConfirm = { payload ->
+            pairingInProgress = true
+            pairingError = null
+            scope.launch {
+                repository.pairHost(payload).fold(
+                    onSuccess = { showPairing = false },
+                    onFailure = { pairingError = it.message ?: "Pairing failed. Check the payload and try again." },
+                )
+                pairingInProgress = false
+            }
+        },
+        onScan = onScanPairing,
+        errorText = pairingError,
+        confirming = pairingInProgress,
+        onDismiss = { showPairing = false },
+    )
 }
 
 @Composable
@@ -186,9 +220,34 @@ private fun Settings(theme: ThemePreference, setState: (AppState) -> Unit, modif
 @Composable private fun HostIdentity(host: Host) { Card(border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), modifier = Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Devices, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(28.dp)); Column(Modifier.weight(1f).padding(start = 10.dp)) { Text(host.name, fontWeight = FontWeight.Bold); Text(host.state.displayName(), fontSize = 11.sp, color = hostColor(host.state)) } }; DetailLine("Remote Server", "relay.suncode.dev"); DetailLine("Endpoint", host.endpoint); DetailLine("Protocol", "remote.v1") } } }
 @Composable private fun ProjectRow(project: Project) { Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Folder, null, tint = MaterialTheme.colorScheme.secondary); Column(Modifier.weight(1f).padding(start = 10.dp)) { Text(project.name, fontWeight = FontWeight.SemiBold); Text("${project.activeSessions} active sessions", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Icon(Icons.Default.ChevronRight, null, Modifier.size(18.dp)) }; HorizontalDivider() }
 @Composable private fun MessageBubble(message: Message) { Row(Modifier.fillMaxWidth(), horizontalArrangement = if (message.author == MessageAuthor.USER) Arrangement.End else Arrangement.Start) { Surface(color = if (message.author == MessageAuthor.USER) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface, contentColor = if (message.author == MessageAuthor.USER) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(vertical = 6.dp).fillMaxWidth(.9f)) { Text(message.body, Modifier.padding(13.dp), fontSize = 13.sp) } } }
-@Composable private fun ApprovalCard() { Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer), modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("Write 1 file", fontWeight = FontWeight.SemiBold); Text("src/auth/redirect.ts", fontSize = 11.sp); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Button({}) { Text("Allow once") }; OutlinedButton({}) { Text("Deny") } } } } }
-@Composable private fun QuestionCard() { Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer), modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text("Which redirect behavior should I preserve?", fontWeight = FontWeight.SemiBold); Text("Return to the requested page", modifier = Modifier.fillMaxWidth().clickable {}.padding(10.dp)); Text("Always open the dashboard", modifier = Modifier.fillMaxWidth().clickable {}.padding(10.dp)); Button({}) { Text("Send answer") } } } }
-@Composable private fun PairingCard(onClick: () -> Unit) { Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { Text("Pair a new Desktop", fontWeight = FontWeight.SemiBold); Text("Scan the one-time QR code shown by SunCode Desktop.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Button(onClick, Modifier.fillMaxWidth()) { Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text("Scan QR code") } } } }
+@Composable
+private fun ApprovalCard(approval: PendingApproval, onResolve: (String) -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer), modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(approval.summary, fontWeight = FontWeight.SemiBold)
+            approval.detail?.let { Text(it, fontSize = 11.sp) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button({ onResolve("allow_once") }) { Text("Allow once") }
+                OutlinedButton({ onResolve("deny") }) { Text("Deny") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuestionCard(question: PendingQuestion, onAnswer: (String) -> Unit) {
+    var selected by remember(question.id) { mutableStateOf(question.options.firstOrNull().orEmpty()) }
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer), modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(question.prompt, fontWeight = FontWeight.SemiBold)
+            question.options.forEach { option ->
+                Text(option, modifier = Modifier.fillMaxWidth().clickable { selected = option }.padding(10.dp), color = if (option == selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+            }
+            Button({ if (selected.isNotBlank()) onAnswer(selected) }, enabled = selected.isNotBlank()) { Text("Send answer") }
+        }
+    }
+}
+@Composable private fun PairingCard(onClick: () -> Unit) { Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { Text("Pair a new Desktop", fontWeight = FontWeight.SemiBold); Text("Enter the one-time pairing payload shown by SunCode Desktop.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Button(onClick, Modifier.fillMaxWidth()) { Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text("Enter pairing payload") } } } }
 @Composable private fun SettingsGroup(title: String, content: @Composable () -> Unit) { Column(Modifier.fillMaxWidth().padding(bottom = 14.dp)) { Text(title.uppercase(), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(4.dp, 8.dp)); Card(border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) { content() } } }
 @Composable private fun SettingRow(icon: ImageVector, label: String, value: String, onClick: () -> Unit) { Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, Modifier.size(19.dp)); Text(label, Modifier.weight(1f).padding(start = 10.dp), fontSize = 13.sp); Text(value, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
 @Composable private fun ConnectionBanner(text: String, state: HostConnectionState) { Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { StatusDot(state); Text(text, Modifier.padding(start = 7.dp), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
@@ -196,25 +255,29 @@ private fun Settings(theme: ThemePreference, setState: (AppState) -> Unit, modif
 @Composable private fun DetailLine(label: String, value: String) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value, fontSize = 11.sp) } }
 
 @Composable
-private fun PairingDialog(onDismiss: () -> Unit) {
-    var confirming by remember { mutableStateOf(false) }
+private fun PairingDialog(onConfirm: (String) -> Unit, onScan: (((String) -> Unit) -> Unit)?, errorText: String?, confirming: Boolean, onDismiss: () -> Unit) {
+    var payload by remember { mutableStateOf("") }
+    var reviewPayload by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(if (confirming) Icons.Default.Check else Icons.Default.QrCodeScanner, null) },
-        title = { Text(if (confirming) "Confirm pairing" else "Scan QR code") },
+        icon = { Icon(if (reviewPayload) Icons.Default.Check else Icons.Default.QrCodeScanner, null) },
+        title = { Text(if (reviewPayload) "Confirm pairing" else "Enter pairing payload") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (confirming) {
-                    Text("MacBook Pro\nrelay.suncode.dev\nSHA256: 7A:31:…:D9", fontSize = 13.sp)
-                    Text("Confirm only if this matches the Desktop you opened.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    Surface(color = Color(0xFF11171D), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().height(220.dp)) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Camera scanner", color = Color.White) } }
-                    Text("Align the one-time code shown by SunCode Desktop.", fontSize = 12.sp)
+                Text(if (reviewPayload) "Exchange this one-time payload with Remote Server?" else "Scan the QR code or paste the payload from SunCode Desktop.", fontSize = 12.sp)
+                if (!reviewPayload && onScan != null) {
+                    OutlinedButton(onClick = { onScan { scanned -> payload = scanned; reviewPayload = true } }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.QrCodeScanner, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Open camera")
+                    }
                 }
+                OutlinedTextField(payload, { payload = it }, label = { Text("Pairing payload") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+                errorText?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
             }
         },
-        confirmButton = { Button(onClick = { if (confirming) onDismiss() else confirming = true }) { Text(if (confirming) "Confirm pairing" else "Continue") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { Button(onClick = { if (reviewPayload) onConfirm(payload) else reviewPayload = true }, enabled = payload.isNotBlank() && !confirming) { Text(if (confirming) "Pairing…" else if (reviewPayload) "Confirm pairing" else "Continue") } },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !confirming) { Text("Cancel") } },
     )
 }
 
@@ -251,7 +314,7 @@ private fun ThemeDialog(theme: ThemePreference, onSelect: (ThemePreference) -> U
 
 private fun ThemePreference.displayName() = name.lowercase().replaceFirstChar { it.uppercase() }
 private fun SessionState.displayName() = when (this) { SessionState.IDLE -> "Idle"; SessionState.RUNNING -> "Running"; SessionState.WAITING_FOR_APPROVAL -> "Waiting for approval"; SessionState.WAITING_FOR_ANSWER -> "Waiting for answer"; SessionState.FAILED -> "Failed" }
-private fun HostConnectionState.displayName() = when (this) { HostConnectionState.CONNECTED -> "Connected"; HostConnectionState.CONNECTING -> "Connecting"; HostConnectionState.OFFLINE -> "Offline"; HostConnectionState.UNAUTHORIZED -> "Unauthorized" }
+private fun HostConnectionState.displayName() = when (this) { HostConnectionState.CONNECTED -> "Connected"; HostConnectionState.CONNECTING -> "Connecting"; HostConnectionState.DEGRADED -> "Degraded"; HostConnectionState.OFFLINE -> "Offline"; HostConnectionState.UNAUTHORIZED -> "Unauthorized"; HostConnectionState.INCOMPATIBLE -> "Incompatible" }
 @Composable private fun sessionColor(state: SessionState) = when (state) { SessionState.WAITING_FOR_APPROVAL, SessionState.WAITING_FOR_ANSWER -> Color(0xFF966A25); SessionState.RUNNING -> Color(0xFF4F6D82); SessionState.FAILED -> Color(0xFFB6463F); else -> MaterialTheme.colorScheme.onSurfaceVariant }
-@Composable private fun hostColor(state: HostConnectionState) = when (state) { HostConnectionState.CONNECTED -> Color(0xFF4F6D82); HostConnectionState.CONNECTING -> Color(0xFF966A25); HostConnectionState.UNAUTHORIZED -> Color(0xFFB6463F); HostConnectionState.OFFLINE -> MaterialTheme.colorScheme.onSurfaceVariant }
+@Composable private fun hostColor(state: HostConnectionState) = when (state) { HostConnectionState.CONNECTED -> Color(0xFF4F6D82); HostConnectionState.CONNECTING, HostConnectionState.DEGRADED -> Color(0xFF966A25); HostConnectionState.UNAUTHORIZED, HostConnectionState.INCOMPATIBLE -> Color(0xFFB6463F); HostConnectionState.OFFLINE -> MaterialTheme.colorScheme.onSurfaceVariant }
 @Composable private fun stateColor(state: Any) = when (state) { is SessionState -> sessionColor(state); is HostConnectionState -> hostColor(state); else -> Color.Unspecified }

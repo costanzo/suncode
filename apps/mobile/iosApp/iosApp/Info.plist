@@ -4,5 +4,9 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>SunCode uses the camera to scan a one-time remote pairing QR code.</string>
+	<key>RemoteControlBaseURL</key>
+	<string>$(REMOTE_CONTROL_BASE_URL)</string>
 </dict>
 </plist>

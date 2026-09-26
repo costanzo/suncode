@@ -11,16 +11,17 @@ interface MobileRepository {
     fun observeSessions(): Flow<List<Session>>
     suspend fun sendMessage(sessionId: String, message: String): Result<Unit>
     suspend fun answerQuestion(sessionId: String, answer: String): Result<Unit>
-    suspend fun createSession(host: Host, project: Project, title: String, firstMessage: String): Result<Session>
-    suspend fun pairHost(): Result<Host>
+    suspend fun resolveApproval(sessionId: String, approvalId: String, action: String, expectedRevision: Int): Result<Unit>
+    suspend fun cancelTurn(sessionId: String): Result<Unit>
+    suspend fun retryLastTurn(sessionId: String): Result<Unit>
+    /** Acceptance does not include a Session ID; the Session arrives through the event stream. */
+    suspend fun createSession(host: Host, project: Project, title: String, firstMessage: String): Result<Unit>
+    suspend fun pairHost(pairingPayload: String): Result<Host>
     suspend fun reconnect(hostId: String): Result<Unit>
     suspend fun clearOfflineCache(): Result<Unit>
 }
 
-/**
- * UI-first repository. Replace the implementation with the Remote Server client when the
- * Rust remote bridge and WebSocket protocol are available.
- */
+/** Deterministic preview repository used when no Remote Control base URL is configured. */
 class FakeMobileRepository : MobileRepository {
     private val hosts = listOf(
         Host(
@@ -58,6 +59,13 @@ class FakeMobileRepository : MobileRepository {
                 Message("m1", ai.suncode.mobile.domain.MessageAuthor.USER, "Fix the redirect loop after login and add a regression test."),
                 Message("m2", ai.suncode.mobile.domain.MessageAuthor.AGENT, "I found the redirect loop in auth/redirect.ts. The fix is ready, but writing the file requires your approval."),
             ),
+            pendingApproval = ai.suncode.mobile.domain.PendingApproval(
+                id = "approval-1",
+                revision = 1,
+                risk = "filesystem",
+                summary = "Write 1 file",
+                detail = "src/auth/redirect.ts",
+            ),
         ),
         Session(
             id = "api-client",
@@ -87,20 +95,11 @@ class FakeMobileRepository : MobileRepository {
     override fun observeSessions(): Flow<List<Session>> = kotlinx.coroutines.flow.flowOf(sessions)
     override suspend fun sendMessage(sessionId: String, message: String): Result<Unit> = Result.success(Unit)
     override suspend fun answerQuestion(sessionId: String, answer: String): Result<Unit> = Result.success(Unit)
-    override suspend fun createSession(host: Host, project: Project, title: String, firstMessage: String): Result<Session> = Result.success(
-        Session(
-            id = "new-session",
-            title = title.ifBlank { "New session" },
-            hostId = host.id,
-            hostName = host.name,
-            projectId = project.id,
-            projectName = project.name,
-            state = ai.suncode.mobile.domain.SessionState.RUNNING,
-            updatedLabel = "Just now",
-            preview = firstMessage.ifBlank { "No message yet" },
-        ),
-    )
-    override suspend fun pairHost(): Result<Host> = Result.failure(NotImplementedError("Remote pairing is not connected yet"))
+    override suspend fun resolveApproval(sessionId: String, approvalId: String, action: String, expectedRevision: Int): Result<Unit> = Result.success(Unit)
+    override suspend fun cancelTurn(sessionId: String): Result<Unit> = Result.success(Unit)
+    override suspend fun retryLastTurn(sessionId: String): Result<Unit> = Result.success(Unit)
+    override suspend fun createSession(host: Host, project: Project, title: String, firstMessage: String): Result<Unit> = Result.success(Unit)
+    override suspend fun pairHost(pairingPayload: String): Result<Host> = Result.failure(NotImplementedError("Remote pairing is not connected yet"))
     override suspend fun reconnect(hostId: String): Result<Unit> = Result.failure(NotImplementedError("Remote reconnect is not connected yet"))
     override suspend fun clearOfflineCache(): Result<Unit> = Result.success(Unit)
 }
