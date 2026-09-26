@@ -129,6 +129,38 @@ export function WorkspacePage() {
           </div>
         </div>
       </Section>
+      <Section
+        id="workspace-running-session-status"
+        title="Running session count"
+        description="The project footer keeps the session count visible while a project is open, including when no session is running."
+      >
+        <div className="workspace-mcp-specimen-grid">
+          <div className="workspace-mcp-specimen">
+            <div className="workspace-mcp-specimen-label">
+              <strong>Idle</strong>
+              <span>A single static dot precedes the zero count.</span>
+            </div>
+            <div className="workspace-mcp-specimen-footer workspace-running-session-specimen">
+              <span className="workspace-running-session-status">
+                <i aria-hidden="true" />
+                <code>0 running</code>
+              </span>
+            </div>
+          </div>
+          <div className="workspace-mcp-specimen">
+            <div className="workspace-mcp-specimen-label">
+              <strong>Active</strong>
+              <span>The original running pulse returns while sessions are active.</span>
+            </div>
+            <div className="workspace-mcp-specimen-footer workspace-running-session-specimen">
+              <span className="workspace-running-session-status is-running">
+                <i aria-hidden="true" />
+                <code>2 running</code>
+              </span>
+            </div>
+          </div>
+        </div>
+      </Section>
     </>
   );
 }

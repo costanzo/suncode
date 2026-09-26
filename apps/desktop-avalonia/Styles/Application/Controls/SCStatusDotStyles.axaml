@@ -48,6 +48,10 @@
       </Animation>
     </Style.Animations>
   </Style>
+  <!-- quiet single dot -->
+  <Style Selector="controls|SCStatusDot Grid#DotGrid.quiet > Ellipse.status-dot-core">
+    <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+  </Style>
   <!-- compacting -->
   <Style Selector="controls|SCStatusDot Grid#DotGrid.compacting > Ellipse.status-dot-ring">
     <Setter Property="Fill" Value="{DynamicResource SuccessAuraBrush}" />

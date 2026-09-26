@@ -1,9 +1,29 @@
 using SunCode.Desktop.ViewModels;
+using SunCode.Desktop.Models;
 
 namespace SunCode.Desktop.Tests;
 
 public sealed class WorkspaceLayoutTests
 {
+    [Fact]
+    public void RunningSessionFooterSwitchesBetweenQuietAndPulsingDotStates()
+    {
+        using var viewModel = new DesktopViewModel();
+
+        Assert.Equal("0 running", viewModel.RunningSessionText);
+        Assert.Equal("quiet", viewModel.RunningSessionDotStatus);
+
+        viewModel.Sessions.Add(new SessionItem("active", "Active", "", false, "running"));
+
+        Assert.Equal("1 running", viewModel.RunningSessionText);
+        Assert.Equal("running", viewModel.RunningSessionDotStatus);
+
+        viewModel.Sessions.Clear();
+
+        Assert.Equal("0 running", viewModel.RunningSessionText);
+        Assert.Equal("quiet", viewModel.RunningSessionDotStatus);
+    }
+
     [Fact]
     public void ResponsiveLayoutSuppressesSecondarySurfacesWithoutChangingUserPreferences()
     {

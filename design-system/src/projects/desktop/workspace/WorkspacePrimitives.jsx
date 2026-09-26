@@ -3258,6 +3258,10 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
         </div>
         <div>
           <McpLoadingStatus settled={3} total={5} connected={2} failed={1} />
+          <span className="workspace-running-session-status is-running" title="2 running">
+            <i aria-hidden="true" />
+            <code>2 running</code>
+          </span>
           <code>gpt-5.6-sol</code>
           <span>19.7k tokens</span>
           <span>3 calls · 4.2s</span>

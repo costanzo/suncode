@@ -3235,11 +3235,40 @@
   gap: 8px;
   height: 100%;
 }
+.workspace-running-session-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.workspace-running-session-status code {
+  color: var(--text-secondary);
+  font: 9px/1 var(--font-mono);
+}
+.workspace-running-session-specimen {
+  justify-content: flex-start;
+}
 .workspace-statusbar :is(code, b, span, i) {
   display: inline-flex;
   align-items: center;
   height: 100%;
   line-height: 1;
+}
+.workspace-running-session-status > i {
+  display: block;
+  flex: 0 0 7px;
+  width: 7px;
+  min-width: 7px;
+  height: 7px;
+  min-height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: none;
+  animation: none;
+}
+.workspace-running-session-status.is-running > i {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  animation: workspace-status-pulse 1.4s ease-in-out infinite;
 }
 .workspace-statusbar code {
   color: var(--text-secondary);

@@ -13,9 +13,10 @@ public sealed partial class DesktopViewModel
     
     public int RunningSessionCount => CountRunningSessions();
     public bool HasRunningSessions => RunningSessionCount > 0;
+    public string RunningSessionDotStatus => HasRunningSessions ? "running" : "quiet";
     public string RunningSessionText => RunningSessionCount switch
     {
-        0 => string.Empty,
+        0 => "0 running",
         1 => "1 running",
         _ => $"{RunningSessionCount} running"
     };
@@ -52,6 +53,7 @@ public sealed partial class DesktopViewModel
     {
         OnPropertyChanged(nameof(RunningSessionCount));
         OnPropertyChanged(nameof(HasRunningSessions));
+        OnPropertyChanged(nameof(RunningSessionDotStatus));
         OnPropertyChanged(nameof(RunningSessionText));
         OnPropertyChanged(nameof(WaitingSessionCount));
         OnPropertyChanged(nameof(HasWaitingSessions));

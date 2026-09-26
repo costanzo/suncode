@@ -42,6 +42,7 @@ public sealed partial class SCStatusDot : UserControl
         if (DotGrid is not null)
         {
             DotGrid.Classes.Set("running", status == "running");
+            DotGrid.Classes.Set("quiet", status == "quiet");
             DotGrid.Classes.Set("compacting", status == "compacting");
             DotGrid.Classes.Set("approval", status == "approval");
             DotGrid.Classes.Set("question", status == "question");
@@ -55,6 +56,7 @@ public sealed partial class SCStatusDot : UserControl
         return status.Trim().ToLowerInvariant() switch
         {
             "running" => "running",
+            "quiet" => "quiet",
             "compacting" => "compacting",
             "approval" => "approval",
             "question" => "question",

@@ -238,8 +238,8 @@
               <TextBlock Text="{Binding McpLoadText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding WorkspaceStatusDetailsVisible}" />
               <ProgressBar Classes="mcp-progress" Minimum="0" Maximum="100" Value="{Binding McpLoadPercent}" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasRunningSessions}" Height="20" VerticalAlignment="Center" ToolTip.Tip="{Binding RunningSessionText}" AutomationProperties.Name="{Binding RunningSessionText}">
-              <controls:SCStatusDot Status="running" />
+            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsProjectOpen}" Height="20" VerticalAlignment="Center" ToolTip.Tip="{Binding RunningSessionText}" AutomationProperties.Name="{Binding RunningSessionText}">
+              <controls:SCStatusDot Status="{Binding RunningSessionDotStatus}" />
               <TextBlock Text="{Binding RunningSessionText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding WorkspaceStatusDetailsVisible}" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding HasWaitingSessions}" Height="20" VerticalAlignment="Center" ToolTip.Tip="{Binding WaitingSessionText}" AutomationProperties.Name="{Binding WaitingSessionText}">
