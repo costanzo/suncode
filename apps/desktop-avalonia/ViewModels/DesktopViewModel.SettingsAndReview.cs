@@ -427,7 +427,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     public async Task LoadProjectToolCallLimitAsync()
     {
-        ToolCallLimit = 64;
+        ToolCallLimit = 640;
         if (_sdk is null || SelectedProject is null) return;
 
         try
@@ -436,7 +436,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             var setting = result.Settings.FirstOrDefault(item => item.Key == "tool_call_limit");
             if (setting is not null
                 && setting.Value.TryGetInt32(out var limit)
-                && limit is >= 1 and <= 256)
+                && limit is >= 1 and <= 640)
             {
                 ToolCallLimit = limit;
             }
@@ -454,9 +454,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             StatusText = "Open a project to configure its tool-call limit";
             return false;
         }
-        if (limit is < 1 or > 256)
+        if (limit is < 1 or > 640)
         {
-            StatusText = "Tool-call limit must be between 1 and 256";
+            StatusText = "Tool-call limit must be between 1 and 640";
             return false;
         }
 
