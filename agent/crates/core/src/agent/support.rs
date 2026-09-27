@@ -721,6 +721,18 @@ fn dependency_tool_allowed(name: &str) -> bool {
     matches!(name, "read" | "glob" | "grep") || lsp::is_lsp_tool(name)
 }
 
+fn is_context_overflow_error(error: &BusinessError) -> bool {
+    if error.code == "context_overflow" {
+        return true;
+    }
+    let text = format!("{} {}", error.code, error.message).to_ascii_lowercase();
+    text.contains("context")
+        && (text.contains("length")
+            || text.contains("token")
+            || text.contains("too large")
+            || text.contains("maximum"))
+}
+
 fn to_llm_message(message: &Message) -> suncode_llm::Message {
     suncode_llm::Message {
         role: message.role.clone(),

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{http::header, response::IntoResponse, routing::post, Json, Router};
+    use axum::{http::{header, StatusCode}, response::IntoResponse, routing::post, Json, Router};
     use suncode_llm::{
         ApiKeyResolver, ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
         OpenAiCompatibleProvider,
@@ -283,6 +283,22 @@ mod tests {
     }
 
     #[test]
+    fn provider_context_overflow_errors_are_detected_for_one_retry() {
+        assert!(is_context_overflow_error(&BusinessError::new(
+            "context_overflow",
+            "request too large",
+        )));
+        assert!(is_context_overflow_error(&BusinessError::new(
+            "invalid_request",
+            "maximum context length exceeded",
+        )));
+        assert!(!is_context_overflow_error(&BusinessError::new(
+            "authentication",
+            "invalid API key",
+        )));
+    }
+
+    #[test]
     fn nearby_agents_files_are_loaded_nearest_first_and_deduplicated() {
         let directory = tempfile::tempdir().unwrap();
         fs::create_dir_all(directory.path().join("src/nested")).unwrap();
@@ -381,6 +397,11 @@ mod tests {
                     .and_then(Value::as_str)
                     .is_some_and(|content| content.contains("Software Engineering Agent"))
         });
+        let is_summary_call = messages.iter().any(|message| {
+            message.get("role").and_then(Value::as_str) == Some("system")
+                && message.get("content").and_then(Value::as_str)
+                    .is_some_and(|content| content.contains("Summarize the provided coding-agent history"))
+        });
         if user_text == "assert primary tools" {
             assert!(!is_child);
             assert!(advertised_tools.contains("delegate_agent"));
@@ -409,7 +430,15 @@ mod tests {
         if user_text.contains("slow") {
             tokio::time::sleep(Duration::from_millis(150)).await;
         }
-        let data = if last_role != Some("tool") && user_text == "delegate SWE to assert child tools" {
+        if user_text.starts_with("overflow test") && !is_summary_call {
+            return (StatusCode::BAD_REQUEST, Json(json!({"error":{"message":"maximum context length exceeded"}}))).into_response();
+        }
+        let data = if is_summary_call {
+            vec![json!({"choices":[{"delta":{"content":"{\"objective\":\"generated objective\",\"important_constraints\":[\"keep tests\"],\"completed_work\":[],\"active_work\":[],\"blockers\":[],\"next_action\":\"continue\"}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":100,"completion_tokens":20,"total_tokens":120}})]
+        } else if user_text == "assert compaction replay" {
+            assert!(messages.iter().any(|message| message.get("content").and_then(Value::as_str).is_some_and(|content| content.contains("generated objective"))));
+            vec![json!({"choices":[{"delta":{"content":"replay verified"},"finish_reason":"stop"}]})]
+        } else if last_role != Some("tool") && user_text == "delegate SWE to assert child tools" {
             vec![json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"delegate-tools","function":{"name":"delegate_agent","arguments":"{\"agent\":\"swe-agent\",\"task\":\"assert child tools\"}"}}]},"finish_reason":"tool_calls"}]})]
         } else if last_role != Some("tool") && user_text == "delegate SWE to read" {
             vec![json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"delegate-read","function":{"name":"delegate_agent","arguments":"{\"agent\":\"swe-agent\",\"task\":\"read the file as child\"}"}}]},"finish_reason":"tool_calls"}]})]
@@ -476,6 +505,16 @@ mod tests {
         tokio::task::JoinHandle<()>,
         String,
     ) {
+        fixture_with_compaction_threshold(47_616).await
+    }
+
+    async fn fixture_with_compaction_threshold(auto_compact_tokens: u64) -> (
+        Agent,
+        Store,
+        std::path::PathBuf,
+        tokio::task::JoinHandle<()>,
+        String,
+    ) {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
         let server = tokio::spawn(async move {
@@ -536,7 +575,7 @@ mod tests {
                 reasoning_efforts: Vec::new(),
                 limits: ModelLimits {
                     max_input_tokens: Some(64_000),
-                    auto_compact_tokens: Some(47_616),
+                    auto_compact_tokens: Some(auto_compact_tokens),
                     max_output_tokens: None,
                 },
                 availability: "configured".into(),
@@ -582,6 +621,35 @@ mod tests {
         assert_eq!(event.kind, AttentionKind::PrimaryTurnCompleted);
         assert_eq!(event.session_id, session_id);
         assert_eq!(event.correlation_id, event.turn_id);
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn generated_compaction_summary_survives_a_new_turn() {
+        let (agent, store, _root, server, session_id) = fixture_with_compaction_threshold(12_000).await;
+        let long_request = format!("compact test {}", "history ".repeat(8_000));
+        let first = agent.submit(&session_id, "compact-1", &long_request, None, None).await.unwrap();
+        assert!(matches!(first, TurnResponse::Completed { .. }));
+        let context = store.context_messages(&session_id).unwrap();
+        assert!(context.iter().any(|message| message.text_content().contains("generated objective")));
+        assert!(!context.iter().any(|message| message.text_content().contains(&"history ".repeat(8_000))));
+        let exchanges = store.provider_exchanges(&session_id).unwrap();
+        assert!(exchanges.iter().any(|exchange| exchange.usage.as_ref().and_then(|usage| usage.get("total_tokens")).and_then(Value::as_u64) == Some(120)));
+        assert!(exchanges.iter().any(|exchange| exchange.finish_reason.as_deref() == Some("context_compacted") && exchange.usage.is_none()));
+        let second = agent.submit(&session_id, "compact-2", "assert compaction replay", None, None).await.unwrap();
+        assert!(matches!(second, TurnResponse::Completed { .. }));
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn provider_overflow_forces_one_compaction_and_retries() {
+        let (agent, store, _root, server, session_id) = fixture().await;
+        let request = format!("overflow test {}", "history ".repeat(18_000));
+        let response = agent.submit(&session_id, "overflow-1", &request, None, None).await.unwrap();
+        assert!(matches!(response, TurnResponse::Completed { .. }));
+        let exchanges = store.provider_exchanges(&session_id).unwrap();
+        assert_eq!(exchanges.iter().filter(|exchange| exchange.state == "failed").count(), 1);
+        assert_eq!(exchanges.iter().filter(|exchange| exchange.finish_reason.as_deref() == Some("context_compacted")).count(), 1);
         server.abort();
     }
 

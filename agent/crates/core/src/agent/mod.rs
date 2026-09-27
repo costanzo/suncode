@@ -136,7 +136,7 @@ struct Continuation {
     computer_batch_failed: bool,
     remaining_calls: Vec<ToolCall>,
     #[serde(default)]
-    context_compacted: bool,
+    overflow_recovery_attempted: bool,
     #[serde(default)]
     last_tool_signature: Option<String>,
     #[serde(default)]

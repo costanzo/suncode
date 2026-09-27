@@ -50,6 +50,8 @@ The named SDK provider-endpoint update modifies only the endpoint of an existing
 
 Phase 1 audit retention defaults to 365 days. Normalized session rows are bounded through future per-table retention; there is no duplicate session event stream to compact. Audit data is excluded from session cleanup.
 
+Context compaction is a durable provider-context checkpoint in `session_call`, identified by `finish_reason=context_compacted`. It stores a structured summary, the retained model messages after removing transient `image_url` bytes, and message/tool rowid boundaries. On later turns, Rust reconstructs provider context from the latest checkpoint and normalized messages/tool results inserted after those boundaries. The original user, assistant, and tool records remain available for transcript, trace, and audit; compaction changes only provider-context selection. The checkpoint is projected before its compacted provider request. A separate selected-model provider exchange records actual summary-call usage and failure; local checkpoint rows have null usage because original/retained token estimates are not billed usage. A generated summary is used when the model returns complete valid structured JSON within the context budget, otherwise the local summary is retained.
+
 Turn checkpoint manifests retain their Rust-owned file snapshots for 30 days by default. Expiry is projected before clients offer undo. Restored or expired manifests remain as lightweight session metadata after their item payloads become unavailable.
 
 ## Recovery

@@ -315,7 +315,7 @@ impl Agent {
             approved_computer_call_ids: Vec::new(),
             computer_batch_failed: false,
             remaining_calls: Vec::new(),
-            context_compacted: false,
+            overflow_recovery_attempted: false,
             last_tool_signature: None,
             repeated_tool_stalls: 0,
             active_call_id: None,

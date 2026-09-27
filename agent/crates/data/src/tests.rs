@@ -477,6 +477,51 @@ fn diesel_projection_persists_messages_tools_and_todos() {
 }
 
 #[test]
+fn context_messages_replay_persisted_compaction_and_new_messages() {
+    let store = Store::open_memory().unwrap();
+    let project = store
+        .project("/tmp/suncode-compaction-replay", "Compaction")
+        .unwrap();
+    let session = store
+        .create_session(&project.project_id, None, None)
+        .unwrap();
+    store
+        .append_content(
+            &session.session_id,
+            "turn.state",
+            &json!({"turn_id":"turn-1","state":"calling_model"}),
+        )
+        .unwrap();
+    store.append_content(&session.session_id, "message.user", &json!({"message_id":"old","turn_id":"turn-1","message":Message::text("user", "old objective")})).unwrap();
+    store.append_content(&session.session_id, "context.compacted", &json!({
+        "exchange_id":"compact-1","turn_id":"turn-1","provider":"SunCode","model_id":"context-compaction","wire_model":"internal","iteration":1,
+        "original_characters":1000,"retained_characters":200,"original_tokens":250,"retained_tokens":50,"dropped_messages":1,
+        "summary":{"objective":"old objective","important_constraints":[],"completed_work":["old"],"active_work":[],"blockers":[],"next_action":"continue"},
+        "retained_messages":[{"role":"user","content":[{"type":"text","text":"retained objective"}],"tool_calls":[],"tool_call_id":null}]
+    })).unwrap();
+    store.append_content(&session.session_id, "message.user", &json!({"message_id":"new","turn_id":"turn-2","message":Message::text("user", "new request")})).unwrap();
+    {
+        let mut connection = store.connection.lock().unwrap();
+        sql_query("UPDATE session_message SET created_at=(SELECT completed_at FROM session_call WHERE call_id='compact-1') WHERE message_id='new'")
+            .execute(&mut *connection)
+            .unwrap();
+    }
+    let context = store.context_messages(&session.session_id).unwrap();
+    assert!(context
+        .iter()
+        .any(|message| message.text_content().contains("suncode_context_summary")));
+    assert!(context
+        .iter()
+        .any(|message| message.text_content() == "retained objective"));
+    assert!(context
+        .iter()
+        .any(|message| message.text_content() == "new request"));
+    assert!(!context
+        .iter()
+        .any(|message| message.text_content() == "old objective"));
+}
+
+#[test]
 fn latest_failed_turn_input_returns_persisted_submission() {
     let store = Store::open_memory().unwrap();
     let project = store.project("/tmp/suncode-retry", "Retry").unwrap();

@@ -89,6 +89,23 @@ pub(crate) fn apply(
     if event_type == "context.compacted" {
         let exchange_id = required(payload, "exchange_id")?;
         let turn_id = required(payload, "turn_id")?;
+        #[derive(QueryableByName)]
+        struct BoundaryRow {
+            #[diesel(sql_type = diesel::sql_types::BigInt)]
+            value: i64,
+        }
+        let message_boundary = sql_query(
+            "SELECT COALESCE(MAX(rowid),0) AS value FROM session_message WHERE session_id=?",
+        )
+        .bind::<Text, _>(session_id)
+        .get_result::<BoundaryRow>(connection)
+        .map_err(crate::database_error)?
+        .value;
+        let tool_boundary = sql_query("SELECT COALESCE(MAX(tool.rowid),0) AS value FROM session_tool_use AS tool JOIN session_turn AS turn ON turn.turn_id=tool.turn_id WHERE turn.session_id=?")
+            .bind::<Text, _>(session_id)
+            .get_result::<BoundaryRow>(connection)
+            .map_err(crate::database_error)?
+            .value;
         let summary = serde_json::json!({
             "original_characters": payload.get("original_characters"),
             "retained_characters": payload.get("retained_characters"),
@@ -97,10 +114,11 @@ pub(crate) fn apply(
             "dropped_messages": payload.get("dropped_messages"),
             "summary": payload.get("summary"),
         });
-        let usage = serde_json::json!({
-            "input_tokens": payload.get("original_tokens").and_then(Value::as_u64).unwrap_or(0),
-            "output_tokens": payload.get("retained_tokens").and_then(Value::as_u64).unwrap_or(0),
-            "total_tokens": payload.get("retained_tokens").and_then(Value::as_u64).unwrap_or(0),
+        let output = serde_json::json!({
+            "summary": summary,
+            "retained_messages": payload.get("retained_messages").cloned().unwrap_or_else(|| serde_json::json!([])),
+            "message_rowid_boundary": message_boundary,
+            "tool_rowid_boundary": tool_boundary,
         });
         sql_query("INSERT INTO session_call(call_id,session_id,turn_id,provider,model_id,wire_model,state,iteration,started_at,completed_at,output_message_json,tool_calls_json,usage_json,finish_reason) VALUES (?,?,?,?,?,?, 'completed',?,?,?,?,?,?,?) ON CONFLICT(call_id) DO NOTHING")
             .bind::<Text, _>(exchange_id)
@@ -112,9 +130,9 @@ pub(crate) fn apply(
             .bind::<Integer, _>(payload.get("iteration").and_then(Value::as_i64).unwrap_or(0) as i32)
             .bind::<Text, _>(payload.get("started_at").and_then(Value::as_str).unwrap_or(occurred_at))
             .bind::<Text, _>(occurred_at)
-            .bind::<Nullable<Text>, _>(Some(to_string(&summary)?))
+            .bind::<Nullable<Text>, _>(Some(to_string(&output)?))
             .bind::<Text, _>("[]")
-            .bind::<Nullable<Text>, _>(Some(to_string(&usage)?))
+            .bind::<Nullable<Text>, _>(None::<String>)
             .bind::<Nullable<Text>, _>(Some("context_compacted"))
             .execute(connection).map_err(crate::database_error)?;
     }

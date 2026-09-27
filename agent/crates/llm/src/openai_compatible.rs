@@ -1,5 +1,5 @@
 use crate::{
-    normalize::{cancelled, wire_message},
+    normalize::{cancelled, is_context_overflow, wire_message},
     stream::{tracked_json_body, SseParser},
     ApiKeyResolver, BusinessError, Completion, CompletionFuture, CompletionRequest, LlmProvider,
 };
@@ -210,10 +210,12 @@ impl OpenAiCompatibleProvider {
         logging::debug(
             "llm",
             format!(
-                "{}/{} request: {}",
+                "{}/{} request: messages={} tools={} client_toolsets={}",
                 self.provider_label,
                 request.wire_model,
-                serde_json::to_string(&body).unwrap_or_default()
+                request.messages.len(),
+                request.tools.len(),
+                request.client_toolsets.len(),
             ),
         );
         let transfer_progress = request.transfer_progress.clone();
@@ -252,7 +254,7 @@ impl OpenAiCompatibleProvider {
             logging::error(
                 "llm",
                 format!(
-                    "{}/{} request failed with status {status}: {response_body}",
+                    "{}/{} request failed with status {status}",
                     self.provider_label, request.wire_model
                 ),
             );
@@ -270,7 +272,9 @@ impl OpenAiCompatibleProvider {
                         self.provider_label
                     )
                 });
-            let code = if status.as_u16() == 401 {
+            let code = if is_context_overflow(status.as_u16(), &message) {
+                "context_overflow"
+            } else if status.as_u16() == 401 {
                 "authentication"
             } else if status.as_u16() == 408 || status.as_u16() == 429 || status.is_server_error() {
                 "transient"

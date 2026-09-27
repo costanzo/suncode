@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20260927-durable-context-compaction
+
+- Date: 2026-09-27
+- Status: Accepted and focused-tested
+- Context: The earlier local heuristic compaction only changed an in-memory turn continuation. A later turn reloaded full normalized history, and request budgeting omitted system and tool context. A new compaction table would require another current-schema compatibility path.
+- Decision: Store internal context checkpoints in the existing `session_call` projection with `finish_reason=context_compacted`, retained provider messages, structured summary, and message/tool rowid boundaries. Keep transcript and audit rows intact. Count the current system and advertised tool schemas, model output reserve, and image estimates when selecting context. Keep tool-call/result groups together. Ask the selected model for a bounded structured summary, use the local summary on failure, and allow one forced compact-and-retry after a typed provider context-overflow error. Project summary calls as ordinary provider exchanges with real usage; checkpoint rows have null usage. Exclude transient image bytes and raw retained messages from the public compaction event.
+- Consequences: Long conversations reuse their latest checkpoint across turns without a schema or SDK protocol change. Summary generation adds a provider call when compaction drops history. Token estimates remain approximate and the one-time overflow retry bounds recovery. Existing transcript and undo behavior remain unchanged.
+- Details: `requirements/2026-09-27-context-compaction/`, `specs/agent-phase-1.md`, `contracts/persistence.md`, `contracts/sqlite-schema.md`
+
 ## ADR-20260923-desktop-notification-activation-ipc
 
 - Date: 2026-09-23

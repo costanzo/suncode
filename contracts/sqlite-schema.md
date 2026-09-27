@@ -85,6 +85,8 @@ One row per tool invocation, keyed by `(turn_id, tool_call_id)`. It records the 
 
 Human-readable messages keyed by `message_id`. Each row links to its session, optionally to a turn and `session_call`, and stores role, message JSON, and `created_at`. Roles are `user`, `assistant`, and `thinking`; the schema rejects `tool`. Message history is ordered by `created_at` with `rowid` as a deterministic tie-breaker; no content sequence or usage column is used. Provider-reported per-call usage belongs to `session_call`; cumulative turn usage belongs to `session_turn`.
 
+Context compaction does not add a table or a `session_message` role. A completed `session_call` with `finish_reason=context_compacted` stores the summary, retained provider messages, and message/tool rowid boundaries in `output_message_json`. Rust selects the latest such row, then appends normalized messages and tool results inserted after those boundaries. Transcript and audit queries continue to read the original rows.
+
 ## Approvals And Checkpoints
 
 ### `session_approval_request`

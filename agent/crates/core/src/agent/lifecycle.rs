@@ -93,6 +93,42 @@ impl Agent {
         Ok(())
     }
 
+    fn emit_context_compacted(
+        &self,
+        context: &Continuation,
+        result: &context::ContextBuildResult,
+    ) -> Result<(), BusinessError> {
+        let event = EventPayload::ContextCompacted(ContextCompactedPayload {
+            exchange_id: Uuid::new_v4().to_string(),
+            turn_id: context.turn_id.clone(),
+            provider: "SunCode".into(),
+            model_id: "context-compaction".into(),
+            wire_model: "internal".into(),
+            iteration: context.iterations,
+            started_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            original_characters: result.original_characters,
+            retained_characters: result.retained_characters,
+            original_tokens: result.original_tokens,
+            retained_tokens: result.retained_tokens,
+            dropped_messages: result.dropped_messages,
+            summary: result.summary.as_ref().map(|summary| ContextSummaryPayload {
+                objective: summary.objective.clone(),
+                important_constraints: summary.important_constraints.clone(),
+                completed_work: summary.completed_work.clone(),
+                active_work: summary.active_work.clone(),
+                blockers: summary.blockers.clone(),
+                next_action: summary.next_action.clone(),
+            }),
+        });
+        self.events.publish_projected(&context.session_id, event, |event| {
+            let mut payload = event.clone().into_value();
+            payload["retained_messages"] = serde_json::to_value(context::persistable_messages(&result.messages))?;
+            let projected = self.store.append_content(&context.session_id, "context.compacted", &payload)?;
+            Ok::<String, BusinessError>(projected.occurred_at)
+        })?;
+        Ok(())
+    }
+
     pub fn attention_event_hub(&self) -> AttentionEventHub {
         self.attention_events.clone()
     }

@@ -31,6 +31,26 @@ pub fn cancelled() -> BusinessError {
     BusinessError::new("cancelled", "Turn was cancelled")
 }
 
+pub(crate) fn is_context_overflow(status: u16, message: &str) -> bool {
+    if status == 413 {
+        return true;
+    }
+    if !matches!(status, 400 | 413 | 422) {
+        return false;
+    }
+    let message = message.to_ascii_lowercase();
+    [
+        "context length",
+        "context window",
+        "context limit",
+        "too many tokens",
+        "maximum tokens",
+        "prompt tokens",
+    ]
+    .iter()
+    .any(|needle| message.contains(needle))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -73,5 +93,14 @@ mod tests {
                 ]
             })
         );
+    }
+
+    #[test]
+    fn overflow_errors_are_classified_without_matching_unrelated_failures() {
+        assert!(is_context_overflow(400, "maximum context length exceeded"));
+        assert!(is_context_overflow(413, "request too large"));
+        assert!(is_context_overflow(422, "too many tokens"));
+        assert!(!is_context_overflow(401, "context length"));
+        assert!(!is_context_overflow(400, "invalid model"));
     }
 }
