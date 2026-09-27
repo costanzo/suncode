@@ -50,14 +50,16 @@ fun App(
 private fun MobileRoot(repository: MobileRepository, onScanPairing: (((String) -> Unit) -> Unit)?, state: AppState, setState: (AppState) -> Unit) {
     val sessions by repository.observeSessions().collectAsStateWithLifecycle(emptyList())
     val hosts by repository.observeHosts().collectAsStateWithLifecycle(emptyList())
+    val selectedSession = state.session?.let { selected -> sessions.firstOrNull { it.id == selected.id } ?: selected }
+    val selectedHost = state.host?.let { selected -> hosts.firstOrNull { it.id == selected.id } ?: selected }
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
         if (maxWidth >= 700.dp) {
-            TabletShell(repository, onScanPairing, state, sessions, hosts, setState)
+            TabletShell(repository, onScanPairing, state.copy(session = selectedSession, host = selectedHost), sessions, hosts, setState)
         } else {
             Scaffold(bottomBar = { if (state.session == null && state.host == null) BottomNav(state.tab) { setState(state.copy(tab = it)) } }) { padding ->
                 when {
-                    state.session != null -> SessionDetail(repository, state.session, setState, Modifier.padding(padding))
-                    state.host != null -> HostDetail(state.host, setState, Modifier.padding(padding))
+                    selectedSession != null -> SessionDetail(repository, selectedSession, setState, Modifier.padding(padding))
+                    selectedHost != null -> HostDetail(selectedHost, setState, Modifier.padding(padding))
                     state.tab == AppTab.SESSIONS -> SessionList(repository, sessions, hosts, setState, Modifier.padding(padding))
                     state.tab == AppTab.HOSTS -> HostList(repository, onScanPairing, hosts, setState, Modifier.padding(padding))
                     else -> Settings(state.theme, setState, Modifier.padding(padding))
@@ -138,6 +140,9 @@ private fun SessionDetail(repository: MobileRepository, session: Session, setSta
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             ConnectionBanner("Connected to ${session.hostName}", HostConnectionState.CONNECTED)
             session.messages.forEach { MessageBubble(it) }
+            session.streamingAssistantText?.takeIf(String::isNotBlank)?.let {
+                MessageBubble(Message("streaming-${session.id}", MessageAuthor.AGENT, it))
+            }
             session.pendingApproval?.let { approval ->
                 ApprovalCard(approval) { action -> scope.launch { repository.resolveApproval(session.id, approval.id, action, approval.revision) } }
             }

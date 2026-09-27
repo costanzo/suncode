@@ -69,6 +69,7 @@ internal data class CachedSession(
     val revision: Int = 0,
     val pendingApproval: CachedApproval? = null,
     val pendingQuestion: CachedQuestion? = null,
+    val streamingAssistantText: String? = null,
 )
 
 @Serializable
@@ -110,6 +111,7 @@ internal fun Session.toCached() = CachedSession(
     revision = revision,
     pendingApproval = pendingApproval?.let { CachedApproval(it.id, it.revision, it.risk, it.summary, it.detail) },
     pendingQuestion = pendingQuestion?.let { CachedQuestion(it.id, it.revision, it.prompt, it.options, it.allowsFreeText) },
+    streamingAssistantText = streamingAssistantText,
 )
 
 internal fun Host.toCached() = CachedHost(
@@ -134,6 +136,7 @@ internal fun CachedSession.toDomain() = Session(
     revision = revision,
     pendingApproval = pendingApproval?.let { PendingApproval(it.id, it.revision, it.risk, it.summary, it.detail) },
     pendingQuestion = pendingQuestion?.let { PendingQuestion(it.id, it.revision, it.prompt, it.options, it.allowsFreeText) },
+    streamingAssistantText = streamingAssistantText,
 )
 
 internal fun CachedHost.toDomain() = Host(

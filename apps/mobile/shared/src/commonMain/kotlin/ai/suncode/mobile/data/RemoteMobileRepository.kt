@@ -234,38 +234,7 @@ class RemoteMobileRepository(
         val sessionId = event.sessionId
         return projectionMutex.withLock {
             val existing = sessions.value.firstOrNull { it.id == sessionId } ?: return@withLock false
-            val updated = when (event.eventType) {
-                RemoteEventTypes.TURN_STATE -> existing.copy(
-                    state = event.payload.string("state")?.toSessionState() ?: return@withLock false,
-                    updatedLabel = event.occurredAt,
-                )
-                RemoteEventTypes.TURN_COMPLETED -> existing.copy(state = SessionState.IDLE, updatedLabel = event.occurredAt)
-                RemoteEventTypes.MESSAGE_USER, RemoteEventTypes.MESSAGE_ASSISTANT -> {
-                    val messageId = event.payload.string("message_id") ?: return@withLock false
-                    val body = event.payload.messageText() ?: return@withLock false
-                    if (existing.messages.any { it.id == messageId }) existing
-                    else existing.copy(
-                        preview = body,
-                        updatedLabel = event.occurredAt,
-                        messages = existing.messages + Message(
-                            messageId,
-                            if (event.eventType == RemoteEventTypes.MESSAGE_USER) MessageAuthor.USER else MessageAuthor.AGENT,
-                            body,
-                        ),
-                    )
-                }
-                RemoteEventTypes.APPROVAL_RESOLVED -> existing.copy(
-                    pendingApproval = null,
-                    state = if (existing.state == SessionState.WAITING_FOR_APPROVAL) SessionState.IDLE else existing.state,
-                    updatedLabel = event.occurredAt,
-                )
-                RemoteEventTypes.QUESTION_REPLIED, RemoteEventTypes.QUESTION_REJECTED -> existing.copy(
-                    pendingQuestion = null,
-                    state = if (existing.state == SessionState.WAITING_FOR_ANSWER) SessionState.IDLE else existing.state,
-                    updatedLabel = event.occurredAt,
-                )
-                else -> return@withLock false
-            }
+            val updated = existing.applyRemoteEvent(event) ?: return@withLock false
             sessions.value = sessions.value.map { if (it.id == sessionId) updated else it }
             reconcileSessionHosts()
             persistLocked()
@@ -303,7 +272,68 @@ class RemoteMobileRepository(
     private companion object {
         const val INITIAL_RETRY_DELAY_MS = 1_000L
         const val MAX_RETRY_DELAY_MS = 30_000L
+        const val PREVIEW_LIMIT = 500
     }
+}
+
+internal fun Session.applyRemoteEvent(event: AgentEventEnvelope): Session? = when (event.eventType) {
+    RemoteEventTypes.TURN_STATE -> copy(
+        state = event.payload.string("state")?.toSessionState() ?: return null,
+        updatedLabel = event.occurredAt,
+    )
+    RemoteEventTypes.TURN_COMPLETED -> copy(state = SessionState.IDLE, updatedLabel = event.occurredAt, streamingAssistantText = null)
+    RemoteEventTypes.ASSISTANT_DELTA -> {
+        val text = event.payload.string("text") ?: return null
+        if (text.isBlank()) this else copy(
+            state = SessionState.RUNNING,
+            preview = (streamingAssistantText.orEmpty() + text).takeLast(500),
+            updatedLabel = event.occurredAt,
+            streamingAssistantText = streamingAssistantText.orEmpty() + text,
+        )
+    }
+    RemoteEventTypes.MESSAGE_USER, RemoteEventTypes.MESSAGE_ASSISTANT -> {
+        val messageId = event.payload.string("message_id") ?: return null
+        val body = event.payload.messageText() ?: return null
+        if (messages.any { it.id == messageId }) this else copy(
+            preview = body,
+            updatedLabel = event.occurredAt,
+            streamingAssistantText = null,
+            messages = messages + Message(
+                messageId,
+                if (event.eventType == RemoteEventTypes.MESSAGE_USER) MessageAuthor.USER else MessageAuthor.AGENT,
+                body,
+            ),
+        )
+    }
+    RemoteEventTypes.APPROVAL_REQUESTED -> {
+        val approvalId = event.payload.string("approval_id") ?: return null
+        val operation = event.payload.string("operation") ?: return null
+        copy(
+            state = SessionState.WAITING_FOR_APPROVAL,
+            updatedLabel = event.occurredAt,
+            pendingApproval = PendingApproval(approvalId, revision, event.payload.string("risk") ?: "other", operation, event.payload["arguments"]?.toString()),
+        )
+    }
+    RemoteEventTypes.APPROVAL_RESOLVED -> copy(
+        pendingApproval = null,
+        state = if (state == SessionState.WAITING_FOR_APPROVAL) SessionState.IDLE else state,
+        updatedLabel = event.occurredAt,
+    )
+    RemoteEventTypes.QUESTION_ASKED -> {
+        val requestId = event.payload.string("request_id") ?: return null
+        val question = event.payload.questionItems().firstOrNull() ?: return null
+        copy(
+            state = SessionState.WAITING_FOR_ANSWER,
+            updatedLabel = event.occurredAt,
+            pendingQuestion = PendingQuestion(requestId, revision, question.prompt, question.options, question.allowsFreeText),
+        )
+    }
+    RemoteEventTypes.QUESTION_REPLIED, RemoteEventTypes.QUESTION_REJECTED -> copy(
+        pendingQuestion = null,
+        state = if (state == SessionState.WAITING_FOR_ANSWER) SessionState.IDLE else state,
+        updatedLabel = event.occurredAt,
+    )
+    else -> null
 }
 
 private fun JsonObject.string(name: String): String? = this[name]?.jsonPrimitive?.contentOrNull
@@ -315,6 +345,23 @@ private fun JsonObject.messageText(): String? {
         ?.joinToString("")
         ?.takeIf { it.isNotBlank() }
 }
+
+private data class EventQuestion(
+    val prompt: String,
+    val options: List<String>,
+    val allowsFreeText: Boolean,
+)
+
+private fun JsonObject.questionItems(): List<EventQuestion> =
+    this["questions"]?.jsonArray.orEmpty().mapNotNull { value ->
+        val question = value.jsonObject
+        val prompt = question["question"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+        val options = question["options"]?.jsonArray.orEmpty().mapNotNull { option ->
+            option.jsonObject["label"]?.jsonPrimitive?.contentOrNull
+        }
+        if (options.isEmpty()) return@mapNotNull null
+        EventQuestion(prompt, options, question["custom"]?.jsonPrimitive?.contentOrNull?.toBoolean() == true)
+    }
 
 private fun ai.suncode.mobile.remote.protocol.SessionSummaryDto.toDomain() = Session(
     id = id,

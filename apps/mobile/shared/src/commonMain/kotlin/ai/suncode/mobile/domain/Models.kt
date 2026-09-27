@@ -36,6 +36,7 @@ data class Session(
     val revision: Int = 0,
     val pendingApproval: PendingApproval? = null,
     val pendingQuestion: PendingQuestion? = null,
+    val streamingAssistantText: String? = null,
 )
 
 data class Message(
