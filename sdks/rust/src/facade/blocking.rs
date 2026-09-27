@@ -23,6 +23,33 @@ impl DerefMut for AgentSdk {
 }
 
 impl AgentSdk {
+    pub fn remote_server_configuration(&self) -> RemoteServerConfiguration {
+        self.inner.remote_server_configuration()
+    }
+
+    pub fn remote_server_status(&self) -> RemoteServerStatus {
+        self.inner.remote_server_status()
+    }
+
+    pub fn save_remote_server_configuration(
+        &self,
+        configuration: RemoteServerConfiguration,
+    ) -> SdkResult<RemoteServerStatus> {
+        self.inner.save_remote_server_configuration(configuration)
+    }
+
+    pub fn connect_remote_server(&self) -> SdkResult<RemoteServerStatus> {
+        self.runtime.block_on(self.inner.connect_remote_server())
+    }
+
+    pub fn disconnect_remote_server(&self) -> SdkResult<RemoteServerStatus> {
+        self.inner.disconnect_remote_server()
+    }
+
+    pub fn clear_remote_server_configuration(&self) -> SdkResult<RemoteServerStatus> {
+        self.inner.clear_remote_server_configuration()
+    }
+
     pub fn version() -> VersionResult {
         AsyncAgentSdk::version()
     }

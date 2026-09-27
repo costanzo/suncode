@@ -8,6 +8,8 @@ using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Sdk;
+using RemoteServerConfiguration = SunCode.Sdk.Models.RemoteServerConfiguration;
+using RemoteServerStatus = SunCode.Sdk.Models.RemoteServerStatus;
 
 namespace SunCode.Desktop.ViewModels;
 
@@ -46,6 +48,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private ApprovalItem? _pendingApproval;
     private PendingQuestionItem? _pendingQuestion;
     private string _connectionState = "disconnected";
+    private bool _remoteServerConfigured;
+    private bool _remoteServerConnected;
+    private bool _remoteServerConnecting;
     private string _statusText = "Starting local agent...";
     private string _composerText = string.Empty;
     private string _activeTurnId = string.Empty;
@@ -118,6 +123,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private bool _isSessionLoadingVisible;
     private bool _disposed;
     private readonly DispatcherTimer _conversationDurationTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly DispatcherTimer _remoteStatusTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private DateTimeOffset? _activeTurnStartedAt;
     private string _activeTurnTimingTurnId = string.Empty;
 
@@ -321,6 +327,18 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(CanChooseReasoningEffort));
             }
         }
+    }
+    public bool RemoteServerConfigured { get => _remoteServerConfigured; private set => SetProperty(ref _remoteServerConfigured, value); }
+    public bool RemoteServerConnected { get => _remoteServerConnected; private set => SetProperty(ref _remoteServerConnected, value); }
+    public bool RemoteServerConnecting { get => _remoteServerConnecting; private set => SetProperty(ref _remoteServerConnecting, value); }
+    public string RemoteServerStatusText => RemoteServerConnected ? "Remote connected" : RemoteServerConnecting ? "Remote connecting" : "Remote disconnected";
+
+    private void ApplyRemoteServerStatus(RemoteServerStatus status)
+    {
+        RemoteServerConfigured = status.Configured;
+        RemoteServerConnected = status.Connected;
+        RemoteServerConnecting = status.Connecting;
+        OnPropertyChanged(nameof(RemoteServerStatusText));
     }
     public string StatusText { get => _statusText; private set => SetProperty(ref _statusText, value); }
     public void ReportPresentationError(string message) => StatusText = message;

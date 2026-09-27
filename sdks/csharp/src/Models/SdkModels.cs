@@ -98,6 +98,16 @@ public sealed record ProjectRecord(
 
 public sealed record ProjectsResult(IReadOnlyList<ProjectRecord> Projects);
 
+public sealed record RemoteServerConfiguration(string ServerUrl, string PairingCode);
+
+public sealed record RemoteServerStatus(
+    bool Configured,
+    bool Connected,
+    bool Connecting,
+    string? HostId,
+    string? MobilePairingPayload,
+    string? Error);
+
 public sealed record AttentionEvent(
     string Kind,
     string CorrelationId,

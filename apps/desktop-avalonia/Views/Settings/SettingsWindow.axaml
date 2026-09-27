@@ -115,6 +115,12 @@
                 <TextBlock Grid.Column="1" Text="Network" VerticalAlignment="Center" />
               </Grid>
             </Button>
+            <Button x:Name="RemoteNavigation" Classes="navigation" Click="ShowRemote">
+              <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/server.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="Remote Server" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
             <Button x:Name="ComputerNavigation" Classes="navigation" Click="ShowComputer">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/computer.svg" Css="{DynamicResource IconSvgCss}" />
@@ -255,6 +261,7 @@
         </Grid>
 
         <settings:NetworkSettingsControl x:Name="NetworkPage" IsVisible="False" />
+        <settings:RemoteServerSettingsControl x:Name="RemotePage" IsVisible="False" />
       </Grid>
     </Grid>
   </Grid>

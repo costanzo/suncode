@@ -56,6 +56,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             await LoadModelsAsync();
             await LoadAgentsAsync();
             await LoadSettingsAsync();
+            ApplyRemoteServerStatus(await sdk.GetRemoteServerStatusAsync());
+            _remoteStatusTimer.Tick -= RemoteStatusTick;
+            _remoteStatusTimer.Tick += RemoteStatusTick;
+            _remoteStatusTimer.Start();
             await LoadCredentialsAsync();
             await LoadProjectsAsync();
             await RefreshDiagnosticsAsync();
@@ -71,6 +75,13 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 _initializationTask = null;
             }
         }
+    }
+
+    private async void RemoteStatusTick(object? sender, EventArgs e)
+    {
+        if (_sdk is null || _disposed) return;
+        try { ApplyRemoteServerStatus(await _sdk.GetRemoteServerStatusAsync()); }
+        catch (Exception exception) { DiagnosticLog.Error("remote.status", exception, "operation=poll"); }
     }
 
     private async Task<bool> EnsureSdkReadyAsync()
@@ -445,6 +456,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
         _conversationDurationTimer.Stop();
+        _remoteStatusTimer.Stop();
+        _remoteStatusTimer.Tick -= RemoteStatusTick;
         _conversationDurationTimer.Tick -= ConversationDurationTick;
         ClearProviderTraffic();
         Interlocked.Increment(ref _sessionLoadVersion);

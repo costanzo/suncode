@@ -2603,6 +2603,8 @@ dependencies = [
  "chrono",
  "fs2",
  "futures-core",
+ "futures-util",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "sha2",

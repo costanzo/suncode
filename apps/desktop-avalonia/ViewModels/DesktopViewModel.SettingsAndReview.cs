@@ -14,6 +14,52 @@ namespace SunCode.Desktop.ViewModels;
 
 public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 {
+    public sealed record RemoteServerLoadResult(RemoteServerConfiguration Configuration, RemoteServerStatus Status);
+
+    public async Task<RemoteServerLoadResult> LoadRemoteServerAsync()
+    {
+        if (_sdk is null) await InitializeAsync();
+        if (_sdk is null) return new RemoteServerLoadResult(new RemoteServerConfiguration(string.Empty, string.Empty), new RemoteServerStatus(false, false, false, null, null, "Local agent unavailable"));
+        var status = await _sdk.GetRemoteServerStatusAsync();
+        ApplyRemoteServerStatus(status);
+        return new RemoteServerLoadResult(await _sdk.GetRemoteServerConfigurationAsync(), status);
+    }
+
+    public async Task<RemoteServerStatus> SaveRemoteServerAsync(string? serverUrl, string? pairingCode)
+    {
+        if (_sdk is null) await InitializeAsync();
+        if (_sdk is null) return new RemoteServerStatus(false, false, false, null, null, "Local agent unavailable");
+        try
+        {
+            await _sdk.SaveRemoteServerConfigurationAsync(new RemoteServerConfiguration(serverUrl?.Trim() ?? string.Empty, pairingCode?.Trim() ?? string.Empty));
+            var status = await _sdk.ConnectRemoteServerAsync();
+            ApplyRemoteServerStatus(status);
+            return status;
+        }
+        catch (Exception exception)
+        {
+            ReportPresentationError(exception.Message);
+            var status = await _sdk.GetRemoteServerStatusAsync();
+            ApplyRemoteServerStatus(status);
+            return status;
+        }
+    }
+
+    public async Task<RemoteServerStatus> DisconnectRemoteServerAsync()
+    {
+        if (_sdk is null) return new RemoteServerStatus(false, false, false, null, null, null);
+        var status = await _sdk.DisconnectRemoteServerAsync();
+        ApplyRemoteServerStatus(status);
+        return status;
+    }
+
+    public async Task<RemoteServerStatus> ClearRemoteServerAsync()
+    {
+        if (_sdk is null) return new RemoteServerStatus(false, false, false, null, null, null);
+        var status = await _sdk.ClearRemoteServerConfigurationAsync();
+        ApplyRemoteServerStatus(status);
+        return status;
+    }
     public Task RefreshProviderTracesAsync() => RefreshProviderTracesAsync(null, null);
 
     private async Task RefreshProviderTracesAsync(string? requestedSessionId, long? loadVersion)

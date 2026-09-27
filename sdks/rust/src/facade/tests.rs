@@ -12,6 +12,7 @@ fn test_sdk(directory: &std::path::Path) -> AgentSdk {
         _lock: None,
         data_dir: directory.to_path_buf(),
         state,
+        remote: None,
     })
 }
 
@@ -77,6 +78,7 @@ fn pending_approval_is_exposed_by_validated_session() {
         _lock: None,
         data_dir: directory.path().to_path_buf(),
         state,
+        remote: None,
     };
     let project = store
         .project_for_user(
@@ -369,20 +371,20 @@ fn named_sdk_methods_serve_project_session_and_model_dtos() {
         )
         .unwrap();
     sdk.state
-            .store
-            .append_content(
-                &session.session_id,
-                "provider.exchange.started",
-                &json!({
-                    "exchange_id":"exchange-1",
-                    "turn_id":"turn-1",
-                    "provider":"openai",
-                    "model_id":"gpt-5.5",
-                    "wire_model":"gpt-5.5",
-                    "iteration":1
-                }),
-            )
-            .unwrap();
+        .store
+        .append_content(
+            &session.session_id,
+            "provider.exchange.started",
+            &json!({
+                "exchange_id":"exchange-1",
+                "turn_id":"turn-1",
+                "provider":"openai",
+                "model_id":"gpt-5.5",
+                "wire_model":"gpt-5.5",
+                "iteration":1
+            }),
+        )
+        .unwrap();
     let traces = sdk.list_provider_exchanges(&session.session_id).unwrap();
     assert_eq!(traces.exchanges.len(), 1);
     assert_eq!(traces.turns.len(), 1);

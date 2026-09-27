@@ -95,6 +95,9 @@ public sealed partial class SettingsWindow : Window
         NetworkPage.ProxyTextChanged += ProxyTextChanged;
         NetworkPage.RemoveProxyPasswordRequested += RemoveProxyPassword;
         NetworkPage.SaveProxyRequested += SaveProxy;
+        RemotePage.SaveRequested += SaveRemote;
+        RemotePage.DisconnectRequested += DisconnectRemote;
+        RemotePage.ClearRequested += ClearRemote;
         ComputerPage.EnabledChanged += ComputerEnabledChanged;
         ComputerPage.CapturePermissionRequested += RequestComputerCapturePermission;
         ComputerPage.InputPermissionRequested += RequestComputerInputPermission;
@@ -164,6 +167,10 @@ public sealed partial class SettingsWindow : Window
             NetworkPage.ProxyUsernameInputControl.Text = ViewModel.ProxyUsername;
             NetworkPage.ProxyPasswordInputControl.Text = string.Empty;
             NetworkPage.ProxyBypassInputControl.Text = ViewModel.ProxyBypassRules;
+            var remote = await ViewModel.LoadRemoteServerAsync();
+            RemotePage.ServerUrlInputControl.Text = remote.Configuration.ServerUrl;
+            RemotePage.PairingCodeInputControl.Text = remote.Configuration.PairingCode;
+            RefreshRemotePresentation(remote.Status);
             _baselineProxyMode = ViewModel.ProxyMode;
             _baselineProxyUrl = ViewModel.ProxyUrl;
             _baselineProxyUsername = ViewModel.ProxyUsername;
@@ -230,6 +237,7 @@ public sealed partial class SettingsWindow : Window
     private void ShowAppearance(object? sender, RoutedEventArgs e) => SelectPage("appearance", sender as Button);
     private void ShowShortcuts(object? sender, RoutedEventArgs e) => SelectPage("shortcuts", sender as Button);
     private void ShowNetwork(object? sender, RoutedEventArgs e) => SelectPage("network", sender as Button);
+    private void ShowRemote(object? sender, RoutedEventArgs e) => SelectPage("remote", sender as Button);
     private void ShowComputer(object? sender, RoutedEventArgs e) => SelectPage("computer", sender as Button);
     private void ShowBrowser(object? sender, RoutedEventArgs e) => SelectPage("browser", sender as Button);
     private void ShowMcp(object? sender, RoutedEventArgs e) => SelectPage("mcp", sender as Button);
@@ -331,6 +339,7 @@ public sealed partial class SettingsWindow : Window
         AppearancePage.IsVisible = page == "appearance";
         ShortcutsPage.IsVisible = page == "shortcuts";
         NetworkPage.IsVisible = page == "network";
+        RemotePage.IsVisible = page == "remote";
         ComputerPage.IsVisible = page == "computer";
         BrowserPage.IsVisible = page == "browser";
         LoggingPage.IsVisible = page == "logging";
@@ -381,6 +390,7 @@ public sealed partial class SettingsWindow : Window
         if (page == "appearance") AppearanceNavigation.Classes.Set("selected", true);
         if (page == "shortcuts") ShortcutsNavigation.Classes.Set("selected", true);
         if (page == "network") NetworkNavigation.Classes.Set("selected", true);
+        if (page == "remote") RemoteNavigation.Classes.Set("selected", true);
         if (page == "computer") ComputerNavigation.Classes.Set("selected", true);
         if (page == "browser") BrowserNavigation.Classes.Set("selected", true);
         if (page == "logging") LoggingNavigation.Classes.Set("selected", true);
@@ -395,6 +405,7 @@ public sealed partial class SettingsWindow : Window
         : AppearancePage.IsVisible ? "appearance"
         : ShortcutsPage.IsVisible ? "shortcuts"
         : NetworkPage.IsVisible ? "network"
+        : RemotePage.IsVisible ? "remote"
         : ComputerPage.IsVisible ? "computer"
         : BrowserPage.IsVisible ? "browser"
         : McpPage.IsVisible ? "mcp"
@@ -406,6 +417,35 @@ public sealed partial class SettingsWindow : Window
     private async void McpPollTick(object? sender, EventArgs e)
     {
         if (McpPage.IsVisible) await ViewModel.LoadMcpServersAsync();
+    }
+
+    private async void SaveRemote(object? sender, RoutedEventArgs e)
+    {
+        var result = await ViewModel.SaveRemoteServerAsync(RemotePage.ServerUrlInputControl.Text, RemotePage.PairingCodeInputControl.Text);
+        RefreshRemotePresentation(result);
+        RemotePage.StatusTextControl.Text = result.Error ?? (result.Connected ? "Connected" : "Saved; connection unavailable");
+    }
+
+    private async void DisconnectRemote(object? sender, RoutedEventArgs e)
+    {
+        var status = await ViewModel.DisconnectRemoteServerAsync();
+        RefreshRemotePresentation(status);
+    }
+
+    private async void ClearRemote(object? sender, RoutedEventArgs e)
+    {
+        var status = await ViewModel.ClearRemoteServerAsync();
+        RemotePage.ServerUrlInputControl.Text = string.Empty;
+        RemotePage.PairingCodeInputControl.Text = string.Empty;
+        RefreshRemotePresentation(status);
+    }
+
+    private void RefreshRemotePresentation(SunCode.Sdk.Models.RemoteServerStatus status)
+    {
+        RemotePage.DisconnectButtonControl.IsVisible = status.Connected || status.Connecting;
+        RemotePage.PairingSectionControl.IsVisible = !string.IsNullOrWhiteSpace(status.MobilePairingPayload);
+        RemotePage.SetPairingPayload(status.MobilePairingPayload);
+        RemotePage.StatusTextControl.Text = status.Error ?? (status.Connected ? "Connected" : status.Configured ? "Disconnected" : string.Empty);
     }
 
     private async void LanguageServerPollTick(object? sender, EventArgs e)
