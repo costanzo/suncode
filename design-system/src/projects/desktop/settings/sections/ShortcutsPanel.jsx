@@ -13,13 +13,6 @@ export function ShortcutsPanel() {
           <span className="settings-read-only-badge">Read-only</span>
         </div>
       </div>
-      <div className="settings-read-only-note" role="note">
-        <Icon name="keyboard" size={16} />
-        <span>
-          Shortcut customization is not available yet. Editing will be added in a future release.
-          The preview uses macOS notation; Windows and Linux use Ctrl where applicable.
-        </span>
-      </div>
       <div className="settings-panel-section">
         <span className="settings-section-label">Available shortcuts</span>
         <div className="settings-shortcut-list" aria-label="Available keyboard shortcuts">

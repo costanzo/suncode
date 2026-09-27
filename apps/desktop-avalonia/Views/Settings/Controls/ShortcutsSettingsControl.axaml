@@ -14,17 +14,6 @@
         </Border>
       </Grid>
 
-      <Border Classes="settings-read-only-note" Margin="0,0,0,26">
-        <Grid ColumnDefinitions="16,*" ColumnSpacing="9">
-          <svg:Svg Width="16" Height="16" Path="/Assets/icons/keyboard.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Top" />
-          <TextBlock Grid.Column="1"
-                     Classes="settings-row-hint"
-                     Foreground="{DynamicResource TextSecondaryBrush}"
-                     Text="Shortcut customization is not available yet. Editing will be added in a future release. The preview uses macOS notation; Windows and Linux use Ctrl where applicable."
-                     TextWrapping="Wrap" />
-        </Grid>
-      </Border>
-
       <StackPanel Classes="settings-panel-section">
         <TextBlock Classes="section-label" Text="AVAILABLE SHORTCUTS" />
         <StackPanel Classes="settings-shortcut-list">
