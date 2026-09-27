@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Tmds.DBus.Protocol;
 
@@ -62,6 +63,7 @@ internal sealed class MacOSNotificationBackend : ISystemNotificationBackend
 
     private readonly NativeActivationCallback _callback;
     private bool _available;
+    private bool _developmentFallback;
     public event Action<DesktopActivationRequest>? Activated;
 
     public MacOSNotificationBackend() => _callback = OnActivated;
@@ -75,12 +77,23 @@ internal sealed class MacOSNotificationBackend : ISystemNotificationBackend
         {
             Native.Initialize(_callback);
             _available = true;
+            DiagnosticLog.Info("notification.backend", "macos_mode=user_notifications");
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            _developmentFallback = true;
+            DiagnosticLog.Info("notification.backend", "macos_mode=osascript_development_fallback");
         }
         return Task.CompletedTask;
     }
 
     public async Task ShowAsync(SystemNotification notification, CancellationToken cancellationToken)
     {
+        if (_developmentFallback)
+        {
+            await ShowWithOsascriptAsync(notification, cancellationToken);
+            return;
+        }
         if (!_available) throw new PlatformNotSupportedException("macOS notifications require the SunCode app bundle");
         var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         NativeDeliveryCallback callback = delivered => completion.TrySetResult(delivered != 0);
@@ -100,6 +113,50 @@ internal sealed class MacOSNotificationBackend : ISystemNotificationBackend
 
     private static bool IsAppBundle() =>
         AppContext.BaseDirectory.Contains(".app/Contents/MacOS", StringComparison.OrdinalIgnoreCase);
+
+    private static async Task ShowWithOsascriptAsync(
+        SystemNotification notification,
+        CancellationToken cancellationToken)
+    {
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "/usr/bin/osascript",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }
+        };
+        process.StartInfo.ArgumentList.Add("-e");
+        process.StartInfo.ArgumentList.Add(
+            $"display notification {AppleScriptString(notification.Body)} with title {AppleScriptString(notification.Title)}");
+        process.Start();
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken);
+            if (process.ExitCode != 0)
+                throw new InvalidOperationException($"osascript exited with code {process.ExitCode}");
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                try { process.Kill(entireProcessTree: true); }
+                catch (InvalidOperationException) { }
+            }
+            process.Dispose();
+        }
+    }
+
+    private static string AppleScriptString(string value)
+    {
+        var escaped = value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal)
+            .Replace("\r", " ", StringComparison.Ordinal)
+            .Replace("\n", " ", StringComparison.Ordinal);
+        return $"\"{escaped}\"";
+    }
 
     private static class Native
     {

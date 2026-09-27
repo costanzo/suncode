@@ -114,11 +114,13 @@ internal sealed class SessionAttentionCoordinator : IDisposable
             if (_isForeground())
             {
                 _ledger.Record(ledgerKey, NotificationDisposition.SuppressedForeground);
+                DiagnosticLog.Info("notification.delivery", $"kind={attention.Kind} state=suppressed_foreground");
                 return;
             }
             var notification = BuildNotification(attention);
             await _notifications.ShowAsync(notification, _shutdown.Token);
             _ledger.Record(ledgerKey, NotificationDisposition.Delivered);
+            DiagnosticLog.Info("notification.delivery", $"kind={attention.Kind} state=delivered");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
