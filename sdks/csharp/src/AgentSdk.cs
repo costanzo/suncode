@@ -9,7 +9,7 @@ public sealed partial class AgentSdk : IDisposable
 {
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 15;
+    private const uint AbiVersion = 16;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -69,6 +69,13 @@ public sealed partial class AgentSdk : IDisposable
     private Task<JsonElement> RawListModelsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_models);
     private Task<JsonElement> RawListCredentialsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_credentials);
     private Task<JsonElement> RawListProjectsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_projects);
+    private Task<JsonElement> RawRemoteServerConfigurationAsync() => CallAsync(NativeMethods.suncode_agent_sdk_remote_server_configuration);
+    private Task<JsonElement> RawRemoteServerStatusAsync() => CallAsync(NativeMethods.suncode_agent_sdk_remote_server_status);
+    private Task<JsonElement> RawSaveRemoteServerConfigurationAsync(string serverUrl, string pairingCode) => WithUtf8Async(
+        [serverUrl, pairingCode], values => NativeMethods.suncode_agent_sdk_save_remote_server_configuration(_handle, values[0], values[1]));
+    private Task<JsonElement> RawConnectRemoteServerAsync() => CallAsync(NativeMethods.suncode_agent_sdk_connect_remote_server);
+    private Task<JsonElement> RawDisconnectRemoteServerAsync() => CallAsync(NativeMethods.suncode_agent_sdk_disconnect_remote_server);
+    private Task<JsonElement> RawClearRemoteServerConfigurationAsync() => CallAsync(NativeMethods.suncode_agent_sdk_clear_remote_server_configuration);
 
     private Task<JsonElement> RawListAttentionCandidatesAsync(string? since, nuint limit) =>
         WithNullableUtf8Async(

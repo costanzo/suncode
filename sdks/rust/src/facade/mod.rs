@@ -35,6 +35,7 @@ mod lifecycle;
 mod mcp;
 mod project_sessions;
 mod projects;
+mod remote;
 mod sessions;
 mod settings;
 mod subscriptions;
@@ -43,6 +44,7 @@ mod tests;
 mod turns;
 
 pub use blocking::AgentSdk;
+pub use remote::{RemoteServerConfiguration, RemoteServerStatus};
 pub use subscriptions::{
     AttentionEventStream, AttentionEventStreamControl, SessionEventStream,
     SessionEventStreamControl, SessionWatch, SubscriptionError,
@@ -621,6 +623,18 @@ pub struct AsyncAgentSdk {
     _lock: Option<AgentLock>,
     data_dir: PathBuf,
     state: AgentState,
+    remote: Option<Arc<remote::RemoteController>>,
+}
+
+impl AsyncAgentSdk {
+    pub(crate) fn remote_view(&self) -> Self {
+        Self {
+            _lock: None,
+            data_dir: self.data_dir.clone(),
+            state: self.state.clone(),
+            remote: None,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -630,6 +644,7 @@ impl AsyncAgentSdk {
             _lock: None,
             data_dir: PathBuf::new(),
             state,
+            remote: None,
         }
     }
 }

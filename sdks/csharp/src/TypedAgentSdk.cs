@@ -47,6 +47,14 @@ public sealed partial class AgentSdk
     public Task<CredentialsResult> GetCredentialsAsync() => Typed<CredentialsResult>(RawListCredentialsAsync());
     public Task<ProjectsResult> GetProjectsAsync() => Typed<ProjectsResult>(RawListProjectsAsync());
 
+    public Task<RemoteServerConfiguration> GetRemoteServerConfigurationAsync() => Typed<RemoteServerConfiguration>(RawRemoteServerConfigurationAsync());
+    public Task<RemoteServerStatus> GetRemoteServerStatusAsync() => Typed<RemoteServerStatus>(RawRemoteServerStatusAsync());
+    public Task<RemoteServerStatus> SaveRemoteServerConfigurationAsync(RemoteServerConfiguration configuration) =>
+        Typed<RemoteServerStatus>(RawSaveRemoteServerConfigurationAsync(configuration.ServerUrl, configuration.PairingCode));
+    public Task<RemoteServerStatus> ConnectRemoteServerAsync() => Typed<RemoteServerStatus>(RawConnectRemoteServerAsync());
+    public Task<RemoteServerStatus> DisconnectRemoteServerAsync() => Typed<RemoteServerStatus>(RawDisconnectRemoteServerAsync());
+    public Task<RemoteServerStatus> ClearRemoteServerConfigurationAsync() => Typed<RemoteServerStatus>(RawClearRemoteServerConfigurationAsync());
+
     public Task<AttentionCandidatesResult> ListAttentionCandidatesAsync(string? since = null, int limit = 256) =>
         Typed<AttentionCandidatesResult>(RawListAttentionCandidatesAsync(since, (nuint)Math.Clamp(limit, 1, 512)));
 

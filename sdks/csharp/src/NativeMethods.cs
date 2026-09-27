@@ -24,6 +24,12 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_remove_credential(IntPtr handle, IntPtr provider);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_set_provider_endpoint(IntPtr handle, IntPtr provider, IntPtr endpoint);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_projects(IntPtr handle);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_remote_server_configuration(IntPtr handle);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_remote_server_status(IntPtr handle);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_save_remote_server_configuration(IntPtr handle, IntPtr serverUrl, IntPtr pairingCode);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_connect_remote_server(IntPtr handle);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_disconnect_remote_server(IntPtr handle);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_clear_remote_server_configuration(IntPtr handle);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_agents(IntPtr handle);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_attention_candidates(IntPtr handle, IntPtr since, nuint limit);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_computer_runtime_info(IntPtr handle);

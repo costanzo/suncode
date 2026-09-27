@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.RemoteServerSettingsControl">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Classes="settings-panel-content">
+      <StackPanel Classes="settings-panel-heading">
+        <TextBlock Text="Remote Server" Classes="sc-text-title" />
+        <TextBlock Classes="settings-hint" Text="Pair this Desktop with the Remote Server so a phone can view projects and control sessions." />
+      </StackPanel>
+      <StackPanel Classes="settings-panel-section">
+        <TextBlock Classes="section-label" Text="CONNECTION" />
+        <Grid Classes="settings-row" ColumnDefinitions="*,260">
+          <StackPanel Classes="settings-row-copy"><TextBlock Classes="settings-row-title" Text="Server URL" /><TextBlock Classes="settings-row-hint" Text="Use the HTTPS address of your Remote Server." /></StackPanel>
+          <TextBox x:Name="ServerUrlInput" Grid.Column="1" PlaceholderText="https://remote.example.com" />
+        </Grid>
+        <Grid Classes="settings-row" ColumnDefinitions="*,260">
+          <StackPanel Classes="settings-row-copy"><TextBlock Classes="settings-row-title" Text="Pairing code" /><TextBlock Classes="settings-row-hint" Text="The code supplied by your Remote Server administrator." /></StackPanel>
+          <TextBox x:Name="PairingCodeInput" Grid.Column="1" PasswordChar="•" PlaceholderText="Pairing code" />
+        </Grid>
+      </StackPanel>
+      <StackPanel Classes="settings-actions">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button x:Name="SaveButton" Classes="compact primary sc-button" Content="Save and connect" Click="OnSave" />
+          <Button x:Name="DisconnectButton" Classes="compact sc-button" Content="Disconnect" Click="OnDisconnect" IsVisible="False" />
+          <Button x:Name="ClearButton" Classes="compact sc-button" Content="Clear" Click="OnClear" />
+        </StackPanel>
+        <TextBlock x:Name="StatusText" Classes="sc-text-status" />
+      </StackPanel>
+      <Border Classes="settings-divider" />
+      <StackPanel Classes="settings-panel-section" IsVisible="False" x:Name="PairingSection">
+        <TextBlock Classes="section-label" Text="PHONE PAIRING" />
+        <TextBlock Classes="settings-row-hint" Text="Scan this payload from the SunCode Mobile app." TextWrapping="Wrap" />
+        <Grid ColumnDefinitions="160,*" ColumnSpacing="18" Margin="0,12,0,0">
+          <Border Width="160" Height="160" Background="White" Padding="8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+            <Image x:Name="PairingQrImage" Stretch="Uniform" />
+          </Border>
+          <TextBlock x:Name="PairingPayloadText" Grid.Column="1" TextWrapping="Wrap" FontFamily="monospace" VerticalAlignment="Center" />
+        </Grid>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -622,6 +622,45 @@ pub unsafe extern "C" fn suncode_agent_sdk_set_setting(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_remote_server_configuration(handle: *mut SunCodeAgentHandle) -> *mut c_char {
+    ffi_call(handle, |sdk| Ok(sdk.remote_server_configuration()))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_remote_server_status(handle: *mut SunCodeAgentHandle) -> *mut c_char {
+    ffi_call(handle, |sdk| Ok(sdk.remote_server_status()))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_save_remote_server_configuration(
+    handle: *mut SunCodeAgentHandle,
+    server_url: *const c_char,
+    pairing_code: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.save_remote_server_configuration(suncode_sdk::RemoteServerConfiguration {
+            server_url: c_string(server_url, "server_url")?,
+            pairing_code: c_string(pairing_code, "pairing_code")?,
+        })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_connect_remote_server(handle: *mut SunCodeAgentHandle) -> *mut c_char {
+    ffi_call(handle, |sdk| sdk.connect_remote_server())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_disconnect_remote_server(handle: *mut SunCodeAgentHandle) -> *mut c_char {
+    ffi_call(handle, |sdk| Ok(sdk.disconnect_remote_server()?))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_clear_remote_server_configuration(handle: *mut SunCodeAgentHandle) -> *mut c_char {
+    ffi_call(handle, |sdk| Ok(sdk.clear_remote_server_configuration()?))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_set_proxy_configuration(
     handle: *mut SunCodeAgentHandle,
     request_json: *const c_char,

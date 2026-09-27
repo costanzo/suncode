@@ -50,16 +50,27 @@ impl AsyncAgentSdk {
             }
         })?;
         let state = build_state(&config, &user_id, options, configure_providers).await?;
-        logging::info("agent", "open completed");
-        Ok(Self {
+        let remote = Arc::new(remote::RemoteController::new(state.store.clone()));
+        let sdk = Self {
             _lock: Some(lock),
             data_dir: config.data_dir,
             state,
-        })
+            remote: Some(remote),
+        };
+        if let Some(remote) = &sdk.remote {
+            if let Err(error) = remote.start_saved(&sdk) {
+                logging::write_business_error("remote", "restore", &error, "phase=open");
+            }
+        }
+        logging::info("agent", "open completed");
+        Ok(sdk)
     }
 
     pub async fn shutdown(self) -> SdkResult<()> {
         logging::info("agent", "shutdown begin");
+        if let Some(remote) = &self.remote {
+            remote.disconnect()?;
+        }
         let result = self.state.agent.shutdown().await;
         match &result {
             Ok(()) => logging::info("agent", "shutdown completed"),

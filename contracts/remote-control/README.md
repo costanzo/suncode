@@ -8,11 +8,12 @@ This directory defines the public protocol between the CMP Mobile client and the
 
 - [`http.openapi.yaml`](http.openapi.yaml) — OpenAPI 3.1 HTTP request/response API.
 - [`sse.asyncapi.yaml`](sse.asyncapi.yaml) — AsyncAPI 3.0 Mobile Session-scoped Server-Sent Events stream.
+- [`desktop.asyncapi.yaml`](desktop.asyncapi.yaml) — AsyncAPI 3.0 Desktop request, result, and event contract.
 
 ## Topology
 
 ```text
-SunCode Desktop -- outbound authenticated WebSocket --> Remote Server
+SunCode Desktop -- pairing HTTP + request SSE + event HTTP --> Remote Server
 Mobile          -- HTTPS ---------------------------> Remote Server
 Mobile          -- HTTPS / SSE (one Session) -------> Remote Server
 ```
@@ -24,7 +25,7 @@ The Remote Server correlates mobile requests to the correct Desktop connection a
 - HTTP paths are prefixed with `/v1`.
 - The HTTP path prefix is `/v1`; SSE event names, event IDs, and payload fields are the compatibility boundary.
 - New fields and event types are additive. Clients ignore unknown fields and non-required event types.
-- Breaking HTTP changes require `/v2`; breaking Mobile SSE changes require a new SSE path or protocol version. The Desktop WebSocket is an independent private boundary.
+- Breaking HTTP changes require `/v2`; breaking Mobile SSE changes require a new SSE path or protocol version. The Desktop device contract is an independent private boundary.
 - Every response and event carries a stable `requestId` or `eventId` where applicable.
 
 ## Pairing and authority
@@ -93,4 +94,6 @@ HTTP errors use the `ApiBaseRet` envelope with a stable integer `code` and safe 
 
 ## Desktop connection boundary
 
-The Desktop-side `suncode-remote` protocol is separate and remains an outbound authenticated WebSocket. Its private command envelopes are outside this Mobile-facing contract. The relay uses SSE for Mobile event delivery and does not authorize the Java server to call Rust SDK methods directly or to bypass Desktop policy and approval state.
+The Desktop-side `suncode-remote` protocol is a separate outbound device contract. Desktop currently uses a pairing code without a Desktop bearer credential. `POST /v1/desktop/pairings` returns a stable `hostId`, opaque `mobilePairingPayload`, and the `eventsUrl`, `requestsUrl`, and `resultsUrl` paths. Desktop opens `requestsUrl` as an SSE stream and accepts only `desktop.request` frames. Each frame contains a unique `request_id`, an allowlisted operation name, and JSON arguments. Results are posted to `resultsUrl` with `X-Host-Id`, `X-Request-Id`, and the same pairing code header.
+
+Desktop periodically posts a snapshot to `/v1/desktop/snapshot` and posts allowlisted Rust session events to `eventsUrl`. Every event upload includes `X-Host-Id` and `X-Request-Id`. `assistant.delta` and provider byte progress are excluded; the complete `message.assistant` event is uploaded once. The desktop worker reconnects with bounded backoff and does not bypass local Rust policy or approval state.
