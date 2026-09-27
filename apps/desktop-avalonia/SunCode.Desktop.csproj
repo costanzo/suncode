@@ -57,6 +57,14 @@
     <Exec Command="/bin/cp -a &quot;$(BrowserRuntimeSource)&quot; &quot;$(PublishDir)browser-runtime&quot;" />
   </Target>
 
+  <Target Name="BuildMacOSNotificationBridge"
+          BeforeTargets="Build"
+          Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(DesignTimeBuild)' != 'true'"
+          Inputs="$(MSBuildProjectDirectory)/Native/macOS/SunCodeNotifications.swift"
+          Outputs="$(TargetDir)libsuncode_notifications.dylib">
+    <Exec Command="/usr/bin/xcrun swiftc -parse-as-library -emit-library -o &quot;$(TargetDir)libsuncode_notifications.dylib&quot; &quot;$(MSBuildProjectDirectory)/Native/macOS/SunCodeNotifications.swift&quot;" />
+  </Target>
+
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
     <AvaloniaResource Include="Assets/**" />

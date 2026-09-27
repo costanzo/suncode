@@ -61,18 +61,27 @@ internal sealed class MacOSNotificationBackend : ISystemNotificationBackend
     private delegate void NativeDeliveryCallback(int delivered);
 
     private readonly NativeActivationCallback _callback;
+    private bool _available;
     public event Action<DesktopActivationRequest>? Activated;
 
     public MacOSNotificationBackend() => _callback = OnActivated;
 
     public Task InitializeAsync(CancellationToken cancellationToken)
     {
-        if (OperatingSystem.IsMacOS()) Native.Initialize(_callback);
+        // UserNotifications requires an NSApplication bundle. `dotnet run` uses a
+        // framework-dependent executable directory instead, so native startup
+        // would terminate the process before the app can show its main window.
+        if (OperatingSystem.IsMacOS() && IsAppBundle())
+        {
+            Native.Initialize(_callback);
+            _available = true;
+        }
         return Task.CompletedTask;
     }
 
     public async Task ShowAsync(SystemNotification notification, CancellationToken cancellationToken)
     {
+        if (!_available) throw new PlatformNotSupportedException("macOS notifications require the SunCode app bundle");
         var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         NativeDeliveryCallback callback = delivered => completion.TrySetResult(delivered != 0);
         Native.Show(notification.Id, notification.Title, notification.Body, notification.Activation.ToLaunchArgument(), callback);
@@ -88,6 +97,9 @@ internal sealed class MacOSNotificationBackend : ISystemNotificationBackend
     }
 
     public void Dispose() => Activated = null;
+
+    private static bool IsAppBundle() =>
+        AppContext.BaseDirectory.Contains(".app/Contents/MacOS", StringComparison.OrdinalIgnoreCase);
 
     private static class Native
     {
