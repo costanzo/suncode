@@ -358,9 +358,6 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
             <i aria-hidden="true" />
             <code>2 running</code>
           </span>
-          <code>gpt-5.6-sol</code>
-          <span>19.7k tokens</span>
-          <span>3 calls · 4.2s</span>
         </div>
       </footer>
       <DialogWindowConfirmation
