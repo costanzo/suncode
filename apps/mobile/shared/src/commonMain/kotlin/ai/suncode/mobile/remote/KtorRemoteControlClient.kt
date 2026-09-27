@@ -1,6 +1,5 @@
 package ai.suncode.mobile.remote
 
-import ai.suncode.mobile.remote.protocol.AgentEventEnvelope
 import ai.suncode.mobile.remote.protocol.ApiBaseRet
 import ai.suncode.mobile.remote.protocol.ApprovalResolutionRequest
 import ai.suncode.mobile.remote.protocol.CommandAcceptedData
@@ -15,12 +14,15 @@ import ai.suncode.mobile.remote.protocol.RefreshTokenRequest
 import ai.suncode.mobile.remote.protocol.SendMessageRequest
 import ai.suncode.mobile.remote.protocol.SessionDetailDto
 import ai.suncode.mobile.remote.protocol.SessionPageData
+import ai.suncode.mobile.remote.protocol.SessionStreamEvent
 import ai.suncode.mobile.remote.protocol.SyncData
 import ai.suncode.mobile.remote.protocol.TokenData
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.plugins.sse.SSE
+import io.ktor.client.plugins.sse.SSEClientException
+import io.ktor.client.plugins.sse.sse
 import io.ktor.client.request.accept
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
@@ -34,8 +36,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
-import io.ktor.websocket.Frame
-import io.ktor.websocket.readText
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
@@ -87,7 +87,9 @@ class KtorRemoteControlClient(
         install(ContentNegotiation) {
             json(json)
         }
-        install(io.ktor.client.plugins.websocket.WebSockets)
+        install(SSE) {
+            maxReconnectionAttempts = 0
+        }
     }
     private val refreshMutex = Mutex()
 
@@ -142,8 +144,8 @@ class KtorRemoteControlClient(
         }
     }
 
-    override suspend fun createSession(request: CreateSessionRequest, idempotencyKey: String) {
-        authenticatedEmptyResponse { token -> postJson("$baseUrl/v1/sessions", request, idempotencyKey, token) }
+    override suspend fun createSession(request: CreateSessionRequest, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
+        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/sessions", request, idempotencyKey, token) }
     }
 
     override suspend fun getSession(sessionId: String): ApiBaseRet<SessionDetailDto> {
@@ -182,13 +184,34 @@ class KtorRemoteControlClient(
         }
     }
 
-    override fun observeEvents(): Flow<AgentEventEnvelope> = flow {
-        val token = accessTokenOrRefresh()
-        val websocketUrl = baseUrl.replaceFirst("https://", "wss://").replaceFirst("http://", "ws://") + "/v1/ws"
-        http.webSocket(websocketUrl, request = { bearerAuth(token) }) {
-            for (frame in incoming) {
-                if (frame is Frame.Text) {
-                    emit(json.decodeFromString<AgentEventEnvelope>(frame.readText()))
+    override fun observeSessionEvents(sessionId: String, lastEventId: String?): Flow<SessionStreamEvent> = flow {
+        var token = accessTokenOrRefresh()
+        val url = "$baseUrl/v1/sessions/${sessionId.pathSegment()}/events"
+        try {
+            openEventStream(url, token, lastEventId) { emit(it) }
+        } catch (failure: SSEClientException) {
+            val status = failure.response?.status ?: HttpStatusCode.InternalServerError
+            if (status != HttpStatusCode.Unauthorized) {
+                throw RemoteHttpException(status, null, "Remote Session event stream failed")
+            }
+            token = refreshAccessToken(token)
+            openEventStream(url, token, lastEventId) { emit(it) }
+        }
+    }
+
+    private suspend fun openEventStream(
+        url: String,
+        token: String,
+        lastEventId: String?,
+        onEvent: suspend (SessionStreamEvent) -> Unit,
+    ) {
+        http.sse(url, request = {
+            bearerAuth(token)
+            lastEventId?.let { header("Last-Event-ID", it) }
+        }) {
+            incoming.collect { event ->
+                event.data?.let { data ->
+                    onEvent(SessionStreamEvent(event.id, event.event, data))
                 }
             }
         }

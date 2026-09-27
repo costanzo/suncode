@@ -28,7 +28,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.awaitCancellation
 
 private data class AppState(
     val tab: AppTab = AppTab.SESSIONS,
@@ -48,6 +51,13 @@ fun App(
 
 @Composable
 private fun MobileRoot(repository: MobileRepository, onScanPairing: (((String) -> Unit) -> Unit)?, state: AppState, setState: (AppState) -> Unit) {
+    val lifecycleScope = rememberCoroutineScope()
+    LifecycleEventEffect(Lifecycle.Event.ON_START) {
+        lifecycleScope.launch { repository.setAppForeground(true) }
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        lifecycleScope.launch { repository.setAppForeground(false) }
+    }
     val sessions by repository.observeSessions().collectAsStateWithLifecycle(emptyList())
     val hosts by repository.observeHosts().collectAsStateWithLifecycle(emptyList())
     val selectedSession = state.session?.let { selected -> sessions.firstOrNull { it.id == selected.id } ?: selected }
@@ -121,7 +131,18 @@ private fun SessionList(repository: MobileRepository, sessions: List<Session>, h
                 val host = hosts.firstOrNull() ?: return@NewSessionDialog
                 val project = host.projects.firstOrNull() ?: return@NewSessionDialog
                 scope.launch {
-                    repository.createSession(host, project, title, message).onSuccess {
+                    repository.createSession(host, project, title, message).onSuccess { sessionId ->
+                        setState(AppState(session = Session(
+                            id = sessionId,
+                            title = title.ifBlank { "New session" },
+                            hostId = host.id,
+                            hostName = host.name,
+                            projectId = project.id,
+                            projectName = project.name,
+                            state = SessionState.RUNNING,
+                            updatedLabel = "Just now",
+                            preview = message,
+                        )))
                         showNewSession = false
                     }
                 }
@@ -135,6 +156,14 @@ private fun SessionList(repository: MobileRepository, sessions: List<Session>, h
 private fun SessionDetail(repository: MobileRepository, session: Session, setState: (AppState) -> Unit, modifier: Modifier) {
     var message by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    LaunchedEffect(session.id) {
+        repository.openSession(session.id)
+        try {
+            awaitCancellation()
+        } finally {
+            repository.closeSession(session.id)
+        }
+    }
     Column(modifier.fillMaxSize()) {
         TopAppBar(title = { Text(session.title, maxLines = 1, overflow = TextOverflow.Ellipsis) }, navigationIcon = { IconButton({ setState(AppState()) }) { Icon(Icons.Default.ArrowBack, "Back") } }, actions = { IconButton({}) { Icon(Icons.Default.MoreVert, "More") } }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent))
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {

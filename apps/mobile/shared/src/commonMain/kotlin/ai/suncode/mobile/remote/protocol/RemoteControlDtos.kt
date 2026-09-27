@@ -146,6 +146,7 @@ data class SessionDetailDto(
     val pendingApproval: ApprovalRequestDto? = null,
     val pendingQuestion: QuestionRequestDto? = null,
     val revision: Int,
+    val eventSequence: Long? = null,
     val archived: Boolean,
     val messages: List<MessageDto>,
 )
@@ -180,6 +181,7 @@ data class QuestionReplyRequest(
 data class CommandAcceptedData(
     val requestId: String,
     val acceptedAt: String,
+    val sessionId: String? = null,
 )
 
 @Serializable
@@ -201,7 +203,26 @@ data class AgentEventEnvelope(
     @SerialName("session_id") val sessionId: String,
     @SerialName("occurred_at") val occurredAt: String,
     @SerialName("event_type") val eventType: String,
+    @SerialName("event_id") val eventId: String? = null,
+    val sequence: Long? = null,
+    @SerialName("session_revision") val sessionRevision: Long? = null,
     val payload: JsonObject,
+)
+
+/** One parsed Server-Sent Event from a Session stream. */
+data class SessionStreamEvent(
+    val eventId: String?,
+    val eventType: String?,
+    val data: String,
+)
+
+@Serializable
+data class SessionSnapshotEnvelope(
+    @SerialName("event_id") val eventId: String? = null,
+    @SerialName("session_id") val sessionId: String,
+    val sequence: Long,
+    @SerialName("session_revision") val sessionRevision: Int,
+    val snapshot: SessionDetailDto,
 )
 
 object RemoteEventTypes {

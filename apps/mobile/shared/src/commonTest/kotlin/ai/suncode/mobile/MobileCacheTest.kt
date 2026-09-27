@@ -37,7 +37,7 @@ class MobileCacheTest {
             revision = 4,
             pendingApproval = PendingApproval("approval-1", 4, "filesystem", "Write one file", "src/main.kt"),
         )
-        val snapshot = MobileCacheSnapshot("cursor-2", listOf(session.toCached()))
+        val snapshot = MobileCacheSnapshot(syncCursor = "cursor-2", sessions = listOf(session.toCached()))
         val restored = json.decodeFromString<MobileCacheSnapshot>(json.encodeToString(snapshot)).sessions.single().toDomain()
 
         assertEquals(session, restored)

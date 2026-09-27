@@ -4,12 +4,14 @@ import ai.suncode.mobile.remote.protocol.AgentEventEnvelope
 import ai.suncode.mobile.remote.protocol.ApiBaseRet
 import ai.suncode.mobile.remote.protocol.PairingExchangeData
 import ai.suncode.mobile.remote.protocol.SessionDetailDto
+import ai.suncode.mobile.remote.protocol.SessionSnapshotEnvelope
 import ai.suncode.mobile.remote.protocol.SyncData
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 class RemoteControlProtocolTest {
     private val json = Json { ignoreUnknownKeys = true }
@@ -98,7 +100,44 @@ class RemoteControlProtocolTest {
     }
 
     @Test
-    fun keepsUnknownWebSocketEventTypesAndPayload() {
+    fun decodesSessionEventCursorAndSnapshotEnvelope() {
+        val snapshot = json.decodeFromString<SessionSnapshotEnvelope>(
+            """
+            {
+              "event_id": "session-1:12",
+              "session_id": "session-1",
+              "sequence": 12,
+              "session_revision": 4,
+              "snapshot": {
+                "id": "session-1",
+                "title": "Fix login redirect",
+                "kind": "primary",
+                "host": {"id":"host-1","displayName":"MacBook Pro"},
+                "project": {"id":"project-1","displayName":"suncode"},
+                "state": "running",
+                "updatedAt": "2026-09-26T12:00:00Z",
+                "preview": "Working",
+                "revision": 4,
+                "archived": false,
+                "messages": []
+              }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals("session-1:12", snapshot.eventId)
+        assertEquals(12, snapshot.sequence)
+        assertEquals("session-1", snapshot.snapshot.id)
+
+        val event = json.decodeFromString<AgentEventEnvelope>(
+            """{"session_id":"session-1","occurred_at":"now","event_type":"future.event","event_id":"session-1:13","sequence":13,"session_revision":5,"payload":{}}""",
+        )
+        assertEquals(13, event.sequence)
+        assertEquals("session-1:13", event.eventId)
+    }
+
+    @Test
+    fun keepsUnknownSseEventTypesAndPayload() {
         val event = json.decodeFromString<AgentEventEnvelope>(
             """
             {
@@ -111,6 +150,7 @@ class RemoteControlProtocolTest {
         )
 
         assertEquals("future.event", event.eventType)
+        assertNull(event.sequence)
         assertEquals(true, event.payload.jsonObject["new_field"]?.toString()?.toBoolean())
     }
 }

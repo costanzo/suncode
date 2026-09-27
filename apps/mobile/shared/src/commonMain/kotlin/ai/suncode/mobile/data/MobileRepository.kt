@@ -15,10 +15,19 @@ interface MobileRepository {
     suspend fun cancelTurn(sessionId: String): Result<Unit>
     suspend fun retryLastTurn(sessionId: String): Result<Unit>
     /** Acceptance does not include a Session ID; the Session arrives through the event stream. */
-    suspend fun createSession(host: Host, project: Project, title: String, firstMessage: String): Result<Unit>
+    suspend fun createSession(host: Host, project: Project, title: String, firstMessage: String): Result<String>
     suspend fun pairHost(pairingPayload: String): Result<Host>
     suspend fun reconnect(hostId: String): Result<Unit>
     suspend fun clearOfflineCache(): Result<Unit>
+
+    /** Starts the live stream for the Session detail surface. */
+    suspend fun openSession(sessionId: String) = Unit
+
+    /** Stops the live Session stream and returns to list synchronization. */
+    suspend fun closeSession(sessionId: String) = Unit
+
+    /** Pauses network transport while the app is backgrounded. */
+    suspend fun setAppForeground(foreground: Boolean) = Unit
 }
 
 /** Deterministic preview repository used when no Remote Control base URL is configured. */
@@ -98,7 +107,7 @@ class FakeMobileRepository : MobileRepository {
     override suspend fun resolveApproval(sessionId: String, approvalId: String, action: String, expectedRevision: Int): Result<Unit> = Result.success(Unit)
     override suspend fun cancelTurn(sessionId: String): Result<Unit> = Result.success(Unit)
     override suspend fun retryLastTurn(sessionId: String): Result<Unit> = Result.success(Unit)
-    override suspend fun createSession(host: Host, project: Project, title: String, firstMessage: String): Result<Unit> = Result.success(Unit)
+    override suspend fun createSession(host: Host, project: Project, title: String, firstMessage: String): Result<String> = Result.success("preview-new-session")
     override suspend fun pairHost(pairingPayload: String): Result<Host> = Result.failure(NotImplementedError("Remote pairing is not connected yet"))
     override suspend fun reconnect(hostId: String): Result<Unit> = Result.failure(NotImplementedError("Remote reconnect is not connected yet"))
     override suspend fun clearOfflineCache(): Result<Unit> = Result.success(Unit)

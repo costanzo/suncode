@@ -15,6 +15,9 @@ import ai.suncode.mobile.remote.protocol.PairingExchangeRequest
 import ai.suncode.mobile.remote.protocol.SendMessageRequest
 import ai.suncode.mobile.remote.protocol.AgentEventEnvelope
 import ai.suncode.mobile.remote.protocol.RemoteEventTypes
+import ai.suncode.mobile.remote.protocol.SessionStreamEvent
+import ai.suncode.mobile.remote.RemoteHttpException
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -24,6 +27,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -46,25 +50,20 @@ class RemoteMobileRepository(
     private val hosts = MutableStateFlow<List<Host>>(emptyList())
     private val sessions = MutableStateFlow<List<Session>>(emptyList())
     private val projectionMutex = Mutex()
+    private val transportMutex = Mutex()
     private var syncCursor: String? = null
+    private var appForeground = true
+    private var activeSessionId: String? = null
+    private var pollingJob: Job? = null
+    private var sessionStreamJob: Job? = null
+    private val lastEventIds = mutableMapOf<String, String>()
+    private val lastEventSequences = mutableMapOf<String, Long>()
+    private var cachePersistJob: Job? = null
 
     init {
         scope.launch {
             loadCache()
-            var retryDelayMs = INITIAL_RETRY_DELAY_MS
-            while (currentCoroutineContext().isActive) {
-                try {
-                    synchronize()
-                    client.observeEvents().collect { event ->
-                        if (event.sessionId.isNotBlank() && !reduceEvent(event)) refreshSession(event.sessionId)
-                    }
-                    retryDelayMs = INITIAL_RETRY_DELAY_MS
-                } catch (_: Throwable) {
-                    currentCoroutineContext().ensureActive()
-                    delay(retryDelayMs)
-                    retryDelayMs = min(retryDelayMs * 2, MAX_RETRY_DELAY_MS)
-                }
-            }
+            restartTransport()
         }
     }
 
@@ -109,8 +108,13 @@ class RemoteMobileRepository(
         refreshSession(sessionId)
     }
 
-    override suspend fun createSession(host: Host, project: Project, title: String, firstMessage: String): Result<Unit> = runCatching {
-        client.createSession(CreateSessionRequest(host.id, project.id, title.ifBlank { null }, firstMessage.ifBlank { null }), key())
+    override suspend fun createSession(host: Host, project: Project, title: String, firstMessage: String): Result<String> = runCatching {
+        val sessionId = client.createSession(
+            CreateSessionRequest(host.id, project.id, title.ifBlank { null }, firstMessage.ifBlank { null }),
+            key(),
+        ).data?.sessionId ?: error("Create Session response did not include a Session ID")
+        refreshSession(sessionId)
+        sessionId
     }
 
     override suspend fun pairHost(pairingPayload: String): Result<Host> = runCatching {
@@ -132,9 +136,28 @@ class RemoteMobileRepository(
 
     override suspend fun reconnect(hostId: String): Result<Unit> = runCatching { synchronize() }
 
+    override suspend fun openSession(sessionId: String) {
+        activeSessionId = sessionId
+        restartTransport()
+    }
+
+    override suspend fun closeSession(sessionId: String) {
+        if (activeSessionId != sessionId) return
+        activeSessionId = null
+        restartTransport()
+    }
+
+    override suspend fun setAppForeground(foreground: Boolean) {
+        appForeground = foreground
+        restartTransport()
+    }
+
     override suspend fun clearOfflineCache(): Result<Unit> = runCatching {
+        cachePersistJob?.cancel()
         projectionMutex.withLock {
             syncCursor = null
+            lastEventIds.clear()
+            lastEventSequences.clear()
             sessions.value = emptyList()
             hosts.value = emptyList()
             cacheStore.clear()
@@ -217,10 +240,14 @@ class RemoteMobileRepository(
 
     private suspend fun refreshSession(sessionId: String) {
         val detail = client.getSession(sessionId).data ?: return
+        applySessionDetail(detail)
+    }
+
+    private suspend fun applySessionDetail(detail: ai.suncode.mobile.remote.protocol.SessionDetailDto) {
         val updated = detail.toDomain()
         projectionMutex.withLock {
-            sessions.value = if (sessions.value.any { it.id == sessionId }) {
-                sessions.value.map { existing -> if (existing.id == sessionId) updated else existing }
+            sessions.value = if (sessions.value.any { it.id == updated.id }) {
+                sessions.value.map { existing -> if (existing.id == updated.id) updated else existing }
             } else {
                 listOf(updated) + sessions.value
             }
@@ -230,17 +257,120 @@ class RemoteMobileRepository(
     }
 
     /** Applies event shapes that carry enough information for a lossless local update. */
-    private suspend fun reduceEvent(event: AgentEventEnvelope): Boolean {
+    private enum class EventReduction { APPLIED, IGNORED, NEEDS_SNAPSHOT }
+
+    private suspend fun reduceEvent(event: AgentEventEnvelope): EventReduction {
         val sessionId = event.sessionId
         return projectionMutex.withLock {
-            val existing = sessions.value.firstOrNull { it.id == sessionId } ?: return@withLock false
-            val updated = existing.applyRemoteEvent(event) ?: return@withLock false
+            val existing = sessions.value.firstOrNull { it.id == sessionId } ?: return@withLock EventReduction.NEEDS_SNAPSHOT
+            if (event.sequence != null && event.sequence <= (lastEventSequences[sessionId] ?: -1L)) return@withLock EventReduction.IGNORED
+            if (event.eventId != null && lastEventIds[sessionId] == event.eventId) return@withLock EventReduction.IGNORED
+            val updated = existing.applyRemoteEvent(event) ?: return@withLock EventReduction.IGNORED
             sessions.value = sessions.value.map { if (it.id == sessionId) updated else it }
             reconcileSessionHosts()
-            persistLocked()
-            true
+            if (event.eventType == RemoteEventTypes.ASSISTANT_DELTA) scheduleCachePersist() else persistLocked()
+            EventReduction.APPLIED
         }
     }
+
+    private suspend fun restartTransport() {
+        transportMutex.withLock {
+            pollingJob?.cancel()
+            sessionStreamJob?.cancel()
+            pollingJob?.join()
+            sessionStreamJob?.join()
+            pollingJob = null
+            sessionStreamJob = null
+            if (!appForeground) return
+            val sessionId = activeSessionId
+            if (sessionId == null) {
+                pollingJob = scope.launch { pollProjection() }
+            } else {
+                sessionStreamJob = scope.launch { observeSession(sessionId) }
+            }
+        }
+    }
+
+    private suspend fun pollProjection() {
+        var retryDelayMs = POLL_INTERVAL_MS
+        while (currentCoroutineContext().isActive && appForeground && activeSessionId == null) {
+            try {
+                synchronize()
+                retryDelayMs = POLL_INTERVAL_MS
+                delay(POLL_INTERVAL_MS)
+            } catch (_: Throwable) {
+                currentCoroutineContext().ensureActive()
+                delay(retryDelayMs)
+                retryDelayMs = min(retryDelayMs * 2, MAX_RETRY_DELAY_MS)
+            }
+        }
+    }
+
+    private suspend fun observeSession(sessionId: String) {
+        var retryDelayMs = INITIAL_RETRY_DELAY_MS
+        while (currentCoroutineContext().isActive && appForeground && activeSessionId == sessionId) {
+            try {
+                client.observeSessionEvents(sessionId, lastEventIds[sessionId]).collect { frame ->
+                    handleSessionStreamEvent(sessionId, frame)
+                }
+                delay(withJitter(retryDelayMs))
+                retryDelayMs = min(retryDelayMs * 2, MAX_RETRY_DELAY_MS)
+            } catch (failure: RemoteHttpException) {
+                if (failure.status == HttpStatusCode.Gone) {
+                    lastEventIds.remove(sessionId)
+                    persistEventIds()
+                    refreshSession(sessionId)
+                    retryDelayMs = INITIAL_RETRY_DELAY_MS
+                    continue
+                }
+                currentCoroutineContext().ensureActive()
+                delay(withJitter(retryDelayMs))
+                retryDelayMs = min(retryDelayMs * 2, MAX_RETRY_DELAY_MS)
+            } catch (_: Throwable) {
+                currentCoroutineContext().ensureActive()
+                delay(withJitter(retryDelayMs))
+                retryDelayMs = min(retryDelayMs * 2, MAX_RETRY_DELAY_MS)
+            }
+        }
+    }
+
+    private suspend fun handleSessionStreamEvent(sessionId: String, frame: SessionStreamEvent) {
+        if (frame.eventType == SESSION_SNAPSHOT_EVENT) {
+            val snapshot = json.decodeFromString<ai.suncode.mobile.remote.protocol.SessionSnapshotEnvelope>(frame.data)
+            if (snapshot.sessionId != sessionId) return
+            applySessionDetail(snapshot.snapshot)
+            lastEventSequences[sessionId] = snapshot.sequence
+            (frame.eventId ?: snapshot.eventId)?.let { lastEventIds[sessionId] = it }
+            persistEventIds()
+            return
+        }
+        val envelope = json.decodeFromString<AgentEventEnvelope>(frame.data).let { event ->
+            if (event.eventId == null && frame.eventId != null) event.copy(eventId = frame.eventId) else event
+        }
+        if (envelope.sessionId != sessionId) return
+        val reduction = reduceEvent(envelope)
+        envelope.sequence?.let { sequence ->
+            if (sequence > (lastEventSequences[sessionId] ?: -1L)) lastEventSequences[sessionId] = sequence
+        }
+        frame.eventId?.let { lastEventIds[sessionId] = it }
+        if (envelope.eventType == RemoteEventTypes.ASSISTANT_DELTA) scheduleCachePersist() else persistEventIds()
+        if (reduction == EventReduction.NEEDS_SNAPSHOT) refreshSession(sessionId)
+    }
+
+    private suspend fun persistEventIds() {
+        projectionMutex.withLock { persistLocked() }
+    }
+
+    private fun scheduleCachePersist() {
+        cachePersistJob?.cancel()
+        cachePersistJob = scope.launch {
+            delay(CACHE_PERSIST_DEBOUNCE_MS)
+            projectionMutex.withLock { persistLocked() }
+        }
+    }
+
+    private fun withJitter(baseDelayMs: Long): Long =
+        (baseDelayMs * 0.8).toLong() + Random.nextLong((baseDelayMs * 0.4).toLong().coerceAtLeast(1L))
 
     private suspend fun loadCache() {
         val raw = cacheStore.read() ?: return
@@ -248,6 +378,8 @@ class RemoteMobileRepository(
             val snapshot = json.decodeFromString<MobileCacheSnapshot>(raw)
             projectionMutex.withLock {
                 syncCursor = snapshot.syncCursor
+                lastEventIds.putAll(snapshot.sessionEventIds)
+                lastEventSequences.putAll(snapshot.sessionEventSequences)
                 hosts.value = snapshot.hosts.map { it.toDomain() }
                 sessions.value = snapshot.sessions.map { it.toDomain() }
                 reconcileSessionHosts()
@@ -260,6 +392,8 @@ class RemoteMobileRepository(
     private suspend fun persistLocked() {
         cacheStore.write(MobileCacheSnapshot(
             syncCursor = syncCursor,
+            sessionEventIds = lastEventIds.toMap(),
+            sessionEventSequences = lastEventSequences.toMap(),
             sessions = sessions.value.map { it.toCached() },
             hosts = hosts.value.map { it.toCached() },
         ).encode(json))
@@ -272,7 +406,10 @@ class RemoteMobileRepository(
     private companion object {
         const val INITIAL_RETRY_DELAY_MS = 1_000L
         const val MAX_RETRY_DELAY_MS = 30_000L
+        const val POLL_INTERVAL_MS = 15_000L
+        const val CACHE_PERSIST_DEBOUNCE_MS = 400L
         const val PREVIEW_LIMIT = 500
+        const val SESSION_SNAPSHOT_EVENT = "session.snapshot"
     }
 }
 

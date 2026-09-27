@@ -3,25 +3,35 @@ info:
   title: SunCode Session Event Stream
   version: 1.0.0
   description: |
-    Server-to-Mobile WebSocket stream for primary Session events emitted by the
-    Rust AgentEvent catalog. The Remote Server forwards normalized events from
-    the selected Desktop connection. Mobile does not send commands, subscribe
-    messages, ping messages, or other application payloads on this channel.
+    Server-to-Mobile Server-Sent Events (SSE) stream for one primary Session.
+    The Remote Server forwards normalized events from the selected Desktop
+    connection. Mobile does not send commands or application payloads on this
+    channel. HTTP commands remain under the OpenAPI contract.
+
+    The wire format is standard UTF-8 SSE. Each event is framed as `id`,
+    `event`, and one or more `data` lines followed by a blank line. The JSON
+    data for `agent.event` is an AgentEventEnvelope; the first event on a new
+    stream is `session.snapshot`. Heartbeats are SSE comment frames (`:
+    heartbeat`) and are not application events.
 servers:
   remoteServer:
     host: '{remoteServerHost}'
-    pathname: /v1/ws
-    protocol: wss
-    description: Authenticated Remote Server WebSocket endpoint.
+    pathname: /v1/sessions/{sessionId}/events
+    protocol: https
+    description: Authenticated Remote Server SSE endpoint.
     variables:
       remoteServerHost:
         default: relay.suncode.example
+      sessionId:
+        default: session-opaque-id
     security:
       - bearerAuth: []
 channels:
   sessionEvents:
-    address: /v1/ws
+    address: /v1/sessions/{sessionId}/events
     messages:
+      sessionSnapshot:
+        $ref: '#/components/messages/SessionSnapshot'
       agentEvent:
         $ref: '#/components/messages/AgentEvent'
 operations:
@@ -29,8 +39,9 @@ operations:
     action: receive
     channel:
       $ref: '#/channels/sessionEvents'
-    summary: Receive Rust AgentEvent values for subscribed primary Sessions.
+    summary: Receive the initial snapshot and ordered events for one primary Session.
     messages:
+      - $ref: '#/channels/sessionEvents/messages/sessionSnapshot'
       - $ref: '#/channels/sessionEvents/messages/agentEvent'
 components:
   securitySchemes:
@@ -39,6 +50,12 @@ components:
       scheme: bearer
       bearerFormat: opaque
   messages:
+    SessionSnapshot:
+      name: session.snapshot
+      title: Session snapshot
+      summary: Initial point-in-time state for the selected Session.
+      payload:
+        $ref: '#/components/schemas/SessionSnapshotEnvelope'
     AgentEvent:
       name: AgentEvent
       title: Rust AgentEvent
@@ -46,10 +63,58 @@ components:
       payload:
         $ref: '#/components/schemas/AgentEventEnvelope'
   schemas:
+    SessionSnapshotEnvelope:
+      type: object
+      required: [event_id, session_id, sequence, session_revision, snapshot]
+      description: |
+        JSON data carried by the `session.snapshot` SSE event. `sequence` is
+        the stream position represented by this snapshot. A new connection
+        without `Last-Event-ID` receives this event before live events. A
+        reconnect with a replayable cursor receives events after that cursor;
+        the server does not send an older snapshot over those replay events.
+        Snapshot capture and live-subscription registration are atomic with
+        respect to event publication, so no event can fall between the snapshot
+        boundary and stream delivery.
+      properties:
+        event_id: { type: string, description: Stable SSE `id` value for the snapshot frame. }
+        session_id: { type: string }
+        sequence: { type: integer, minimum: 0, description: Last event sequence represented by the snapshot; the next live event has a greater sequence. }
+        session_revision: { type: integer, minimum: 0, description: Non-decreasing Session state revision. }
+        snapshot:
+          $ref: '#/components/schemas/SessionSnapshot'
+    SessionSnapshot:
+      type: object
+      required: [id, title, kind, host, project, state, updatedAt, preview, revision, archived, messages]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        kind: { type: string, const: primary }
+        host: { $ref: '#/components/schemas/HostRef' }
+        project: { $ref: '#/components/schemas/ProjectRef' }
+        state: { $ref: '#/components/schemas/SessionState' }
+        updatedAt: { type: string, format: date-time }
+        preview: { type: string, maxLength: 500 }
+        revision: { type: integer, minimum: 0 }
+        archived: { type: boolean, const: false }
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+        pendingApproval:
+          oneOf:
+            - $ref: '#/components/schemas/ApprovalRequest'
+            - type: 'null'
+        pendingQuestion:
+          oneOf:
+            - $ref: '#/components/schemas/QuestionRequest'
+            - type: 'null'
     AgentEventEnvelope:
       type: object
-      required: [session_id, occurred_at, event_type, payload]
+      required: [event_id, sequence, session_revision, session_id, occurred_at, event_type, payload]
       properties:
+        event_id: { type: string, description: Stable SSE `id` value. It is unique within the Remote Server event log. }
+        sequence: { type: integer, minimum: 0, description: Monotonic per-Session sequence used for replay and deduplication. }
+        session_revision: { type: integer, minimum: 0, description: Non-decreasing Session state revision after this event. }
         session_id: { type: string, description: Rust AgentEvent.session_id. }
         occurred_at: { type: string, format: date-time, description: Rust AgentEvent.occurred_at. }
         event_type:

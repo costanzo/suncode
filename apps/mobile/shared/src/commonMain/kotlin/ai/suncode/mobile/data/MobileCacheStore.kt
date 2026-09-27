@@ -34,6 +34,8 @@ class InMemoryMobileCacheStore : MobileCacheStore {
 @Serializable
 internal data class MobileCacheSnapshot(
     val syncCursor: String? = null,
+    val sessionEventIds: Map<String, String> = emptyMap(),
+    val sessionEventSequences: Map<String, Long> = emptyMap(),
     val sessions: List<CachedSession> = emptyList(),
     val hosts: List<CachedHost> = emptyList(),
 )
