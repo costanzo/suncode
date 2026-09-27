@@ -4,6 +4,7 @@ import { TrafficLights } from "../../../../shared/TrafficLights.jsx";
 import { DialogWindowConfirmation } from "../../dialog-window/index.jsx";
 import { IconButton } from "../shared/IconButton.jsx";
 import { McpLoadingStatus } from "./McpLoadingStatus.jsx";
+import { RemoteServerStatus } from "./RemoteServerStatus.jsx";
 import { ProjectSwitcher } from "./ProjectSwitcher.jsx";
 import { ConversationPanel } from "../panels/conversation/ConversationPanel.jsx";
 import { EditorPanel } from "../panels/editor/EditorPanel.jsx";
@@ -352,6 +353,7 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
         </div>
         <div>
           <McpLoadingStatus settled={3} total={5} connected={2} failed={1} />
+          <RemoteServerStatus configured connected />
           <span className="workspace-running-session-status is-running" title="2 running">
             <i aria-hidden="true" />
             <code>2 running</code>

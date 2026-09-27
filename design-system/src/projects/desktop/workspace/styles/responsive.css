@@ -171,6 +171,12 @@
   .workspace-statusbar > div:last-child .workspace-mcp-progress > span {
     display: block;
   }
+  .workspace-statusbar > div:last-child .workspace-remote-server-status {
+    display: inline-flex;
+  }
+  .workspace-statusbar > div:last-child .workspace-remote-server-status > code {
+    display: none;
+  }
   .workspace-mcp-status {
     min-width: 0;
   }

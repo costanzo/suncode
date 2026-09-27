@@ -92,6 +92,41 @@
   color: var(--warning);
 }
 
+.workspace-remote-server-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.workspace-remote-server-status > .ds-icon {
+  color: var(--text-muted);
+}
+
+.workspace-remote-server-status > i {
+  display: block;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--warning);
+}
+
+.workspace-remote-server-status.is-connected > .ds-icon,
+.workspace-remote-server-status.is-connected > code {
+  color: var(--success);
+}
+
+.workspace-remote-server-status.is-connected > i {
+  background: var(--success);
+}
+
+.workspace-remote-server-status > code {
+  color: var(--warning);
+  font: 9px/1 var(--font-mono);
+}
+
 .workspace-mcp-status-label {
   color: var(--text-secondary);
   font: 9px/1 var(--font-mono);
@@ -186,6 +221,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.workspace-remote-server-specimen {
+  justify-content: flex-start;
+}
+
+.workspace-remote-server-empty {
+  color: var(--text-muted);
+  font: 9px/1 var(--font-mono);
 }
 
 .workspace-provider-traffic-specimen > span {

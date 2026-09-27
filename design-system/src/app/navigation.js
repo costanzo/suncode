@@ -230,8 +230,13 @@ export const primaryModules = [
             path: "/projects/desktop/settings",
             label: "Settings",
             keywords:
-              "defaults appearance keyboard shortcuts network mcp language servers lsp semantic diagnostics logging model providers credentials",
+              "defaults appearance keyboard shortcuts network remote server pairing mobile qr mcp language servers lsp semantic diagnostics logging model providers credentials",
             children: [
+              {
+                path: "/projects/desktop/settings/remote-server",
+                label: "Remote Server",
+                keywords: "remote server pairing code mobile qr sse connection",
+              },
               {
                 path: "/projects/desktop/settings/language-servers",
                 label: "Language servers",

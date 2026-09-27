@@ -1,6 +1,6 @@
 import { ModuleLink, PageHeader, Section } from "../../../shared/PagePrimitives.jsx";
 import { Icon } from "../../../shared/Icon.jsx";
-import { McpLoadingStatus, WorkspaceWindow } from "./shell/index.js";
+import { McpLoadingStatus, RemoteServerStatus, WorkspaceWindow } from "./shell/index.js";
 import { WindowSizeNote } from "../WindowSizeNote.jsx";
 
 export function WorkspacePage() {
@@ -175,6 +175,41 @@ export function WorkspacePage() {
                 <i aria-hidden="true" />
                 <code>2 running</code>
               </span>
+            </div>
+          </div>
+        </div>
+      </Section>
+      <Section
+        id="workspace-remote-server-status"
+        title="Remote Server footer status"
+        description="The footer stays empty when no Remote Server is configured, and shows a compact connection state once a server has been configured."
+      >
+        <div className="workspace-mcp-specimen-grid">
+          <div className="workspace-mcp-specimen">
+            <div className="workspace-mcp-specimen-label">
+              <strong>Not configured</strong>
+              <span>No icon or status occupies the footer.</span>
+            </div>
+            <div className="workspace-mcp-specimen-footer workspace-remote-server-specimen">
+              <span className="workspace-remote-server-empty">No Remote Server status</span>
+            </div>
+          </div>
+          <div className="workspace-mcp-specimen">
+            <div className="workspace-mcp-specimen-label">
+              <strong>Connected</strong>
+              <span>Server icon and success state confirm the active connection.</span>
+            </div>
+            <div className="workspace-mcp-specimen-footer workspace-remote-server-specimen">
+              <RemoteServerStatus configured connected />
+            </div>
+          </div>
+          <div className="workspace-mcp-specimen">
+            <div className="workspace-mcp-specimen-label">
+              <strong>Disconnected</strong>
+              <span>Configured server remains visible with a warning state.</span>
+            </div>
+            <div className="workspace-mcp-specimen-footer workspace-remote-server-specimen">
+              <RemoteServerStatus configured />
             </div>
           </div>
         </div>

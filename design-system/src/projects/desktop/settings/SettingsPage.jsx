@@ -23,6 +23,8 @@ import { initialLanguageServers, LanguageServersPanel } from "./sections/Languag
 import { LoggingPanel } from "./sections/LoggingPanel.jsx";
 import { initialMcpServers, McpServersPanel } from "./sections/McpServersPanel.jsx";
 import { NetworkPanel } from "./sections/NetworkPanel.jsx";
+import { RemoteServerPanel } from "./sections/RemoteServerPanel.jsx";
+import "../styles/remote-server.css";
 
 export function SettingsPage({ initialPage = "defaults" }) {
   const [page, setPage] = useState(initialPage);
@@ -45,6 +47,7 @@ export function SettingsPage({ initialPage = "defaults" }) {
     if (page === "appearance") return <AppearancePanel onSave={save} />;
     if (page === "shortcuts") return <ShortcutsPanel />;
     if (page === "network") return <NetworkPanel onSave={save} />;
+    if (page === "remote-server") return <RemoteServerPanel onSave={save} />;
     if (page === "computer") return <ComputerUsePanel onSave={save} />;
     if (page === "browser") return <BrowserUsePanel onSave={save} />;
     if (page === "mcp")
