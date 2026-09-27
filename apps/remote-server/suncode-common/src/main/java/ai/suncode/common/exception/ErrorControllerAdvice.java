@@ -26,11 +26,11 @@ public class ErrorControllerAdvice {
     }
 
     @ExceptionHandler(value = BusinessException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ResponseBody
-    public ApiBaseRet<?> businessException(BusinessException e) {
-        log.info("BusinessException error ", e);
-        return ApiBaseRet.error(e.getErrorCode().getCode(), e.getMessage());
+    public ResponseEntity<ApiBaseRet<?>> businessException(BusinessException e) {
+        log.info("BusinessException: {}", e.getMessage());
+        return ResponseEntity.status(e.getErrorCode().getHttpStatus())
+                .body(ApiBaseRet.error(e.getErrorCode().getCode(), e.getMessage()));
     }
 
     @ExceptionHandler(value = Exception.class)
@@ -41,31 +41,4 @@ public class ErrorControllerAdvice {
         return ApiBaseRet.error(INTERNAL_ERROR.getCode(), INTERNAL_ERROR.getMessage());
     }
 
-    @ExceptionHandler(value = SecurityException.class)
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    @ResponseBody
-    public ApiBaseRet<?> securityException(SecurityException e) {
-        return ApiBaseRet.error(40100, e.getMessage());
-    }
-
-    @ExceptionHandler(value = IllegalArgumentException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ResponseBody
-    public ApiBaseRet<?> illegalArgumentException(IllegalArgumentException e) {
-        return ApiBaseRet.error(PARAM_INVALID.getCode(), e.getMessage());
-    }
-
-    @ExceptionHandler(value = IllegalStateException.class)
-    @ResponseBody
-    public ResponseEntity<ApiBaseRet<?>> illegalStateException(IllegalStateException e) {
-        String message = e.getMessage() == null ? "request failed" : e.getMessage();
-        HttpStatus status = switch (message) {
-            case "desktop_unavailable" -> HttpStatus.SERVICE_UNAVAILABLE;
-            case "desktop_request_failed", "desktop_timeout", "request_expired" -> HttpStatus.GATEWAY_TIMEOUT;
-            case "cursor_expired" -> HttpStatus.GONE;
-            case "host_not_found", "session_not_found" -> HttpStatus.NOT_FOUND;
-            default -> HttpStatus.CONFLICT;
-        };
-        return ResponseEntity.status(status).body(ApiBaseRet.error(status.value(), message));
-    }
 }

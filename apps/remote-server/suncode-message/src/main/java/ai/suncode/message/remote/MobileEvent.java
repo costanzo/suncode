@@ -1,7 +1,5 @@
 package ai.suncode.message.remote;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import java.time.Instant;
 
 public record MobileEvent(
@@ -12,5 +10,5 @@ public record MobileEvent(
         String requestId,
         String eventType,
         Instant occurredAt,
-        JsonNode payload) {
+        EventPayload payload) {
 }

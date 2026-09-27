@@ -1,6 +1,7 @@
 package ai.suncode.message.remote;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.annotation.JsonRawValue;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 public record DesktopResponse(
         String requestId,
@@ -9,5 +10,5 @@ public record DesktopResponse(
         boolean success,
         Integer code,
         String message,
-        JsonNode payload) {
+        @JsonRawValue @JsonDeserialize(using = RawJsonObjectDeserializer.class) String payload) {
 }

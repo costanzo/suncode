@@ -1,5 +1,6 @@
 package ai.suncode.common.http;
 
+import ai.suncode.message.remote.ClientType;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -41,11 +42,24 @@ public class ContextFilter implements Filter {
         MDC.put(MDC_KEY_LOG_ID, logId);
         MDC.put(MDC_KEY_REQUEST_ID, requestId);
         response.addHeader(LOG_ID_HEADER, logId);
+        ServiceContext.setCurrent(new ServiceContext(clientType(request), null, null, requestId, logId));
 
         try {
             filterChain.doFilter(servletRequest, servletResponse);
         } finally {
+            ServiceContext.clear();
             MDC.clear();
         }
+    }
+
+    private static ClientType clientType(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (path.startsWith("/internal/v1/desktop/")) {
+            return ClientType.DESKTOP;
+        }
+        if (path.startsWith("/v1/")) {
+            return ClientType.MOBILE;
+        }
+        return ClientType.OTHER;
     }
 }

@@ -1,19 +1,22 @@
 package ai.suncode.controller;
 
+import ai.suncode.common.exception.BusinessException;
+import ai.suncode.common.utils.MarshallingUtils;
 import ai.suncode.message.ApiBaseRet;
 import ai.suncode.message.remote.*;
+import ai.suncode.common.http.ServiceContext;
 import ai.suncode.service.RemoteAuthService;
 import ai.suncode.service.RemoteRelayService;
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import static ai.suncode.common.exception.ErrorCode.PARAM_INVALID;
 
 /** Private Desktop boundary. Desktop receives commands over SSE and completes them over HTTP. */
 @RestController
@@ -24,30 +27,24 @@ public class DesktopRelayController {
     private final RemoteRelayService relayService;
 
     @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter events(@RequestHeader("X-Host-Id") String hostId,
-                             @RequestHeader("Authorization") String authorization) {
-        String token = authService.requireDesktop(authorization);
-        return relayService.connectDesktop(hostId, token);
+    public SseEmitter events() {
+        ServiceContext context = ServiceContext.current();
+        return relayService.connectDesktop(context.hostId(), context.token());
     }
 
     @PostMapping("/pairings")
-    public ApiBaseRet<?> createPairing(@RequestHeader("X-Host-Id") String hostId,
-                                       @RequestHeader("Authorization") String authorization,
-                                       @RequestBody(required = false) PairingRequest request) {
-        String token = authService.requireDesktop(authorization);
-        relayService.requireDesktopConnection(hostId, token);
-        return ApiBaseRet.success(new PairingPayload(authService.createPairing(hostId,
-                request == null || request.displayName() == null ? hostId : request.displayName())));
+    public ApiBaseRet<?> createPairing(@RequestBody(required = false) DesktopPairingRequest pairingRequest) {
+        String hostId = ServiceContext.current().hostId();
+        return ApiBaseRet.success(new DesktopPairingPayload(authService.createPairing(hostId,
+                pairingRequest == null || pairingRequest.displayName() == null ? hostId : pairingRequest.displayName())));
     }
 
     @PostMapping("/responses")
-    public ApiBaseRet<?> response(@RequestHeader("X-Host-Id") String hostId,
-                                  @RequestHeader("Authorization") String authorization,
-                                  @RequestBody DesktopResponse response) {
-        String token = authService.requireDesktop(authorization);
-        relayService.requireDesktopConnection(hostId, token);
+    public ApiBaseRet<?> response(@RequestBody String body) {
+        DesktopResponse response = MarshallingUtils.fromJson(body, DesktopResponse.class);
+        String hostId = ServiceContext.current().hostId();
         if (response.hostId() != null && !hostId.equals(response.hostId())) {
-            throw new IllegalArgumentException("hostId does not match the connection");
+            throw new BusinessException(PARAM_INVALID, "hostId does not match the connection");
         }
         relayService.complete(new DesktopResponse(
                 response.requestId(), hostId, response.sessionId(), response.success(), response.code(), response.message(), response.payload()));
@@ -55,20 +52,13 @@ public class DesktopRelayController {
     }
 
     @PostMapping("/events")
-    public ApiBaseRet<?> event(@RequestHeader("X-Host-Id") String hostId,
-                               @RequestHeader("Authorization") String authorization,
-                               @RequestBody DesktopEvent event) {
-        String token = authService.requireDesktop(authorization);
-        relayService.requireDesktopConnection(hostId, token);
+    public ApiBaseRet<?> event(@RequestBody String body) {
+        DesktopEvent event = MarshallingUtils.fromJson(body, DesktopEvent.class);
+        String hostId = ServiceContext.current().hostId();
         DesktopEvent normalized = new DesktopEvent(
                 hostId, event.sessionId(), event.requestId(), event.eventType(), event.occurredAt(), event.payload());
         relayService.publish(normalized);
         return ApiBaseRet.success();
     }
 
-    public record PairingRequest(String displayName) {
-    }
-
-    public record PairingPayload(String pairingPayload) {
-    }
 }

@@ -1,16 +1,13 @@
 package ai.suncode.service;
 
+import ai.suncode.common.exception.BusinessException;
+import ai.suncode.common.utils.MarshallingUtils;
 import ai.suncode.message.remote.*;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +18,17 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicLong;
+
+import static ai.suncode.common.exception.ErrorCode.PARAM_INVALID;
+import static ai.suncode.common.exception.ErrorCode.UNAUTHORIZED;
+import static ai.suncode.common.exception.ErrorCode.DESKTOP_UNAVAILABLE;
+import static ai.suncode.common.exception.ErrorCode.DESKTOP_REQUEST_FAILED;
+import static ai.suncode.common.exception.ErrorCode.DESKTOP_TIMEOUT;
+import static ai.suncode.common.exception.ErrorCode.REQUEST_EXPIRED;
+import static ai.suncode.common.exception.ErrorCode.SESSION_NOT_FOUND;
+import static ai.suncode.common.exception.ErrorCode.CURSOR_EXPIRED;
+import static ai.suncode.common.exception.ErrorCode.CONFLICT;
+import static ai.suncode.common.exception.ErrorCode.INTERNAL_ERROR;
 
 /** Single-node relay state. The interfaces are intentionally kept behind this service for a later shared store. */
 @Service
@@ -29,17 +36,12 @@ public class RemoteRelayService {
     public static final long REQUEST_TIMEOUT_SECONDS = 15;
     private static final int REPLAY_LIMIT = 256;
 
-    private final ObjectMapper objectMapper;
     private final ConcurrentHashMap<String, DesktopConnection> desktopConnections = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<MobileConnection>> mobileConnections = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CompletableFuture<DesktopResponse>> pending = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, DesktopResponse> idempotentResults = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> sessionHosts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, HostEvents> hostEvents = new ConcurrentHashMap<>();
-
-    public RemoteRelayService(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
 
     public SseEmitter connectDesktop(String hostId, String token) {
         requireText(hostId, "X-Host-Id is required");
@@ -51,14 +53,14 @@ public class RemoteRelayService {
         connection.emitter().onCompletion(() -> desktopConnections.remove(hostId, connection));
         connection.emitter().onTimeout(() -> desktopConnections.remove(hostId, connection));
         connection.emitter().onError(error -> desktopConnections.remove(hostId, connection));
-        send(connection.emitter(), "desktop.connected", hostId, JsonNodeFactory.instance.objectNode().put("hostId", hostId));
+        send(connection.emitter(), "desktop.connected", hostId, Map.of("hostId", hostId));
         return connection.emitter();
     }
 
     public void requireDesktopConnection(String hostId, String token) {
         DesktopConnection connection = desktopConnections.get(hostId);
         if (connection == null || !connection.token().equals(token)) {
-            throw new SecurityException("desktop connection is not registered");
+            throw new BusinessException(UNAUTHORIZED, "desktop connection is not registered");
         }
     }
 
@@ -66,11 +68,11 @@ public class RemoteRelayService {
             String hostId,
             String sessionId,
             String command,
-            JsonNode payload,
-            String idempotencyKey) throws TimeoutException, InterruptedException {
+            DesktopCommandPayload payload,
+            String idempotencyKey) {
         DesktopConnection connection = desktopConnections.get(hostId);
         if (connection == null) {
-            throw new IllegalStateException("desktop_unavailable");
+            throw new BusinessException(DESKTOP_UNAVAILABLE);
         }
         String idempotencyId = idempotencyKey == null || idempotencyKey.isBlank()
                 ? null : hostId + ":" + command + ":" + idempotencyKey;
@@ -85,8 +87,8 @@ public class RemoteRelayService {
         pending.put(requestId, future);
         try {
             DesktopCommand commandEnvelope = new DesktopCommand(
-                    requestId, hostId, sessionId, command, payload == null ? JsonNodeFactory.instance.objectNode() : payload);
-            send(connection.emitter(), "desktop.command", requestId, objectMapper.valueToTree(commandEnvelope));
+                    requestId, hostId, sessionId, command, payload == null ? new DesktopCommandPayload() : payload);
+            send(connection.emitter(), "desktop.command", requestId, commandEnvelope);
             try {
                 DesktopResponse response = future.get(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 if (idempotencyId != null) {
@@ -94,10 +96,13 @@ public class RemoteRelayService {
                 }
                 return response;
             } catch (ExecutionException error) {
-                throw new IllegalStateException("desktop_request_failed", error.getCause());
+                throw new BusinessException(DESKTOP_REQUEST_FAILED, "desktop_request_failed", error.getCause());
             }
         } catch (TimeoutException error) {
-            throw error;
+            throw new BusinessException(DESKTOP_TIMEOUT, "desktop_timeout", error);
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            throw new BusinessException(DESKTOP_REQUEST_FAILED, "desktop_request_interrupted", error);
         } finally {
             pending.remove(requestId);
         }
@@ -105,11 +110,11 @@ public class RemoteRelayService {
 
     public void complete(DesktopResponse response) {
         if (response == null || response.requestId() == null) {
-            throw new IllegalArgumentException("requestId is required");
+            throw new BusinessException(PARAM_INVALID, "requestId is required");
         }
         CompletableFuture<DesktopResponse> future = pending.get(response.requestId());
         if (future == null) {
-            throw new IllegalStateException("request_expired");
+            throw new BusinessException(REQUEST_EXPIRED);
         }
         if (response.sessionId() != null) {
             sessionHosts.put(response.sessionId(), response.hostId());
@@ -120,7 +125,7 @@ public class RemoteRelayService {
     public MobileEvent publish(DesktopEvent event) {
         requireText(event.hostId(), "hostId is required");
         HostEvents state = hostEvents.computeIfAbsent(event.hostId(), ignored -> new HostEvents());
-        long sequence = state.sequence.incrementAndGet();
+        long sequence = state.sequence().incrementAndGet();
         String eventId = event.hostId() + ":" + sequence;
         MobileEvent mobileEvent = new MobileEvent(
                 eventId,
@@ -130,26 +135,26 @@ public class RemoteRelayService {
                 event.requestId(),
                 event.eventType(),
                 event.occurredAt() == null ? Instant.now() : event.occurredAt(),
-                event.payload() == null ? JsonNodeFactory.instance.objectNode() : event.payload());
-        synchronized (state.replay) {
-            state.replay.addLast(mobileEvent);
-            while (state.replay.size() > REPLAY_LIMIT) {
-                state.replay.removeFirst();
+                event.payload() == null ? new EventPayload() : event.payload());
+        synchronized (state.replay()) {
+            state.replay().addLast(mobileEvent);
+            while (state.replay().size() > REPLAY_LIMIT) {
+                state.replay().removeFirst();
             }
         }
         if (event.sessionId() != null) {
             sessionHosts.put(event.sessionId(), event.hostId());
             for (MobileConnection mobile : mobileConnections.getOrDefault(event.sessionId(), new CopyOnWriteArrayList<>())) {
-                send(mobile.emitter(), "agent.event", mobileEvent.eventId(), objectMapper.valueToTree(mobileEvent));
+                send(mobile.emitter(), "agent.event", mobileEvent.eventId(), mobileEvent);
             }
         }
         return mobileEvent;
     }
 
-    public SseEmitter connectMobileSession(String sessionId, String lastEventId) throws TimeoutException, InterruptedException {
+    public SseEmitter connectMobileSession(String sessionId, String lastEventId) {
         String hostId = sessionHosts.get(sessionId);
         if (hostId == null) {
-            throw new IllegalStateException("session_not_found");
+            throw new BusinessException(SESSION_NOT_FOUND);
         }
         MobileConnection connection = new MobileConnection(sessionId, new SseEmitter(0L));
         mobileConnections.computeIfAbsent(sessionId, ignored -> new CopyOnWriteArrayList<>()).add(connection);
@@ -157,23 +162,27 @@ public class RemoteRelayService {
         connection.emitter().onTimeout(() -> removeMobile(connection));
         connection.emitter().onError(error -> removeMobile(connection));
         try {
-            DesktopResponse snapshot = request(hostId, sessionId, "session.get", JsonNodeFactory.instance.objectNode(), null);
+            DesktopResponse snapshot = request(hostId, sessionId, "session.get", new DesktopCommandPayload(), null);
             if (!snapshot.success()) {
-                throw new IllegalStateException(snapshot.message() == null ? "desktop_request_failed" : snapshot.message());
+                throw new BusinessException(CONFLICT, snapshot.message() == null ? "desktop_request_failed" : snapshot.message());
             }
             HostEvents state = hostEvents.computeIfAbsent(hostId, ignored -> new HostEvents());
-            long snapshotSequence = state.sequence.get();
+            long snapshotSequence = state.sequence().get();
             String snapshotId = hostId + ":" + snapshotSequence;
             SessionSnapshot envelope = new SessionSnapshot(
                     snapshotId, sessionId, snapshotSequence, snapshotSequence,
-                    snapshot.payload() == null ? JsonNodeFactory.instance.objectNode() : snapshot.payload());
-            send(connection.emitter(), "session.snapshot", snapshotId, objectMapper.valueToTree(envelope));
+                    snapshot.payload() == null ? "{}" : snapshot.payload());
+            send(connection.emitter(), "session.snapshot", snapshotId, envelope);
             replayAfter(connection.emitter(), state, lastEventId, sessionId);
             return connection.emitter();
-        } catch (RuntimeException | TimeoutException | InterruptedException error) {
+        } catch (BusinessException error) {
             removeMobile(connection);
             connection.close();
             throw error;
+        } catch (RuntimeException error) {
+            removeMobile(connection);
+            connection.close();
+            throw new BusinessException(INTERNAL_ERROR, "session stream failed", error);
         }
     }
 
@@ -197,13 +206,13 @@ public class RemoteRelayService {
 
     private void replayAfter(SseEmitter emitter, HostEvents state, String lastEventId, String sessionId) {
         long cursor = parseSequence(lastEventId);
-        synchronized (state.replay) {
-            if (!state.replay.isEmpty() && cursor > 0 && cursor < state.replay.peekFirst().sequence() - 1) {
-                throw new IllegalStateException("cursor_expired");
+        synchronized (state.replay()) {
+            if (!state.replay().isEmpty() && cursor > 0 && cursor < state.replay().peekFirst().sequence() - 1) {
+                throw new BusinessException(CURSOR_EXPIRED);
             }
-            for (MobileEvent event : state.replay) {
+            for (MobileEvent event : state.replay()) {
                 if (event.sequence() > cursor && sessionId.equals(event.sessionId())) {
-                    send(emitter, "agent.event", event.eventId(), objectMapper.valueToTree(event));
+                    send(emitter, "agent.event", event.eventId(), event);
                 }
             }
         }
@@ -219,9 +228,9 @@ public class RemoteRelayService {
         }
     }
 
-    private void send(SseEmitter emitter, String event, String id, JsonNode data) {
+    private void send(SseEmitter emitter, String event, String id, Object data) {
         try {
-            emitter.send(SseEmitter.event().name(event).id(id).data(data, MediaType.APPLICATION_JSON));
+            emitter.send(SseEmitter.event().name(event).id(id).data(MarshallingUtils.toJson(data)));
         } catch (IOException | IllegalStateException ignored) {
             emitter.completeWithError(ignored);
         }
@@ -240,24 +249,8 @@ public class RemoteRelayService {
 
     private static void requireText(String value, String message) {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(message);
+            throw new BusinessException(PARAM_INVALID, message);
         }
     }
 
-    private record DesktopConnection(String hostId, String token, SseEmitter emitter) {
-        void close() {
-            emitter.complete();
-        }
-    }
-
-    private record MobileConnection(String sessionId, SseEmitter emitter) {
-        void close() {
-            emitter.complete();
-        }
-    }
-
-    private static final class HostEvents {
-        private final AtomicLong sequence = new AtomicLong();
-        private final ArrayDeque<MobileEvent> replay = new ArrayDeque<>();
-    }
 }

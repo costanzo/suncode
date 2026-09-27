@@ -1,14 +1,14 @@
 package ai.suncode.message.remote;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
 import java.time.Instant;
 
 public record DesktopEvent(
-        String hostId,
-        String sessionId,
-        String requestId,
-        String eventType,
-        Instant occurredAt,
-        JsonNode payload) {
+        @JsonAlias("host_id") String hostId,
+        @JsonAlias("session_id") String sessionId,
+        @JsonAlias("request_id") String requestId,
+        @JsonAlias("event_type") String eventType,
+        @JsonAlias("occurred_at") Instant occurredAt,
+        EventPayload payload) {
 }

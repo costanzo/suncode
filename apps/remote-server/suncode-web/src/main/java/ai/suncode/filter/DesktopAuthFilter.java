@@ -1,0 +1,51 @@
+package ai.suncode.filter;
+
+import ai.suncode.common.exception.BusinessException;
+import ai.suncode.common.http.ServiceContext;
+import ai.suncode.message.remote.ClientType;
+import ai.suncode.service.RemoteAuthService;
+import ai.suncode.service.RemoteRelayService;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.util.StringUtils;
+
+import java.io.IOException;
+
+import static ai.suncode.common.exception.ErrorCode.PARAM_INVALID;
+
+@RequiredArgsConstructor
+public class DesktopAuthFilter implements Filter {
+    private final RemoteAuthService authService;
+    private final RemoteRelayService relayService;
+
+    @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain)
+            throws IOException, ServletException {
+        if (!(servletRequest instanceof HttpServletRequest request) || !(servletResponse instanceof HttpServletResponse response)) {
+            chain.doFilter(servletRequest, servletResponse);
+            return;
+        }
+        String hostId = request.getHeader("X-Host-Id");
+        String token;
+        try {
+            if (!StringUtils.hasText(hostId)) {
+                throw new BusinessException(PARAM_INVALID, "X-Host-Id is required");
+            }
+            token = authService.requireDesktop(request.getHeader("Authorization"));
+            if (!("GET".equalsIgnoreCase(request.getMethod()) && request.getRequestURI().endsWith("/events"))) {
+                relayService.requireDesktopConnection(hostId, token);
+            }
+        } catch (BusinessException error) {
+            FilterSupport.businessError(response, error);
+            return;
+        }
+        ServiceContext.authenticate(ClientType.DESKTOP, hostId, token);
+        chain.doFilter(request, response);
+    }
+}

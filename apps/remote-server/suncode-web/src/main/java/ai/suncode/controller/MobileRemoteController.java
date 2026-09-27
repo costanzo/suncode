@@ -1,18 +1,17 @@
 package ai.suncode.controller;
 
+import ai.suncode.common.exception.BusinessException;
+import ai.suncode.common.utils.MarshallingUtils;
 import ai.suncode.message.ApiBaseRet;
 import ai.suncode.message.remote.*;
+import ai.suncode.common.http.ServiceContext;
 import ai.suncode.service.RemoteAuthService;
 import ai.suncode.service.RemoteRelayService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,7 +24,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeoutException;
+
+import static ai.suncode.common.exception.ErrorCode.CONFLICT;
+import static ai.suncode.common.exception.ErrorCode.HOST_NOT_FOUND;
+import static ai.suncode.common.exception.ErrorCode.SESSION_NOT_FOUND;
 
 @RestController
 @RequestMapping("/v1")
@@ -33,11 +35,10 @@ import java.util.concurrent.TimeoutException;
 public class MobileRemoteController {
     private final RemoteAuthService authService;
     private final RemoteRelayService relayService;
-    private final ObjectMapper objectMapper;
 
     @GetMapping("/health")
     public ApiBaseRet<?> health() {
-        return ApiBaseRet.success(new Health("ok", Instant.now()));
+        return ApiBaseRet.success(new HealthData("ok", Instant.now()));
     }
 
     @PostMapping("/pairings/exchange")
@@ -51,168 +52,136 @@ public class MobileRemoteController {
     }
 
     @PostMapping("/auth/logout")
-    public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authorization) {
-        authService.requireMobile(authorization);
-        authService.logout(authorization);
+    public ResponseEntity<Void> logout() {
+        authService.logoutToken(ServiceContext.current().token());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/hosts/{hostId}")
-    public ApiBaseRet<?> host(@RequestHeader("Authorization") String authorization, @PathVariable String hostId) {
-        authService.requireHostAccess(authorization, hostId);
+    public ApiBaseRet<?> host(@PathVariable String hostId) {
         return ApiBaseRet.success(relayService.hosts().stream().filter(host -> host.id().equals(hostId)).findFirst()
-                .orElseThrow(() -> new IllegalStateException("host_not_found")));
+                .orElseThrow(() -> new BusinessException(HOST_NOT_FOUND)));
     }
 
     @GetMapping("/hosts/{hostId}/projects")
-    public ApiBaseRet<?> projects(@RequestHeader("Authorization") String authorization, @PathVariable String hostId) throws Exception {
-        authService.requireHostAccess(authorization, hostId);
+    public ApiBaseRet<?> projects(@PathVariable String hostId) {
         DesktopResponse response = relayService.request(hostId, null, "projects.list", empty(), null);
         return responseEnvelope(response, ProjectsData.class);
     }
 
     @GetMapping("/sessions")
-    public ApiBaseRet<?> sessions(@RequestHeader("Authorization") String authorization,
-                                  @RequestParam(required = false) String hostId,
+    public ApiBaseRet<?> sessions(@RequestParam(required = false) String hostId,
                                   @RequestParam(required = false) String projectId,
                                   @RequestParam(required = false) String cursor,
-                                  @RequestParam(required = false) Integer limit) throws Exception {
-        authService.requireMobile(authorization);
+                                  @RequestParam(required = false) Integer limit) {
         String selectedHost = hostId;
         if (selectedHost == null || selectedHost.isBlank()) {
-            List<HostDto> pairedHosts = relayService.hosts().stream()
-                    .filter(host -> authService.isPairedWith(authorization, host.id())).toList();
-            if (pairedHosts.isEmpty()) return ApiBaseRet.success(new SessionPageData(List.of(), null, false));
-            selectedHost = pairedHosts.get(0).id();
+            selectedHost = ServiceContext.current().hostId();
+            String pairedHostId = selectedHost;
+            if (relayService.hosts().stream().noneMatch(host -> host.id().equals(pairedHostId))) {
+                return ApiBaseRet.success(new SessionPageData(List.of(), null, false));
+            }
         }
-        authService.requireHostAccess(authorization, selectedHost);
-        JsonNode payload = objectMapper.createObjectNode()
-                .put("projectId", projectId == null ? "" : projectId)
-                .put("cursor", cursor == null ? "" : cursor)
-                .put("limit", limit == null ? 50 : limit);
+        DesktopCommandPayload payload = DesktopCommandPayload.listSessions(projectId, cursor, limit);
         return responseEnvelope(relayService.request(selectedHost, null, "sessions.list", payload, null), SessionPageData.class);
     }
 
     @PostMapping("/sessions")
-    public ResponseEntity<ApiBaseRet<?>> createSession(@RequestHeader("Authorization") String authorization,
-                                                       @RequestHeader("Idempotency-Key") String idempotencyKey,
-                                                       @RequestBody CreateSessionRequest request) throws Exception {
-        authService.requireHostAccess(authorization, request.hostId());
-        DesktopResponse response = relayService.request(request.hostId(), null, "session.create", objectMapper.valueToTree(request), idempotencyKey);
-        String sessionId = text(response.payload(), "sessionId");
+    public ResponseEntity<ApiBaseRet<?>> createSession(@RequestHeader("Idempotency-Key") String idempotencyKey,
+                                                       @RequestBody CreateSessionRequest request) {
+        DesktopResponse response = relayService.request(request.hostId(), null, "session.create", DesktopCommandPayload.createSession(request), idempotencyKey);
+        String sessionId = sessionId(response.payload());
         relayService.rememberSession(sessionId, request.hostId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiBaseRet.success(new CommandAcceptedData(
                 response.requestId(), Instant.now(), sessionId)));
     }
 
     @GetMapping("/sessions/{sessionId}")
-    public ApiBaseRet<?> session(@RequestHeader("Authorization") String authorization, @PathVariable String sessionId) throws Exception {
+    public ApiBaseRet<?> session(@PathVariable String sessionId) {
         String hostId = requireHost(sessionId);
-        authService.requireHostAccess(authorization, hostId);
-        return responseEnvelope(relayService.request(hostId, sessionId, "session.get", empty(), null), JsonNode.class);
+        return responseEnvelope(relayService.request(hostId, sessionId, "session.get", empty(), null), Object.class);
     }
 
     @GetMapping(value = "/sessions/{sessionId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter sessionEvents(@RequestHeader("Authorization") String authorization,
-                                    @PathVariable String sessionId,
-                                    @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId) throws Exception {
-        authService.requireMobile(authorization);
-        authService.requireHostAccess(authorization, requireHost(sessionId));
+    public SseEmitter sessionEvents(@PathVariable String sessionId,
+                                    @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId) {
         return relayService.connectMobileSession(sessionId, lastEventId);
     }
 
     @PostMapping("/sessions/{sessionId}/messages")
-    public ApiBaseRet<?> message(@RequestHeader("Authorization") String authorization,
-                                 @RequestHeader("Idempotency-Key") String idempotencyKey,
+    public ApiBaseRet<?> message(@RequestHeader("Idempotency-Key") String idempotencyKey,
                                  @PathVariable String sessionId,
-                                 @RequestBody SendMessageRequest request) throws Exception {
-        return command(authorization, idempotencyKey, sessionId, "session.message", objectMapper.valueToTree(request));
+                                 @RequestBody SendMessageRequest request) {
+        return command(idempotencyKey, sessionId, "session.message", DesktopCommandPayload.sendMessage(request));
     }
 
     @PostMapping("/sessions/{sessionId}/approvals/{approvalId}")
-    public ApiBaseRet<?> approval(@RequestHeader("Authorization") String authorization,
-                                  @RequestHeader("Idempotency-Key") String idempotencyKey,
+    public ApiBaseRet<?> approval(@RequestHeader("Idempotency-Key") String idempotencyKey,
                                   @PathVariable String sessionId,
                                   @PathVariable String approvalId,
-                                  @RequestBody ApprovalResolutionRequest request) throws Exception {
-        JsonNode payload = objectMapper.valueToTree(request).deepCopy();
-        ((com.fasterxml.jackson.databind.node.ObjectNode) payload).put("approvalId", approvalId);
-        return command(authorization, idempotencyKey, sessionId, "approval.resolve", payload);
+                                  @RequestBody ApprovalResolutionRequest request) {
+        return command(idempotencyKey, sessionId, "approval.resolve", DesktopCommandPayload.resolveApproval(approvalId, request));
     }
 
     @PostMapping("/sessions/{sessionId}/questions/{questionId}/reply")
-    public ApiBaseRet<?> question(@RequestHeader("Authorization") String authorization,
-                                  @RequestHeader("Idempotency-Key") String idempotencyKey,
+    public ApiBaseRet<?> question(@RequestHeader("Idempotency-Key") String idempotencyKey,
                                   @PathVariable String sessionId,
                                   @PathVariable String questionId,
-                                  @RequestBody QuestionReplyRequest request) throws Exception {
-        JsonNode payload = objectMapper.valueToTree(request).deepCopy();
-        ((com.fasterxml.jackson.databind.node.ObjectNode) payload).put("questionId", questionId);
-        return command(authorization, idempotencyKey, sessionId, "question.reply", payload);
+                                  @RequestBody QuestionReplyRequest request) {
+        return command(idempotencyKey, sessionId, "question.reply", DesktopCommandPayload.replyQuestion(questionId, request));
     }
 
     @PostMapping("/sessions/{sessionId}/cancel")
-    public ApiBaseRet<?> cancel(@RequestHeader("Authorization") String authorization,
-                                @RequestHeader("Idempotency-Key") String idempotencyKey,
-                                @PathVariable String sessionId) throws Exception {
-        return command(authorization, idempotencyKey, sessionId, "turn.cancel", empty());
+    public ApiBaseRet<?> cancel(@RequestHeader("Idempotency-Key") String idempotencyKey,
+                                @PathVariable String sessionId) {
+        return command(idempotencyKey, sessionId, "turn.cancel", empty());
     }
 
     @PostMapping("/sessions/{sessionId}/retry")
-    public ApiBaseRet<?> retry(@RequestHeader("Authorization") String authorization,
-                               @RequestHeader("Idempotency-Key") String idempotencyKey,
-                               @PathVariable String sessionId) throws Exception {
-        return command(authorization, idempotencyKey, sessionId, "turn.retry", empty());
+    public ApiBaseRet<?> retry(@RequestHeader("Idempotency-Key") String idempotencyKey,
+                               @PathVariable String sessionId) {
+        return command(idempotencyKey, sessionId, "turn.retry", empty());
     }
 
     @GetMapping("/sync")
-    public ApiBaseRet<?> sync(@RequestHeader("Authorization") String authorization) {
-        authService.requireMobile(authorization);
-        List<HostDto> hosts = relayService.hosts().stream()
-                .filter(host -> authService.isPairedWith(authorization, host.id())).toList();
+    public ApiBaseRet<?> sync() {
+        String hostId = ServiceContext.current().hostId();
+        List<HostDto> hosts = relayService.hosts().stream().filter(host -> host.id().equals(hostId)).toList();
         return ApiBaseRet.success(new SyncData(UUID.randomUUID().toString(), false, hosts, List.of(), List.of(), false));
     }
 
-    private ApiBaseRet<?> command(String authorization, String idempotencyKey, String sessionId, String command, JsonNode payload) throws Exception {
-        authService.requireMobile(authorization);
+    private ApiBaseRet<?> command(String idempotencyKey, String sessionId, String command, DesktopCommandPayload payload) {
         String hostId = requireHost(sessionId);
-        authService.requireHostAccess(authorization, hostId);
         DesktopResponse response = relayService.request(hostId, sessionId, command, payload, idempotencyKey);
         return responseEnvelope(response, CommandAcceptedData.class);
     }
 
     private <T> ApiBaseRet<?> responseEnvelope(DesktopResponse response, Class<T> type) {
         if (!response.success()) {
-            throw new IllegalStateException(response.message() == null ? "desktop_request_failed" : response.message());
+            throw new BusinessException(CONFLICT, response.message() == null ? "desktop_request_failed" : response.message());
         }
-        T data = response.payload() == null ? null : objectMapper.convertValue(response.payload(), type);
+        T data = response.payload() == null ? null : MarshallingUtils.fromJson(response.payload(), type);
         return ApiBaseRet.success(data);
     }
 
     private String requireHost(String sessionId) {
         String host = relayService.hostForSession(sessionId);
         if (host == null) {
-            throw new IllegalStateException("session_not_found");
+            throw new BusinessException(SESSION_NOT_FOUND);
         }
         return host;
     }
 
-    @ExceptionHandler(TimeoutException.class)
-    public ResponseEntity<ApiBaseRet<?>> timeout(TimeoutException error) {
-        return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(ApiBaseRet.error(50400, "desktop_timeout"));
+    private static DesktopCommandPayload empty() {
+        return new DesktopCommandPayload();
     }
 
-    private static JsonNode empty() {
-        return JsonNodeFactory.instance.objectNode();
-    }
-
-    private static String text(JsonNode node, String field) {
-        if (node == null || node.get(field) == null || node.get(field).asText().isBlank()) {
+    private static String sessionId(String payload) {
+        CommandAcceptedData created = payload == null ? null : MarshallingUtils.fromJson(payload, CommandAcceptedData.class);
+        if (created == null || created.sessionId() == null || created.sessionId().isBlank()) {
             return UUID.randomUUID().toString();
         }
-        return node.get(field).asText();
+        return created.sessionId();
     }
 
-    private record Health(String status, Instant serverTime) {
-    }
 }
