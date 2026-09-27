@@ -1,6 +1,6 @@
 package ai.suncode.service;
 
-import ai.suncode.message.remote.RemoteProtocol;
+import ai.suncode.message.remote.*;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -22,7 +22,7 @@ public class RemoteAuthService {
         return payload;
     }
 
-    public RemoteProtocol.PairingExchangeData exchange(RemoteProtocol.PairingExchangeRequest request) {
+    public PairingExchangeData exchange(PairingExchangeRequest request) {
         if (request == null || request.pairingPayload() == null || request.pairingPayload().isBlank()) {
             throw new IllegalArgumentException("pairingPayload is required");
         }
@@ -34,14 +34,14 @@ public class RemoteAuthService {
         String refresh = UUID.randomUUID().toString();
         mobileTokens.put(access, pairing.hostId());
         refreshTokens.put(refresh, pairing.hostId());
-        return new RemoteProtocol.PairingExchangeData(
+        return new PairingExchangeData(
                 access,
                 refresh,
                 Instant.now().plus(ACCESS_TOKEN_LIFETIME),
-                new RemoteProtocol.HostDto(pairing.hostId(), pairing.displayName(), "", "offline", 0, 0, null, null, null));
+                new HostDto(pairing.hostId(), pairing.displayName(), "", "offline", 0, 0, null, null, null));
     }
 
-    public RemoteProtocol.TokenData refresh(RemoteProtocol.RefreshTokenRequest request) {
+    public TokenData refresh(RefreshTokenRequest request) {
         String hostId = request == null ? null : refreshTokens.get(request.refreshToken());
         if (hostId == null) {
             throw new SecurityException("invalid refresh token");
@@ -50,7 +50,7 @@ public class RemoteAuthService {
         String refresh = UUID.randomUUID().toString();
         mobileTokens.put(access, hostId);
         refreshTokens.put(refresh, hostId);
-        return new RemoteProtocol.TokenData(access, refresh, Instant.now().plus(ACCESS_TOKEN_LIFETIME));
+        return new TokenData(access, refresh, Instant.now().plus(ACCESS_TOKEN_LIFETIME));
     }
 
     public String requireMobile(String authorization) {

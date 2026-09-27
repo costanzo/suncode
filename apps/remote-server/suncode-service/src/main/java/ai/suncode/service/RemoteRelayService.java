@@ -1,6 +1,6 @@
 package ai.suncode.service;
 
-import ai.suncode.message.remote.RemoteProtocol;
+import ai.suncode.message.remote.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -32,8 +32,8 @@ public class RemoteRelayService {
     private final ObjectMapper objectMapper;
     private final ConcurrentHashMap<String, DesktopConnection> desktopConnections = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<MobileConnection>> mobileConnections = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, CompletableFuture<RemoteProtocol.DesktopResponse>> pending = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, RemoteProtocol.DesktopResponse> idempotentResults = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, CompletableFuture<DesktopResponse>> pending = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, DesktopResponse> idempotentResults = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> sessionHosts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, HostEvents> hostEvents = new ConcurrentHashMap<>();
 
@@ -62,7 +62,7 @@ public class RemoteRelayService {
         }
     }
 
-    public RemoteProtocol.DesktopResponse request(
+    public DesktopResponse request(
             String hostId,
             String sessionId,
             String command,
@@ -75,20 +75,20 @@ public class RemoteRelayService {
         String idempotencyId = idempotencyKey == null || idempotencyKey.isBlank()
                 ? null : hostId + ":" + command + ":" + idempotencyKey;
         if (idempotencyId != null) {
-            RemoteProtocol.DesktopResponse previous = idempotentResults.get(idempotencyId);
+            DesktopResponse previous = idempotentResults.get(idempotencyId);
             if (previous != null) {
                 return previous;
             }
         }
         String requestId = UUID.randomUUID().toString();
-        CompletableFuture<RemoteProtocol.DesktopResponse> future = new CompletableFuture<>();
+        CompletableFuture<DesktopResponse> future = new CompletableFuture<>();
         pending.put(requestId, future);
         try {
-            RemoteProtocol.DesktopCommand commandEnvelope = new RemoteProtocol.DesktopCommand(
+            DesktopCommand commandEnvelope = new DesktopCommand(
                     requestId, hostId, sessionId, command, payload == null ? JsonNodeFactory.instance.objectNode() : payload);
             send(connection.emitter(), "desktop.command", requestId, objectMapper.valueToTree(commandEnvelope));
             try {
-                RemoteProtocol.DesktopResponse response = future.get(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                DesktopResponse response = future.get(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 if (idempotencyId != null) {
                     idempotentResults.putIfAbsent(idempotencyId, response);
                 }
@@ -103,11 +103,11 @@ public class RemoteRelayService {
         }
     }
 
-    public void complete(RemoteProtocol.DesktopResponse response) {
+    public void complete(DesktopResponse response) {
         if (response == null || response.requestId() == null) {
             throw new IllegalArgumentException("requestId is required");
         }
-        CompletableFuture<RemoteProtocol.DesktopResponse> future = pending.get(response.requestId());
+        CompletableFuture<DesktopResponse> future = pending.get(response.requestId());
         if (future == null) {
             throw new IllegalStateException("request_expired");
         }
@@ -117,12 +117,12 @@ public class RemoteRelayService {
         future.complete(response);
     }
 
-    public RemoteProtocol.MobileEvent publish(RemoteProtocol.DesktopEvent event) {
+    public MobileEvent publish(DesktopEvent event) {
         requireText(event.hostId(), "hostId is required");
         HostEvents state = hostEvents.computeIfAbsent(event.hostId(), ignored -> new HostEvents());
         long sequence = state.sequence.incrementAndGet();
         String eventId = event.hostId() + ":" + sequence;
-        RemoteProtocol.MobileEvent mobileEvent = new RemoteProtocol.MobileEvent(
+        MobileEvent mobileEvent = new MobileEvent(
                 eventId,
                 sequence,
                 event.hostId(),
@@ -157,14 +157,14 @@ public class RemoteRelayService {
         connection.emitter().onTimeout(() -> removeMobile(connection));
         connection.emitter().onError(error -> removeMobile(connection));
         try {
-            RemoteProtocol.DesktopResponse snapshot = request(hostId, sessionId, "session.get", JsonNodeFactory.instance.objectNode(), null);
+            DesktopResponse snapshot = request(hostId, sessionId, "session.get", JsonNodeFactory.instance.objectNode(), null);
             if (!snapshot.success()) {
                 throw new IllegalStateException(snapshot.message() == null ? "desktop_request_failed" : snapshot.message());
             }
             HostEvents state = hostEvents.computeIfAbsent(hostId, ignored -> new HostEvents());
             long snapshotSequence = state.sequence.get();
             String snapshotId = hostId + ":" + snapshotSequence;
-            RemoteProtocol.SessionSnapshot envelope = new RemoteProtocol.SessionSnapshot(
+            SessionSnapshot envelope = new SessionSnapshot(
                     snapshotId, sessionId, snapshotSequence, snapshotSequence,
                     snapshot.payload() == null ? JsonNodeFactory.instance.objectNode() : snapshot.payload());
             send(connection.emitter(), "session.snapshot", snapshotId, objectMapper.valueToTree(envelope));
@@ -177,10 +177,10 @@ public class RemoteRelayService {
         }
     }
 
-    public List<RemoteProtocol.HostDto> hosts() {
-        List<RemoteProtocol.HostDto> result = new ArrayList<>();
+    public List<HostDto> hosts() {
+        List<HostDto> result = new ArrayList<>();
         for (Map.Entry<String, DesktopConnection> entry : desktopConnections.entrySet()) {
-            result.add(new RemoteProtocol.HostDto(entry.getKey(), entry.getKey(), "", "connected", 0, 0, Instant.now(), null, null));
+            result.add(new HostDto(entry.getKey(), entry.getKey(), "", "connected", 0, 0, Instant.now(), null, null));
         }
         return result;
     }
@@ -201,7 +201,7 @@ public class RemoteRelayService {
             if (!state.replay.isEmpty() && cursor > 0 && cursor < state.replay.peekFirst().sequence() - 1) {
                 throw new IllegalStateException("cursor_expired");
             }
-            for (RemoteProtocol.MobileEvent event : state.replay) {
+            for (MobileEvent event : state.replay) {
                 if (event.sequence() > cursor && sessionId.equals(event.sessionId())) {
                     send(emitter, "agent.event", event.eventId(), objectMapper.valueToTree(event));
                 }
@@ -258,6 +258,6 @@ public class RemoteRelayService {
 
     private static final class HostEvents {
         private final AtomicLong sequence = new AtomicLong();
-        private final ArrayDeque<RemoteProtocol.MobileEvent> replay = new ArrayDeque<>();
+        private final ArrayDeque<MobileEvent> replay = new ArrayDeque<>();
     }
 }

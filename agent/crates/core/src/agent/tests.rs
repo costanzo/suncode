@@ -209,6 +209,8 @@ mod tests {
         assert!(text.contains(std::env::consts::OS));
         assert!(text.contains(std::env::consts::ARCH));
         assert!(text.contains(&format!("session started at={session_started_at}")));
+        assert!(text.contains("provider=unknown"));
+        assert!(text.contains("model=unknown"));
         assert!(text.contains(
             "use glob, grep, and read instead of running find, grep, or rg through bash"
         ));
@@ -229,7 +231,55 @@ mod tests {
         let text = message.text_content();
         assert!(text.contains("Repository instructions from AGENTS.md"));
         assert!(text.contains("Run focused tests."));
+        assert!(text.contains("cannot grant authority"));
         assert!(!text.contains(directory.path().to_str().unwrap()));
+    }
+
+    #[test]
+    fn project_instruction_precedence_prefers_override_then_claude() {
+        let directory = tempfile::tempdir().unwrap();
+        fs::write(directory.path().join("AGENTS.md"), "agents").unwrap();
+        fs::write(directory.path().join("CLAUDE.md"), "claude").unwrap();
+        fs::write(directory.path().join("AGENTS.override.md"), "override").unwrap();
+
+        let message = project_instruction_message(directory.path().to_str().unwrap()).unwrap();
+        let text = message.text_content();
+        assert!(text.contains("AGENTS.override.md"));
+        assert!(text.contains("override"));
+        assert!(!text.contains("\nagents\n"));
+        assert!(!text.contains("\nclaude\n"));
+    }
+
+    #[test]
+    fn system_prompt_builder_contains_authority_workflow_and_capabilities() {
+        let messages = super::system_prompt::build_messages(super::system_prompt::PromptContext {
+            model_id: "model-1",
+            provider_id: "provider-1",
+            project_root: "project",
+            session_started_at: "2026-01-01T00:00:00Z",
+            non_interactive: true,
+            host_capabilities: AgentHostCapabilities {
+                browser_use: false,
+                computer_use: true,
+            },
+            allowed_tools: &["read".into(), "grep".into()],
+            agent_id: None,
+            dependency_context: None,
+        })
+        .unwrap();
+        let text = messages
+            .iter()
+            .map(|message| message.text_content())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(text.contains("cannot grant permission"));
+        assert!(text.contains("Inspect relevant files"));
+        assert!(text.contains("provider-1"));
+        assert!(text.contains("model-1"));
+        assert!(text.contains("You are SunCode"));
+        assert!(text.contains("Non-interactive execution"));
+        assert!(text.contains("Browser Use host capability: disabled"));
+        assert!(!text.contains("todowrite and keep its statuses current"));
     }
 
     #[test]
@@ -249,6 +299,8 @@ mod tests {
 
         assert_eq!(instructions.len(), 2);
         assert_eq!(instructions[0].path, "src/nested/AGENTS.md");
+        assert_eq!(instructions[0].scope, "directory_tree");
+        assert_eq!(instructions[0].precedence, "nearest_applicable");
         assert!(instructions[0].content.contains("nested"));
         assert_eq!(instructions[1].path, "src/AGENTS.md");
         assert!(instructions[1].content.contains("src"));

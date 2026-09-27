@@ -80,6 +80,7 @@ impl Agent {
             lsp,
             browser,
             computer,
+            host_capabilities,
             shutting_down: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }

@@ -35,6 +35,17 @@ impl Agent {
             )?;
         }
         self.turn_state(&context, "preparing", None)?;
+        let base_system_messages = system_prompt::build_messages(system_prompt::PromptContext {
+            model_id: &context.model,
+            provider_id: &provider.provider_id,
+            project_root: &context.project_root,
+            session_started_at: &context.session_started_at,
+            non_interactive: self.non_interactive,
+            host_capabilities: self.host_capabilities,
+            allowed_tools: &context.allowed_tools,
+            agent_id: context.agent_id.as_deref(),
+            dependency_context: self.dependency_context_message(&context.project_id)?,
+        })?;
         while context.iterations < 1024 {
             if token.is_cancelled() {
                 return self.fail_context(&context, "cancelled", "Turn was cancelled");
@@ -71,24 +82,7 @@ impl Agent {
             }
             let exchange_id = Uuid::new_v4().to_string();
             context.active_call_id = Some(exchange_id.clone());
-            let mut llm_messages = vec![host_environment_message(&context.session_started_at)];
-            if let Some(agent_id) = context.agent_id.as_deref() {
-                if let Some(agent) = builtin_agents::by_id(agent_id) {
-                    llm_messages.push(suncode_llm::Message::text(
-                        "system",
-                        format!(
-                            "You are {} ({}). {}\nYou cannot delegate, ask the user questions, or use MCP tools. Stay within the advertised tool allowlist.",
-                            agent.display_name, agent.name, agent.instructions
-                        ),
-                    ));
-                }
-            }
-            if let Some(message) = project_instruction_message(&context.project_root) {
-                llm_messages.push(message);
-            }
-            if let Some(message) = self.dependency_context_message(&context.project_id)? {
-                llm_messages.push(message);
-            }
+            let mut llm_messages = base_system_messages.clone();
             llm_messages.extend(
                 context
                     .messages

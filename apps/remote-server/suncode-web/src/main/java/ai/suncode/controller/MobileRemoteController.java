@@ -1,7 +1,7 @@
 package ai.suncode.controller;
 
 import ai.suncode.message.ApiBaseRet;
-import ai.suncode.message.remote.RemoteProtocol;
+import ai.suncode.message.remote.*;
 import ai.suncode.service.RemoteAuthService;
 import ai.suncode.service.RemoteRelayService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -41,12 +41,12 @@ public class MobileRemoteController {
     }
 
     @PostMapping("/pairings/exchange")
-    public ApiBaseRet<?> exchange(@RequestBody RemoteProtocol.PairingExchangeRequest request) {
+    public ApiBaseRet<?> exchange(@RequestBody PairingExchangeRequest request) {
         return ApiBaseRet.success(authService.exchange(request));
     }
 
     @PostMapping("/auth/refresh")
-    public ApiBaseRet<?> refresh(@RequestBody RemoteProtocol.RefreshTokenRequest request) {
+    public ApiBaseRet<?> refresh(@RequestBody RefreshTokenRequest request) {
         return ApiBaseRet.success(authService.refresh(request));
     }
 
@@ -67,8 +67,8 @@ public class MobileRemoteController {
     @GetMapping("/hosts/{hostId}/projects")
     public ApiBaseRet<?> projects(@RequestHeader("Authorization") String authorization, @PathVariable String hostId) throws Exception {
         authService.requireHostAccess(authorization, hostId);
-        RemoteProtocol.DesktopResponse response = relayService.request(hostId, null, "projects.list", empty(), null);
-        return responseEnvelope(response, RemoteProtocol.ProjectsData.class);
+        DesktopResponse response = relayService.request(hostId, null, "projects.list", empty(), null);
+        return responseEnvelope(response, ProjectsData.class);
     }
 
     @GetMapping("/sessions")
@@ -80,9 +80,9 @@ public class MobileRemoteController {
         authService.requireMobile(authorization);
         String selectedHost = hostId;
         if (selectedHost == null || selectedHost.isBlank()) {
-            List<RemoteProtocol.HostDto> pairedHosts = relayService.hosts().stream()
+            List<HostDto> pairedHosts = relayService.hosts().stream()
                     .filter(host -> authService.isPairedWith(authorization, host.id())).toList();
-            if (pairedHosts.isEmpty()) return ApiBaseRet.success(new RemoteProtocol.SessionPageData(List.of(), null, false));
+            if (pairedHosts.isEmpty()) return ApiBaseRet.success(new SessionPageData(List.of(), null, false));
             selectedHost = pairedHosts.get(0).id();
         }
         authService.requireHostAccess(authorization, selectedHost);
@@ -90,18 +90,18 @@ public class MobileRemoteController {
                 .put("projectId", projectId == null ? "" : projectId)
                 .put("cursor", cursor == null ? "" : cursor)
                 .put("limit", limit == null ? 50 : limit);
-        return responseEnvelope(relayService.request(selectedHost, null, "sessions.list", payload, null), RemoteProtocol.SessionPageData.class);
+        return responseEnvelope(relayService.request(selectedHost, null, "sessions.list", payload, null), SessionPageData.class);
     }
 
     @PostMapping("/sessions")
     public ResponseEntity<ApiBaseRet<?>> createSession(@RequestHeader("Authorization") String authorization,
                                                        @RequestHeader("Idempotency-Key") String idempotencyKey,
-                                                       @RequestBody RemoteProtocol.CreateSessionRequest request) throws Exception {
+                                                       @RequestBody CreateSessionRequest request) throws Exception {
         authService.requireHostAccess(authorization, request.hostId());
-        RemoteProtocol.DesktopResponse response = relayService.request(request.hostId(), null, "session.create", objectMapper.valueToTree(request), idempotencyKey);
+        DesktopResponse response = relayService.request(request.hostId(), null, "session.create", objectMapper.valueToTree(request), idempotencyKey);
         String sessionId = text(response.payload(), "sessionId");
         relayService.rememberSession(sessionId, request.hostId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiBaseRet.success(new RemoteProtocol.CommandAcceptedData(
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiBaseRet.success(new CommandAcceptedData(
                 response.requestId(), Instant.now(), sessionId)));
     }
 
@@ -125,7 +125,7 @@ public class MobileRemoteController {
     public ApiBaseRet<?> message(@RequestHeader("Authorization") String authorization,
                                  @RequestHeader("Idempotency-Key") String idempotencyKey,
                                  @PathVariable String sessionId,
-                                 @RequestBody RemoteProtocol.SendMessageRequest request) throws Exception {
+                                 @RequestBody SendMessageRequest request) throws Exception {
         return command(authorization, idempotencyKey, sessionId, "session.message", objectMapper.valueToTree(request));
     }
 
@@ -134,7 +134,7 @@ public class MobileRemoteController {
                                   @RequestHeader("Idempotency-Key") String idempotencyKey,
                                   @PathVariable String sessionId,
                                   @PathVariable String approvalId,
-                                  @RequestBody RemoteProtocol.ApprovalResolutionRequest request) throws Exception {
+                                  @RequestBody ApprovalResolutionRequest request) throws Exception {
         JsonNode payload = objectMapper.valueToTree(request).deepCopy();
         ((com.fasterxml.jackson.databind.node.ObjectNode) payload).put("approvalId", approvalId);
         return command(authorization, idempotencyKey, sessionId, "approval.resolve", payload);
@@ -145,7 +145,7 @@ public class MobileRemoteController {
                                   @RequestHeader("Idempotency-Key") String idempotencyKey,
                                   @PathVariable String sessionId,
                                   @PathVariable String questionId,
-                                  @RequestBody RemoteProtocol.QuestionReplyRequest request) throws Exception {
+                                  @RequestBody QuestionReplyRequest request) throws Exception {
         JsonNode payload = objectMapper.valueToTree(request).deepCopy();
         ((com.fasterxml.jackson.databind.node.ObjectNode) payload).put("questionId", questionId);
         return command(authorization, idempotencyKey, sessionId, "question.reply", payload);
@@ -168,20 +168,20 @@ public class MobileRemoteController {
     @GetMapping("/sync")
     public ApiBaseRet<?> sync(@RequestHeader("Authorization") String authorization) {
         authService.requireMobile(authorization);
-        List<RemoteProtocol.HostDto> hosts = relayService.hosts().stream()
+        List<HostDto> hosts = relayService.hosts().stream()
                 .filter(host -> authService.isPairedWith(authorization, host.id())).toList();
-        return ApiBaseRet.success(new RemoteProtocol.SyncData(UUID.randomUUID().toString(), false, hosts, List.of(), List.of(), false));
+        return ApiBaseRet.success(new SyncData(UUID.randomUUID().toString(), false, hosts, List.of(), List.of(), false));
     }
 
     private ApiBaseRet<?> command(String authorization, String idempotencyKey, String sessionId, String command, JsonNode payload) throws Exception {
         authService.requireMobile(authorization);
         String hostId = requireHost(sessionId);
         authService.requireHostAccess(authorization, hostId);
-        RemoteProtocol.DesktopResponse response = relayService.request(hostId, sessionId, command, payload, idempotencyKey);
-        return responseEnvelope(response, RemoteProtocol.CommandAcceptedData.class);
+        DesktopResponse response = relayService.request(hostId, sessionId, command, payload, idempotencyKey);
+        return responseEnvelope(response, CommandAcceptedData.class);
     }
 
-    private <T> ApiBaseRet<?> responseEnvelope(RemoteProtocol.DesktopResponse response, Class<T> type) {
+    private <T> ApiBaseRet<?> responseEnvelope(DesktopResponse response, Class<T> type) {
         if (!response.success()) {
             throw new IllegalStateException(response.message() == null ? "desktop_request_failed" : response.message());
         }

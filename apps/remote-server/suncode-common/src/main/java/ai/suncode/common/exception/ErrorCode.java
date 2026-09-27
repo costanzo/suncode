@@ -4,8 +4,8 @@ import lombok.Getter;
 
 @Getter
 public enum ErrorCode {
-    PARAM_INVALID(20000, "参数不合法"),
-    INTERNAL_ERROR(30000, "内部错误"),
+    PARAM_INVALID(20000, "Illegal parameter"),
+    INTERNAL_ERROR(30000, "Internal error"),
     ;
 
     private final int code;

@@ -1,7 +1,7 @@
 package ai.suncode.controller;
 
 import ai.suncode.message.ApiBaseRet;
-import ai.suncode.message.remote.RemoteProtocol;
+import ai.suncode.message.remote.*;
 import ai.suncode.service.RemoteAuthService;
 import ai.suncode.service.RemoteRelayService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -43,13 +43,13 @@ public class DesktopRelayController {
     @PostMapping("/responses")
     public ApiBaseRet<?> response(@RequestHeader("X-Host-Id") String hostId,
                                   @RequestHeader("Authorization") String authorization,
-                                  @RequestBody RemoteProtocol.DesktopResponse response) {
+                                  @RequestBody DesktopResponse response) {
         String token = authService.requireDesktop(authorization);
         relayService.requireDesktopConnection(hostId, token);
         if (response.hostId() != null && !hostId.equals(response.hostId())) {
             throw new IllegalArgumentException("hostId does not match the connection");
         }
-        relayService.complete(new RemoteProtocol.DesktopResponse(
+        relayService.complete(new DesktopResponse(
                 response.requestId(), hostId, response.sessionId(), response.success(), response.code(), response.message(), response.payload()));
         return ApiBaseRet.success();
     }
@@ -57,10 +57,10 @@ public class DesktopRelayController {
     @PostMapping("/events")
     public ApiBaseRet<?> event(@RequestHeader("X-Host-Id") String hostId,
                                @RequestHeader("Authorization") String authorization,
-                               @RequestBody RemoteProtocol.DesktopEvent event) {
+                               @RequestBody DesktopEvent event) {
         String token = authService.requireDesktop(authorization);
         relayService.requireDesktopConnection(hostId, token);
-        RemoteProtocol.DesktopEvent normalized = new RemoteProtocol.DesktopEvent(
+        DesktopEvent normalized = new DesktopEvent(
                 hostId, event.sessionId(), event.requestId(), event.eventType(), event.occurredAt(), event.payload());
         relayService.publish(normalized);
         return ApiBaseRet.success();

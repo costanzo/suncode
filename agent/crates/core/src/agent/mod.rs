@@ -30,6 +30,7 @@ pub use event_hub::*;
 pub mod events;
 use events::*;
 mod lsp;
+mod system_prompt;
 use lsp::LanguageServerManager;
 pub use lsp::{LanguageServerRuntimeState, LanguageServerRuntimeStatus};
 mod browser;
@@ -177,6 +178,7 @@ pub struct Agent {
     lsp: LanguageServerManager,
     browser: BrowserManager,
     computer: ComputerManager,
+    host_capabilities: AgentHostCapabilities,
     shutting_down: Arc<std::sync::atomic::AtomicBool>,
 }
 
