@@ -1,6 +1,6 @@
 use crate::{
-    normalize::{cancelled, is_context_overflow, wire_message},
-    stream::{tracked_json_body, SseParser},
+    normalize::{cancelled, is_context_overflow, responses_input_items},
+    stream::{tracked_json_body, ResponsesSseParser},
     ApiKeyResolver, BusinessError, Completion, CompletionFuture, CompletionRequest, LlmProvider,
 };
 use futures_util::StreamExt;
@@ -189,23 +189,22 @@ impl OpenAiCompatibleProvider {
         })?;
         let mut body = json!({
             "model": request.wire_model,
-            "messages": request.messages.iter().map(wire_message).collect::<Vec<_>>(),
+            "input": responses_input_items(request.messages),
             "tools": request.tools.iter().map(|tool| json!({
                 "type": "function",
-                "function": {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "parameters": tool.parameters,
-                }
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameters,
+                "strict": false,
             })).collect::<Vec<_>>(),
             "stream": true,
-            "stream_options": {"include_usage": true}
+            "store": false
         });
         if let Some(reasoning_effort) = request.reasoning_effort {
-            body["reasoning_effort"] = json!(reasoning_effort);
+            body["reasoning"] = json!({"effort": reasoning_effort});
         }
         if let Some(max_output_tokens) = request.max_output_tokens {
-            body["max_tokens"] = json!(max_output_tokens);
+            body["max_output_tokens"] = json!(max_output_tokens);
         }
         logging::debug(
             "llm",
@@ -223,7 +222,7 @@ impl OpenAiCompatibleProvider {
         let client = self.client()?;
         let response = tokio::select! {
             _ = cancellation.cancelled() => return Err(cancelled()),
-            value = client.post(format!("{}/chat/completions", self.endpoint)).bearer_auth(key).header(reqwest::header::CONTENT_TYPE, "application/json").body(request_body).send() => value.map_err(|error| BusinessError::provider(
+            value = client.post(format!("{}/responses", self.endpoint)).bearer_auth(key).header(reqwest::header::CONTENT_TYPE, "application/json").body(request_body).send() => value.map_err(|error| BusinessError::provider(
                 "transient",
                 format!("{} request failed: {error}", self.provider_label),
                 true,
@@ -288,7 +287,7 @@ impl OpenAiCompatibleProvider {
                 provider_request_id,
             ));
         }
-        let mut parser = SseParser::new(self.provider_label.clone());
+        let mut parser = ResponsesSseParser::new(self.provider_label.clone());
         let mut stream = response.bytes_stream();
         while let Some(chunk) = tokio::select! {
             _ = cancellation.cancelled() => {
@@ -402,7 +401,7 @@ mod tests {
         }
     }
 
-    async fn mock_chat(headers: HeaderMap, body: Bytes) -> impl IntoResponse {
+    async fn mock_responses(headers: HeaderMap, body: Bytes) -> impl IntoResponse {
         assert_eq!(
             headers
                 .get(header::AUTHORIZATION)
@@ -411,12 +410,13 @@ mod tests {
         );
         let body: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(body["model"], "company-model-v1");
-        assert_eq!(body["reasoning_effort"], "high");
-        assert_eq!(body["tools"][0]["function"]["name"], "read");
+        assert_eq!(body["reasoning"]["effort"], "high");
+        assert_eq!(body["tools"][0]["name"], "read");
         let response = concat!(
-            "data: {\"id\":\"chatcmpl-response-1\",\"choices\":[{\"delta\":{\"content\":\"hello\"}}]}\n\n",
-            "data: {\"id\":\"chatcmpl-response-1\",\"choices\":[{\"delta\":{\"content\":\" world\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2,\"total_tokens\":5,\"prompt_tokens_details\":{\"cached_tokens\":2}}}\n\n",
-            "data: [DONE]\n\n"
+            "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp-response-1\"}}\n\n",
+            "data: {\"type\":\"response.output_text.delta\",\"delta\":\"hello\"}\n\n",
+            "data: {\"type\":\"response.output_text.delta\",\"delta\":\" world\"}\n\n",
+            "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp-response-1\",\"status\":\"completed\",\"usage\":{\"input_tokens\":3,\"output_tokens\":2,\"total_tokens\":5,\"input_tokens_details\":{\"cached_tokens\":2}}}}\n\n"
         );
         (
             [
@@ -434,7 +434,7 @@ mod tests {
         let server = tokio::spawn(async move {
             axum::serve(
                 listener,
-                Router::new().route("/chat/completions", post(mock_chat)),
+                Router::new().route("/responses", post(mock_responses)),
             )
             .await
             .unwrap();
@@ -473,7 +473,7 @@ mod tests {
         assert_eq!(result.provider_request_id.as_deref(), Some("request-1"));
         assert_eq!(
             result.provider_response_id.as_deref(),
-            Some("chatcmpl-response-1")
+            Some("resp-response-1")
         );
         let usage = result.usage.unwrap();
         assert_eq!(usage.total_tokens, 5);
@@ -502,17 +502,15 @@ mod tests {
             let mut request = vec![0_u8; 16 * 1024];
             let read = stream.read(&mut request).await.unwrap();
             let request = String::from_utf8_lossy(&request[..read]);
-            assert!(
-                request.starts_with("POST http://provider.example.test/chat/completions HTTP/1.1")
-            );
+            assert!(request.starts_with("POST http://provider.example.test/responses HTTP/1.1"));
             assert!(request.to_ascii_lowercase().contains(
                 "proxy-authorization: basic cHJveHktdXNlcjpwcm94eS1wYXNz"
                     .to_ascii_lowercase()
                     .as_str()
             ));
             let body = concat!(
-                "data: {\"id\":\"chatcmpl-proxy\",\"choices\":[{\"delta\":{\"content\":\"proxied\"},\"finish_reason\":\"stop\"}]}\n\n",
-                "data: [DONE]\n\n"
+                "data: {\"type\":\"response.output_text.delta\",\"delta\":\"proxied\"}\n\n",
+                "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp-proxy\",\"status\":\"completed\"}}\n\n"
             );
             let response = format!(
                 "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",

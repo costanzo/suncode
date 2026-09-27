@@ -8,19 +8,28 @@ use suncode_sdk::AsyncAgentSdk;
 static ENVIRONMENT: OnceLock<Mutex<()>> = OnceLock::new();
 
 const TEXT_RESPONSE: &str = concat!(
-    "data: {\"id\":\"chatcmpl-cli\",\"choices\":[{\"delta\":{\"content\":\"hello\"}}]}\n\n",
-    "data: {\"id\":\"chatcmpl-cli\",\"choices\":[{\"delta\":{\"content\":\" world\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2,\"total_tokens\":5}}\n\n",
-    "data: [DONE]\n\n"
+    "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp-cli\"}}\n\n",
+    "data: {\"type\":\"response.output_text.delta\",\"delta\":\"hello\"}\n\n",
+    "data: {\"type\":\"response.output_text.delta\",\"delta\":\" world\"}\n\n",
+    "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp-cli\",\"status\":\"completed\",\"usage\":{\"input_tokens\":3,\"output_tokens\":2,\"total_tokens\":5}}}\n\n"
 );
 
 const APPROVAL_RESPONSE: &str = concat!(
-    "data: {\"id\":\"chatcmpl-approval\",\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"write-call\",\"function\":{\"name\":\"write\",\"arguments\":\"{\\\"path\\\":\\\"README.md\\\",\\\"content\\\":\\\"updated\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}]}\n\n",
-    "data: [DONE]\n\n"
+    "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp-approval\"}}\n\n",
+    "data: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"call_id\":\"write-call\",\"name\":\"write\",\"arguments\":\"\"}}\n\n",
+    "data: {\"type\":\"response.function_call_arguments.delta\",\"output_index\":0,\"call_id\":\"write-call\",\"name\":\"write\",\"delta\":\"{\\\"path\\\":\\\"README.md\\\",\\\"content\\\":\\\"updated\\\"}\"}\n\n",
+    "data: {\"type\":\"response.function_call_arguments.done\",\"output_index\":0,\"call_id\":\"write-call\",\"name\":\"write\",\"arguments\":\"{\\\"path\\\":\\\"README.md\\\",\\\"content\\\":\\\"updated\\\"}\"}\n\n",
+    "data: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"call_id\":\"write-call\",\"name\":\"write\",\"arguments\":\"{\\\"path\\\":\\\"README.md\\\",\\\"content\\\":\\\"updated\\\"}\"}}\n\n",
+    "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp-approval\",\"status\":\"completed\"}}\n\n"
 );
 
 const QUESTION_RESPONSE: &str = concat!(
-    "data: {\"id\":\"chatcmpl-question\",\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"question-call\",\"function\":{\"name\":\"question\",\"arguments\":\"{\\\"questions\\\":[{\\\"question\\\":\\\"Choose a mode\\\",\\\"header\\\":\\\"Mode\\\",\\\"options\\\":[{\\\"label\\\":\\\"Fast\\\",\\\"description\\\":\\\"Quick\\\"}],\\\"custom\\\":false}]}\"}}]},\"finish_reason\":\"tool_calls\"}]}\n\n",
-    "data: [DONE]\n\n"
+    "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp-question\"}}\n\n",
+    "data: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"call_id\":\"question-call\",\"name\":\"question\",\"arguments\":\"\"}}\n\n",
+    "data: {\"type\":\"response.function_call_arguments.delta\",\"output_index\":0,\"call_id\":\"question-call\",\"name\":\"question\",\"delta\":\"{\\\"questions\\\":[{\\\"question\\\":\\\"Choose a mode\\\",\\\"header\\\":\\\"Mode\\\",\\\"options\\\":[{\\\"label\\\":\\\"Fast\\\",\\\"description\\\":\\\"Quick\\\"}],\\\"custom\\\":false}]}\"}\n\n",
+    "data: {\"type\":\"response.function_call_arguments.done\",\"output_index\":0,\"call_id\":\"question-call\",\"name\":\"question\",\"arguments\":\"{\\\"questions\\\":[{\\\"question\\\":\\\"Choose a mode\\\",\\\"header\\\":\\\"Mode\\\",\\\"options\\\":[{\\\"label\\\":\\\"Fast\\\",\\\"description\\\":\\\"Quick\\\"}],\\\"custom\\\":false}]}\"}\n\n",
+    "data: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"call_id\":\"question-call\",\"name\":\"question\",\"arguments\":\"{\\\"questions\\\":[{\\\"question\\\":\\\"Choose a mode\\\",\\\"header\\\":\\\"Mode\\\",\\\"options\\\":[{\\\"label\\\":\\\"Fast\\\",\\\"description\\\":\\\"Quick\\\"}],\\\"custom\\\":false}]}\"}}\n\n",
+    "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp-question\",\"status\":\"completed\"}}\n\n"
 );
 
 #[derive(Clone)]
@@ -585,7 +594,7 @@ fn mock_provider_with_response(response: &'static str) -> MockProvider {
                 axum::serve(
                     listener,
                     Router::new()
-                        .route("/chat/completions", post(mock_chat))
+                        .route("/responses", post(mock_chat))
                         .with_state(state),
                 )
                 .with_graceful_shutdown(async {

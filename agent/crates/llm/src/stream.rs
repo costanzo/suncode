@@ -31,26 +31,36 @@ pub fn tracked_json_body(
     Ok(reqwest::Body::wrap_stream(body))
 }
 
-pub struct SseParser {
+struct FunctionCallState {
+    call_id: String,
+    name: String,
+    arguments: String,
+}
+
+pub struct ResponsesSseParser {
     provider_label: String,
     buffer: String,
+    pending_event: String,
     text: String,
-    calls: BTreeMap<u64, (String, String, String)>,
+    calls: BTreeMap<u64, FunctionCallState>,
     finish_reason: String,
     usage: Option<Usage>,
     response_id: Option<String>,
+    terminal_error: Option<BusinessError>,
 }
 
-impl SseParser {
+impl ResponsesSseParser {
     pub fn new(provider_label: impl Into<String>) -> Self {
         Self {
             provider_label: provider_label.into(),
             buffer: String::new(),
+            pending_event: String::new(),
             text: String::new(),
             calls: BTreeMap::new(),
             finish_reason: String::new(),
             usage: None,
             response_id: None,
+            terminal_error: None,
         }
     }
 
@@ -76,6 +86,10 @@ impl SseParser {
     }
 
     fn line(&mut self, line: &str) -> Result<Option<String>, BusinessError> {
+        if let Some(event) = line.strip_prefix("event:") {
+            self.pending_event = event.trim().to_owned();
+            return Ok(None);
+        }
         let Some(data) = line.strip_prefix("data:") else {
             return Ok(None);
         };
@@ -89,101 +103,192 @@ impl SseParser {
                 format!("{} returned malformed stream JSON", self.provider_label),
             )
         })?;
-        if self.response_id.is_none() {
-            self.response_id = chunk
-                .get("id")
-                .and_then(Value::as_str)
-                .filter(|value| !value.is_empty())
-                .map(str::to_owned);
-        }
-        if let Some(usage) = chunk.get("usage") {
-            self.usage = Some(Usage {
-                input_tokens: usage
-                    .get("prompt_tokens")
-                    .or_else(|| usage.get("input_tokens"))
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0),
-                output_tokens: usage
-                    .get("completion_tokens")
-                    .or_else(|| usage.get("output_tokens"))
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0),
-                total_tokens: usage
-                    .get("total_tokens")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0),
-                cache_read_tokens: usage
-                    .pointer("/prompt_tokens_details/cached_tokens")
-                    .or_else(|| usage.pointer("/input_tokens_details/cached_tokens"))
-                    .or_else(|| usage.get("cached_tokens"))
-                    .or_else(|| usage.get("prompt_cache_hit_tokens"))
-                    .or_else(|| usage.get("cache_read_input_tokens"))
-                    .or_else(|| usage.get("cache_read_tokens"))
-                    .and_then(Value::as_u64),
-                cache_miss_tokens: usage
-                    .pointer("/prompt_tokens_details/cache_miss_tokens")
-                    .or_else(|| usage.pointer("/input_tokens_details/cache_miss_tokens"))
-                    .or_else(|| usage.get("prompt_cache_miss_tokens"))
-                    .or_else(|| usage.get("cache_miss_tokens"))
-                    .and_then(Value::as_u64),
-                cache_write_tokens: usage
-                    .get("cache_creation_input_tokens")
-                    .or_else(|| usage.get("cache_write_tokens"))
-                    .and_then(Value::as_u64),
-                reasoning_tokens: usage
-                    .pointer("/completion_tokens_details/reasoning_tokens")
-                    .or_else(|| usage.pointer("/output_tokens_details/reasoning_tokens"))
-                    .or_else(|| usage.get("reasoning_tokens"))
-                    .and_then(Value::as_u64),
-            });
-        }
-        if let Some(choice) = chunk
-            .get("choices")
-            .and_then(Value::as_array)
-            .and_then(|v| v.first())
-        {
-            let text_delta = choice
-                .get("delta")
-                .and_then(|v| v.get("content"))
-                .and_then(Value::as_str);
-            if let Some(value) = text_delta {
-                self.text.push_str(value);
+        let event_type = chunk
+            .get("type")
+            .and_then(Value::as_str)
+            .map(str::to_owned)
+            .unwrap_or_else(|| self.pending_event.clone());
+        self.pending_event.clear();
+        match event_type.as_str() {
+            "response.created" => {
+                self.response_id = chunk
+                    .pointer("/response/id")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned);
             }
-            if let Some(calls) = choice
-                .pointer("/delta/tool_calls")
-                .and_then(Value::as_array)
-            {
-                for call in calls {
-                    let index = call.get("index").and_then(Value::as_u64).unwrap_or(0);
-                    let entry = self.calls.entry(index).or_default();
-                    if let Some(v) = call.get("id").and_then(Value::as_str) {
-                        entry.0 = v.into()
-                    }
-                    if let Some(v) = call.pointer("/function/name").and_then(Value::as_str) {
-                        entry.1.push_str(v)
-                    }
-                    if let Some(v) = call.pointer("/function/arguments").and_then(Value::as_str) {
-                        entry.2.push_str(v)
-                    }
+            "response.output_text.delta" => {
+                let delta = chunk
+                    .get("delta")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                self.text.push_str(delta);
+                return Ok((!delta.is_empty()).then(|| delta.to_owned()));
+            }
+            "response.output_item.added" => {
+                self.merge_output_item(chunk.get("item"), chunk.get("output_index"))
+            }
+            "response.output_item.done" => {
+                self.merge_output_item(chunk.get("item"), chunk.get("output_index"))
+            }
+            "response.function_call_arguments.delta" => {
+                let index = chunk
+                    .get("output_index")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0);
+                let call = self
+                    .calls
+                    .entry(index)
+                    .or_insert_with(|| FunctionCallState {
+                        call_id: chunk
+                            .get("call_id")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .into(),
+                        name: chunk
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .into(),
+                        arguments: String::new(),
+                    });
+                if let Some(value) = chunk.get("delta").and_then(Value::as_str) {
+                    call.arguments.push_str(value);
                 }
             }
-            if let Some(reason) = choice.get("finish_reason").and_then(Value::as_str) {
-                self.finish_reason = reason.into()
+            "response.function_call_arguments.done" => {
+                let index = chunk
+                    .get("output_index")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0);
+                let call = self
+                    .calls
+                    .entry(index)
+                    .or_insert_with(|| FunctionCallState {
+                        call_id: chunk
+                            .get("call_id")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .into(),
+                        name: chunk
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .into(),
+                        arguments: String::new(),
+                    });
+                if let Some(value) = chunk.get("arguments").and_then(Value::as_str) {
+                    call.arguments = value.into();
+                }
             }
-            return Ok(text_delta.map(str::to_string));
+            "response.completed" => {
+                self.merge_response(chunk.get("response"));
+                self.finish_reason = "stop".into();
+            }
+            "response.incomplete" => {
+                self.merge_response(chunk.get("response"));
+                self.finish_reason = "incomplete".into();
+            }
+            "response.failed" => {
+                let message = chunk
+                    .pointer("/response/error/message")
+                    .and_then(Value::as_str)
+                    .or_else(|| chunk.pointer("/error/message").and_then(Value::as_str))
+                    .unwrap_or("provider response failed");
+                self.terminal_error = Some(BusinessError::provider(
+                    "provider_protocol",
+                    message,
+                    false,
+                    None,
+                ));
+            }
+            "error" => {
+                let message = chunk
+                    .pointer("/error/message")
+                    .and_then(Value::as_str)
+                    .or_else(|| chunk.get("message").and_then(Value::as_str))
+                    .unwrap_or("provider stream failed");
+                self.terminal_error = Some(BusinessError::provider(
+                    "provider_protocol",
+                    message,
+                    false,
+                    None,
+                ));
+            }
+            _ => {}
         }
         Ok(None)
     }
 
+    fn merge_output_item(&mut self, item: Option<&Value>, output_index: Option<&Value>) {
+        let Some(item) = item else { return };
+        if item.get("type").and_then(Value::as_str) != Some("function_call") {
+            return;
+        }
+        let index = output_index.and_then(Value::as_u64).unwrap_or_else(|| {
+            item.get("output_index")
+                .and_then(Value::as_u64)
+                .unwrap_or(self.calls.len() as u64)
+        });
+        let call = self
+            .calls
+            .entry(index)
+            .or_insert_with(|| FunctionCallState {
+                call_id: String::new(),
+                name: String::new(),
+                arguments: String::new(),
+            });
+        if let Some(value) = item.get("call_id").and_then(Value::as_str) {
+            call.call_id = value.into();
+        }
+        if let Some(value) = item.get("name").and_then(Value::as_str) {
+            call.name = value.into();
+        }
+        if let Some(value) = item.get("arguments").and_then(Value::as_str) {
+            call.arguments = value.into();
+        }
+    }
+
+    fn merge_response(&mut self, response: Option<&Value>) {
+        let Some(response) = response else { return };
+        if self.response_id.is_none() {
+            self.response_id = response
+                .get("id")
+                .and_then(Value::as_str)
+                .map(str::to_owned);
+        }
+        if let Some(usage) = response.get("usage") {
+            self.usage = parse_usage(usage);
+        }
+        if let Some(output) = response.get("output").and_then(Value::as_array) {
+            for (index, item) in output.iter().enumerate() {
+                if self.text.is_empty()
+                    && item.get("type").and_then(Value::as_str) == Some("message")
+                {
+                    if let Some(content) = item.get("content").and_then(Value::as_array) {
+                        for part in content {
+                            if let Some(text) = part.get("text").and_then(Value::as_str) {
+                                self.text.push_str(text);
+                            }
+                        }
+                    }
+                }
+                self.merge_output_item(Some(item), Some(&Value::from(index as u64)));
+            }
+        }
+    }
+
     pub fn finish(self) -> Result<Completion, BusinessError> {
+        if let Some(error) = self.terminal_error {
+            return Err(error);
+        }
         let tool_calls = self
             .calls
             .into_values()
-            .map(|(id, name, args)| {
+            .map(|call| {
                 Ok(ToolCall {
-                    call_id: id,
-                    name,
-                    arguments: serde_json::from_str(&args).map_err(|_| {
+                    call_id: call.call_id,
+                    name: call.name,
+                    arguments: serde_json::from_str(&call.arguments).map_err(|_| {
                         BusinessError::new(
                             "malformed_tool_call",
                             "Provider returned invalid tool arguments",
@@ -196,7 +301,11 @@ impl SseParser {
         Ok(Completion {
             text: self.text,
             tool_calls,
-            finish_reason: self.finish_reason,
+            finish_reason: if self.finish_reason.is_empty() {
+                "completed".into()
+            } else {
+                self.finish_reason
+            },
             usage: self.usage,
             provider_request_id: None,
             provider_response_id: self.response_id,
@@ -204,15 +313,56 @@ impl SseParser {
     }
 }
 
+fn parse_usage(usage: &Value) -> Option<Usage> {
+    Some(Usage {
+        input_tokens: usage
+            .get("input_tokens")
+            .or_else(|| usage.get("prompt_tokens"))
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
+        output_tokens: usage
+            .get("output_tokens")
+            .or_else(|| usage.get("completion_tokens"))
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
+        total_tokens: usage
+            .get("total_tokens")
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
+        cache_read_tokens: usage
+            .pointer("/input_tokens_details/cached_tokens")
+            .or_else(|| usage.pointer("/prompt_tokens_details/cached_tokens"))
+            .or_else(|| usage.get("cached_tokens"))
+            .or_else(|| usage.get("prompt_cache_hit_tokens"))
+            .or_else(|| usage.get("cache_read_tokens"))
+            .and_then(Value::as_u64),
+        cache_miss_tokens: usage
+            .pointer("/input_tokens_details/cache_miss_tokens")
+            .or_else(|| usage.pointer("/prompt_tokens_details/cache_miss_tokens"))
+            .or_else(|| usage.get("prompt_cache_miss_tokens"))
+            .or_else(|| usage.get("cache_miss_tokens"))
+            .and_then(Value::as_u64),
+        cache_write_tokens: usage
+            .get("cache_creation_input_tokens")
+            .or_else(|| usage.get("cache_write_tokens"))
+            .and_then(Value::as_u64),
+        reasoning_tokens: usage
+            .pointer("/output_tokens_details/reasoning_tokens")
+            .or_else(|| usage.pointer("/completion_tokens_details/reasoning_tokens"))
+            .or_else(|| usage.get("reasoning_tokens"))
+            .and_then(Value::as_u64),
+    })
+}
+
 #[cfg(test)]
 mod tests {
-    use super::SseParser;
+    use super::ResponsesSseParser;
 
     fn parse_usage(usage: &str) -> crate::Usage {
         let usage: serde_json::Value = serde_json::from_str(usage).unwrap();
-        let mut parser = SseParser::new("Test provider");
+        let mut parser = ResponsesSseParser::new("Test provider");
         parser
-            .push(format!("data: {}\n\n", serde_json::json!({"usage": usage})).as_bytes())
+            .push(format!("data: {}\n\n", serde_json::json!({"type":"response.completed","response":{"id":"resp-test","usage":usage}})).as_bytes())
             .unwrap();
         parser.finish().unwrap().usage.unwrap()
     }
@@ -235,6 +385,16 @@ mod tests {
         assert_eq!(usage.cache_read_tokens, Some(86));
         assert_eq!(usage.cache_miss_tokens, None);
         assert_eq!(usage.reasoning_tokens, Some(72));
+    }
+
+    #[test]
+    fn accepts_sse_event_names_when_payload_omits_type() {
+        let mut parser = ResponsesSseParser::new("Test provider");
+        let deltas = parser
+            .push(b"event: response.output_text.delta\ndata: {\"delta\":\"hello\"}\n\n")
+            .unwrap();
+        assert_eq!(deltas, vec!["hello"]);
+        assert_eq!(parser.finish().unwrap().text, "hello");
     }
 
     #[test]

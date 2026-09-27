@@ -358,18 +358,20 @@ mod tests {
 
     async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
         let messages = body
-            .get("messages")
+            .get("input")
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
-        let last_role = messages
-            .last()
-            .and_then(|message| message.get("role"))
-            .and_then(Value::as_str);
+        let last_role = messages.last().and_then(|message| {
+            message
+                .get("role")
+                .and_then(Value::as_str)
+                .or_else(|| (message.get("type").and_then(Value::as_str) == Some("function_call_output")).then_some("tool"))
+        });
         let has_tool_error = messages.iter().any(|message| {
-            message.get("role").and_then(Value::as_str) == Some("tool")
+            message.get("type").and_then(Value::as_str) == Some("function_call_output")
                 && message
-                    .get("content")
+                    .get("output")
                     .and_then(Value::as_str)
                     .map(|content| content.contains("invalid_arguments"))
                     .unwrap_or(false)
@@ -386,8 +388,7 @@ mod tests {
             .and_then(Value::as_array)
             .into_iter()
             .flatten()
-            .filter_map(|tool| tool.get("function"))
-            .filter_map(|function| function.get("name"))
+            .filter_map(|tool| tool.get("name"))
             .filter_map(Value::as_str)
             .collect::<BTreeSet<_>>();
         let is_child = messages.iter().any(|message| {
@@ -490,12 +491,35 @@ mod tests {
                 json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"read-call","function":{"name":"read","arguments":"{\"path\":\"README.md\"}"}}]},"finish_reason":"tool_calls"}]}),
             ]
         };
-        let body = data
-            .into_iter()
-            .map(|value| format!("data: {value}\n\n"))
-            .collect::<String>()
-            + "data: [DONE]\n\n";
+        let body = responses_stream(data);
         ([(header::CONTENT_TYPE, "text/event-stream")], body).into_response()
+    }
+
+    fn responses_stream(chunks: Vec<Value>) -> String {
+        let mut events = vec![json!({"type":"response.created","response":{"id":"resp-test"}})];
+        let mut usage = None;
+        for chunk in chunks {
+            if let Some(value) = chunk.pointer("/choices/0/delta/content").and_then(Value::as_str) {
+                events.push(json!({"type":"response.output_text.delta","delta":value}));
+            }
+            if let Some(calls) = chunk.pointer("/choices/0/delta/tool_calls").and_then(Value::as_array) {
+                for call in calls {
+                    let index = call.get("index").and_then(Value::as_u64).unwrap_or(0);
+                    let call_id = call.get("id").and_then(Value::as_str).unwrap_or_default();
+                    let name = call.pointer("/function/name").and_then(Value::as_str).unwrap_or_default();
+                    let arguments = call.pointer("/function/arguments").and_then(Value::as_str).unwrap_or_default();
+                    events.push(json!({"type":"response.output_item.added","output_index":index,"item":{"type":"function_call","call_id":call_id,"name":name,"arguments":""}}));
+                    events.push(json!({"type":"response.function_call_arguments.delta","output_index":index,"call_id":call_id,"name":name,"delta":arguments}));
+                    events.push(json!({"type":"response.function_call_arguments.done","output_index":index,"call_id":call_id,"name":name,"arguments":arguments}));
+                    events.push(json!({"type":"response.output_item.done","output_index":index,"item":{"type":"function_call","call_id":call_id,"name":name,"arguments":arguments}}));
+                }
+            }
+            if let Some(value) = chunk.get("usage") { usage = Some(value.clone()); }
+        }
+        let mut response = json!({"id":"resp-test","status":"completed"});
+        if let Some(value) = usage { response["usage"] = value; }
+        events.push(json!({"type":"response.completed","response":response}));
+        events.into_iter().map(|value| format!("data: {value}\n\n")).collect()
     }
 
     async fn fixture() -> (
@@ -520,7 +544,7 @@ mod tests {
         let server = tokio::spawn(async move {
             axum::serve(
                 listener,
-                Router::new().route("/chat/completions", post(mock_deepseek)),
+                Router::new().route("/responses", post(mock_deepseek)),
             )
             .await
             .unwrap();

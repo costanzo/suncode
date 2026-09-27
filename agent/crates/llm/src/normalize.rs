@@ -1,6 +1,7 @@
 use crate::{BusinessError, Message};
 use serde_json::{json, Value};
 
+#[cfg(test)]
 pub fn wire_message(message: &Message) -> Value {
     let content = if message.content.iter().all(|part| part.kind == "text") {
         json!(message.text_content())
@@ -25,6 +26,68 @@ pub fn wire_message(message: &Message) -> Value {
         value["tool_call_id"] = json!(id);
     }
     value
+}
+
+/// Converts SunCode's canonical transcript into Responses API input items.
+///
+/// Responses represents function calls and their outputs as distinct items,
+/// rather than fields on assistant/tool messages.
+pub fn responses_input_items(messages: &[Message]) -> Vec<Value> {
+    let mut items = Vec::new();
+    for message in messages {
+        if message.role == "tool" {
+            items.push(json!({
+                "type": "function_call_output",
+                "call_id": message.tool_call_id.clone().unwrap_or_default(),
+                "output": message.text_content(),
+            }));
+            continue;
+        }
+
+        if !message.tool_calls.is_empty() {
+            if !message.text_content().is_empty() {
+                items.push(json!({
+                    "role": message.role,
+                    "content": if message.role == "assistant" {
+                        json!([{"type":"output_text","text":message.text_content()}])
+                    } else {
+                        json!(message.text_content())
+                    },
+                }));
+            }
+            for call in &message.tool_calls {
+                items.push(json!({
+                    "type": "function_call",
+                    "call_id": call.call_id,
+                    "name": call.name,
+                    "arguments": call.arguments.to_string(),
+                }));
+            }
+            continue;
+        }
+
+        let content = if message.content.iter().all(|part| part.kind == "text") {
+            if message.role == "assistant" {
+                json!([{"type":"output_text","text":message.text_content()}])
+            } else {
+                json!(message.text_content())
+            }
+        } else {
+            Value::Array(
+                message
+                    .content
+                    .iter()
+                    .filter_map(|part| match part.kind.as_str() {
+                        "text" => Some(json!({"type":"input_text","text":part.text})),
+                        "image_url" => Some(json!({"type":"input_image","image_url":part.text})),
+                        _ => None,
+                    })
+                    .collect(),
+            )
+        };
+        items.push(json!({"role": message.role, "content": content}));
+    }
+    items
 }
 
 pub fn cancelled() -> BusinessError {
@@ -102,5 +165,29 @@ mod tests {
         assert!(is_context_overflow(422, "too many tokens"));
         assert!(!is_context_overflow(401, "context length"));
         assert!(!is_context_overflow(400, "invalid model"));
+    }
+
+    #[test]
+    fn responses_items_separate_function_calls_and_outputs() {
+        let assistant = Message {
+            role: "assistant".into(),
+            content: Vec::new(),
+            tool_calls: vec![crate::ToolCall {
+                call_id: "call-1".into(),
+                name: "read".into(),
+                arguments: json!({"path":"README.md"}),
+                toolset_name: None,
+            }],
+            tool_call_id: None,
+        };
+        let mut output = Message::text("tool", "hello");
+        output.tool_call_id = Some("call-1".into());
+        assert_eq!(
+            responses_input_items(&[assistant, output]),
+            vec![
+                json!({"type":"function_call","call_id":"call-1","name":"read","arguments":"{\"path\":\"README.md\"}"}),
+                json!({"type":"function_call_output","call_id":"call-1","output":"hello"}),
+            ]
+        );
     }
 }
