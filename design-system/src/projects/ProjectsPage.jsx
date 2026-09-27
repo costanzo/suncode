@@ -25,6 +25,14 @@ export function ProjectsPage() {
             status="Review reference"
             tone="implemented"
           />
+          <ModuleLink
+            to="/projects/proxy-tool"
+            icon="activity"
+            title="Proxy Tool"
+            description="Standalone local API proxy for inspecting requests, responses, headers, payloads, and SSE events."
+            status="Review reference"
+            tone="implemented"
+          />
         </div>
       </Section>
     </>

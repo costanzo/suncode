@@ -14,6 +14,7 @@ import "./projects/desktop/styles/about.css";
 import "./projects/desktop/styles/dialog-window.css";
 import "./projects/desktop/workspace/styles/index.css";
 import "./projects/mobile/styles/mobile.css";
+import "./projects/proxy-tool/styles.css";
 import "./agents/styles/index.css";
 import "./styles/browser.css";
 

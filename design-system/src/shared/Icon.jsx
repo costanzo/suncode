@@ -214,6 +214,12 @@ const paths = {
       <path d="M8 7V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" />
     </>
   ),
+  pause: (
+    <>
+      <path d="M7 5v10M11 5v10" />
+    </>
+  ),
+  play: <path d="m7 4 8 6-8 6z" />,
   pin: (
     <>
       <path d="m9 3 6 6M10 8l-4 4 6 6 4-4M9 15l-6 6" />

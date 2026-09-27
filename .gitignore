@@ -44,6 +44,8 @@ node_modules/
 # Build output and tool caches
 artifacts/
 dist/
+.next/
+.ca/
 build/
 bin/
 obj/

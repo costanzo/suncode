@@ -378,6 +378,12 @@ export const primaryModules = [
           },
         ],
       },
+      {
+        path: "/projects/proxy-tool",
+        label: "Proxy Tool",
+        icon: "activity",
+        keywords: "local api proxy requests responses headers sse stream inspector developer tool",
+      },
     ],
   },
   {
