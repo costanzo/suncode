@@ -54,10 +54,10 @@ public class ContextFilter implements Filter {
 
     private static ClientType clientType(HttpServletRequest request) {
         String path = request.getRequestURI();
-        if (path.startsWith("/internal/v1/desktop/")) {
+        if (path.startsWith("/v1/desktop/")) {
             return ClientType.DESKTOP;
         }
-        if (path.startsWith("/v1/")) {
+        if (path.startsWith("/v1/mobile/")) {
             return ClientType.MOBILE;
         }
         return ClientType.OTHER;

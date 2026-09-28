@@ -30,7 +30,7 @@ import static ai.suncode.common.exception.ErrorCode.HOST_NOT_FOUND;
 import static ai.suncode.common.exception.ErrorCode.SESSION_NOT_FOUND;
 
 @RestController
-@RequestMapping("/v1")
+@RequestMapping("/v1/mobile")
 @RequiredArgsConstructor
 public class MobileRemoteController {
     private final RemoteAuthService authService;

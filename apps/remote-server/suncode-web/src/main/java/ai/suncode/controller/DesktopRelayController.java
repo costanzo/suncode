@@ -20,7 +20,7 @@ import static ai.suncode.common.exception.ErrorCode.PARAM_INVALID;
 
 /** Private Desktop boundary. Desktop receives commands over SSE and completes them over HTTP. */
 @RestController
-@RequestMapping("/internal/v1/desktop")
+@RequestMapping("/v1/desktop")
 @RequiredArgsConstructor
 public class DesktopRelayController {
     private final RemoteAuthService authService;

@@ -27,7 +27,7 @@ public class FilterConfig {
             RemoteRelayService relayService) {
         FilterRegistrationBean<DesktopAuthFilter> registrationBean = new FilterRegistrationBean<>();
         registrationBean.setFilter(new DesktopAuthFilter(authService, relayService));
-        registrationBean.addUrlPatterns("/internal/v1/desktop/*");
+        registrationBean.addUrlPatterns("/v1/desktop/*");
         registrationBean.setName("desktopAuthFilter");
         registrationBean.setOrder(2);
         return registrationBean;
@@ -39,7 +39,7 @@ public class FilterConfig {
             RemoteRelayService relayService) {
         FilterRegistrationBean<MobileAuthFilter> registrationBean = new FilterRegistrationBean<>();
         registrationBean.setFilter(new MobileAuthFilter(authService, relayService));
-        registrationBean.addUrlPatterns("/v1/*");
+        registrationBean.addUrlPatterns("/v1/mobile/*");
         registrationBean.setName("mobileAuthFilter");
         registrationBean.setOrder(2);
         return registrationBean;

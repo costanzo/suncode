@@ -79,9 +79,9 @@ public class MobileAuthFilter implements Filter {
 
     private boolean isPublic(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return "/v1/health".equals(path)
-                || "/v1/pairings/exchange".equals(path)
-                || "/v1/auth/refresh".equals(path);
+        return "/v1/mobile/health".equals(path)
+                || "/v1/mobile/pairings/exchange".equals(path)
+                || "/v1/mobile/auth/refresh".equals(path);
     }
 
     private String resolveHost(HttpServletRequest request, String token) {
@@ -93,7 +93,7 @@ public class MobileAuthFilter implements Filter {
         if (sessionMatcher.matches()) {
             return relayService.hostForSession(sessionMatcher.group(1));
         }
-        if ("GET".equalsIgnoreCase(request.getMethod()) && "/v1/sessions".equals(request.getRequestURI())) {
+        if ("GET".equalsIgnoreCase(request.getMethod()) && "/v1/mobile/sessions".equals(request.getRequestURI())) {
             String selectedHost = request.getParameter("hostId");
             if (selectedHost != null && !selectedHost.isBlank()) {
                 return selectedHost;
