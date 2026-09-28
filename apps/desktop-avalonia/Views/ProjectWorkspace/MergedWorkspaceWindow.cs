@@ -37,6 +37,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
     internal void AddProject(string projectId, WorkspaceWindow source)
     {
         source.Workspace.DataContext = source.DataContext;
+        source.UpdateLayout();
         source.Content = null;
         var title = source.DataContext is DesktopViewModel viewModel && !string.IsNullOrWhiteSpace(viewModel.ProjectTitle)
             ? viewModel.ProjectTitle
@@ -72,6 +73,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
         if (_content.Content is ProjectWorkspace activeWorkspace && ReferenceEquals(activeWorkspace, source.Workspace))
         {
             activeWorkspace.SetMergedTabs(null);
+            UpdateLayout();
             _content.Content = null;
         }
         _projectWindows.Remove(projectId);
