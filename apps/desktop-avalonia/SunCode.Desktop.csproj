@@ -19,6 +19,11 @@
     <BrowserRuntimeTarget Condition="'$(RuntimeIdentifier)' == 'win-x64'">win32-x64</BrowserRuntimeTarget>
     <BrowserRuntimeTarget Condition="'$(RuntimeIdentifier)' == 'linux-x64'">linux-x64</BrowserRuntimeTarget>
     <BrowserRuntimeSource Condition="'$(BrowserRuntimeTarget)' != ''">$(MSBuildProjectDirectory)/../../artifacts/browser-runtime/$(BrowserRuntimeTarget)</BrowserRuntimeSource>
+    <BrowserRuntimeDevelopmentTarget Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)' == 'Arm64'">darwin-arm64</BrowserRuntimeDevelopmentTarget>
+    <BrowserRuntimeDevelopmentTarget Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)' == 'X64'">win32-x64</BrowserRuntimeDevelopmentTarget>
+    <BrowserRuntimeDevelopmentTarget Condition="$([MSBuild]::IsOSPlatform('Linux')) And '$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)' == 'X64'">linux-x64</BrowserRuntimeDevelopmentTarget>
+    <BrowserRuntimeDevelopmentSource Condition="'$(BrowserRuntimeDevelopmentTarget)' != ''">$(MSBuildProjectDirectory)/../../artifacts/browser-runtime/$(BrowserRuntimeDevelopmentTarget)</BrowserRuntimeDevelopmentSource>
+    <BrowserRuntimeDevelopmentDestination>$(MSBuildProjectDirectory)/bin/$(Configuration)/$(TargetFramework)/browser-runtime</BrowserRuntimeDevelopmentDestination>
   </PropertyGroup>
 
   <ItemGroup>
@@ -43,6 +48,26 @@
           Condition="'$(BrowserRuntimeTarget)' != ''">
     <Error Condition="!Exists('$(BrowserRuntimeSource)/runtime-manifest.json')"
            Text="The packaged Browser Use runtime for $(BrowserRuntimeTarget) is missing. Build and verify $(BrowserRuntimeSource) before publishing." />
+  </Target>
+  
+  <Target Name="PrepareBrowserRuntime">
+    <Error Condition="'$(BrowserRuntimeDevelopmentTarget)' == ''"
+           Text="Browser User development runtime preparation is unsupported on this platform. Only Windows, Linux, and macOS are supported." />
+    <Exec Command="npm --prefix &quot;$(MSBuildProjectDirectory)/../../artifacts/browser-runtime&quot; run package -- --target $(BrowserRuntimeDevelopmentTarget)"/>
+    <Exec Command="npm --prefix &quot;$(MSBuildProjectDirectory)/../../artifacts/browser-runtime&quot; run verify -- &quot;${BrowserRuntimeDevelopmentSource}&quot;"/>
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(BrowserRuntimeDevelopmentDestination)'))" />
+    <Exec Condition="!$([MSBuild]::IsOSPlatform('Windows'))"
+            Command="rm -rf &quot;$(BrowserRuntimeDevelopmentDestination)&quot; &amp;&amp; ln -s &quot;$(BrowserRuntimeDevelopmentSource)&quot; &quot;$(BrowserRuntimeDevelopmentDestination)&quot;" />
+    <Exec Condition="$([MSBuild]::IsOSPlatform('Windows'))"
+            Command="cmd /c &quot;IF EXIST &quot;&quot;$(BrowserRuntimeDevelopmentDestination)&quot;&quot; rmdir /S /Q &quot;&quot;$(BrowserRuntimeDevelopmentDestination)&quot;&quot; &amp;&amp; mklink /J &quot;&quot;$(BrowserRuntimeDevelopmentDestination)&quot;&quot; &quot;&quot;$(BrowserRuntimeDevelopmentSource)&quot;&quot;&quot;" />
+  </Target>
+  
+  <Target Name="EnsureDevelopmentBrowserRuntimePresent" BeforeTargets="Build"
+          Condition="'$(Configuration)' == 'Debug' And '$(DesignTimeBuild)' != 'true' And '$(SkipBrowserRuntimeCheck)' != 'true'">
+    <Error Condition="'$(BrowserRuntimeDevelopmentTarget)' == ''"
+                 Text="Browser User development runtime is unsupported on this platform. Set SkipBrowserRuntimeCheck=true to build without it." />
+    <Error Condition="!Exists('$(BrowserRuntimeDevelopmentSource)/runtime-manifest.json')"
+           Text="The development Browser Use runtime for $(BrowserRuntimeDevelopmentTarget) is missing. Run: dotnet build apps/desktop/SunCode.Desktop.csproj -t:PrepareBrowserRuntime. To build without browser use, set SkipBrowserRuntimeCheck=true." />
   </Target>
 
   <Target Name="CopyWindowsBrowserRuntime" AfterTargets="Publish"

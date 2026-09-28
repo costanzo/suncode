@@ -51,9 +51,12 @@ The native SDK is embedded and method-oriented. There is no client-facing HTTP s
 From the repository root:
 
 ```sh
+dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj -t:PrepareBrowserRuntime
 dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj
 dotnet run --project apps/desktop-avalonia/SunCode.Desktop.csproj
 ```
+
+The preparation target packages and verifies the pinned Browser Use runtime, then links it beside the Debug executable. It requires network access the first time. Pass `-p:SkipBrowserRuntimeCheck=true` to build without Browser User.
 
 The desktop build invokes Cargo for `sdks/c` (which links the typed `sdks/rust` facade and the `suncode-agent` harness) and copies the resulting native library beside the managed executable.
 

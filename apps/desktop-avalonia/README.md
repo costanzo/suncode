@@ -11,6 +11,14 @@ The Avalonia client owns the desktop presentation and embeds the Rust agent thro
 
 ## Build and run
 
+Prepare the bundled Browser Use runtime once before the first Debug build or after changing its lock or worker:
+
+```sh
+dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj -t:PrepareBrowserRuntime
+```
+
+This packages and verifies the host runtime, then links it beside the Debug executable. It downloads the pinned Node.js and Playwright Chromium distributions. To build without Browser Use, pass `-p:UseBrowserRuntime=false`.
+
 ```sh
 dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj
 dotnet run --project apps/desktop-avalonia/SunCode.Desktop.csproj
