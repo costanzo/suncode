@@ -26,6 +26,8 @@ public partial class WorkspaceWindow : Window
     private NativeMenuItem? _mergeWindowsMenuItem;
     private NativeMenu? _recentProjectsMenu;
     private bool _restoringWindowGeometry;
+    
+    internal Window? OriginWindow { get; set; }
 
     public WorkspaceWindow()
     {
@@ -98,9 +100,11 @@ public partial class WorkspaceWindow : Window
             Height = height;
             if (saved.WindowX is { } x && saved.WindowY is { } y)
             {
-                var area = Screens.Primary?.WorkingArea;
                 var px = (int)Math.Round(x);
                 var py = (int)Math.Round(y);
+                PixelRect? area = Screens.ScreenFromPoint(new PixelPoint(px, py))?.WorkingArea;
+                area ??= OriginWindow is { } origin ? Screens.ScreenFromWindow(origin)?.WorkingArea : null;
+                area ??= Screens.Primary?.WorkingArea;
                 if (area is { } workArea)
                 {
                     px = Math.Clamp(px, workArea.X, Math.Max(workArea.X, workArea.Right - (int)Math.Round(width)));
@@ -424,10 +428,17 @@ public partial class WorkspaceWindow : Window
     {
         Width = width;
         Height = height;
-        if (Screens.Primary is not { } screen) return;
-        var area = screen.WorkingArea;
+        var area = ResolveOriginWorkingArea();
         Position = new PixelPoint(
             area.X + Math.Max(0, (area.Width - (int)width) / 2),
             area.Y + Math.Max(0, (area.Height - (int)height) / 2));
+    }
+    
+    private PixelRect ResolveOriginWorkingArea()
+    {
+        if (OriginWindow is { } origin&& Screens.ScreenFromWindow(origin) is { } originScreen)
+            return originScreen.WorkingArea;
+        if (Screens.Primary is { } primary) return primary.WorkingArea;
+        return new PixelRect(Position, PixelSize.FromSize(Bounds.Size, 1));
     }
 }

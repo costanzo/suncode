@@ -151,7 +151,7 @@ public sealed partial class App : Application
                 return;
             }
 
-            var window = new WorkspaceWindow { DataContext = viewModel };
+            var window = new WorkspaceWindow { DataContext = viewModel, OriginWindow = ResolveOriginWindow() };
             _projectWindows[project.ProjectId] = window;
             window.Closed += (_, _) => ProjectWindowClosed(project.ProjectId, viewModel);
             _hubWindow?.Hide();
@@ -231,6 +231,7 @@ public sealed partial class App : Application
         var source = merged.RemoveProject(projectId);
         if (source is null) return;
         source.Content = source.Workspace;
+        source.OriginWindow = merged;
         source.Position = new PixelPoint(pointer.X - 240, pointer.Y - 18);
         source.RestoreAsProjectWindow();
 
@@ -252,6 +253,7 @@ public sealed partial class App : Application
             var source = merged.RemoveProject(projectId);
             if (source is null) continue;
             source.Content = source.Workspace;
+            source.OriginWindow = merged;
             source.RestoreAsProjectWindow();
         }
         merged.CloseWithoutNotification();
@@ -459,6 +461,18 @@ public sealed partial class App : Application
             _hubWindow.Show();
             _hubWindow.Activate();
         }
+    }
+
+    private Window? ResolveOriginWindow()
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            var active = desktop.Windows.FirstOrDefault(window => window is WorkspaceWindow && window.IsActive && window.IsVisible);
+            if (active is not null) return active;
+            var visibleWorkspace = desktop.Windows.FirstOrDefault(window => window is WorkspaceWindow && window.IsVisible);
+            if (visibleWorkspace is not null) return visibleWorkspace;
+        }
+        return _hubWindow;
     }
 }
 
