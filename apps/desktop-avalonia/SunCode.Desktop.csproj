@@ -53,8 +53,8 @@
   <Target Name="PrepareBrowserRuntime">
     <Error Condition="'$(BrowserRuntimeDevelopmentTarget)' == ''"
            Text="Browser User development runtime preparation is unsupported on this platform. Only Windows, Linux, and macOS are supported." />
-    <Exec Command="npm --prefix &quot;$(MSBuildProjectDirectory)/../../artifacts/browser-runtime&quot; run package -- --target $(BrowserRuntimeDevelopmentTarget)"/>
-    <Exec Command="npm --prefix &quot;$(MSBuildProjectDirectory)/../../artifacts/browser-runtime&quot; run verify -- &quot;${BrowserRuntimeDevelopmentSource}&quot;"/>
+    <Exec Command="npm --prefix &quot;$(MSBuildProjectDirectory)/../../browser-runtime&quot; run package -- --target $(BrowserRuntimeDevelopmentTarget)"/>
+    <Exec Command="npm --prefix &quot;$(MSBuildProjectDirectory)/../../browser-runtime&quot; run verify -- &quot;$(BrowserRuntimeDevelopmentSource)&quot;"/>
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(BrowserRuntimeDevelopmentDestination)'))" />
     <Exec Condition="!$([MSBuild]::IsOSPlatform('Windows'))"
             Command="rm -rf &quot;$(BrowserRuntimeDevelopmentDestination)&quot; &amp;&amp; ln -s &quot;$(BrowserRuntimeDevelopmentSource)&quot; &quot;$(BrowserRuntimeDevelopmentDestination)&quot;" />
