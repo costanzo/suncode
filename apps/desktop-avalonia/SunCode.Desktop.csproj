@@ -79,12 +79,13 @@
     </PropertyGroup>
     <MakeDir Directories="$(SunCodeAppBundle)/Contents/MacOS;$(SunCodeAppBundle)/Contents/Resources" />
     <ItemGroup>
-      <SunCodePublishedFiles Include="$(PublishDir)*" Exclude="$(SunCodeAppBundle)/**" />
+      <SunCodePublishedFiles Include="$(PublishDir)**/*" Exclude="$(SunCodeAppBundle)/**" />
     </ItemGroup>
     <Copy SourceFiles="@(SunCodePublishedFiles)" DestinationFolder="$(SunCodeAppBundle)/Contents/MacOS/%(RecursiveDir)" />
     <Copy SourceFiles="Info.plist" DestinationFolder="$(SunCodeAppBundle)/Contents" />
     <Copy SourceFiles="Assets/suncode-desktop.icns" DestinationFolder="$(SunCodeAppBundle)/Contents/Resources" />
     <Exec Command="/usr/bin/xcrun swiftc -parse-as-library -emit-library -o &quot;$(SunCodeAppBundle)/Contents/MacOS/libsuncode_notifications.dylib&quot; &quot;Native/macOS/SunCodeNotifications.swift&quot;" />
+    <Exec Command="/usr/bin/codesign --force --deep --sign - --identifier dev.suncode.desktop &quot;$(SunCodeAppBundle)&quot;" />
     <RemoveDir Directories="$(SunCodeAppBundle)/Contents/Resources/browser-runtime"
                Condition="'$(BrowserRuntimeTarget)' == 'darwin-arm64' And Exists('$(BrowserRuntimeSource)')" />
     <Exec Command="/usr/bin/ditto &quot;$(BrowserRuntimeSource)&quot; &quot;$(SunCodeAppBundle)/Contents/Resources/browser-runtime&quot;"
