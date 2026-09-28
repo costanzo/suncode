@@ -77,7 +77,7 @@ internal sealed class SessionAttentionCoordinator : IDisposable
                 _ = Task.Run(ReconcileAndResubscribeAsync);
                 return;
             }
-            if (message.Event is { } attention) _ = HandleAsync(attention);
+            if (message.Event is { } attention) _ = HandleOnUiThreadAsync(attention);
         });
     }
 
@@ -99,6 +99,12 @@ internal sealed class SessionAttentionCoordinator : IDisposable
         if (_sdk is null) return;
         var candidates = await _sdk.ListAttentionCandidatesAsync(since, 512);
         foreach (var candidate in candidates.Candidates) await HandleAsync(candidate);
+    }
+
+    private Task HandleOnUiThreadAsync(AttentionEvent attention)
+    {
+        if (Dispatcher.UIThread.CheckAccess()) return HandleAsync(attention);
+        return Dispatcher.UIThread.InvokeAsync(() => HandleAsync(attention));
     }
 
     private async Task HandleAsync(AttentionEvent attention)

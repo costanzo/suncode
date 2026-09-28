@@ -13,6 +13,7 @@ use std::{
 };
 use suncode_sdk::logging_module::{self as logging};
 use suncode_sdk::{
+    AgentAttentionEvent, AttentionEventStream, AttentionEventStreamControl,
     AgentEvent, AgentSdk, BusinessError, LanguageServerWriteRequest, McpServerWriteRequest,
     SdkResult, SessionEventStream, SessionEventStreamControl, SubscriptionError,
     SUNCODE_AGENT_SDK_ABI_VERSION,
@@ -89,6 +90,81 @@ impl SunCodeAgentSubscriptionHandle {
 }
 
 impl Drop for SunCodeAgentSubscriptionHandle {
+    fn drop(&mut self) {
+        self.control.close();
+        if let Ok(mut join) = self.join.lock() {
+            if let Some(join) = join.take() {
+                if join.thread().id() != std::thread::current().id() {
+                    let _ = join.join();
+                }
+            }
+        }
+    }
+}
+
+pub struct SunCodeAgentAttentionSubscriptionHandle {
+    control: AttentionEventStreamControl,
+    stream: Mutex<Option<AttentionEventStream>>,
+    join: Mutex<Option<JoinHandle<()>>>,
+    callback: SunCodeEventCallback,
+    user_data: usize,
+    started: AtomicBool,
+}
+
+impl SunCodeAgentAttentionSubscriptionHandle {
+    fn new(stream: AttentionEventStream, callback: SunCodeEventCallback, user_data: usize) -> Self {
+        let control = stream.control();
+        Self {
+            control,
+            stream: Mutex::new(Some(stream)),
+            join: Mutex::new(None),
+            callback,
+            user_data,
+            started: AtomicBool::new(false),
+        }
+    }
+
+    fn start(&self) -> SdkResult<()> {
+        if self.started.swap(true, Ordering::AcqRel) {
+            return Err(BusinessError::new(
+                "conflict",
+                "attention subscription is already started",
+            ));
+        }
+        let stream = self
+            .stream
+            .lock()
+            .map_err(|_| BusinessError::unavailable("attention subscription state unavailable"))?
+            .take()
+            .ok_or_else(|| {
+                BusinessError::new("conflict", "attention subscription is unavailable")
+            })?;
+        let callback = self.callback;
+        let user_data = self.user_data;
+        let join = std::thread::Builder::new()
+            .name("suncode-sdk-c-attention".into())
+            .spawn(move || run_attention_subscription(stream, callback, user_data))
+            .map_err(|error| {
+                BusinessError::unavailable(format!(
+                    "attention callback thread could not start: {error}"
+                ))
+            });
+        match join {
+            Ok(join) => {
+                *self.join.lock().map_err(|_| {
+                    BusinessError::unavailable("attention subscription join state unavailable")
+                })? = Some(join);
+                Ok(())
+            }
+            Err(error) => {
+                self.control.close();
+                Err(error)
+            }
+        }
+    }
+}
+
+impl Drop for SunCodeAgentAttentionSubscriptionHandle {
     fn drop(&mut self) {
         self.control.close();
         if let Ok(mut join) = self.join.lock() {
@@ -593,6 +669,18 @@ pub unsafe extern "C" fn suncode_agent_sdk_list_settings(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_list_attention_candidates(
+    handle: *mut SunCodeAgentHandle,
+    since: *const c_char,
+    limit: usize,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let since = optional_c_string(since, "since")?;
+        sdk.list_attention_candidates(since.as_deref(), limit)
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_set_setting(
     handle: *mut SunCodeAgentHandle,
     scope: *const c_char,
@@ -917,6 +1005,57 @@ pub unsafe extern "C" fn suncode_agent_sdk_restore_checkpoint(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_subscribe_attention(
+    handle: *mut SunCodeAgentHandle,
+    callback: Option<SunCodeEventCallback>,
+    user_data: *mut c_void,
+    error_out: *mut *mut c_char,
+) -> *mut SunCodeAgentAttentionSubscriptionHandle {
+    write_error_out(error_out, ptr::null_mut());
+    let result = catch_unwind(AssertUnwindSafe(|| -> SdkResult<_> {
+        let handle = handle
+            .as_ref()
+            .ok_or_else(|| BusinessError::unavailable("agent handle is null"))?;
+        let callback = callback.ok_or_else(|| BusinessError::invalid("callback is null"))?;
+        let stream = handle.sdk.subscribe_attention_events()?;
+        let subscription =
+            SunCodeAgentAttentionSubscriptionHandle::new(stream, callback, user_data as usize);
+        subscription.start()?;
+        Ok(subscription)
+    }));
+    match result {
+        Ok(Ok(subscription)) => Box::into_raw(Box::new(subscription)),
+        Ok(Err(error)) => {
+            logging::write_business_error(
+                "sdk.attention",
+                "subscribe_attention",
+                &error,
+                "boundary=native",
+            );
+            write_error_out(error_out, into_c_string(error.to_string()));
+            ptr::null_mut()
+        }
+        Err(_) => {
+            logging::error("sdk.attention", "operation=subscribe_attention panic=true");
+            write_error_out(
+                error_out,
+                into_c_string("agent_unavailable: attention subscription panicked".to_string()),
+            );
+            ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_attention_subscription_close(
+    subscription: *mut SunCodeAgentAttentionSubscriptionHandle,
+) {
+    if !subscription.is_null() {
+        let _ = catch_unwind(AssertUnwindSafe(|| drop(Box::from_raw(subscription))));
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_submit_turn(
     handle: *mut SunCodeAgentHandle,
     session_id: *const c_char,
@@ -1182,6 +1321,53 @@ fn run_subscription(
             Err(SubscriptionError::Empty) => continue,
         }
     }
+}
+
+fn run_attention_subscription(
+    mut stream: AttentionEventStream,
+    callback: SunCodeEventCallback,
+    user_data: usize,
+) {
+    loop {
+        match stream.blocking_recv() {
+            Ok(event) => emit_attention_event(callback, user_data, &event),
+            Err(SubscriptionError::Lagged { missed }) => {
+                logging::warn(
+                    "sdk.subscribe",
+                    format!("attention subscription lagged missed={missed}"),
+                );
+                emit_attention_resync_required(callback, user_data, missed);
+                break;
+            }
+            Err(SubscriptionError::Closed) => {
+                logging::debug("sdk.subscribe", "attention subscription closed");
+                break;
+            },
+            Err(SubscriptionError::Empty) => continue,
+        }
+    }
+}
+
+fn emit_attention_event(
+    callback: SunCodeEventCallback,
+    user_data: usize,
+    event: &AgentAttentionEvent,
+) {
+    match serde_json::to_value(event) {
+        Ok(value) => emit_event_json(callback, user_data, json!({"type":"event","event":value})),
+        Err(error) => logging::error(
+            "sdk.attention",
+            format!("operation=serialize_event failed=true error={error}"),
+        ),
+    }
+}
+
+fn emit_attention_resync_required(callback: SunCodeEventCallback, user_data: usize, missed: u64) {
+    emit_event_json(
+        callback,
+        user_data,
+        json!({"type":"resync_required","missed":missed}),
+    );
 }
 
 fn emit_agent_event(callback: SunCodeEventCallback, user_data: usize, event: &AgentEvent) {
