@@ -4,6 +4,8 @@ import ai.suncode.common.exception.BusinessException;
 import ai.suncode.common.utils.MarshallingUtils;
 import ai.suncode.message.remote.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -45,11 +47,20 @@ public class RemoteRelayService {
     private final ConcurrentHashMap<String, DesktopResponse> idempotentResults = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> sessionHosts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, HostEvents> hostEvents = new ConcurrentHashMap<>();
+    private final Object connectionLifecycleLock = new Object();
+    private volatile boolean shuttingDown;
 
     public SseEmitter connectDesktop(String hostId, String token) {
         requireText(hostId, "X-Host-Id is required");
         DesktopConnection connection = new DesktopConnection(hostId, token, new SseEmitter(0L));
-        DesktopConnection previous = desktopConnections.put(hostId, connection);
+        DesktopConnection previous;
+        synchronized (connectionLifecycleLock) {
+            if (shuttingDown) {
+                connection.close();
+                return connection.emitter();
+            }
+            previous = desktopConnections.put(hostId, connection);
+        }
         if (previous != null) {
             previous.close();
         }
@@ -87,7 +98,12 @@ public class RemoteRelayService {
         }
         String requestId = UUID.randomUUID().toString();
         CompletableFuture<DesktopResponse> future = new CompletableFuture<>();
-        pending.put(requestId, future);
+        synchronized (connectionLifecycleLock) {
+            if (shuttingDown) {
+                throw new BusinessException(DESKTOP_UNAVAILABLE, "sever is shutting down");
+            }
+            pending.put(requestId, future);
+        }
         try {
             DesktopCommand commandEnvelope = new DesktopCommand(
                     requestId, hostId, sessionId, command, payload == null ? new DesktopCommandPayload() : payload);
@@ -160,6 +176,13 @@ public class RemoteRelayService {
             throw new BusinessException(SESSION_NOT_FOUND);
         }
         MobileConnection connection = new MobileConnection(sessionId, new SseEmitter(0L));
+        synchronized (connectionLifecycleLock) {
+            if (shuttingDown) {
+                connection.close();
+                return connection.emitter();
+            }
+            mobileConnections.computeIfAbsent(sessionId, ignored -> new CopyOnWriteArrayList<>()).add(connection);
+        }
         mobileConnections.computeIfAbsent(sessionId, ignored -> new CopyOnWriteArrayList<>()).add(connection);
         connection.emitter().onCompletion(() -> removeMobile(connection));
         connection.emitter().onTimeout(() -> removeMobile(connection));
@@ -187,6 +210,28 @@ public class RemoteRelayService {
             connection.close();
             throw new BusinessException(INTERNAL_ERROR, "session stream failed", error);
         }
+    }
+
+    @EventListener(ContextClosedEvent.class)
+    public void onCloseContext() {
+        List<DesktopConnection> desktops;
+        List<MobileConnection> mobiles = new ArrayList<>();
+        List<CompletableFuture<DesktopResponse>> pendingFutures;
+        synchronized (connectionLifecycleLock) {
+            shuttingDown = true;
+            desktops = new ArrayList<>(desktopConnections.values());
+            desktopConnections.clear();
+            for (CopyOnWriteArrayList<MobileConnection> connections : mobileConnections.values()) {
+                mobiles.addAll(connections);
+            }
+            mobileConnections.clear();
+            pendingFutures = new ArrayList<>(pending.values());
+            pending.clear();
+        }
+        desktops.forEach(DesktopConnection::close);
+        mobiles.forEach(MobileConnection::close);
+        pendingFutures.forEach(future -> future.completeExceptionally(new BusinessException(DESKTOP_UNAVAILABLE, "server is shutting down")));
+        log.info("Closed {} desktop connections, {} mobile connections, and {} pending requests due to server shutdown", desktops.size(), mobiles.size(), pendingFutures.size());
     }
 
     public List<HostDto> hosts() {
