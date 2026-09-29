@@ -186,7 +186,7 @@ Turn submission returns a tagged outcome:
 
 Cancellation returns `cancellation_requested`; cancelling a turn that is not active returns `conflict`.
 
-`allow_session` atomically approves the pending operation and persists session-scoped `full_control=true` in `configuration`. While enabled, known approval-gated tools skip interactive approval for that session, but validation, project and dependency scope, auditing, checkpoints, cancellation, and unknown-tool denial remain enforced. Writing session-scoped `full_control=false` through `set_setting` restores normal approval behavior.
+`allow_session` atomically approves the pending operation and persists session-scoped `full_control=true` in `configuration`. While enabled, known approval-gated tools skip interactive approval for that session, but hard-deny command safety filters, validation, project and dependency scope, auditing, checkpoints, cancellation, and unknown-tool denial remain enforced. Writing session-scoped `full_control=false` through `set_setting` restores normal approval behavior.
 
 Proxy configuration is global and is updated atomically through `set_proxy_configuration`. The request carries `mode`, `url`, `username`, optional replacement `password`, explicit `clearPassword`, and `bypass`. Omitting `password` preserves the stored value. Settings reads never return the persisted `proxy_password`; they return `proxy_password_configured` instead. The update response likewise contains only non-secret values and `passwordConfigured`.
 
@@ -202,7 +202,7 @@ An SDK error contains:
 }
 ```
 
-Messages and details are bounded and redacted. Important codes include `invalid_arguments`, `agent_already_active`, `agent_unavailable`, `project_not_found`, `session_not_found`, `model_unavailable`, `provider_unconfigured`, `approval_required`, `authorization_denied`, `archived_session_read_only`, `child_session_read_only`, `checkpoint_unavailable`, `restore_conflict`, `conflict`, `scope_denied`, `mcp_server_conflict`, `mcp_server_revision_conflict`, `mcp_tool_unavailable`, `not_git_repository`, `unsupported_git_repository`, `git_read_failed`, `git_diff_not_found`, `iteration_budget_exceeded`, `tool_budget_exceeded`, `cancelled`, and `resync_required`.
+Messages and details are bounded and redacted. Important codes include `invalid_arguments`, `unsafe_command_blocked`, `agent_already_active`, `agent_unavailable`, `project_not_found`, `session_not_found`, `model_unavailable`, `provider_unconfigured`, `approval_required`, `authorization_denied`, `archived_session_read_only`, `child_session_read_only`, `checkpoint_unavailable`, `restore_conflict`, `conflict`, `scope_denied`, `mcp_server_conflict`, `mcp_server_revision_conflict`, `mcp_tool_unavailable`, `not_git_repository`, `unsupported_git_repository`, `git_read_failed`, `git_diff_not_found`, `iteration_budget_exceeded`, `tool_budget_exceeded`, `cancelled`, and `resync_required`.
 
 Panics are contained at native binding boundaries and converted to `agent_unavailable`; they never unwind into a host language.
 
