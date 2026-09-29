@@ -41,15 +41,25 @@ public sealed class LocalizationService
     public void SetLocale(string? locale)
     {
         var normalized = Normalize(locale);
-        if (string.Equals(CurrentLocale, normalized, StringComparison.Ordinal)) return;
+        // App.axaml ships with the English dictionary as the bootstrap resource.
+        // The first runtime locale change must replace that dictionary too; only
+        // removing _activeDictionary would leave the bootstrap English values
+        // competing with the selected locale.
+        if (string.Equals(CurrentLocale, normalized, StringComparison.Ordinal) && _activeDictionary is not null) return;
 
         var dictionary = CreateDictionary(normalized);
         var merged = _application.Resources.MergedDictionaries;
-        if (_activeDictionary is not null) merged.Remove(_activeDictionary);
+        foreach (var existing in merged.OfType<ResourceInclude>().Where(IsLocalizationDictionary).ToArray())
+        {
+            merged.Remove(existing);
+        }
         merged.Insert(0, dictionary);
         _activeDictionary = dictionary;
         CurrentLocale = normalized;
     }
+
+    private static bool IsLocalizationDictionary(ResourceInclude include) =>
+        include.Source?.OriginalString.Contains("/Resources/Localization/Strings.", StringComparison.OrdinalIgnoreCase) == true;
 
     internal static ResourceInclude CreateDictionary(string locale) =>
         new(new Uri("avares://SunCode"))

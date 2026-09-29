@@ -1,3 +1,4 @@
+using SunCode.Desktop.Infrastructure;
 using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
@@ -43,32 +44,32 @@ public sealed partial class DesktopViewModel
     public Task<bool> SetBrowserUseEnabledAsync(bool enabled) => RunBrowserMutationAsync(
         async () => BrowserRuntime = await _sdk!.SetBrowserUseEnabledAsync(enabled),
         enabled
-            ? "Browser Use enabled. Chromium starts only when a project needs it."
-            : "Browser Use disabled. Active browser runtimes were stopped.");
+            ? LocalizationService.GetString("Loc_BrowserUseEnabledStatus", "Browser Use enabled. Chromium starts only when a project needs it.")
+            : LocalizationService.GetString("Loc_BrowserUseDisabledStatus", "Browser Use disabled. Active browser runtimes were stopped."));
 
     public Task<bool> VerifyBrowserRuntimeAsync() => RunBrowserMutationAsync(
         async () => BrowserRuntime = await _sdk!.VerifyBrowserRuntimeAsync(SelectedProject?.ProjectId),
-        "Bundled browser runtime verified.");
+        LocalizationService.GetString("Loc_BrowserRuntimeVerified", "Bundled browser runtime verified."));
 
     public Task<bool> StartBrowserProjectAsync() => RunBrowserProjectMutationAsync(
         projectId => _sdk!.StartBrowserProjectAsync(projectId),
-        "Project browser started in the background.");
+        LocalizationService.GetString("Loc_ProjectBrowserStarted", "Project browser started in the background."));
 
     public Task<bool> TakeBrowserControlAsync() => RunBrowserProjectMutationAsync(
         projectId => _sdk!.TakeBrowserControlAsync(projectId),
-        "Browser tools paused while you control Chromium.");
+        LocalizationService.GetString("Loc_BrowserControlPaused", "Browser tools paused while you control Chromium."));
 
     public Task<bool> ReturnBrowserControlAsync() => RunBrowserProjectMutationAsync(
         projectId => _sdk!.ReturnBrowserControlAsync(projectId),
-        "Control returned. The agent must take a fresh page snapshot.");
+        LocalizationService.GetString("Loc_BrowserControlReturned", "Control returned. The agent must take a fresh page snapshot."));
 
     public Task<bool> RestartBrowserRuntimeAsync() => RunBrowserProjectMutationAsync(
         projectId => _sdk!.RestartBrowserRuntimeAsync(projectId),
-        "Project browser restarted with its persistent profile.");
+        LocalizationService.GetString("Loc_ProjectBrowserRestarted", "Project browser restarted with its persistent profile."));
 
     public Task<bool> StopBrowserRuntimeAsync() => RunBrowserProjectMutationAsync(
         projectId => _sdk!.StopBrowserRuntimeAsync(projectId),
-        "Project browser stopped. Its profile was preserved.");
+        LocalizationService.GetString("Loc_ProjectBrowserStopped", "Project browser stopped. Its profile was preserved."));
 
     public async Task<bool> ClearBrowserProfileAsync()
     {
@@ -76,7 +77,10 @@ public sealed partial class DesktopViewModel
         try
         {
             await _sdk!.ClearBrowserProfileAsync(SelectedProject.ProjectId);
-            BrowserStatusText = $"Browser data cleared for {SelectedProject.DisplayName}.";
+            BrowserStatusText = string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                LocalizationService.GetString("Loc_BrowserDataCleared", "Browser data cleared for {0}."),
+                SelectedProject.DisplayName);
             await LoadBrowserRuntimeAsync();
             return true;
         }
@@ -94,7 +98,7 @@ public sealed partial class DesktopViewModel
     {
         if (SelectedProject is null)
         {
-            BrowserStatusText = "Open a project to manage its browser runtime.";
+            BrowserStatusText = LocalizationService.GetString("Loc_OpenProjectToManageBrowser", "Open a project to manage its browser runtime.");
             return false;
         }
         return await RunBrowserMutationAsync(

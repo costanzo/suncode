@@ -200,7 +200,10 @@ public sealed partial class ModelProviderSettingsControl : UserControl
         ApiKeyInput.Text = ApiKeyText ?? string.Empty;
         _syncingApiKey = false;
 
-        ApiKeyInput.PlaceholderText = ApiKeyPlaceholderText ?? $"Paste {provider?.DisplayName ?? selectedId} API key";
+        ApiKeyInput.PlaceholderText = ApiKeyPlaceholderText ?? string.Format(
+            System.Globalization.CultureInfo.CurrentCulture,
+            LocalizationService.GetString("Loc_PasteApiKey", "Paste {0} API key"),
+            provider?.DisplayName ?? selectedId);
         EndpointStatusTextBlock.Text = EndpointStatusText ?? string.Empty;
         EndpointStatusTextBlock.Foreground = EndpointStatusBrush ?? this.FindResource("TextSecondaryBrush") as IBrush;
         var models = ProviderModels?.Where(model => !string.IsNullOrWhiteSpace(model.Display)).ToArray() ?? [];

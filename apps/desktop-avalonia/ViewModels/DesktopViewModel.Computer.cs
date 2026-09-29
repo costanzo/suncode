@@ -1,3 +1,4 @@
+using SunCode.Desktop.Infrastructure;
 using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
@@ -46,9 +47,9 @@ public sealed partial class DesktopViewModel
         try
         {
             ComputerRuntime = await _sdk!.SetComputerUseEnabledAsync(enabled);
-            ComputerStatusText = enabled
-                ? "Computer Use enabled. Desktop input still requires approval."
-                : "Computer Use disabled and held input was released.";
+            ComputerStatusText = LocalizationService.GetString(
+                enabled ? "Loc_ComputerUseEnabledStatus" : "Loc_ComputerUseDisabledStatus",
+                enabled ? "Computer Use enabled. Desktop input still requires approval." : "Computer Use disabled and held input was released.");
             return true;
         }
         catch (Exception exception)
@@ -65,9 +66,9 @@ public sealed partial class DesktopViewModel
         try
         {
             ComputerRuntime = await _sdk!.RequestComputerCapturePermissionAsync();
-            ComputerStatusText = ComputerRuntime.CapturePermission == "allowed"
-                ? "Screen capture permission is available."
-                : "Screen capture permission is still unavailable. Review the operating-system prompt or privacy settings.";
+            ComputerStatusText = LocalizationService.GetString(
+                ComputerRuntime.CapturePermission == "allowed" ? "Loc_ScreenCapturePermissionAvailable" : "Loc_ScreenCapturePermissionUnavailable",
+                ComputerRuntime.CapturePermission == "allowed" ? "Screen capture permission is available." : "Screen capture permission is still unavailable. Review the operating-system prompt or privacy settings.");
             return ComputerRuntime.CapturePermission == "allowed";
         }
         catch (Exception exception)
@@ -84,9 +85,9 @@ public sealed partial class DesktopViewModel
         try
         {
             ComputerRuntime = await _sdk!.RequestComputerInputPermissionAsync();
-            ComputerStatusText = ComputerRuntime.InputPermission == "allowed"
-                ? "Input control permission is available."
-                : "Input control permission is still unavailable. Review the operating-system prompt or privacy settings.";
+            ComputerStatusText = LocalizationService.GetString(
+                ComputerRuntime.InputPermission == "allowed" ? "Loc_InputControlPermissionAvailable" : "Loc_InputControlPermissionUnavailable",
+                ComputerRuntime.InputPermission == "allowed" ? "Input control permission is available." : "Input control permission is still unavailable. Review the operating-system prompt or privacy settings.");
             return ComputerRuntime.InputPermission == "allowed";
         }
         catch (Exception exception)
@@ -103,7 +104,7 @@ public sealed partial class DesktopViewModel
         try
         {
             ComputerRuntime = await _sdk!.EmergencyStopComputerUseAsync();
-            ComputerStatusText = "Computer Use stopped. Held input was released.";
+            ComputerStatusText = LocalizationService.GetString("Loc_ComputerUseStopped", "Computer Use stopped. Held input was released.");
             return true;
         }
         catch (Exception exception)
@@ -120,7 +121,7 @@ public sealed partial class DesktopViewModel
         try
         {
             ComputerRuntime = await _sdk!.TakeComputerControlAsync();
-            ComputerStatusText = "You control the desktop. Computer Use tools are paused.";
+            ComputerStatusText = LocalizationService.GetString("Loc_YouControlDesktop", "You control the desktop. Computer Use tools are paused.");
             return true;
         }
         catch (Exception exception)
@@ -137,7 +138,7 @@ public sealed partial class DesktopViewModel
         try
         {
             ComputerRuntime = await _sdk!.ReturnComputerControlAsync();
-            ComputerStatusText = "Control returned to the agent. A fresh screenshot is required before coordinate input.";
+            ComputerStatusText = LocalizationService.GetString("Loc_ControlReturnedFreshScreenshot", "Control returned to the agent. A fresh screenshot is required before coordinate input.");
             return true;
         }
         catch (Exception exception)
