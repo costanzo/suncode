@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: suncode-remote-server
+
+server:
+  servlet:
+    context-path: /remote-server

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 
 import static ai.suncode.common.exception.ErrorCode.INTERNAL_ERROR;
 import static ai.suncode.common.exception.ErrorCode.PARAM_INVALID;
@@ -39,6 +40,12 @@ public class ErrorControllerAdvice {
     public ApiBaseRet<?> exception(Exception e) {
         log.error("Unknown error ", e);
         return ApiBaseRet.error(INTERNAL_ERROR.getCode(), INTERNAL_ERROR.getMessage());
+    }
+
+    @ExceptionHandler(value = AsyncRequestNotUsableException.class)
+    public ResponseEntity<Void> asyncRequestNotUsableException(AsyncRequestNotUsableException e) {
+        log.info("AsyncRequestNotUsableException: {}", e.getMessage());
+        return ResponseEntity.ok().build();
     }
 
 }

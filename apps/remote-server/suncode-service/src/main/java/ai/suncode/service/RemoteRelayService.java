@@ -3,6 +3,7 @@ package ai.suncode.service;
 import ai.suncode.common.exception.BusinessException;
 import ai.suncode.common.utils.MarshallingUtils;
 import ai.suncode.message.remote.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -32,9 +33,11 @@ import static ai.suncode.common.exception.ErrorCode.INTERNAL_ERROR;
 
 /** Single-node relay state. The interfaces are intentionally kept behind this service for a later shared store. */
 @Service
+@Slf4j
 public class RemoteRelayService {
     public static final long REQUEST_TIMEOUT_SECONDS = 15;
     private static final int REPLAY_LIMIT = 256;
+    private static final String PING_EVENT = "ping";
 
     private final ConcurrentHashMap<String, DesktopConnection> desktopConnections = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<MobileConnection>> mobileConnections = new ConcurrentHashMap<>();
@@ -233,6 +236,33 @@ public class RemoteRelayService {
             emitter.send(SseEmitter.event().name(event).id(id).data(MarshallingUtils.toJson(data)));
         } catch (IOException | IllegalStateException ignored) {
             emitter.completeWithError(ignored);
+        }
+    }
+
+    public void heartbeat() {
+        int desktopCount = desktopConnections.size();
+        for (DesktopConnection connection : desktopConnections.values()) {
+            sendComment(connection.emitter());
+        }
+        int mobileCount = 0;
+        for (CopyOnWriteArrayList<MobileConnection> connections : mobileConnections.values()) {
+            for (MobileConnection connection : connections) {
+                sendComment(connection.emitter());
+                mobileCount++;
+            }
+        }
+        log.info("Heartbeat sent to {} desktop connections and {} mobile connections", desktopCount, mobileCount);
+    }
+
+    private void sendComment(SseEmitter emitter) {
+        try {
+            emitter.send(SseEmitter.event().comment(PING_EVENT));
+        } catch (IOException | IllegalStateException ignored) {
+            try {
+                emitter.complete();
+            } catch (RuntimeException e) {
+                // Ignore if the emitter is already completed
+            }
         }
     }
 
