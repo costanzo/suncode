@@ -27,6 +27,16 @@ public sealed class LocalizationTests
     }
 
     [Fact]
+    public void CreateDictionarySetsSource()
+    {
+        var dictionary = LocalizationService.CreateDictionary(LocalizationService.SimplifiedChineseLocale);
+
+        Assert.Equal(
+            new Uri("avares://SunCode/Resources/Localization/Strings.zh-CN.axaml"),
+            dictionary.Source);
+    }
+
+    [Fact]
     public void BundledDictionariesHaveMatchingKeys()
     {
         var projectRoot = new DirectoryInfo(AppContext.BaseDirectory);

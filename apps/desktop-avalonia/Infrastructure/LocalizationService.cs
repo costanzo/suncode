@@ -43,13 +43,19 @@ public sealed class LocalizationService
         var normalized = Normalize(locale);
         if (string.Equals(CurrentLocale, normalized, StringComparison.Ordinal)) return;
 
-        var dictionary = new ResourceInclude(new Uri($"avares://SunCode/Resources/Localization/Strings.{normalized}.axaml"));
+        var dictionary = CreateDictionary(normalized);
         var merged = _application.Resources.MergedDictionaries;
         if (_activeDictionary is not null) merged.Remove(_activeDictionary);
         merged.Insert(0, dictionary);
         _activeDictionary = dictionary;
         CurrentLocale = normalized;
     }
+
+    internal static ResourceInclude CreateDictionary(string locale) =>
+        new(new Uri("avares://SunCode"))
+        {
+            Source = new Uri($"avares://SunCode/Resources/Localization/Strings.{locale}.axaml")
+        };
 }
 
 public sealed record LocaleOption(string Code, string DisplayName);
