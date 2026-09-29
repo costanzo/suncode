@@ -10,6 +10,7 @@
 }
 
 .mobile-frame {
+  position: relative;
   width: min(100%, 390px);
   min-height: 700px;
   overflow: hidden;
@@ -414,6 +415,75 @@
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 500;
+}
+
+.mobile-setting-row.is-selected {
+  background: var(--surface-active);
+}
+
+.mobile-dialog-backdrop {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: color-mix(in srgb, var(--canvas) 68%, transparent);
+}
+
+.mobile-language-dialog {
+  display: grid;
+  width: min(100%, 320px);
+  gap: 4px;
+  padding: 16px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  box-shadow: var(--shadow-popover);
+}
+
+.mobile-language-dialog-heading {
+  display: grid;
+  gap: 5px;
+  padding: 2px 2px 10px;
+}
+
+.mobile-language-dialog-heading strong {
+  font-size: 16px;
+}
+
+.mobile-language-dialog-heading span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.mobile-language-option {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.mobile-language-option.is-selected {
+  background: var(--surface-active);
+}
+
+.mobile-language-option > span:nth-child(2) {
+  flex: 1;
+}
+
+.mobile-language-option code {
+  color: var(--text-muted);
+  font: 10px var(--font-mono);
+}
+
+.mobile-language-dialog > button {
+  justify-self: end;
+  margin-top: 8px;
 }
 
 .mobile-offline-specimen {

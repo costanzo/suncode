@@ -56,11 +56,12 @@ function MobileFrame({
   action,
   children,
   hideNavigation = false,
+  ariaLabel,
 }) {
   return (
     <div
       className={`mobile-frame${hideNavigation ? " mobile-frame-detail" : ""}`}
-      aria-label={`${title} mobile screen specimen`}
+      aria-label={ariaLabel || `${title} mobile screen specimen`}
     >
       <div className="mobile-frame-statusbar">
         <span>9:41</span>
@@ -230,9 +231,9 @@ function HostListScreen() {
   );
 }
 
-function SettingsScreen() {
+function SettingsScreen({ languageDialog = false }) {
   return (
-    <MobileFrame title="Settings" activeTab="Settings">
+    <MobileFrame title="Settings" activeTab="Settings" ariaLabel={languageDialog ? "Mobile settings with language dialog" : undefined}>
       <div className="mobile-settings-group">
         <span className="mobile-section-label">Appearance</span>
         <div className="mobile-setting-row">
@@ -240,6 +241,13 @@ function SettingsScreen() {
             <Icon name="moon" size={18} /> Theme
           </span>
           <strong>System</strong>
+          <Icon name="chevron-right" size={16} />
+        </div>
+        <div className="mobile-setting-row is-selected">
+          <span>
+            <Icon name="language" size={18} /> Interface language
+          </span>
+          <strong>English</strong>
           <Icon name="chevron-right" size={16} />
         </div>
         <div className="mobile-setting-row">
@@ -282,6 +290,27 @@ function SettingsScreen() {
           <code>remote.v1</code>
         </div>
       </div>
+      {languageDialog && (
+        <div className="mobile-dialog-backdrop" role="dialog" aria-label="Interface language">
+          <div className="mobile-language-dialog">
+            <div className="mobile-language-dialog-heading">
+              <strong>Language</strong>
+              <span>Choose the language used across Mobile.</span>
+            </div>
+            <div className="mobile-language-option is-selected">
+              <span className="mobile-radio-dot" />
+              <span>English</span>
+              <code>en-US</code>
+            </div>
+            <div className="mobile-language-option">
+              <span className="mobile-radio-dot" />
+              <span>简体中文</span>
+              <code>zh-CN</code>
+            </div>
+            <Button variant="quiet">Cancel</Button>
+          </div>
+        </div>
+      )}
     </MobileFrame>
   );
 }
@@ -850,7 +879,7 @@ export function MobileSettingsPage() {
       <MobilePageSection title="Settings and appearance">
         <div className="mobile-specimen-grid">
           <SettingsScreen />
-          <SettingsScreen />
+          <SettingsScreen languageDialog />
         </div>
       </MobilePageSection>
       <MobilePageSection
@@ -868,6 +897,11 @@ export function MobileSettingsPage() {
             <Icon name="moon" size={18} />
             <strong>Theme</strong>
             <span>System / Light / Dark</span>
+          </div>
+          <div>
+            <Icon name="language" size={18} />
+            <strong>Interface language</strong>
+            <span>English / 简体中文</span>
           </div>
           <div>
             <Icon name="lock" size={18} />

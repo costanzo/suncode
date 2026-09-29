@@ -10,7 +10,7 @@ import androidx.compose.ui.window.ComposeUIViewController
 import platform.Foundation.NSBundle
 
 fun MainViewController(onScanPairing: (((String) -> Unit) -> Unit)? = null) = createRepository().let { repository ->
-    ComposeUIViewController { App(repository, onScanPairing = onScanPairing) }
+    ComposeUIViewController { App(repository, onScanPairing = onScanPairing, localeStore = IosMobileLocaleStore()) }
 }
 
 private fun createRepository(): MobileRepository {

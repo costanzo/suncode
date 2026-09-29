@@ -30,10 +30,10 @@ class MainActivity : ComponentActivity() {
                 if (result.resultCode == RESULT_OK && !payload.isNullOrBlank()) pendingScanCallback?.invoke(payload)
                 pendingScanCallback = null
             }
-            App(repository) { onResult ->
+            App(repository, onScanPairing = { onResult ->
                 pendingScanCallback = onResult
                 scanner.launch(Intent(this, QrScannerActivity::class.java))
-            }
+            }, localeStore = AndroidMobileLocaleStore(applicationContext))
         }
     }
 
