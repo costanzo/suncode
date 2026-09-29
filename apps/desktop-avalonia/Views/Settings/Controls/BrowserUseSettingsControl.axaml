@@ -5,21 +5,21 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
-        <TextBlock Text="Browser use" Classes="sc-text-title" />
+        <TextBlock Text="{DynamicResource Loc_BrowserUse}" Classes="sc-text-title" />
         <TextBlock Classes="settings-hint" TextWrapping="Wrap"
-                   Text="Run the bundled Playwright Chromium for dynamic web inspection and interaction. Website changes and browser data are outside filesystem undo." />
+                   Text="{DynamicResource Loc_BrowserUseHint}" />
       </StackPanel>
 
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="AVAILABILITY" />
+        <TextBlock Classes="section-label" Text="{DynamicResource Loc_Availability}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Enable Browser Use" />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_EnableBrowserUse}" />
             <TextBlock Classes="settings-row-hint" TextWrapping="Wrap"
-                       Text="Makes browser tools available. Node.js and Chromium start lazily when a project needs them." />
+                       Text="{DynamicResource Loc_EnableBrowserUseHint}" />
           </StackPanel>
           <ToggleSwitch x:Name="EnabledToggle" Grid.Column="1" Classes="sc-toggle-switch"
-                        OnContent="On" OffContent="Off" HorizontalAlignment="Right"
+                        OnContent="{DynamicResource Loc_On}" OffContent="{DynamicResource Loc_Off}" HorizontalAlignment="Right"
                         Click="OnEnabledChanged" />
         </Grid>
         <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1" Padding="0,13" Margin="0,6,0,0">
@@ -27,55 +27,55 @@
             <Grid ColumnDefinitions="10,*" ColumnSpacing="9">
               <Ellipse x:Name="InstallationStatusDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" Margin="0,5,0,0" />
               <StackPanel Grid.Column="1" Spacing="3">
-                <TextBlock x:Name="InstallationStateText" Text="Disabled" FontSize="12" FontWeight="SemiBold" />
-                <TextBlock Text="Bundled installation" Classes="settings-row-hint" />
+                <TextBlock x:Name="InstallationStateText" Text="{DynamicResource Loc_Disabled}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="{DynamicResource Loc_BundledInstallation}" Classes="settings-row-hint" />
               </StackPanel>
             </Grid>
             <Grid Grid.Column="1" ColumnDefinitions="10,*" ColumnSpacing="9">
               <Ellipse x:Name="RuntimeStatusDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" Margin="0,5,0,0" />
               <StackPanel Grid.Column="1" Spacing="3">
-                <TextBlock x:Name="RuntimeStateText" Text="Not started" FontSize="12" FontWeight="SemiBold" />
-                <TextBlock x:Name="RuntimeScopeText" Text="No project selected" Classes="settings-row-hint" />
+                <TextBlock x:Name="RuntimeStateText" Text="{DynamicResource Loc_NotStarted}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock x:Name="RuntimeScopeText" Text="{DynamicResource Loc_NoProjectSelected}" Classes="settings-row-hint" />
               </StackPanel>
             </Grid>
           </Grid>
         </Border>
         <StackPanel Classes="settings-actions">
-          <Button x:Name="VerifyButton" Classes="compact quiet sc-button" Content="Verify runtime" Click="OnVerify" />
+          <Button x:Name="VerifyButton" Classes="compact quiet sc-button" Content="{DynamicResource Loc_VerifyRuntime}" Click="OnVerify" />
           <TextBlock x:Name="StatusText" Classes="sc-text-status" VerticalAlignment="Center" TextWrapping="Wrap" />
         </StackPanel>
       </StackPanel>
 
       <Border Classes="settings-divider" />
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="BUNDLED RUNTIME" />
+        <TextBlock Classes="section-label" Text="{DynamicResource Loc_BundledRuntime}" />
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="112,*,32">
-          <TextBlock Text="Target" Classes="settings-row-hint" VerticalAlignment="Center" />
+          <TextBlock Text="{DynamicResource Loc_Target}" Classes="settings-row-hint" VerticalAlignment="Center" />
           <StackPanel Grid.Column="1" Spacing="3" Margin="0,9">
             <TextBlock x:Name="TargetText" Classes="mono" FontSize="10" Text="—" />
-            <TextBlock Text="Bundled for this SunCode installation" Classes="settings-row-hint" />
+            <TextBlock Text="{DynamicResource Loc_BundledForInstallation}" Classes="settings-row-hint" />
           </StackPanel>
-          <TextBlock Grid.Row="1" Text="Node.js" Classes="settings-row-hint" VerticalAlignment="Center" />
+          <TextBlock Grid.Row="1" Text="{DynamicResource Loc_NodeJs}" Classes="settings-row-hint" VerticalAlignment="Center" />
           <StackPanel Grid.Row="1" Grid.Column="1" Spacing="3" Margin="0,9">
             <TextBlock x:Name="NodeVersionText" Classes="mono" FontSize="10" Text="—" />
             <TextBlock x:Name="NodePathText" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
           </StackPanel>
-          <Button x:Name="CopyNodePathButton" Grid.Row="1" Grid.Column="2" Classes="icon quiet sc-button" ToolTip.Tip="Copy Node.js path"
-                  AutomationProperties.Name="Copy Node.js path" Click="OnCopyNodePath">
+          <Button x:Name="CopyNodePathButton" Grid.Row="1" Grid.Column="2" Classes="icon quiet sc-button" ToolTip.Tip="{DynamicResource Loc_CopyNodePath}"
+                  AutomationProperties.Name="{DynamicResource Loc_CopyNodePath}" Click="OnCopyNodePath">
             <svg:Svg Width="14" Height="14" Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
           </Button>
-          <TextBlock Grid.Row="2" Text="Playwright" Classes="settings-row-hint" VerticalAlignment="Center" />
+          <TextBlock Grid.Row="2" Text="{DynamicResource Loc_Playwright}" Classes="settings-row-hint" VerticalAlignment="Center" />
           <TextBlock x:Name="PlaywrightVersionText" Grid.Row="2" Grid.Column="1" Classes="mono" FontSize="10" Margin="0,13" Text="—" />
-          <TextBlock Grid.Row="3" Text="Chromium" Classes="settings-row-hint" VerticalAlignment="Center" />
+          <TextBlock Grid.Row="3" Text="{DynamicResource Loc_Chromium}" Classes="settings-row-hint" VerticalAlignment="Center" />
           <StackPanel Grid.Row="3" Grid.Column="1" Spacing="3" Margin="0,9">
             <TextBlock x:Name="ChromiumVersionText" Classes="mono" FontSize="10" Text="—" />
             <TextBlock x:Name="ChromiumPathText" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
           </StackPanel>
-          <Button x:Name="CopyChromiumPathButton" Grid.Row="3" Grid.Column="2" Classes="icon quiet sc-button" ToolTip.Tip="Copy Chromium path"
-                  AutomationProperties.Name="Copy Chromium path" Click="OnCopyChromiumPath">
+          <Button x:Name="CopyChromiumPathButton" Grid.Row="3" Grid.Column="2" Classes="icon quiet sc-button" ToolTip.Tip="{DynamicResource Loc_CopyChromiumPath}"
+                  AutomationProperties.Name="{DynamicResource Loc_CopyChromiumPath}" Click="OnCopyChromiumPath">
             <svg:Svg Width="14" Height="14" Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
           </Button>
-          <TextBlock Grid.Row="4" Text="Worker protocol" Classes="settings-row-hint" VerticalAlignment="Center" />
+          <TextBlock Grid.Row="4" Text="{DynamicResource Loc_WorkerProtocol}" Classes="settings-row-hint" VerticalAlignment="Center" />
           <TextBlock x:Name="WorkerProtocolText" Grid.Row="4" Grid.Column="1" Classes="mono" FontSize="10" Margin="0,13" Text="—" />
         </Grid>
         <Border Background="{DynamicResource SurfaceInsetBrush}" BorderBrush="{DynamicResource BorderBrush}"
@@ -83,8 +83,8 @@
           <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
             <svg:Svg Width="15" Height="15" Path="/Assets/icons/lock.svg" Css="{DynamicResource IconSvgCss}" />
             <StackPanel Grid.Column="1" Spacing="3">
-              <TextBlock x:Name="IntegrityText" Text="Integrity unavailable" FontSize="11" FontWeight="SemiBold" />
-              <TextBlock Classes="settings-row-hint" Text="Versions, packaged paths, and runtime trees are checked against the application-protected manifest." />
+              <TextBlock x:Name="IntegrityText" Text="{DynamicResource Loc_IntegrityUnavailable}" FontSize="11" FontWeight="SemiBold" />
+              <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_IntegrityHint}" />
             </StackPanel>
           </Grid>
         </Border>
@@ -93,42 +93,42 @@
       <Border Classes="settings-divider" />
       <Border x:Name="NoProjectSection">
         <StackPanel Classes="settings-panel-section">
-          <TextBlock Classes="section-label" Text="CURRENT PROJECT BROWSER" />
+          <TextBlock Classes="section-label" Text="{DynamicResource Loc_CurrentProjectBrowser}" />
           <Border Background="{DynamicResource SurfaceInsetBrush}" BorderBrush="{DynamicResource BorderBrush}"
                   BorderThickness="1" CornerRadius="8" Padding="12">
             <TextBlock Classes="settings-row-hint" TextWrapping="Wrap"
-                       Text="Open Settings from a project window to inspect or clear its browser profile." />
+                       Text="{DynamicResource Loc_OpenSettingsFromProject}" />
           </Border>
         </StackPanel>
       </Border>
       <Border x:Name="ProjectSection" IsVisible="False">
         <StackPanel Classes="settings-panel-section">
-          <TextBlock Classes="section-label" Text="CURRENT PROJECT BROWSER" />
+          <TextBlock Classes="section-label" Text="{DynamicResource Loc_CurrentProjectBrowser}" />
           <Grid Classes="settings-row" ColumnDefinitions="*,220">
             <StackPanel Classes="settings-row-copy">
-              <TextBlock Classes="settings-row-title" Text="Profile path" />
-              <TextBlock Classes="settings-row-hint" Text="Cookies and site data persist only for this project." />
+              <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_ProfilePath}" />
+              <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_ProfilePathHint}" />
             </StackPanel>
             <Grid Grid.Column="1" ColumnDefinitions="*,32">
               <TextBlock x:Name="ProfilePathText" Classes="mono" FontSize="9" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-              <Button x:Name="CopyProfilePathButton" Grid.Column="1" Classes="icon quiet sc-button" ToolTip.Tip="Copy profile path"
-                      AutomationProperties.Name="Copy browser profile path" Click="OnCopyProfilePath">
+              <Button x:Name="CopyProfilePathButton" Grid.Column="1" Classes="icon quiet sc-button" ToolTip.Tip="{DynamicResource Loc_CopyProfilePath}"
+                      AutomationProperties.Name="{DynamicResource Loc_CopyProfilePath}" Click="OnCopyProfilePath">
                 <svg:Svg Width="14" Height="14" Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
               </Button>
             </Grid>
           </Grid>
           <Grid Classes="settings-row" ColumnDefinitions="*,220">
             <StackPanel Classes="settings-row-copy">
-              <TextBlock Classes="settings-row-title" Text="Profile usage" />
-              <TextBlock Classes="settings-row-hint" Text="Browser data is outside the opened project." />
+              <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_ProfileUsage}" />
+              <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_ProfileUsageHint}" />
             </StackPanel>
             <TextBlock x:Name="ProfileUsageText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" />
           </Grid>
           <Grid Classes="settings-row" ColumnDefinitions="*,220">
             <StackPanel Classes="settings-row-copy">
-              <TextBlock Classes="settings-row-title" Text="Window control" />
+              <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_WindowControl}" />
               <TextBlock Classes="settings-row-hint" TextWrapping="Wrap"
-                         Text="Wayland may require manual selection from the taskbar." />
+                         Text="{DynamicResource Loc_WindowControlHint}" />
             </StackPanel>
             <TextBlock x:Name="VisibilityText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" />
           </Grid>
@@ -137,7 +137,7 @@
             <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
               <svg:Svg Width="15" Height="15" Path="/Assets/icons/lock.svg" Css="{DynamicResource IconSvgCss}" />
               <StackPanel Grid.Column="1" Spacing="3">
-                <TextBlock x:Name="ControlTitleText" Text="Agent control is active" FontSize="11" FontWeight="SemiBold" />
+                <TextBlock x:Name="ControlTitleText" Text="{DynamicResource Loc_AgentControlActive}" FontSize="11" FontWeight="SemiBold" />
                 <TextBlock x:Name="ControlHintText" Classes="settings-row-hint" TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
@@ -145,12 +145,12 @@
           <TextBlock x:Name="ErrorText" IsVisible="False" Foreground="{DynamicResource DangerBrush}"
                      FontSize="10" TextWrapping="Wrap" Margin="0,10,0,0" />
           <WrapPanel Classes="settings-actions">
-            <Button x:Name="StartButton" Classes="compact quiet sc-button" Content="Start browser" Click="OnStart" />
-            <Button x:Name="TakeControlButton" Classes="compact quiet sc-button" Content="Show browser and take control" Click="OnTakeControl" />
-            <Button x:Name="ReturnControlButton" Classes="compact primary sc-button" Content="Return control to agent" Click="OnReturnControl" IsVisible="False" />
-            <Button x:Name="RestartButton" Classes="compact quiet sc-button" Content="Restart" Click="OnRestart" />
-            <Button x:Name="StopButton" Classes="compact quiet sc-button" Content="Stop" Click="OnStop" />
-            <Button x:Name="ClearButton" Classes="compact danger sc-button" Content="Clear browser data" Click="OnClear" />
+            <Button x:Name="StartButton" Classes="compact quiet sc-button" Content="{DynamicResource Loc_StartBrowser}" Click="OnStart" />
+            <Button x:Name="TakeControlButton" Classes="compact quiet sc-button" Content="{DynamicResource Loc_ShowBrowserTakeControl}" Click="OnTakeControl" />
+            <Button x:Name="ReturnControlButton" Classes="compact primary sc-button" Content="{DynamicResource Loc_ReturnControlToAgent}" Click="OnReturnControl" IsVisible="False" />
+            <Button x:Name="RestartButton" Classes="compact quiet sc-button" Content="{DynamicResource Loc_Restart}" Click="OnRestart" />
+            <Button x:Name="StopButton" Classes="compact quiet sc-button" Content="{DynamicResource Loc_Stop}" Click="OnStop" />
+            <Button x:Name="ClearButton" Classes="compact danger sc-button" Content="{DynamicResource Loc_ClearBrowserData}" Click="OnClear" />
           </WrapPanel>
         </StackPanel>
       </Border>
@@ -160,9 +160,9 @@
         <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
           <svg:Svg Width="15" Height="15" Path="/Assets/icons/lock.svg" Css="{DynamicResource IconSvgCss}" />
           <StackPanel Grid.Column="1" Spacing="3">
-            <TextBlock Text="Browser access is not a sandbox or an authority grant" FontSize="11" FontWeight="SemiBold" />
+            <TextBlock Text="{DynamicResource Loc_BrowserWarningTitle}" FontSize="11" FontWeight="SemiBold" />
             <TextBlock Classes="settings-row-hint" TextWrapping="Wrap"
-                       Text="Page content is untrusted. Sensitive transmission and consequential web actions still require confirmation at the point of risk." />
+                       Text="{DynamicResource Loc_BrowserWarning}" />
           </StackPanel>
         </Grid>
       </Border>

@@ -153,7 +153,7 @@
             <Grid>
               <Button Classes="attachment-preview"
                       Click="PreviewAttachment"
-                      ToolTip.Tip="View image">
+                      ToolTip.Tip="{DynamicResource Loc_ViewImage}">
                 <Image Source="{Binding Preview}"
                        Stretch="UniformToFill" />
               </Button>
@@ -162,7 +162,7 @@
                       VerticalAlignment="Top"
                       Margin="0,-7,-7,0"
                       Click="RemoveAttachment"
-                      ToolTip.Tip="Remove image">
+                      ToolTip.Tip="{DynamicResource Loc_RemoveImage}">
                 <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource AccentInkSvgCss}" />
               </Button>
             </Grid>
@@ -184,7 +184,7 @@
       <TextBlock Grid.Row="0"
                  Grid.ColumnSpan="2"
                  Classes="composer-status"
-                 Text="Configure an API key in Settings to send messages."
+                 Text="{DynamicResource Loc_ConfigureApiKey}"
                  IsVisible="{Binding IsModelUnavailable}"
                  VerticalAlignment="Top" />
       <TextBox x:Name="ComposerInput"
@@ -218,8 +218,8 @@
                 Classes="quiet"
                 Click="AddAttachment"
                 IsEnabled="{Binding CanAttachImages}"
-                ToolTip.Tip="Add image (requires a model with image input)"
-                AutomationProperties.Name="Add image attachment">
+                ToolTip.Tip="{DynamicResource Loc_AddImage}"
+                AutomationProperties.Name="{DynamicResource Loc_AddImageAttachment}">
           <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
 
@@ -230,8 +230,8 @@
                 Classes="quiet"
                 Click="ExpandComposer"
                 IsEnabled="{Binding CanCompose}"
-                ToolTip.Tip="Open expanded composer"
-                AutomationProperties.Name="Open expanded composer">
+                ToolTip.Tip="{DynamicResource Loc_OpenExpandedComposer}"
+                AutomationProperties.Name="{DynamicResource Loc_OpenExpandedComposer}">
           <svg:Svg Width="13" Height="13" Path="/Assets/icons/expand.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
       </StackPanel>
@@ -250,9 +250,9 @@
                              MinHeight="24"
                              Classes="mono composer-option"
                              UseMonospace="True"
-                             PlaceholderText="Choose model"
+                             PlaceholderText="{DynamicResource Loc_ChooseModel}"
                              IsEnabled="{Binding CanChooseModel}"
-                             ToolTip.Tip="Choose model"
+                             ToolTip.Tip="{DynamicResource Loc_ChooseModel}"
                              SelectionChanged="ModelSelectionChanged" />
 
         <controls:SCFlatComboBox x:Name="ReasoningSelector"
@@ -263,7 +263,7 @@
                              UseMonospace="True"
                              PlaceholderText=""
                              IsEnabled="{Binding CanChooseReasoningEffort}"
-                             ToolTip.Tip="Reasoning effort"
+                             ToolTip.Tip="{DynamicResource Loc_ReasoningEffort}"
                              SelectionChanged="ReasoningSelectionChanged" />
 
         <Button Width="24"
@@ -275,7 +275,7 @@
                 Click="SubmitTurn"
                 IsVisible="{Binding !IsTurnActive}"
                 IsEnabled="{Binding CanSubmit}"
-                ToolTip.Tip="Send message">
+                ToolTip.Tip="{DynamicResource Loc_SendMessage}">
           <svg:Svg Path="/Assets/icons/arrow-up.svg" Css="{DynamicResource AccentInkSvgCss}" />
         </Button>
 
@@ -287,7 +287,7 @@
                 Classes="danger"
                 Click="CancelTurn"
                 IsVisible="{Binding IsTurnActive}"
-                ToolTip.Tip="Stop turn">
+                ToolTip.Tip="{DynamicResource Loc_StopTurn}">
           <Border Width="8"
                   Height="8"
                   CornerRadius="1.5"

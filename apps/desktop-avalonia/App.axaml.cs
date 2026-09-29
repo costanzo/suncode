@@ -27,6 +27,7 @@ public sealed partial class App : Application
     private readonly HashSet<string> _openingProjects = [];
     private readonly Dictionary<string, TaskCompletionSource<bool>> _openingProjectSignals = [];
     private readonly SemaphoreSlim _activationGate = new(1, 1);
+    private LocalizationService? _localization;
     internal bool CanMergeWindows => _projectWindows.Count >= 2;
 
     public override void Initialize()
@@ -47,6 +48,8 @@ public sealed partial class App : Application
             DiagnosticLog.Info("app.lifecycle", "framework_initialization begin");
             _uiStateStore = new UiStateStore();
             _viewModel = new DesktopViewModel(_uiStateStore);
+            _localization = new LocalizationService(this);
+            _viewModel.LanguageChanged += ApplyLanguage;
             MacOSDockIcon.Apply();
             _viewModel.ThemeChanged += ApplyTheme;
             _hubWindow = new ProjectHubWindow { DataContext = _viewModel };
@@ -93,6 +96,11 @@ public sealed partial class App : Application
             window.RequestedThemeVariant = variant;
         }
         if (_mergedWindow is not null) _mergedWindow.RequestedThemeVariant = variant;
+    }
+
+    private void ApplyLanguage(string locale)
+    {
+        _localization?.SetLocale(locale);
     }
 
     internal async Task OpenProjectPathAsync(string path)

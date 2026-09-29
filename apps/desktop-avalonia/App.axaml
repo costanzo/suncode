@@ -17,6 +17,7 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="avares://LiveMarkdown.Avalonia/Defaults.axaml" />
         <ResourceInclude Source="avares://SunCode/Styles/Application/ThemeResources.axaml" />
+        <ResourceInclude Source="avares://SunCode/Resources/Localization/Strings.en-US.axaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

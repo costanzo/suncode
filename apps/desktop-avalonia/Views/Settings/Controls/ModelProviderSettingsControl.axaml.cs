@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using SunCode.Desktop.Infrastructure;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using SunCode.Desktop.Models;
@@ -189,7 +190,7 @@ public sealed partial class ModelProviderSettingsControl : UserControl
 
         var provider = Providers?.FirstOrDefault(item => item.Id == selectedId);
         ProviderTitleText.Text = provider?.DisplayName ?? selectedId;
-        ProviderDescriptionText.Text = "Configure the provider URL and credential used by the local agent.";
+        ProviderDescriptionText.Text = LocalizationService.GetString("Loc_ProviderDescription", "Configure the provider URL and credential used by the local agent.");
 
         _syncingEndpoint = true;
         EndpointInput.Text = EndpointText ?? string.Empty;
@@ -207,13 +208,15 @@ public sealed partial class ModelProviderSettingsControl : UserControl
         ProviderModelsItemsControl.IsVisible = models.Length > 0;
         NoProviderModelsText.IsVisible = models.Length == 0;
         CredentialStatusTextBlock.Text = CredentialConfigured
-            ? "API key configured"
-            : "No API key configured";
+            ? LocalizationService.GetString("Loc_ApiKeyConfigured", "API key configured")
+            : LocalizationService.GetString("Loc_NoApiKeyConfigured", "No API key configured");
         CredentialWarningDot.IsVisible = !CredentialConfigured;
         CredentialSuccessDot.IsVisible = CredentialConfigured;
         ProviderUnconfiguredBanner.IsVisible = !CredentialConfigured;
-        ProviderUnconfiguredTitle.Text = "Add an API key to use this provider";
-        SaveCredentialButton.Content = CredentialConfigured ? "Replace key" : "Save key";
+        ProviderUnconfiguredTitle.Text = LocalizationService.GetString("Loc_AddApiKeyToUseProvider", "Add an API key to use this provider");
+        SaveCredentialButton.Content = CredentialConfigured
+            ? LocalizationService.GetString("Loc_ReplaceKey", "Replace key")
+            : LocalizationService.GetString("Loc_SaveKey", "Save key");
         SaveEndpointButton.IsEnabled = CanSaveEndpoint;
         ResetEndpointButton.IsEnabled = CanResetEndpoint;
         SaveCredentialButton.IsEnabled = CanSaveCredential;

@@ -72,11 +72,11 @@
           <StackPanel Spacing="7">
             <ToggleButton Classes="context-usage-toggle"
                           IsChecked="{Binding ContextUsageExpanded, Mode=TwoWay}"
-                          AutomationProperties.Name="Context window usage"
-                          AutomationProperties.HelpText="Shows input, output, and cached token counts.">
+                          AutomationProperties.Name="{DynamicResource Loc_ContextWindow}"
+                          AutomationProperties.HelpText="{DynamicResource Loc_ContextWindowUsage}">
               <Grid ColumnDefinitions="*,Auto,14" ColumnSpacing="8">
                 <StackPanel Spacing="3">
-                  <TextBlock Text="CONTEXT WINDOW" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+                  <TextBlock Text="{DynamicResource Loc_ContextWindow}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
                   <TextBlock Text="{Binding ContextUsageText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
                 <TextBlock Grid.Column="1" Text="{Binding ContextUsagePercentText}" Classes="mono context-usage-percent" Classes.warning="{Binding ContextUsageIsWarning}" Classes.danger="{Binding ContextUsageIsDanger}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
@@ -89,13 +89,13 @@
                          Minimum="0"
                          Maximum="100"
                          Value="{Binding ContextUsagePercent}"
-                         AutomationProperties.Name="Context window used" />
+                         AutomationProperties.Name="{DynamicResource Loc_ContextWindowUsage}" />
             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4" IsVisible="{Binding ContextUsageExpanded}">
-              <TextBlock Text="Input" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+              <TextBlock Text="{DynamicResource Loc_Input}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
               <TextBlock Grid.Column="1" Text="{Binding ContextInputTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
-              <TextBlock Grid.Row="1" Text="Output" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+              <TextBlock Grid.Row="1" Text="{DynamicResource Loc_Output}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
               <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ContextOutputTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
-              <TextBlock Grid.Row="2" Text="Cached" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+              <TextBlock Grid.Row="2" Text="{DynamicResource Loc_Cached}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
               <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ContextCachedTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
             </Grid>
           </StackPanel>
@@ -103,28 +103,28 @@
         <Border Padding="16,30" MinHeight="150" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="6" IsVisible="{Binding IsReviewIdle}">
           <StackPanel Spacing="7" HorizontalAlignment="Center">
             <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
-            <TextBlock Text="Agent is idle" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
-            <TextBlock Text="Start a turn from the conversation composer." FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" />
+            <TextBlock Text="{DynamicResource Loc_AgentIdle}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Text="{DynamicResource Loc_StartTurnHint}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" />
           </StackPanel>
         </Border>
         <Border Padding="10" CornerRadius="6" Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="{Binding FullControlEnabled}">
           <Grid ColumnDefinitions="Auto,8,*,Auto">
             <svg:Svg Width="16" Height="16" Path="/Assets/icons/unlock.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="2" Text="Full Control enabled" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
-            <Button Grid.Column="3" Classes="compact danger" Content="Turn off" Click="DisableFullControl" Margin="8,0,0,0" />
+            <TextBlock Grid.Column="2" Text="{DynamicResource Loc_FullControlEnabled}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            <Button Grid.Column="3" Classes="compact danger" Content="{DynamicResource Loc_TurnOff}" Click="DisableFullControl" Margin="8,0,0,0" />
           </Grid>
         </Border>
         <Border Height="1" Margin="0,2" Background="{DynamicResource BorderBrush}" IsVisible="{Binding IsReviewWaiting}" />
-        <TextBlock Classes="section-label" Text="REVIEW QUEUE" IsVisible="{Binding IsReviewWaiting}" />
+        <TextBlock Classes="section-label" Text="{DynamicResource Loc_ReviewQueue}" IsVisible="{Binding IsReviewWaiting}" />
         <Border Padding="11" CornerRadius="6" Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="{Binding HasPendingApproval}">
           <StackPanel Spacing="11">
             <Grid ColumnDefinitions="*,Auto">
               <StackPanel Spacing="3">
-                <TextBlock Text="Approval required" Foreground="{DynamicResource WarningBrush}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="{DynamicResource Loc_ApprovalRequired}" Foreground="{DynamicResource WarningBrush}" FontSize="12" FontWeight="SemiBold" />
                 <TextBlock Text="{Binding PendingApproval.ActionText}" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" />
               </StackPanel>
               <Border Grid.Column="1" Background="{DynamicResource WarningBrush}" CornerRadius="4" Padding="5,3" VerticalAlignment="Top">
-                <TextBlock Text="REVIEW" Classes="mono" FontSize="8" FontWeight="SemiBold" Foreground="{DynamicResource WarningSurfaceBrush}" />
+                <TextBlock Text="{DynamicResource Loc_ReviewCaps}" Classes="mono" FontSize="8" FontWeight="SemiBold" Foreground="{DynamicResource WarningSurfaceBrush}" />
               </Border>
             </Grid>
             <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="5" Padding="7" IsVisible="{Binding PendingApproval.HasDetail}">
@@ -133,25 +133,25 @@
               </ScrollViewer>
             </Border>
             <StackPanel Spacing="4" IsVisible="{Binding PendingApproval.HasWorkingDirectory}">
-              <TextBlock Text="Working directory" Classes="eyebrow" />
+              <TextBlock Text="{DynamicResource Loc_WorkingDirectory}" Classes="eyebrow" />
               <TextBlock Text="{Binding PendingApproval.WorkingDirectoryText}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
             </StackPanel>
             <Grid ColumnDefinitions="*,5,*">
-              <Button Grid.Column="0" Classes="compact primary" Content="Allow once" Click="ApproveOnce" HorizontalAlignment="Stretch" FontSize="9"/>
-              <Button Grid.Column="2" Classes="compact danger" Content="Deny" Click="DenyApproval" HorizontalAlignment="Stretch" FontSize="9" />
+              <Button Grid.Column="0" Classes="compact primary" Content="{DynamicResource Loc_AllowOnce}" Click="ApproveOnce" HorizontalAlignment="Stretch" FontSize="9"/>
+              <Button Grid.Column="2" Classes="compact danger" Content="{DynamicResource Loc_Deny}" Click="DenyApproval" HorizontalAlignment="Stretch" FontSize="9" />
             </Grid>
-            <Button Classes="compact" Content="Allow for session" Foreground="{DynamicResource WarningBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" Click="ApproveForSession" HorizontalAlignment="Stretch" FontSize="9"/>
+            <Button Classes="compact" Content="{DynamicResource Loc_AllowForSession}" Foreground="{DynamicResource WarningBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" Click="ApproveForSession" HorizontalAlignment="Stretch" FontSize="9"/>
           </StackPanel>
         </Border>
         <Border Padding="11" CornerRadius="6" Background="{DynamicResource AccentSurfaceBrush}" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="1" IsVisible="{Binding HasPendingQuestion}">
           <StackPanel Spacing="11">
             <Grid ColumnDefinitions="*,Auto">
               <StackPanel Spacing="3">
-                <TextBlock Text="Clarification needed" Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold" />
-                <TextBlock Text="The agent is waiting for your answer" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="{DynamicResource Loc_ClarificationNeeded}" Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="{DynamicResource Loc_WaitingForAnswer}" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" />
               </StackPanel>
               <Border Grid.Column="1" Background="{DynamicResource AccentBrush}" CornerRadius="4" Padding="5,3" VerticalAlignment="Top">
-                <TextBlock Text="ANSWER" Classes="mono" FontSize="8" FontWeight="SemiBold" Foreground="{DynamicResource AccentInkBrush}" />
+                <TextBlock Text="{DynamicResource Loc_AnswerCaps}" Classes="mono" FontSize="8" FontWeight="SemiBold" Foreground="{DynamicResource AccentInkBrush}" />
               </Border>
             </Grid>
             <ItemsControl ItemsSource="{Binding PendingQuestion.Questions}">
@@ -177,22 +177,22 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBox Text="{Binding CustomAnswer, Mode=TwoWay}" PlaceholderText="Add a custom answer" IsVisible="{Binding AllowCustom}" TextWrapping="Wrap" FontSize="10" MinHeight="34" Padding="9,7" CornerRadius="5" />
+                    <TextBox Text="{Binding CustomAnswer, Mode=TwoWay}" PlaceholderText="{DynamicResource Loc_AddCustomAnswer}" IsVisible="{Binding AllowCustom}" TextWrapping="Wrap" FontSize="10" MinHeight="34" Padding="9,7" CornerRadius="5" />
                   </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <Grid ColumnDefinitions="*,5,*">
-              <Button Grid.Column="0" Classes="compact primary" Content="Submit answers" Click="ReplyQuestion" HorizontalAlignment="Stretch" FontSize="9" />
-              <Button Grid.Column="2" Classes="compact danger" Content="Skip" Click="RejectQuestion" HorizontalAlignment="Stretch" FontSize="9" />
+              <Button Grid.Column="0" Classes="compact primary" Content="{DynamicResource Loc_SubmitAnswers}" Click="ReplyQuestion" HorizontalAlignment="Stretch" FontSize="9" />
+              <Button Grid.Column="2" Classes="compact danger" Content="{DynamicResource Loc_Skip}" Click="RejectQuestion" HorizontalAlignment="Stretch" FontSize="9" />
             </Grid>
           </StackPanel>
         </Border>
-        <Button Classes="raised" Padding="11" HorizontalContentAlignment="Stretch" Click="ViewTurnChanges" AutomationProperties.Name="View changes from this turn" IsVisible="{Binding IsReviewChangesVisible}">
+        <Button Classes="raised" Padding="11" HorizontalContentAlignment="Stretch" Click="ViewTurnChanges" AutomationProperties.Name="{DynamicResource Loc_ViewTurnChanges}" IsVisible="{Binding IsReviewChangesVisible}">
           <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
             <svg:Svg Width="14" Height="14" Path="/Assets/icons/git-branch.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
             <StackPanel Grid.Column="1" Spacing="2">
-              <TextBlock Text="Turn changes" FontSize="12" FontWeight="SemiBold" />
+              <TextBlock Text="{DynamicResource Loc_TurnChanges}" FontSize="12" FontWeight="SemiBold" />
               <TextBlock Text="{Binding TurnChangeSummary}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
             </StackPanel>
             <svg:Svg Grid.Column="2" Width="12" Height="12" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
@@ -200,7 +200,7 @@
         </Button>
         <StackPanel Spacing="7" IsVisible="{Binding HasChangedPaths}">
           <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="section-label" Text="TOUCHED FILES" />
+            <TextBlock Classes="section-label" Text="{DynamicResource Loc_TouchedFiles}" />
             <TextBlock Grid.Column="1" Text="{Binding ChangedPaths.Count}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
           </Grid>
           <ItemsControl ItemsSource="{Binding ChangedPaths}">
@@ -211,9 +211,9 @@
           <StackPanel Spacing="7">
             <Grid ColumnDefinitions="7,7,*,Auto">
               <Ellipse Width="7" Height="7" Classes="process-dot" Classes.active="{Binding IsTurnActive}" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="2" Text="Agent loop" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-              <TextBlock Grid.Column="3" Text="Running" FontSize="9" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsTurnActive}" VerticalAlignment="Center"/>
-              <TextBlock Grid.Column="3" Text="Ready" FontSize="9" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding !IsTurnActive}" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="2" Text="{DynamicResource Loc_AgentLoop}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="3" Text="{DynamicResource Loc_Running}" FontSize="9" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsTurnActive}" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="3" Text="{DynamicResource Loc_Ready}" FontSize="9" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding !IsTurnActive}" VerticalAlignment="Center"/>
             </Grid>
             <TextBlock Text="{Binding LastTurnId, StringFormat=Turn  {0}}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
             <TextBlock Text="{Binding SelectedModelName, StringFormat=Model  {0}}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
@@ -223,27 +223,27 @@
         <Border Padding="11" CornerRadius="6" Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" IsVisible="{Binding HasFailedTurn}">
           <StackPanel Spacing="9">
             <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Text="TURN STOPPED" Classes="eyebrow" Foreground="{DynamicResource DangerBrush}" />
+              <TextBlock Text="{DynamicResource Loc_TurnStopped}" Classes="eyebrow" Foreground="{DynamicResource DangerBrush}" />
               <Border Grid.Column="1" Background="{DynamicResource DangerBrush}" CornerRadius="4" Padding="5,3">
-                <TextBlock Text="FAILED" Classes="mono" FontSize="8" FontWeight="SemiBold" Foreground="{DynamicResource DangerSurfaceBrush}" />  
+                <TextBlock Text="{DynamicResource Loc_FailedCaps}" Classes="mono" FontSize="8" FontWeight="SemiBold" Foreground="{DynamicResource DangerSurfaceBrush}" />
               </Border>
             </Grid>
-            <TextBlock Text="Provider request failed" FontSize="11" FontWeight="SemiBold" />
-            <TextBlock Text="The turn ended before completion. No further tool calls will run." FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+            <TextBlock Text="{DynamicResource Loc_ProviderRequestFailed}" FontSize="11" FontWeight="SemiBold" />
+            <TextBlock Text="{DynamicResource Loc_TurnEndedEarly}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
             <!-- A Horizontal line -->
             <Border Height="1" Background="{DynamicResource DangerBorderBrush}" Opacity="0.72" HorizontalAlignment="Stretch" />
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,2,0,0">
-              <TextBlock Text="Reason" Classes="eyebrow" />
-              <TextBlock Grid.Column="1" Text="Network unavailable" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Right" />
-              <TextBlock Grid.Row="1" Text="Turn" Classes="eyebrow" />
+              <TextBlock Text="{DynamicResource Loc_Reason}" Classes="eyebrow" />
+              <TextBlock Grid.Column="1" Text="{DynamicResource Loc_NetworkUnavailable}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Right" />
+              <TextBlock Grid.Row="1" Text="{DynamicResource Loc_Turn}" Classes="eyebrow" />
               <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LastTurnId}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Right" />
             </Grid>
-            <Button Classes="compact primary" Content="Retry turn" Click="RetryTurn" HorizontalAlignment="Stretch"/>
+            <Button Classes="compact primary" Content="{DynamicResource Loc_RetryTurn}" Click="RetryTurn" HorizontalAlignment="Stretch"/>
           </StackPanel>
         </Border>
         <Border Classes="process-card" Padding="11" CornerRadius="6" IsVisible="{Binding IsReviewTodosVisible}">
           <StackPanel Spacing="7">
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="TODO" Classes="section-label" /><TextBlock Grid.Column="1" Text="{Binding CurrentTodos.Count, StringFormat={}{0} items}" Classes="mono" FontSize="8" Foreground="{DynamicResource TextMutedBrush}" /></Grid>
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{DynamicResource Loc_Todo}" Classes="section-label" /><TextBlock Grid.Column="1" Text="{Binding CurrentTodos.Count, StringFormat={}{0} items}" Classes="mono" FontSize="8" Foreground="{DynamicResource TextMutedBrush}" /></Grid>
             <ItemsControl ItemsSource="{Binding CurrentTodos}">
               <ItemsControl.ItemTemplate><DataTemplate x:DataType="models:TodoItem"><Grid ColumnDefinitions="13,*,Auto" Margin="0,1"><TextBlock Text="{Binding StatusMarker}" Classes="mono" FontSize="9" /><TextBlock Grid.Column="1" Text="{Binding Content}" FontSize="9" TextWrapping="Wrap" Margin="6,0,0,0" /><TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="8" Foreground="{DynamicResource TextMutedBrush}" /></Grid></DataTemplate></ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -255,14 +255,14 @@
               <Border Classes="raised" Padding="11" Margin="0,0,0,8" CornerRadius="6">
                 <StackPanel Spacing="9">
                   <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="CHECKPOINT" Classes="section-label" />
+                    <TextBlock Text="{DynamicResource Loc_Checkpoint}" Classes="section-label" />
                     <TextBlock Grid.Column="1" Text="{Binding FileCount}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
                   </Grid>
                   <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" />
                   <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8">
-                    <TextBlock Classes="mono" Text="{Binding PathsText}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" MaxLines="2" />  
+                    <TextBlock Classes="mono" Text="{Binding PathsText}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" MaxLines="2" />
                   </Border>
-                  <Button Classes="compact" Content="Undo" HorizontalAlignment="Stretch" Click="RestoreCheckpoint" IsEnabled="{Binding CanReview}" />
+                  <Button Classes="compact" Content="{DynamicResource Loc_Undo}" HorizontalAlignment="Stretch" Click="RestoreCheckpoint" IsEnabled="{Binding CanReview}" />
                 </StackPanel>
               </Border>
             </DataTemplate>

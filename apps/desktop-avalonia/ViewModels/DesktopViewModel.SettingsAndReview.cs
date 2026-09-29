@@ -245,6 +245,20 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }, "Theme saved");
     }
 
+    public async Task SaveLanguageAsync(string locale)
+    {
+        if (!EnsureSdk()) return;
+        locale = locale is LocalizationService.SimplifiedChineseLocale
+            ? LocalizationService.SimplifiedChineseLocale
+            : LocalizationService.DefaultLocale;
+        await RunAsync(async () =>
+        {
+            await _sdk!.SetSettingAsync(new SetSettingRequest(
+                "global", null, null, "ui_locale", JsonSerializer.SerializeToElement(locale)));
+            SetLanguage(locale);
+        }, "Language saved");
+    }
+
     public async Task<bool> SaveLoggingSettingsAsync(
         string level,
         string? directory,

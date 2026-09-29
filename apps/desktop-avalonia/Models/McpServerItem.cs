@@ -34,23 +34,25 @@ public sealed class McpServerItem : ObservableObject
     public bool IsInactive => !IsConnected && !IsConnecting && !IsFailed;
     public string StatusLabel => RuntimeStatus switch
     {
-        "connected" => "Connected",
-        "connecting" => "Connecting",
-        "failed" => "Failed",
-        "disabled" => "Disabled",
-        _ => "Not started"
+        "connected" => LocalizationService.GetString("Loc_Connected", "Connected"),
+        "connecting" => LocalizationService.GetString("Loc_Connecting", "Connecting"),
+        "failed" => LocalizationService.GetString("Loc_Failed", "Failed"),
+        "disabled" => LocalizationService.GetString("Loc_Disabled", "Disabled"),
+        _ => LocalizationService.GetString("Loc_NotStarted", "Not started")
     };
     public string StatusDetail => RuntimeStatus switch
     {
-        "connected" => $"{Server.ToolCount} tools",
-        "connecting" => "Discovering tools",
-        "failed" => "No tools available",
-        _ => "Not running"
+        "connected" => $"{Server.ToolCount} {LocalizationService.GetString("Loc_Tools", "tools")}",
+        "connecting" => LocalizationService.GetString("Loc_DiscoveringTools", "Discovering tools"),
+        "failed" => LocalizationService.GetString("Loc_NoToolsAvailable", "No tools available"),
+        _ => LocalizationService.GetString("Loc_NotRunning", "Not running")
     };
     public string EndpointSummary => TransportType == "stdio"
         ? string.Join(' ', new[] { Command }.Concat(Arguments).Where(value => !string.IsNullOrWhiteSpace(value)))
         : Url ?? string.Empty;
-    public string ToggleLabel => Enabled ? "On" : "Off";
+    public string ToggleLabel => Enabled
+        ? LocalizationService.GetString("Loc_On", "On")
+        : LocalizationService.GetString("Loc_Off", "Off");
 
     public bool IsPending
     {

@@ -17,12 +17,12 @@ public sealed record ChildSessionItem(
 {
     public string StateText => State switch
     {
-        "running" => "Running",
-        "approval" or "awaiting_approval" => "Waiting for approval",
-        "completed" or "idle" => "Completed",
-        "failed" => "Failed",
-        "cancelled" => "Cancelled",
-        "interrupted" => "Interrupted",
+        "running" => LocalizationService.GetString("Loc_Running", "Running"),
+        "approval" or "awaiting_approval" => LocalizationService.GetString("Loc_WaitingForApproval", "Waiting for approval"),
+        "completed" or "idle" => LocalizationService.GetString("Loc_Completed", "Completed"),
+        "failed" => LocalizationService.GetString("Loc_Failed", "Failed"),
+        "cancelled" => LocalizationService.GetString("Loc_Cancelled", "Cancelled"),
+        "interrupted" => LocalizationService.GetString("Loc_Interrupted", "Interrupted"),
         _ => State
     };
     public bool IsRunning => State == "running";

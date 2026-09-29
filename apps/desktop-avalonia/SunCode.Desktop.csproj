@@ -93,6 +93,7 @@
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
     <AvaloniaResource Include="Assets/**" />
+    <AvaloniaResource Include="Resources/**" />
     <Content Include="Assets/logo/suncode-logo-1024.png" CopyToOutputDirectory="PreserveNewest" Link="suncode-logo-1024.png" />
     <Content Include="packaging/linux/dev.suncode.desktop.desktop" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

@@ -61,6 +61,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private ulong? _contextCachedTokens;
     private bool _contextUsageExpanded;
     private string _themeMode = "light";
+    private string _language = LocalizationService.DefaultLocale;
     private string _logLevel = "INFO";
     private string _logDirectory = string.Empty;
     private string _imageDirectory = string.Empty;
@@ -128,6 +129,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private string _activeTurnTimingTurnId = string.Empty;
 
     public event Action<string>? ThemeChanged;
+    public event Action<string>? LanguageChanged;
     public event Action? SessionEntered;
 
     public ObservableCollection<ProjectItem> Projects { get; } = [];
@@ -331,7 +333,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool RemoteServerConfigured { get => _remoteServerConfigured; private set => SetProperty(ref _remoteServerConfigured, value); }
     public bool RemoteServerConnected { get => _remoteServerConnected; private set => SetProperty(ref _remoteServerConnected, value); }
     public bool RemoteServerConnecting { get => _remoteServerConnecting; private set => SetProperty(ref _remoteServerConnecting, value); }
-    public string RemoteServerStatusText => RemoteServerConnected ? "Remote connected" : RemoteServerConnecting ? "Remote connecting" : "Remote disconnected";
+    public string RemoteServerStatusText => RemoteServerConnected
+        ? LocalizationService.GetString("Loc_RemoteConnected", "Remote connected")
+        : RemoteServerConnecting
+            ? LocalizationService.GetString("Loc_RemoteConnecting", "Remote connecting")
+            : LocalizationService.GetString("Loc_RemoteDisconnected", "Remote disconnected");
 
     private void ApplyRemoteServerStatus(RemoteServerStatus status)
     {
@@ -350,6 +356,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         : string.Empty;
     public string LastTurnId { get => _lastTurnId; private set => SetProperty(ref _lastTurnId, value); }
     public string ThemeMode { get => _themeMode; private set => SetProperty(ref _themeMode, value); }
+    public string Language { get => _language; private set => SetProperty(ref _language, value); }
     public string LogLevel { get => _logLevel; private set => SetProperty(ref _logLevel, value); }
     public string LogDirectory { get => _logDirectory; private set => SetProperty(ref _logDirectory, value); }
     public string ImageDirectory { get => _imageDirectory; private set => SetProperty(ref _imageDirectory, value); }
@@ -578,7 +585,17 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool IsTurnIndicatorDots => IsTurnActive && !IsTurnThinking && !IsTurnCompacting && !IsAssistantStreaming;
     public bool HasFailedTurn => ActiveTurnState == "failed";
     public string ReviewHeadingText => HasFailedTurn ? "Turn stopped" : IsTurnCompacting ? "Compacting context" : IsTurnActive ? "1 active process" : HasPendingApproval || HasPendingQuestion ? "Awaiting input" : "No active process";
-    public string ReviewStatusText => HasFailedTurn ? "Turn failed" : IsTurnCompacting ? "Compacting conversation context" : IsTurnActive ? "Agent running" : HasPendingApproval ? "Waiting for approval" : HasPendingQuestion ? "Waiting for answer" : "Agent idle";
+    public string ReviewStatusText => HasFailedTurn
+        ? LocalizationService.GetString("Loc_TurnFailed", "Turn failed")
+        : IsTurnCompacting
+            ? LocalizationService.GetString("Loc_CompactingConversationContext", "Compacting conversation context")
+            : IsTurnActive
+                ? LocalizationService.GetString("Loc_AgentRunning", "Agent running")
+                : HasPendingApproval
+                    ? LocalizationService.GetString("Loc_WaitingForApproval", "Waiting for approval")
+                    : HasPendingQuestion
+                        ? LocalizationService.GetString("Loc_WaitingForAnswer", "Waiting for answer")
+                        : LocalizationService.GetString("Loc_AgentIdle", "Agent idle");
     public string ReviewStatusState => HasFailedTurn ? "failed" : IsTurnCompacting ? "compacting" : IsTurnActive ? "running" : HasPendingApproval ? "approval" : HasPendingQuestion ? "question" : "idle";
     public bool IsReviewIdle => !IsTurnActive && !HasPendingApproval && !HasPendingQuestion && !HasFailedTurn && !IsTurnCompacting;
     public bool IsReviewRunning => IsTurnActive && !IsTurnCompacting && !HasFailedTurn;

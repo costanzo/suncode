@@ -4,72 +4,72 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
-        <TextBlock Text="Logging" Classes="sc-text-title" />
-        <TextBlock Classes="settings-hint" Text="Control diagnostic detail and how long local log files are kept." />
+        <TextBlock Text="{DynamicResource Loc_Logging}" Classes="sc-text-title" />
+        <TextBlock Classes="settings-hint" Text="{DynamicResource Loc_LoggingHint}" />
       </StackPanel>
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="DIAGNOSTIC OUTPUT" />
+        <TextBlock Classes="section-label" Text="{DynamicResource Loc_DiagnosticOutput}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Minimum level" />
-            <TextBlock Classes="settings-row-hint" Text="Lower levels include more diagnostic detail." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_MinimumLevel}" />
+            <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_LowerLevelsMoreDetail}" />
           </StackPanel>
           <controls:SCFlatComboBox x:Name="LogLevelSelector" Grid.Column="1" HorizontalAlignment="Stretch"
                                    SelectionChanged="OnLogLevelChanged" />
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Log directory" />
-            <TextBlock Classes="settings-row-hint" Text="Agent and desktop log files are written to this folder." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_LogDirectory}" />
+            <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_LogDirectoryHint}" />
           </StackPanel>
-          <controls:SCFileSelector x:Name="LogDirectoryInput" Grid.Column="1" PlaceholderText="Default logs folder"
-                                   DialogTitle="Choose log directory" SelectionMode="Folder" 
+          <controls:SCFileSelector x:Name="LogDirectoryInput" Grid.Column="1" PlaceholderText="{DynamicResource Loc_DefaultLogsFolder}"
+                                   DialogTitle="{DynamicResource Loc_ChooseLogDirectory}" SelectionMode="Folder"
                                    TextChanged="OnLogDirectoryChanged"/>
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Maximum file size" />
-            <TextBlock Classes="settings-row-hint" Text="Rotate each log file when it reaches this size." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_MaximumFileSize}" />
+            <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_RotateLogFiles}" />
           </StackPanel>
           <controls:SCNumericInput x:Name="LogMaxMegabytesInput" Grid.Column="1"
                                    Unit="MB" Minimum="1" Maximum="1000" Increment="1" FormatString="0"
-                                   PlaceholderText="10" AutomationProperties.Name="Maximum file size in megabytes" 
+                                   PlaceholderText="10" AutomationProperties.Name="{DynamicResource Loc_MaxFileSizeMegabytes}"
                                    ValueChanged="OnLogMaxMegabytesChanged"/>
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Retained backups" />
-            <TextBlock Classes="settings-row-hint" Text="Number of rotated backups to keep, from 0 to 100." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_RetainedBackups}" />
+            <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_RetainedBackupsHint}" />
           </StackPanel>
           <controls:SCNumericInput x:Name="LogRetentionInput" Grid.Column="1"
                                    Minimum="0" Maximum="100" Increment="1" FormatString="0"
-                                   PlaceholderText="5" AutomationProperties.Name="Retained log backups" 
+                                   PlaceholderText="5" AutomationProperties.Name="{DynamicResource Loc_RetainedLogBackups}"
                                    ValueChanged="OnLogRetentionChanged"/>
         </Grid>
       </StackPanel>
       <StackPanel Classes="settings-actions">
-        <Button x:Name="SaveLoggingButton" 
-                Classes="compact primary sc-button" 
-                Content="Save logging settings" 
-                Click="OnSaveLogging" 
+        <Button x:Name="SaveLoggingButton"
+                Classes="compact primary sc-button"
+                Content="{DynamicResource Loc_SaveLoggingSettings}"
+                Click="OnSaveLogging"
                 IsEnabled="False"/>
         <TextBlock x:Name="LoggingStatus" Classes="sc-text-status" VerticalAlignment="Center" />
       </StackPanel>
       <Border Classes="settings-divider" />
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="IMAGE STORAGE" />
+        <TextBlock Classes="section-label" Text="{DynamicResource Loc_ImageStorage}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Image directory" />
-            <TextBlock Classes="settings-row-hint" Text="Directory for saving images." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_ImageDirectory}" />
+            <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_ImageDirectoryHint}" />
           </StackPanel>
-          <controls:SCFileSelector x:Name="ImageDirectoryInput" Grid.Column="1" PlaceholderText="Default images folder"
-                                   DialogTitle="Choose image directory" SelectionMode="Folder" 
+          <controls:SCFileSelector x:Name="ImageDirectoryInput" Grid.Column="1" PlaceholderText="{DynamicResource Loc_DefaultImagesFolder}"
+                                   DialogTitle="{DynamicResource Loc_ChooseImageDirectory}" SelectionMode="Folder"
                                    TextChanged="OnImageDirectoryChanged"/>
         </Grid>
       </StackPanel>
       <StackPanel Classes="settings-actions">
-        <Button x:Name="SaveImageDirectoryButton" Classes="compact primary sc-button" Content="Save image location" Click="OnSaveImageDirectory" IsEnabled="False"/>
+        <Button x:Name="SaveImageDirectoryButton" Classes="compact primary sc-button" Content="{DynamicResource Loc_SaveImageLocation}" Click="OnSaveImageDirectory" IsEnabled="False"/>
         <TextBlock x:Name="ImageDirectoryStatus" Classes="sc-text-status" VerticalAlignment="Center" />
       </StackPanel>
     </StackPanel>

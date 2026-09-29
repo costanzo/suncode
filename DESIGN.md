@@ -238,6 +238,14 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Application:** Saving applies to subsequent built-in provider and WebFetch requests and reconnects active remote HTTP MCP servers. In-flight requests and local MCP child-process traffic are unchanged.
 - **Feedback:** Invalid fields show specific recovery copy. Custom proxy combined with disabled HTTPS verification keeps the existing risk warning visually dominant.
 
+### Interface Language Settings
+
+- **Placement:** Interface language is a row in the Appearance page below Color theme. It is not a separate top-level Settings destination.
+- **Options:** The initial catalog contains `English` and `简体中文`, displayed in their native names. Persist locale values as stable BCP-47 codes so future languages can be added without changing the control contract.
+- **Behavior:** Selecting a language applies immediately to every open Avalonia window and persists through the existing global Settings boundary. The hint states that the change applies across the desktop.
+- **Fallback:** Missing or unsupported persisted locales use English. User-authored project names, paths, code, Markdown, provider/model identifiers, and model responses remain unchanged.
+- **Responsive behavior:** Reuse the Appearance setting-row rhythm and 220px control column. Chinese labels must remain readable at the existing Settings minimum width.
+
 ### Keyboard Shortcut Settings
 
 - **Placement:** Keyboard shortcuts is a first-level child page in the Settings navigation, alongside Defaults, Appearance, Network, and Logging.

@@ -35,24 +35,26 @@ public sealed class LanguageServerItem : ObservableObject
     public bool CanToggle => !IsPending && !IsStarting;
     public string StatusLabel => RuntimeStatus switch
     {
-        "ready" => "Ready",
-        "starting" => "Starting",
-        "indexing" => "Indexing",
-        "failed" => "Failed",
-        "disabled" => "Disabled",
-        _ => "Not started"
+        "ready" => LocalizationService.GetString("Loc_Ready", "Ready"),
+        "starting" => LocalizationService.GetString("Loc_Starting", "Starting"),
+        "indexing" => LocalizationService.GetString("Loc_Indexing", "Indexing"),
+        "failed" => LocalizationService.GetString("Loc_Failed", "Failed"),
+        "disabled" => LocalizationService.GetString("Loc_Disabled", "Disabled"),
+        _ => LocalizationService.GetString("Loc_NotStarted", "Not started")
     };
     public string StatusDetail => RuntimeStatus switch
     {
-        "ready" => $"{Server.CapabilityCount} capabilities",
-        "starting" => "Initializing",
-        "indexing" => "Semantic data loading",
-        "failed" => "No semantic results",
-        _ => "Not running"
+        "ready" => $"{Server.CapabilityCount} {LocalizationService.GetString("Loc_Capabilities", "capabilities")}",
+        "starting" => LocalizationService.GetString("Loc_Initializing", "Initializing"),
+        "indexing" => LocalizationService.GetString("Loc_SemanticDataLoading", "Semantic data loading"),
+        "failed" => LocalizationService.GetString("Loc_NoSemanticResults", "No semantic results"),
+        _ => LocalizationService.GetString("Loc_NotRunning", "Not running")
     };
     public string CommandSummary => string.Join(' ',
         new[] { Command }.Concat(Arguments).Where(value => !string.IsNullOrWhiteSpace(value)));
-    public string ToggleLabel => Enabled ? "On" : "Off";
+    public string ToggleLabel => Enabled
+        ? LocalizationService.GetString("Loc_On", "On")
+        : LocalizationService.GetString("Loc_Off", "Off");
 
     public bool IsPending
     {

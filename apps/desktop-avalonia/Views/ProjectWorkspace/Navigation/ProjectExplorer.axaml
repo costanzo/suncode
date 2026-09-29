@@ -144,11 +144,11 @@
   <Border Classes="sidebar-card">
     <Grid Margin="0,0,0,0" RowDefinitions="44,0,*">
       <Grid Grid.Row="0" ColumnDefinitions="*,30,30" Margin="6,0">
-        <TextBlock Classes="section-label" Text="EXPLORER" Margin="14,0,0,0" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Classes="icon explorer-action" Width="30" Height="30" Padding="6" Click="RefreshExplorer" ToolTip.Tip="Refresh explorer" AutomationProperties.Name="Refresh explorer">
+        <TextBlock Classes="section-label" Text="{DynamicResource Loc_Explorer}" Margin="14,0,0,0" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="icon explorer-action" Width="30" Height="30" Padding="6" Click="RefreshExplorer" ToolTip.Tip="{DynamicResource Loc_RefreshExplorer}" AutomationProperties.Name="{DynamicResource Loc_RefreshExplorer}">
           <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
-        <Button Grid.Column="2" Classes="icon explorer-action" Width="30" Height="30" Padding="6" Click="AddDependency" ToolTip.Tip="Add dependency folder" AutomationProperties.Name="Add dependency folder">
+        <Button Grid.Column="2" Classes="icon explorer-action" Width="30" Height="30" Padding="6" Click="AddDependency" ToolTip.Tip="{DynamicResource Loc_AddDependencyFolder}" AutomationProperties.Name="{DynamicResource Loc_AddDependencyFolder}">
           <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
       </Grid>
@@ -199,7 +199,7 @@
                 <TextBlock Classes="explorer-name" Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="None" VerticalAlignment="Center" />
                 <TextBlock Classes="explorer-path" Text="{Binding PathSubtitle}" IsVisible="{Binding ShowPathSubtitle}" TextWrapping="NoWrap" TextTrimming="None" />
               </StackPanel>
-              <Button Grid.Column="2" Classes="quiet" Width="24" Height="24" Padding="5" IsVisible="{Binding CanRemove}" ToolTip.Tip="Dependency actions" AutomationProperties.Name="{Binding Name, StringFormat=Actions for dependency {0}}">
+              <Button Grid.Column="2" Classes="quiet" Width="24" Height="24" Padding="5" IsVisible="{Binding CanRemove}" ToolTip.Tip="{DynamicResource Loc_DependencyActions}" AutomationProperties.Name="{Binding Name, StringFormat=Actions for dependency {0}}">
                 <Button.Flyout>
                   <MenuFlyout>
                     <MenuItem Header="Delete" CommandParameter="{Binding}" Click="DeleteDependency" />

@@ -5,21 +5,21 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
-        <TextBlock Text="Computer use" Classes="sc-text-title" />
+        <TextBlock Text="{DynamicResource Loc_ComputerUse}" Classes="sc-text-title" />
         <TextBlock Classes="settings-hint" TextWrapping="Wrap"
-                   Text="Let supported models observe and operate the real primary display. Screenshots may be sent to the selected provider, and changes in other applications are outside filesystem undo." />
+                   Text="{DynamicResource Loc_ComputerUseHint}" />
       </StackPanel>
 
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="AVAILABILITY" />
+        <TextBlock Classes="section-label" Text="{DynamicResource Loc_Availability}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Enable Computer Use" />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_EnableComputerUse}" />
             <TextBlock Classes="settings-row-hint" TextWrapping="Wrap"
-                       Text="Makes the built-in desktop tools available when the selected model and operating system support them." />
+                       Text="{DynamicResource Loc_EnableComputerUseHint}" />
           </StackPanel>
           <ToggleSwitch x:Name="EnabledToggle" Grid.Column="1" Classes="sc-toggle-switch"
-                        OnContent="On" OffContent="Off" HorizontalAlignment="Right"
+                        OnContent="{DynamicResource Loc_On}" OffContent="{DynamicResource Loc_Off}" HorizontalAlignment="Right"
                         Click="OnEnabledChanged" />
         </Grid>
         <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1" Padding="0,13" Margin="0,6,0,0">
@@ -27,15 +27,15 @@
             <Grid ColumnDefinitions="10,*" ColumnSpacing="9">
               <Ellipse x:Name="ModelStatusDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" Margin="0,5,0,0" />
               <StackPanel Grid.Column="1" Spacing="3">
-                <TextBlock x:Name="ModelSupportText" Text="Unknown" FontSize="12" FontWeight="SemiBold" />
-                <TextBlock x:Name="ModelNameText" Text="No model selected" Classes="settings-row-hint" TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="ModelSupportText" Text="{DynamicResource Loc_Unknown}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock x:Name="ModelNameText" Text="{DynamicResource Loc_NoModelSelected}" Classes="settings-row-hint" TextTrimming="CharacterEllipsis" />
               </StackPanel>
             </Grid>
             <Grid Grid.Column="1" ColumnDefinitions="10,*" ColumnSpacing="9">
               <Ellipse x:Name="BackendStatusDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" Margin="0,5,0,0" />
               <StackPanel Grid.Column="1" Spacing="3">
-                <TextBlock x:Name="BackendStateText" Text="Unavailable" FontSize="12" FontWeight="SemiBold" />
-                <TextBlock Text="Built-in desktop backend" Classes="settings-row-hint" />
+                <TextBlock x:Name="BackendStateText" Text="{DynamicResource Loc_Unavailable}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="{DynamicResource Loc_BuiltInDesktopBackend}" Classes="settings-row-hint" />
               </StackPanel>
             </Grid>
           </Grid>
@@ -45,81 +45,81 @@
 
       <Border Classes="settings-divider" />
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="DESKTOP ACCESS" />
+        <TextBlock Classes="section-label" Text="{DynamicResource Loc_DesktopAccess}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Primary display" />
-            <TextBlock Classes="settings-row-hint" Text="Initial Computer Use is limited to one display." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_PrimaryDisplay}" />
+            <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_PrimaryDisplayHint}" />
           </StackPanel>
           <TextBlock x:Name="TargetDisplayText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="—" />
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Screen capture" />
-            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="Required to send screenshots to the selected provider." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_ScreenCapture}" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource Loc_ScreenCaptureHint}" />
           </StackPanel>
           <Grid Grid.Column="1" ColumnDefinitions="10,Auto" ColumnSpacing="8" HorizontalAlignment="Right">
             <Ellipse x:Name="CapturePermissionDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
-            <TextBlock x:Name="CapturePermissionText" Grid.Column="1" Text="Unknown" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+            <TextBlock x:Name="CapturePermissionText" Grid.Column="1" Text="{DynamicResource Loc_Unknown}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
           </Grid>
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Input control" />
-            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="Required for mouse and keyboard actions after approval." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_InputControl}" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource Loc_InputControlHint}" />
           </StackPanel>
           <Grid Grid.Column="1" ColumnDefinitions="10,Auto" ColumnSpacing="8" HorizontalAlignment="Right">
             <Ellipse x:Name="InputPermissionDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
-            <TextBlock x:Name="InputPermissionText" Grid.Column="1" Text="Unknown" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+            <TextBlock x:Name="InputPermissionText" Grid.Column="1" Text="{DynamicResource Loc_Unknown}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
           </Grid>
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Current control owner" />
-            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="The user and agent never control desktop input simultaneously." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_CurrentControlOwner}" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource Loc_ControlOwnerHint}" />
           </StackPanel>
-          <TextBlock x:Name="ControlOwnerText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="User" />
+          <TextBlock x:Name="ControlOwnerText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="{DynamicResource Loc_User}" />
         </Grid>
         <WrapPanel Classes="settings-actions">
-          <Button x:Name="TakeControlButton" Classes="compact quiet sc-button" Content="Take control" Click="OnTakeControl" />
-          <Button x:Name="ReturnControlButton" Classes="compact primary sc-button" Content="Return control to agent" Click="OnReturnControl" />
+          <Button x:Name="TakeControlButton" Classes="compact quiet sc-button" Content="{DynamicResource Loc_TakeControl}" Click="OnTakeControl" />
+          <Button x:Name="ReturnControlButton" Classes="compact primary sc-button" Content="{DynamicResource Loc_ReturnControlToAgent}" Click="OnReturnControl" />
         </WrapPanel>
         <WrapPanel Classes="settings-actions">
-          <Button x:Name="CapturePermissionButton" Classes="compact quiet sc-button" Content="Request screen capture" Click="OnRequestCapturePermission" />
-          <Button x:Name="InputPermissionButton" Classes="compact quiet sc-button" Content="Request input control" Click="OnRequestInputPermission" />
+          <Button x:Name="CapturePermissionButton" Classes="compact quiet sc-button" Content="{DynamicResource Loc_RequestScreenCapture}" Click="OnRequestCapturePermission" />
+          <Button x:Name="InputPermissionButton" Classes="compact quiet sc-button" Content="{DynamicResource Loc_RequestInputControl}" Click="OnRequestInputPermission" />
         </WrapPanel>
       </StackPanel>
 
       <Border Classes="settings-divider" />
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="SAFETY AND LIMITS" />
+        <TextBlock Classes="section-label" Text="{DynamicResource Loc_SafetyAndLimits}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Input approval" />
-            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="Full Control does not bypass Computer Use approval." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_InputApproval}" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource Loc_InputApprovalHint}" />
           </StackPanel>
-          <TextBlock Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="Once per input batch" />
+          <TextBlock Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="{DynamicResource Loc_OncePerInputBatch}" />
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Execution mode" />
-            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="Computer Use is denied in scripts and other non-interactive runs." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_ExecutionMode}" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource Loc_ExecutionModeHint}" />
           </StackPanel>
-          <TextBlock Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="Interactive only" />
+          <TextBlock Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="{DynamicResource Loc_InteractiveOnly}" />
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Emergency stop" />
-            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="Releases held keys and mouse buttons and invalidates prior coordinates." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_EmergencyStop}" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource Loc_EmergencyStopHint}" />
           </StackPanel>
-          <Button x:Name="EmergencyStopButton" Grid.Column="1" Classes="compact danger sc-button" HorizontalAlignment="Right" Content="Stop Computer Use" Click="OnEmergencyStop" />
+          <Button x:Name="EmergencyStopButton" Grid.Column="1" Classes="compact danger sc-button" HorizontalAlignment="Right" Content="{DynamicResource Loc_StopComputerUse}" Click="OnEmergencyStop" />
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Temporary screenshots" />
-            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="Screenshot bytes are retained only for the active turn." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_TemporaryScreenshots}" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource Loc_TemporaryScreenshotsHint}" />
           </StackPanel>
-          <Button Grid.Column="1" Classes="compact quiet sc-button" HorizontalAlignment="Right" Content="Clear temporary screenshots" IsEnabled="False" />
+          <Button Grid.Column="1" Classes="compact quiet sc-button" HorizontalAlignment="Right" Content="{DynamicResource Loc_ClearTemporaryScreenshots}" IsEnabled="False" />
         </Grid>
       </StackPanel>
 
@@ -128,9 +128,9 @@
         <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
           <svg:Svg Width="15" Height="15" Path="/Assets/icons/lock.svg" Css="{DynamicResource IconSvgCss}" />
           <StackPanel Grid.Column="1" Spacing="3">
-            <TextBlock Text="Computer Use controls the real desktop, not a sandbox" FontSize="11" FontWeight="SemiBold" />
+            <TextBlock Text="{DynamicResource Loc_ComputerUseWarningTitle}" FontSize="11" FontWeight="SemiBold" />
             <TextBlock Classes="settings-row-hint" TextWrapping="Wrap"
-                       Text="On-screen content is untrusted and cannot grant authority. Secure desktops and locked sessions are unavailable, and actions in external applications cannot be undone by SunCode." />
+                       Text="{DynamicResource Loc_ComputerUseWarning}" />
           </StackPanel>
         </Grid>
       </Border>

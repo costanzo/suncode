@@ -4,11 +4,27 @@ import { SettingRow } from "../components/SettingRow.jsx";
 
 export function AppearancePanel({ onSave }) {
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || "light");
+  const [language, setLanguage] = useState(() => {
+    try {
+      return window.localStorage.getItem("suncode-design-locale") || "en-US";
+    } catch {
+      return "en-US";
+    }
+  });
   const applyTheme = (nextTheme) => {
     setTheme(nextTheme);
     document.documentElement.dataset.theme = nextTheme;
     try {
       window.localStorage.setItem("suncode-design-theme", nextTheme);
+    } catch {
+      /* non-fatal */
+    }
+    onSave();
+  };
+  const applyLanguage = (nextLanguage) => {
+    setLanguage(nextLanguage);
+    try {
+      window.localStorage.setItem("suncode-design-locale", nextLanguage);
     } catch {
       /* non-fatal */
     }
@@ -31,6 +47,22 @@ export function AppearancePanel({ onSave }) {
             value={theme}
             onChange={applyTheme}
             ariaLabel="Color theme"
+            className="settings-dropdown"
+          />
+        </SettingRow>
+      </div>
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Language</span>
+        <SettingRow label="Interface language" hint="Changes apply immediately across the desktop.">
+          <SingleDropdown
+            options={[
+              { value: "en-US", label: "English" },
+              { value: "zh-CN", label: "简体中文" },
+            ]}
+            value={language}
+            onChange={applyLanguage}
+            ariaLabel="Interface language"
             className="settings-dropdown"
           />
         </SettingRow>

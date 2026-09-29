@@ -283,6 +283,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
         var retention = LongSetting("log_retention", 5);
         var configuredLevel = StringSetting("log_level", "INFO").Trim().ToUpperInvariant();
+        SetLanguage(StringSetting("ui_locale", LocalizationService.DefaultLocale));
         LogLevel = configuredLevel is "TRACE" or "DEBUG" or "INFO" or "WARN" or "ERROR" or "OFF"
             ? configuredLevel
             : "INFO";
@@ -312,8 +313,24 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             if (item.Value.ValueKind != JsonValueKind.String) continue;
             var value = item.Value.GetString() ?? string.Empty;
             if (key == "theme_mode" && value is "dark" or "light") SetTheme(value);
+            if (key == "ui_locale") SetLanguage(value);
             if (key == "default_model") SelectedModel = Models.FirstOrDefault(model => model.Id == value) ?? SelectedModel;
         }
+    }
+
+    private void SetLanguage(string locale)
+    {
+        var normalized = locale is LocalizationService.SimplifiedChineseLocale
+            ? LocalizationService.SimplifiedChineseLocale
+            : LocalizationService.DefaultLocale;
+        if (Language == normalized) return;
+        Language = normalized;
+        LanguageChanged?.Invoke(normalized);
+        foreach (var item in LanguageServers) item.OnPropertyChanged(string.Empty);
+        foreach (var item in McpServers) item.OnPropertyChanged(string.Empty);
+        foreach (var item in Messages) item.OnPropertyChanged(string.Empty);
+        OnPropertyChanged(nameof(RemoteServerStatusText));
+        OnPropertyChanged(nameof(ReviewStatusText));
     }
 
     private async Task LoadSessionControlAsync(string sessionId, long loadVersion)

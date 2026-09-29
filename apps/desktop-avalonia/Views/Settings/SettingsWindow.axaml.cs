@@ -19,10 +19,16 @@ namespace SunCode.Desktop.Views.Settings;
 
 public sealed partial class SettingsWindow : Window
 {
-    private static readonly IReadOnlyList<SCComboBoxItem> ThemeOptions =
+    private static IReadOnlyList<SCComboBoxItem> ThemeOptions(string locale) =>
     [
-        new("Dark", "dark"),
-        new("Light", "light")
+        new(locale == LocalizationService.SimplifiedChineseLocale ? "深色" : "Dark", "dark"),
+        new(locale == LocalizationService.SimplifiedChineseLocale ? "浅色" : "Light", "light")
+    ];
+
+    private static readonly IReadOnlyList<SCComboBoxItem> LanguageOptions =
+    [
+        new("English", LocalizationService.DefaultLocale),
+        new("简体中文", LocalizationService.SimplifiedChineseLocale)
     ];
 
     private static readonly IReadOnlyList<SCComboBoxItem> LogLevelOptions =
@@ -35,11 +41,11 @@ public sealed partial class SettingsWindow : Window
         new("OFF", "OFF")
     ];
 
-    private static readonly IReadOnlyList<SCComboBoxItem> ProxyModeOptions =
+    private static IReadOnlyList<SCComboBoxItem> ProxyModeOptions(string locale) =>
     [
-        new("No proxy", "no_proxy"),
-        new("System proxy", "system"),
-        new("Custom proxy", "custom")
+        new(locale == LocalizationService.SimplifiedChineseLocale ? "不使用代理" : "No proxy", "no_proxy"),
+        new(locale == LocalizationService.SimplifiedChineseLocale ? "系统代理" : "System proxy", "system"),
+        new(locale == LocalizationService.SimplifiedChineseLocale ? "自定义代理" : "Custom proxy", "custom")
     ];
 
     private bool _ready;
@@ -56,6 +62,7 @@ public sealed partial class SettingsWindow : Window
     private readonly DispatcherTimer _browserPollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private bool _refreshingComputerPage;
     private bool _refreshingBrowserPage;
+    private bool _refreshingLanguageSelector;
     
     private int _baselineToolCallLimit;
     private string _baselineLogDirectory = string.Empty;
@@ -80,6 +87,7 @@ public sealed partial class SettingsWindow : Window
         DefaultsPage.SaveToolCallLimitRequested += SaveToolCallLimit;
         DefaultsPage.ToolCallLimitChanged += ToolCallLimitValueChanged;
         AppearancePage.ThemeChanged += ThemeChanged;
+        AppearancePage.LanguageChanged += LanguageSelectionChanged;
         LoggingPage.LogLevelChanged += LogLevelChanged;
         LoggingPage.LogDirectoryChanged += LoggingDirectoryChanged;
         LoggingPage.LogMaxMegabytesChanged += LoggingMaxMegabytesChanged;
@@ -138,8 +146,10 @@ public sealed partial class SettingsWindow : Window
             await ViewModel.LoadBrowserRuntimeAsync();
             RefreshBrowserPresentation();
             RefreshModelSelector();
-            AppearancePage.ThemeSelectorControl.ItemsSource = ThemeOptions;
-            AppearancePage.ThemeSelectorControl.SelectedItem = ThemeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ThemeMode));
+            AppearancePage.ThemeSelectorControl.ItemsSource = ThemeOptions(ViewModel.Language);
+            AppearancePage.ThemeSelectorControl.SelectedItem = ThemeOptions(ViewModel.Language).FirstOrDefault(item => Equals(item.Value, ViewModel.ThemeMode));
+            AppearancePage.LanguageSelectorControl.ItemsSource = LanguageOptions;
+            AppearancePage.LanguageSelectorControl.SelectedItem = LanguageOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.Language));
             LoggingPage.LogLevelSelectorControl.ItemsSource = LogLevelOptions;
             LoggingPage.LogLevelSelectorControl.SelectedItem = LogLevelOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.LogLevel));
             DefaultsPage.ToolCallLimit.Value = ViewModel.ToolCallLimit;
@@ -161,8 +171,9 @@ public sealed partial class SettingsWindow : Window
             NetworkPage.UseSystemCertificatesToggleControl.IsChecked = ViewModel.UseSystemCertificates;
             NetworkPage.CertificatePathInputControl.Text = ViewModel.CertificatePath;
             NetworkPage.CertificatePathInputControl.IsEnabled = ViewModel.UseSystemCertificates == false;
-            NetworkPage.ProxyModeSelectorControl.ItemsSource = ProxyModeOptions;
-            NetworkPage.ProxyModeSelectorControl.SelectedItem = ProxyModeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ProxyMode));
+            var proxyModeOptions = ProxyModeOptions(ViewModel.Language);
+            NetworkPage.ProxyModeSelectorControl.ItemsSource = proxyModeOptions;
+            NetworkPage.ProxyModeSelectorControl.SelectedItem = proxyModeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ProxyMode));
             NetworkPage.ProxyUrlInputControl.Text = ViewModel.ProxyUrl;
             NetworkPage.ProxyUsernameInputControl.Text = ViewModel.ProxyUsername;
             NetworkPage.ProxyPasswordInputControl.Text = string.Empty;
@@ -235,6 +246,12 @@ public sealed partial class SettingsWindow : Window
     private void CloseSettings(object? sender, RoutedEventArgs e) => Close();
     private void ShowDefaults(object? sender, RoutedEventArgs e) => SelectPage("defaults", sender as Button);
     private void ShowAppearance(object? sender, RoutedEventArgs e) => SelectPage("appearance", sender as Button);
+
+    private async void LanguageSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_refreshingLanguageSelector || !_ready || AppearancePage.LanguageSelectorControl.SelectedItem?.Value is not string locale) return;
+        await ViewModel.SaveLanguageAsync(locale);
+    }
     private void ShowShortcuts(object? sender, RoutedEventArgs e) => SelectPage("shortcuts", sender as Button);
     private void ShowNetwork(object? sender, RoutedEventArgs e) => SelectPage("network", sender as Button);
     private void ShowRemote(object? sender, RoutedEventArgs e) => SelectPage("remote", sender as Button);
@@ -1143,12 +1160,39 @@ public sealed partial class SettingsWindow : Window
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.Models.CollectionChanged -= ModelsCollectionChanged;
+            _subscribedViewModel.LanguageChanged -= ViewModelLanguageChanged;
         }
 
         _subscribedViewModel = DataContext as DesktopViewModel;
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.Models.CollectionChanged += ModelsCollectionChanged;
+            _subscribedViewModel.LanguageChanged += ViewModelLanguageChanged;
+        }
+    }
+
+    private void ViewModelLanguageChanged(string locale)
+    {
+        _refreshingLanguageSelector = true;
+        try
+        {
+            var themeOptions = ThemeOptions(locale);
+            AppearancePage.ThemeSelectorControl.ItemsSource = themeOptions;
+            AppearancePage.ThemeSelectorControl.SelectedItem = themeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ThemeMode));
+            AppearancePage.LanguageSelectorControl.ItemsSource = LanguageOptions;
+            AppearancePage.LanguageSelectorControl.SelectedItem = LanguageOptions.FirstOrDefault(item => Equals(item.Value, locale));
+            var proxyModeOptions = ProxyModeOptions(locale);
+            NetworkPage.ProxyModeSelectorControl.ItemsSource = proxyModeOptions;
+            NetworkPage.ProxyModeSelectorControl.SelectedItem = proxyModeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ProxyMode));
+            RefreshCertificateTrustPresentation();
+            RefreshProxyPresentation();
+            RefreshComputerPresentation();
+            RefreshBrowserPresentation();
+            if (!string.IsNullOrWhiteSpace(ProviderManager.SelectedProviderId)) RefreshProvider();
+        }
+        finally
+        {
+            _refreshingLanguageSelector = false;
         }
     }
 

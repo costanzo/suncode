@@ -5,30 +5,30 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
-        <TextBlock Text="Defaults" Classes="sc-text-title" />
-        <TextBlock Classes="settings-hint" Text="Configure model and turn defaults." />
+      <TextBlock Text="{DynamicResource Loc_Defaults}" Classes="sc-text-title" />
+        <TextBlock Classes="settings-hint" Text="{DynamicResource Loc_ConfigureModelTurnDefaults}" />
       </StackPanel>
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="DEFAULT MODEL" />
+        <TextBlock Classes="section-label" Text="{DynamicResource Loc_DefaultModel}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Model" />
-            <TextBlock Classes="settings-row-hint" Text="Only models registered by the local agent appear here." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_Model}" />
+            <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_RegisteredModelsOnly}" />
           </StackPanel>
           <controls:SCFlatComboBox x:Name="DefaultModelSelector"
                                    Grid.Column="1"
                                    HorizontalAlignment="Stretch"
-                                   PlaceholderText="Choose a model"
+                                   PlaceholderText="{DynamicResource Loc_ChooseModel}"
                                    SelectionChanged="OnDefaultModelChanged" />
         </Grid>
       </StackPanel>
       <Border Classes="settings-divider" />
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="TURN EXECUTION" />
+        <TextBlock Classes="section-label" Text="{DynamicResource Loc_TurnExecution}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="Tool-call limit" />
-            <TextBlock Classes="settings-row-hint" Text="Maximum number of tool calls allowed in one turn." />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_ToolCallLimit}" />
+            <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_MaxToolCalls}" />
           </StackPanel>
           <controls:SCNumericInput x:Name="ToolCallLimitInput"
                                    Grid.Column="1"
@@ -43,7 +43,7 @@
       <StackPanel Classes="settings-actions">
         <Button x:Name="SaveToolCallLimitButton"
                 Classes="compact primary sc-button"
-                Content="Save project limit"
+                Content="{DynamicResource Loc_SaveProjectLimit}"
                 Click="OnSaveToolCallLimit" />
         <TextBlock x:Name="ToolCallLimitScope" Classes="sc-text-status" VerticalAlignment="Center" />
         <TextBlock x:Name="ToolCallLimitStatus" Classes="sc-text-status" VerticalAlignment="Center" />
