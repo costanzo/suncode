@@ -46,10 +46,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private string _activeTurnId = string.Empty;
     private string _activeTurnState = string.Empty;
     private string _lastTurnId = string.Empty;
-    private ulong? _contextInputTokens;
-    private ulong? _contextOutputTokens;
-    private ulong? _contextCachedTokens;
-    private bool _contextUsageExpanded;
     private int _toolCallLimit = 64;
     private string _diagnosticsText = "Diagnostics unavailable";
     private string _sessionLoadError = string.Empty;
@@ -93,6 +89,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public ProviderTraceViewModel ProviderTrace { get; }
     public BrowserRuntimeViewModel Browser { get; }
     public ComputerRuntimeViewModel Computer { get; }
+    public ProviderTrafficViewModel ProviderTraffic { get; } = new();
+    public ContextUsageViewModel ContextUsage { get; }
+    public bool IsProviderTrafficVisible => IsProjectOpen;
     public ToolActivityViewModel ToolActivity { get; } = new();
     public ObservableCollection<ProjectItem> Projects { get; } = [];
     public ObservableCollection<SessionItem> Sessions { get; } = [];
@@ -134,6 +133,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             if (SetProperty(ref _selectedProject, value))
             {
                 OnPropertyChanged(nameof(IsProjectOpen));
+                OnPropertyChanged(nameof(IsProviderTrafficVisible));
                 OnPropertyChanged(nameof(ProjectTitle));
                 Mcp.OnProjectChanged();
             }
@@ -188,7 +188,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
                 OnPropertyChanged(nameof(CanAttachImages));
                 OnPropertyChanged(nameof(ComposerPlaceholder));
                 OnPropertyChanged(nameof(IsModelUnavailable));
-                ResetContextUsage();
+                ContextUsage.Reset();
             }
         }
     }
@@ -441,46 +441,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
         OnPropertyChanged(nameof(IsTurnThinking));
     }
 
-    private void ResetContextUsage()
-    {
-        _contextInputTokens = null;
-        _contextOutputTokens = null;
-        _contextCachedTokens = null;
-        ContextUsageExpanded = false;
-        NotifyContextUsageChanged();
-    }
+    private void UpdateContextUsage(SunCode.Sdk.Models.AgentUsage usage) => ContextUsage.Update(usage);
 
-    private void UpdateContextUsage(SunCode.Sdk.Models.AgentUsage usage)
-    {
-        _contextInputTokens = usage.InputTokens;
-        _contextOutputTokens = usage.OutputTokens;
-        _contextCachedTokens = usage.CacheReadTokens ?? usage.CacheWriteTokens;
-        NotifyContextUsageChanged();
-    }
-
-    private void NotifyContextUsageChanged()
-    {
-        OnPropertyChanged(nameof(ContextUsageKnown));
-        OnPropertyChanged(nameof(ContextUsageLimit));
-        OnPropertyChanged(nameof(ContextUsageText));
-        OnPropertyChanged(nameof(ContextUsagePercentText));
-        OnPropertyChanged(nameof(ContextUsagePercent));
-        OnPropertyChanged(nameof(ContextUsageIsWarning));
-        OnPropertyChanged(nameof(ContextUsageIsDanger));
-        OnPropertyChanged(nameof(ContextUsageIsNormal));
-        OnPropertyChanged(nameof(ContextUsageIsUnknown));
-        OnPropertyChanged(nameof(ContextInputTokenText));
-        OnPropertyChanged(nameof(ContextOutputTokenText));
-        OnPropertyChanged(nameof(ContextCachedTokenText));
-    }
-
-    private static string CompactTokenCount(ulong value) => value switch
-    {
-        >= 1_000_000 => $"{value / 1_000_000d:0.#}m",
-        >= 1_000 => $"{value / 1_000d:0.#}k",
-        _ => value.ToString()
-    };
-    
     private void NotifyReviewPresentationChanged()
     {
         OnPropertyChanged(nameof(ReviewHeadingText));
@@ -500,27 +462,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public string ProjectTitle => SelectedProject?.DisplayName ?? "SunCode";
     public string SessionTitle => SelectedSession?.DisplayTitle ?? "No session selected";
     public string SelectedModelName => SelectedModel?.Id ?? string.Empty;
-    public bool ContextUsageExpanded
-    {
-        get => _contextUsageExpanded;
-        set => SetProperty(ref _contextUsageExpanded, value);
-    }
-    public ulong? ContextUsageLimit => SelectedModel?.AutoCompactTokens ?? SelectedModel?.MaxInputTokens;
-    public bool ContextUsageKnown => _contextInputTokens.HasValue && ContextUsageLimit is > 0;
-    public string ContextUsageText => ContextUsageKnown
-        ? $"{CompactTokenCount(_contextInputTokens!.Value)} / {CompactTokenCount(ContextUsageLimit!.Value)} tokens"
-        : "Unavailable";
-    public string ContextUsagePercentText => ContextUsageKnown ? $"{ContextUsagePercent:0}%" : "--";
-    public double ContextUsagePercent => ContextUsageKnown
-        ? Math.Min(100d, _contextInputTokens!.Value * 100d / ContextUsageLimit!.Value)
-        : 0d;
-    public bool ContextUsageIsWarning => ContextUsageKnown && ContextUsagePercent >= 75d && ContextUsagePercent < 90d;
-    public bool ContextUsageIsDanger => ContextUsageKnown && ContextUsagePercent >= 90d;
-    public bool ContextUsageIsNormal => ContextUsageKnown && !ContextUsageIsWarning && !ContextUsageIsDanger;
-    public bool ContextUsageIsUnknown => !ContextUsageKnown;
-    public string ContextInputTokenText => _contextInputTokens is { } input ? CompactTokenCount(input) : "--";
-    public string ContextOutputTokenText => _contextOutputTokens is { } output ? CompactTokenCount(output) : "--";
-    public string ContextCachedTokenText => _contextCachedTokens is { } cached ? CompactTokenCount(cached) : "--";
     public string LatestActivityText => Activities.LastOrDefault()?.Text ?? "No tool activity yet";
     public string ComposerPlaceholder => SelectedSession is null
         ? "Create a session first..."

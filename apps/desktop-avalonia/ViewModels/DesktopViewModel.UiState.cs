@@ -24,6 +24,7 @@ public sealed partial class DesktopViewModel
         Explorer = new ExplorerViewModel(this);
         Browser = new BrowserRuntimeViewModel(this);
         Computer = new ComputerRuntimeViewModel(this);
+        ContextUsage = new ContextUsageViewModel(() => SelectedModel);
         _conversationDurationTimer.Tick += ConversationDurationTick;
         ComposerAttachments.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ComposerBottomClearance));
         AttachSessionCollectionListeners();

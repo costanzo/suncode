@@ -449,7 +449,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var type = value.EventType;
         var payload = value.Payload;
         var text = EventText(type, payload);
-        if (type.StartsWith("provider.exchange.", StringComparison.Ordinal)) ApplyProviderTransferEvent(value);
+        if (type.StartsWith("provider.exchange.", StringComparison.Ordinal)) ProviderTraffic.Apply(value);
 
         if (payload.Usage is { } usage && type.StartsWith("provider.exchange.", StringComparison.Ordinal))
             UpdateContextUsage(usage);

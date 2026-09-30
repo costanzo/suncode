@@ -132,13 +132,13 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         DisposeSubmittedAttachments();
         ReplaceComposerAttachments([]);
         ProviderTrace.Clear();
-        ResetContextUsage();
+        ContextUsage.Reset();
         PendingApproval = null;
         FullControlEnabled = false;
         ActiveTurnId = string.Empty;
         ActiveTurnState = string.Empty;
         UpdateActiveTurnTiming(string.Empty, null);
-        ClearProviderTraffic();
+        ProviderTraffic.Clear();
         if (clearSelection) SelectedSession = null;
         OnPropertyChanged(nameof(HasActivities));
         OnPropertyChanged(nameof(HasCheckpoints));
@@ -224,7 +224,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         Remote.Dispose();
         AppSettings.LanguageChanged -= OnAppLanguageChanged;
         _conversationDurationTimer.Tick -= ConversationDurationTick;
-        ClearProviderTraffic();
+        ProviderTraffic.Clear();
         Interlocked.Increment(ref _sessionLoadVersion);
         CloseSubscription();
         DisposeMessages();

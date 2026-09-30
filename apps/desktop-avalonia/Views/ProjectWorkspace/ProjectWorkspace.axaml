@@ -242,7 +242,7 @@
             </StackPanel>
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsProjectOpen}" VerticalAlignment="Center" Height="20">
-            <TextBlock Text="{Binding ProviderTrafficText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsProviderTrafficVisible}" ToolTip.Tip="{Binding ProviderTrafficDetails}" AutomationProperties.Name="{Binding ProviderTrafficDetails}" />
+            <TextBlock Text="{Binding ProviderTraffic.Text}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsProviderTrafficVisible}" ToolTip.Tip="{Binding ProviderTraffic.Details}" AutomationProperties.Name="{Binding ProviderTraffic.Details}" />
             <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding Remote.Configured}" Height="20" VerticalAlignment="Center" ToolTip.Tip="{Binding Remote.StatusText}" AutomationProperties.Name="{Binding Remote.StatusText}">
               <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{DynamicResource SuccessBrush}" IsVisible="{Binding Remote.Connected}" />
               <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{DynamicResource TextMutedBrush}" IsVisible="{Binding !Remote.Connected}" />

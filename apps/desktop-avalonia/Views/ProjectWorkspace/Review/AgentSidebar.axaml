@@ -64,39 +64,39 @@
           <controls:SCStatusDot Grid.Column="1" Status="{Binding ReviewStatusState}" ToolTip.Tip="{Binding ReviewStatusText}" />
         </Grid>
         <Border Classes="context-usage"
-                Classes.warning="{Binding ContextUsageIsWarning}"
-                Classes.danger="{Binding ContextUsageIsDanger}"
-                Classes.unknown="{Binding ContextUsageIsUnknown}"
+                Classes.warning="{Binding ContextUsage.IsWarning}"
+                Classes.danger="{Binding ContextUsage.IsDanger}"
+                Classes.unknown="{Binding ContextUsage.IsUnknown}"
                 IsVisible="{Binding HasSelectedSession}"
                 Padding="10,9,10,10">
           <StackPanel Spacing="7">
             <ToggleButton Classes="context-usage-toggle"
-                          IsChecked="{Binding ContextUsageExpanded, Mode=TwoWay}"
+                          IsChecked="{Binding ContextUsage.Expanded, Mode=TwoWay}"
                           AutomationProperties.Name="{DynamicResource Loc_ContextWindow}"
                           AutomationProperties.HelpText="{DynamicResource Loc_ContextWindowUsage}">
               <Grid ColumnDefinitions="*,Auto,14" ColumnSpacing="8">
                 <StackPanel Spacing="3">
                   <TextBlock Text="{DynamicResource Loc_ContextWindow}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
-                  <TextBlock Text="{Binding ContextUsageText}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding ContextUsage.Text}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
-                <TextBlock Grid.Column="1" Text="{Binding ContextUsagePercentText}" Classes="mono context-usage-percent" Classes.warning="{Binding ContextUsageIsWarning}" Classes.danger="{Binding ContextUsageIsDanger}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding ContextUsage.PercentText}" Classes="mono context-usage-percent" Classes.warning="{Binding ContextUsage.IsWarning}" Classes.danger="{Binding ContextUsage.IsDanger}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                 <svg:Svg Grid.Column="2" Width="12" Height="12" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
               </Grid>
             </ToggleButton>
             <ProgressBar Classes="context-usage"
-                         Classes.warning="{Binding ContextUsageIsWarning}"
-                         Classes.danger="{Binding ContextUsageIsDanger}"
+                         Classes.warning="{Binding ContextUsage.IsWarning}"
+                         Classes.danger="{Binding ContextUsage.IsDanger}"
                          Minimum="0"
                          Maximum="100"
-                         Value="{Binding ContextUsagePercent}"
+                         Value="{Binding ContextUsage.Percent}"
                          AutomationProperties.Name="{DynamicResource Loc_ContextWindowUsage}" />
-            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4" IsVisible="{Binding ContextUsageExpanded}">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4" IsVisible="{Binding ContextUsage.Expanded}">
               <TextBlock Text="{DynamicResource Loc_Input}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
-              <TextBlock Grid.Column="1" Text="{Binding ContextInputTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+              <TextBlock Grid.Column="1" Text="{Binding ContextUsage.InputTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
               <TextBlock Grid.Row="1" Text="{DynamicResource Loc_Output}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ContextOutputTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ContextUsage.OutputTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
               <TextBlock Grid.Row="2" Text="{DynamicResource Loc_Cached}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
-              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ContextCachedTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ContextUsage.CachedTokenText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
             </Grid>
           </StackPanel>
         </Border>
