@@ -146,9 +146,9 @@ public sealed partial class SettingsWindow : Window
         {
             RebindViewModelSubscriptions();
             await ViewModel.LoadProjectToolCallLimitAsync();
-            await ViewModel.LoadComputerRuntimeAsync();
+            await ViewModel.Computer.LoadAsync();
             RefreshComputerPresentation();
-            await ViewModel.LoadBrowserRuntimeAsync();
+            await ViewModel.Browser.LoadAsync();
             RefreshBrowserPresentation();
             RefreshModelSelector();
             AppearancePage.ThemeSelectorControl.ItemsSource = ThemeOptions(ViewModel.AppSettings.Language);
@@ -486,20 +486,20 @@ public sealed partial class SettingsWindow : Window
 
     private async Task LoadAndRefreshComputerAsync()
     {
-        await ViewModel.LoadComputerRuntimeAsync();
+        await ViewModel.Computer.LoadAsync();
         RefreshComputerPresentation();
     }
 
     private async void ComputerEnabledChanged(object? sender, RoutedEventArgs e)
     {
         if (!_ready || _refreshingComputerPage) return;
-        await ViewModel.SetComputerUseEnabledAsync(ComputerPage.EnabledToggleControl.IsChecked == true);
+        await ViewModel.Computer.SetComputerUseEnabledAsync(ComputerPage.EnabledToggleControl.IsChecked == true);
         RefreshComputerPresentation();
     }
 
     private void RefreshComputerPresentation()
     {
-        var runtime = ViewModel.ComputerRuntime;
+        var runtime = ViewModel.Computer.Runtime;
         if (runtime is null) return;
         _refreshingComputerPage = true;
         try
@@ -539,9 +539,9 @@ public sealed partial class SettingsWindow : Window
             ComputerPage.TakeControlButtonControl.IsEnabled = runtime.BackendAvailable;
             ComputerPage.ReturnControlButtonControl.IsVisible = runtime.Enabled && !agentControlled;
             ComputerPage.ReturnControlButtonControl.IsEnabled = runtime.BackendAvailable;
-            ComputerPage.StatusTextControl.Text = string.IsNullOrWhiteSpace(ViewModel.ComputerStatusText)
+            ComputerPage.StatusTextControl.Text = string.IsNullOrWhiteSpace(ViewModel.Computer.StatusText)
                 ? runtime.Error ?? string.Empty
-                : ViewModel.ComputerStatusText;
+                : ViewModel.Computer.StatusText;
             ComputerPage.EmergencyStopButtonControl.IsEnabled = runtime.Enabled && runtime.BackendAvailable;
         }
         finally
@@ -577,31 +577,31 @@ public sealed partial class SettingsWindow : Window
 
     private async void EmergencyStopComputerUse(object? sender, RoutedEventArgs e)
     {
-        await ViewModel.EmergencyStopComputerUseAsync();
+        await ViewModel.Computer.EmergencyStopComputerUseAsync();
         RefreshComputerPresentation();
     }
 
     private async void RequestComputerCapturePermission(object? sender, RoutedEventArgs e)
     {
-        await ViewModel.RequestComputerCapturePermissionAsync();
+        await ViewModel.Computer.RequestComputerCapturePermissionAsync();
         RefreshComputerPresentation();
     }
 
     private async void RequestComputerInputPermission(object? sender, RoutedEventArgs e)
     {
-        await ViewModel.RequestComputerInputPermissionAsync();
+        await ViewModel.Computer.RequestComputerInputPermissionAsync();
         RefreshComputerPresentation();
     }
 
     private async void TakeComputerControl(object? sender, RoutedEventArgs e)
     {
-        await ViewModel.TakeComputerControlAsync();
+        await ViewModel.Computer.TakeComputerControlAsync();
         RefreshComputerPresentation();
     }
 
     private async void ReturnComputerControl(object? sender, RoutedEventArgs e)
     {
-        await ViewModel.ReturnComputerControlAsync();
+        await ViewModel.Computer.ReturnComputerControlAsync();
         RefreshComputerPresentation();
     }
 
@@ -612,50 +612,50 @@ public sealed partial class SettingsWindow : Window
 
     private async Task LoadAndRefreshBrowserAsync()
     {
-        await ViewModel.LoadBrowserRuntimeAsync();
+        await ViewModel.Browser.LoadAsync();
         RefreshBrowserPresentation();
     }
 
     private async void BrowserEnabledChanged(object? sender, RoutedEventArgs e)
     {
         if (!_ready || _refreshingBrowserPage) return;
-        await ViewModel.SetBrowserUseEnabledAsync(BrowserPage.EnabledToggleControl.IsChecked == true);
+        await ViewModel.Browser.SetBrowserUseEnabledAsync(BrowserPage.EnabledToggleControl.IsChecked == true);
         RefreshBrowserPresentation();
     }
 
     private async void VerifyBrowserRuntime(object? sender, RoutedEventArgs e)
     {
-        await ViewModel.VerifyBrowserRuntimeAsync();
+        await ViewModel.Browser.VerifyBrowserRuntimeAsync();
         RefreshBrowserPresentation();
     }
 
     private async void StartBrowserRuntime(object? sender, RoutedEventArgs e)
     {
-        await ViewModel.StartBrowserProjectAsync();
+        await ViewModel.Browser.StartBrowserProjectAsync();
         RefreshBrowserPresentation();
     }
 
     private async void TakeBrowserControl(object? sender, RoutedEventArgs e)
     {
-        await ViewModel.TakeBrowserControlAsync();
+        await ViewModel.Browser.TakeBrowserControlAsync();
         RefreshBrowserPresentation();
     }
 
     private async void ReturnBrowserControl(object? sender, RoutedEventArgs e)
     {
-        await ViewModel.ReturnBrowserControlAsync();
+        await ViewModel.Browser.ReturnBrowserControlAsync();
         RefreshBrowserPresentation();
     }
 
     private async void RestartBrowserRuntime(object? sender, RoutedEventArgs e)
     {
-        await ViewModel.RestartBrowserRuntimeAsync();
+        await ViewModel.Browser.RestartBrowserRuntimeAsync();
         RefreshBrowserPresentation();
     }
 
     private async void StopBrowserRuntime(object? sender, RoutedEventArgs e)
     {
-        await ViewModel.StopBrowserRuntimeAsync();
+        await ViewModel.Browser.StopBrowserRuntimeAsync();
         RefreshBrowserPresentation();
     }
 
@@ -676,18 +676,18 @@ public sealed partial class SettingsWindow : Window
 
     private async Task ClearBrowserProfileConfirmedAsync()
     {
-        await ViewModel.ClearBrowserProfileAsync();
+        await ViewModel.Browser.ClearBrowserProfileAsync();
         RefreshBrowserPresentation();
     }
 
     private async void CopyBrowserNodePath(object? sender, RoutedEventArgs e) =>
-        await CopyBrowserValueAsync(ViewModel.BrowserRuntime?.NodePath);
+        await CopyBrowserValueAsync(ViewModel.Browser.Runtime?.NodePath);
 
     private async void CopyBrowserChromiumPath(object? sender, RoutedEventArgs e) =>
-        await CopyBrowserValueAsync(ViewModel.BrowserRuntime?.ChromiumPath);
+        await CopyBrowserValueAsync(ViewModel.Browser.Runtime?.ChromiumPath);
 
     private async void CopyBrowserProfilePath(object? sender, RoutedEventArgs e) =>
-        await CopyBrowserValueAsync(ViewModel.BrowserRuntime?.ProfilePath);
+        await CopyBrowserValueAsync(ViewModel.Browser.Runtime?.ProfilePath);
 
     private async Task CopyBrowserValueAsync(string? value)
     {
@@ -698,7 +698,7 @@ public sealed partial class SettingsWindow : Window
 
     private void RefreshBrowserPresentation()
     {
-        var runtime = ViewModel.BrowserRuntime;
+        var runtime = ViewModel.Browser.Runtime;
         if (runtime is null) return;
         _refreshingBrowserPage = true;
         try
@@ -749,7 +749,7 @@ public sealed partial class SettingsWindow : Window
                 : L("Loc_ShowingBrowserTransfers", "Showing the browser transfers exclusive control to you and pauses browser tools.");
             BrowserPage.ErrorTextControl.Text = runtime.Error ?? string.Empty;
             BrowserPage.ErrorTextControl.IsVisible = !string.IsNullOrWhiteSpace(runtime.Error);
-            BrowserPage.StatusTextControl.Text = ViewModel.BrowserStatusText;
+            BrowserPage.StatusTextControl.Text = ViewModel.Browser.StatusText;
             var installationReady = runtime.Enabled && runtime.InstallationState == "ready";
             var notStarted = runtime.RuntimeState == "not_started";
             BrowserPage.VerifyButtonControl.IsEnabled = runtime.Enabled;

@@ -20,6 +20,10 @@ public sealed partial class DesktopViewModel
         Remote = new RemoteServerViewModel(this);
         Git = new GitReviewViewModel(this);
         ProviderTrace = new ProviderTraceViewModel(this);
+        Editor = new EditorViewModel(this);
+        Explorer = new ExplorerViewModel(this);
+        Browser = new BrowserRuntimeViewModel(this);
+        Computer = new ComputerRuntimeViewModel(this);
         _conversationDurationTimer.Tick += ConversationDurationTick;
         ComposerAttachments.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ComposerBottomClearance));
         AttachSessionCollectionListeners();

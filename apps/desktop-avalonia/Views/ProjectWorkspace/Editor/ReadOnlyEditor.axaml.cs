@@ -15,7 +15,7 @@ public sealed partial class ReadOnlyEditor : UserControl
 {
     private RegistryOptions? _registryOptions;
     private TextMateInstallation? _textMateInstallation;
-    private DesktopViewModel? _viewModel;
+    private EditorViewModel? _viewModel;
     private bool _isAttached;
 
     public ReadOnlyEditor()
@@ -50,17 +50,17 @@ public sealed partial class ReadOnlyEditor : UserControl
     private void AttachViewModel()
     {
         if (_viewModel is not null) _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
-        _viewModel = DataContext as DesktopViewModel;
+        _viewModel = (DataContext as DesktopViewModel)?.Editor;
         if (_viewModel is not null) _viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        SourceEditor.Text = _viewModel?.EditorContent ?? string.Empty;
+        SourceEditor.Text = _viewModel?.Content ?? string.Empty;
         ApplySyntaxGrammar();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
-        if (eventArgs.PropertyName is nameof(DesktopViewModel.EditorContent))
-            SourceEditor.Text = _viewModel?.EditorContent ?? string.Empty;
-        else if (eventArgs.PropertyName is nameof(DesktopViewModel.EditorFileName))
+        if (eventArgs.PropertyName is nameof(EditorViewModel.Content))
+            SourceEditor.Text = _viewModel?.Content ?? string.Empty;
+        else if (eventArgs.PropertyName is nameof(EditorViewModel.FileName))
             ApplySyntaxGrammar();
     }
 
@@ -81,10 +81,10 @@ public sealed partial class ReadOnlyEditor : UserControl
 
     private void ApplySyntaxGrammar()
     {
-        if (_viewModel is null || string.IsNullOrEmpty(_viewModel.EditorFileName)) return;
+        if (_viewModel is null || string.IsNullOrEmpty(_viewModel.FileName)) return;
 
         EnsureTextMateInstalled();
-        var grammarExtension = EditorLanguage.FromFileName(_viewModel.EditorFileName).GrammarExtension;
+        var grammarExtension = EditorLanguage.FromFileName(_viewModel.FileName).GrammarExtension;
         var scope = string.IsNullOrEmpty(grammarExtension)
             ? null
             : _registryOptions?.GetScopeByExtension(grammarExtension);

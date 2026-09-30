@@ -46,53 +46,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         return fallback;
     }
 
-    private async Task LoadProjectDependenciesAsync()
-    {
-        ProjectDependencies.Clear();
-        if (_sdk is null || SelectedProject is null)
-        {
-            OnPropertyChanged(nameof(HasProjectDependencies));
-            return;
-        }
-        var result = await _sdk.ListProjectDependenciesAsync(SelectedProject.ProjectId);
-        foreach (var item in result.Dependencies)
-        {
-            ProjectDependencies.Add(new ProjectDependencyItem(
-                item.DependencyId,
-                item.DisplayName));
-        }
-        OnPropertyChanged(nameof(HasProjectDependencies));
-    }
-
-    private void ResetExplorerRoots()
-    {
-        ExplorerRoots.Clear();
-        if (SelectedProject is null) return;
-        ExplorerRoots.Add(new ExplorerNode(
-            SelectedProject.DisplayName,
-            ".",
-            "directory",
-            isRoot: true));
-        var dependencyGroup = new ExplorerNode(
-            "Dependencies",
-            ".",
-            "group",
-            isRoot: true,
-            isGroup: true);
-        foreach (var dependency in ProjectDependencies)
-        {
-            dependencyGroup.Children.Add(new ExplorerNode(
-                dependency.DisplayName,
-                ".",
-                "directory",
-                dependency.DependencyId,
-                isRoot: true,
-                isDependency: true));
-        }
-        dependencyGroup.IsLoaded = true;
-        ExplorerRoots.Add(dependencyGroup);
-    }
-
     private async Task LoadSessionsAsync(string? preferredSessionId = null)
     {
         if (_sdk is null || SelectedProject is null) return;

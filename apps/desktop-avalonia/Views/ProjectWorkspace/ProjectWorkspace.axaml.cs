@@ -166,7 +166,7 @@ public sealed partial class ProjectWorkspace : UserControl
         }
         ViewModel.ExplorerVisible = true;
         ViewModel.NavigationVisible = true;
-        await ViewModel.LoadExplorerRootsAsync();
+        await ViewModel.Explorer.LoadRootsAsync();
     }
 
     private void ToggleReview(object? sender, RoutedEventArgs e)

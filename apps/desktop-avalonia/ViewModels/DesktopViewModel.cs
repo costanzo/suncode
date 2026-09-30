@@ -91,6 +91,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public RemoteServerViewModel Remote { get; }
     public GitReviewViewModel Git { get; }
     public ProviderTraceViewModel ProviderTrace { get; }
+    public BrowserRuntimeViewModel Browser { get; }
+    public ComputerRuntimeViewModel Computer { get; }
     public ToolActivityViewModel ToolActivity { get; } = new();
     public ObservableCollection<ProjectItem> Projects { get; } = [];
     public ObservableCollection<SessionItem> Sessions { get; } = [];
@@ -105,8 +107,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public ObservableCollection<AgentItem> Agents { get; } = [];
     public ObservableCollection<ComposerAttachment> ComposerAttachments { get; } = [];
     public double ComposerBottomClearance => ComposerAttachments.Count > 0 ? 180 : 128;
-    public ObservableCollection<ProjectDependencyItem> ProjectDependencies { get; } = [];
-    public ObservableCollection<ExplorerNode> ExplorerRoots { get; } = [];
     public BulkObservableCollection<MessageItem> Messages
     {
         get => _messages;
@@ -329,7 +329,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool IsProjectOpen => SelectedProject is not null;
     public bool CanOpenProjects => ConnectionState == "connected";
     public bool HasProjects => Projects.Count > 0;
-    public bool HasProjectDependencies => ProjectDependencies.Count > 0;
     public bool SessionSidebarVisible => NavigationVisible && !ExplorerVisible;
     public bool ExplorerSidebarVisible => NavigationVisible && ExplorerVisible;
     public bool EffectiveNavigationVisible => !PreviewVisible && NavigationVisible && _layoutWidth > NavigationPaneBreakpoint && NavigationPaneWidth >= MinimumNavigationPaneWidth;

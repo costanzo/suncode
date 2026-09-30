@@ -80,9 +80,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         {
             await _sdk!.SelectProjectAsync(project.ProjectId);
             SelectedProject = project;
-            await LoadProjectDependenciesAsync();
-            ResetExplorerRoots();
-            await LoadExplorerRootsAsync();
+            await Explorer.ReloadAsync();
             RestoreProjectPresentationState();
             await LoadSessionsAsync();
             await Git.RefreshAsync();
@@ -95,9 +93,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         await RunAsync(async () =>
         {
             await _sdk!.AddProjectDependencyAsync(SelectedProject.ProjectId, path);
-            await LoadProjectDependenciesAsync();
-            ResetExplorerRoots();
-            await LoadExplorerRootsAsync();
+            await Explorer.ReloadAsync();
         }, "Dependency added");
     }
 
@@ -107,64 +103,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         await RunAsync(async () =>
         {
             await _sdk!.RemoveProjectDependencyAsync(SelectedProject.ProjectId, node.DependencyId);
-            await LoadProjectDependenciesAsync();
-            ResetExplorerRoots();
-            await LoadExplorerRootsAsync();
+            await Explorer.ReloadAsync();
         }, "Dependency removed");
-    }
-
-    public async Task LoadExplorerChildrenAsync(ExplorerNode node)
-    {
-        if (!EnsureSdk() || SelectedProject is null || !node.IsDirectory || node.IsGroup || node.IsLoaded || node.IsLoading) return;
-        node.IsLoading = true;
-        try
-        {
-            var result = await _sdk!.ListProjectDirectoryAsync(
-                SelectedProject.ProjectId,
-                node.DependencyId,
-                node.Path);
-            node.Children.Clear();
-            foreach (var item in result.Entries)
-            {
-                node.Children.Add(new ExplorerNode(
-                    item.Name,
-                    item.Path,
-                    item.Kind,
-                    node.DependencyId));
-            }
-            node.IsLoaded = true;
-        }
-        catch (Exception exception)
-        {
-            ReportError(exception);
-        }
-        finally
-        {
-            node.IsLoading = false;
-        }
-    }
-
-    public async Task RefreshExplorerAsync()
-    {
-        if (SelectedProject is null) return;
-        ResetExplorerRoots();
-        await LoadExplorerRootsAsync();
-    }
-
-    public async Task LoadExplorerRootsAsync()
-    {
-        foreach (var root in ExplorerRoots)
-        {
-            if (root.IsGroup)
-            {
-                foreach (var dependency in root.Children)
-                    await LoadExplorerChildrenAsync(dependency);
-            }
-            else
-            {
-                await LoadExplorerChildrenAsync(root);
-            }
-        }
     }
 
     public async Task<bool> CreateSessionAsync(string title)

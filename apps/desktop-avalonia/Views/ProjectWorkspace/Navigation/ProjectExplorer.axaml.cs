@@ -31,7 +31,7 @@ public sealed partial class ProjectExplorer : UserControl
     private async void ExplorerItemExpanded(object? sender, RoutedEventArgs e)
     {
         if (e.Source is TreeViewItem { DataContext: ExplorerNode node })
-            await ViewModel.LoadExplorerChildrenAsync(node);
+            await ViewModel.Explorer.LoadChildrenAsync(node);
     }
 
     private async void ExplorerSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -126,5 +126,5 @@ public sealed partial class ProjectExplorer : UserControl
     }
 
     private async void RefreshExplorer(object? sender, RoutedEventArgs e)
-        => await ViewModel.RefreshExplorerAsync();
+        => await ViewModel.Explorer.RefreshAsync();
 }
