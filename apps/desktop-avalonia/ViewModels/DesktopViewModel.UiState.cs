@@ -115,20 +115,20 @@ public sealed partial class DesktopViewModel
         _restoringUiState = true;
         try
         {
-            RecentContents.Clear();
-            foreach (var item in saved.RecentContent.Take(RecentContentLimit))
+            var restored = new List<RecentContentItem>();
+            foreach (var item in saved.RecentContent.Take(RecentContentViewModel.Limit))
             {
                 if (item.Kind == "session" && item.SessionId is { Length: > 0 } sessionId)
                 {
                     var session = Sessions.FirstOrDefault(value => value.SessionId == sessionId);
-                    if (session is not null) RecentContents.Add(RecentContentItem.FromSession(session));
+                    if (session is not null) restored.Add(RecentContentItem.FromSession(session));
                 }
                 else if (item.Kind == "file" && item.Path is { Length: > 0 } path && IsSafeRelativePath(path))
                 {
-                    RecentContents.Add(RecentContentItem.FromFile(new ExplorerNode(Path.GetFileName(path), path, "file", item.DependencyId)));
+                    restored.Add(RecentContentItem.FromFile(new ExplorerNode(Path.GetFileName(path), path, "file", item.DependencyId)));
                 }
             }
-            NotifyRecentContentChanged();
+            RecentContent.ReplaceAll(restored);
         }
         finally { _restoringUiState = false; }
         return saved;

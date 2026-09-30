@@ -17,8 +17,7 @@ public sealed partial class DesktopViewModel
         foreach (var saved in SavedUiProjectState.RecentContent.Where(item => item.Kind == "child-session" && !string.IsNullOrWhiteSpace(item.SessionId)))
         {
             var child = ChildSessions.FirstOrDefault(item => item.SessionId == saved.SessionId);
-            if (child is not null && RecentContents.All(item => item.ContentId != $"child-session:{child.SessionId}"))
-                RecentContents.Add(RecentContentItem.FromChildSession(child));
+            if (child is not null) RecentContent.AddIfMissing(RecentContentItem.FromChildSession(child));
         }
         OnPropertyChanged(nameof(HasChildSessions));
         RefreshRecentChildSessionReferences();
@@ -123,27 +122,24 @@ public sealed partial class DesktopViewModel
             var result = await _sdk.ListChildSessionsAsync(parentId);
             foreach (var child in ProjectChildSessions(result))
             {
-                if (saved.RecentContent.Any(item => item.Kind == "child-session" && item.SessionId == child.SessionId)
-                    && RecentContents.All(item => item.ContentId != $"child-session:{child.SessionId}"))
-                    RecentContents.Add(RecentContentItem.FromChildSession(child));
+                if (saved.RecentContent.Any(item => item.Kind == "child-session" && item.SessionId == child.SessionId))
+                    RecentContent.AddIfMissing(RecentContentItem.FromChildSession(child));
             }
         }
         var ordered = saved.RecentContent
             .Select(item => item.Kind switch
             {
-                "session" => RecentContents.FirstOrDefault(recent => recent.ContentId == $"session:{item.SessionId}"),
-                "child-session" => RecentContents.FirstOrDefault(recent => recent.ContentId == $"child-session:{item.SessionId}"),
-                "file" => RecentContents.FirstOrDefault(recent => recent.ContentId == $"file:{item.DependencyId ?? "project"}:{item.Path}"),
+                "session" => RecentContent.Items.FirstOrDefault(recent => recent.ContentId == $"session:{item.SessionId}"),
+                "child-session" => RecentContent.Items.FirstOrDefault(recent => recent.ContentId == $"child-session:{item.SessionId}"),
+                "file" => RecentContent.Items.FirstOrDefault(recent => recent.ContentId == $"file:{item.DependencyId ?? "project"}:{item.Path}"),
                 _ => null
             })
             .Where(item => item is not null)
             .Cast<RecentContentItem>()
             .DistinctBy(item => item.ContentId)
-            .Take(RecentContentLimit)
+            .Take(RecentContentViewModel.Limit)
             .ToArray();
-        RecentContents.Clear();
-        foreach (var item in ordered) RecentContents.Add(item);
-        NotifyRecentContentChanged();
+        RecentContent.ReplaceAll(ordered);
     }
 
     private IReadOnlyList<ChildSessionItem> ProjectChildSessions(ChildSessionsResult result)

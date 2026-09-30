@@ -64,7 +64,7 @@
                          Text="{DynamicResource Loc_RecentlyViewed}"
                          VerticalAlignment="Center" />
               <TextBlock Grid.Column="1"
-                         Text="{Binding RecentContentCountText}"
+                         Text="{Binding RecentContent.CountText}"
                          Classes="mono"
                          FontSize="9"
                          Foreground="{DynamicResource TextDisabledBrush}"
@@ -76,8 +76,8 @@
                             HorizontalContentAlignment="Stretch"
                             HorizontalScrollBarVisibility="Disabled"
                             VerticalScrollBarVisibility="Auto"
-                            IsVisible="{Binding HasRecentContentOptions}">
-                <ItemsControl ItemsSource="{Binding RecentContentOptions}"
+                            IsVisible="{Binding RecentContent.HasOptions}">
+                <ItemsControl ItemsSource="{Binding RecentContent.Options}"
                               HorizontalAlignment="Stretch">
                   <ItemsControl.Styles>
                     <Style Selector="ContentPresenter">
@@ -165,7 +165,7 @@
                 </ItemsControl>
               </ScrollViewer>
 
-              <StackPanel Margin="8,10" Orientation="Horizontal" Spacing="8" IsVisible="{Binding !HasRecentContentOptions}">
+              <StackPanel Margin="8,10" Orientation="Horizontal" Spacing="8" IsVisible="{Binding !RecentContent.HasOptions}">
                 <svg:Svg Width="18" Height="18" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Text="{DynamicResource Loc_NoRecentContent}"
                            FontSize="11"

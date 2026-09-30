@@ -31,7 +31,7 @@ public sealed class RecentContentTests
         viewModel.RememberRecentFile(file);
 
         Assert.Collection(
-            viewModel.RecentContents,
+            viewModel.RecentContent.Items,
             item =>
             {
                 Assert.True(item.IsFile);
@@ -45,19 +45,19 @@ public sealed class RecentContentTests
                 Assert.Equal(session, item.Session);
             });
         Assert.Collection(
-            viewModel.RecentContentOptions,
+            viewModel.RecentContent.Options,
             item => Assert.Equal("session:session-1", item.ContentId));
-        Assert.DoesNotContain(viewModel.RecentContentOptions, item => item.IsCurrent);
-        Assert.Equal("1 / 20", viewModel.RecentContentCountText);
+        Assert.DoesNotContain(viewModel.RecentContent.Options, item => item.IsCurrent);
+        Assert.Equal("1 / 20", viewModel.RecentContent.CountText);
 
         viewModel.RememberRecentSession(session);
 
-        Assert.Equal(2, viewModel.RecentContents.Count);
-        Assert.Equal("session:session-1", viewModel.RecentContents[0].ContentId);
-        Assert.True(viewModel.RecentContents[0].IsCurrent);
-        Assert.False(viewModel.RecentContents[1].IsCurrent);
+        Assert.Equal(2, viewModel.RecentContent.Items.Count);
+        Assert.Equal("session:session-1", viewModel.RecentContent.Items[0].ContentId);
+        Assert.True(viewModel.RecentContent.Items[0].IsCurrent);
+        Assert.False(viewModel.RecentContent.Items[1].IsCurrent);
         Assert.Collection(
-            viewModel.RecentContentOptions,
+            viewModel.RecentContent.Options,
             item => Assert.Equal(RecentContentItem.FromFile(file).ContentId, item.ContentId));
     }
 
@@ -68,10 +68,10 @@ public sealed class RecentContentTests
 
         viewModel.RememberRecentSession(Session("session-1", "Only session"));
 
-        Assert.Single(viewModel.RecentContents);
-        Assert.Empty(viewModel.RecentContentOptions);
-        Assert.False(viewModel.HasRecentContentOptions);
-        Assert.Equal("0 / 20", viewModel.RecentContentCountText);
+        Assert.Single(viewModel.RecentContent.Items);
+        Assert.Empty(viewModel.RecentContent.Options);
+        Assert.False(viewModel.RecentContent.HasOptions);
+        Assert.Equal("0 / 20", viewModel.RecentContent.CountText);
     }
 
     [Fact]
@@ -79,17 +79,17 @@ public sealed class RecentContentTests
     {
         using var viewModel = new DesktopViewModel();
 
-        for (var index = 0; index <= DesktopViewModel.RecentContentLimit; index++)
+        for (var index = 0; index <= RecentContentViewModel.Limit; index++)
             viewModel.RememberRecentSession(Session($"session-{index}", $"Session {index}"));
 
-        Assert.Equal(DesktopViewModel.RecentContentLimit, viewModel.RecentContents.Count);
-        Assert.Equal("session:session-20", viewModel.RecentContents[0].ContentId);
+        Assert.Equal(RecentContentViewModel.Limit, viewModel.RecentContent.Items.Count);
+        Assert.Equal("session:session-20", viewModel.RecentContent.Items[0].ContentId);
         Assert.DoesNotContain(
-            viewModel.RecentContents,
+            viewModel.RecentContent.Items,
             item => item.ContentId == "session:session-0");
-        Assert.Equal(DesktopViewModel.RecentContentLimit - 1, viewModel.RecentContentOptions.Count);
-        Assert.DoesNotContain(viewModel.RecentContentOptions, item => item.IsCurrent);
-        Assert.Equal("19 / 20", viewModel.RecentContentCountText);
+        Assert.Equal(RecentContentViewModel.Limit - 1, viewModel.RecentContent.Options.Count);
+        Assert.DoesNotContain(viewModel.RecentContent.Options, item => item.IsCurrent);
+        Assert.Equal("19 / 20", viewModel.RecentContent.CountText);
     }
 
     [Fact]
@@ -102,17 +102,17 @@ public sealed class RecentContentTests
 
         viewModel.RefreshRecentSessionReferences();
 
-        Assert.Single(viewModel.RecentContents);
-        Assert.Equal("Renamed title", viewModel.RecentContents[0].Title);
-        Assert.Same(renamed, viewModel.RecentContents[0].Session);
-        Assert.Empty(viewModel.RecentContentOptions);
+        Assert.Single(viewModel.RecentContent.Items);
+        Assert.Equal("Renamed title", viewModel.RecentContent.Items[0].Title);
+        Assert.Same(renamed, viewModel.RecentContent.Items[0].Session);
+        Assert.Empty(viewModel.RecentContent.Options);
 
         viewModel.Sessions.Clear();
         viewModel.RefreshRecentSessionReferences();
 
-        Assert.Empty(viewModel.RecentContents);
-        Assert.Empty(viewModel.RecentContentOptions);
-        Assert.False(viewModel.HasRecentContentOptions);
+        Assert.Empty(viewModel.RecentContent.Items);
+        Assert.Empty(viewModel.RecentContent.Options);
+        Assert.False(viewModel.RecentContent.HasOptions);
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public sealed class RecentContentTests
         var child = Child("child-1", "Implement settings", "running");
         viewModel.RememberRecentChildSession(child);
 
-        var item = Assert.Single(viewModel.RecentContents);
+        var item = Assert.Single(viewModel.RecentContent.Items);
         Assert.True(item.IsChildSession);
         Assert.Equal("CHILD SESSION", item.KindLabel);
         Assert.Equal("Software Engineering Agent · Running", item.Detail);
@@ -146,8 +146,8 @@ public sealed class RecentContentTests
         viewModel.ChildSessions.Add(completed);
         viewModel.RefreshRecentChildSessionReferences();
 
-        Assert.Equal("Software Engineering Agent · Completed", viewModel.RecentContents[0].Detail);
-        Assert.Same(completed, viewModel.RecentContents[0].ChildSession);
+        Assert.Equal("Software Engineering Agent · Completed", viewModel.RecentContent.Items[0].Detail);
+        Assert.Same(completed, viewModel.RecentContent.Items[0].ChildSession);
     }
 
     private static SessionItem Session(string id, string title) =>
