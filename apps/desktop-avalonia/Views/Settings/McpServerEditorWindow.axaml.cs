@@ -20,7 +20,7 @@ public sealed partial class McpServerEditorWindow : Window
         new("Project directory", "project"),
         new("Application data directory", "application_data")
     ];
-    private readonly DesktopViewModel? _viewModel;
+    private readonly McpServersViewModel? _viewModel;
     private readonly McpServerItem? _server;
 
     public event Action? Saved;
@@ -32,7 +32,7 @@ public sealed partial class McpServerEditorWindow : Window
         SetIcon();
     }
 
-    public McpServerEditorWindow(DesktopViewModel viewModel, McpServerItem? server = null)
+    public McpServerEditorWindow(McpServersViewModel viewModel, McpServerItem? server = null)
     {
         InitializeComponent();
         InitializeSelectors();
@@ -111,12 +111,12 @@ public sealed partial class McpServerEditorWindow : Window
         SaveButton.IsEnabled = false;
         ValidationText.Text = string.Empty;
         var saved = _server is null
-            ? await _viewModel.CreateMcpServerAsync(request)
-            : await _viewModel.UpdateMcpServerAsync(_server, request);
+            ? await _viewModel.CreateServerAsync(request)
+            : await _viewModel.UpdateServerAsync(_server, request);
         SaveButton.IsEnabled = true;
         if (!saved)
         {
-            ValidationText.Text = _viewModel.McpStatusText;
+            ValidationText.Text = _viewModel.StatusText;
             return;
         }
         Saved?.Invoke();

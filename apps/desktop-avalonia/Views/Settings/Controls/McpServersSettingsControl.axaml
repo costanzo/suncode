@@ -4,7 +4,7 @@
              xmlns:vm="using:SunCode.Desktop.ViewModels"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Views.Settings.Controls.McpServersSettingsControl"
-             x:DataType="vm:DesktopViewModel">
+             x:DataType="vm:McpServersViewModel">
   <UserControl.Styles>
     <Style Selector="Border.mcp-note">
       <Setter Property="Padding" Value="11,10" />
@@ -42,7 +42,7 @@
           </StackPanel>
         </Button>
       </Grid>
-      <TextBlock Text="{Binding McpProjectContext}" Classes="mono" FontSize="10"
+      <TextBlock Text="{Binding ProjectContext}" Classes="mono" FontSize="10"
                  Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,14" />
       <Border Classes="mcp-note" Margin="0,0,0,20">
         <Grid ColumnDefinitions="16,*" ColumnSpacing="9">
@@ -53,14 +53,14 @@
         </Grid>
       </Border>
 
-      <StackPanel IsVisible="{Binding McpHasServers}">
+      <StackPanel IsVisible="{Binding HasServers}">
         <Grid ColumnDefinitions="*,108,72,94" ColumnSpacing="12" MinHeight="31" Margin="4,0">
           <TextBlock Text="{DynamicResource Loc_Server}" Classes="eyebrow" VerticalAlignment="Center" />
           <TextBlock Grid.Column="1" Text="{DynamicResource Loc_Status}" Classes="eyebrow" VerticalAlignment="Center" />
           <TextBlock Grid.Column="2" Text="{DynamicResource Loc_Enabled}" Classes="eyebrow" VerticalAlignment="Center" />
           <TextBlock Grid.Column="3" Text="{DynamicResource Loc_Actions}" Classes="eyebrow" VerticalAlignment="Center" HorizontalAlignment="Right" />
         </Grid>
-        <ItemsControl ItemsSource="{Binding McpServers}">
+        <ItemsControl ItemsSource="{Binding Servers}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="models:McpServerItem">
               <Border Classes="mcp-row">
@@ -108,7 +108,7 @@
         </ItemsControl>
       </StackPanel>
 
-      <Border IsVisible="{Binding McpHasNoServers}" Padding="24" Margin="0,8,0,0"
+      <Border IsVisible="{Binding HasNoServers}" Padding="24" Margin="0,8,0,0"
               BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
         <StackPanel Spacing="7" HorizontalAlignment="Center">
           <svg:Svg Width="22" Height="22" Path="/Assets/icons/server.svg" Css="{DynamicResource IconSvgCss}" />
@@ -128,7 +128,7 @@
           </StackPanel>
         </Grid>
       </Border>
-      <TextBlock Text="{Binding McpStatusText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
+      <TextBlock Text="{Binding StatusText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
                  TextWrapping="Wrap" Margin="0,14,0,0" />
     </StackPanel>
   </ScrollViewer>

@@ -10,7 +10,7 @@ namespace SunCode.Desktop.Views.Settings;
 
 public sealed partial class LanguageServerEditorWindow : Window
 {
-    private readonly DesktopViewModel? _viewModel;
+    private readonly LanguageServersViewModel? _viewModel;
     private readonly LanguageServerItem? _server;
 
     public event Action? Saved;
@@ -21,7 +21,7 @@ public sealed partial class LanguageServerEditorWindow : Window
         SetIcon();
     }
 
-    public LanguageServerEditorWindow(DesktopViewModel viewModel, LanguageServerItem? server = null)
+    public LanguageServerEditorWindow(LanguageServersViewModel viewModel, LanguageServerItem? server = null)
     {
         InitializeComponent();
         _viewModel = viewModel;
@@ -76,12 +76,12 @@ public sealed partial class LanguageServerEditorWindow : Window
         SaveButton.IsEnabled = false;
         ValidationText.Text = string.Empty;
         var saved = _server is null
-            ? await _viewModel.CreateLanguageServerAsync(request)
-            : await _viewModel.UpdateLanguageServerAsync(_server, request);
+            ? await _viewModel.CreateServerAsync(request)
+            : await _viewModel.UpdateServerAsync(_server, request);
         SaveButton.IsEnabled = true;
         if (!saved)
         {
-            ValidationText.Text = _viewModel.LanguageServerStatusText;
+            ValidationText.Text = _viewModel.StatusText;
             return;
         }
         Saved?.Invoke();

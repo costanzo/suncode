@@ -172,30 +172,30 @@ public sealed partial class SettingsWindow : Window
             _baselineLogMaxBytes = ViewModel.LogMaxBytes;
             _baselineLogRetention = ViewModel.LogRetention;
             _baselineImageDirectory = NormalizeDirectory(ViewModel.EffectiveImageDirectory);
-            NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked = ViewModel.VerifyHttpsCertificates;
-            NetworkPage.UseSystemCertificatesToggleControl.IsChecked = ViewModel.UseSystemCertificates;
-            NetworkPage.CertificatePathInputControl.Text = ViewModel.CertificatePath;
-            NetworkPage.CertificatePathInputControl.IsEnabled = ViewModel.UseSystemCertificates == false;
+            NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked = ViewModel.Network.VerifyHttpsCertificates;
+            NetworkPage.UseSystemCertificatesToggleControl.IsChecked = ViewModel.Network.UseSystemCertificates;
+            NetworkPage.CertificatePathInputControl.Text = ViewModel.Network.CertificatePath;
+            NetworkPage.CertificatePathInputControl.IsEnabled = ViewModel.Network.UseSystemCertificates == false;
             var proxyModeOptions = ProxyModeOptions(ViewModel.Language);
             NetworkPage.ProxyModeSelectorControl.ItemsSource = proxyModeOptions;
-            NetworkPage.ProxyModeSelectorControl.SelectedItem = proxyModeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ProxyMode));
-            NetworkPage.ProxyUrlInputControl.Text = ViewModel.ProxyUrl;
-            NetworkPage.ProxyUsernameInputControl.Text = ViewModel.ProxyUsername;
+            NetworkPage.ProxyModeSelectorControl.SelectedItem = proxyModeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.Network.ProxyMode));
+            NetworkPage.ProxyUrlInputControl.Text = ViewModel.Network.ProxyUrl;
+            NetworkPage.ProxyUsernameInputControl.Text = ViewModel.Network.ProxyUsername;
             NetworkPage.ProxyPasswordInputControl.Text = string.Empty;
-            NetworkPage.ProxyBypassInputControl.Text = ViewModel.ProxyBypassRules;
-            var remote = await ViewModel.LoadRemoteServerAsync();
+            NetworkPage.ProxyBypassInputControl.Text = ViewModel.Network.ProxyBypassRules;
+            var remote = await ViewModel.Remote.LoadAsync();
             RemotePage.ServerUrlInputControl.Text = remote.Configuration.ServerUrl;
             RemotePage.PairingCodeInputControl.Text = remote.Configuration.PairingCode;
             RefreshRemotePresentation(remote.Status);
-            _baselineProxyMode = ViewModel.ProxyMode;
-            _baselineProxyUrl = ViewModel.ProxyUrl;
-            _baselineProxyUsername = ViewModel.ProxyUsername;
-            _baselineProxyBypass = NormalizeProxyBypass(ViewModel.ProxyBypassRules);
-            _baselineProxyPasswordConfigured = ViewModel.ProxyPasswordConfigured;
+            _baselineProxyMode = ViewModel.Network.ProxyMode;
+            _baselineProxyUrl = ViewModel.Network.ProxyUrl;
+            _baselineProxyUsername = ViewModel.Network.ProxyUsername;
+            _baselineProxyBypass = NormalizeProxyBypass(ViewModel.Network.ProxyBypassRules);
+            _baselineProxyPasswordConfigured = ViewModel.Network.ProxyPasswordConfigured;
             _clearProxyPassword = false;
-            _baselineVerifyHttpsCertificates = ViewModel.VerifyHttpsCertificates;
-            _baselineUseSystemCertificates = ViewModel.UseSystemCertificates;
-            _baselineCertificatePath = ViewModel.CertificatePath ?? string.Empty;
+            _baselineVerifyHttpsCertificates = ViewModel.Network.VerifyHttpsCertificates;
+            _baselineUseSystemCertificates = ViewModel.Network.UseSystemCertificates;
+            _baselineCertificatePath = ViewModel.Network.CertificatePath ?? string.Empty;
             RefreshHttpsCertificateWarning();
             RefreshCertificateTrustPresentation();
             RefreshProxyPresentation();
@@ -371,7 +371,7 @@ public sealed partial class SettingsWindow : Window
         ProvidersPage.IsVisible = page == "providers";
         if (page == "mcp")
         {
-            _ = ViewModel.LoadMcpServersAsync();
+            _ = ViewModel.Mcp.LoadServersAsync();
             _mcpPollTimer.Start();
         }
         else
@@ -380,8 +380,8 @@ public sealed partial class SettingsWindow : Window
         }
         if (page == "lsp")
         {
-            _ = ViewModel.StartLanguageServerProjectAsync();
-            _ = ViewModel.LoadLanguageServersAsync();
+            _ = ViewModel.LanguageServers.StartProjectAsync();
+            _ = ViewModel.LanguageServers.LoadServersAsync();
             _languageServerPollTimer.Start();
         }
         else
@@ -438,12 +438,12 @@ public sealed partial class SettingsWindow : Window
 
     private async void McpPollTick(object? sender, EventArgs e)
     {
-        if (McpPage.IsVisible) await ViewModel.LoadMcpServersAsync();
+        if (McpPage.IsVisible) await ViewModel.Mcp.LoadServersAsync();
     }
 
     private async void SaveRemote(object? sender, RoutedEventArgs e)
     {
-        var result = await ViewModel.SaveRemoteServerAsync(RemotePage.ServerUrlInputControl.Text, RemotePage.PairingCodeInputControl.Text);
+        var result = await ViewModel.Remote.SaveAsync(RemotePage.ServerUrlInputControl.Text, RemotePage.PairingCodeInputControl.Text);
         RefreshRemotePresentation(result);
         RemotePage.StatusTextControl.Text = result.Error ?? (result.Connected
             ? L("Loc_Connected", "Connected")
@@ -452,13 +452,13 @@ public sealed partial class SettingsWindow : Window
 
     private async void DisconnectRemote(object? sender, RoutedEventArgs e)
     {
-        var status = await ViewModel.DisconnectRemoteServerAsync();
+        var status = await ViewModel.Remote.DisconnectAsync();
         RefreshRemotePresentation(status);
     }
 
     private async void ClearRemote(object? sender, RoutedEventArgs e)
     {
-        var status = await ViewModel.ClearRemoteServerAsync();
+        var status = await ViewModel.Remote.ClearAsync();
         RemotePage.ServerUrlInputControl.Text = string.Empty;
         RemotePage.PairingCodeInputControl.Text = string.Empty;
         RefreshRemotePresentation(status);
@@ -476,7 +476,7 @@ public sealed partial class SettingsWindow : Window
 
     private async void LanguageServerPollTick(object? sender, EventArgs e)
     {
-        if (LanguageServersPage.IsVisible) await ViewModel.LoadLanguageServersAsync();
+        if (LanguageServersPage.IsVisible) await ViewModel.LanguageServers.LoadServersAsync();
     }
 
     private async void ComputerPollTick(object? sender, EventArgs e)
@@ -819,7 +819,7 @@ public sealed partial class SettingsWindow : Window
             _mcpEditorWindow.Activate();
             return;
         }
-        _mcpEditorWindow = new McpServerEditorWindow(ViewModel, server);
+        _mcpEditorWindow = new McpServerEditorWindow(ViewModel.Mcp, server);
         _mcpEditorWindow.Closed += (_, _) =>
         {
             _mcpEditorWindow = null;
@@ -834,7 +834,7 @@ public sealed partial class SettingsWindow : Window
             L("Loc_DeleteMcpServerTitle", "Delete MCP server?"),
             L("Loc_DeleteMcpServerMessage", "Its tools will be removed from new model requests. An already executing call may finish."),
             server.DisplayName,
-            () => _ = ViewModel.DeleteMcpServerAsync(server),
+            () => _ = ViewModel.Mcp.DeleteServerAsync(server),
             L("Loc_McpServerCaps", "MCP SERVER"),
             L("Loc_DeleteServer", "Delete server"));
         IsEnabled = false;
@@ -853,7 +853,7 @@ public sealed partial class SettingsWindow : Window
             _languageServerEditorWindow.Activate();
             return;
         }
-        _languageServerEditorWindow = new LanguageServerEditorWindow(ViewModel, server);
+        _languageServerEditorWindow = new LanguageServerEditorWindow(ViewModel.LanguageServers, server);
         _languageServerEditorWindow.Closed += (_, _) =>
         {
             _languageServerEditorWindow = null;
@@ -868,7 +868,7 @@ public sealed partial class SettingsWindow : Window
             L("Loc_DeleteLanguageServerTitle", "Delete language server?"),
             L("Loc_DeleteLanguageServerMessage", "Its project runtimes will stop and semantic results will no longer be available to new agent turns."),
             server.DisplayName,
-            () => _ = ViewModel.DeleteLanguageServerAsync(server),
+            () => _ = ViewModel.LanguageServers.DeleteServerAsync(server),
             L("Loc_LanguageServerCaps", "LANGUAGE SERVER"),
             L("Loc_DeleteServer", "Delete server"));
         IsEnabled = false;
@@ -978,8 +978,8 @@ public sealed partial class SettingsWindow : Window
 
     private void SystemCertificatesChanged(object? sender, RoutedEventArgs e)
     {
-        ViewModel.UseSystemCertificates = NetworkPage.UseSystemCertificatesToggleControl.IsChecked == true;
-        NetworkPage.CertificatePathInputControl.IsEnabled = !ViewModel.UseSystemCertificates;
+        ViewModel.Network.UseSystemCertificates = NetworkPage.UseSystemCertificatesToggleControl.IsChecked == true;
+        NetworkPage.CertificatePathInputControl.IsEnabled = !ViewModel.Network.UseSystemCertificates;
         RefreshCertificateTrustPresentation();
         if (_ready) RefreshHttpsDirtyState();
     }
@@ -1017,7 +1017,7 @@ public sealed partial class SettingsWindow : Window
     private async void SaveProxy(object? sender, RoutedEventArgs e)
     {
         var mode = NetworkPage.ProxyModeSelectorControl.SelectedItem?.Value as string ?? "system";
-        var saved = await ViewModel.SaveProxyConfigurationAsync(
+        var saved = await ViewModel.Network.SaveProxyConfigurationAsync(
             mode,
             NetworkPage.ProxyUrlInputControl.Text,
             NetworkPage.ProxyUsernameInputControl.Text,
@@ -1028,14 +1028,14 @@ public sealed partial class SettingsWindow : Window
         NetworkPage.ProxyStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
         if (saved)
         {
-            _baselineProxyMode = ViewModel.ProxyMode;
-            _baselineProxyUrl = ViewModel.ProxyUrl;
-            _baselineProxyUsername = ViewModel.ProxyUsername;
-            _baselineProxyBypass = NormalizeProxyBypass(ViewModel.ProxyBypassRules);
-            _baselineProxyPasswordConfigured = ViewModel.ProxyPasswordConfigured;
+            _baselineProxyMode = ViewModel.Network.ProxyMode;
+            _baselineProxyUrl = ViewModel.Network.ProxyUrl;
+            _baselineProxyUsername = ViewModel.Network.ProxyUsername;
+            _baselineProxyBypass = NormalizeProxyBypass(ViewModel.Network.ProxyBypassRules);
+            _baselineProxyPasswordConfigured = ViewModel.Network.ProxyPasswordConfigured;
             _clearProxyPassword = false;
             NetworkPage.ProxyPasswordInputControl.Text = string.Empty;
-            NetworkPage.ProxyBypassInputControl.Text = ViewModel.ProxyBypassRules;
+            NetworkPage.ProxyBypassInputControl.Text = ViewModel.Network.ProxyBypassRules;
         }
         RefreshProxyPresentation();
         RefreshProxyDirtyState();
@@ -1067,19 +1067,19 @@ public sealed partial class SettingsWindow : Window
     private async void SaveHttpsCertificateVerification(object? sender, RoutedEventArgs e)
     {
         var enabled = NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked == true;
-        var saved = await ViewModel.SaveHttpsCertificateVerificationAsync(enabled);
-        saved = await ViewModel.SaveCertificateTrustAsync(NetworkPage.UseSystemCertificatesToggleControl.IsChecked == true, NetworkPage.CertificatePathInputControl.Text) && saved;
+        var saved = await ViewModel.Network.SaveHttpsCertificateVerificationAsync(enabled);
+        saved = await ViewModel.Network.SaveCertificateTrustAsync(NetworkPage.UseSystemCertificatesToggleControl.IsChecked == true, NetworkPage.CertificatePathInputControl.Text) && saved;
         NetworkPage.HttpsCertificateStatusText.Text = ViewModel.StatusText;
         NetworkPage.HttpsCertificateStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
         if (!saved)
         {
-            NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked = ViewModel.VerifyHttpsCertificates;
+            NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked = ViewModel.Network.VerifyHttpsCertificates;
         }
         else
         {
-            _baselineVerifyHttpsCertificates = ViewModel.VerifyHttpsCertificates;
-            _baselineUseSystemCertificates = ViewModel.UseSystemCertificates;
-            _baselineCertificatePath = ViewModel.CertificatePath ?? string.Empty;
+            _baselineVerifyHttpsCertificates = ViewModel.Network.VerifyHttpsCertificates;
+            _baselineUseSystemCertificates = ViewModel.Network.UseSystemCertificates;
+            _baselineCertificatePath = ViewModel.Network.CertificatePath ?? string.Empty;
         }
         RefreshHttpsCertificateWarning();
         RefreshHttpsDirtyState();
@@ -1217,7 +1217,7 @@ public sealed partial class SettingsWindow : Window
             AppearancePage.LanguageSelectorControl.SelectedItem = LanguageOptions.FirstOrDefault(item => Equals(item.Value, locale));
             var proxyModeOptions = ProxyModeOptions(locale);
             NetworkPage.ProxyModeSelectorControl.ItemsSource = proxyModeOptions;
-            NetworkPage.ProxyModeSelectorControl.SelectedItem = proxyModeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ProxyMode));
+            NetworkPage.ProxyModeSelectorControl.SelectedItem = proxyModeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.Network.ProxyMode));
             RefreshCertificateTrustPresentation();
             RefreshProxyPresentation();
             RefreshComputerPresentation();

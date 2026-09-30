@@ -8,12 +8,10 @@ using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Sdk;
-using RemoteServerConfiguration = SunCode.Sdk.Models.RemoteServerConfiguration;
-using RemoteServerStatus = SunCode.Sdk.Models.RemoteServerStatus;
 
 namespace SunCode.Desktop.ViewModels;
 
-public sealed partial class DesktopViewModel : ObservableObject, IDisposable
+public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IViewModelHost
 {
 
     private const double ReviewPaneBreakpoint = 1100;
@@ -48,9 +46,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private ApprovalItem? _pendingApproval;
     private PendingQuestionItem? _pendingQuestion;
     private string _connectionState = "disconnected";
-    private bool _remoteServerConfigured;
-    private bool _remoteServerConnected;
-    private bool _remoteServerConnecting;
     private string _statusText = "Starting local agent...";
     private string _composerText = string.Empty;
     private string _activeTurnId = string.Empty;
@@ -67,14 +62,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private string _imageDirectory = string.Empty;
     private long _logMaxBytes = 10 * 1024 * 1024;
     private int _logRetention = 5;
-    private bool _verifyHttpsCertificates = true;
-    private bool _useSystemCertificates = true;
-    private string _certificatePath = string.Empty;
-    private string _proxyMode = "system";
-    private string _proxyUrl = string.Empty;
-    private string _proxyUsername = string.Empty;
-    private bool _proxyPasswordConfigured;
-    private string _proxyBypassRules = string.Empty;
     private int _toolCallLimit = 64;
     private string _diagnosticsText = "Diagnostics unavailable";
     private string _gitState = "idle";
@@ -125,7 +112,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private bool _isSessionLoadingVisible;
     private bool _disposed;
     private readonly DispatcherTimer _conversationDurationTimer = new() { Interval = TimeSpan.FromSeconds(1) };
-    private readonly DispatcherTimer _remoteStatusTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private DateTimeOffset? _activeTurnStartedAt;
     private string _activeTurnTimingTurnId = string.Empty;
 
@@ -133,6 +119,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public event Action<string>? LanguageChanged;
     public event Action? SessionEntered;
 
+    public McpServersViewModel Mcp { get; }
+    public LanguageServersViewModel LanguageServers { get; }
+    public NetworkSettingsViewModel Network { get; }
+    public RemoteServerViewModel Remote { get; }
     public ObservableCollection<ProjectItem> Projects { get; } = [];
     public ObservableCollection<SessionItem> Sessions { get; } = [];
     public ObservableCollection<SessionItem> ArchivedSessions { get; } = [];
@@ -183,6 +173,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             {
                 OnPropertyChanged(nameof(IsProjectOpen));
                 OnPropertyChanged(nameof(ProjectTitle));
+                Mcp.OnProjectChanged();
             }
         }
     }
@@ -333,22 +324,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             }
         }
     }
-    public bool RemoteServerConfigured { get => _remoteServerConfigured; private set => SetProperty(ref _remoteServerConfigured, value); }
-    public bool RemoteServerConnected { get => _remoteServerConnected; private set => SetProperty(ref _remoteServerConnected, value); }
-    public bool RemoteServerConnecting { get => _remoteServerConnecting; private set => SetProperty(ref _remoteServerConnecting, value); }
-    public string RemoteServerStatusText => RemoteServerConnected
-        ? LocalizationService.GetString("Loc_RemoteConnected", "Remote connected")
-        : RemoteServerConnecting
-            ? LocalizationService.GetString("Loc_RemoteConnecting", "Remote connecting")
-            : LocalizationService.GetString("Loc_RemoteDisconnected", "Remote disconnected");
-
-    private void ApplyRemoteServerStatus(RemoteServerStatus status)
-    {
-        RemoteServerConfigured = status.Configured;
-        RemoteServerConnected = status.Connected;
-        RemoteServerConnecting = status.Connecting;
-        OnPropertyChanged(nameof(RemoteServerStatusText));
-    }
     public string StatusText { get => _statusText; private set => SetProperty(ref _statusText, value); }
     public void ReportPresentationError(string message) => StatusText = message;
     public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) OnPropertyChanged(nameof(CanSubmit)); } }
@@ -371,12 +346,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         : ImageDirectory;
     public long LogMaxBytes { get => _logMaxBytes; private set => SetProperty(ref _logMaxBytes, value); }
     public int LogRetention { get => _logRetention; private set => SetProperty(ref _logRetention, value); }
-    public bool VerifyHttpsCertificates { get => _verifyHttpsCertificates; private set => SetProperty(ref _verifyHttpsCertificates, value); }
-    public string ProxyMode { get => _proxyMode; private set => SetProperty(ref _proxyMode, value); }
-    public string ProxyUrl { get => _proxyUrl; private set => SetProperty(ref _proxyUrl, value); }
-    public string ProxyUsername { get => _proxyUsername; private set => SetProperty(ref _proxyUsername, value); }
-    public bool ProxyPasswordConfigured { get => _proxyPasswordConfigured; private set => SetProperty(ref _proxyPasswordConfigured, value); }
-    public string ProxyBypassRules { get => _proxyBypassRules; private set => SetProperty(ref _proxyBypassRules, value); }
     public int ToolCallLimit { get => _toolCallLimit; private set => SetProperty(ref _toolCallLimit, value); }
     public string DiagnosticsText { get => _diagnosticsText; private set => SetProperty(ref _diagnosticsText, value); }
     public bool FullControlEnabled { get => _fullControlEnabled; private set => SetProperty(ref _fullControlEnabled, value); }
@@ -631,8 +600,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool IsReviewFailed => HasFailedTurn;
     public bool IsReviewChangesVisible => !IsReviewIdle && !IsReviewCompacting && !IsReviewFailed && HasChangedPaths;
     public bool IsReviewCheckpointVisible => IsReviewRunning && HasCheckpoints;
-    public bool UseSystemCertificates { get => _useSystemCertificates; set => SetProperty(ref _useSystemCertificates, value); }
-    public string CertificatePath { get => _certificatePath; set => SetProperty(ref _certificatePath, value); }
     public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !SelectedSession.IsArchived && SelectedModel?.Configured == true && !HasSessionLoadError;
     public bool CanSubmit => SelectedSession is not null && !SelectedSession.IsArchived && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsTurnActive && !IsSessionLoading && !HasSessionLoadError;
     public bool CanChooseModel => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !SelectedSession.IsArchived && !HasSessionLoadError;

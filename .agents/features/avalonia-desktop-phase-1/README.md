@@ -22,6 +22,8 @@ SunCode's only Phase 1 production client is the .NET 10 Avalonia application und
 
 The desktop logger opens its default rotating `desktop.log` during process startup, before persisted settings load. SDK operations and ViewModel actions record error-level failures with operation names; process, task, and Avalonia dispatcher unhandled exceptions are recorded with bounded, single-line exception chains. Diagnostics exclude credentials, prompts, model responses, tool inputs/results, file contents, and raw native envelopes.
 
+View models are being split from the single partial `DesktopViewModel` into composed feature view models. Each window's `DesktopViewModel` exposes feature children (currently the Settings children `Mcp`, `LanguageServers`, `Network`, and `Remote`) that reach the SDK, selected project, and error, status, and busy reporting only through the narrow internal `IViewModelHost`; shared settings reads go through `SettingsSnapshot`. Views bind the child as their `DataContext` or through a dotted path. Remaining partial files migrate incrementally; the split is not complete.
+
 ## Boundary and verification
 
 ### Visual implementation notes

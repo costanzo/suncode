@@ -13,7 +13,7 @@ public sealed partial class McpServersSettingsControl : UserControl
 
     public McpServersSettingsControl() => InitializeComponent();
 
-    private DesktopViewModel? ViewModel => DataContext as DesktopViewModel;
+    private McpServersViewModel? ViewModel => DataContext as McpServersViewModel;
 
     private void AddClicked(object? sender, RoutedEventArgs e) => AddRequested?.Invoke();
 
@@ -30,7 +30,7 @@ public sealed partial class McpServersSettingsControl : UserControl
     private async void RetryClicked(object? sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: McpServerItem item } && ViewModel is { } viewModel)
-            await viewModel.RetryMcpServerAsync(item);
+            await viewModel.RetryServerAsync(item);
     }
 
     private async void ToggleClicked(object? sender, RoutedEventArgs e)
@@ -38,7 +38,7 @@ public sealed partial class McpServersSettingsControl : UserControl
         if (sender is ToggleSwitch { Tag: McpServerItem item } toggle && ViewModel is { } viewModel)
         {
             toggle.IsEnabled = false;
-            var saved = await viewModel.SetMcpServerEnabledAsync(item, toggle.IsChecked == true);
+            var saved = await viewModel.SetServerEnabledAsync(item, toggle.IsChecked == true);
             if (!saved) toggle.IsChecked = item.Enabled;
             toggle.IsEnabled = true;
         }

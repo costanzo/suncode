@@ -237,9 +237,9 @@
 
         <settings:LoggingSettingsControl x:Name="LoggingPage" IsVisible="False" />
 
-        <settings:McpServersSettingsControl x:Name="McpPage" IsVisible="False" />
+        <settings:McpServersSettingsControl x:Name="McpPage" DataContext="{Binding Mcp}" IsVisible="False" />
 
-        <settings:LanguageServersSettingsControl x:Name="LanguageServersPage" IsVisible="False" />
+        <settings:LanguageServersSettingsControl x:Name="LanguageServersPage" DataContext="{Binding LanguageServers}" IsVisible="False" />
 
         <settings:AgentSettingsControl x:Name="AgentsPage"
                                        IsVisible="False"
@@ -260,7 +260,7 @@
                                     RemoveCredentialRequested="RemoveCredential" />
         </Grid>
 
-        <settings:NetworkSettingsControl x:Name="NetworkPage" IsVisible="False" />
+        <settings:NetworkSettingsControl x:Name="NetworkPage" DataContext="{Binding Network}" IsVisible="False" />
         <settings:RemoteServerSettingsControl x:Name="RemotePage" IsVisible="False" />
       </Grid>
     </Grid>

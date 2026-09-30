@@ -12,6 +12,10 @@ public sealed partial class DesktopViewModel
     internal DesktopViewModel(UiStateStore? uiStateStore = null)
     {
         _uiStateStore = uiStateStore;
+        Mcp = new McpServersViewModel(this);
+        LanguageServers = new LanguageServersViewModel(this);
+        Network = new NetworkSettingsViewModel(this);
+        Remote = new RemoteServerViewModel(this);
         _conversationDurationTimer.Tick += ConversationDurationTick;
         ComposerAttachments.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ComposerBottomClearance));
         AttachSessionCollectionListeners();

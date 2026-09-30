@@ -249,58 +249,19 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     {
         if (_sdk is null) return;
         var settings = (await _sdk.GetSettingsAsync(new())).Settings;
-        string StringSetting(string key, string fallback)
-        {
-            var setting = settings.FirstOrDefault(item => item.Key == key);
-            return setting is not null && setting.Value.ValueKind == JsonValueKind.String
-                ? setting.Value.GetString() ?? fallback
-                : fallback;
-        }
-        long LongSetting(string key, long fallback)
-        {
-            var setting = settings.FirstOrDefault(item => item.Key == key);
-            return setting is not null && setting.Value.TryGetInt64(out var parsed)
-                ? parsed
-                : fallback;
-        }
-        bool BoolSetting(string key, bool fallback)
-        {
-            var setting = settings.FirstOrDefault(item => item.Key == key);
-            return setting is not null && setting.Value.ValueKind is JsonValueKind.True or JsonValueKind.False
-                ? setting.Value.GetBoolean()
-                : fallback;
-        }
-        string[] StringArraySetting(string key)
-        {
-            var setting = settings.FirstOrDefault(item => item.Key == key);
-            return setting is not null && setting.Value.ValueKind == JsonValueKind.Array
-                ? setting.Value.EnumerateArray()
-                    .Where(value => value.ValueKind == JsonValueKind.String)
-                    .Select(value => value.GetString() ?? string.Empty)
-                    .Where(value => value.Length > 0)
-                    .ToArray()
-                : Array.Empty<string>();
-        }
-        var retention = LongSetting("log_retention", 5);
-        var configuredLevel = StringSetting("log_level", "INFO").Trim().ToUpperInvariant();
-        SetLanguage(StringSetting("ui_locale", LocalizationService.DefaultLocale));
+        var snapshot = new SettingsSnapshot(settings);
+        var retention = snapshot.Long("log_retention", 5);
+        var configuredLevel = snapshot.String("log_level", "INFO").Trim().ToUpperInvariant();
+        SetLanguage(snapshot.String("ui_locale", LocalizationService.DefaultLocale));
         LogLevel = configuredLevel is "TRACE" or "DEBUG" or "INFO" or "WARN" or "ERROR" or "OFF"
             ? configuredLevel
             : "INFO";
-        LogDirectory = StringSetting("log_directory", string.Empty);
-        ImageDirectory = StringSetting("image_directory", string.Empty);
-        var maxBytes = LongSetting("log_max_bytes", 10 * 1024 * 1024);
+        LogDirectory = snapshot.String("log_directory", string.Empty);
+        ImageDirectory = snapshot.String("image_directory", string.Empty);
+        var maxBytes = snapshot.Long("log_max_bytes", 10 * 1024 * 1024);
         LogMaxBytes = maxBytes >= 1024 ? maxBytes : 10 * 1024 * 1024;
         LogRetention = retention is >= 0 and <= 100 ? (int)retention : 5;
-        VerifyHttpsCertificates = BoolSetting("verify_https_certificates", true);
-        UseSystemCertificates = BoolSetting("use_system_certificates", true);
-        CertificatePath = StringSetting("certificate_path", string.Empty);
-        var proxyMode = StringSetting("proxy_mode", "system");
-        ProxyMode = proxyMode is "no_proxy" or "system" or "custom" ? proxyMode : "system";
-        ProxyUrl = StringSetting("proxy_url", string.Empty);
-        ProxyUsername = StringSetting("proxy_username", string.Empty);
-        ProxyPasswordConfigured = BoolSetting("proxy_password_configured", false);
-        ProxyBypassRules = string.Join(Environment.NewLine, StringArraySetting("proxy_bypass"));
+        Network.Apply(snapshot);
         DiagnosticLog.Configure(
             LogLevel,
             LogDirectory,
@@ -326,10 +287,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (Language == normalized) return;
         Language = normalized;
         LanguageChanged?.Invoke(normalized);
-        foreach (var item in LanguageServers) item.OnPropertyChanged(string.Empty);
-        foreach (var item in McpServers) item.OnPropertyChanged(string.Empty);
+        foreach (var item in LanguageServers.Servers) item.OnPropertyChanged(string.Empty);
+        foreach (var item in Mcp.Servers) item.OnPropertyChanged(string.Empty);
         foreach (var item in Messages) item.OnPropertyChanged(string.Empty);
-        OnPropertyChanged(nameof(RemoteServerStatusText));
+        Remote.RefreshLocalizedText();
         OnPropertyChanged(nameof(ReviewStatusText));
     }
 

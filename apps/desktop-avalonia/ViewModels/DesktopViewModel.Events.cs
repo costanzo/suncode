@@ -56,10 +56,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             await LoadModelsAsync();
             await LoadAgentsAsync();
             await LoadSettingsAsync();
-            ApplyRemoteServerStatus(await sdk.GetRemoteServerStatusAsync());
-            _remoteStatusTimer.Tick -= RemoteStatusTick;
-            _remoteStatusTimer.Tick += RemoteStatusTick;
-            _remoteStatusTimer.Start();
+            await Remote.StartPollingAsync();
             await LoadCredentialsAsync();
             await LoadProjectsAsync();
             await RefreshDiagnosticsAsync();
@@ -77,13 +74,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
     }
 
-    private async void RemoteStatusTick(object? sender, EventArgs e)
-    {
-        if (_sdk is null || _disposed) return;
-        try { ApplyRemoteServerStatus(await _sdk.GetRemoteServerStatusAsync()); }
-        catch (Exception exception) { DiagnosticLog.Error("remote.status", exception, "operation=poll"); }
-    }
-
     private async Task<bool> EnsureSdkReadyAsync()
     {
         if (_disposed) return false;
@@ -96,6 +86,19 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         DiagnosticLog.Error("viewmodel", exception, $"session={SelectedSession?.SessionId ?? "none"}");
         ConnectionState = "error";
         StatusText = exception.Message;
+    }
+
+    AgentSdk? IViewModelHost.Sdk => _sdk;
+    bool IViewModelHost.EnsureSdk() => EnsureSdk();
+    Task<bool> IViewModelHost.EnsureSdkReadyAsync() => EnsureSdkReadyAsync();
+    void IViewModelHost.ReportError(Exception exception) => ReportError(exception);
+    void IViewModelHost.SetBusy(bool busy) => IsBusy = busy;
+    void IViewModelHost.ReportPresentationError(string message) => ReportPresentationError(message);
+
+    void IViewModelHost.ReportSuccess(string message)
+    {
+        StatusText = message;
+        ConnectionState = "connected";
     }
 
     private void SetTheme(string mode)
@@ -456,8 +459,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
         _conversationDurationTimer.Stop();
-        _remoteStatusTimer.Stop();
-        _remoteStatusTimer.Tick -= RemoteStatusTick;
+        Remote.Dispose();
         _conversationDurationTimer.Tick -= ConversationDurationTick;
         ClearProviderTraffic();
         Interlocked.Increment(ref _sessionLoadVersion);

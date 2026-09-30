@@ -9,7 +9,7 @@ namespace SunCode.Desktop.Views.Settings.Controls;
 public sealed partial class LanguageServersSettingsControl : UserControl
 {
     private const double CompactWidth = 560;
-    private DesktopViewModel? _subscribedViewModel;
+    private LanguageServersViewModel? _subscribedViewModel;
     private double _currentWidth;
 
     public event Action? AddRequested;
@@ -29,21 +29,21 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         DetachedFromVisualTree += (_, _) => Unbind();
     }
 
-    private DesktopViewModel? ViewModel => DataContext as DesktopViewModel;
+    private LanguageServersViewModel? ViewModel => DataContext as LanguageServersViewModel;
 
     private void Rebind()
     {
         Unbind();
         _subscribedViewModel = ViewModel;
         if (_subscribedViewModel is not null)
-            _subscribedViewModel.LanguageServers.CollectionChanged += LanguageServersChanged;
+            _subscribedViewModel.Servers.CollectionChanged += LanguageServersChanged;
         UpdateResponsiveLayout();
     }
 
     private void Unbind()
     {
         if (_subscribedViewModel is not null)
-            _subscribedViewModel.LanguageServers.CollectionChanged -= LanguageServersChanged;
+            _subscribedViewModel.Servers.CollectionChanged -= LanguageServersChanged;
         _subscribedViewModel = null;
     }
 
@@ -51,7 +51,7 @@ public sealed partial class LanguageServersSettingsControl : UserControl
 
     private void UpdateResponsiveLayout()
     {
-        var hasServers = ViewModel?.HasLanguageServers == true;
+        var hasServers = ViewModel?.HasServers == true;
         var compact = _currentWidth < CompactWidth;
         RegularList.IsVisible = hasServers && !compact;
         CompactList.IsVisible = hasServers && compact;
@@ -72,7 +72,7 @@ public sealed partial class LanguageServersSettingsControl : UserControl
     private async void RetryClicked(object? sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: LanguageServerItem item } && ViewModel is { } viewModel)
-            await viewModel.RetryLanguageServerAsync(item);
+            await viewModel.RetryServerAsync(item);
     }
 
     private async void ToggleClicked(object? sender, RoutedEventArgs e)
@@ -80,7 +80,7 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         if (sender is ToggleSwitch { Tag: LanguageServerItem item } toggle && ViewModel is { } viewModel)
         {
             toggle.IsEnabled = false;
-            var saved = await viewModel.SetLanguageServerEnabledAsync(item, toggle.IsChecked == true);
+            var saved = await viewModel.SetServerEnabledAsync(item, toggle.IsChecked == true);
             if (!saved) toggle.IsChecked = item.Enabled;
             toggle.IsEnabled = item.CanToggle;
         }

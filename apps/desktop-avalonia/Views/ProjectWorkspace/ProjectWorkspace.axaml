@@ -243,15 +243,15 @@
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsProjectOpen}" VerticalAlignment="Center" Height="20">
             <TextBlock Text="{Binding ProviderTrafficText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding IsProviderTrafficVisible}" ToolTip.Tip="{Binding ProviderTrafficDetails}" AutomationProperties.Name="{Binding ProviderTrafficDetails}" />
-            <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding RemoteServerConfigured}" Height="20" VerticalAlignment="Center" ToolTip.Tip="{Binding RemoteServerStatusText}" AutomationProperties.Name="{Binding RemoteServerStatusText}">
-              <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{DynamicResource SuccessBrush}" IsVisible="{Binding RemoteServerConnected}" />
-              <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{DynamicResource TextMutedBrush}" IsVisible="{Binding !RemoteServerConnected}" />
-              <TextBlock Text="{Binding RemoteServerStatusText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding WorkspaceStatusDetailsVisible}" />
+            <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding Remote.Configured}" Height="20" VerticalAlignment="Center" ToolTip.Tip="{Binding Remote.StatusText}" AutomationProperties.Name="{Binding Remote.StatusText}">
+              <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{DynamicResource SuccessBrush}" IsVisible="{Binding Remote.Connected}" />
+              <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{DynamicResource TextMutedBrush}" IsVisible="{Binding !Remote.Connected}" />
+              <TextBlock Text="{Binding Remote.StatusText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding WorkspaceStatusDetailsVisible}" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding IsMcpLoading}" Height="20" VerticalAlignment="Center" ToolTip.Tip="{Binding McpLoadDetails}">
+            <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding Mcp.IsLoading}" Height="20" VerticalAlignment="Center" ToolTip.Tip="{Binding Mcp.LoadDetails}">
               <svg:Svg Width="11" Height="11" Path="/Assets/icons/server.svg" Css="{DynamicResource IconSvgCss}" />
-              <TextBlock Text="{Binding McpLoadText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding WorkspaceStatusDetailsVisible}" />
-              <ProgressBar Classes="mcp-progress" Minimum="0" Maximum="100" Value="{Binding McpLoadPercent}" />
+              <TextBlock Text="{Binding Mcp.LoadText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding WorkspaceStatusDetailsVisible}" />
+              <ProgressBar Classes="mcp-progress" Minimum="0" Maximum="100" Value="{Binding Mcp.LoadPercent}" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsProjectOpen}" Height="20" VerticalAlignment="Center" ToolTip.Tip="{Binding RunningSessionText}" AutomationProperties.Name="{Binding RunningSessionText}">
               <controls:SCStatusDot Status="{Binding RunningSessionDotStatus}" />

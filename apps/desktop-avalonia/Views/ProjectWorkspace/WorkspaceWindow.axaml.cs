@@ -64,8 +64,8 @@ public partial class WorkspaceWindow : Window
             UpdateNativeProjectMenu();
             return;
         }
-        await ViewModel.StartMcpProjectAsync();
-        if (ViewModel.IsMcpLoading) _mcpLoadTimer.Start();
+        await ViewModel.Mcp.StartProjectAsync();
+        if (ViewModel.Mcp.IsLoading) _mcpLoadTimer.Start();
         RestoreWindowGeometry();
         if (!IsMergedHost) ConfigureProjectWindow();
         UpdateNativeProjectMenu();
@@ -84,8 +84,8 @@ public partial class WorkspaceWindow : Window
 
     private async void McpLoadTick(object? sender, EventArgs e)
     {
-        await ViewModel.RefreshMcpLoadProgressAsync();
-        if (!ViewModel.IsMcpLoading) _mcpLoadTimer.Stop();
+        await ViewModel.Mcp.RefreshLoadProgressAsync();
+        if (!ViewModel.Mcp.IsLoading) _mcpLoadTimer.Stop();
     }
 
     private void RestoreWindowGeometry()
