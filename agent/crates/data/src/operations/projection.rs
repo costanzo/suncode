@@ -1,7 +1,8 @@
 //! Cross-table event projection into normalized table-owned rows.
 
 use crate::operations::{
-    session_message::load_messages, session_tool_use::load_tool_uses, session_turn_todo::load_todos,
+    checkpoint::load_changed_paths, session_message::load_messages, session_tool_use::load_tool_uses,
+    session_turn_todo::load_todos,
 };
 use crate::{
     domain::{SessionConversationTurn, SessionEvent},
@@ -296,6 +297,7 @@ impl Store {
                 messages: load_messages(&mut c, session_id, &t.turn_id)?,
                 tool_uses: load_tool_uses(&mut c, &t.turn_id)?,
                 todos: load_todos(&mut c, &t.turn_id)?,
+                changed_paths: load_changed_paths(&mut c, &t.turn_id)?,
             })
         }
         Ok(out)

@@ -297,6 +297,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 if (!IsTerminalTurnState(state)) activeTurnId = turnId;
                 activeTurnState = state;
                 var toolUses = turn.ToolUses;
+                foreach (var path in turn.ChangedPaths ?? [])
+                {
+                    if (path.Length > 0 && changedPathSet.Add(path)) changedPaths.Add(path);
+                }
                 if (turnId == todoTurnId)
                     currentTodos = turn.Todos
                         .Select(TodoItem.FromSdk)

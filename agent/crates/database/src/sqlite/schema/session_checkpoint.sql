@@ -14,3 +14,6 @@ CREATE TABLE IF NOT EXISTS session_checkpoint (
 
 CREATE INDEX IF NOT EXISTS session_checkpoint_manifest_ordinal_idx
     ON session_checkpoint(manifest_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS session_checkpoint_turn_ordinal_idx
+    ON session_checkpoint(turn_id, ordinal);

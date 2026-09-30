@@ -474,6 +474,59 @@ fn diesel_projection_persists_messages_tools_and_todos() {
         serde_json::to_value(Message::text("user", "hello")).unwrap()
     );
     assert_eq!(conversation[0].todos[0].status, "completed");
+    assert!(conversation[0].changed_paths.is_empty());
+}
+
+#[test]
+fn conversation_turns_list_checkpointed_paths_once_in_first_touched_order() {
+    let store = Store::open_memory().unwrap();
+    let project = store
+        .project("/tmp/suncode-changed-paths", "Changed paths")
+        .unwrap();
+    let session = store
+        .create_session(&project.project_id, None, None)
+        .unwrap();
+    for turn in ["turn-1", "turn-2"] {
+        store
+            .append_content(
+                &session.session_id,
+                "turn.state",
+                &json!({"turn_id":turn,"state":"resolving_calls"}),
+            )
+            .unwrap();
+    }
+    let checkpoints = [
+        ("cp-1", "turn-1", Some("src/main.rs"), 0),
+        ("cp-2", "turn-1", Some("README.md"), 1),
+        ("cp-3", "turn-1", Some("src/main.rs"), 2),
+        ("cp-4", "turn-1", Some(""), 3),
+        ("cp-5", "turn-1", None, 4),
+    ];
+    for (checkpoint_id, turn_id, path, ordinal) in checkpoints {
+        store
+            .append_content(
+                &session.session_id,
+                "checkpoint.captured",
+                &json!({"turn_id":turn_id,"tool_call_id":"call-1","manifest_id":"manifest-1","checkpoint_id":checkpoint_id,"path":path,"ordinal":ordinal}),
+            )
+            .unwrap();
+    }
+    store
+        .append_content(
+            &session.session_id,
+            "checkpoint.item_restored",
+            &json!({"manifest_id":"manifest-1","checkpoint_id":"cp-2","path":"README.md"}),
+        )
+        .unwrap();
+
+    let conversation = store
+        .session_conversation_turns(&session.session_id)
+        .unwrap();
+
+    assert_eq!(conversation[0].changed_paths, ["src/main.rs", "README.md"]);
+    assert!(conversation[1].changed_paths.is_empty());
+    let json = serde_json::to_value(&conversation[0]).unwrap();
+    assert_eq!(json["changedPaths"], json!(["src/main.rs", "README.md"]));
 }
 
 #[test]

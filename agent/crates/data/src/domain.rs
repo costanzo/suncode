@@ -358,6 +358,8 @@ pub struct SessionConversationTurn {
     pub messages: Vec<SessionCallMessage>,
     pub tool_uses: Vec<SessionCallToolUse>,
     pub todos: Vec<SessionTurnTodo>,
+    /// Project-relative paths checkpointed during the turn, first-touched order, no duplicates.
+    pub changed_paths: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

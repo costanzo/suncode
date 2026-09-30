@@ -523,7 +523,8 @@ public sealed record SessionConversationTurn(
     [property: JsonPropertyName("completedAt")] string? CompletedAt,
     [property: JsonPropertyName("messages")] IReadOnlyList<SessionCallMessage> Messages,
     [property: JsonPropertyName("toolUses")] IReadOnlyList<SessionCallToolUse> ToolUses,
-    [property: JsonPropertyName("todos")] IReadOnlyList<SessionTurnTodo> Todos);
+    [property: JsonPropertyName("todos")] IReadOnlyList<SessionTurnTodo> Todos,
+    [property: JsonPropertyName("changedPaths")] IReadOnlyList<string>? ChangedPaths = null);
 
 public sealed record QuestionOption(
     [property: JsonPropertyName("label")] string Label,

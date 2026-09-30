@@ -1455,6 +1455,14 @@ fn session_snapshot_serializes_normalized_conversation_turns() {
                 &json!({"turn_id":"turn-1","todos":[{"content":"Persisted progress","status":"in_progress","priority":"high"}]}),
             )
             .unwrap();
+    state
+        .store
+        .append_content(
+            &session.session_id,
+            "checkpoint.captured",
+            &json!({"turn_id":"turn-1","tool_call_id":"call-1","manifest_id":"manifest-1","checkpoint_id":"checkpoint-1","path":"src/lib.rs","ordinal":0}),
+        )
+        .unwrap();
     let sdk = AgentSdk::from_state_for_test(state);
 
     let snapshot =
@@ -1469,6 +1477,10 @@ fn session_snapshot_serializes_normalized_conversation_turns() {
     assert_eq!(
         snapshot["conversationTurns"][0]["todos"][0]["content"],
         "Persisted progress"
+    );
+    assert_eq!(
+        snapshot["conversationTurns"][0]["changedPaths"],
+        json!(["src/lib.rs"])
     );
 }
 

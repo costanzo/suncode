@@ -473,6 +473,44 @@ public sealed class SessionSnapshotProjectionTests
     }
 
     [Fact]
+    public void ProjectionRestoresChangedPathsAcrossTurnsWithoutDuplicates()
+    {
+        var snapshot = Snapshot("""
+        {
+          "messages": [],
+          "conversationTurns": [
+            {"turnId":"turn-1","state":"completed","createdAt":"2026-09-30T10:00:00.000Z","changedPaths":["src/main.rs","README.md"]},
+            {"turnId":"turn-2","state":"completed","createdAt":"2026-09-30T10:05:00.000Z","changedPaths":["README.md","docs/guide.md"]},
+            {"turnId":"turn-3","state":"completed","createdAt":"2026-09-30T10:10:00.000Z"}
+          ]
+        }
+        """);
+
+        var projection = DesktopViewModel.ProjectSnapshot(snapshot);
+
+        Assert.Equal(["src/main.rs", "README.md", "docs/guide.md"], projection.ChangedPaths);
+    }
+
+    [Fact]
+    public void ReopenedSessionShowsRestoredChangedPathsInReview()
+    {
+        using var viewModel = new DesktopViewModel();
+        var projection = DesktopViewModel.ProjectSnapshot(Snapshot("""
+        {
+          "messages": [],
+          "conversationTurns": [
+            {"turnId":"turn-1","state":"completed","createdAt":"2026-09-30T10:00:00.000Z","changedPaths":["src/main.rs"]}
+          ]
+        }
+        """));
+
+        viewModel.ApplySnapshot(projection);
+
+        Assert.True(viewModel.HasChangedPaths);
+        Assert.Equal("1 file touched", viewModel.TurnChangeSummary);
+    }
+
+    [Fact]
     public void ProjectionOmitsAssistantMessagesWithoutVisibleText()
     {
         var snapshot = Snapshot("""

@@ -241,6 +241,25 @@ public sealed class SdkTypedModelTests
     }
 
     [Fact]
+    public void Deserializes_conversation_turn_changed_paths_and_tolerates_older_snapshots()
+    {
+        const string currentJson = """
+            {"turnId":"turn-1","state":"completed","createdAt":"created","startedAt":null,"completedAt":null,"messages":[],"toolUses":[],"todos":[],"changedPaths":["src/main.rs","README.md"]}
+            """;
+        const string olderJson = """
+            {"turnId":"turn-1","state":"completed","createdAt":"created","startedAt":null,"completedAt":null,"messages":[],"toolUses":[],"todos":[]}
+            """;
+
+        var current = JsonSerializer.Deserialize<SessionConversationTurn>(currentJson, Options);
+        var older = JsonSerializer.Deserialize<SessionConversationTurn>(olderJson, Options);
+
+        Assert.NotNull(current);
+        Assert.Equal(["src/main.rs", "README.md"], current.ChangedPaths);
+        Assert.NotNull(older);
+        Assert.Null(older.ChangedPaths);
+    }
+
+    [Fact]
     public void Deserializes_rust_camel_case_dependency_checkpoint_and_approval_fields()
     {
         const string dependenciesJson = """

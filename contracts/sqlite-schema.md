@@ -99,7 +99,7 @@ One client-visible undo unit per turn, linked to session and optionally to `sess
 
 ### `session_checkpoint`
 
-Ordered checkpoint metadata linked to a manifest/session and optionally to the composite `(turn_id, tool_call_id)` in `session_tool_use`. Source pre/post images remain owned by the operations package.
+Ordered checkpoint metadata linked to a manifest/session and optionally to the composite `(turn_id, tool_call_id)` in `session_tool_use`. Source pre/post images remain owned by the operations package. Indexed by `(manifest_id, ordinal)` for undo and `(turn_id, ordinal)` for the per-turn `changedPaths` snapshot projection.
 
 ## LLM Catalog
 
