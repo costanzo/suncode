@@ -16,6 +16,8 @@ public sealed partial class DesktopViewModel
         LanguageServers = new LanguageServersViewModel(this);
         Network = new NetworkSettingsViewModel(this);
         Remote = new RemoteServerViewModel(this);
+        Git = new GitReviewViewModel(this);
+        ProviderTrace = new ProviderTraceViewModel(this);
         _conversationDurationTimer.Tick += ConversationDurationTick;
         ComposerAttachments.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ComposerBottomClearance));
         AttachSessionCollectionListeners();

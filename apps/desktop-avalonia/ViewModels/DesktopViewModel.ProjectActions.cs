@@ -85,7 +85,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             await LoadExplorerRootsAsync();
             RestoreProjectPresentationState();
             await LoadSessionsAsync();
-            await RefreshGitAsync();
+            await Git.RefreshAsync();
         }, "Project selected");
     }
 
@@ -336,7 +336,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 LogSession(operationId, sessionId, $"checkpoints.discard reason=stale current={DescribeSessionContext()}");
                 return;
             }
-            await RefreshProviderTracesAsync(sessionId, loadVersion);
+            await ProviderTrace.RefreshAsync(sessionId, loadVersion);
             if (!IsCurrentSessionLoad(sessionId, loadVersion))
             {
                 LogSession(operationId, sessionId, $"provider_traces.discard reason=stale current={DescribeSessionContext()}");
@@ -639,7 +639,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         {
             await _sdk!.RestoreCheckpointAsync(checkpoint.ManifestId, SelectedSession.SessionId);
             await LoadCheckpointsAsync();
-            await RefreshGitAsync();
+            await Git.RefreshAsync();
         }, "Turn changes restored");
     }
 
@@ -654,88 +654,5 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 : "Diagnostics unavailable";
             OnPropertyChanged(nameof(IsAgentHealthy));
         });
-    }
-
-    public async Task RefreshGitAsync()
-    {
-        if (!EnsureSdk() || SelectedProject is null)
-        {
-            ClearGit();
-            return;
-        }
-        GitState = "loading";
-        GitError = string.Empty;
-        try
-        {
-            var status = await _sdk!.GitStatusAsync(SelectedProject.ProjectId);
-            GitBranch = status.Branch ?? string.Empty;
-            GitChangedFiles = status.ChangedFiles;
-            GitAdditions = (int)status.Additions;
-            GitDeletions = (int)status.Deletions;
-            GitStatusTruncated = status.Truncated;
-            GitFiles.Clear();
-            foreach (var node in status.Files)
-            {
-                GitFiles.Add(new GitFileItem(
-                    node.Path, node.Status, node.Staged, node.Unstaged,
-                    node.Conflicted, (int)node.Additions, (int)node.Deletions,
-                    node.OldPath ?? string.Empty, node.Binary));
-            }
-            ApplyGitFilter();
-            GitState = "ready";
-        }
-        catch (SdkException exception) when (exception.Code == "not_git_repository")
-        {
-            ClearGit();
-            GitState = "not_repository";
-            GitError = exception.Message;
-        }
-        catch (Exception exception)
-        {
-            GitState = "error";
-            GitError = exception.Message;
-        }
-    }
-
-    public async Task LoadGitDiffAsync(GitFileItem file, string scope = "all")
-    {
-        if (!EnsureSdk() || SelectedProject is null) return;
-        SelectedGitFile = file;
-        DiffLines.Clear();
-        GitPatch = string.Empty;
-        GitDiffError = string.Empty;
-        GitDiffBinary = false;
-        GitDiffTruncated = false;
-        GitDiffAdditions = 0;
-        GitDiffDeletions = 0;
-        GitDiffState = "loading";
-        try
-        {
-            var diff = await _sdk!.GitDiffAsync(SelectedProject.ProjectId, scope, file.Path);
-            GitPatch = diff.Patch;
-            GitDiffBinary = diff.Binary;
-            GitDiffTruncated = diff.Truncated;
-            GitDiffAdditions = diff.Additions;
-            GitDiffDeletions = diff.Deletions;
-            foreach (var hunk in diff.Hunks)
-            {
-                DiffLines.Add(new DiffLineItem("hunk", hunk.Header, string.Empty, string.Empty));
-                foreach (var line in hunk.Lines)
-                {
-                    DiffLines.Add(new DiffLineItem(
-                        line.Kind, line.Text,
-                        line.OldLine?.ToString() ?? string.Empty,
-                        line.NewLine?.ToString() ?? string.Empty));
-                }
-            }
-            OnPropertyChanged(nameof(HasGitDiffLines));
-            OnPropertyChanged(nameof(ShowGitDiffEmpty));
-            GitDiffState = "ready";
-        }
-        catch (Exception exception)
-        {
-            GitDiffState = "error";
-            GitDiffError = exception.Message;
-        }
     }
 }

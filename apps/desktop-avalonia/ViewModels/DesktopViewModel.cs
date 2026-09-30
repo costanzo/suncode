@@ -11,7 +11,7 @@ using SunCode.Sdk;
 
 namespace SunCode.Desktop.ViewModels;
 
-public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IViewModelHost
+public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IViewModelHost, IProviderTraceHost
 {
 
     private const double ReviewPaneBreakpoint = 1100;
@@ -37,11 +37,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private ModelItem? _selectedModel;
     private IReadOnlyList<ComposerAttachment> _submittedAttachments = [];
     private string? _selectedReasoningEffort;
-    private GitFileItem? _selectedGitFile;
-    private ProviderTraceItem? _selectedProviderTrace;
-    private ProviderTraceItem? _selectedProviderTraceDetails;
-    private readonly Dictionary<string, ProviderTraceItem> _providerTraceDetails = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, Task<ProviderTraceItem>> _providerTraceDetailLoads = new(StringComparer.Ordinal);
     private readonly HashSet<string> _appliedMessageIds = new(StringComparer.Ordinal);
     private ApprovalItem? _pendingApproval;
     private PendingQuestionItem? _pendingQuestion;
@@ -64,27 +59,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private int _logRetention = 5;
     private int _toolCallLimit = 64;
     private string _diagnosticsText = "Diagnostics unavailable";
-    private string _gitState = "idle";
-    private string _gitError = string.Empty;
-    private string _gitDiffState = "idle";
-    private string _gitDiffError = string.Empty;
-    private string _gitPatch = string.Empty;
-    private string _gitScope = "all";
-    private string _gitFilter = string.Empty;
-    private string _providerTraceState = "idle";
-    private string _providerTraceError = string.Empty;
-    private string _providerTraceFilter = string.Empty;
     private string _sessionLoadError = string.Empty;
-    private string _gitBranch = string.Empty;
-    private bool _gitStatusTruncated;
     private bool _fullControlEnabled;
-    private bool _gitDiffBinary;
-    private bool _gitDiffTruncated;
-    private int _gitDiffAdditions;
-    private int _gitDiffDeletions;
-    private int _gitChangedFiles;
-    private int _gitAdditions;
-    private int _gitDeletions;
     private long _sessionLoadVersion;
     private string? _loadedSessionId;
     private bool _navigationVisible = true;
@@ -123,6 +99,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public LanguageServersViewModel LanguageServers { get; }
     public NetworkSettingsViewModel Network { get; }
     public RemoteServerViewModel Remote { get; }
+    public GitReviewViewModel Git { get; }
+    public ProviderTraceViewModel ProviderTrace { get; }
     public ObservableCollection<ProjectItem> Projects { get; } = [];
     public ObservableCollection<SessionItem> Sessions { get; } = [];
     public ObservableCollection<SessionItem> ArchivedSessions { get; } = [];
@@ -154,12 +132,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public BulkObservableCollection<TodoItem> CurrentTodos { get; } = [];
     public BulkObservableCollection<string> ChangedPaths { get; } = [];
     public BulkObservableCollection<CheckpointItem> Checkpoints { get; } = [];
-    public ObservableCollection<GitFileItem> GitFiles { get; } = [];
-    public ObservableCollection<GitFileItem> FilteredGitFiles { get; } = [];
-    public ObservableCollection<DiffLineItem> DiffLines { get; } = [];
-    public ObservableCollection<ProviderTraceItem> ProviderTraces { get; } = [];
-    public ObservableCollection<ProviderTraceTurnItem> ProviderTraceTurns { get; } = [];
-    public ObservableCollection<ProviderTraceTurnItem> FilteredProviderTraceTurns { get; } = [];
     public ObservableCollection<ToolActivityTurnItem> ToolActivityTurns { get; } = [];
     public ObservableCollection<ChildSessionItem> ChildSessions { get; } = [];
     public ObservableCollection<ChildSessionTimelineItem> ChildSessionTimeline { get; } = [];
@@ -198,6 +170,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             OnPropertyChanged(nameof(ShowChatInput));
             OnPropertyChanged(nameof(ComposerPlaceholder));
             OnPropertyChanged(nameof(IsModelUnavailable));
+            ProviderTrace.OnSessionChanged();
             SaveProjectUiState(saved => SaveCurrentContentState(saved));
         }
     }
@@ -241,44 +214,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
                 ? value
                 : null;
             if (SetProperty(ref _selectedReasoningEffort, normalized)) OnPropertyChanged(nameof(CanChooseReasoningEffort));
-        }
-    }
-
-    public GitFileItem? SelectedGitFile
-    {
-        get => _selectedGitFile;
-        set
-        {
-            if (SetProperty(ref _selectedGitFile, value)) OnPropertyChanged(nameof(SelectedGitPath));
-        }
-    }
-
-    public ProviderTraceItem? SelectedProviderTrace
-    {
-        get => _selectedProviderTrace;
-        set
-        {
-            if (SetProperty(ref _selectedProviderTrace, value))
-            {
-                SelectedProviderTraceDetails = null;
-                OnPropertyChanged(nameof(SelectedProviderTraceTitle));
-                OnPropertyChanged(nameof(HasSelectedProviderTrace));
-                OnPropertyChanged(nameof(ShowSelectedProviderTraceOverview));
-            }
-        }
-    }
-
-    public ProviderTraceItem? SelectedProviderTraceDetails
-    {
-        get => _selectedProviderTraceDetails;
-        private set
-        {
-            if (SetProperty(ref _selectedProviderTraceDetails, value))
-            {
-                OnPropertyChanged(nameof(SelectedProviderTraceTitle));
-                OnPropertyChanged(nameof(HasSelectedProviderTrace));
-                OnPropertyChanged(nameof(ShowSelectedProviderTraceOverview));
-            }
         }
     }
 
@@ -349,46 +284,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public int ToolCallLimit { get => _toolCallLimit; private set => SetProperty(ref _toolCallLimit, value); }
     public string DiagnosticsText { get => _diagnosticsText; private set => SetProperty(ref _diagnosticsText, value); }
     public bool FullControlEnabled { get => _fullControlEnabled; private set => SetProperty(ref _fullControlEnabled, value); }
-    public string GitState
-    {
-        get => _gitState;
-        private set
-        {
-            if (!SetProperty(ref _gitState, value)) return;
-            OnPropertyChanged(nameof(IsGitReady));
-            OnPropertyChanged(nameof(IsGitClean));
-            OnPropertyChanged(nameof(IsGitDirty));
-            OnPropertyChanged(nameof(IsGitLoading));
-            OnPropertyChanged(nameof(GitFooterBranchText));
-            OnPropertyChanged(nameof(GitEmptyMessage));
-        }
-    }
-    public string GitError { get => _gitError; private set => SetProperty(ref _gitError, value); }
-    public string GitDiffState
-    {
-        get => _gitDiffState;
-        private set
-        {
-            if (!SetProperty(ref _gitDiffState, value)) return;
-            NotifyGitDiffPresentationChanged();
-        }
-    }
-    public string GitDiffError { get => _gitDiffError; private set => SetProperty(ref _gitDiffError, value); }
-    public string GitPatch { get => _gitPatch; private set => SetProperty(ref _gitPatch, value); }
-    public string GitScope { get => _gitScope; private set => SetProperty(ref _gitScope, value); }
-    public string GitFilter { get => _gitFilter; private set { if (SetProperty(ref _gitFilter, value)) OnPropertyChanged(nameof(GitEmptyMessage)); } }
-    public string ProviderTraceState
-    {
-        get => _providerTraceState;
-        private set
-        {
-            if (!SetProperty(ref _providerTraceState, value)) return;
-            OnPropertyChanged(nameof(IsProviderTraceLoading));
-            OnPropertyChanged(nameof(ProviderTraceEmptyMessage));
-        }
-    }
-    public string ProviderTraceError { get => _providerTraceError; private set => SetProperty(ref _providerTraceError, value); }
-    public string ProviderTraceFilter { get => _providerTraceFilter; private set { if (SetProperty(ref _providerTraceFilter, value)) OnPropertyChanged(nameof(ProviderTraceEmptyMessage)); } }
     public string SessionLoadError
     {
         get => _sessionLoadError;
@@ -402,15 +297,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
         }
     }
-    public string GitBranch { get => _gitBranch; private set { if (SetProperty(ref _gitBranch, value)) { OnPropertyChanged(nameof(GitFooterBranchText)); } } }
-    public int GitChangedFiles { get => _gitChangedFiles; private set { if (SetProperty(ref _gitChangedFiles, value)) { OnPropertyChanged(nameof(GitChangeSummary)); OnPropertyChanged(nameof(IsGitClean)); OnPropertyChanged(nameof(IsGitDirty)); } } }
-    public int GitAdditions { get => _gitAdditions; private set => SetProperty(ref _gitAdditions, value); }
-    public int GitDeletions { get => _gitDeletions; private set => SetProperty(ref _gitDeletions, value); }
-    public bool GitStatusTruncated { get => _gitStatusTruncated; private set => SetProperty(ref _gitStatusTruncated, value); }
-    public bool GitDiffBinary { get => _gitDiffBinary; private set { if (SetProperty(ref _gitDiffBinary, value)) NotifyGitDiffPresentationChanged(); } }
-    public bool GitDiffTruncated { get => _gitDiffTruncated; private set => SetProperty(ref _gitDiffTruncated, value); }
-    public int GitDiffAdditions { get => _gitDiffAdditions; private set => SetProperty(ref _gitDiffAdditions, value); }
-    public int GitDiffDeletions { get => _gitDiffDeletions; private set => SetProperty(ref _gitDiffDeletions, value); }
     public bool NavigationVisible { get => _navigationVisible; set { if (SetProperty(ref _navigationVisible, value)) { NotifyNavigationLayoutChanged(); SaveRegionState(); } } }
     public bool ExplorerVisible { get => _explorerVisible; set { if (SetProperty(ref _explorerVisible, value)) { NotifyNavigationLayoutChanged(); SaveRegionState(); } } }
     public bool ReviewVisible { get => _reviewVisible; set { if (SetProperty(ref _reviewVisible, value)) { if (value && _childSessionsVisible) { _childSessionsVisible = false; OnPropertyChanged(nameof(ChildSessionsVisible)); } NotifyReviewLayoutChanged(); OnPropertyChanged(nameof(ReviewGutterAttention));OnPropertyChanged(nameof(ChildSessionsGutterAttention)); SaveRegionState(); } } }
@@ -542,9 +428,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool HasCurrentTodos => CurrentTodos.Count > 0;
     public bool IsReviewTodosVisible => HasCurrentTodos && IsReviewRunning;
     public bool HasCheckpoints => Checkpoints.Count > 0;
-    public bool HasFilteredGitFiles => FilteredGitFiles.Count > 0;
-    public bool HasProviderTraces => ProviderTraces.Count > 0;
-    public bool HasFilteredProviderTraces => FilteredProviderTraceTurns.Count > 0;
     public bool HasToolActivityTurns => ToolActivityTurns.Count > 0;
     public bool HasSelectedToolActivity => SelectedToolActivity is not null;
     public bool HasChildSessions => ChildSessions.Count > 0;
@@ -558,11 +441,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public string SelectedToolActivityTitle => SelectedToolActivity is null || SelectedToolActivityTurn is null
         ? "Select a tool call"
         : $"{SelectedToolActivityTurn.Title} · {SelectedToolActivity.StateText}";
-    public bool HasSelectedProviderTrace => SelectedProviderTraceDetails is not null;
-    public bool ShowSelectedProviderTraceOverview => HasSelectedProviderTrace;
     public bool HasSessionLoadError => !string.IsNullOrWhiteSpace(SessionLoadError);
-    public string GitFileCountText => $"{FilteredGitFiles.Count} {(FilteredGitFiles.Count == 1 ? "file" : "files")}";
-    public string ProviderTraceCountText => $"{FilteredProviderTraceTurns.Count} turns · {FilteredProviderTraceTurns.Sum(turn => turn.Calls.Count)} calls";
     public bool HasSelectedSession => SelectedSession is not null;
     public bool ShowChatInput => SelectedSession is not null && !SelectedSession.IsArchived;
     public bool HasPendingApproval => PendingApproval is not null;
@@ -703,61 +582,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public GridLength NavigationWidth => EffectiveNavigationVisible ? new GridLength(NavigationPaneWidth) : new GridLength(0);
     public GridLength ReviewWidth => EffectiveReviewVisible ? new GridLength(ReviewPaneWidth) : new GridLength(0);
     public GridLength GitFileListWidth => new(Math.Min(260, Math.Max(230, (_layoutWidth - 80) * 0.24)));
-    public bool IsGitReady => GitState == "ready";
-    public bool IsGitClean => IsGitReady && GitChangedFiles == 0;
-    public bool IsGitDirty => IsGitReady && GitChangedFiles > 0;
-    public bool IsGitLoading => GitState == "loading" || GitDiffState == "loading";
-    public bool HasGitDiffLines => GitDiffState == "ready" && !GitDiffBinary && DiffLines.Count > 0;
-    public bool ShowGitDiffEmpty => !HasGitDiffLines;
-    public bool ShowGitDiffStats => GitDiffState == "ready" && !GitDiffBinary;
-    public string SelectedGitPath => SelectedGitFile?.Path ?? "No file selected";
-    public string GitFooterBranchText => GitState switch
-    {
-        "loading" => "Reading Git...",
-        "not_repository" => "Not a Git repository",
-        "error" => "Git unavailable",
-        _ => string.IsNullOrWhiteSpace(GitBranch) ? "Detached HEAD" : GitBranch
-    };
-    public string GitChangeSummary => GitChangedFiles == 0 ? "Clean" : $"{GitChangedFiles} changed";
-    public string GitEmptyMessage
-    {
-        get
-        {
-            if (GitState == "loading") return "Reading repository changes...";
-            if (GitState == "not_repository") return "This project is not inside a Git repository.";
-            if (GitState == "error") return string.IsNullOrWhiteSpace(GitError) ? "Git status is unavailable." : GitError;
-            if (FilteredGitFiles.Count == 0 && GitFilter.Length > 0) return "No changed files match this filter.";
-            if (FilteredGitFiles.Count == 0 && GitState == "ready") return GitScope == "all" ? "Working tree clean." : $"No {GitScope} changes.";
-            if (GitDiffState == "loading") return "Loading diff...";
-            if (GitDiffState == "error") return string.IsNullOrWhiteSpace(GitDiffError) ? "This diff is unavailable." : GitDiffError;
-            if (GitDiffBinary) return "Binary files cannot be displayed as text.";
-            return "Select a changed file to inspect its diff.";
-        }
-    }
 
-    public bool IsProviderTraceLoading => ProviderTraceState == "loading";
-    public string ProviderTraceSummary => ProviderTraces.Count == 0
-        ? "No provider requests"
-        : $"{ProviderTraces.Count} provider {(ProviderTraces.Count == 1 ? "request" : "requests")}";
-
-    public string SelectedProviderTraceTitle => SelectedProviderTraceDetails?.Title ??
-                                                SelectedProviderTrace?.Title ?? "No model call selected";
-    public string ProviderTraceEmptyMessage
-    {
-        get
-        {
-            if (ProviderTraceState == "loading") return "Loading session trace...";
-            if (ProviderTraceState == "error") return string.IsNullOrWhiteSpace(ProviderTraceError) ? "Provider trace is unavailable." : ProviderTraceError;
-            if (SelectedSession is null) return "Select a session to inspect provider requests.";
-            if (FilteredProviderTraceTurns.Count == 0 && ProviderTraceFilter.Length > 0) return "No turns or model calls match this filter.";
-            if (FilteredProviderTraceTurns.Count == 0) return "No turns have been recorded for this session.";
-            return "Select a model call to inspect its messages, tools, request, response, and usage.";
-        }
-    }
-
-    public bool ScopeAll => GitScope == "all";
-    public bool ScopeStaged => GitScope == "staged";
-    public bool ScopeUnstaged => GitScope == "unstaged";
 
     public void UpdateLayoutSize(double width, double height)
     {

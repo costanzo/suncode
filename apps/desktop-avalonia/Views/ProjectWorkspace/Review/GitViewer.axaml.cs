@@ -21,27 +21,27 @@ public sealed partial class GitViewer : UserControl
         Height = Math.Clamp(Height, 240, Math.Max(240, window.Bounds.Height - 300));
     }
 
-    private async void RefreshGit(object? sender, RoutedEventArgs e) => await ViewModel.RefreshGitAsync();
+    private async void RefreshGit(object? sender, RoutedEventArgs e) => await ViewModel.Git.RefreshAsync();
 
     private async void GitFileSelected(object? sender, SelectionChangedEventArgs e)
     {
         if (e.AddedItems.OfType<GitFileItem>().FirstOrDefault() is { } file)
-            await ViewModel.LoadGitDiffAsync(file, ViewModel.GitScope);
+            await ViewModel.Git.LoadDiffAsync(file, ViewModel.Git.Scope);
     }
 
     private async void CopyPatch(object? sender, RoutedEventArgs e)
     {
-        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard && !string.IsNullOrWhiteSpace(ViewModel.GitPatch))
-            await clipboard.SetTextAsync(ViewModel.GitPatch);
+        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard && !string.IsNullOrWhiteSpace(ViewModel.Git.Patch))
+            await clipboard.SetTextAsync(ViewModel.Git.Patch);
     }
 
     private void GitFilterChanged(object? sender, TextChangedEventArgs e)
     {
-        if (sender is TextBox field) ViewModel.SetGitFilter(field.Text ?? string.Empty);
+        if (sender is TextBox field) ViewModel.Git.SetFilter(field.Text ?? string.Empty);
     }
 
-    private void GitScopeAll(object? sender, RoutedEventArgs e) => ViewModel.SetGitScope("all");
-    private void GitScopeStaged(object? sender, RoutedEventArgs e) => ViewModel.SetGitScope("staged");
-    private void GitScopeUnstaged(object? sender, RoutedEventArgs e) => ViewModel.SetGitScope("unstaged");
+    private void GitScopeAll(object? sender, RoutedEventArgs e) => ViewModel.Git.SetScope("all");
+    private void GitScopeStaged(object? sender, RoutedEventArgs e) => ViewModel.Git.SetScope("staged");
+    private void GitScopeUnstaged(object? sender, RoutedEventArgs e) => ViewModel.Git.SetScope("unstaged");
     private void CloseGit(object? sender, RoutedEventArgs e) => ViewModel.GitVisible = false;
 }

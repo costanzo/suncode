@@ -741,9 +741,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
         if (live && type == "turn.state") SyncSelectedSessionAgentStateFromReview();
         if (live && type.StartsWith("checkpoint.", StringComparison.Ordinal)) _ = LoadCheckpointsAsync();
-        if (live && type.StartsWith("provider.exchange.", StringComparison.Ordinal) && ProviderTraceVisible) _ = RefreshProviderTracesAsync();
+        if (live && type.StartsWith("provider.exchange.", StringComparison.Ordinal) && ProviderTraceVisible) _ = ProviderTrace.RefreshAsync();
         if (live && (type == "tool.result" || (type == "turn.state" && IsTerminalTurnState(payload.State ?? string.Empty)))) _ = LoadChildSessionsAsync();
-        if (live && (type.StartsWith("checkpoint.", StringComparison.Ordinal) || pathAdded)) _ = RefreshGitAsync();
+        if (live && (type.StartsWith("checkpoint.", StringComparison.Ordinal) || pathAdded)) _ = Git.RefreshAsync();
     }
 
     private void ApplyToolEvent(AgentEventPayload payload, string eventType)

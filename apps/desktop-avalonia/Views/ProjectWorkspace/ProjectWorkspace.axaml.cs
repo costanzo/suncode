@@ -202,7 +202,7 @@ public sealed partial class ProjectWorkspace : UserControl
             if (ViewModel.BottomDrawerHeight < DesktopViewModel.MinimumBottomDrawerHeight) ViewModel.BottomDrawerHeight = DesktopViewModel.DefaultBottomDrawerHeight;
             ViewModel.ProviderTraceVisible = false;
             ViewModel.ToolActivityVisible = false;
-            _ = ViewModel.RefreshGitAsync();
+            _ = ViewModel.Git.RefreshAsync();
         }
     }
 
@@ -216,7 +216,7 @@ public sealed partial class ProjectWorkspace : UserControl
             if (ViewModel.BottomDrawerHeight < DesktopViewModel.MinimumBottomDrawerHeight) ViewModel.BottomDrawerHeight = DesktopViewModel.DefaultBottomDrawerHeight;
             ViewModel.GitVisible = false;
             ViewModel.ToolActivityVisible = false;
-            _ = ViewModel.RefreshProviderTracesAsync();
+            _ = ViewModel.ProviderTrace.RefreshAsync();
         }
     }
 

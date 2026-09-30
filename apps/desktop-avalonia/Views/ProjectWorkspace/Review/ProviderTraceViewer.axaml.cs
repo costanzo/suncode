@@ -21,24 +21,24 @@ public sealed partial class ProviderTraceViewer : UserControl
         Height = Math.Clamp(Height, 260, Math.Max(260, window.Bounds.Height - 300));
     }
 
-    private async void RefreshTrace(object? sender, RoutedEventArgs e) => await ViewModel.RefreshProviderTracesAsync();
+    private async void RefreshTrace(object? sender, RoutedEventArgs e) => await ViewModel.ProviderTrace.RefreshAsync();
 
     private async void TraceSelected(object? sender, SelectionChangedEventArgs e)
     {
         if (e.AddedItems.OfType<ProviderTraceItem>().FirstOrDefault() is { } trace)
-            await ViewModel.LoadProviderTraceAsync(trace);
+            await ViewModel.ProviderTrace.LoadAsync(trace);
         else if (e.AddedItems.OfType<ProviderTraceTurnItem>().Any())
-            ViewModel.SelectProviderTraceTurn();
+            ViewModel.ProviderTrace.SelectTurn();
     }
 
     private void TraceFilterChanged(object? sender, TextChangedEventArgs e)
     {
-        if (sender is TextBox field) ViewModel.SetProviderTraceFilter(field.Text ?? string.Empty);
+        if (sender is TextBox field) ViewModel.ProviderTrace.SetFilter(field.Text ?? string.Empty);
     }
 
     private async void CopyTrace(object? sender, RoutedEventArgs e)
     {
-        if (TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard || ViewModel.SelectedProviderTraceDetails is not { } trace) return;
+        if (TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard || ViewModel.ProviderTrace.SelectedTraceDetails is not { } trace) return;
         await clipboard.SetTextAsync(string.Join(Environment.NewLine, new[]
         {
             trace.Title,
