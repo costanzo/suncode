@@ -158,11 +158,11 @@ namespace Xilium.CefGlue.Avalonia.Platform
         private void OnAttachedToVisualTree(object sender, VisualTreeAttachmentEventArgs e)
         {
             VisibilityChanged?.Invoke(true);
-            if (e.Root is Window newWindow)
+            if (TopLevel.GetTopLevel(_control) is Window newWindow)
             {
                 _windowStateChangedObservable = newWindow.GetPropertyChangedObservable(Window.WindowStateProperty).Subscribe(OnHostWindowStateChanged);
             }
-            var renderScaling = (e.Root as TopLevel)?.RenderScaling ?? 1d;
+            var renderScaling = TopLevel.GetTopLevel(_control)?.RenderScaling ?? 1d;
             if (renderScaling != RenderSurface.DeviceScaleFactor)
             {
                 RenderSurface.DeviceScaleFactor = (float)renderScaling;

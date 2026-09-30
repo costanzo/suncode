@@ -6,7 +6,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>disable</Nullable>
-    <NoWarn>$(NoWarn);CS8632;CS8981</NoWarn>
+    <NoWarn>$(NoWarn);CS8632;CS8981;CS0067;CS0649</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Source/**/*.cs" />
