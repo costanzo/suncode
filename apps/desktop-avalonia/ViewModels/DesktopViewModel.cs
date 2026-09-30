@@ -141,6 +141,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     }
 
     internal void SetSelectedProjectForTests(ProjectItem project) => SelectedProject = project;
+    internal void ClearSessionForTests() => ClearSession();
 
     public SessionItem? SelectedSession
     {
@@ -252,7 +253,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public string StatusText { get => _statusText; private set => SetProperty(ref _statusText, value); }
     public void ReportPresentationError(string message) => StatusText = message;
     public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) OnPropertyChanged(nameof(CanSubmit)); } }
-    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); NotifyReviewPresentationChanged(); } } }
+    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); OnPropertyChanged(nameof(CanAttachImages)); NotifyReviewPresentationChanged(); } } }
     public string ActiveTurnState { get => _activeTurnState; private set { if (SetProperty(ref _activeTurnState, value)) { OnPropertyChanged(nameof(IsTurnCompacting)); OnPropertyChanged(nameof(IsTurnThinking)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(HasFailedTurn)); NotifyReviewPresentationChanged(); } } }
     public string ActiveTurnDurationText => _activeTurnStartedAt is { } started
         ? FormatDuration(started.ToString("O"), string.Empty, ActiveTurnState)

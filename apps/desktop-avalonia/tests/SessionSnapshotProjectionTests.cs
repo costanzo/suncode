@@ -934,6 +934,51 @@ public sealed class SessionSnapshotProjectionTests
         Assert.Equal(1, sourceChanges);
     }
 
+    [Fact]
+    public void ClearingSessionDropsPendingQuestionTodosAndReviewState()
+    {
+        using var viewModel = new DesktopViewModel();
+        viewModel.ApplyEvent(Event("""
+        {
+          "event_type":"question.asked",
+          "payload":{"request_id":"que-1","turn_id":"turn-1","tool_call_id":"call-1","questions":[{"header":"Scope","question":"Use project scope?","options":[{"label":"Yes","description":"Keep it local"}]}]}
+        }
+        """), true);
+        viewModel.ApplyEvent(Event("""
+        {"event_type":"todo.updated","payload":{"turn_id":"turn-1","todos":[{"content":"Write tests","status":"in_progress","priority":"high"}]}}
+        """), true);
+        Assert.True(viewModel.IsReviewQuestion);
+        Assert.Single(viewModel.CurrentTodos);
+        var changed = new List<string?>();
+        viewModel.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+
+        viewModel.ClearSessionForTests();
+
+        Assert.Null(viewModel.PendingQuestion);
+        Assert.Empty(viewModel.CurrentTodos);
+        Assert.True(viewModel.IsReviewIdle);
+        Assert.Contains(nameof(DesktopViewModel.HasPendingQuestion), changed);
+        Assert.Contains(nameof(DesktopViewModel.HasCurrentTodos), changed);
+        Assert.Contains(nameof(DesktopViewModel.HasChangedPaths), changed);
+        Assert.Contains(nameof(DesktopViewModel.TurnChangeSummary), changed);
+        Assert.Contains(nameof(DesktopViewModel.IsReviewIdle), changed);
+    }
+
+    [Fact]
+    public void TurnStartAndEndRefreshImageAttachmentAvailability()
+    {
+        using var viewModel = new DesktopViewModel();
+        var changed = new List<string?>();
+        viewModel.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+
+        viewModel.ApplyEvent(TurnState("turn-1", "calling_model"), live: true);
+        Assert.Contains(nameof(DesktopViewModel.CanAttachImages), changed);
+
+        changed.Clear();
+        viewModel.ApplyEvent(TurnState("turn-1", "completed"), live: true);
+        Assert.Contains(nameof(DesktopViewModel.CanAttachImages), changed);
+    }
+
     private static AgentEvent UserMessage(string messageId, string turnId, string text) =>
         MessageEvent("message.user", "user", messageId, turnId, text);
 

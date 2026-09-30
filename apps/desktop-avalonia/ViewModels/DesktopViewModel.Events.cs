@@ -135,6 +135,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ContextUsage.Reset();
         PendingApproval = null;
         FullControlEnabled = false;
+        PendingQuestion = null;
+        CurrentTodos.Clear();
+        ClearSelectedChildSession();
+        ChildSessions.Clear();
         ActiveTurnId = string.Empty;
         ActiveTurnState = string.Empty;
         UpdateActiveTurnTiming(string.Empty, null);
@@ -142,6 +146,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (clearSelection) SelectedSession = null;
         OnPropertyChanged(nameof(HasActivities));
         OnPropertyChanged(nameof(HasCheckpoints));
+        OnPropertyChanged(nameof(HasChangedPaths));
+        OnPropertyChanged(nameof(TurnChangeSummary));
+        OnPropertyChanged(nameof(HasCurrentTodos));
+        OnPropertyChanged(nameof(HasChildSessions));
+        NotifyReviewPresentationChanged();
     }
 
     private bool IsCurrentSessionLoad(string sessionId, long loadVersion) =>
