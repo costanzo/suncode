@@ -51,8 +51,8 @@
         <svg:Svg Grid.Column="0" Width="16" Height="16" Path="/Assets/icons/tool.svg" Css="{DynamicResource AccentSvgCss}" VerticalAlignment="Center" />
         <TextBlock Grid.Column="2" Text="{DynamicResource Loc_ToolActivity}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
         <Border Grid.Column="4" />
-        <TextBlock Grid.Column="5" Text="{Binding ToolActivitySummary}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-        <Button Grid.Column="7" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CopyToolActivity" IsEnabled="{Binding HasSelectedToolActivity}" ToolTip.Tip="{DynamicResource Loc_CopySelectedToolDetails}" AutomationProperties.Name="{DynamicResource Loc_CopySelectedToolDetails}">
+        <TextBlock Grid.Column="5" Text="{Binding ToolActivity.Summary}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+        <Button Grid.Column="7" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CopyToolActivity" IsEnabled="{Binding ToolActivity.HasSelectedTool}" ToolTip.Tip="{DynamicResource Loc_CopySelectedToolDetails}" AutomationProperties.Name="{DynamicResource Loc_CopySelectedToolDetails}">
           <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
         <Button Grid.Column="9" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CloseToolActivity" ToolTip.Tip="{DynamicResource Loc_CloseToolActivity}" AutomationProperties.Name="{DynamicResource Loc_CloseToolActivity}">
@@ -66,7 +66,7 @@
           <TextBlock Grid.Row="0" Margin="12,0" Text="{DynamicResource Loc_CurrentSession}" Classes="eyebrow" VerticalAlignment="Center" />
           <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
           <Grid Grid.Row="2">
-            <TreeView x:Name="ToolTree" Classes="tool-tree" ItemsSource="{Binding ToolActivityTurns}" SelectionChanged="ToolSelected">
+            <TreeView x:Name="ToolTree" Classes="tool-tree" ItemsSource="{Binding ToolActivity.Turns}" SelectionChanged="ToolSelected">
               <TreeView.DataTemplates>
                 <TreeDataTemplate DataType="models:ToolActivityTurnItem" ItemsSource="{Binding Tools}">
                   <Grid Height="24" ColumnDefinitions="12,*,Auto" Margin="-15,0,8,0" ToolTip.Tip="{Binding Preview}">
@@ -89,7 +89,7 @@
                 </DataTemplate>
               </TreeView.DataTemplates>
             </TreeView>
-            <StackPanel Width="240" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !HasToolActivityTurns}">
+            <StackPanel Width="240" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !ToolActivity.HasTurns}">
               <svg:Svg Width="22" Height="22" Path="/Assets/icons/tool.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
               <TextBlock Text="{DynamicResource Loc_NoTurnsYet}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
               <TextBlock Text="{DynamicResource Loc_ToolCallsAppear}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" />
@@ -99,48 +99,48 @@
         <Border Grid.Column="1" Background="{DynamicResource BorderBrush}" />
 
         <Grid Grid.Column="2" Background="{DynamicResource WorkspaceBrush}">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasSelectedToolActivity}">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding ToolActivity.HasSelectedTool}">
             <StackPanel Margin="16,14,18,20" Spacing="14">
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="3">
-                  <TextBlock Text="{Binding SelectedToolActivityTitle}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
-                  <TextBlock Text="{Binding SelectedToolActivity.DisplayName}" FontSize="15" FontWeight="SemiBold" />
-                  <TextBlock Text="{Binding SelectedToolActivity.ToolCallId}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+                  <TextBlock Text="{Binding ToolActivity.SelectedTitle}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+                  <TextBlock Text="{Binding ToolActivity.SelectedTool.DisplayName}" FontSize="15" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding ToolActivity.SelectedTool.ToolCallId}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
                 </StackPanel>
-                <TextBlock Grid.Column="1" Text="{Binding SelectedToolActivity.StateText}" Classes="mono" FontSize="11" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding SelectedToolActivity.IsFailed}" VerticalAlignment="Top" />
-                <TextBlock Grid.Column="1" Text="{Binding SelectedToolActivity.StateText}" Classes="mono" FontSize="11" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding SelectedToolActivity.IsActive}" VerticalAlignment="Top" />
+                <TextBlock Grid.Column="1" Text="{Binding ToolActivity.SelectedTool.StateText}" Classes="mono" FontSize="11" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding ToolActivity.SelectedTool.IsFailed}" VerticalAlignment="Top" />
+                <TextBlock Grid.Column="1" Text="{Binding ToolActivity.SelectedTool.StateText}" Classes="mono" FontSize="11" Foreground="{DynamicResource WarningBrush}" IsVisible="{Binding ToolActivity.SelectedTool.IsActive}" VerticalAlignment="Top" />
               </Grid>
 
-              <StackPanel Spacing="5" IsVisible="{Binding SelectedToolActivity.HasRequest}">
+              <StackPanel Spacing="5" IsVisible="{Binding ToolActivity.SelectedTool.HasRequest}">
                 <TextBlock Text="{DynamicResource Loc_Request}" Classes="eyebrow" />
                 <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
-                  <SelectableTextBlock Text="{Binding SelectedToolActivity.Request}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
+                  <SelectableTextBlock Text="{Binding ToolActivity.SelectedTool.Request}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
                 </Border>
               </StackPanel>
 
-              <StackPanel Spacing="5" IsVisible="{Binding SelectedToolActivity.ShowOutput}">
-                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{DynamicResource Loc_LiveOutput}" Classes="eyebrow" /><TextBlock Grid.Column="1" Text="{DynamicResource Loc_FollowingTail}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding SelectedToolActivity.IsActive}" /></Grid>
+              <StackPanel Spacing="5" IsVisible="{Binding ToolActivity.SelectedTool.ShowOutput}">
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{DynamicResource Loc_LiveOutput}" Classes="eyebrow" /><TextBlock Grid.Column="1" Text="{DynamicResource Loc_FollowingTail}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" IsVisible="{Binding ToolActivity.SelectedTool.IsActive}" /></Grid>
                 <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" MinHeight="120" MaxHeight="280">
                   <ScrollViewer x:Name="OutputScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                    <SelectableTextBlock Text="{Binding SelectedToolActivity.Output}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
+                    <SelectableTextBlock Text="{Binding ToolActivity.SelectedTool.Output}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
                   </ScrollViewer>
                 </Border>
               </StackPanel>
 
-              <StackPanel Spacing="5" IsVisible="{Binding SelectedToolActivity.HasResult}">
+              <StackPanel Spacing="5" IsVisible="{Binding ToolActivity.SelectedTool.HasResult}">
                 <TextBlock Text="{DynamicResource Loc_Result}" Classes="eyebrow" />
                 <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10" MaxHeight="240">
-                  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"><SelectableTextBlock Text="{Binding SelectedToolActivity.Result}" Classes="mono" FontSize="10" TextWrapping="Wrap" /></ScrollViewer>
+                  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"><SelectableTextBlock Text="{Binding ToolActivity.SelectedTool.Result}" Classes="mono" FontSize="10" TextWrapping="Wrap" /></ScrollViewer>
                 </Border>
               </StackPanel>
 
-              <StackPanel Spacing="5" IsVisible="{Binding SelectedToolActivity.HasError}">
+              <StackPanel Spacing="5" IsVisible="{Binding ToolActivity.SelectedTool.HasError}">
                 <TextBlock Text="{DynamicResource Loc_Error}" Classes="eyebrow" Foreground="{DynamicResource DangerBrush}" />
-                <Border Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10"><SelectableTextBlock Text="{Binding SelectedToolActivity.ErrorText}" Classes="mono" FontSize="10" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" /></Border>
+                <Border Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10"><SelectableTextBlock Text="{Binding ToolActivity.SelectedTool.ErrorText}" Classes="mono" FontSize="10" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" /></Border>
               </StackPanel>
             </StackPanel>
           </ScrollViewer>
-          <StackPanel Width="320" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !HasSelectedToolActivity}">
+          <StackPanel Width="320" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !ToolActivity.HasSelectedTool}">
             <svg:Svg Width="22" Height="22" Path="/Assets/icons/tool.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
             <TextBlock Text="{DynamicResource Loc_SelectToolCall}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
             <TextBlock Text="{DynamicResource Loc_ChooseCallInspect}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" />

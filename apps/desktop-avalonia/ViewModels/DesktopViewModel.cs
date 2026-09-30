@@ -65,8 +65,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private bool _gitVisible;
     private bool _providerTraceVisible;
     private bool _toolActivityVisible;
-    private ToolActivityTurnItem? _selectedToolActivityTurn;
-    private ToolActivityItem? _selectedToolActivity;
     private ChildSessionItem? _selectedChildSession;
     private ApprovalItem? _childPendingApproval;
     private double _layoutWidth = 1440;
@@ -93,6 +91,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public RemoteServerViewModel Remote { get; }
     public GitReviewViewModel Git { get; }
     public ProviderTraceViewModel ProviderTrace { get; }
+    public ToolActivityViewModel ToolActivity { get; } = new();
     public ObservableCollection<ProjectItem> Projects { get; } = [];
     public ObservableCollection<SessionItem> Sessions { get; } = [];
     public ObservableCollection<SessionItem> ArchivedSessions { get; } = [];
@@ -124,7 +123,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public BulkObservableCollection<TodoItem> CurrentTodos { get; } = [];
     public BulkObservableCollection<string> ChangedPaths { get; } = [];
     public BulkObservableCollection<CheckpointItem> Checkpoints { get; } = [];
-    public ObservableCollection<ToolActivityTurnItem> ToolActivityTurns { get; } = [];
     public ObservableCollection<ChildSessionItem> ChildSessions { get; } = [];
     public ObservableCollection<ChildSessionTimelineItem> ChildSessionTimeline { get; } = [];
 
@@ -284,27 +282,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool GitVisible { get => _gitVisible; set { if (SetProperty(ref _gitVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveGitVisible)); SaveRegionState(); } } }
     public bool ProviderTraceVisible { get => _providerTraceVisible; set { if (SetProperty(ref _providerTraceVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveProviderTraceVisible)); SaveRegionState(); } } }
     public bool ToolActivityVisible { get => _toolActivityVisible; set { if (SetProperty(ref _toolActivityVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveToolActivityVisible)); SaveRegionState(); } } }
-    public ToolActivityTurnItem? SelectedToolActivityTurn
-    {
-        get => _selectedToolActivityTurn;
-        private set
-        {
-            if (SetProperty(ref _selectedToolActivityTurn, value))
-                OnPropertyChanged(nameof(SelectedToolActivityTitle));
-        }
-    }
-    public ToolActivityItem? SelectedToolActivity
-    {
-        get => _selectedToolActivity;
-        private set
-        {
-            if (SetProperty(ref _selectedToolActivity, value))
-            {
-                OnPropertyChanged(nameof(HasSelectedToolActivity));
-                OnPropertyChanged(nameof(SelectedToolActivityTitle));
-            }
-        }
-    }
     public ChildSessionItem? SelectedChildSession
     {
         get => _selectedChildSession;
@@ -407,8 +384,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool HasCurrentTodos => CurrentTodos.Count > 0;
     public bool IsReviewTodosVisible => HasCurrentTodos && IsReviewRunning;
     public bool HasCheckpoints => Checkpoints.Count > 0;
-    public bool HasToolActivityTurns => ToolActivityTurns.Count > 0;
-    public bool HasSelectedToolActivity => SelectedToolActivity is not null;
     public bool HasChildSessions => ChildSessions.Count > 0;
     public bool HasSelectedChildSession => SelectedChildSession is not null;
     public bool HasChildPendingApproval => ChildPendingApproval is not null;
@@ -416,10 +391,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool ChildSessionsGutterAttention => HasChildPendingApproval && !ChildSessionsVisible;
     public bool IsChildSessionVisible => SelectedChildSession is not null;
     public string ChildSessionTitle => SelectedChildSession?.Title ?? string.Empty;
-    public string ToolActivitySummary => $"{ToolActivityTurns.Count} {(ToolActivityTurns.Count == 1 ? "turn" : "turns")} · {ToolActivityTurns.Sum(turn => turn.Tools.Count)} calls";
-    public string SelectedToolActivityTitle => SelectedToolActivity is null || SelectedToolActivityTurn is null
-        ? "Select a tool call"
-        : $"{SelectedToolActivityTurn.Title} · {SelectedToolActivity.StateText}";
     public bool HasSessionLoadError => !string.IsNullOrWhiteSpace(SessionLoadError);
     public bool HasSelectedSession => SelectedSession is not null;
     public bool ShowChatInput => SelectedSession is not null && !SelectedSession.IsArchived;

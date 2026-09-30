@@ -858,8 +858,8 @@ public sealed class SessionSnapshotProjectionTests
 
         viewModel.ApplyEvent(TurnState("turn-1", "resolving_calls"), live: true);
 
-        Assert.Single(viewModel.ToolActivityTurns);
-        Assert.True(viewModel.ToolActivityTurns.Single().IsActive);
+        Assert.Single(viewModel.ToolActivity.Turns);
+        Assert.True(viewModel.ToolActivity.Turns.Single().IsActive);
         Assert.Single(viewModel.Messages, message => message.IsTool);
     }
 
@@ -873,10 +873,10 @@ public sealed class SessionSnapshotProjectionTests
         {"event_type":"tool.output","payload":{"turn_id":"turn-1","tool_call_id":"tool-1","chunk_base64":"aGVsbG8="}}
         """), live: true);
 
-        var turn = Assert.Single(viewModel.ToolActivityTurns);
+        var turn = Assert.Single(viewModel.ToolActivity.Turns);
         var tool = Assert.Single(turn.Tools);
         Assert.Equal("hello", tool.Output);
-        Assert.Same(tool, viewModel.SelectedToolActivity);
+        Assert.Same(tool, viewModel.ToolActivity.SelectedTool);
         Assert.Single(viewModel.Messages, message => message.IsTool);
     }
 

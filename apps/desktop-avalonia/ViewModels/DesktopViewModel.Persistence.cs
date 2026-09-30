@@ -446,9 +446,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
         DisposeMessages();
         Messages = new BulkObservableCollection<MessageItem>(projection.Messages);
-        ToolActivityTurns.Clear();
-        foreach (var turn in projection.ToolActivityTurns) ToolActivityTurns.Add(turn);
-        SelectDefaultToolActivity();
+        ToolActivity.ReplaceAll(projection.ToolActivityTurns);
         SyncActiveToolRow();
         Activities.ReplaceAll(projection.Activities);
         ChangedPaths.ReplaceAll(projection.ChangedPaths);
@@ -460,13 +458,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         PendingQuestion = projection.PendingQuestion;
         ActiveTurnId = projection.ActiveTurnId;
         ActiveTurnState = projection.ActiveTurnState;
-        var activeActivityTurn = ToolActivityTurns.LastOrDefault(item => item.TurnId == projection.ActiveTurnId);
+        var activeActivityTurn = ToolActivity.Turns.LastOrDefault(item => item.TurnId == projection.ActiveTurnId);
         UpdateActiveTurnTiming(projection.ActiveTurnId, activeActivityTurn?.StartedAt);
         OnPropertyChanged(nameof(HasMessages));
         NotifyAssistantStreamingChanged();
         OnPropertyChanged(nameof(HasActivities));
-        OnPropertyChanged(nameof(HasToolActivityTurns));
-        OnPropertyChanged(nameof(ToolActivitySummary));
         OnPropertyChanged(nameof(HasCurrentTodos));
         OnPropertyChanged(nameof(IsReviewTodosVisible));
         OnPropertyChanged(nameof(LatestActivityText));
@@ -715,7 +711,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 }
             }
             SyncActiveToolRow();
-            OnPropertyChanged(nameof(ToolActivitySummary));
+            ToolActivity.NotifyTurnsChanged();
         }
 
         if (live && type == "turn.state") SyncSelectedSessionAgentStateFromReview();
@@ -749,19 +745,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         var error = eventType == "tool.state"
             ? payload.Reason ?? string.Empty
             : existing?.Error ?? string.Empty;
-        if (existing is null)
-        {
-            existing = new ToolActivityItem(turnId, toolCallId, name, state, request, result, output, error, string.Empty);
-            turn.Tools.Add(existing);
-            OnPropertyChanged(nameof(ToolActivitySummary));
-            OnPropertyChanged(nameof(HasToolActivityTurns));
-        }
-        else
-        {
-            existing.Update(name, state, request, result, output, error);
-        }
-        if (SelectedToolActivity is null || (SelectedToolActivityTurn?.IsActive == true && existing.IsActive))
-            SelectToolActivity(turn, existing);
+        ToolActivity.Upsert(turn, toolCallId, name, state, request, result, output, error);
         SyncActiveToolRow();
     }
 
@@ -781,70 +765,22 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         return existing + (chunk.Length <= remaining ? chunk : chunk[..remaining]);
     }
 
-    public void SelectToolActivity(ToolActivityTurnItem turn, ToolActivityItem tool)
-    {
-        turn.IsExpanded = true;
-        SelectedToolActivityTurn = turn;
-        SelectedToolActivity = tool;
-    }
-
-    public void SelectToolActivityTurn(ToolActivityTurnItem turn)
-    {
-        turn.IsExpanded = !turn.IsExpanded;
-        SelectedToolActivityTurn = turn;
-        if (SelectedToolActivity is null || SelectedToolActivity.TurnId != turn.TurnId)
-            SelectedToolActivity = turn.Tools.FirstOrDefault();
-    }
-
     public void ShowToolActivity(string turnId, string toolCallId)
     {
-        var turn = ToolActivityTurns.FirstOrDefault(item => item.TurnId == turnId);
-        var tool = turn?.Tools.FirstOrDefault(item => item.ToolCallId == toolCallId);
-        if (turn is null || tool is null) return;
-        SelectToolActivity(turn, tool);
+        if (!ToolActivity.TrySelect(turnId, toolCallId)) return;
         ToolActivityVisible = true;
         GitVisible = false;
         ProviderTraceVisible = false;
     }
 
-    private void SelectDefaultToolActivity()
-    {
-        var turn = ToolActivityTurns.LastOrDefault(item => item.IsActive && item.Tools.Any(tool => tool.IsActive))
-            ?? ToolActivityTurns.LastOrDefault(item => item.Tools.Count > 0);
-        var tool = turn?.Tools.LastOrDefault(item => item.IsActive) ?? turn?.Tools.FirstOrDefault();
-        if (turn is null || tool is null)
-        {
-            SelectedToolActivityTurn = null;
-            SelectedToolActivity = null;
-            return;
-        }
-        SelectToolActivity(turn, tool);
-    }
-
-    private ToolActivityTurnItem EnsureToolActivityTurn(string turnId, string preview = "")
-    {
-        var existing = ToolActivityTurns.FirstOrDefault(item => item.TurnId == turnId);
-        if (existing is not null)
-        {
-            if (!string.IsNullOrWhiteSpace(preview)) existing.Update(existing.State, BoundedPreview(preview));
-            return existing;
-        }
-        var created = new ToolActivityTurnItem(turnId, ToolActivityTurns.Count + 1, "admitted", BoundedPreview(preview), string.Empty)
-        {
-            IsExpanded = true
-        };
-        ToolActivityTurns.Add(created);
-        OnPropertyChanged(nameof(HasToolActivityTurns));
-        OnPropertyChanged(nameof(ToolActivitySummary));
-        return created;
-    }
+    private ToolActivityTurnItem EnsureToolActivityTurn(string turnId, string preview = "") =>
+        ToolActivity.EnsureTurn(turnId, string.IsNullOrWhiteSpace(preview) ? string.Empty : BoundedPreview(preview));
 
     private void SyncActiveToolRow()
     {
         foreach (var row in Messages.Where(item => item.IsTool).ToArray()) Messages.Remove(row);
-        var activeTurn = ToolActivityTurns.LastOrDefault(turn => turn.IsActive);
-        var activeTool = activeTurn?.Tools.LastOrDefault(tool => tool.IsActive);
-        if (activeTurn is null || activeTool is null) return;
+        if (ToolActivity.ActiveTool is not { } active) return;
+        var (activeTurn, activeTool) = active;
         Messages.Add(new MessageItem
         {
             Role = "tool",
