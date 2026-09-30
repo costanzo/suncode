@@ -20,11 +20,25 @@ public sealed class LocalizationService
     ];
 
     private readonly Application _application;
+    private readonly Func<string, IResourceProvider> _dictionaryFactory;
     private IResourceProvider? _activeDictionary;
 
     public LocalizationService(Application application)
+        : this(application, 
+        application.Resources.MergedDictionaries.OfType<ResourceInclude>().LastOrDefault(IsLocalizationDictionary), 
+        CreateDictionary)
     {
         _application = application;
+    }
+    
+    internal LocalizationService(
+        Application application,
+        IResourceProvider? dictionaryFactory,
+        Func<string, IResourceProvider> dictionaryFactoryFunc)
+    {
+        _application = application;
+        _dictionaryFactory = dictionaryFactoryFunc;
+        _activeDictionary = dictionaryFactory;
     }
 
     public string CurrentLocale { get; private set; } = DefaultLocale;
@@ -41,19 +55,22 @@ public sealed class LocalizationService
     public void SetLocale(string? locale)
     {
         var normalized = Normalize(locale);
-        // App.axaml ships with the English dictionary as the bootstrap resource.
-        // The first runtime locale change must replace that dictionary too; only
-        // removing _activeDictionary would leave the bootstrap English values
-        // competing with the selected locale.
         if (string.Equals(CurrentLocale, normalized, StringComparison.Ordinal) && _activeDictionary is not null) return;
 
-        var dictionary = CreateDictionary(normalized);
+        var dictionary = _dictionaryFactory(normalized);
         var merged = _application.Resources.MergedDictionaries;
-        foreach (var existing in merged.OfType<ResourceInclude>().Where(IsLocalizationDictionary).ToArray())
+        var activeIndex = _activeDictionary is null ? -1 : merged.IndexOf(_activeDictionary);
+        if (activeIndex < 0)
         {
-            merged.Remove(existing);
+            activeIndex = merged
+                .Select((provider, index) => (provider, index))
+                .Where(item => item.provider is ResourceInclude include && IsLocalizationDictionary(include))
+                .Select(item => item.index)
+                .LastOrDefault(-1);
         }
-        merged.Insert(0, dictionary);
+
+        if (activeIndex >= 0) merged[activeIndex] = dictionary;
+        else merged.Add(dictionary);
         _activeDictionary = dictionary;
         CurrentLocale = normalized;
     }
