@@ -34,10 +34,12 @@ mod system_prompt;
 use lsp::LanguageServerManager;
 pub use lsp::{LanguageServerRuntimeState, LanguageServerRuntimeStatus};
 mod browser;
+mod preview;
 use browser::BrowserManager;
 pub use browser::{
     BrowserInstallationState, BrowserRuntimeInfo, BrowserRuntimeState, BrowserVisibilityCapability,
 };
+pub use preview::{PreviewState, PreviewStatus};
 mod computer;
 use computer::ComputerManager;
 pub use computer::ComputerRuntimeInfo;
@@ -177,6 +179,7 @@ pub struct Agent {
     mcp: McpManager,
     lsp: LanguageServerManager,
     browser: BrowserManager,
+    preview: preview::PreviewManager,
     computer: ComputerManager,
     host_capabilities: AgentHostCapabilities,
     shutting_down: Arc<std::sync::atomic::AtomicBool>,

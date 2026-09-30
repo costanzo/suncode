@@ -101,6 +101,11 @@ public sealed partial class AgentSdk
     public Task<BrowserProfileClearResult> ClearBrowserProfileAsync(string projectId) =>
         Typed<BrowserProfileClearResult>(RawClearBrowserProfileAsync(projectId));
 
+    public Task<PreviewState> GetPreviewStateAsync(string projectId) => Typed<PreviewState>(RawPreviewStateAsync(projectId));
+    public Task<PreviewState> StartPreviewAsync(string projectId, string program, IReadOnlyList<string> args, string? cwd, string url) =>
+        Typed<PreviewState>(RawStartPreviewAsync(projectId, program, JsonSerializer.Serialize(args, TypedJsonOptions), cwd, url));
+    public Task<PreviewState> StopPreviewAsync(string projectId) => Typed<PreviewState>(RawStopPreviewAsync(projectId));
+
     public Task<McpServersResult> GetMcpServersAsync(string? projectId = null) =>
         Typed<McpServersResult>(RawListMcpServersAsync(projectId));
 

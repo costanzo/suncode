@@ -35,6 +35,7 @@ mod lifecycle;
 mod mcp;
 mod project_sessions;
 mod projects;
+mod preview;
 mod remote;
 mod sessions;
 mod settings;
@@ -561,6 +562,21 @@ fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
             return Err(BusinessError::invalid(
                 "tool_call_limit must be an integer between 1 and 256",
             ));
+        }
+        return Ok(());
+    }
+    if matches!(key, "preview_program" | "preview_url" | "preview_args" | "preview_cwd") {
+        if scope != "project" {
+            return Err(BusinessError::invalid(format!("{key} is a project-only setting")));
+        }
+        match key {
+            "preview_program" | "preview_url" | "preview_cwd" if !value.is_string() => {
+                return Err(BusinessError::invalid(format!("{key} must be a string")));
+            }
+            "preview_args" if !value.is_array() => {
+                return Err(BusinessError::invalid("preview_args must be an array"));
+            }
+            _ => {}
         }
         return Ok(());
     }

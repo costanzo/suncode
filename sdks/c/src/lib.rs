@@ -813,6 +813,38 @@ pub unsafe extern "C" fn suncode_agent_sdk_open_project(
     })
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_preview_state(handle: *mut SunCodeAgentHandle, project_id: *const c_char) -> *mut c_char {
+    ffi_call(handle, |sdk| sdk.preview_state(&c_string(project_id, "project_id")?))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_start_preview(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+    program: *const c_char,
+    args_json: *const c_char,
+    cwd: *const c_char,
+    url: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let args = serde_json::from_value::<Vec<String>>(json_from_c(args_json, "args_json")?)
+            .map_err(|_| BusinessError::invalid("preview args are invalid"))?;
+        sdk.start_preview(
+            &c_string(project_id, "project_id")?,
+            &c_string(program, "program")?,
+            args,
+            optional_c_string(cwd, "cwd")?,
+            &c_string(url, "url")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_stop_preview(handle: *mut SunCodeAgentHandle, project_id: *const c_char) -> *mut c_char {
+    ffi_call(handle, |sdk| sdk.stop_preview(&c_string(project_id, "project_id")?))
+}
+
 macro_rules! ffi_one_string {
     ($function:ident, $method:ident, $argument:literal) => {
         #[no_mangle]

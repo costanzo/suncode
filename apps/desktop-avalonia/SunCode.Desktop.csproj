@@ -29,6 +29,12 @@
   <ItemGroup>
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
     <ProjectReference Include="../../sdks/csharp/SunCode.Sdk.csproj" />
+    <ProjectReference Include="Compatibility/CefGlueAvalonia12/CefGlueAvalonia12.csproj" />
+    <PackageReference Include="cef.runtime.osx-arm64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'osx-arm64'" PrivateAssets="all" />
+    <PackageReference Include="cef.runtime.osx-x64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'osx-x64'" PrivateAssets="all" />
+    <PackageReference Include="cef.runtime.linux-x64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'linux-x64'" PrivateAssets="all" />
+    <PackageReference Include="chromiumembeddedframework.runtime.win-x64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'win-x64'" PrivateAssets="all" />
+    <PackageReference Include="chromiumembeddedframework.runtime.win-arm64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'win-arm64'" PrivateAssets="all" />
     <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
@@ -92,6 +98,7 @@
 
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
+    <Compile Remove="Compatibility/**/*.cs" />
     <AvaloniaResource Include="Assets/**" />
     <AvaloniaResource Include="Resources/**" />
     <Content Include="Assets/logo/suncode-logo-1024.png" CopyToOutputDirectory="PreserveNewest" Link="suncode-logo-1024.png" />
@@ -116,5 +123,17 @@
                Condition="'$(BrowserRuntimeTarget)' == 'darwin-arm64' And Exists('$(BrowserRuntimeSource)')" />
     <Exec Command="/usr/bin/ditto &quot;$(BrowserRuntimeSource)&quot; &quot;$(SunCodeAppBundle)/Contents/Resources/browser-runtime&quot;"
           Condition="'$(BrowserRuntimeTarget)' == 'darwin-arm64' And Exists('$(BrowserRuntimeSource)')" />
+  </Target>
+
+  <Target Name="DeployCefPreviewMacOS" AfterTargets="CreateMacOSAppBundle"
+          Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(RuntimeIdentifier)' == 'osx-arm64'">
+    <PropertyGroup>
+      <CefPreviewPackageRoot>$(NuGetPackageRoot)cef.runtime.osx-arm64/152.0.6/CEF</CefPreviewPackageRoot>
+      <CefPreviewFrameworkSource>$(CefPreviewPackageRoot)/osx-arm64</CefPreviewFrameworkSource>
+      <CefPreviewFrameworkDestination>$(SunCodeAppBundle)/Contents/Frameworks</CefPreviewFrameworkDestination>
+    </PropertyGroup>
+    <MakeDir Directories="$(CefPreviewFrameworkDestination)" />
+    <Exec Command="chmod 755 &quot;$(CefPreviewPackageRoot)/deploy-cef-framework.sh&quot;" />
+    <Exec Command="bash &quot;$(CefPreviewPackageRoot)/deploy-cef-framework.sh&quot; &quot;$(CefPreviewFrameworkSource)&quot; &quot;$(CefPreviewFrameworkDestination)&quot; &quot;SunCode&quot; &quot;dev.suncode.desktop&quot; &quot;-&quot; &quot;$(CefPreviewPackageRoot)/cef.entitlements&quot; &quot;$(MSBuildProjectDirectory)/Assets/suncode-desktop.icns&quot;" />
   </Target>
 </Project>

@@ -33,6 +33,7 @@ public sealed partial class ProjectWorkspace : UserControl
         ProjectSwitcherControl.OpenProjectRequested += OpenProjectRequested;
         ProjectSwitcherControl.ProjectRequested += ProjectRequested;
         ContentSwitcherControl.ContentRequested += ContentRequested;
+        BrowserPreview.CloseRequested += ClosePreview;
     }
 
     private WorkspaceWindow? Owner => TopLevel.GetTopLevel(this) as WorkspaceWindow;
@@ -174,6 +175,18 @@ public sealed partial class ProjectWorkspace : UserControl
         ViewModel.ReviewVisible = !ViewModel.ReviewVisible;
     }
 
+    private void TogglePreview(object? sender, RoutedEventArgs e)
+    {
+        ViewModel.PreviewVisible = !ViewModel.PreviewVisible;
+        if (!ViewModel.PreviewVisible) BrowserPreview.CloseBrowser();
+    }
+
+    internal void ClosePreview()
+    {
+        ViewModel.PreviewVisible = false;
+        BrowserPreview.CloseBrowser();
+    }
+
     private void ToggleChildSessions(object? sender, RoutedEventArgs e)
     {
         if (ViewModel.ReviewPaneWidth < DesktopViewModel.MinimumReviewPaneWidth) ViewModel.ReviewPaneWidth = DesktopViewModel.DefaultReviewPaneWidth;
@@ -242,6 +255,9 @@ public sealed partial class ProjectWorkspace : UserControl
                 ViewModel.NavigationPaneWidth = Math.Max(0, _layoutResizeStartNavigationWidth + deltaX);
                 break;
             case "Review":
+                ViewModel.ReviewPaneWidth = Math.Max(0, _layoutResizeStartReviewWidth - deltaX);
+                break;
+            case "Preview":
                 ViewModel.ReviewPaneWidth = Math.Max(0, _layoutResizeStartReviewWidth - deltaX);
                 break;
             case "BottomDrawer":

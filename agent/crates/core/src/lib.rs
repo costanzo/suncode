@@ -12,6 +12,7 @@ pub use agent::{
     AttentionReceiveError, BrowserInstallationState, BrowserRuntimeInfo, BrowserRuntimeState,
     BrowserVisibilityCapability, ComputerRuntimeInfo, EventReceiveError,
     LanguageServerRuntimeState, LanguageServerRuntimeStatus, SessionEventHub, TurnResponse,
+    PreviewState, PreviewStatus,
 };
 pub use agent_lock::AgentLock;
 pub use domain::{

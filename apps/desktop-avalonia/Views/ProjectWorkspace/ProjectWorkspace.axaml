@@ -6,6 +6,7 @@
              xmlns:editor="using:SunCode.Desktop.Views.ProjectWorkspace.Editor"
              xmlns:navigation="using:SunCode.Desktop.Views.ProjectWorkspace.Navigation"
              xmlns:review="using:SunCode.Desktop.Views.ProjectWorkspace.Review"
+             xmlns:preview="using:SunCode.Desktop.Views.ProjectWorkspace.Preview"
              xmlns:workspace="using:SunCode.Desktop.Views.ProjectWorkspace"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.ProjectWorkspace"
@@ -161,7 +162,9 @@
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="{Binding NavigationWidth}" />
                 <ColumnDefinition Width="{Binding NavigationGap}" />
-                <ColumnDefinition Width="*" MinWidth="300" />
+                <ColumnDefinition Width="{Binding ConversationWidth}" MinWidth="0" />
+                <ColumnDefinition Width="{Binding PreviewGap}" />
+                <ColumnDefinition Width="{Binding PreviewWidth}" />
                 <ColumnDefinition Width="{Binding ReviewGap}" />
                 <ColumnDefinition Width="{Binding ReviewWidth}" />
               </Grid.ColumnDefinitions>
@@ -173,15 +176,19 @@
 
               <Border Grid.Column="1" Background="#01000000" Cursor="SizeWestEast" Tag="Navigation" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveNavigationVisible}" />
 
-              <Grid Grid.Column="2">
+              <Grid Grid.Column="2" IsVisible="{Binding PreviewChatVisible}">
                 <chat:ChatArea x:Name="ChatArea" IsVisible="{Binding IsConversationVisible}" />
                 <editor:ReadOnlyEditor IsVisible="{Binding IsEditorVisible}" />
                 <chat:ChildSessionDetail IsVisible="{Binding IsChildSessionVisible}" />
               </Grid>
 
-              <Border Grid.Column="3" Background="#01000000" Cursor="SizeWestEast" Tag="Review" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveReviewVisible}" />
+              <Border Grid.Column="3" Background="#01000000" Cursor="SizeWestEast" Tag="Preview" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectivePreviewVisible}" />
 
-              <Grid Grid.Column="4" IsVisible="{Binding EffectiveReviewVisible}">
+              <preview:BrowserPreviewPane x:Name="BrowserPreview" Grid.Column="4" IsVisible="{Binding EffectivePreviewVisible}" />
+
+              <Border Grid.Column="5" Background="#01000000" Cursor="SizeWestEast" Tag="Review" PointerPressed="LayoutResizePressed" PointerMoved="LayoutResizeMoved" PointerReleased="LayoutResizeReleased" IsVisible="{Binding EffectiveReviewVisible}" />
+
+              <Grid Grid.Column="6" IsVisible="{Binding EffectiveReviewVisible}">
                 <review:AgentSidebar IsVisible="{Binding EffectiveReviewInspectorVisible}" />
                 <review:ChildSessionsPanel IsVisible="{Binding EffectiveChildSessionsVisible}" />
               </Grid>
@@ -205,7 +212,10 @@
           </Grid>
 
           <StackPanel Grid.Column="2" Margin="4,7" IsVisible="{Binding WorkspaceGuttersVisible}">
-            <Button Classes="icon gutter" Classes.active="{Binding ReviewVisible}" Click="ToggleReview" ToolTip.Tip="{DynamicResource Loc_ShowReview}" AutomationProperties.Name="{DynamicResource Loc_ShowReview}">
+            <Button Classes="icon gutter" Classes.active="{Binding PreviewVisible}" Click="TogglePreview" ToolTip.Tip="Show browser preview" AutomationProperties.Name="Show browser preview" Margin="0,0,0,6">
+              <svg:Svg Width="15" Height="15" Path="/Assets/icons/computer.svg" />
+            </Button>
+            <Button Classes="icon gutter" Classes.active="{Binding EffectiveReviewVisible}" Click="ToggleReview" ToolTip.Tip="{DynamicResource Loc_ShowReview}" AutomationProperties.Name="{DynamicResource Loc_ShowReview}">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-right.svg" IsVisible="{Binding !ReviewVisible}" />
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-right.svg" IsVisible="{Binding ReviewVisible}" />

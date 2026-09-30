@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Xilium.CefGlue.Avalonia</AssemblyName>
+    <RootNamespace>Xilium.CefGlue.Avalonia</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>disable</Nullable>
+    <NoWarn>$(NoWarn);CS8632;CS8981</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Source/**/*.cs" />
+    <PackageReference Include="Avalonia" Version="12.1.1" />
+    <PackageReference Include="CefGlue.Next.BrowserProcess.Core" Version="152.7977.831" />
+    <PackageReference Include="CefGlue.Next.Common" Version="152.7977.831" />
+    <PackageReference Include="CefGlue.Next.Core" Version="152.7977.831" />
+    <PackageReference Include="ReactiveUI.Avalonia" Version="11.4.13" />
+    <PackageReference Include="System.Reactive.Linq" Version="6.1.0" />
+  </ItemGroup>
+</Project>

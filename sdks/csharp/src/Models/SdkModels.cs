@@ -152,6 +152,14 @@ public sealed record BrowserRuntimeInfo(
 
 public sealed record BrowserProfileClearResult(string ProjectId, bool Cleared);
 
+public sealed record PreviewState(
+    string ProjectId,
+    string Status,
+    string? Url,
+    string? Program,
+    string? Error,
+    ulong ReloadGeneration);
+
 public sealed record ComputerRuntimeInfo(
     bool Enabled,
     bool BackendAvailable,

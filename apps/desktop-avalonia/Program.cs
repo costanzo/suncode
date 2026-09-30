@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
+using Xilium.CefGlue.BrowserProcess;
 
 namespace SunCode.Desktop;
 
@@ -11,6 +12,7 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        if (!OperatingSystem.IsMacOS()) CefSubProcess.Run(args, true);
         DiagnosticLog.Initialize();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
@@ -27,7 +29,7 @@ internal static class Program
                 return;
             }
             InstanceCoordinator.StartServer();
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            BuildAvaloniaApp().AfterSetup(_ => CefPreviewRuntime.Initialize()).StartWithClassicDesktopLifetime(args);
         }
         catch (Exception exception)
         {
@@ -38,6 +40,7 @@ internal static class Program
         {
             InstanceCoordinator?.Dispose();
             InstanceCoordinator = null;
+            CefPreviewRuntime.Shutdown();
             DiagnosticLog.Info("app", "stopped");
         }
     }

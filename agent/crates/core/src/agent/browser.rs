@@ -877,6 +877,9 @@ pub(super) fn validate_browser_arguments(
 }
 
 impl Agent {
+    pub fn preview_state(&self, project_id: &str) -> crate::agent::PreviewState { self.preview.state(project_id) }
+    pub fn start_preview(&self, project_id: &str, project_root: &str, program: &str, args: Vec<String>, cwd: Option<String>, url: &str) -> Result<crate::agent::PreviewState, BusinessError> { self.preview.start(project_id, Path::new(project_root), program, args, cwd, url) }
+    pub fn stop_preview(&self, project_id: &str) -> crate::agent::PreviewState { self.preview.stop(project_id) }
     pub async fn browser_runtime_info(
         &self,
         project_id: Option<&str>,

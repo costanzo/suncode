@@ -74,6 +74,7 @@ public partial class WorkspaceWindow : Window
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
+        ProjectWorkspaceView.ClosePreview();
         _mcpLoadTimer.Stop();
         SaveWindowGeometry();
         ViewModel.SavePanelGeometry();

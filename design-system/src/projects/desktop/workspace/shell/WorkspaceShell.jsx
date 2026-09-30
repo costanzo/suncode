@@ -18,6 +18,7 @@ import { SessionPanel } from "../panels/sessions/SessionPanel.jsx";
 import { SourceControlPanel } from "../panels/source-control/SourceControlPanel.jsx";
 import { ProviderTracePanel } from "../panels/provider-trace/ProviderTracePanel.jsx";
 import { ToolActivityPanel } from "../panels/tool-activity/ToolActivityPanel.jsx";
+import { BrowserPreviewPanel } from "../panels/browser-preview/BrowserPreviewPanel.jsx";
 import { childSessionStateLabels, childSessions } from "../data/sessions.js";
 import { completedTurnChangeSet } from "../data/review.js";
 import { editorDocuments } from "../data/editor.js";
@@ -278,7 +279,7 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
           </div>
         </aside>
         <div className="workspace-main-stack">
-          <div className="workspace-main-row">
+          <div className={`workspace-main-row ${rightRegion === "preview" ? "is-preview" : ""}`}>
             {navigation === "sessions" && (
               <SessionPanel
                 compact
@@ -319,6 +320,7 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
                 onSelectChild={(child) => selectContent(contentItemForChildSession(child))}
               />
             )}
+            {rightRegion === "preview" && <BrowserPreviewPanel />}
           </div>
           {drawer === "git" && (
             <SourceControlPanel
@@ -330,6 +332,17 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
           {drawer === "tools" && <ToolActivityPanel onClose={() => setDrawer(null)} />}
         </div>
         <aside className="workspace-gutter workspace-gutter-right">
+          <IconButton
+            icon="computer"
+            label="Show browser preview"
+            active={rightRegion === "preview"}
+            onClick={() => {
+              setRightRegion(rightRegion === "preview" ? null : "preview");
+              setNavigation(null);
+              setActiveFile(null);
+              setActiveChild(null);
+            }}
+          />
           <IconButton
             icon="panel-right"
             label="Show review"

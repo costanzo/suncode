@@ -17,6 +17,7 @@ use suncode_common::{BusinessError, HttpProxyConfiguration};
 static CHECKPOINT_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 /// Callback for bounded, best-effort streaming process output chunks.
 pub type ProcessOutputCallback = Arc<dyn Fn(&str, &[u8]) + Send + Sync>;
+pub use process::BackgroundProcess;
 pub type CertificatePath = Arc<RwLock<Option<PathBuf>>>;
 pub type ProxyConfiguration = Arc<RwLock<HttpProxyConfiguration>>;
 mod arguments;
@@ -411,6 +412,12 @@ impl Operations {
         if let Ok(mut current) = self.proxy_configuration.write() {
             *current = configuration;
         }
+    }
+
+    pub fn start_background_process(&self, project_path: &Path, params: Value) -> Result<BackgroundProcess, BusinessError> {
+        let args: arguments::ProcessArguments = serde_json::from_value(params)
+            .map_err(|_| BusinessError::invalid("background process arguments are invalid"))?;
+        process::start_background(project_path, &args)
     }
 
     pub fn open_project(&self, project_path: &Path) -> Result<Value, Value> {

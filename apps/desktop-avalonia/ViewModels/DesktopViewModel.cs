@@ -102,6 +102,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private string? _loadedSessionId;
     private bool _navigationVisible = true;
     private bool _reviewVisible = true;
+    private bool _previewVisible;
     private bool _childSessionsVisible;
     private bool _navigationPinned = true;
     private bool _explorerVisible;
@@ -185,6 +186,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             }
         }
     }
+
+    internal void SetSelectedProjectForTests(ProjectItem project) => SelectedProject = project;
 
     public SessionItem? SelectedSession
     {
@@ -518,10 +521,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public bool HasProjectDependencies => ProjectDependencies.Count > 0;
     public bool SessionSidebarVisible => NavigationVisible && !ExplorerVisible;
     public bool ExplorerSidebarVisible => NavigationVisible && ExplorerVisible;
-    public bool EffectiveNavigationVisible => NavigationVisible && _layoutWidth > NavigationPaneBreakpoint && NavigationPaneWidth >= MinimumNavigationPaneWidth;
+    public bool EffectiveNavigationVisible => !PreviewVisible && NavigationVisible && _layoutWidth > NavigationPaneBreakpoint && NavigationPaneWidth >= MinimumNavigationPaneWidth;
     public bool EffectiveSessionSidebarVisible => EffectiveNavigationVisible && !ExplorerVisible;
     public bool EffectiveExplorerSidebarVisible => EffectiveNavigationVisible && ExplorerVisible;
-    public bool EffectiveReviewVisible => (ReviewVisible || ChildSessionsVisible) && _layoutWidth > ReviewPaneBreakpoint && ReviewPaneWidth >= MinimumReviewPaneWidth;
+    public bool EffectiveReviewVisible => !PreviewVisible && (ReviewVisible || ChildSessionsVisible) && _layoutWidth > ReviewPaneBreakpoint && ReviewPaneWidth >= MinimumReviewPaneWidth;
     public bool EffectiveChildSessionsVisible => ChildSessionsVisible && EffectiveReviewVisible;
     public bool EffectiveReviewInspectorVisible => ReviewVisible && EffectiveReviewVisible;
     public bool EffectiveGitVisible => GitVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
@@ -536,6 +539,28 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public GridLength WorkspaceGutterGap => WorkspaceGuttersVisible ? new GridLength(4) : new GridLength(0);
     public GridLength NavigationGap => EffectiveNavigationVisible ? new GridLength(4) : new GridLength(0);
     public GridLength ReviewGap => EffectiveReviewVisible ? new GridLength(4) : new GridLength(0);
+    public bool PreviewVisible
+    {
+        get => _previewVisible;
+        set
+        {
+            if (!SetProperty(ref _previewVisible, value)) return;
+            NotifyNavigationLayoutChanged();
+            NotifyReviewLayoutChanged();
+            OnPropertyChanged(nameof(EffectivePreviewVisible));
+            OnPropertyChanged(nameof(PreviewChatVisible));
+            OnPropertyChanged(nameof(ConversationWidth));
+            OnPropertyChanged(nameof(PreviewGap));
+            OnPropertyChanged(nameof(PreviewWidth));
+        }
+    }
+    public bool EffectivePreviewVisible => PreviewVisible && IsProjectOpen;
+    public bool PreviewChatVisible => !PreviewVisible || _layoutWidth >= 1030;
+    public GridLength ConversationWidth => PreviewVisible
+        ? PreviewChatVisible ? new GridLength(2, GridUnitType.Star) : new GridLength(0)
+        : new GridLength(1, GridUnitType.Star);
+    public GridLength PreviewGap => EffectivePreviewVisible && PreviewChatVisible ? new GridLength(4) : new GridLength(0);
+    public GridLength PreviewWidth => EffectivePreviewVisible ? new GridLength(3, GridUnitType.Star) : new GridLength(0);
     public GridLength BottomDrawerGap => EffectiveGitVisible || EffectiveProviderTraceVisible || EffectiveToolActivityVisible ? new GridLength(4) : new GridLength(0);
     public bool WorkspaceStatusDetailsVisible => _layoutWidth > CompactWorkspaceBreakpoint;
     public bool HasSessions => Sessions.Count > 0;
@@ -810,6 +835,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(WorkspaceGutterWidth));
         OnPropertyChanged(nameof(WorkspaceGutterGap));
         OnPropertyChanged(nameof(WorkspaceStatusDetailsVisible));
+        OnPropertyChanged(nameof(PreviewChatVisible));
+        OnPropertyChanged(nameof(ConversationWidth));
+        OnPropertyChanged(nameof(PreviewGap));
+        OnPropertyChanged(nameof(PreviewWidth));
     }
 
     private void NotifyDrawerLayoutChanged(string effectivePropertyName)

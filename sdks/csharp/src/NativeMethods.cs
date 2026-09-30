@@ -64,6 +64,9 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_retry_language_server(IntPtr handle, IntPtr projectId, IntPtr languageServerId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_start_language_server_project(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_open_project(IntPtr handle, IntPtr path, IntPtr displayName);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_preview_state(IntPtr handle, IntPtr projectId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_start_preview(IntPtr handle, IntPtr projectId, IntPtr program, IntPtr argsJson, IntPtr cwd, IntPtr url);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_stop_preview(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_select_project(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_project_dependencies(IntPtr handle, IntPtr projectId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_add_project_dependency(IntPtr handle, IntPtr projectId, IntPtr path);

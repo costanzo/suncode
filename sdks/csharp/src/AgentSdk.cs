@@ -221,6 +221,11 @@ public sealed partial class AgentSdk : IDisposable
         [path, displayName],
         values => NativeMethods.suncode_agent_sdk_open_project(_handle, values[0], values[1]));
 
+    private Task<JsonElement> RawPreviewStateAsync(string projectId) => WithUtf8Async([projectId], values => NativeMethods.suncode_agent_sdk_preview_state(_handle, values[0]));
+    private Task<JsonElement> RawStartPreviewAsync(string projectId, string program, string argsJson, string? cwd, string url) =>
+        WithNullableUtf8Async([projectId, program, argsJson, cwd, url], values => NativeMethods.suncode_agent_sdk_start_preview(_handle, values[0], values[1], values[2], values[3], values[4]));
+    private Task<JsonElement> RawStopPreviewAsync(string projectId) => WithUtf8Async([projectId], values => NativeMethods.suncode_agent_sdk_stop_preview(_handle, values[0]));
+
     private Task<JsonElement> RawSelectProjectAsync(string projectId) => WithUtf8Async(
         [projectId], values => NativeMethods.suncode_agent_sdk_select_project(_handle, values[0]));
 

@@ -41,6 +41,7 @@ impl Agent {
             self.mcp.shutdown(),
             self.lsp.shutdown()
         );
+        self.preview.shutdown();
 
         let turns_stopped = tokio::time::timeout(Duration::from_secs(5), async {
             loop {

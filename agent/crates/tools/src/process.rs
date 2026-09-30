@@ -16,7 +16,7 @@ use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{atomic::{AtomicBool, AtomicU64, Ordering}, Mutex};
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -112,6 +112,45 @@ fn terminate_process_tree(child: &mut Child) {
         }
     }
     let _ = child.kill();
+}
+
+/// A project-scoped process that remains alive until the host explicitly stops it.
+pub struct BackgroundProcess {
+    child: Mutex<Child>,
+}
+
+impl BackgroundProcess {
+    pub fn stop(&self) {
+        if let Ok(mut child) = self.child.lock() {
+            terminate_process_tree(&mut child);
+            let _ = child.wait();
+        }
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.child
+            .lock()
+            .map(|mut child| child.try_wait().ok().flatten().is_none())
+            .unwrap_or(false)
+    }
+}
+
+impl Drop for BackgroundProcess {
+    fn drop(&mut self) { self.stop(); }
+}
+
+pub fn start_background(project_root: &Path, args: &ProcessArguments) -> Result<BackgroundProcess, BusinessError> {
+    let root = require_project(Some(project_root))?;
+    let (program, command_args) = command_arguments(args)?;
+    let cwd = process_cwd(root, args)?;
+    let child = configure_command(Command::new(&program), args)
+        .args(command_args)
+        .current_dir(cwd)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(process_start_failure)?;
+    Ok(BackgroundProcess { child: Mutex::new(child) })
 }
 
 fn process_start_failure(error: std::io::Error) -> BusinessError {
