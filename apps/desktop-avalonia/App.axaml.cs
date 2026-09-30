@@ -148,6 +148,7 @@ public sealed partial class App : Application
 
         var viewModel = new DesktopViewModel(_uiStateStore);
         viewModel.ThemeChanged += ApplyTheme;
+        viewModel.LanguageChanged += ApplyLanguage;
         try
         {
             DiagnosticLog.Info("project.window", $"open begin project={project.ProjectId}");
@@ -462,6 +463,7 @@ public sealed partial class App : Application
     private void ProjectWindowClosed(string projectId, DesktopViewModel viewModel)
     {
         viewModel.ThemeChanged -= ApplyTheme;
+        viewModel.LanguageChanged -= ApplyLanguage;
         viewModel.Dispose();
         _projectWindows.Remove(projectId);
         if (_projectWindows.Count == 0 && _hubWindow is not null)
