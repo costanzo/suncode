@@ -250,43 +250,22 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (_sdk is null) return;
         var settings = (await _sdk.GetSettingsAsync(new())).Settings;
         var snapshot = new SettingsSnapshot(settings);
-        var retention = snapshot.Long("log_retention", 5);
-        var configuredLevel = snapshot.String("log_level", "INFO").Trim().ToUpperInvariant();
-        SetLanguage(snapshot.String("ui_locale", LocalizationService.DefaultLocale));
-        LogLevel = configuredLevel is "TRACE" or "DEBUG" or "INFO" or "WARN" or "ERROR" or "OFF"
-            ? configuredLevel
-            : "INFO";
-        LogDirectory = snapshot.String("log_directory", string.Empty);
-        ImageDirectory = snapshot.String("image_directory", string.Empty);
-        var maxBytes = snapshot.Long("log_max_bytes", 10 * 1024 * 1024);
-        LogMaxBytes = maxBytes >= 1024 ? maxBytes : 10 * 1024 * 1024;
-        LogRetention = retention is >= 0 and <= 100 ? (int)retention : 5;
+        AppSettings.Apply(snapshot);
+        DiagnosticLog.Configure(AppSettings.LogLevel, AppSettings.LogDirectory, AppSettings.LogMaxBytes, AppSettings.LogRetention);
         Network.Apply(snapshot);
-        DiagnosticLog.Configure(
-            LogLevel,
-            LogDirectory,
-            LogMaxBytes,
-            LogRetention);
 
         foreach (var item in settings)
         {
             var key = item.Key;
             if (item.Value.ValueKind != JsonValueKind.String) continue;
             var value = item.Value.GetString() ?? string.Empty;
-            if (key == "theme_mode" && value is "dark" or "light") SetTheme(value);
-            if (key == "ui_locale") SetLanguage(value);
             if (key == "default_model") SelectedModel = Models.FirstOrDefault(model => model.Id == value) ?? SelectedModel;
         }
     }
 
-    private void SetLanguage(string locale)
+    // Localized item text is computed on read; re-raise it after the shared locale changes.
+    private void OnAppLanguageChanged(string locale)
     {
-        var normalized = locale is LocalizationService.SimplifiedChineseLocale
-            ? LocalizationService.SimplifiedChineseLocale
-            : LocalizationService.DefaultLocale;
-        if (Language == normalized) return;
-        Language = normalized;
-        LanguageChanged?.Invoke(normalized);
         foreach (var item in LanguageServers.Servers) item.OnPropertyChanged(string.Empty);
         foreach (var item in Mcp.Servers) item.OnPropertyChanged(string.Empty);
         foreach (var item in Messages) item.OnPropertyChanged(string.Empty);

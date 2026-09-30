@@ -151,32 +151,32 @@ public sealed partial class SettingsWindow : Window
             await ViewModel.LoadBrowserRuntimeAsync();
             RefreshBrowserPresentation();
             RefreshModelSelector();
-            AppearancePage.ThemeSelectorControl.ItemsSource = ThemeOptions(ViewModel.Language);
-            AppearancePage.ThemeSelectorControl.SelectedItem = ThemeOptions(ViewModel.Language).FirstOrDefault(item => Equals(item.Value, ViewModel.ThemeMode));
+            AppearancePage.ThemeSelectorControl.ItemsSource = ThemeOptions(ViewModel.AppSettings.Language);
+            AppearancePage.ThemeSelectorControl.SelectedItem = ThemeOptions(ViewModel.AppSettings.Language).FirstOrDefault(item => Equals(item.Value, ViewModel.AppSettings.ThemeMode));
             AppearancePage.LanguageSelectorControl.ItemsSource = LanguageOptions;
-            AppearancePage.LanguageSelectorControl.SelectedItem = LanguageOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.Language));
+            AppearancePage.LanguageSelectorControl.SelectedItem = LanguageOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.AppSettings.Language));
             LoggingPage.LogLevelSelectorControl.ItemsSource = LogLevelOptions;
-            LoggingPage.LogLevelSelectorControl.SelectedItem = LogLevelOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.LogLevel));
+            LoggingPage.LogLevelSelectorControl.SelectedItem = LogLevelOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.AppSettings.LogLevel));
             DefaultsPage.ToolCallLimit.Value = ViewModel.ToolCallLimit;
             DefaultsPage.ToolCallLimit.IsEnabled = ViewModel.IsProjectOpen;
             DefaultsPage.ToolCallLimitScopeText.Text = ViewModel.SelectedProject is { } project
                 ? LF("Loc_ProjectScope", "Project: {0}", project.DisplayName)
                 : L("Loc_OpenProjectToConfigure", "Open a project to configure this setting.");
             _baselineToolCallLimit = ViewModel.ToolCallLimit;
-            LoggingPage.LogDirectoryInputControl.Text = ViewModel.EffectiveLogDirectory;
-            LoggingPage.ImageDirectoryInputControl.Text = ViewModel.EffectiveImageDirectory;
-            LoggingPage.LogMaxMegabytesInputControl.Value = Math.Max(1, ViewModel.LogMaxBytes / (1024 * 1024));
-            LoggingPage.LogRetentionInputControl.Value = ViewModel.LogRetention;
-            _baselineLogLevel = ViewModel.LogLevel;
-            _baselineLogDirectory = NormalizeDirectory(ViewModel.EffectiveLogDirectory);
-            _baselineLogMaxBytes = ViewModel.LogMaxBytes;
-            _baselineLogRetention = ViewModel.LogRetention;
-            _baselineImageDirectory = NormalizeDirectory(ViewModel.EffectiveImageDirectory);
+            LoggingPage.LogDirectoryInputControl.Text = ViewModel.AppSettings.EffectiveLogDirectory;
+            LoggingPage.ImageDirectoryInputControl.Text = ViewModel.AppSettings.EffectiveImageDirectory;
+            LoggingPage.LogMaxMegabytesInputControl.Value = Math.Max(1, ViewModel.AppSettings.LogMaxBytes / (1024 * 1024));
+            LoggingPage.LogRetentionInputControl.Value = ViewModel.AppSettings.LogRetention;
+            _baselineLogLevel = ViewModel.AppSettings.LogLevel;
+            _baselineLogDirectory = NormalizeDirectory(ViewModel.AppSettings.EffectiveLogDirectory);
+            _baselineLogMaxBytes = ViewModel.AppSettings.LogMaxBytes;
+            _baselineLogRetention = ViewModel.AppSettings.LogRetention;
+            _baselineImageDirectory = NormalizeDirectory(ViewModel.AppSettings.EffectiveImageDirectory);
             NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked = ViewModel.Network.VerifyHttpsCertificates;
             NetworkPage.UseSystemCertificatesToggleControl.IsChecked = ViewModel.Network.UseSystemCertificates;
             NetworkPage.CertificatePathInputControl.Text = ViewModel.Network.CertificatePath;
             NetworkPage.CertificatePathInputControl.IsEnabled = ViewModel.Network.UseSystemCertificates == false;
-            var proxyModeOptions = ProxyModeOptions(ViewModel.Language);
+            var proxyModeOptions = ProxyModeOptions(ViewModel.AppSettings.Language);
             NetworkPage.ProxyModeSelectorControl.ItemsSource = proxyModeOptions;
             NetworkPage.ProxyModeSelectorControl.SelectedItem = proxyModeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.Network.ProxyMode));
             NetworkPage.ProxyUrlInputControl.Text = ViewModel.Network.ProxyUrl;
@@ -929,7 +929,7 @@ public sealed partial class SettingsWindow : Window
 
     private async void SaveLogging(object? sender, RoutedEventArgs e)
     {
-        var level = LoggingPage.LogLevelSelectorControl.SelectedItem?.Value as string ?? ViewModel.LogLevel;
+        var level = LoggingPage.LogLevelSelectorControl.SelectedItem?.Value as string ?? ViewModel.AppSettings.LogLevel;
         if (LoggingPage.LogMaxMegabytesInputControl.Value is not { } megabytesValue
             || megabytesValue is < 1 or > 1000
             || decimal.Truncate(megabytesValue) != megabytesValue
@@ -950,10 +950,10 @@ public sealed partial class SettingsWindow : Window
         LoggingPage.LoggingStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
         if (saved)
         {
-            _baselineLogLevel = ViewModel.LogLevel;
-            _baselineLogDirectory = NormalizeDirectory(ViewModel.EffectiveLogDirectory);
-            _baselineLogMaxBytes = ViewModel.LogMaxBytes;
-            _baselineLogRetention = ViewModel.LogRetention;
+            _baselineLogLevel = ViewModel.AppSettings.LogLevel;
+            _baselineLogDirectory = NormalizeDirectory(ViewModel.AppSettings.EffectiveLogDirectory);
+            _baselineLogMaxBytes = ViewModel.AppSettings.LogMaxBytes;
+            _baselineLogRetention = ViewModel.AppSettings.LogRetention;
         }
         RefreshLoggingDirtyState();
     }
@@ -965,7 +965,7 @@ public sealed partial class SettingsWindow : Window
         LoggingPage.ImageDirectoryStatusText.Foreground = this.FindResource(saved ? "SuccessBrush" : "DangerBrush") as IBrush;
         if (saved)
         {
-            _baselineImageDirectory = NormalizeDirectory(ViewModel.EffectiveImageDirectory);
+            _baselineImageDirectory = NormalizeDirectory(ViewModel.AppSettings.EffectiveImageDirectory);
         }
         RefreshImageDirectoryDirtyState();
     }
@@ -1194,14 +1194,14 @@ public sealed partial class SettingsWindow : Window
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.Models.CollectionChanged -= ModelsCollectionChanged;
-            _subscribedViewModel.LanguageChanged -= ViewModelLanguageChanged;
+            _subscribedViewModel.AppSettings.LanguageChanged -= ViewModelLanguageChanged;
         }
 
         _subscribedViewModel = DataContext as DesktopViewModel;
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.Models.CollectionChanged += ModelsCollectionChanged;
-            _subscribedViewModel.LanguageChanged += ViewModelLanguageChanged;
+            _subscribedViewModel.AppSettings.LanguageChanged += ViewModelLanguageChanged;
         }
     }
 
@@ -1212,7 +1212,7 @@ public sealed partial class SettingsWindow : Window
         {
             var themeOptions = ThemeOptions(locale);
             AppearancePage.ThemeSelectorControl.ItemsSource = themeOptions;
-            AppearancePage.ThemeSelectorControl.SelectedItem = themeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.ThemeMode));
+            AppearancePage.ThemeSelectorControl.SelectedItem = themeOptions.FirstOrDefault(item => Equals(item.Value, ViewModel.AppSettings.ThemeMode));
             AppearancePage.LanguageSelectorControl.ItemsSource = LanguageOptions;
             AppearancePage.LanguageSelectorControl.SelectedItem = LanguageOptions.FirstOrDefault(item => Equals(item.Value, locale));
             var proxyModeOptions = ProxyModeOptions(locale);
@@ -1271,7 +1271,7 @@ public sealed partial class SettingsWindow : Window
 
     private void RefreshLoggingDirtyState()
     {
-        var level = LoggingPage.LogLevelSelectorControl.SelectedItem?.Value as string ?? ViewModel.LogLevel;
+        var level = LoggingPage.LogLevelSelectorControl.SelectedItem?.Value as string ?? ViewModel.AppSettings.LogLevel;
         var directory = NormalizeDirectory(LoggingPage.LogDirectoryInputControl.Text);
         var megabytes = LoggingPage.LogMaxMegabytesInputControl.Value is { } mbValue 
             ? checked(decimal.ToInt64(mbValue) * 1024 * 1024) 

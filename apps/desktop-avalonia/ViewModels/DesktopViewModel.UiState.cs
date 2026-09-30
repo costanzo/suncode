@@ -9,9 +9,11 @@ public sealed partial class DesktopViewModel
     private bool _restoringUiState;
     internal bool RestoringSavedFile { get; set; }
 
-    internal DesktopViewModel(UiStateStore? uiStateStore = null)
+    internal DesktopViewModel(UiStateStore? uiStateStore = null, AppSettingsViewModel? appSettings = null)
     {
         _uiStateStore = uiStateStore;
+        AppSettings = appSettings ?? new AppSettingsViewModel();
+        AppSettings.LanguageChanged += OnAppLanguageChanged;
         Mcp = new McpServersViewModel(this);
         LanguageServers = new LanguageServersViewModel(this);
         Network = new NetworkSettingsViewModel(this);

@@ -79,118 +79,14 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }, "Default model saved");
     }
 
-    public async Task SaveThemeAsync(string mode)
-    {
-        if (!EnsureSdk() || mode is not ("dark" or "light")) return;
-        await RunAsync(async () =>
-        {
-            await _sdk!.SetSettingAsync(new SetSettingRequest(
-                "global", null, null, "theme_mode", JsonSerializer.SerializeToElement(mode)));
-            SetTheme(mode);
-        }, "Theme saved");
-    }
+    public Task SaveThemeAsync(string mode) => AppSettings.SaveThemeAsync(this, mode);
 
-    public async Task SaveLanguageAsync(string locale)
-    {
-        if (!EnsureSdk()) return;
-        locale = locale is LocalizationService.SimplifiedChineseLocale
-            ? LocalizationService.SimplifiedChineseLocale
-            : LocalizationService.DefaultLocale;
-        await RunAsync(async () =>
-        {
-            await _sdk!.SetSettingAsync(new SetSettingRequest(
-                "global", null, null, "ui_locale", JsonSerializer.SerializeToElement(locale)));
-            SetLanguage(locale);
-        }, "Language saved");
-    }
+    public Task SaveLanguageAsync(string locale) => AppSettings.SaveLanguageAsync(this, locale);
 
-    public async Task<bool> SaveLoggingSettingsAsync(
-        string level,
-        string? directory,
-        string maxBytesText,
-        string retentionText)
-    {
-        if (!EnsureSdk()) return false;
+    public Task<bool> SaveLoggingSettingsAsync(string level, string? directory, string maxBytesText, string retentionText) =>
+        AppSettings.SaveLoggingSettingsAsync(this, level, directory, maxBytesText, retentionText);
 
-        level = level.Trim().ToUpperInvariant();
-        directory = directory?.Trim() ?? string.Empty;
-        if (string.Equals(directory, AppDataPaths.DefaultLogDirectory, StringComparison.Ordinal))
-        {
-            directory = string.Empty;
-        }
-        if (level is not ("TRACE" or "DEBUG" or "INFO" or "WARN" or "ERROR" or "OFF"))
-        {
-            StatusText = "Choose a valid logging level";
-            return false;
-        }
-        if (!long.TryParse(maxBytesText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var maxBytes)
-            || maxBytes < 1024)
-        {
-            StatusText = "Maximum log size must be at least 1024 bytes";
-            return false;
-        }
-        if (!int.TryParse(retentionText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var retention)
-            || retention is < 0 or > 100)
-        {
-            StatusText = "Log retention must be between 0 and 100 files";
-            return false;
-        }
-
-        IsBusy = true;
-        var sdk = _sdk!;
-        try
-        {
-            await sdk.SetSettingAsync(new SetSettingRequest("global", null, null, "log_level", JsonSerializer.SerializeToElement(level)));
-            await sdk.SetSettingAsync(new SetSettingRequest("global", null, null, "log_directory", JsonSerializer.SerializeToElement(directory)));
-            await sdk.SetSettingAsync(new SetSettingRequest("global", null, null, "log_max_bytes", JsonSerializer.SerializeToElement(maxBytes)));
-            await sdk.SetSettingAsync(new SetSettingRequest("global", null, null, "log_retention", JsonSerializer.SerializeToElement(retention)));
-            LogLevel = level;
-            LogDirectory = directory;
-            LogMaxBytes = maxBytes;
-            LogRetention = retention;
-            DiagnosticLog.Configure(level, directory, maxBytes, retention);
-            StatusText = "Logging settings saved";
-            ConnectionState = "connected";
-            return true;
-        }
-        catch (Exception exception)
-        {
-            ReportError(exception);
-            return false;
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    public async Task<bool> SaveImageDirectoryAsync(string? directory)
-    {
-        if (!EnsureSdk()) return false;
-        directory = directory?.Trim() ?? string.Empty;
-        if (string.Equals(directory, AppDataPaths.DefaultImageDirectory, StringComparison.Ordinal))
-        {
-            directory = string.Empty;
-        }
-        IsBusy = true;
-        try
-        {
-            await _sdk!.SetSettingAsync(new SetSettingRequest("global", null, null, "image_directory", JsonSerializer.SerializeToElement(directory)));
-            ImageDirectory = directory;
-            StatusText = "Image storage location saved";
-            ConnectionState = "connected";
-            return true;
-        }
-        catch (Exception exception)
-        {
-            ReportError(exception);
-            return false;
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
+    public Task<bool> SaveImageDirectoryAsync(string? directory) => AppSettings.SaveImageDirectoryAsync(this, directory);
 
     public async Task LoadProjectToolCallLimitAsync()
     {

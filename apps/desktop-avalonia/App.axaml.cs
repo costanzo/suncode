@@ -17,6 +17,8 @@ namespace SunCode.Desktop;
 public sealed partial class App : Application
 {
     private DesktopViewModel? _viewModel;
+    private ProjectHubViewModel? _hubViewModel;
+    private AppSettingsViewModel? _appSettings;
     private UiStateStore? _uiStateStore;
     private ProjectHubWindow? _hubWindow;
     private SettingsWindow? _settingsWindow;
@@ -47,12 +49,14 @@ public sealed partial class App : Application
         {
             DiagnosticLog.Info("app.lifecycle", "framework_initialization begin");
             _uiStateStore = new UiStateStore();
-            _viewModel = new DesktopViewModel(_uiStateStore);
+            _appSettings = new AppSettingsViewModel();
+            _viewModel = new DesktopViewModel(_uiStateStore, _appSettings);
+            _hubViewModel = new ProjectHubViewModel(_viewModel);
             _localization = new LocalizationService(this);
-            _viewModel.LanguageChanged += ApplyLanguage;
+            _appSettings.LanguageChanged += ApplyLanguage;
             MacOSDockIcon.Apply();
-            _viewModel.ThemeChanged += ApplyTheme;
-            _hubWindow = new ProjectHubWindow { DataContext = _viewModel };
+            _appSettings.ThemeChanged += ApplyTheme;
+            _hubWindow = new ProjectHubWindow { DataContext = _hubViewModel };
             if (Program.InstanceCoordinator is { } instance)
             {
                 instance.ActivationReceived += OnActivationReceived;
@@ -75,7 +79,7 @@ public sealed partial class App : Application
                 _settingsWindow?.Close();
                 _aboutWindow?.Close();
                 foreach (var window in _projectWindows.Values.ToArray()) window.Close();
-                _viewModel.Dispose();
+                _hubViewModel.Dispose();
                 _uiStateStore?.Dispose();
                 DiagnosticLog.Info("app.lifecycle", "exit end");
             };
@@ -146,9 +150,7 @@ public sealed partial class App : Application
         var openingSignal = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _openingProjectSignals[project.ProjectId] = openingSignal;
 
-        var viewModel = new DesktopViewModel(_uiStateStore);
-        viewModel.ThemeChanged += ApplyTheme;
-        viewModel.LanguageChanged += ApplyLanguage;
+        var viewModel = new DesktopViewModel(_uiStateStore, _appSettings);
         try
         {
             DiagnosticLog.Info("project.window", $"open begin project={project.ProjectId}");
@@ -364,7 +366,12 @@ public sealed partial class App : Application
 
     internal void ShowSettings(Window owner)
     {
-        var viewModel = owner.DataContext as DesktopViewModel ?? _viewModel;
+        var viewModel = owner.DataContext switch
+        {
+            DesktopViewModel windowViewModel => windowViewModel,
+            ProjectHubViewModel hub => hub.Services,
+            _ => _viewModel
+        };
         if (viewModel is null) return;
         if (_settingsWindow is not null)
         {
@@ -462,8 +469,6 @@ public sealed partial class App : Application
 
     private void ProjectWindowClosed(string projectId, DesktopViewModel viewModel)
     {
-        viewModel.ThemeChanged -= ApplyTheme;
-        viewModel.LanguageChanged -= ApplyLanguage;
         viewModel.Dispose();
         _projectWindows.Remove(projectId);
         if (_projectWindows.Count == 0 && _hubWindow is not null)

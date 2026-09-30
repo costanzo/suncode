@@ -21,7 +21,7 @@ public sealed partial class ProjectHubWindow : Window
         Opened += OnOpened;
     }
 
-    private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
+    private ProjectHubViewModel ViewModel => (ProjectHubViewModel)DataContext!;
 
     private async void OnOpened(object? sender, EventArgs e)
     {

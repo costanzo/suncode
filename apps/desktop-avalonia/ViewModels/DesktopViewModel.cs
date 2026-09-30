@@ -50,13 +50,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private ulong? _contextOutputTokens;
     private ulong? _contextCachedTokens;
     private bool _contextUsageExpanded;
-    private string _themeMode = "light";
-    private string _language = LocalizationService.DefaultLocale;
-    private string _logLevel = "INFO";
-    private string _logDirectory = string.Empty;
-    private string _imageDirectory = string.Empty;
-    private long _logMaxBytes = 10 * 1024 * 1024;
-    private int _logRetention = 5;
     private int _toolCallLimit = 64;
     private string _diagnosticsText = "Diagnostics unavailable";
     private string _sessionLoadError = string.Empty;
@@ -91,10 +84,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private DateTimeOffset? _activeTurnStartedAt;
     private string _activeTurnTimingTurnId = string.Empty;
 
-    public event Action<string>? ThemeChanged;
-    public event Action<string>? LanguageChanged;
     public event Action? SessionEntered;
 
+    public AppSettingsViewModel AppSettings { get; }
     public McpServersViewModel Mcp { get; }
     public LanguageServersViewModel LanguageServers { get; }
     public NetworkSettingsViewModel Network { get; }
@@ -268,19 +260,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
         ? FormatDuration(started.ToString("O"), string.Empty, ActiveTurnState)
         : string.Empty;
     public string LastTurnId { get => _lastTurnId; private set => SetProperty(ref _lastTurnId, value); }
-    public string ThemeMode { get => _themeMode; private set => SetProperty(ref _themeMode, value); }
-    public string Language { get => _language; private set => SetProperty(ref _language, value); }
-    public string LogLevel { get => _logLevel; private set => SetProperty(ref _logLevel, value); }
-    public string LogDirectory { get => _logDirectory; private set => SetProperty(ref _logDirectory, value); }
-    public string ImageDirectory { get => _imageDirectory; private set => SetProperty(ref _imageDirectory, value); }
-    public string EffectiveLogDirectory => string.IsNullOrWhiteSpace(LogDirectory)
-        ? AppDataPaths.DefaultLogDirectory
-        : LogDirectory;
-    public string EffectiveImageDirectory => string.IsNullOrWhiteSpace(ImageDirectory)
-        ? AppDataPaths.DefaultImageDirectory
-        : ImageDirectory;
-    public long LogMaxBytes { get => _logMaxBytes; private set => SetProperty(ref _logMaxBytes, value); }
-    public int LogRetention { get => _logRetention; private set => SetProperty(ref _logRetention, value); }
     public int ToolCallLimit { get => _toolCallLimit; private set => SetProperty(ref _toolCallLimit, value); }
     public string DiagnosticsText { get => _diagnosticsText; private set => SetProperty(ref _diagnosticsText, value); }
     public bool FullControlEnabled { get => _fullControlEnabled; private set => SetProperty(ref _fullControlEnabled, value); }

@@ -106,12 +106,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ConnectionState = "connected";
     }
 
-    private void SetTheme(string mode)
-    {
-        ThemeMode = mode;
-        ThemeChanged?.Invoke(mode);
-    }
-
     private void CloseSubscription()
     {
         var hadSubscription = _subscription is not null;
@@ -228,6 +222,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         _disposed = true;
         _conversationDurationTimer.Stop();
         Remote.Dispose();
+        AppSettings.LanguageChanged -= OnAppLanguageChanged;
         _conversationDurationTimer.Tick -= ConversationDurationTick;
         ClearProviderTraffic();
         Interlocked.Increment(ref _sessionLoadVersion);
