@@ -16,7 +16,7 @@ info:
 servers:
   remoteServer:
     host: '{remoteServerHost}'
-    pathname: /v1/sessions/{sessionId}/events
+    pathname: /v1/mobile/sessions/{sessionId}/events
     protocol: https
     description: Authenticated Remote Server SSE endpoint.
     variables:
@@ -28,7 +28,7 @@ servers:
       - bearerAuth: []
 channels:
   sessionEvents:
-    address: /v1/sessions/{sessionId}/events
+    address: /v1/mobile/sessions/{sessionId}/events
     messages:
       sessionSnapshot:
         $ref: '#/components/messages/SessionSnapshot'

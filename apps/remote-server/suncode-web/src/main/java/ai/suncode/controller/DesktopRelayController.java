@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import static ai.suncode.common.exception.ErrorCode.PARAM_INVALID;
 
@@ -34,9 +35,13 @@ public class DesktopRelayController {
 
     @PostMapping("/pairings")
     public ApiBaseRet<?> createPairing(@RequestBody(required = false) DesktopPairingRequest pairingRequest) {
-        String hostId = ServiceContext.current().hostId();
-        return ApiBaseRet.success(new DesktopPairingPayload(authService.createPairing(hostId,
-                pairingRequest == null || pairingRequest.displayName() == null ? hostId : pairingRequest.displayName())));
+        return ApiBaseRet.success(authService.createDesktopPairing(pairingRequest));
+    }
+
+    @PostMapping("/snapshot")
+    public ApiBaseRet<?> snapshot(@RequestBody JsonNode snapshot) {
+        relayService.updateSnapshot(ServiceContext.current().hostId(), snapshot);
+        return ApiBaseRet.success();
     }
 
     @PostMapping("/responses")

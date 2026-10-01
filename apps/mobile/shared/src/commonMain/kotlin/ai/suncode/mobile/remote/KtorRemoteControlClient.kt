@@ -98,10 +98,10 @@ class KtorRemoteControlClient(
         http.close()
     }
 
-    override suspend fun health(): ApiBaseRet<HealthData> = envelope { get("$baseUrl/v1/health") }
+    override suspend fun health(): ApiBaseRet<HealthData> = envelope { get("$baseUrl/v1/mobile/health") }
 
     override suspend fun exchangePairing(request: PairingExchangeRequest): ApiBaseRet<PairingExchangeData> {
-        val response = envelope<PairingExchangeData> { postJson("$baseUrl/v1/pairings/exchange", request) }
+        val response = envelope<PairingExchangeData> { postJson("$baseUrl/v1/mobile/pairings/exchange", request) }
         response.data?.let { pairing ->
             tokenStore.save(TokenData(pairing.accessToken, pairing.refreshToken, pairing.accessTokenExpiresAt))
         }
@@ -109,30 +109,30 @@ class KtorRemoteControlClient(
     }
 
     override suspend fun refreshToken(request: RefreshTokenRequest): ApiBaseRet<TokenData> {
-        val response = envelope<TokenData> { postJson("$baseUrl/v1/auth/refresh", request) }
+        val response = envelope<TokenData> { postJson("$baseUrl/v1/mobile/auth/refresh", request) }
         response.data?.let { tokenStore.save(it) }
         return response
     }
 
     override suspend fun logout(idempotencyKey: String) {
         try {
-            authenticatedEmptyResponse { token -> post("$baseUrl/v1/auth/logout") { authenticated(token, idempotencyKey) } }
+            authenticatedEmptyResponse { token -> post("$baseUrl/v1/mobile/auth/logout") { authenticated(token, idempotencyKey) } }
         } finally {
             tokenStore.clear()
         }
     }
 
     override suspend fun getHost(hostId: String): ApiBaseRet<HostDto> {
-        return authenticatedEnvelope { token -> get("$baseUrl/v1/hosts/${hostId.pathSegment()}") { authenticated(token) } }
+        return authenticatedEnvelope { token -> get("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}") { authenticated(token) } }
     }
 
     override suspend fun listProjects(hostId: String): ApiBaseRet<ProjectsData> {
-        return authenticatedEnvelope { token -> get("$baseUrl/v1/hosts/${hostId.pathSegment()}/projects") { authenticated(token) } }
+        return authenticatedEnvelope { token -> get("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/projects") { authenticated(token) } }
     }
 
     override suspend fun listSessions(hostId: String?, projectId: String?, cursor: String?, limit: Int?): ApiBaseRet<SessionPageData> {
         return authenticatedEnvelope { token ->
-            get("$baseUrl/v1/sessions") {
+            get("$baseUrl/v1/mobile/sessions") {
                 authenticated(token)
                 url {
                     hostId?.let { parameters.append("hostId", it) }
@@ -145,36 +145,36 @@ class KtorRemoteControlClient(
     }
 
     override suspend fun createSession(request: CreateSessionRequest, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/sessions", request, idempotencyKey, token) }
+        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/mobile/sessions", request, idempotencyKey, token) }
     }
 
     override suspend fun getSession(sessionId: String): ApiBaseRet<SessionDetailDto> {
-        return authenticatedEnvelope { token -> get("$baseUrl/v1/sessions/${sessionId.pathSegment()}") { authenticated(token) } }
+        return authenticatedEnvelope { token -> get("$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}") { authenticated(token) } }
     }
 
     override suspend fun sendMessage(sessionId: String, request: SendMessageRequest, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/sessions/${sessionId.pathSegment()}/messages", request, idempotencyKey, token) }
+        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}/messages", request, idempotencyKey, token) }
     }
 
     override suspend fun resolveApproval(sessionId: String, approvalId: String, request: ApprovalResolutionRequest, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/sessions/${sessionId.pathSegment()}/approvals/${approvalId.pathSegment()}", request, idempotencyKey, token) }
+        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}/approvals/${approvalId.pathSegment()}", request, idempotencyKey, token) }
     }
 
     override suspend fun replyQuestion(sessionId: String, questionId: String, request: QuestionReplyRequest, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/sessions/${sessionId.pathSegment()}/questions/${questionId.pathSegment()}/reply", request, idempotencyKey, token) }
+        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}/questions/${questionId.pathSegment()}/reply", request, idempotencyKey, token) }
     }
 
     override suspend fun cancelTurn(sessionId: String, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope { token -> post("$baseUrl/v1/sessions/${sessionId.pathSegment()}/cancel") { authenticated(token, idempotencyKey) } }
+        return authenticatedEnvelope { token -> post("$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}/cancel") { authenticated(token, idempotencyKey) } }
     }
 
     override suspend fun retryLastTurn(sessionId: String, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope { token -> post("$baseUrl/v1/sessions/${sessionId.pathSegment()}/retry") { authenticated(token, idempotencyKey) } }
+        return authenticatedEnvelope { token -> post("$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}/retry") { authenticated(token, idempotencyKey) } }
     }
 
     override suspend fun sync(cursor: String?, limit: Int?): ApiBaseRet<SyncData> {
         return authenticatedEnvelope { token ->
-            get("$baseUrl/v1/sync") {
+            get("$baseUrl/v1/mobile/sync") {
                 authenticated(token)
                 url {
                     cursor?.let { parameters.append("cursor", it) }
@@ -186,7 +186,7 @@ class KtorRemoteControlClient(
 
     override fun observeSessionEvents(sessionId: String, lastEventId: String?): Flow<SessionStreamEvent> = flow {
         var token = accessTokenOrRefresh()
-        val url = "$baseUrl/v1/sessions/${sessionId.pathSegment()}/events"
+        val url = "$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}/events"
         try {
             openEventStream(url, token, lastEventId) { emit(it) }
         } catch (failure: SSEClientException) {
@@ -285,7 +285,7 @@ class KtorRemoteControlClient(
             ?: throw IllegalStateException("An access token or refresh token is required")
         try {
             val response = envelope<TokenData> {
-                postJson("$baseUrl/v1/auth/refresh", RefreshTokenRequest(refreshToken))
+                postJson("$baseUrl/v1/mobile/auth/refresh", RefreshTokenRequest(refreshToken))
             }
             response.data?.accessToken ?: throw IllegalStateException("Remote Server returned no access token")
         } catch (failure: Throwable) {

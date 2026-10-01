@@ -5,3 +5,7 @@ spring:
 server:
   servlet:
     context-path: /remote-server
+
+suncode:
+  remote:
+    desktop-pairing-code: ${SUNCODE_REMOTE_PAIRING_CODE:}

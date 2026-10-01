@@ -9,6 +9,7 @@ use url::Url;
 const REMOTE_SERVER_URL: &str = "remote_server_url";
 const REMOTE_PAIRING_CODE: &str = "remote_pairing_code";
 const REMOTE_HOST_ID: &str = "remote_host_id";
+const REMOTE_DESKTOP_TOKEN: &str = "remote_desktop_token";
 const REMOTE_PAIRING_PAYLOAD: &str = "remote_mobile_pairing_payload";
 const REMOTE_EVENTS_URL: &str = "remote_events_url";
 const REMOTE_REQUESTS_URL: &str = "remote_requests_url";
@@ -65,10 +66,17 @@ struct PairRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PairResponse {
+    #[serde(alias = "host_id")]
     host_id: String,
+    #[serde(alias = "desktop_token")]
+    desktop_token: String,
+    #[serde(alias = "mobile_pairing_payload")]
     mobile_pairing_payload: String,
+    #[serde(alias = "events_url")]
     events_url: String,
+    #[serde(alias = "requests_url")]
     requests_url: String,
+    #[serde(alias = "results_url")]
     results_url: String,
 }
 
@@ -76,25 +84,34 @@ struct PairResponse {
 struct RemoteRequest {
     #[serde(alias = "requestId")]
     request_id: String,
+    #[serde(alias = "command")]
     operation: String,
     #[serde(default)]
+    #[serde(alias = "payload")]
     arguments: Value,
+    #[serde(default)]
+    #[serde(alias = "hostId")]
+    host_id: Option<String>,
+    #[serde(default)]
+    #[serde(alias = "sessionId")]
+    session_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 struct RemoteResult<'a> {
+    #[serde(rename = "requestId")]
     request_id: &'a str,
+    #[serde(rename = "hostId")]
+    host_id: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "sessionId")]
+    session_id: Option<&'a str>,
     success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    data: Option<Value>,
+    code: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<RemoteError>,
-}
-
-#[derive(Debug, Serialize)]
-struct RemoteError {
-    code: String,
-    message: String,
+    message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    payload: Option<Value>,
 }
 
 #[derive(Debug, Serialize)]
@@ -236,9 +253,7 @@ impl RemoteController {
             .map_err(|error| {
                 BusinessError::unavailable(format!("Remote HTTP client could not start: {error}"))
             })?;
-        let endpoint = url
-            .join("/v1/desktop/pairings")
-            .map_err(|_| BusinessError::invalid("Remote Server URL is invalid"))?;
+        let endpoint = resolve_endpoint(url.as_str(), "/v1/desktop/pairings");
         let response = client
             .post(endpoint)
             .json(&PairRequest {
@@ -250,7 +265,10 @@ impl RemoteController {
             .await
             .map_err(remote_http_error)?;
         let pairing = decode_pair_response(response).await?;
-        if pairing.host_id.trim().is_empty() || pairing.mobile_pairing_payload.trim().is_empty() {
+        if pairing.host_id.trim().is_empty()
+            || pairing.desktop_token.trim().is_empty()
+            || pairing.mobile_pairing_payload.trim().is_empty()
+        {
             return Err(BusinessError::new(
                 "remote_pairing_invalid",
                 "Remote Server returned incomplete pairing data",
@@ -258,6 +276,7 @@ impl RemoteController {
         }
         for (key, value) in [
             (REMOTE_HOST_ID, json!(pairing.host_id)),
+            (REMOTE_DESKTOP_TOKEN, json!(pairing.desktop_token)),
             (
                 REMOTE_PAIRING_PAYLOAD,
                 json!(pairing.mobile_pairing_payload),
@@ -299,6 +318,7 @@ impl RemoteController {
             REMOTE_SERVER_URL,
             REMOTE_PAIRING_CODE,
             REMOTE_HOST_ID,
+            REMOTE_DESKTOP_TOKEN,
             REMOTE_PAIRING_PAYLOAD,
             REMOTE_EVENTS_URL,
             REMOTE_REQUESTS_URL,
@@ -513,6 +533,9 @@ fn load_persisted(store: &Store) -> SdkResult<Option<PersistedRemote>> {
     let Some(host_id) = get(REMOTE_HOST_ID) else {
         return Ok(None);
     };
+    let Some(desktop_token) = get(REMOTE_DESKTOP_TOKEN) else {
+        return Ok(None);
+    };
     let Some(mobile_pairing_payload) = get(REMOTE_PAIRING_PAYLOAD) else {
         return Ok(None);
     };
@@ -532,6 +555,7 @@ fn load_persisted(store: &Store) -> SdkResult<Option<PersistedRemote>> {
         },
         pairing: PairResponse {
             host_id,
+            desktop_token,
             mobile_pairing_payload,
             events_url,
             requests_url,
@@ -657,10 +681,7 @@ async fn upload_desktop_snapshot(
     }
     let payload = json!({ "projects": projects, "sessions": sessions });
     let request_id = uuid::Uuid::new_v4().to_string();
-    let url = format!(
-        "{}/v1/desktop/snapshot",
-        persisted.config.server_url.trim_end_matches('/')
-    );
+    let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/snapshot");
     let response = request_headers(client.post(url), persisted, host_id)
         .header("X-Request-Id", request_id)
         .json(&payload)
@@ -735,9 +756,19 @@ fn set_worker_status(status: &Mutex<RemoteServerStatus>, connected: bool, error:
 }
 
 fn resolve_endpoint(base: &str, path: &str) -> String {
-    Url::parse(base)
-        .and_then(|url| url.join(path))
-        .map(|url| url.to_string())
+    let Ok(mut url) = Url::parse(base) else {
+        return path.to_string();
+    };
+    if let Ok(absolute) = Url::parse(path) {
+        return absolute.to_string();
+    }
+    let base_path = url.path().trim_end_matches('/');
+    if path.starts_with('/') && !base_path.is_empty() {
+        url.set_path(&format!("{base_path}/{}", path.trim_start_matches('/')));
+        return url.to_string();
+    }
+    url.join(path)
+        .map(|joined| joined.to_string())
         .unwrap_or_else(|_| path.to_string())
 }
 
@@ -748,7 +779,7 @@ fn request_headers(
 ) -> reqwest::RequestBuilder {
     request
         .header("X-Host-Id", host_id)
-        .header("X-Pairing-Code", &persisted.config.pairing_code)
+        .bearer_auth(&persisted.pairing.desktop_token)
 }
 
 fn parse_sse_request(frame: &[u8]) -> Option<RemoteRequest> {
@@ -766,7 +797,7 @@ fn parse_sse_request(frame: &[u8]) -> Option<RemoteRequest> {
             data.push_str(value.trim_start());
         }
     }
-    if event != "desktop.request" {
+    if event != "desktop.request" && event != "desktop.command" {
         return None;
     }
     serde_json::from_str(&data)
@@ -792,22 +823,26 @@ async fn handle_remote_request(
     request: RemoteRequest,
 ) {
     let request_id = request.request_id;
+    let session_id = request.session_id.clone();
     let outcome = dispatch_request(sdk, &request_id, &request.operation, request.arguments).await;
     let result = match outcome {
         Ok(data) => RemoteResult {
             request_id: &request_id,
+            host_id,
+            session_id: session_id.as_deref(),
             success: true,
-            data: Some(data),
-            error: None,
+            code: None,
+            message: None,
+            payload: Some(data),
         },
         Err(error) => RemoteResult {
             request_id: &request_id,
+            host_id,
+            session_id: session_id.as_deref(),
             success: false,
-            data: None,
-            error: Some(RemoteError {
-                code: error.code.into(),
-                message: error.message.into(),
-            }),
+            code: None,
+            message: Some(error.message.into()),
+            payload: None,
         },
     };
     let url = resolve_endpoint(&persisted.config.server_url, &persisted.pairing.results_url);
@@ -824,29 +859,33 @@ async fn dispatch_request(
     operation: &str,
     arguments: Value,
 ) -> SdkResult<Value> {
-    let string = |key: &str| {
-        arguments
-            .get(key)
+    let string = |snake: &str, camel: &str| {
+        argument_value(&arguments, snake, camel)
             .and_then(Value::as_str)
-            .ok_or_else(|| BusinessError::invalid(format!("{key} is required")))
+            .ok_or_else(|| BusinessError::invalid(format!("{camel} is required")))
     };
     match operation {
         "projects.list" => serde_json::to_value(sdk.list_projects()?)
             .map_err(|e| BusinessError::unavailable(e.to_string())),
         "sessions.list" => {
-            let project_id = string("project_id")?;
+            let project_id = string("project_id", "projectId")?;
             serde_json::to_value(sdk.list_sessions(project_id)?)
                 .map_err(|e| BusinessError::unavailable(e.to_string()))
         }
         "session.create" => {
-            let project_id = string("project_id")?;
-            let title = arguments.get("title").and_then(Value::as_str);
+            let project_id = string("project_id", "projectId")?;
+            let title = argument_value(&arguments, "title", "title").and_then(Value::as_str);
             serde_json::to_value(sdk.create_session(project_id, title, None)?)
                 .map_err(|e| BusinessError::unavailable(e.to_string()))
         }
-        "session.send_message" => {
-            let session_id = string("session_id")?;
-            let text = string("text")?;
+        "session.get" => {
+            let session_id = string("session_id", "sessionId")?;
+            serde_json::to_value(sdk.session_snapshot(session_id, 0)?)
+                .map_err(|e| BusinessError::unavailable(e.to_string()))
+        }
+        "session.send_message" | "session.message" => {
+            let session_id = string("session_id", "sessionId")?;
+            let text = string("text", "text")?;
             let model = arguments.get("model").and_then(Value::as_str);
             let effort = arguments.get("reasoning_effort").and_then(Value::as_str);
             serde_json::to_value(
@@ -855,34 +894,54 @@ async fn dispatch_request(
             )
             .map_err(|e| BusinessError::unavailable(e.to_string()))
         }
-        "session.cancel" => {
-            let session_id = string("session_id")?;
-            let turn_id = string("turn_id")?;
+        "session.cancel" | "turn.cancel" => {
+            let session_id = string("session_id", "sessionId")?;
+            let turn_id = string("turn_id", "turnId")?;
             serde_json::to_value(sdk.cancel_turn(session_id, turn_id)?)
                 .map_err(|e| BusinessError::unavailable(e.to_string()))
         }
-        "session.retry" => {
-            let session_id = string("session_id")?;
+        "session.retry" | "turn.retry" => {
+            let session_id = string("session_id", "sessionId")?;
             serde_json::to_value(sdk.retry_last_turn(session_id).await?)
                 .map_err(|e| BusinessError::unavailable(e.to_string()))
         }
         "approval.resolve" => {
-            let approval_id = string("approval_id")?;
-            let decision = string("decision")?;
+            let approval_id = string("approval_id", "approvalId")?;
+            let decision = string("decision", "action")?;
             serde_json::to_value(sdk.resolve_approval(approval_id, decision).await?)
                 .map_err(|e| BusinessError::unavailable(e.to_string()))
         }
         "question.reply" => {
-            let question_id = string("question_id")?;
+            let question_id = string("question_id", "questionId")?;
             let answers = arguments
                 .get("answers")
                 .cloned()
                 .ok_or_else(|| BusinessError::invalid("answers are required"))?;
+            let answers = normalize_question_answers(answers)?;
             serde_json::to_value(sdk.reply_question(question_id, &answers).await?)
                 .map_err(|e| BusinessError::unavailable(e.to_string()))
         }
         _ => Err(BusinessError::invalid("Remote operation is not supported")),
     }
+}
+
+fn argument_value<'a>(arguments: &'a Value, snake: &str, camel: &str) -> Option<&'a Value> {
+    arguments.get(snake).or_else(|| arguments.get(camel))
+}
+
+fn normalize_question_answers(answers: Value) -> SdkResult<Value> {
+    let Some(values) = answers.as_array() else {
+        return Err(BusinessError::invalid("answers must be an array"));
+    };
+    if values.iter().all(Value::is_string) {
+        return Ok(Value::Array(
+            values
+                .iter()
+                .map(|value| Value::Array(vec![value.clone()]))
+                .collect(),
+        ));
+    }
+    Ok(answers)
 }
 
 #[cfg(test)]
@@ -911,9 +970,45 @@ mod tests {
     }
 
     #[test]
+    fn accepts_java_desktop_command_envelope_and_camel_case_payload() {
+        let request = parse_sse_request(
+            b"event: desktop.command\ndata: {\"requestId\":\"req-1\",\"hostId\":\"host-1\",\"sessionId\":\"session-1\",\"command\":\"session.message\",\"payload\":{\"text\":\"hello\"}}\n\n",
+        )
+        .unwrap();
+        assert_eq!(request.request_id, "req-1");
+        assert_eq!(request.operation, "session.message");
+        assert_eq!(request.session_id.as_deref(), Some("session-1"));
+        assert_eq!(request.arguments["text"], "hello");
+    }
+
+    #[test]
+    fn normalizes_java_question_answers_to_sdk_shape() {
+        assert_eq!(
+            normalize_question_answers(serde_json::json!(["yes", "no"])).unwrap(),
+            serde_json::json!([["yes"], ["no"]])
+        );
+        assert_eq!(
+            normalize_question_answers(serde_json::json!([["yes"], ["no"]])).unwrap(),
+            serde_json::json!([["yes"], ["no"]])
+        );
+    }
+
+    #[test]
     fn remote_url_rejects_embedded_credentials_and_non_http_schemes() {
         assert!(normalize_server_url("https://example.test").is_ok());
         assert!(normalize_server_url("https://user:password@example.test").is_err());
         assert!(normalize_server_url("file:///tmp").is_err());
+    }
+
+    #[test]
+    fn endpoint_resolution_keeps_a_server_context_path() {
+        assert_eq!(
+            resolve_endpoint("https://example.test/remote-server", "/v1/desktop/events"),
+            "https://example.test/remote-server/v1/desktop/events"
+        );
+        assert_eq!(
+            resolve_endpoint("https://example.test", "/v1/desktop/events"),
+            "https://example.test/v1/desktop/events"
+        );
     }
 }

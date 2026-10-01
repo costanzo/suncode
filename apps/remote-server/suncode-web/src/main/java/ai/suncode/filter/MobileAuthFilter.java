@@ -25,8 +25,8 @@ import static ai.suncode.common.exception.ErrorCode.PARAM_INVALID;
 
 @RequiredArgsConstructor
 public class MobileAuthFilter implements Filter {
-    private static final Pattern HOST_PATH = Pattern.compile("/v1/hosts/([^/]+)(?:/.*)?$");
-    private static final Pattern SESSION_PATH = Pattern.compile("/v1/sessions/([^/]+)(?:/.*)?$");
+    private static final Pattern HOST_PATH = Pattern.compile("/v1/mobile/hosts/([^/]+)(?:/.*)?$");
+    private static final Pattern SESSION_PATH = Pattern.compile("/v1/mobile/sessions/([^/]+)(?:/.*)?$");
 
     private final RemoteAuthService authService;
     private final RemoteRelayService relayService;
@@ -38,6 +38,7 @@ public class MobileAuthFilter implements Filter {
             chain.doFilter(servletRequest, servletResponse);
             return;
         }
+        String path = applicationPath(request);
         if (isPublic(request)) {
             chain.doFilter(request, response);
             return;
@@ -47,7 +48,7 @@ public class MobileAuthFilter implements Filter {
         HttpServletRequest filteredRequest = request;
         try {
             token = authService.requireMobile(request.getHeader("Authorization"));
-            if ("POST".equalsIgnoreCase(request.getMethod()) && "/v1/sessions".equals(request.getRequestURI())) {
+            if ("POST".equalsIgnoreCase(request.getMethod()) && "/v1/mobile/sessions".equals(path)) {
                 CachedBodyRequest wrapped = new CachedBodyRequest(request);
                 CreateSessionRequest body;
                 try {
@@ -61,7 +62,7 @@ public class MobileAuthFilter implements Filter {
                 filteredRequest = wrapped;
                 hostId = body.hostId();
             } else {
-                hostId = resolveHost(request, token);
+                hostId = resolveHost(request, token, path);
             }
             if (hostId != null) {
                 authService.requireHostAccessToken(token, hostId);
@@ -78,28 +79,35 @@ public class MobileAuthFilter implements Filter {
     }
 
     private boolean isPublic(HttpServletRequest request) {
-        String path = request.getRequestURI();
+        String path = applicationPath(request);
         return "/v1/mobile/health".equals(path)
                 || "/v1/mobile/pairings/exchange".equals(path)
                 || "/v1/mobile/auth/refresh".equals(path);
     }
 
-    private String resolveHost(HttpServletRequest request, String token) {
-        Matcher hostMatcher = HOST_PATH.matcher(request.getRequestURI());
+    private String resolveHost(HttpServletRequest request, String token, String path) {
+        Matcher hostMatcher = HOST_PATH.matcher(path);
         if (hostMatcher.matches()) {
             return hostMatcher.group(1);
         }
-        Matcher sessionMatcher = SESSION_PATH.matcher(request.getRequestURI());
+        Matcher sessionMatcher = SESSION_PATH.matcher(path);
         if (sessionMatcher.matches()) {
             return relayService.hostForSession(sessionMatcher.group(1));
         }
-        if ("GET".equalsIgnoreCase(request.getMethod()) && "/v1/mobile/sessions".equals(request.getRequestURI())) {
+        if ("GET".equalsIgnoreCase(request.getMethod()) && "/v1/mobile/sessions".equals(path)) {
             String selectedHost = request.getParameter("hostId");
             if (selectedHost != null && !selectedHost.isBlank()) {
                 return selectedHost;
             }
         }
         return authService.hostForMobileToken(token);
+    }
+
+    private static String applicationPath(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        return contextPath != null && !contextPath.isEmpty() && uri.startsWith(contextPath)
+                ? uri.substring(contextPath.length()) : uri;
     }
 
 }

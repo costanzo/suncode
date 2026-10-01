@@ -30,7 +30,7 @@ The Remote Server correlates mobile requests to the correct Desktop connection a
 
 ## Pairing and authority
 
-Desktop creates an opaque, short-lived, one-time QR payload. Mobile sends the payload to `POST /v1/pairings/exchange`; a successful exchange consumes it immediately and returns opaque access and refresh tokens bound to the current mobile device. Reusing the payload fails with `pairing_consumed`. There is no Host discovery endpoint; Mobile learns a Host only through pairing or the projection of an already paired device.
+Desktop sends the configured pairing code to `POST /v1/desktop/pairings`; the Server creates a host ID and opaque Desktop bearer token and returns them with the one-time Mobile QR payload and Desktop endpoint paths. Desktop uses `X-Host-Id` and `Authorization: Bearer <desktop-token>` for subsequent requests. Mobile sends the QR payload to `POST /v1/mobile/pairings/exchange`; a successful exchange consumes it immediately and returns opaque access and refresh tokens bound to the current mobile device. Reusing the payload fails with `pairing_consumed`. There is no Host discovery endpoint; Mobile learns a Host only through pairing or the projection of an already paired device.
 
 Mobile may inspect Hosts, Projects, active primary Sessions, cached content, approvals, and questions. It may create Sessions, send messages, cancel or retry turns, and resolve approvals/questions. It cannot archive Sessions, delete Sessions, revoke other mobile devices, or widen Rust policy.
 
@@ -53,7 +53,7 @@ The Java Spring Boot Remote Server uses `ApiBaseRet<T>` for JSON responses:
 }
 ```
 
-`code` is always present. `message` and `data` are omitted when null because the server uses Jackson `NON_NULL` inclusion. HTTP error status codes still apply, but their JSON body uses the same envelope. `POST /v1/sessions` returns `201` with `sessionId` and the accepted timestamp. The client can immediately open the Session SSE stream; subsequent state arrives through that stream.
+`code` is always present. `message` and `data` are omitted when null because the server uses Jackson `NON_NULL` inclusion. HTTP error status codes still apply, but their JSON body uses the same envelope. `POST /v1/mobile/sessions` returns `201` with `sessionId` and the accepted timestamp. The client can immediately open the Session SSE stream; subsequent state arrives through that stream.
 
 ## Idempotency and concurrency
 
@@ -65,11 +65,11 @@ The Java Spring Boot Remote Server uses `ApiBaseRet<T>` for JSON responses:
 
 ## Offline and reconnect behavior
 
-The local Mobile cache is authoritative for what can be displayed while disconnected, but never for remote mutation success. When Mobile is in the foreground without an open Session, it polls `GET /v1/sync` for Host and Session projections. When a Session is opened, Mobile stops that list polling and opens `GET /v1/sessions/{sessionId}/events` with `Accept: text/event-stream`. When Mobile leaves the Session or enters the background, it closes the stream. On returning to the foreground, Mobile performs one `/v1/sync` reconciliation before restarting the selected stream or list polling.
+The local Mobile cache is authoritative for what can be displayed while disconnected, but never for remote mutation success. When Mobile is in the foreground without an open Session, it polls `GET /v1/mobile/sync` for Host and Session projections. When a Session is opened, Mobile stops that list polling and opens `GET /v1/mobile/sessions/{sessionId}/events` with `Accept: text/event-stream`. When Mobile leaves the Session or enters the background, it closes the stream. On returning to the foreground, Mobile performs one `/v1/mobile/sync` reconciliation before restarting the selected stream or list polling.
 
 The first connection without `Last-Event-ID` receives a `session.snapshot` event, followed by live events. Snapshot capture and live-subscription registration are atomic with event publication, so an event cannot fall between the snapshot boundary and delivery. The snapshot and every event carry a stable `event_id`, a per-Session monotonic `sequence`, and a non-decreasing `session_revision`; the snapshot ID is also emitted as the SSE `id` field. Mobile persists the last applied event ID for each Session and sends it as `Last-Event-ID` when reconnecting. The server replays events with a greater sequence before switching to live delivery; duplicate IDs are safe to ignore.
 
-If the requested cursor is no longer retained, the server rejects the stream with HTTP `410` and `cursor_expired`. Mobile must fetch `GET /v1/sessions/{sessionId}`, discard the stale event cursor, and reconnect without `Last-Event-ID` to receive a fresh `session.snapshot`. A `401` requires token refresh before reconnecting. Other failures use bounded exponential backoff with jitter. The server sends an SSE `retry` hint where useful and emits a comment heartbeat at least every 20 seconds. Heartbeats have no event ID and do not advance the cursor.
+If the requested cursor is no longer retained, the server rejects the stream with HTTP `410` and `cursor_expired`. Mobile must fetch `GET /v1/mobile/sessions/{sessionId}`, discard the stale event cursor, and reconnect without `Last-Event-ID` to receive a fresh `session.snapshot`. A `401` requires token refresh before reconnecting. Other failures use bounded exponential backoff with jitter. The server sends an SSE `retry` hint where useful and emits a comment heartbeat at least every 20 seconds. Heartbeats have no event ID and do not advance the cursor.
 
 ## SSE event shape
 
@@ -94,6 +94,6 @@ HTTP errors use the `ApiBaseRet` envelope with a stable integer `code` and safe 
 
 ## Desktop connection boundary
 
-The Desktop-side `suncode-remote` protocol is a separate outbound device contract. Desktop currently uses a pairing code without a Desktop bearer credential. `POST /v1/desktop/pairings` returns a stable `hostId`, opaque `mobilePairingPayload`, and the `eventsUrl`, `requestsUrl`, and `resultsUrl` paths. Desktop opens `requestsUrl` as an SSE stream and accepts only `desktop.request` frames. Each frame contains a unique `request_id`, an allowlisted operation name, and JSON arguments. Results are posted to `resultsUrl` with `X-Host-Id`, `X-Request-Id`, and the same pairing code header.
+The Desktop-side `suncode-remote` protocol is a separate outbound device contract. The first `POST /v1/desktop/pairings` sends the configured pairing code and returns a server-generated `hostId`, `desktopToken`, opaque `mobilePairingPayload`, and the `eventsUrl`, `requestsUrl`, and `resultsUrl` paths. Desktop opens `requestsUrl` as an SSE stream and accepts `desktop.command` frames using the Java `DesktopCommand` envelope. Results are posted to `resultsUrl` with `X-Host-Id`, `X-Request-Id`, and the issued Desktop bearer token.
 
-Desktop periodically posts a snapshot to `/v1/desktop/snapshot` and posts allowlisted Rust session events to `eventsUrl`. Every event upload includes `X-Host-Id` and `X-Request-Id`. `assistant.delta` and provider byte progress are excluded; the complete `message.assistant` event is uploaded once. The desktop worker reconnects with bounded backoff and does not bypass local Rust policy or approval state.
+Desktop periodically posts a snapshot to `/v1/desktop/snapshot` and posts allowlisted Rust session events to `eventsUrl`. Every upload includes `X-Host-Id`, `X-Request-Id`, and the issued Desktop bearer token. `assistant.delta` and provider byte progress are excluded; the complete `message.assistant` event is uploaded once. The desktop worker reconnects with bounded backoff and does not bypass local Rust policy or approval state.

@@ -3,7 +3,10 @@ package ai.suncode.service;
 import ai.suncode.common.exception.BusinessException;
 import ai.suncode.message.remote.*;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -19,7 +22,33 @@ public class RemoteAuthService {
     private static final Duration ACCESS_TOKEN_LIFETIME = Duration.ofHours(1);
     private final ConcurrentHashMap<String, String> mobileTokens = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> refreshTokens = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> desktopTokens = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, PendingPairing> pairings = new ConcurrentHashMap<>();
+    private final String desktopPairingCode;
+
+    public RemoteAuthService(
+            @Value("${suncode.remote.desktop-pairing-code:}") String desktopPairingCode) {
+        this.desktopPairingCode = desktopPairingCode == null ? "" : desktopPairingCode;
+    }
+
+    public DesktopPairingPayload createDesktopPairing(DesktopPairingRequest request) {
+        if (request == null || !matchesPairingCode(request.pairingCode())) {
+            throw new BusinessException(UNAUTHORIZED, "invalid desktop pairing code");
+        }
+        String hostId = UUID.randomUUID().toString();
+        String desktopToken = UUID.randomUUID().toString();
+        desktopTokens.put(hostId, desktopToken);
+        String displayName = request.displayName() == null || request.displayName().isBlank()
+                ? hostId : request.displayName();
+        String mobilePairingPayload = createPairing(hostId, displayName);
+        return new DesktopPairingPayload(
+                hostId,
+                desktopToken,
+                mobilePairingPayload,
+                "/v1/desktop/events",
+                "/v1/desktop/events",
+                "/v1/desktop/responses");
+    }
 
     public String createPairing(String hostId, String displayName) {
         String payload = UUID.randomUUID().toString();
@@ -88,12 +117,21 @@ public class RemoteAuthService {
         }
     }
 
-    public String requireDesktop(String authorization) {
+    public String requireDesktop(String authorization, String hostId) {
         String token = bearer(authorization);
-        if (token.isBlank()) {
+        if (token.isBlank() || hostId == null || !token.equals(desktopTokens.get(hostId))) {
             throw new BusinessException(UNAUTHORIZED, "desktop token is required");
         }
         return token;
+    }
+
+    private boolean matchesPairingCode(String candidate) {
+        if (desktopPairingCode.isBlank() || candidate == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                desktopPairingCode.getBytes(StandardCharsets.UTF_8),
+                candidate.getBytes(StandardCharsets.UTF_8));
     }
 
     public void logoutToken(String token) {

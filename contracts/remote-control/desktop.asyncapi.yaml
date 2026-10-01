@@ -3,9 +3,11 @@ info:
   title: SunCode Desktop Remote Device Contract
   version: 1.0.0
   description: |
-    Private outbound contract used by a paired SunCode Desktop. Desktop
-    receives remote commands as server-sent events and posts command results
-    and selected Rust AgentEvent values over HTTP.
+    Private outbound contract used by a paired SunCode Desktop. The first
+    pairing request uses the configured pairing code and returns a host ID,
+    Desktop bearer token, Mobile pairing payload, and endpoint paths. Desktop
+    receives Java DesktopCommand values as SSE and posts command results,
+    snapshots, and selected Rust AgentEvent values over HTTP.
 servers:
   remoteServer:
     host: '{remoteServerHost}'
@@ -16,26 +18,26 @@ servers:
         default: relay.suncode.example
 channels:
   desktopRequests:
-    address: /v1/desktop/requests/{hostId}
+    address: /v1/desktop/events
     messages:
       desktopRequest:
         $ref: '#/components/messages/DesktopRequest'
   desktopResults:
-    address: /v1/desktop/results/{hostId}
+    address: /v1/desktop/responses
     messages:
       desktopResult:
         $ref: '#/components/messages/DesktopResult'
   desktopEvents:
-    address: /v1/desktop/events/{hostId}
+    address: /v1/desktop/events
     messages:
       desktopEvent:
         $ref: '#/components/messages/DesktopEvent'
 operations:
-  receiveDesktopRequests:
+  receiveDesktopCommands:
     action: receive
     channel: { $ref: '#/channels/desktopRequests' }
     messages: [{ $ref: '#/channels/desktopRequests/messages/desktopRequest' }]
-  postDesktopResult:
+  postDesktopResponse:
     action: send
     channel: { $ref: '#/channels/desktopResults' }
     messages: [{ $ref: '#/channels/desktopResults/messages/desktopResult' }]
@@ -46,26 +48,31 @@ operations:
 components:
   messages:
     DesktopRequest:
-      name: desktop.request
+      name: desktop.command
       payload:
         type: object
-        required: [request_id, operation, arguments]
+        required: [requestId, hostId, command, payload]
         properties:
-          request_id: { type: string, minLength: 1 }
-          operation:
+          requestId: { type: string, minLength: 1 }
+          hostId: { type: string, minLength: 1 }
+          sessionId: { type: string, nullable: true }
+          command:
             type: string
-            enum: [projects.list, sessions.list, session.create, session.send_message, session.cancel, session.retry, approval.resolve, question.reply]
-          arguments: { type: object, additionalProperties: true }
+            enum: [projects.list, sessions.list, session.create, session.get, session.message, turn.cancel, turn.retry, approval.resolve, question.reply]
+          payload: { type: object, additionalProperties: true }
     DesktopResult:
       name: desktop.result
       payload:
         type: object
-        required: [request_id, success]
+        required: [requestId, success]
         properties:
-          request_id: { type: string, minLength: 1 }
+          requestId: { type: string, minLength: 1 }
+          hostId: { type: string, minLength: 1 }
+          sessionId: { type: string, nullable: true }
           success: { type: boolean }
-          data: { type: object, nullable: true, additionalProperties: true }
-          error: { type: object, nullable: true, additionalProperties: true }
+          code: { type: integer, nullable: true }
+          message: { type: string, nullable: true }
+          payload: { type: object, nullable: true, additionalProperties: true }
     DesktopEvent:
       name: desktop.event
       payload:

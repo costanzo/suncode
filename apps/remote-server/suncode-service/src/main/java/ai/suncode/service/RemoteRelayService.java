@@ -8,6 +8,7 @@ import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -47,6 +48,7 @@ public class RemoteRelayService {
     private final ConcurrentHashMap<String, DesktopResponse> idempotentResults = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> sessionHosts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, HostEvents> hostEvents = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, JsonNode> snapshots = new ConcurrentHashMap<>();
     private final Object connectionLifecycleLock = new Object();
     private volatile boolean shuttingDown;
 
@@ -183,7 +185,6 @@ public class RemoteRelayService {
             }
             mobileConnections.computeIfAbsent(sessionId, ignored -> new CopyOnWriteArrayList<>()).add(connection);
         }
-        mobileConnections.computeIfAbsent(sessionId, ignored -> new CopyOnWriteArrayList<>()).add(connection);
         connection.emitter().onCompletion(() -> removeMobile(connection));
         connection.emitter().onTimeout(() -> removeMobile(connection));
         connection.emitter().onError(error -> removeMobile(connection));
@@ -250,6 +251,14 @@ public class RemoteRelayService {
         if (sessionId != null && hostId != null) {
             sessionHosts.put(sessionId, hostId);
         }
+    }
+
+    public void updateSnapshot(String hostId, JsonNode snapshot) {
+        requireText(hostId, "hostId is required");
+        if (snapshot == null || !snapshot.isObject()) {
+            throw new BusinessException(PARAM_INVALID, "snapshot must be a JSON object");
+        }
+        snapshots.put(hostId, snapshot.deepCopy());
     }
 
     private void replayAfter(SseEmitter emitter, HostEvents state, String lastEventId, String sessionId) {

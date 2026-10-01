@@ -38,7 +38,7 @@ class MarshallingUtilsTest {
         assertNull(restored.payload().getApprovalId());
         assertTrue(json.contains("\"turn_id\":\"turn-1\""));
         assertFalse(json.contains("approval_id"));
-        assertEquals("2026-09-27T10:00:00Z", MarshallingUtils.convertValue(event, Map.class).get("occurredAt"));
+        assertEquals("2026-09-27T10:00:00Z", MarshallingUtils.convertValue(event, Map.class).get("occurred_at"));
 
         DesktopCommand command = new DesktopCommand("request", "host", "session", "session.get", new DesktopCommandPayload());
         assertEquals("session.get", MarshallingUtils.convertValue(command, Map.class).get("command"));

@@ -31,14 +31,20 @@ public class DesktopAuthFilter implements Filter {
             chain.doFilter(servletRequest, servletResponse);
             return;
         }
+        String path = applicationPath(request);
         String hostId = request.getHeader("X-Host-Id");
         String token;
         try {
+            if ("POST".equalsIgnoreCase(request.getMethod())
+                    && path.endsWith("/pairings")) {
+                chain.doFilter(request, response);
+                return;
+            }
             if (!StringUtils.hasText(hostId)) {
                 throw new BusinessException(PARAM_INVALID, "X-Host-Id is required");
             }
-            token = authService.requireDesktop(request.getHeader("Authorization"));
-            if (!("GET".equalsIgnoreCase(request.getMethod()) && request.getRequestURI().endsWith("/events"))) {
+            token = authService.requireDesktop(request.getHeader("Authorization"), hostId);
+            if (!("GET".equalsIgnoreCase(request.getMethod()) && path.endsWith("/events"))) {
                 relayService.requireDesktopConnection(hostId, token);
             }
         } catch (BusinessException error) {
@@ -47,5 +53,12 @@ public class DesktopAuthFilter implements Filter {
         }
         ServiceContext.authenticate(ClientType.DESKTOP, hostId, token);
         chain.doFilter(request, response);
+    }
+
+    private static String applicationPath(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        return contextPath != null && !contextPath.isEmpty() && uri.startsWith(contextPath)
+                ? uri.substring(contextPath.length()) : uri;
     }
 }

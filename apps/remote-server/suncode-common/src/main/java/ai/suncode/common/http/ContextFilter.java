@@ -53,7 +53,7 @@ public class ContextFilter implements Filter {
     }
 
     private static ClientType clientType(HttpServletRequest request) {
-        String path = request.getRequestURI();
+        String path = applicationPath(request);
         if (path.startsWith("/v1/desktop/")) {
             return ClientType.DESKTOP;
         }
@@ -61,5 +61,12 @@ public class ContextFilter implements Filter {
             return ClientType.MOBILE;
         }
         return ClientType.OTHER;
+    }
+
+    private static String applicationPath(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        return contextPath != null && !contextPath.isEmpty() && uri.startsWith(contextPath)
+                ? uri.substring(contextPath.length()) : uri;
     }
 }

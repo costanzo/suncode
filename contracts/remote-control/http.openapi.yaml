@@ -24,7 +24,7 @@ tags:
   - name: Sessions
   - name: Synchronization
 paths:
-  /v1/health:
+  /v1/mobile/health:
     get:
       operationId: getHealth
       tags: [Health]
@@ -39,7 +39,7 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
-  /v1/pairings/exchange:
+  /v1/mobile/pairings/exchange:
     post:
       operationId: exchangePairingPayload
       tags: [Pairing]
@@ -79,7 +79,7 @@ paths:
         '503':
           $ref: '#/components/responses/DesktopUnavailable'
 
-  /v1/auth/refresh:
+  /v1/mobile/auth/refresh:
     post:
       operationId: refreshAccessToken
       tags: [Authentication]
@@ -100,7 +100,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /v1/auth/logout:
+  /v1/mobile/auth/logout:
     post:
       operationId: logoutCurrentDevice
       tags: [Authentication]
@@ -116,7 +116,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /v1/hosts/{hostId}:
+  /v1/mobile/hosts/{hostId}:
     parameters:
       - $ref: '#/components/parameters/HostId'
     get:
@@ -136,7 +136,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /v1/hosts/{hostId}/projects:
+  /v1/mobile/hosts/{hostId}/projects:
     parameters:
       - $ref: '#/components/parameters/HostId'
     get:
@@ -156,7 +156,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /v1/sessions:
+  /v1/mobile/sessions:
     get:
       operationId: listSessions
       tags: [Sessions]
@@ -212,7 +212,7 @@ paths:
         '503':
           $ref: '#/components/responses/DesktopUnavailable'
 
-  /v1/sessions/{sessionId}:
+  /v1/mobile/sessions/{sessionId}:
     parameters:
       - $ref: '#/components/parameters/SessionId'
     get:
@@ -238,7 +238,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiBaseRetError'
 
-  /v1/sessions/{sessionId}/events:
+  /v1/mobile/sessions/{sessionId}/events:
     parameters:
       - $ref: '#/components/parameters/SessionId'
       - $ref: '#/components/parameters/LastEventId'
@@ -292,7 +292,7 @@ paths:
         '503':
           $ref: '#/components/responses/DesktopUnavailable'
 
-  /v1/sessions/{sessionId}/messages:
+  /v1/mobile/sessions/{sessionId}/messages:
     parameters:
       - $ref: '#/components/parameters/SessionId'
     post:
@@ -327,7 +327,7 @@ paths:
         '503':
           $ref: '#/components/responses/DesktopUnavailable'
 
-  /v1/sessions/{sessionId}/approvals/{approvalId}:
+  /v1/mobile/sessions/{sessionId}/approvals/{approvalId}:
     parameters:
       - $ref: '#/components/parameters/SessionId'
       - $ref: '#/components/parameters/ApprovalId'
@@ -365,7 +365,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiBaseRetError'
 
-  /v1/sessions/{sessionId}/questions/{questionId}/reply:
+  /v1/mobile/sessions/{sessionId}/questions/{questionId}/reply:
     parameters:
       - $ref: '#/components/parameters/SessionId'
       - $ref: '#/components/parameters/QuestionId'
@@ -399,7 +399,7 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
-  /v1/sessions/{sessionId}/cancel:
+  /v1/mobile/sessions/{sessionId}/cancel:
     parameters:
       - $ref: '#/components/parameters/SessionId'
     post:
@@ -424,7 +424,7 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
-  /v1/sessions/{sessionId}/retry:
+  /v1/mobile/sessions/{sessionId}/retry:
     parameters:
       - $ref: '#/components/parameters/SessionId'
     post:
@@ -449,7 +449,7 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
-  /v1/sync:
+  /v1/mobile/sync:
     get:
       operationId: syncMobileProjection
       tags: [Synchronization]
