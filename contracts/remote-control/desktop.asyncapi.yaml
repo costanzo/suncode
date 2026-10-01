@@ -1,87 +1,106 @@
 asyncapi: 3.0.0
 info:
-  title: SunCode Desktop Remote Device Contract
+  title: SunCode Server-to-Desktop Command Stream
   version: 1.0.0
   description: |
-    Private outbound contract used by a paired SunCode Desktop. The first
-    pairing request uses the configured pairing code and returns a host ID,
-    Desktop bearer token, Mobile pairing payload, and endpoint paths. Desktop
-    receives Java DesktopCommand values as SSE and posts command results,
-    snapshots, and selected Rust AgentEvent values over HTTP.
+    Private server-to-Desktop Server-Sent Events stream. Desktop first obtains
+    hostId and desktopToken through desktop.openapi.yaml, then opens the
+    requestsUrl returned by that response. The stream is receive-only: command
+    results and Rust session events use the Desktop HTTP contract.
 servers:
   remoteServer:
     host: '{remoteServerHost}'
     protocol: https
-    pathname: /v1/desktop
+    pathname: /v1/desktop/events
+    description: Authenticated Desktop SSE endpoint.
     variables:
       remoteServerHost:
         default: relay.suncode.example
+    security:
+      - desktopBearer: []
+        desktopHostId: []
 channels:
-  desktopRequests:
+  desktopCommands:
     address: /v1/desktop/events
     messages:
-      desktopRequest:
-        $ref: '#/components/messages/DesktopRequest'
-  desktopResults:
-    address: /v1/desktop/responses
-    messages:
-      desktopResult:
-        $ref: '#/components/messages/DesktopResult'
-  desktopEvents:
-    address: /v1/desktop/events
-    messages:
-      desktopEvent:
-        $ref: '#/components/messages/DesktopEvent'
+      desktopConnected:
+        $ref: '#/components/messages/DesktopConnected'
+      desktopCommand:
+        $ref: '#/components/messages/DesktopCommand'
 operations:
   receiveDesktopCommands:
     action: receive
-    channel: { $ref: '#/channels/desktopRequests' }
-    messages: [{ $ref: '#/channels/desktopRequests/messages/desktopRequest' }]
-  postDesktopResponse:
-    action: send
-    channel: { $ref: '#/channels/desktopResults' }
-    messages: [{ $ref: '#/channels/desktopResults/messages/desktopResult' }]
-  postDesktopEvent:
-    action: send
-    channel: { $ref: '#/channels/desktopEvents' }
-    messages: [{ $ref: '#/channels/desktopEvents/messages/desktopEvent' }]
+    channel:
+      $ref: '#/channels/desktopCommands'
+    messages:
+      - $ref: '#/channels/desktopCommands/messages/desktopConnected'
+      - $ref: '#/channels/desktopCommands/messages/desktopCommand'
 components:
+  securitySchemes:
+    desktopBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+    desktopHostId:
+      type: apiKey
+      in: header
+      name: X-Host-Id
   messages:
-    DesktopRequest:
+    DesktopConnected:
+      name: desktop.connected
+      payload:
+        type: object
+        required: [hostId]
+        properties:
+          hostId: { type: string, minLength: 1 }
+    DesktopCommand:
       name: desktop.command
       payload:
-        type: object
-        required: [requestId, hostId, command, payload]
-        properties:
-          requestId: { type: string, minLength: 1 }
-          hostId: { type: string, minLength: 1 }
-          sessionId: { type: string, nullable: true }
-          command:
-            type: string
-            enum: [projects.list, sessions.list, session.create, session.get, session.message, turn.cancel, turn.retry, approval.resolve, question.reply]
-          payload: { type: object, additionalProperties: true }
-    DesktopResult:
-      name: desktop.result
-      payload:
-        type: object
-        required: [requestId, success]
-        properties:
-          requestId: { type: string, minLength: 1 }
-          hostId: { type: string, minLength: 1 }
-          sessionId: { type: string, nullable: true }
-          success: { type: boolean }
-          code: { type: integer, nullable: true }
-          message: { type: string, nullable: true }
-          payload: { type: object, nullable: true, additionalProperties: true }
-    DesktopEvent:
-      name: desktop.event
-      payload:
-        type: object
-        required: [session_id, occurred_at, event_type, payload]
-        properties:
-          session_id: { type: string }
-          occurred_at: { type: string, format: date-time }
-          event_type:
-            type: string
-            description: Explicit upload allowlist; assistant.delta is excluded.
-          payload: { type: object, additionalProperties: true }
+        $ref: '#/components/schemas/DesktopCommand'
+  schemas:
+    DesktopCommand:
+      type: object
+      required: [requestId, hostId, command, payload]
+      additionalProperties: false
+      properties:
+        requestId: { type: string, minLength: 1 }
+        hostId: { type: string, minLength: 1 }
+        sessionId: { type: string, nullable: true }
+        command:
+          type: string
+          enum:
+            - projects.list
+            - sessions.list
+            - session.create
+            - session.get
+            - session.message
+            - turn.cancel
+            - turn.retry
+            - approval.resolve
+            - question.reply
+        payload:
+          $ref: '#/components/schemas/DesktopCommandPayload'
+    DesktopCommandPayload:
+      type: object
+      description: |
+        Command-specific fields are carried in one stable camelCase object.
+        Unknown fields are ignored. A command that does not need arguments uses
+        an empty object.
+      additionalProperties: true
+      properties:
+        projectId: { type: string, nullable: true }
+        cursor: { type: string, nullable: true }
+        limit: { type: integer, minimum: 1, maximum: 100, nullable: true }
+        hostId: { type: string, nullable: true }
+        title: { type: string, nullable: true }
+        firstMessage: { type: string, nullable: true }
+        text: { type: string, nullable: true }
+        clientMessageId: { type: string, nullable: true }
+        approvalId: { type: string, nullable: true }
+        action: { type: string, enum: [allow_once, allow_session, deny], nullable: true }
+        expectedRevision: { type: integer, minimum: 0, nullable: true }
+        questionId: { type: string, nullable: true }
+        answers:
+          type: array
+          items: { type: string }
+        turnId: { type: string, nullable: true }

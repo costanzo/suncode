@@ -857,7 +857,7 @@ components:
         and `data` fields followed by a blank line. The first frame on a new
         connection is `session.snapshot`; subsequent application frames are
         `agent.event`. Heartbeats are comment frames and do not advance the
-        per-Session event sequence. See sse.asyncapi.yaml for the JSON payload
+        per-Session event sequence. See mobile.asyncapi.yaml for the JSON payload
         schemas and replay rules.
     SyncData:
       type: object

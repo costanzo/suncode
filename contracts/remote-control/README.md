@@ -6,14 +6,15 @@ This directory defines the public protocol between the CMP Mobile client and the
 
 ## Documents
 
-- [`http.openapi.yaml`](http.openapi.yaml) — OpenAPI 3.1 HTTP request/response API.
-- [`sse.asyncapi.yaml`](sse.asyncapi.yaml) — AsyncAPI 3.0 Mobile Session-scoped Server-Sent Events stream.
-- [`desktop.asyncapi.yaml`](desktop.asyncapi.yaml) — AsyncAPI 3.0 Desktop request, result, and event contract.
+- [`mobile.openapi.yaml`](mobile.openapi.yaml) — Mobile to Server HTTP API.
+- [`desktop.openapi.yaml`](desktop.openapi.yaml) — Desktop to Server HTTP API.
+- [`mobile.asyncapi.yaml`](mobile.asyncapi.yaml) — Server to Mobile Session-scoped SSE stream.
+- [`desktop.asyncapi.yaml`](desktop.asyncapi.yaml) — Server to Desktop command SSE stream.
 
 ## Topology
 
 ```text
-SunCode Desktop -- pairing HTTP + request SSE + event HTTP --> Remote Server
+SunCode Desktop -- pairing/event HTTP + command SSE --> Remote Server
 Mobile          -- HTTPS ---------------------------> Remote Server
 Mobile          -- HTTPS / SSE (one Session) -------> Remote Server
 ```
@@ -22,15 +23,16 @@ The Remote Server correlates mobile requests to the correct Desktop connection a
 
 ## Versioning and envelopes
 
-- HTTP paths are prefixed with `/v1`.
-- The HTTP path prefix is `/v1`; SSE event names, event IDs, and payload fields are the compatibility boundary.
+- HTTP paths are prefixed with `/v1`; a deployment may add a servlet context path such as `/remote-server` before it.
+- The four files deliberately split direction and transport: Mobile HTTP, Desktop HTTP, Mobile SSE, and Desktop SSE.
+- SSE event names, event IDs, and payload fields are the compatibility boundary.
 - New fields and event types are additive. Clients ignore unknown fields and non-required event types.
 - Breaking HTTP changes require `/v2`; breaking Mobile SSE changes require a new SSE path or protocol version. The Desktop device contract is an independent private boundary.
 - Every response and event carries a stable `requestId` or `eventId` where applicable.
 
 ## Pairing and authority
 
-Desktop sends the configured pairing code to `POST /v1/desktop/pairings`; the Server creates a host ID and opaque Desktop bearer token and returns them with the one-time Mobile QR payload and Desktop endpoint paths. Desktop uses `X-Host-Id` and `Authorization: Bearer <desktop-token>` for subsequent requests. Mobile sends the QR payload to `POST /v1/mobile/pairings/exchange`; a successful exchange consumes it immediately and returns opaque access and refresh tokens bound to the current mobile device. Reusing the payload fails with `pairing_consumed`. There is no Host discovery endpoint; Mobile learns a Host only through pairing or the projection of an already paired device.
+Desktop sends the configured pairing code to `POST /v1/desktop/pairings`; the Server creates a host ID and opaque Desktop bearer token and returns them with the one-time Mobile QR payload and Desktop endpoint paths. Desktop uses `X-Host-Id` and `Authorization: Bearer <desktop-token>` for every later HTTP request and for the command SSE connection. Mobile sends the QR payload to `POST /v1/mobile/pairings/exchange`; a successful exchange consumes it immediately and returns opaque access and refresh tokens bound to the current mobile device. Reusing the payload fails with `pairing_consumed`. There is no Host discovery endpoint; Mobile learns a Host only through pairing or the projection of an already paired device.
 
 Mobile may inspect Hosts, Projects, active primary Sessions, cached content, approvals, and questions. It may create Sessions, send messages, cancel or retry turns, and resolve approvals/questions. It cannot archive Sessions, delete Sessions, revoke other mobile devices, or widen Rust policy.
 
@@ -94,6 +96,6 @@ HTTP errors use the `ApiBaseRet` envelope with a stable integer `code` and safe 
 
 ## Desktop connection boundary
 
-The Desktop-side `suncode-remote` protocol is a separate outbound device contract. The first `POST /v1/desktop/pairings` sends the configured pairing code and returns a server-generated `hostId`, `desktopToken`, opaque `mobilePairingPayload`, and the `eventsUrl`, `requestsUrl`, and `resultsUrl` paths. Desktop opens `requestsUrl` as an SSE stream and accepts `desktop.command` frames using the Java `DesktopCommand` envelope. Results are posted to `resultsUrl` with `X-Host-Id`, `X-Request-Id`, and the issued Desktop bearer token.
+The Desktop-side `suncode-remote` protocol is split between `desktop.openapi.yaml` and `desktop.asyncapi.yaml`. The first `POST /v1/desktop/pairings` sends the configured pairing code and returns a server-generated `hostId`, `desktopToken`, opaque `mobilePairingPayload`, and the `eventsUrl`, `requestsUrl`, and `resultsUrl` paths. Desktop opens `requestsUrl` as an SSE stream and accepts `desktop.command` frames using the Java `DesktopCommand` envelope. Results, snapshots, and allowlisted Rust events are posted over the Desktop HTTP contract with `X-Host-Id`, `X-Request-Id`, and the issued Desktop bearer token.
 
 Desktop periodically posts a snapshot to `/v1/desktop/snapshot` and posts allowlisted Rust session events to `eventsUrl`. Every upload includes `X-Host-Id`, `X-Request-Id`, and the issued Desktop bearer token. `assistant.delta` and provider byte progress are excluded; the complete `message.assistant` event is uploaded once. The desktop worker reconnects with bounded backoff and does not bypass local Rust policy or approval state.

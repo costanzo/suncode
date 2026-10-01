@@ -1,12 +1,12 @@
 asyncapi: 3.0.0
 info:
-  title: SunCode Session Event Stream
+  title: SunCode Server-to-Mobile Session Event Stream
   version: 1.0.0
   description: |
     Server-to-Mobile Server-Sent Events (SSE) stream for one primary Session.
     The Remote Server forwards normalized events from the selected Desktop
     connection. Mobile does not send commands or application payloads on this
-    channel. HTTP commands remain under the OpenAPI contract.
+    channel. Mobile HTTP commands remain under mobile.openapi.yaml.
 
     The wire format is standard UTF-8 SSE. Each event is framed as `id`,
     `event`, and one or more `data` lines followed by a blank line. The JSON
@@ -57,8 +57,8 @@ components:
       payload:
         $ref: '#/components/schemas/SessionSnapshotEnvelope'
     AgentEvent:
-      name: AgentEvent
-      title: Rust AgentEvent
+      name: agent.event
+      title: Normalized Agent Event
       summary: One Session-scoped event emitted by the Rust agent.
       payload:
         $ref: '#/components/schemas/AgentEventEnvelope'

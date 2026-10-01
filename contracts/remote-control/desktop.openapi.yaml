@@ -1,0 +1,231 @@
+openapi: 3.1.0
+info:
+  title: SunCode Desktop Remote Device HTTP API
+  version: 1.0.0
+  description: |
+    Private HTTP half of the outbound Desktop device protocol. A Desktop first
+    exchanges the configured pairing code for a server-issued hostId and opaque
+    desktopToken. Every request after pairing carries X-Host-Id and the bearer
+    token. The Desktop SSE command stream is specified in desktop.asyncapi.yaml.
+servers:
+  - url: https://{remoteServerHost}
+    variables:
+      remoteServerHost:
+        default: relay.suncode.example
+tags:
+  - name: Pairing
+  - name: Snapshot
+  - name: Events
+  - name: Results
+paths:
+  /v1/desktop/pairings:
+    post:
+      operationId: pairDesktop
+      tags: [Pairing]
+      summary: Exchange the configured pairing code for Desktop credentials
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesktopPairingRequest'
+      responses:
+        '200':
+          description: Server-issued Desktop credentials and endpoint paths
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DesktopPairingResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/desktop/snapshot:
+    post:
+      operationId: uploadDesktopSnapshot
+      tags: [Snapshot]
+      summary: Upload the current Desktop projection
+      security:
+        - desktopBearer: []
+      parameters:
+        - $ref: '#/components/parameters/HostId'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesktopSnapshot'
+      responses:
+        '200':
+          description: Snapshot accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiBaseRet'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/desktop/events:
+    post:
+      operationId: uploadDesktopEvent
+      tags: [Events]
+      summary: Upload one allowlisted Rust session event
+      security:
+        - desktopBearer: []
+      parameters:
+        - $ref: '#/components/parameters/HostId'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesktopEvent'
+      responses:
+        '200':
+          description: Event accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiBaseRet'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/desktop/responses:
+    post:
+      operationId: postDesktopResponse
+      tags: [Results]
+      summary: Complete a Server-issued Desktop command
+      security:
+        - desktopBearer: []
+      parameters:
+        - $ref: '#/components/parameters/HostId'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesktopResponse'
+      responses:
+        '200':
+          description: Response accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiBaseRet'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '410':
+          description: The command timed out or was already completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiBaseRet'
+
+components:
+  securitySchemes:
+    desktopBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: Desktop token returned by POST /v1/desktop/pairings.
+  parameters:
+    HostId:
+      name: X-Host-Id
+      in: header
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 200 }
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 200 }
+  responses:
+    InvalidRequest:
+      description: Request validation failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiBaseRet' }
+    Unauthorized:
+      description: Desktop token or host ID is missing or invalid
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiBaseRet' }
+    NotFound:
+      description: Host or command was not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiBaseRet' }
+  schemas:
+    ApiBaseRet:
+      type: object
+      required: [code]
+      properties:
+        code: { type: integer }
+        message: { type: string, nullable: true }
+        data: {}
+    DesktopPairingRequest:
+      type: object
+      required: [pairingCode]
+      additionalProperties: false
+      properties:
+        pairingCode: { type: string, minLength: 1, maxLength: 256 }
+        displayName: { type: string, minLength: 1, maxLength: 120 }
+        desktopVersion: { type: string, maxLength: 120 }
+    DesktopPairingResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiBaseRet'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/DesktopPairingPayload' }
+    DesktopPairingPayload:
+      type: object
+      required: [hostId, desktopToken, mobilePairingPayload, eventsUrl, requestsUrl, resultsUrl]
+      properties:
+        hostId: { type: string }
+        desktopToken: { type: string }
+        mobilePairingPayload: { type: string }
+        eventsUrl: { type: string, description: Relative upload path for Desktop events. }
+        requestsUrl: { type: string, description: Relative SSE path for Desktop commands. }
+        resultsUrl: { type: string, description: Relative upload path for command results. }
+    DesktopSnapshot:
+      type: object
+      required: [projects, sessions]
+      properties:
+        projects: { type: array, items: { type: object, additionalProperties: true } }
+        sessions: { type: array, items: { type: object, additionalProperties: true } }
+    DesktopEvent:
+      type: object
+      required: [session_id, occurred_at, event_type, payload]
+      additionalProperties: false
+      properties:
+        session_id: { type: string, minLength: 1 }
+        occurred_at: { type: string, format: date-time }
+        event_type:
+          type: string
+          description: Allowlisted event type; assistant.delta and provider byte progress are excluded.
+        payload: { type: object, additionalProperties: true }
+    DesktopResponse:
+      type: object
+      required: [requestId, success]
+      additionalProperties: false
+      properties:
+        requestId: { type: string, minLength: 1 }
+        hostId: { type: string, nullable: true }
+        sessionId: { type: string, nullable: true }
+        success: { type: boolean }
+        code: { type: integer, nullable: true }
+        message: { type: string, nullable: true }
+        payload: { type: object, nullable: true, additionalProperties: true }
