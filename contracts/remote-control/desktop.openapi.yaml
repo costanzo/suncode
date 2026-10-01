@@ -4,8 +4,8 @@ info:
   version: 1.0.0
   description: |
     Private HTTP half of the outbound Desktop device protocol. A Desktop first
-    exchanges the configured pairing code for a server-issued hostId and opaque
-    desktopToken. Every request after pairing carries X-Host-Id and the bearer
+    exchanges the configured pairing code for a server-issued hostId, accessToken,
+    and refreshToken. Every request after pairing carries X-Host-Id and the bearer
     token. The Desktop SSE command stream is specified in desktop.asyncapi.yaml.
 servers:
   - url: https://{remoteServerHost}
@@ -33,10 +33,10 @@ paths:
             example:
               pairingCode: "482917"
               displayName: "Long's Desktop"
-              desktopVersion: "0.1.0"
+              agentVersion: "0.1.0"
       responses:
         '200':
-          description: Server-issued Desktop credentials and endpoint paths
+          description: Server-issued Desktop credentials
           content:
             application/json:
               schema:
@@ -45,11 +45,9 @@ paths:
                 code: 0
                 data:
                   hostId: "host-01J8YQ6M7A"
-                  desktopToken: "desktop-token-issued-by-server"
-                  mobilePairingPayload: "mobile-pairing-payload-once"
-                  eventsUrl: "/v1/desktop/events"
-                  requestsUrl: "/v1/desktop/events"
-                  resultsUrl: "/v1/desktop/responses"
+                  accessToken: "desktop-access-token-issued-by-server"
+                  refreshToken: "desktop-refresh-token-issued-by-server"
+                  mobilePairingCode: "mobile-pairing-code-once"
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -184,11 +182,7 @@ paths:
               plaintext:
                 summary: Unencrypted Desktop response
                 value:
-                  requestId: "request-01"
-                  hostId: "host-01J8YQ6M7A"
-                  sessionId: "session-01"
-                  success: true
-                  code: null
+                  code: 0
                   message: null
                   payload:
                     sessionId: "session-01"
@@ -226,7 +220,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: opaque
-      description: Desktop token returned by POST /v1/desktop/pairings.
+      description: Access token returned by POST /v1/desktop/pairings.
   parameters:
     HostId:
       name: X-Host-Id
@@ -245,7 +239,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiBaseRet' }
     Unauthorized:
-      description: Desktop token or host ID is missing or invalid
+      description: Access token or host ID is missing or invalid
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiBaseRet' }
@@ -269,7 +263,7 @@ components:
       properties:
         pairingCode: { type: string, minLength: 1, maxLength: 256 }
         displayName: { type: string, minLength: 1, maxLength: 120 }
-        desktopVersion: { type: string, maxLength: 120 }
+        agentVersion: { type: string, maxLength: 120 }
     DesktopPairingResponse:
       allOf:
         - $ref: '#/components/schemas/ApiBaseRet'
@@ -278,14 +272,12 @@ components:
             data: { $ref: '#/components/schemas/DesktopPairingPayload' }
     DesktopPairingPayload:
       type: object
-      required: [hostId, desktopToken, mobilePairingPayload, eventsUrl, requestsUrl, resultsUrl]
+      required: [hostId, accessToken, refreshToken, mobilePairingCode]
       properties:
-        hostId: { type: string }
-        desktopToken: { type: string }
-        mobilePairingPayload: { type: string }
-        eventsUrl: { type: string, description: Relative upload path for Desktop events. }
-        requestsUrl: { type: string, description: Relative SSE path for Desktop commands. }
-        resultsUrl: { type: string, description: Relative upload path for command results. }
+        hostId: { type: string, minLength: 1 }
+        accessToken: { type: string, minLength: 1, description: Bearer access token for subsequent Desktop HTTP and SSE requests. }
+        refreshToken: { type: string, minLength: 1, description: Opaque token used to obtain a new access token. }
+        mobilePairingCode: { type: string, minLength: 1, description: One-time opaque code that Mobile submits to pair with this Desktop. }
     DesktopSnapshot:
       oneOf:
         - $ref: '#/components/schemas/DesktopPlainSnapshot'
@@ -392,17 +384,16 @@ components:
       description: |
         A Desktop response must use exactly one representation. In encrypted
         mode the request body contains only `encPayload`; the Server forwards
-        it without decoding or interpreting its contents.
+        it without decoding or interpreting its contents. In the plaintext
+        representation, `code: 0` means success; any non-zero code means
+        failure. Request and host correlation are supplied by the HTTP
+        headers, not repeated in the JSON body.
     DesktopPlainResponse:
       type: object
-      required: [requestId, success]
+      required: [code]
       additionalProperties: false
       properties:
-        requestId: { type: string, minLength: 1 }
-        hostId: { type: [string, "null"] }
-        sessionId: { type: [string, "null"] }
-        success: { type: boolean }
-        code: { type: [integer, "null"] }
+        code: { type: integer, description: Zero indicates success; non-zero values indicate failure. }
         message: { type: [string, "null"] }
         payload: { type: [object, "null"], additionalProperties: true }
     DesktopEncryptedResponse:
