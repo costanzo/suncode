@@ -1,106 +1,233 @@
-asyncapi: 3.0.0
+asyncapi: 3.1.0
 info:
-  title: SunCode Server-to-Desktop Command Stream
+  title: SunCode Server-to-Desktop Mobile Request Stream
   version: 1.0.0
   description: |
     Private server-to-Desktop Server-Sent Events stream. Desktop first obtains
-    hostId and desktopToken through desktop.openapi.yaml, then opens the
-    requestsUrl returned by that response. The stream is receive-only: command
-    results and Rust session events use the Desktop HTTP contract.
+    hostId and accessToken through desktop.openapi.yaml, then opens the
+    `/v1/desktop/events` endpoint. The stream is receive-only. Each Mobile HTTP
+    request forwarded to Desktop is emitted as its own route-specific custom
+    event. Its SSE `id` is the original Mobile request's `X-Request-Id`; the
+    string-valued SSE `data` is JSON containing either path/query/body values or
+    an opaque `encPayload`. Requests handled by the Server are not forwarded.
 servers:
   remoteServer:
     host: '{remoteServerHost}'
     protocol: https
     pathname: /v1/desktop/events
-    description: Authenticated Desktop SSE endpoint.
+    description: |
+      Authenticated Desktop SSE endpoint. Requests include both the bearer
+      access token, X-Host-Id, and X-Request-Id headers. Each forwarded Mobile
+      request has an independent SSE event ID copied from that Mobile request's
+      X-Request-Id.
     variables:
       remoteServerHost:
         default: relay.suncode.example
     security:
-      - desktopBearer: []
-        desktopHostId: []
+      - $ref: '#/components/securitySchemes/desktopBearer'
+      - $ref: '#/components/securitySchemes/desktopHostId'
 channels:
-  desktopCommands:
+  desktopMobileRequests:
     address: /v1/desktop/events
     messages:
       desktopConnected:
         $ref: '#/components/messages/DesktopConnected'
-      desktopCommand:
-        $ref: '#/components/messages/DesktopCommand'
+      mobilePairingSucceeded:
+        $ref: '#/components/messages/MobilePairingSucceeded'
+      mobileLogout:
+        $ref: '#/components/messages/MobileLogout'
+      mobileProjectsList:
+        $ref: '#/components/messages/MobileProjectsList'
+      mobileSessionsList:
+        $ref: '#/components/messages/MobileSessionsList'
+      mobileSessionsCreate:
+        $ref: '#/components/messages/MobileSessionsCreate'
+      mobileSessionsGet:
+        $ref: '#/components/messages/MobileSessionsGet'
+      mobileSessionsEventsOpen:
+        $ref: '#/components/messages/MobileSessionsEventsOpen'
+      mobileSessionsMessagesSend:
+        $ref: '#/components/messages/MobileSessionsMessagesSend'
+      mobileSessionsApprovalsResolve:
+        $ref: '#/components/messages/MobileSessionsApprovalsResolve'
+      mobileSessionsQuestionsReply:
+        $ref: '#/components/messages/MobileSessionsQuestionsReply'
+      mobileSessionsCancel:
+        $ref: '#/components/messages/MobileSessionsCancel'
+      mobileSessionsRetry:
+        $ref: '#/components/messages/MobileSessionsRetry'
 operations:
-  receiveDesktopCommands:
+  receiveDesktopMobileRequests:
     action: receive
     channel:
-      $ref: '#/channels/desktopCommands'
+      $ref: '#/channels/desktopMobileRequests'
     messages:
-      - $ref: '#/channels/desktopCommands/messages/desktopConnected'
-      - $ref: '#/channels/desktopCommands/messages/desktopCommand'
+      - $ref: '#/channels/desktopMobileRequests/messages/desktopConnected'
+      - $ref: '#/channels/desktopMobileRequests/messages/mobilePairingSucceeded'
+      - $ref: '#/channels/desktopMobileRequests/messages/mobileLogout'
+      - $ref: '#/channels/desktopMobileRequests/messages/mobileProjectsList'
+      - $ref: '#/channels/desktopMobileRequests/messages/mobileSessionsList'
+      - $ref: '#/channels/desktopMobileRequests/messages/mobileSessionsCreate'
+      - $ref: '#/channels/desktopMobileRequests/messages/mobileSessionsGet'
+      - $ref: '#/channels/desktopMobileRequests/messages/mobileSessionsEventsOpen'
+      - $ref: '#/channels/desktopMobileRequests/messages/mobileSessionsMessagesSend'
+      - $ref: '#/channels/desktopMobileRequests/messages/mobileSessionsApprovalsResolve'
+      - $ref: '#/channels/desktopMobileRequests/messages/mobileSessionsQuestionsReply'
+      - $ref: '#/channels/desktopMobileRequests/messages/mobileSessionsCancel'
+      - $ref: '#/channels/desktopMobileRequests/messages/mobileSessionsRetry'
 components:
   securitySchemes:
     desktopBearer:
       type: http
       scheme: bearer
       bearerFormat: opaque
+      description: Access token returned by POST /v1/desktop/pairings.
     desktopHostId:
-      type: apiKey
+      type: httpApiKey
       in: header
       name: X-Host-Id
+      description: Host ID returned by POST /v1/desktop/pairings.
   messages:
     DesktopConnected:
       name: desktop.connected
       payload:
-        type: object
-        required: [hostId]
-        properties:
-          hostId: { type: string, minLength: 1 }
-    DesktopCommand:
-      name: desktop.command
+        $ref: '#/components/schemas/DesktopConnectedFrame'
+    MobilePairingSucceeded:
+      name: mobile.pairings.exchange.succeeded
+      description: Sent only after Mobile pairing succeeds. The sanitized requestBody may contain deviceName, devicePublicKey, and clientNonce; the one-time pairing payload and issued credentials are excluded.
+      correlationId:
+        $ref: '#/components/correlationIds/MobileRequestId'
       payload:
-        $ref: '#/components/schemas/DesktopCommand'
+        $ref: '#/components/schemas/DesktopMobileHttpRequestFrame'
+    MobileLogout:
+      name: mobile.auth.logout
+      description: Sent after the current Mobile credential is invalidated. No credential is included. The current contract identifies the Host and request but has no stable Mobile device ID.
+      correlationId:
+        $ref: '#/components/correlationIds/MobileRequestId'
+      payload:
+        $ref: '#/components/schemas/DesktopMobileHttpRequestFrame'
+    MobileProjectsList:
+      name: mobile.projects.list
+      correlationId:
+        $ref: '#/components/correlationIds/MobileRequestId'
+      payload:
+        $ref: '#/components/schemas/DesktopMobileHttpRequestFrame'
+    MobileSessionsList:
+      name: mobile.sessions.list
+      correlationId:
+        $ref: '#/components/correlationIds/MobileRequestId'
+      payload:
+        $ref: '#/components/schemas/DesktopMobileHttpRequestFrame'
+    MobileSessionsCreate:
+      name: mobile.sessions.create
+      correlationId:
+        $ref: '#/components/correlationIds/MobileRequestId'
+      payload:
+        $ref: '#/components/schemas/DesktopMobileHttpRequestFrame'
+    MobileSessionsGet:
+      name: mobile.sessions.get
+      correlationId:
+        $ref: '#/components/correlationIds/MobileRequestId'
+      payload:
+        $ref: '#/components/schemas/DesktopMobileHttpRequestFrame'
+    MobileSessionsEventsOpen:
+      name: mobile.sessions.events.open
+      correlationId:
+        $ref: '#/components/correlationIds/MobileRequestId'
+      payload:
+        $ref: '#/components/schemas/DesktopMobileHttpRequestFrame'
+    MobileSessionsMessagesSend:
+      name: mobile.sessions.messages.send
+      correlationId:
+        $ref: '#/components/correlationIds/MobileRequestId'
+      payload:
+        $ref: '#/components/schemas/DesktopMobileHttpRequestFrame'
+    MobileSessionsApprovalsResolve:
+      name: mobile.sessions.approvals.resolve
+      correlationId:
+        $ref: '#/components/correlationIds/MobileRequestId'
+      payload:
+        $ref: '#/components/schemas/DesktopMobileHttpRequestFrame'
+    MobileSessionsQuestionsReply:
+      name: mobile.sessions.questions.reply
+      correlationId:
+        $ref: '#/components/correlationIds/MobileRequestId'
+      payload:
+        $ref: '#/components/schemas/DesktopMobileHttpRequestFrame'
+    MobileSessionsCancel:
+      name: mobile.sessions.cancel
+      correlationId:
+        $ref: '#/components/correlationIds/MobileRequestId'
+      payload:
+        $ref: '#/components/schemas/DesktopMobileHttpRequestFrame'
+    MobileSessionsRetry:
+      name: mobile.sessions.retry
+      correlationId:
+        $ref: '#/components/correlationIds/MobileRequestId'
+      payload:
+        $ref: '#/components/schemas/DesktopMobileHttpRequestFrame'
+  correlationIds:
+    MobileRequestId:
+      location: $message.payload#/id
+      description: SSE event ID copied from the originating Mobile HTTP X-Request-Id header.
   schemas:
-    DesktopCommand:
+    DesktopConnectedFrame:
       type: object
-      required: [requestId, hostId, command, payload]
+      required: [id, data]
       additionalProperties: false
       properties:
-        requestId: { type: string, minLength: 1 }
-        hostId: { type: string, minLength: 1 }
-        sessionId: { type: string, nullable: true }
-        command:
+        id: { type: string, minLength: 1, description: SSE event ID; the connected Host ID. }
+        data:
           type: string
-          enum:
-            - projects.list
-            - sessions.list
-            - session.create
-            - session.get
-            - session.message
-            - turn.cancel
-            - turn.retry
-            - approval.resolve
-            - question.reply
-        payload:
-          $ref: '#/components/schemas/DesktopCommandPayload'
-    DesktopCommandPayload:
+          contentMediaType: application/json
+          contentSchema:
+            $ref: '#/components/schemas/DesktopConnectedData'
+    DesktopConnectedData:
       type: object
-      description: |
-        Command-specific fields are carried in one stable camelCase object.
-        Unknown fields are ignored. A command that does not need arguments uses
-        an empty object.
-      additionalProperties: true
+      required: [hostId]
+      additionalProperties: false
       properties:
-        projectId: { type: string, nullable: true }
-        cursor: { type: string, nullable: true }
-        limit: { type: integer, minimum: 1, maximum: 100, nullable: true }
-        hostId: { type: string, nullable: true }
-        title: { type: string, nullable: true }
-        firstMessage: { type: string, nullable: true }
-        text: { type: string, nullable: true }
-        clientMessageId: { type: string, nullable: true }
-        approvalId: { type: string, nullable: true }
-        action: { type: string, enum: [allow_once, allow_session, deny], nullable: true }
-        expectedRevision: { type: integer, minimum: 0, nullable: true }
-        questionId: { type: string, nullable: true }
-        answers:
-          type: array
-          items: { type: string }
-        turnId: { type: string, nullable: true }
+        hostId: { type: string, minLength: 1 }
+    DesktopMobileHttpRequestFrame:
+      type: object
+      required: [id, data]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: SSE event ID copied from the originating Mobile HTTP X-Request-Id header.
+        data:
+          type: string
+          description: JSON-serialized DesktopMobileHttpRequestDataEnvelope.
+          contentMediaType: application/json
+          contentSchema:
+            $ref: '#/components/schemas/DesktopMobileHttpRequestDataEnvelope'
+    DesktopMobileHttpRequestDataEnvelope:
+      oneOf:
+        - $ref: '#/components/schemas/DesktopMobileHttpRequestData'
+        - $ref: '#/components/schemas/DesktopEncryptedMobileHttpRequestData'
+    DesktopMobileHttpRequestData:
+      type: object
+      required: [pathParam, queryParam, requestBody]
+      additionalProperties: false
+      properties:
+        pathParam:
+          type: object
+          description: Decoded path parameters; empty when the route has none.
+          additionalProperties: true
+        queryParam:
+          type: object
+          description: Decoded query parameters; empty when none were supplied.
+          additionalProperties: true
+        requestBody:
+          description: Parsed JSON request body; an empty object is used when the request has no body.
+    DesktopEncryptedMobileHttpRequestData:
+      type: object
+      required: [encPayload]
+      additionalProperties: false
+      properties:
+        encPayload:
+          type: string
+          minLength: 1
+          description: Opaque encrypted DesktopMobileHttpRequestData. Desktop decrypts it; the Server forwards it unchanged.

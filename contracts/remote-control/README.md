@@ -9,12 +9,12 @@ This directory defines the public protocol between the CMP Mobile client and the
 - [`mobile.openapi.yaml`](mobile.openapi.yaml) — Mobile to Server HTTP API.
 - [`desktop.openapi.yaml`](desktop.openapi.yaml) — Desktop to Server HTTP API.
 - [`mobile.asyncapi.yaml`](mobile.asyncapi.yaml) — Server to Mobile Session-scoped SSE stream.
-- [`desktop.asyncapi.yaml`](desktop.asyncapi.yaml) — Server to Desktop command SSE stream.
+- [`desktop.asyncapi.yaml`](desktop.asyncapi.yaml) — Server to Desktop Mobile-request SSE stream.
 
 ## Topology
 
 ```text
-SunCode Desktop -- pairing/event HTTP + command SSE --> Remote Server
+SunCode Desktop -- pairing/event HTTP + Mobile-request SSE --> Remote Server
 Mobile          -- HTTPS ---------------------------> Remote Server
 Mobile          -- HTTPS / SSE (one Session) -------> Remote Server
 ```
@@ -96,6 +96,6 @@ HTTP errors use the `ApiBaseRet` envelope with a stable integer `code` and safe 
 
 ## Desktop connection boundary
 
-The Desktop-side `suncode-remote` protocol is split between `desktop.openapi.yaml` and `desktop.asyncapi.yaml`. The first `POST /v1/desktop/pairings` sends the configured pairing code and returns a server-generated `hostId`, `desktopToken`, opaque `mobilePairingPayload`, and the `eventsUrl`, `requestsUrl`, and `resultsUrl` paths. Desktop opens `requestsUrl` as an SSE stream and accepts `desktop.command` frames using the Java `DesktopCommand` envelope. Results, snapshots, and allowlisted Rust events are posted over the Desktop HTTP contract with `X-Host-Id`, `X-Request-Id`, and the issued Desktop bearer token.
+The Desktop-side `suncode-remote` protocol is split between `desktop.openapi.yaml` and `desktop.asyncapi.yaml`. Desktop pairs through `POST /v1/desktop/pairings`, then opens `GET /v1/desktop/events` with `X-Host-Id`, `X-Request-Id`, and the issued bearer token. The stream sends `desktop.connected`, then one route-specific `mobile.*` custom event for each Mobile HTTP request forwarded to Desktop. Each event's SSE `id` equals the originating Mobile request's `X-Request-Id`; its `data` is a JSON string containing `pathParam`, `queryParam`, and `requestBody`, or only `encPayload` for end-to-end encrypted requests. Successful Mobile pairing and logout also emit sanitized lifecycle events; pairing payloads and authentication credentials are excluded. Other Server-owned APIs are not forwarded. Results, snapshots, and allowlisted Rust events are posted over the Desktop HTTP contract with `X-Host-Id`, `X-Request-Id`, and the issued Desktop bearer token.
 
 Desktop periodically posts a snapshot to `/v1/desktop/snapshot` and posts allowlisted Rust session events to `eventsUrl`. Every upload includes `X-Host-Id`, `X-Request-Id`, and the issued Desktop bearer token. `assistant.delta` and provider byte progress are excluded; the complete `message.assistant` event is uploaded once. The desktop worker reconnects with bounded backoff and does not bypass local Rust policy or approval state.

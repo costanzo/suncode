@@ -48,7 +48,12 @@ paths:
       description: |
         The payload is opaque to Mobile. A successful exchange consumes it
         immediately. Reuse, expiry, or a failed Desktop pairing transaction never
-        returns a credential.
+        returns a credential. After a successful exchange, the Server notifies
+        the paired Desktop using `mobile.pairings.exchange.succeeded`, correlated
+        with this request's `X-Request-Id`. The notification never contains the
+        pairing payload or issued tokens.
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
       requestBody:
         required: true
         content:
@@ -105,10 +110,18 @@ paths:
       operationId: logoutCurrentDevice
       tags: [Authentication]
       summary: Log out the current Mobile device
-      description: This does not revoke any other Mobile device or Desktop pairing.
+      description: |
+        This does not revoke any other Mobile device or Desktop pairing. After
+        successfully invalidating the current credential, the Server notifies
+        the paired Desktop using `mobile.auth.logout`, correlated with this
+        request's `X-Request-Id`. The notification never contains an access or
+        refresh token. The current contract has no stable Mobile device ID, so
+        Desktop can observe the logout but cannot identify which Mobile device
+        logged out when several are paired to the same Host.
       security:
         - bearerAuth: []
       parameters:
+        - $ref: '#/components/parameters/RequestId'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '204':
@@ -139,9 +152,11 @@ paths:
   /v1/mobile/hosts/{hostId}/projects:
     parameters:
       - $ref: '#/components/parameters/HostId'
+      - $ref: '#/components/parameters/RequestId'
     get:
       operationId: listHostProjects
       tags: [Hosts]
+      description: Forwarded to Desktop as the `mobile.projects.list` SSE event.
       security:
         - bearerAuth: []
       responses:
@@ -157,6 +172,8 @@ paths:
           $ref: '#/components/responses/NotFound'
 
   /v1/mobile/sessions:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
     get:
       operationId: listSessions
       tags: [Sessions]
@@ -164,6 +181,7 @@ paths:
       description: |
         Archived Sessions and child/subagent Sessions are excluded. The default
         response is the global inbox; Host and Project filters are optional.
+        Forwarded to Desktop as the `mobile.sessions.list` SSE event.
       security:
         - bearerAuth: []
       parameters:
@@ -184,6 +202,7 @@ paths:
       operationId: createSession
       tags: [Sessions]
       summary: Create a primary Session on a Host Project
+      description: Forwarded to Desktop as the `mobile.sessions.create` SSE event.
       security:
         - bearerAuth: []
       parameters:
@@ -215,9 +234,11 @@ paths:
   /v1/mobile/sessions/{sessionId}:
     parameters:
       - $ref: '#/components/parameters/SessionId'
+      - $ref: '#/components/parameters/RequestId'
     get:
       operationId: getSession
       tags: [Sessions]
+      description: Forwarded to Desktop as the `mobile.sessions.get` SSE event.
       security:
         - bearerAuth: []
       responses:
@@ -242,6 +263,7 @@ paths:
     parameters:
       - $ref: '#/components/parameters/SessionId'
       - $ref: '#/components/parameters/LastEventId'
+      - $ref: '#/components/parameters/RequestId'
     get:
       operationId: streamSessionEvents
       tags: [Sessions]
@@ -250,6 +272,8 @@ paths:
         Opens a server-to-Mobile SSE stream for exactly one active primary
         Session. Without `Last-Event-ID`, the first application event is
         `session.snapshot`, followed by live `agent.event` frames. The snapshot
+        is fetched from Desktop using the `mobile.sessions.events.open` SSE
+        event, correlated to this request's `X-Request-Id`. The snapshot
         has its own stable SSE `id` and sequence. On a
         reconnect with a retained event ID, the server replays only events with
         a greater sequence before live delivery. The stream has no command
@@ -295,10 +319,12 @@ paths:
   /v1/mobile/sessions/{sessionId}/messages:
     parameters:
       - $ref: '#/components/parameters/SessionId'
+      - $ref: '#/components/parameters/RequestId'
     post:
       operationId: sendSessionMessage
       tags: [Sessions]
       summary: Send one user message to a primary Session
+      description: Forwarded to Desktop as the `mobile.sessions.messages.send` SSE event.
       security:
         - bearerAuth: []
       parameters:
@@ -331,10 +357,12 @@ paths:
     parameters:
       - $ref: '#/components/parameters/SessionId'
       - $ref: '#/components/parameters/ApprovalId'
+      - $ref: '#/components/parameters/RequestId'
     post:
       operationId: resolveApproval
       tags: [Sessions]
       summary: Resolve a pending Rust approval
+      description: Forwarded to Desktop as the `mobile.sessions.approvals.resolve` SSE event.
       security:
         - bearerAuth: []
       parameters:
@@ -369,10 +397,12 @@ paths:
     parameters:
       - $ref: '#/components/parameters/SessionId'
       - $ref: '#/components/parameters/QuestionId'
+      - $ref: '#/components/parameters/RequestId'
     post:
       operationId: replyQuestion
       tags: [Sessions]
       summary: Answer a pending structured question
+      description: Forwarded to Desktop as the `mobile.sessions.questions.reply` SSE event.
       security:
         - bearerAuth: []
       parameters:
@@ -402,10 +432,12 @@ paths:
   /v1/mobile/sessions/{sessionId}/cancel:
     parameters:
       - $ref: '#/components/parameters/SessionId'
+      - $ref: '#/components/parameters/RequestId'
     post:
       operationId: cancelSessionTurn
       tags: [Sessions]
       summary: Request cooperative cancellation of the current turn
+      description: Forwarded to Desktop as the `mobile.sessions.cancel` SSE event.
       security:
         - bearerAuth: []
       parameters:
@@ -427,10 +459,12 @@ paths:
   /v1/mobile/sessions/{sessionId}/retry:
     parameters:
       - $ref: '#/components/parameters/SessionId'
+      - $ref: '#/components/parameters/RequestId'
     post:
       operationId: retryLastTurn
       tags: [Sessions]
       summary: Retry the last failed turn
+      description: Forwarded to Desktop as the `mobile.sessions.retry` SSE event.
       security:
         - bearerAuth: []
       parameters:
@@ -482,6 +516,12 @@ components:
       scheme: bearer
       bearerFormat: opaque
   parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: true
+      description: Correlation ID echoed as the SSE id for the Desktop event generated by this Mobile request.
+      schema: { type: string, minLength: 1, maxLength: 200 }
     HostId:
       name: hostId
       in: path
