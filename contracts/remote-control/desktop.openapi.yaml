@@ -30,6 +30,10 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/DesktopPairingRequest'
+            example:
+              pairingCode: "482917"
+              displayName: "Long's Desktop"
+              desktopVersion: "0.1.0"
       responses:
         '200':
           description: Server-issued Desktop credentials and endpoint paths
@@ -37,6 +41,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DesktopPairingResponse'
+              example:
+                code: 0
+                data:
+                  hostId: "host-01J8YQ6M7A"
+                  desktopToken: "desktop-token-issued-by-server"
+                  mobilePairingPayload: "mobile-pairing-payload-once"
+                  eventsUrl: "/v1/desktop/events"
+                  requestsUrl: "/v1/desktop/events"
+                  resultsUrl: "/v1/desktop/responses"
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -58,6 +71,39 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/DesktopSnapshot'
+            examples:
+              plaintext:
+                summary: Unencrypted Desktop projection
+                value:
+                  projects:
+                    - projectId: "project-01"
+                      userId: "local-user"
+                      canonicalRoot: "C:/workspaces/example"
+                      displayName: "example"
+                      createdAt: "2026-10-01T02:00:00Z"
+                      updatedAt: "2026-10-01T02:30:00Z"
+                      lastOpenedAt: "2026-10-01T02:30:00Z"
+                      archivedAt: null
+                  sessions:
+                    - sessionId: "session-01"
+                      projectId: "project-01"
+                      title: "Investigate remote control"
+                      modelId: "gpt-5.5"
+                      reasoningEffort: "medium"
+                      kind: "primary"
+                      parentSessionId: null
+                      agentId: null
+                      agentVersion: null
+                      status: "idle"
+                      createdAt: "2026-10-01T02:05:00Z"
+                      updatedAt: "2026-10-01T02:30:00Z"
+                      lastActivityAt: "2026-10-01T02:30:00Z"
+                      archivedAt: null
+                      pinAt: null
+              encrypted:
+                summary: End-to-end encrypted Desktop projection
+                value:
+                  encPayload: "e2e-v1:base64url-ciphertext"
       responses:
         '200':
           description: Snapshot accepted
@@ -65,6 +111,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiBaseRet'
+              example:
+                code: 0
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -88,6 +136,20 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/DesktopEvent'
+            examples:
+              plaintext:
+                summary: Unencrypted Desktop event
+                value:
+                  session_id: "session-01"
+                  occurred_at: "2026-10-01T02:30:00Z"
+                  event_type: "message.assistant"
+                  payload:
+                    turn_id: "turn-01"
+                    message_id: "message-01"
+              encrypted:
+                summary: End-to-end encrypted Desktop event
+                value:
+                  encPayload: "e2e-v1:base64url-ciphertext"
       responses:
         '200':
           description: Event accepted
@@ -95,6 +157,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiBaseRet'
+              example:
+                code: 0
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -116,6 +180,23 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/DesktopResponse'
+            examples:
+              plaintext:
+                summary: Unencrypted Desktop response
+                value:
+                  requestId: "request-01"
+                  hostId: "host-01J8YQ6M7A"
+                  sessionId: "session-01"
+                  success: true
+                  code: null
+                  message: null
+                  payload:
+                    sessionId: "session-01"
+                    status: "idle"
+              encrypted:
+                summary: End-to-end encrypted Desktop response
+                value:
+                  encPayload: "e2e-v1:base64url-ciphertext"
       responses:
         '200':
           description: Response accepted
@@ -123,6 +204,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiBaseRet'
+              example:
+                code: 0
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -133,6 +216,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiBaseRet'
+              example:
+                code: 410
+                message: "desktop command expired"
 
 components:
   securitySchemes:
@@ -174,7 +260,7 @@ components:
       required: [code]
       properties:
         code: { type: integer }
-        message: { type: string, nullable: true }
+        message: { type: [string, "null"] }
         data: {}
     DesktopPairingRequest:
       type: object
@@ -201,12 +287,83 @@ components:
         requestsUrl: { type: string, description: Relative SSE path for Desktop commands. }
         resultsUrl: { type: string, description: Relative upload path for command results. }
     DesktopSnapshot:
+      oneOf:
+        - $ref: '#/components/schemas/DesktopPlainSnapshot'
+        - $ref: '#/components/schemas/DesktopEncryptedSnapshot'
+      description: |
+        Current Desktop projection uploaded by the Rust Desktop worker. The
+        request must use exactly one representation: either the explicit
+        plaintext projection or the opaque end-to-end encrypted payload. The
+        two representations must never be mixed. The Remote Server must
+        forward `encPayload` without decoding or interpreting its contents.
+    DesktopPlainSnapshot:
       type: object
       required: [projects, sessions]
+      additionalProperties: false
       properties:
-        projects: { type: array, items: { type: object, additionalProperties: true } }
-        sessions: { type: array, items: { type: object, additionalProperties: true } }
+        projects:
+          type: array
+          description: Projects visible to this Desktop. `canonicalRoot` is Desktop-local data and must never be exposed to Mobile.
+          items:
+            $ref: '#/components/schemas/DesktopProject'
+        sessions:
+          type: array
+          description: Sessions visible to this Desktop. Child sessions may be included in the Desktop projection.
+          items:
+            $ref: '#/components/schemas/DesktopSession'
+    DesktopEncryptedSnapshot:
+      type: object
+      required: [encPayload]
+      additionalProperties: false
+      properties:
+        encPayload:
+          type: string
+          minLength: 1
+          description: Opaque end-to-end encrypted payload. The Server forwards it and does not decrypt or inspect it.
+          examples:
+            - "e2e-v1:base64url-ciphertext"
+    DesktopProject:
+      type: object
+      required: [projectId, userId, canonicalRoot, displayName, createdAt, updatedAt, lastOpenedAt, archivedAt]
+      additionalProperties: false
+      properties:
+        projectId: { type: string, minLength: 1 }
+        userId: { type: string, minLength: 1 }
+        canonicalRoot: { type: string, minLength: 1, description: Desktop-local canonical path; never expose this value to Mobile. }
+        displayName: { type: string, minLength: 1 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        lastOpenedAt: { type: string, format: date-time }
+        archivedAt: { type: [string, "null"], format: date-time }
+    DesktopSession:
+      type: object
+      required: [sessionId, projectId, title, modelId, reasoningEffort, kind, parentSessionId, agentId, agentVersion, status, createdAt, updatedAt, lastActivityAt, archivedAt, pinAt]
+      additionalProperties: false
+      properties:
+        sessionId: { type: string, minLength: 1 }
+        projectId: { type: [string, "null"] }
+        title: { type: [string, "null"] }
+        modelId: { type: [string, "null"] }
+        reasoningEffort: { type: [string, "null"] }
+        kind: { type: string, minLength: 1 }
+        parentSessionId: { type: [string, "null"] }
+        agentId: { type: [string, "null"] }
+        agentVersion: { type: [integer, "null"] }
+        status: { type: string, minLength: 1 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        lastActivityAt: { type: string, format: date-time }
+        archivedAt: { type: [string, "null"], format: date-time }
+        pinAt: { type: [string, "null"], format: date-time }
     DesktopEvent:
+      oneOf:
+        - $ref: '#/components/schemas/DesktopPlainEvent'
+        - $ref: '#/components/schemas/DesktopEncryptedEvent'
+      description: |
+        A Desktop event must use exactly one representation. In encrypted
+        mode the request body contains only `encPayload`; the Server forwards
+        it without decoding or interpreting its contents.
+    DesktopPlainEvent:
       type: object
       required: [session_id, occurred_at, event_type, payload]
       additionalProperties: false
@@ -217,15 +374,45 @@ components:
           type: string
           description: Allowlisted event type; assistant.delta and provider byte progress are excluded.
         payload: { type: object, additionalProperties: true }
+    DesktopEncryptedEvent:
+      type: object
+      required: [encPayload]
+      additionalProperties: false
+      properties:
+        encPayload:
+          type: string
+          minLength: 1
+          description: Opaque end-to-end encrypted event. The Server forwards it without decoding or interpreting its contents.
+          examples:
+            - "e2e-v1:base64url-ciphertext"
     DesktopResponse:
+      oneOf:
+        - $ref: '#/components/schemas/DesktopPlainResponse'
+        - $ref: '#/components/schemas/DesktopEncryptedResponse'
+      description: |
+        A Desktop response must use exactly one representation. In encrypted
+        mode the request body contains only `encPayload`; the Server forwards
+        it without decoding or interpreting its contents.
+    DesktopPlainResponse:
       type: object
       required: [requestId, success]
       additionalProperties: false
       properties:
         requestId: { type: string, minLength: 1 }
-        hostId: { type: string, nullable: true }
-        sessionId: { type: string, nullable: true }
+        hostId: { type: [string, "null"] }
+        sessionId: { type: [string, "null"] }
         success: { type: boolean }
-        code: { type: integer, nullable: true }
-        message: { type: string, nullable: true }
-        payload: { type: object, nullable: true, additionalProperties: true }
+        code: { type: [integer, "null"] }
+        message: { type: [string, "null"] }
+        payload: { type: [object, "null"], additionalProperties: true }
+    DesktopEncryptedResponse:
+      type: object
+      required: [encPayload]
+      additionalProperties: false
+      properties:
+        encPayload:
+          type: string
+          minLength: 1
+          description: Opaque end-to-end encrypted response. The Server forwards it without decoding or interpreting its contents.
+          examples:
+            - "e2e-v1:base64url-ciphertext"
