@@ -30,25 +30,41 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DesktopPairingRequest'
-            example:
-              pairingCode: "482917"
-              displayName: "Long's Desktop"
-              agentVersion: "0.1.0"
+              oneOf:
+                - $ref: '#/components/schemas/DesktopPairingRequest'
+                - $ref: '#/components/schemas/EncryptedPayload'
+            examples:
+              plaintext:
+                value:
+                  pairingCode: "482917"
+                  displayName: "Long's Desktop"
+                  agentVersion: "0.1.0"
+              encrypted:
+                summary: End-to-end encrypted pairing request
+                value:
+                  encPayload: "e2e-v1:base64url-ciphertext"
       responses:
         '200':
           description: Server-issued Desktop credentials
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DesktopPairingResponse'
-              example:
-                code: 0
-                data:
-                  hostId: "host-01J8YQ6M7A"
-                  accessToken: "desktop-access-token-issued-by-server"
-                  refreshToken: "desktop-refresh-token-issued-by-server"
-                  mobilePairingCode: "mobile-pairing-code-once"
+                oneOf:
+                  - $ref: '#/components/schemas/DesktopPairingResponse'
+                  - $ref: '#/components/schemas/EncryptedPayload'
+              examples:
+                plaintext:
+                  value:
+                    code: 0
+                    data:
+                      hostId: "host-01J8YQ6M7A"
+                      accessToken: "desktop-access-token-issued-by-server"
+                      refreshToken: "desktop-refresh-token-issued-by-server"
+                      mobilePairingCode: "mobile-pairing-code-once"
+                encrypted:
+                  summary: End-to-end encrypted pairing response
+                  value:
+                    encPayload: "e2e-v1:base64url-ciphertext"
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -109,9 +125,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiBaseRet'
-              example:
-                code: 0
+                oneOf:
+                  - $ref: '#/components/schemas/ApiBaseRet'
+                  - $ref: '#/components/schemas/EncryptedPayload'
+              examples:
+                plaintext:
+                  value:
+                    code: 0
+                encrypted:
+                  value:
+                    encPayload: "e2e-v1:base64url-ciphertext"
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -162,7 +185,7 @@ paths:
                   value:
                     - event: mobile.pairings.exchange.succeeded
                       id: mobile-request-pair-01
-                      data: '{"pathParam":{},"queryParam":{},"requestBody":{"deviceName":"Phone","devicePublicKey":"base64url-public-key","clientNonce":"0123456789abcdef"}}'
+                      data: '{"pathParam":{},"queryParam":{},"requestBody":{"pairingCode":"482917","deviceName":"Phone"}}'
                 mobileLogout:
                   summary: Current Mobile credential logged out
                   value:
@@ -176,59 +199,59 @@ paths:
                       id: mobile-request-01
                       data: '{"pathParam":{"hostId":"host-01J8YQ6M7A"},"queryParam":{},"requestBody":{}}'
                 listSessions:
-                  summary: Mobile GET /sessions
+                  summary: Mobile GET /hosts/{hostId}/sessions
                   value:
                     - event: mobile.sessions.list
                       id: mobile-request-02
-                      data: '{"pathParam":{},"queryParam":{"hostId":"host-01J8YQ6M7A","projectId":"project-01","cursor":"cursor-01","limit":50},"requestBody":{}}'
+                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A"},"queryParam":{"projectId":"project-01","cursor":"cursor-01","limit":50},"requestBody":{}}'
                 createSession:
-                  summary: Mobile POST /sessions
+                  summary: Mobile POST /hosts/{hostId}/sessions
                   value:
                     - event: mobile.sessions.create
                       id: mobile-request-03
-                      data: '{"pathParam":{},"queryParam":{},"requestBody":{"hostId":"host-01J8YQ6M7A","projectId":"project-01","title":"New session","firstMessage":"Inspect this project"}}'
+                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A"},"queryParam":{},"requestBody":{"projectId":"project-01","title":"New session","firstMessage":"Inspect this project","images":[{"mimeType":"image/png","data":"iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB","fileName":"context.png"}]}}'
                 getSession:
-                  summary: Mobile GET /sessions/{sessionId}
+                  summary: Mobile GET /hosts/{hostId}/sessions/{sessionId}
                   value:
                     - event: mobile.sessions.get
                       id: mobile-request-04
-                      data: '{"pathParam":{"sessionId":"session-01"},"queryParam":{},"requestBody":{}}'
+                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{},"requestBody":{}}'
                 openSessionEventStream:
-                  summary: Mobile GET /sessions/{sessionId}/events
+                  summary: Mobile GET /hosts/{hostId}/sessions/{sessionId}/events
                   value:
                     - event: mobile.sessions.events.open
                       id: mobile-request-04a
-                      data: '{"pathParam":{"sessionId":"session-01"},"queryParam":{},"requestBody":{}}'
+                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{},"requestBody":{}}'
                 sendMessage:
-                  summary: Mobile POST /sessions/{sessionId}/messages
+                  summary: Mobile POST /hosts/{hostId}/sessions/{sessionId}/messages
                   value:
                     - event: mobile.sessions.messages.send
                       id: mobile-request-05
-                      data: '{"pathParam":{"sessionId":"session-01"},"queryParam":{},"requestBody":{"text":"Continue the task","clientMessageId":"mobile-message-01"}}'
+                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{},"requestBody":{"text":"Continue the task","images":[{"mimeType":"image/jpeg","data":"/9j/4AAQSkZJRgABAQAAAQABAAD","fileName":"context.jpg"}]}}'
                 resolveApproval:
-                  summary: Mobile POST /sessions/{sessionId}/approvals/{approvalId}
+                  summary: Mobile POST /hosts/{hostId}/sessions/{sessionId}/approvals/{approvalId}
                   value:
                     - event: mobile.sessions.approvals.resolve
                       id: mobile-request-06
-                      data: '{"pathParam":{"sessionId":"session-01","approvalId":"approval-01"},"queryParam":{},"requestBody":{"action":"allow_once","expectedRevision":7}}'
+                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01","approvalId":"approval-01"},"queryParam":{},"requestBody":{"action":"allow_once","expectedRevision":7}}'
                 replyQuestion:
-                  summary: Mobile POST /sessions/{sessionId}/questions/{questionId}/reply
+                  summary: Mobile POST /hosts/{hostId}/sessions/{sessionId}/questions/{questionId}/reply
                   value:
                     - event: mobile.sessions.questions.reply
                       id: mobile-request-07
-                      data: '{"pathParam":{"sessionId":"session-01","questionId":"question-01"},"queryParam":{},"requestBody":{"answers":["Option A"],"expectedRevision":8}}'
+                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01","questionId":"question-01"},"queryParam":{},"requestBody":{"answers":["Option A"],"expectedRevision":8}}'
                 cancelTurn:
-                  summary: Mobile POST /sessions/{sessionId}/cancel
+                  summary: Mobile POST /hosts/{hostId}/sessions/{sessionId}/cancel
                   value:
                     - event: mobile.sessions.cancel
                       id: mobile-request-08
-                      data: '{"pathParam":{"sessionId":"session-01"},"queryParam":{},"requestBody":{}}'
+                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{},"requestBody":{}}'
                 retryTurn:
-                  summary: Mobile POST /sessions/{sessionId}/retry
+                  summary: Mobile POST /hosts/{hostId}/sessions/{sessionId}/retry
                   value:
                     - event: mobile.sessions.retry
                       id: mobile-request-09
-                      data: '{"pathParam":{"sessionId":"session-01"},"queryParam":{},"requestBody":{}}'
+                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{},"requestBody":{}}'
                 encryptedRequest:
                   summary: End-to-end encrypted Mobile HTTP request
                   value:
@@ -274,9 +297,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiBaseRet'
-              example:
-                code: 0
+                oneOf:
+                  - $ref: '#/components/schemas/ApiBaseRet'
+                  - $ref: '#/components/schemas/EncryptedPayload'
+              examples:
+                plaintext:
+                  value:
+                    code: 0
+                encrypted:
+                  value:
+                    encPayload: "e2e-v1:base64url-ciphertext"
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -317,9 +347,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiBaseRet'
-              example:
-                code: 0
+                oneOf:
+                  - $ref: '#/components/schemas/ApiBaseRet'
+                  - $ref: '#/components/schemas/EncryptedPayload'
+              examples:
+                plaintext:
+                  value:
+                    code: 0
+                encrypted:
+                  value:
+                    encPayload: "e2e-v1:base64url-ciphertext"
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -329,10 +366,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiBaseRet'
-              example:
-                code: 410
-                message: "desktop command expired"
+                oneOf:
+                  - $ref: '#/components/schemas/ApiBaseRet'
+                  - $ref: '#/components/schemas/EncryptedPayload'
+              examples:
+                plaintext:
+                  value:
+                    code: 410
+                    message: "desktop command expired"
+                encrypted:
+                  value:
+                    encPayload: "e2e-v1:base64url-ciphertext"
 
 components:
   securitySchemes:
@@ -357,25 +401,46 @@ components:
       description: Request validation failed
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ApiBaseRet' }
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/ApiBaseRet'
+              - $ref: '#/components/schemas/EncryptedPayload'
     Unauthorized:
       description: Access token or host ID is missing or invalid
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ApiBaseRet' }
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/ApiBaseRet'
+              - $ref: '#/components/schemas/EncryptedPayload'
     NotFound:
       description: Host or command was not found
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ApiBaseRet' }
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/ApiBaseRet'
+              - $ref: '#/components/schemas/EncryptedPayload'
   schemas:
     ApiBaseRet:
       type: object
       required: [code]
+      additionalProperties: false
       properties:
         code: { type: integer }
         message: { type: [string, "null"] }
         data: {}
+    EncryptedPayload:
+      type: object
+      required: [encPayload]
+      additionalProperties: false
+      properties:
+        encPayload:
+          type: string
+          minLength: 1
+          description: Opaque end-to-end encrypted body. The Server forwards this value without decrypting or interpreting it.
+          examples:
+            - "e2e-v1:base64url-ciphertext"
     DesktopPairingRequest:
       type: object
       required: [pairingCode]
