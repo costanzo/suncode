@@ -488,7 +488,17 @@ public sealed partial class ProjectWorkspace : UserControl
     private void SetWindowsCloseIconState(object? sender, string state)
     {
         if (sender is not Button button || button.GetVisualDescendants().OfType<SvgControl>().FirstOrDefault() is not { } icon) return;
-        var resourceKey = state is "hover" or "press" ? "WindowCloseHoverSvgCss" : "IconSvgCss";
-        SvgControl.SetCss(icon, this.FindResource(resourceKey) as string);
+        if (state is "hover" or "press")
+        {
+            // The white asset has a literal white stroke; do not apply the
+            // normal theme CSS afterward or it would recolor it gray again.
+            icon.Path = "/Assets/icons/windows-close-white.svg";
+            SvgControl.SetCss(icon, string.Empty);
+        }
+        else
+        {
+            icon.Path = "/Assets/icons/windows-close.svg";
+            SvgControl.SetCss(icon, this.FindResource("IconSvgCss") as string);
+        }
     }
 }

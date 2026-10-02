@@ -204,15 +204,9 @@
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="Foreground" Value="#ffffff" />
   </Style>
-  <Style Selector="Button.windows-titlebar-control.close:pointerover svg|Svg">
-    <Setter Property="Css" Value="{DynamicResource WindowCloseHoverSvgCss}" />
-  </Style>
   <Style Selector="Button.windows-titlebar-control.close:pressed /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="#8B0A14" />
     <Setter Property="Foreground" Value="#ffffff" />
-  </Style>
-  <Style Selector="Button.windows-titlebar-control.close:pressed svg|Svg">
-    <Setter Property="Css" Value="{DynamicResource WindowCloseHoverSvgCss}" />
   </Style>
   <Style Selector="Button.navigation">
     <Setter Property="MinHeight" Value="34" />
