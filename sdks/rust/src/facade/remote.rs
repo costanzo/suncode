@@ -1,4 +1,5 @@
 use super::*;
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use futures_util::StreamExt;
 use reqwest::{Client, Response};
 use serde::{Deserialize, Serialize};
@@ -10,10 +11,10 @@ const REMOTE_SERVER_URL: &str = "remote_server_url";
 const REMOTE_PAIRING_CODE: &str = "remote_pairing_code";
 const REMOTE_HOST_ID: &str = "remote_host_id";
 const REMOTE_DESKTOP_TOKEN: &str = "remote_desktop_token";
-const REMOTE_PAIRING_PAYLOAD: &str = "remote_mobile_pairing_payload";
-const REMOTE_EVENTS_URL: &str = "remote_events_url";
-const REMOTE_REQUESTS_URL: &str = "remote_requests_url";
-const REMOTE_RESULTS_URL: &str = "remote_results_url";
+const REMOTE_REFRESH_TOKEN: &str = "remote_refresh_token";
+const REMOTE_ACCESS_TOKEN_EXPIRES_AT: &str = "remote_access_token_expires_at";
+const REMOTE_MOBILE_PAIRING_CODE: &str = "remote_mobile_pairing_code";
+const REMOTE_AES_KEY: &str = "remote_aes_key";
 
 const UPLOAD_EVENT_TYPES: &[&str] = &[
     "turn.state",
@@ -52,6 +53,9 @@ pub struct RemoteServerStatus {
     pub connecting: bool,
     pub host_id: Option<String>,
     pub mobile_pairing_payload: Option<String>,
+    pub access_token_expires_at: Option<String>,
+    pub mobile_pairing_code: Option<String>,
+    pub mobile_pairing_url: Option<String>,
     pub error: Option<String>,
 }
 
@@ -60,54 +64,59 @@ pub struct RemoteServerStatus {
 struct PairRequest {
     pairing_code: String,
     display_name: String,
-    desktop_version: String,
+    agent_version: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PairResponse {
-    #[serde(alias = "host_id")]
     host_id: String,
-    #[serde(alias = "desktop_token")]
-    desktop_token: String,
-    #[serde(alias = "mobile_pairing_payload")]
-    mobile_pairing_payload: String,
-    #[serde(alias = "events_url")]
-    events_url: String,
-    #[serde(alias = "requests_url")]
-    requests_url: String,
-    #[serde(alias = "results_url")]
-    results_url: String,
+    access_token: String,
+    refresh_token: String,
+    access_token_expires_at: String,
+    mobile_pairing_code: String,
+    #[serde(skip)]
+    aes_key: String,
+}
+
+impl PairResponse {
+    fn mobile_pairing_url(&self, endpoint: &str) -> String {
+        let separator = if endpoint.contains('?') { '&' } else { '?' };
+        format!(
+            "{}{}code={}&hostId={}&k={}",
+            endpoint.trim_end_matches('/'),
+            separator,
+            urlencoding(&self.mobile_pairing_code),
+            urlencoding(&self.host_id),
+            urlencoding(&self.aes_key)
+        )
+    }
+}
+
+fn urlencoding(value: &str) -> String {
+    url::form_urlencoded::byte_serialize(value.as_bytes()).collect()
+}
+
+fn generate_aes_key() -> String {
+    let mut key = [0u8; 32];
+    key[..16].copy_from_slice(uuid::Uuid::new_v4().as_bytes());
+    key[16..].copy_from_slice(uuid::Uuid::new_v4().as_bytes());
+    URL_SAFE_NO_PAD.encode(key)
 }
 
 #[derive(Debug, Clone, Deserialize)]
 struct RemoteRequest {
     #[serde(alias = "requestId")]
     request_id: String,
-    #[serde(alias = "command")]
+    #[serde(alias = "command", default)]
     operation: String,
-    #[serde(default)]
-    #[serde(alias = "payload")]
+    #[serde(default, alias = "payload")]
     arguments: Value,
-    #[serde(default)]
-    #[serde(alias = "hostId")]
-    host_id: Option<String>,
-    #[serde(default)]
-    #[serde(alias = "sessionId")]
-    session_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
-struct RemoteResult<'a> {
-    #[serde(rename = "requestId")]
-    request_id: &'a str,
-    #[serde(rename = "hostId")]
-    host_id: &'a str,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "sessionId")]
-    session_id: Option<&'a str>,
-    success: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    code: Option<i32>,
+struct RemoteResult {
+    code: i32,
     #[serde(skip_serializing_if = "Option::is_none")]
     message: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -116,8 +125,11 @@ struct RemoteResult<'a> {
 
 #[derive(Debug, Serialize)]
 struct RemoteEventEnvelope {
+    #[serde(rename = "session_id")]
     session_id: String,
+    #[serde(rename = "occurred_at")]
     occurred_at: String,
+    #[serde(rename = "event_type")]
     event_type: String,
     payload: Value,
 }
@@ -158,7 +170,16 @@ impl RemoteController {
                 .map(|value| value.pairing.host_id.clone()),
             mobile_pairing_payload: persisted
                 .as_ref()
-                .map(|value| value.pairing.mobile_pairing_payload.clone()),
+                .map(|value| value.pairing.mobile_pairing_url(&value.config.server_url)),
+            access_token_expires_at: persisted
+                .as_ref()
+                .map(|value| value.pairing.access_token_expires_at.clone()),
+            mobile_pairing_code: persisted
+                .as_ref()
+                .map(|value| value.pairing.mobile_pairing_code.clone()),
+            mobile_pairing_url: persisted
+                .as_ref()
+                .map(|value| value.pairing.mobile_pairing_url(&value.config.server_url)),
             error: None,
         };
         Self {
@@ -195,6 +216,9 @@ impl RemoteController {
                 connecting: false,
                 host_id: None,
                 mobile_pairing_payload: None,
+                access_token_expires_at: None,
+                mobile_pairing_code: None,
+                mobile_pairing_url: None,
                 error: Some("Remote status unavailable".into()),
             })
     }
@@ -210,14 +234,17 @@ impl RemoteController {
         }
         self.store
             .set_setting("global", "global", REMOTE_HOST_ID, &Value::Null)?;
-        self.store
-            .set_setting("global", "global", REMOTE_PAIRING_PAYLOAD, &Value::Null)?;
-        self.store
-            .set_setting("global", "global", REMOTE_EVENTS_URL, &Value::Null)?;
-        self.store
-            .set_setting("global", "global", REMOTE_REQUESTS_URL, &Value::Null)?;
-        self.store
-            .set_setting("global", "global", REMOTE_RESULTS_URL, &Value::Null)?;
+        for key in [
+            REMOTE_HOST_ID,
+            REMOTE_DESKTOP_TOKEN,
+            REMOTE_REFRESH_TOKEN,
+            REMOTE_ACCESS_TOKEN_EXPIRES_AT,
+            REMOTE_MOBILE_PAIRING_CODE,
+            REMOTE_AES_KEY,
+        ] {
+            self.store
+                .set_setting("global", "global", key, &Value::Null)?;
+        }
         if let Ok(mut persisted) = self.persisted.lock() {
             *persisted = None;
         }
@@ -227,6 +254,9 @@ impl RemoteController {
             connecting: false,
             host_id: None,
             mobile_pairing_payload: None,
+            access_token_expires_at: None,
+            mobile_pairing_code: None,
+            mobile_pairing_url: None,
             error: None,
         });
         Ok(())
@@ -245,6 +275,9 @@ impl RemoteController {
             connecting: true,
             host_id: None,
             mobile_pairing_payload: None,
+            access_token_expires_at: None,
+            mobile_pairing_code: None,
+            mobile_pairing_url: None,
             error: None,
         });
         let client = Client::builder()
@@ -259,15 +292,17 @@ impl RemoteController {
             .json(&PairRequest {
                 pairing_code: config.pairing_code.clone(),
                 display_name: hostname(),
-                desktop_version: suncode_agent::version().to_string(),
+                agent_version: suncode_agent::version().to_string(),
             })
             .send()
             .await
             .map_err(remote_http_error)?;
-        let pairing = decode_pair_response(response).await?;
+        let mut pairing = decode_pair_response(response).await?;
         if pairing.host_id.trim().is_empty()
-            || pairing.desktop_token.trim().is_empty()
-            || pairing.mobile_pairing_payload.trim().is_empty()
+            || pairing.access_token.trim().is_empty()
+            || pairing.refresh_token.trim().is_empty()
+            || pairing.access_token_expires_at.trim().is_empty()
+            || pairing.mobile_pairing_code.trim().is_empty()
         {
             return Err(BusinessError::new(
                 "remote_pairing_invalid",
@@ -276,17 +311,22 @@ impl RemoteController {
         }
         for (key, value) in [
             (REMOTE_HOST_ID, json!(pairing.host_id)),
-            (REMOTE_DESKTOP_TOKEN, json!(pairing.desktop_token)),
+            (REMOTE_DESKTOP_TOKEN, json!(pairing.access_token)),
+            (REMOTE_REFRESH_TOKEN, json!(pairing.refresh_token)),
             (
-                REMOTE_PAIRING_PAYLOAD,
-                json!(pairing.mobile_pairing_payload),
+                REMOTE_ACCESS_TOKEN_EXPIRES_AT,
+                json!(pairing.access_token_expires_at),
             ),
-            (REMOTE_EVENTS_URL, json!(pairing.events_url)),
-            (REMOTE_REQUESTS_URL, json!(pairing.requests_url)),
-            (REMOTE_RESULTS_URL, json!(pairing.results_url)),
+            (
+                REMOTE_MOBILE_PAIRING_CODE,
+                json!(pairing.mobile_pairing_code),
+            ),
         ] {
             self.store.set_setting("global", "global", key, &value)?;
         }
+        pairing.aes_key = generate_aes_key();
+        self.store
+            .set_setting("global", "global", REMOTE_AES_KEY, &json!(pairing.aes_key))?;
         let persisted = PersistedRemote { config, pairing };
         if let Ok(mut current) = self.persisted.lock() {
             *current = Some(persisted.clone());
@@ -307,6 +347,9 @@ impl RemoteController {
             connecting: false,
             host_id: self.status().host_id,
             mobile_pairing_payload: self.status().mobile_pairing_payload,
+            access_token_expires_at: self.status().access_token_expires_at,
+            mobile_pairing_code: self.status().mobile_pairing_code,
+            mobile_pairing_url: self.status().mobile_pairing_url,
             error: None,
         });
         Ok(self.status())
@@ -319,10 +362,10 @@ impl RemoteController {
             REMOTE_PAIRING_CODE,
             REMOTE_HOST_ID,
             REMOTE_DESKTOP_TOKEN,
-            REMOTE_PAIRING_PAYLOAD,
-            REMOTE_EVENTS_URL,
-            REMOTE_REQUESTS_URL,
-            REMOTE_RESULTS_URL,
+            REMOTE_REFRESH_TOKEN,
+            REMOTE_ACCESS_TOKEN_EXPIRES_AT,
+            REMOTE_MOBILE_PAIRING_CODE,
+            REMOTE_AES_KEY,
         ] {
             self.store
                 .set_setting("global", "global", key, &Value::Null)?;
@@ -336,6 +379,9 @@ impl RemoteController {
             connecting: false,
             host_id: None,
             mobile_pairing_payload: None,
+            access_token_expires_at: None,
+            mobile_pairing_code: None,
+            mobile_pairing_url: None,
             error: None,
         };
         self.set_status(status.clone());
@@ -359,7 +405,18 @@ impl RemoteController {
             connected: false,
             connecting: true,
             host_id: Some(persisted.pairing.host_id.clone()),
-            mobile_pairing_payload: Some(persisted.pairing.mobile_pairing_payload.clone()),
+            mobile_pairing_payload: Some(
+                persisted
+                    .pairing
+                    .mobile_pairing_url(&persisted.config.server_url),
+            ),
+            access_token_expires_at: Some(persisted.pairing.access_token_expires_at.clone()),
+            mobile_pairing_code: Some(persisted.pairing.mobile_pairing_code.clone()),
+            mobile_pairing_url: Some(
+                persisted
+                    .pairing
+                    .mobile_pairing_url(&persisted.config.server_url),
+            ),
             error: None,
         });
         let join = std::thread::Builder::new()
@@ -427,6 +484,9 @@ impl AsyncAgentSdk {
                 connecting: false,
                 host_id: None,
                 mobile_pairing_payload: None,
+                access_token_expires_at: None,
+                mobile_pairing_code: None,
+                mobile_pairing_url: None,
                 error: None,
             })
     }
@@ -455,6 +515,9 @@ impl AsyncAgentSdk {
                     connecting: false,
                     host_id: None,
                     mobile_pairing_payload: None,
+                    access_token_expires_at: None,
+                    mobile_pairing_code: None,
+                    mobile_pairing_url: None,
                     error: Some(error.message.clone()),
                 });
                 Err(error)
@@ -536,16 +599,16 @@ fn load_persisted(store: &Store) -> SdkResult<Option<PersistedRemote>> {
     let Some(desktop_token) = get(REMOTE_DESKTOP_TOKEN) else {
         return Ok(None);
     };
-    let Some(mobile_pairing_payload) = get(REMOTE_PAIRING_PAYLOAD) else {
+    let Some(refresh_token) = get(REMOTE_REFRESH_TOKEN) else {
         return Ok(None);
     };
-    let Some(events_url) = get(REMOTE_EVENTS_URL) else {
+    let Some(access_token_expires_at) = get(REMOTE_ACCESS_TOKEN_EXPIRES_AT) else {
         return Ok(None);
     };
-    let Some(requests_url) = get(REMOTE_REQUESTS_URL) else {
+    let Some(mobile_pairing_code) = get(REMOTE_MOBILE_PAIRING_CODE) else {
         return Ok(None);
     };
-    let Some(results_url) = get(REMOTE_RESULTS_URL) else {
+    let Some(aes_key) = get(REMOTE_AES_KEY) else {
         return Ok(None);
     };
     Ok(Some(PersistedRemote {
@@ -555,11 +618,11 @@ fn load_persisted(store: &Store) -> SdkResult<Option<PersistedRemote>> {
         },
         pairing: PairResponse {
             host_id,
-            desktop_token,
-            mobile_pairing_payload,
-            events_url,
-            requests_url,
-            results_url,
+            access_token: desktop_token,
+            refresh_token,
+            access_token_expires_at,
+            mobile_pairing_code,
+            aes_key,
         },
     }))
 }
@@ -612,10 +675,7 @@ async fn remote_worker(
             break;
         }
         set_worker_status(&status, false, None);
-        let request_url = resolve_endpoint(
-            &persisted.config.server_url,
-            &persisted.pairing.requests_url,
-        );
+        let request_url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/events");
         let response = request_headers(client.get(request_url), &persisted, &host_id)
             .header("Accept", "text/event-stream")
             .send()
@@ -733,7 +793,7 @@ fn subscribe_existing_sessions(
                                 if !should_upload_event(event_type) { continue; }
                                 let event_id = uuid::Uuid::new_v4().to_string();
                                 let body = RemoteEventEnvelope { session_id: event.session_id.clone(), occurred_at: event.occurred_at.clone(), event_type: event_type.to_string(), payload: event.payload.clone().into_value() };
-                                let url = resolve_endpoint(&persisted.config.server_url, &persisted.pairing.events_url);
+                                let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/events");
                                 let response = request_headers(client.post(url), &persisted, &host_id).header("X-Request-Id", &event_id).json(&body).send().await;
                                 if let Err(error) = response { logging::warn("remote", &format!("event upload failed: {error}")); }
                             }
@@ -779,16 +839,20 @@ fn request_headers(
 ) -> reqwest::RequestBuilder {
     request
         .header("X-Host-Id", host_id)
-        .bearer_auth(&persisted.pairing.desktop_token)
+        .bearer_auth(&persisted.pairing.access_token)
 }
 
 fn parse_sse_request(frame: &[u8]) -> Option<RemoteRequest> {
     let text = std::str::from_utf8(frame).ok()?;
     let mut event = String::new();
+    let mut id = String::new();
     let mut data = String::new();
     for line in text.lines() {
         if let Some(value) = line.strip_prefix("event:") {
             event = value.trim().into();
+        }
+        if let Some(value) = line.strip_prefix("id:") {
+            id = value.trim().into();
         }
         if let Some(value) = line.strip_prefix("data:") {
             if !data.is_empty() {
@@ -797,12 +861,38 @@ fn parse_sse_request(frame: &[u8]) -> Option<RemoteRequest> {
             data.push_str(value.trim_start());
         }
     }
-    if event != "desktop.request" && event != "desktop.command" {
-        return None;
+    let mut value: Value = serde_json::from_str(&data).ok()?;
+    if event.starts_with("mobile.") {
+        let request_id = id;
+        let operation = mobile_event_operation(&event)?;
+        let mut arguments = value.get("requestBody").cloned().unwrap_or_else(|| json!({}));
+        if let Some(path) = value.get("pathParam").and_then(Value::as_object) {
+            if let Some(object) = arguments.as_object_mut() {
+                for (key, value) in path { object.entry(key.clone()).or_insert_with(|| value.clone()); }
+            }
+        }
+        return Some(RemoteRequest { request_id, operation: operation.into(), arguments });
     }
-    serde_json::from_str(&data)
-        .ok()
-        .filter(|request: &RemoteRequest| !request.request_id.trim().is_empty())
+    if event != "desktop.request" && event != "desktop.command" { return None; }
+    if value.get("request_id").is_none() && value.get("requestId").is_none() {
+        value["request_id"] = Value::String(id);
+    }
+    serde_json::from_value(value).ok().filter(|request: &RemoteRequest| !request.request_id.trim().is_empty())
+}
+
+fn mobile_event_operation(event: &str) -> Option<&'static str> {
+    Some(match event {
+        "mobile.projects.list" => "projects.list",
+        "mobile.sessions.list" => "sessions.list",
+        "mobile.sessions.create" => "session.create",
+        "mobile.sessions.get" => "session.get",
+        "mobile.sessions.messages.send" => "session.message",
+        "mobile.sessions.approvals.resolve" => "approval.resolve",
+        "mobile.sessions.questions.reply" => "question.reply",
+        "mobile.sessions.cancel" => "turn.cancel",
+        "mobile.sessions.retry" => "turn.retry",
+        _ => return None,
+    })
 }
 
 fn sse_frame_boundary(buffer: &[u8]) -> Option<(usize, usize)> {
@@ -823,29 +913,20 @@ async fn handle_remote_request(
     request: RemoteRequest,
 ) {
     let request_id = request.request_id;
-    let session_id = request.session_id.clone();
     let outcome = dispatch_request(sdk, &request_id, &request.operation, request.arguments).await;
     let result = match outcome {
         Ok(data) => RemoteResult {
-            request_id: &request_id,
-            host_id,
-            session_id: session_id.as_deref(),
-            success: true,
-            code: None,
+            code: 0,
             message: None,
             payload: Some(data),
         },
         Err(error) => RemoteResult {
-            request_id: &request_id,
-            host_id,
-            session_id: session_id.as_deref(),
-            success: false,
-            code: None,
+            code: 1,
             message: Some(error.message.into()),
             payload: None,
         },
     };
-    let url = resolve_endpoint(&persisted.config.server_url, &persisted.pairing.results_url);
+    let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/responses");
     let _ = request_headers(client.post(url), persisted, host_id)
         .header("X-Request-Id", &request_id)
         .json(&result)
@@ -896,8 +977,17 @@ async fn dispatch_request(
         }
         "session.cancel" | "turn.cancel" => {
             let session_id = string("session_id", "sessionId")?;
-            let turn_id = string("turn_id", "turnId")?;
-            serde_json::to_value(sdk.cancel_turn(session_id, turn_id)?)
+            let turn_id = arguments.get("turn_id").and_then(Value::as_str)
+                .or_else(|| arguments.get("turnId").and_then(Value::as_str));
+            let result = if let Some(turn_id) = turn_id {
+                sdk.cancel_turn(session_id, turn_id)?
+            } else {
+                let snapshot = sdk.session_snapshot(session_id, 0)?;
+                let turn_id = snapshot.conversation_turns.last().map(|turn| turn.turn_id.as_str())
+                    .ok_or_else(|| BusinessError::invalid("turnId is required"))?;
+                sdk.cancel_turn(session_id, turn_id)?
+            };
+            serde_json::to_value(result)
                 .map_err(|e| BusinessError::unavailable(e.to_string()))
         }
         "session.retry" | "turn.retry" => {
@@ -977,7 +1067,6 @@ mod tests {
         .unwrap();
         assert_eq!(request.request_id, "req-1");
         assert_eq!(request.operation, "session.message");
-        assert_eq!(request.session_id.as_deref(), Some("session-1"));
         assert_eq!(request.arguments["text"], "hello");
     }
 

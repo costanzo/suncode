@@ -101,12 +101,15 @@ public sealed record ProjectsResult(IReadOnlyList<ProjectRecord> Projects);
 public sealed record RemoteServerConfiguration(string ServerUrl, string PairingCode);
 
 public sealed record RemoteServerStatus(
-    bool Configured,
-    bool Connected,
-    bool Connecting,
-    string? HostId,
-    string? MobilePairingPayload,
-    string? Error);
+    [property: JsonPropertyName("configured")] bool Configured,
+    [property: JsonPropertyName("connected")] bool Connected,
+    [property: JsonPropertyName("connecting")] bool Connecting,
+    [property: JsonPropertyName("hostId")] string? HostId,
+    [property: JsonPropertyName("mobilePairingPayload")] string? MobilePairingPayload,
+    [property: JsonPropertyName("error")] string? Error,
+    [property: JsonPropertyName("accessTokenExpiresAt")] string? AccessTokenExpiresAt = null,
+    [property: JsonPropertyName("mobilePairingCode")] string? MobilePairingCode = null,
+    [property: JsonPropertyName("mobilePairingUrl")] string? MobilePairingUrl = null);
 
 public sealed record AttentionEvent(
     string Kind,

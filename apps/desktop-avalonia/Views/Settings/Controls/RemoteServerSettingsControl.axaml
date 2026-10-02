@@ -35,6 +35,7 @@
           </Border>
           <TextBlock x:Name="PairingPayloadText" Grid.Column="1" TextWrapping="Wrap" FontFamily="monospace" VerticalAlignment="Center" />
         </Grid>
+        <TextBlock x:Name="PairingMetadataText" Margin="0,12,0,0" Classes="settings-hint" TextWrapping="Wrap" />
       </StackPanel>
     </StackPanel>
   </ScrollViewer>

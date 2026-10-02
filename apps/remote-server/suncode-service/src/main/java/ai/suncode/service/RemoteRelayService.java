@@ -85,20 +85,31 @@ public class RemoteRelayService {
             String sessionId,
             String command,
             DesktopCommandPayload payload,
-            String idempotencyKey) {
+            String requestIdHeader) {
+        return request(hostId, sessionId, command, payload, requestIdHeader, Map.of());
+    }
+
+    public DesktopResponse request(
+            String hostId,
+            String sessionId,
+            String command,
+            DesktopCommandPayload payload,
+            String requestIdHeader,
+            Map<String, Object> queryParam) {
         DesktopConnection connection = desktopConnections.get(hostId);
         if (connection == null) {
             throw new BusinessException(DESKTOP_UNAVAILABLE);
         }
-        String idempotencyId = idempotencyKey == null || idempotencyKey.isBlank()
-                ? null : hostId + ":" + command + ":" + idempotencyKey;
+        String idempotencyId = requestIdHeader == null || requestIdHeader.isBlank()
+                ? null : hostId + ":" + command + ":" + requestIdHeader;
         if (idempotencyId != null) {
             DesktopResponse previous = idempotentResults.get(idempotencyId);
             if (previous != null) {
                 return previous;
             }
         }
-        String requestId = UUID.randomUUID().toString();
+        String requestId = requestIdHeader == null || requestIdHeader.isBlank()
+                ? UUID.randomUUID().toString() : requestIdHeader;
         CompletableFuture<DesktopResponse> future = new CompletableFuture<>();
         synchronized (connectionLifecycleLock) {
             if (shuttingDown) {
@@ -107,9 +118,17 @@ public class RemoteRelayService {
             pending.put(requestId, future);
         }
         try {
-            DesktopCommand commandEnvelope = new DesktopCommand(
-                    requestId, hostId, sessionId, command, payload == null ? new DesktopCommandPayload() : payload);
-            send(connection.emitter(), "desktop.command", requestId, commandEnvelope);
+            DesktopCommandPayload commandPayload = payload == null ? new DesktopCommandPayload() : payload;
+            Map<String, Object> path = new java.util.LinkedHashMap<>();
+            if (hostId != null) path.put("hostId", hostId);
+            if (sessionId != null) path.put("sessionId", sessionId);
+            if (command.startsWith("approval.")) path.put("approvalId", commandPayload.getApprovalId());
+            if (command.startsWith("question.")) path.put("questionId", commandPayload.getQuestionId());
+            DesktopMobileHttpRequest requestEnvelope = new DesktopMobileHttpRequest(
+                    path,
+                    queryParam == null ? Map.of() : queryParam,
+                    MarshallingUtils.convertValue(commandPayload, Map.class));
+            send(connection.emitter(), mobileEventName(command), requestId, requestEnvelope);
             try {
                 DesktopResponse response = future.get(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 if (idempotencyId != null) {
@@ -172,11 +191,8 @@ public class RemoteRelayService {
         return mobileEvent;
     }
 
-    public SseEmitter connectMobileSession(String sessionId, String lastEventId) {
-        String hostId = sessionHosts.get(sessionId);
-        if (hostId == null) {
-            throw new BusinessException(SESSION_NOT_FOUND);
-        }
+    public SseEmitter connectMobileSession(String hostId, String sessionId, String lastEventId) {
+        if (hostId == null || sessionId == null) throw new BusinessException(SESSION_NOT_FOUND);
         MobileConnection connection = new MobileConnection(sessionId, new SseEmitter(0L));
         synchronized (connectionLifecycleLock) {
             if (shuttingDown) {
@@ -238,7 +254,7 @@ public class RemoteRelayService {
     public List<HostDto> hosts() {
         List<HostDto> result = new ArrayList<>();
         for (Map.Entry<String, DesktopConnection> entry : desktopConnections.entrySet()) {
-            result.add(new HostDto(entry.getKey(), entry.getKey(), "", "connected", 0, 0, Instant.now(), null, null));
+            result.add(new HostDto(entry.getKey(), entry.getKey(), "connected", Instant.now(), null));
         }
         return result;
     }
@@ -259,6 +275,19 @@ public class RemoteRelayService {
             throw new BusinessException(PARAM_INVALID, "snapshot must be a JSON object");
         }
         snapshots.put(hostId, snapshot.deepCopy());
+    }
+
+    public JsonNode snapshot(String hostId) {
+        JsonNode snapshot = snapshots.get(hostId);
+        return snapshot == null ? null : snapshot.deepCopy();
+    }
+
+    public void notifyDesktop(String hostId, String requestId, String eventType, Object body) {
+        DesktopConnection connection = desktopConnections.get(hostId);
+        if (connection != null) {
+            send(connection.emitter(), eventType, requestId == null ? UUID.randomUUID().toString() : requestId,
+                    body == null ? Map.of() : body);
+        }
     }
 
     private void replayAfter(SseEmitter emitter, HostEvents state, String lastEventId, String sessionId) {
@@ -335,6 +364,21 @@ public class RemoteRelayService {
         if (value == null || value.isBlank()) {
             throw new BusinessException(PARAM_INVALID, message);
         }
+    }
+
+    private static String mobileEventName(String command) {
+        return switch (command) {
+            case "projects.list" -> "mobile.projects.list";
+            case "sessions.list" -> "mobile.sessions.list";
+            case "session.create" -> "mobile.sessions.create";
+            case "session.get" -> "mobile.sessions.get";
+            case "session.message", "session.send_message" -> "mobile.sessions.messages.send";
+            case "approval.resolve" -> "mobile.sessions.approvals.resolve";
+            case "question.reply" -> "mobile.sessions.questions.reply";
+            case "turn.cancel", "session.cancel" -> "mobile.sessions.cancel";
+            case "turn.retry", "session.retry" -> "mobile.sessions.retry";
+            default -> "mobile." + command.replace('.', '_');
+        };
     }
 
 }

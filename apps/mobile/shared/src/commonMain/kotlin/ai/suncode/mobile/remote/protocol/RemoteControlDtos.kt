@@ -20,10 +20,8 @@ data class HealthData(
 
 @Serializable
 data class PairingExchangeRequest(
-    val pairingPayload: String,
+    val pairingCode: String,
     val deviceName: String,
-    val devicePublicKey: String? = null,
-    val clientNonce: String? = null,
 )
 
 @Serializable
@@ -50,13 +48,9 @@ data class TokenData(
 data class HostDto(
     val id: String,
     val displayName: String,
-    val endpoint: String,
     val connectionState: String,
-    val projectCount: Int,
-    val activeSessionCount: Int,
     val lastSeenAt: String? = null,
-    val desktopVersion: String? = null,
-    val protocolVersion: String? = null,
+    val agentVersion: String? = null,
 )
 
 @Serializable
@@ -73,12 +67,6 @@ data class ProjectsData(
 )
 
 @Serializable
-data class HostRefDto(
-    val id: String,
-    val displayName: String,
-)
-
-@Serializable
 data class ProjectRefDto(
     val id: String,
     val displayName: String,
@@ -89,7 +77,6 @@ data class SessionSummaryDto(
     val id: String,
     val title: String,
     val kind: String,
-    val host: HostRefDto,
     val project: ProjectRefDto,
     val state: String,
     val updatedAt: String,
@@ -138,7 +125,6 @@ data class SessionDetailDto(
     val id: String,
     val title: String,
     val kind: String,
-    val host: HostRefDto,
     val project: ProjectRefDto,
     val state: String,
     val updatedAt: String,
@@ -153,17 +139,20 @@ data class SessionDetailDto(
 
 @Serializable
 data class CreateSessionRequest(
-    val hostId: String,
     val projectId: String,
     val title: String? = null,
     val firstMessage: String? = null,
+    val images: List<ImageInput> = emptyList(),
 )
 
 @Serializable
 data class SendMessageRequest(
     val text: String,
-    val clientMessageId: String? = null,
+    val images: List<ImageInput> = emptyList(),
 )
+
+@Serializable
+data class ImageInput(val mimeType: String, val data: String, val fileName: String? = null)
 
 @Serializable
 data class ApprovalResolutionRequest(
@@ -179,8 +168,6 @@ data class QuestionReplyRequest(
 
 @Serializable
 data class CommandAcceptedData(
-    val requestId: String,
-    val acceptedAt: String,
     val sessionId: String? = null,
 )
 
@@ -188,9 +175,8 @@ data class CommandAcceptedData(
 data class SyncData(
     val cursor: String,
     val resetRequired: Boolean,
-    val hosts: List<HostDto>,
+    val host: HostDto? = null,
     val sessions: List<SessionSummaryDto>,
-    val removedSessionIds: List<String>,
     val hasMore: Boolean = false,
 )
 

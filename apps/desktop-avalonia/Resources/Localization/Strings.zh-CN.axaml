@@ -122,14 +122,14 @@
   <x:String x:Key="Loc_RemoteServerHint">将桌面客户端与远程服务器配对，以便手机查看项目并控制会话。</x:String>
   <x:String x:Key="Loc_Connection">连接</x:String>
   <x:String x:Key="Loc_ServerUrl">服务器地址</x:String>
-  <x:String x:Key="Loc_ServerUrlHint">填写远程服务器的 HTTPS 地址。</x:String>
+  <x:String x:Key="Loc_ServerUrlHint">填写远程服务器的 HTTP 或 HTTPS 地址（推荐使用 HTTPS）。</x:String>
   <x:String x:Key="Loc_PairingCode">配对码</x:String>
   <x:String x:Key="Loc_PairingCodeHint">远程服务器管理员提供的代码。</x:String>
   <x:String x:Key="Loc_SaveAndConnect">保存并连接</x:String>
   <x:String x:Key="Loc_Disconnect">断开连接</x:String>
   <x:String x:Key="Loc_Clear">清除</x:String>
   <x:String x:Key="Loc_PhonePairing">手机配对</x:String>
-  <x:String x:Key="Loc_ScanMobilePayload">使用 SunCode Mobile 扫描此内容。</x:String>
+  <x:String x:Key="Loc_ScanMobilePayload">使用 SunCode Mobile 扫描此一次性配对链接。</x:String>
   <x:String x:Key="Loc_NetworkHint">配置嵌入式 Rust 代理访问 HTTP 和 HTTPS 服务的方式。</x:String>
   <x:String x:Key="Loc_Proxy">代理</x:String>
   <x:String x:Key="Loc_ProxyMode">代理模式</x:String>

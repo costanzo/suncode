@@ -26,7 +26,7 @@ import static ai.suncode.common.exception.ErrorCode.PARAM_INVALID;
 @RequiredArgsConstructor
 public class MobileAuthFilter implements Filter {
     private static final Pattern HOST_PATH = Pattern.compile("/v1/mobile/hosts/([^/]+)(?:/.*)?$");
-    private static final Pattern SESSION_PATH = Pattern.compile("/v1/mobile/sessions/([^/]+)(?:/.*)?$");
+    private static final Pattern SESSION_PATH = Pattern.compile("/v1/mobile/hosts/([^/]+)/sessions/([^/]+)(?:/.*)?$");
 
     private final RemoteAuthService authService;
     private final RemoteRelayService relayService;
@@ -40,6 +40,12 @@ public class MobileAuthFilter implements Filter {
         }
         String path = applicationPath(request);
         if (isPublic(request)) {
+            String publicHost = request.getHeader("X-Host-Id");
+            if (publicHost == null || publicHost.isBlank()) {
+                FilterSupport.businessError(response, new BusinessException(PARAM_INVALID, "X-Host-Id is required"));
+                return;
+            }
+            ServiceContext.authenticate(ClientType.MOBILE, publicHost, null);
             chain.doFilter(request, response);
             return;
         }
@@ -48,30 +54,12 @@ public class MobileAuthFilter implements Filter {
         HttpServletRequest filteredRequest = request;
         try {
             token = authService.requireMobile(request.getHeader("Authorization"));
-            if ("POST".equalsIgnoreCase(request.getMethod()) && "/v1/mobile/sessions".equals(path)) {
-                CachedBodyRequest wrapped = new CachedBodyRequest(request);
-                CreateSessionRequest body;
-                try {
-                    body = MarshallingUtils.fromJson(wrapped.body(), CreateSessionRequest.class);
-                } catch (BusinessException error) {
-                    throw new BusinessException(PARAM_INVALID, "invalid request body", error);
-                }
-                if (body == null || body.hostId() == null || body.hostId().isBlank()) {
-                    throw new BusinessException(PARAM_INVALID, "hostId is required");
-                }
-                filteredRequest = wrapped;
-                hostId = body.hostId();
-            } else {
-                hostId = resolveHost(request, token, path);
-            }
+            hostId = resolveHost(request, token, path);
             if (hostId != null) {
                 authService.requireHostAccessToken(token, hostId);
             }
         } catch (BusinessException error) {
             FilterSupport.businessError(response, error);
-            return;
-        } catch (IOException error) {
-            FilterSupport.businessError(response, new BusinessException(PARAM_INVALID, "invalid request body"));
             return;
         }
         ServiceContext.authenticate(ClientType.MOBILE, hostId, token);
@@ -92,13 +80,7 @@ public class MobileAuthFilter implements Filter {
         }
         Matcher sessionMatcher = SESSION_PATH.matcher(path);
         if (sessionMatcher.matches()) {
-            return relayService.hostForSession(sessionMatcher.group(1));
-        }
-        if ("GET".equalsIgnoreCase(request.getMethod()) && "/v1/mobile/sessions".equals(path)) {
-            String selectedHost = request.getParameter("hostId");
-            if (selectedHost != null && !selectedHost.isBlank()) {
-                return selectedHost;
-            }
+            return sessionMatcher.group(1);
         }
         return authService.hostForMobileToken(token);
     }

@@ -33,9 +33,9 @@ mod computer;
 mod language_servers;
 mod lifecycle;
 mod mcp;
+mod preview;
 mod project_sessions;
 mod projects;
-mod preview;
 mod remote;
 mod sessions;
 mod settings;
@@ -565,9 +565,14 @@ fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
         }
         return Ok(());
     }
-    if matches!(key, "preview_program" | "preview_url" | "preview_args" | "preview_cwd") {
+    if matches!(
+        key,
+        "preview_program" | "preview_url" | "preview_args" | "preview_cwd"
+    ) {
         if scope != "project" {
-            return Err(BusinessError::invalid(format!("{key} is a project-only setting")));
+            return Err(BusinessError::invalid(format!(
+                "{key} is a project-only setting"
+            )));
         }
         match key {
             "preview_program" | "preview_url" | "preview_cwd" if !value.is_string() => {

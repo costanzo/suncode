@@ -29,12 +29,9 @@ class RemoteControlProtocolTest {
                 "host": {
                   "id": "host-1",
                   "displayName": "MacBook Pro",
-                  "endpoint": "192.168.1.24",
                   "connectionState": "connected",
-                  "projectCount": 2,
-                  "activeSessionCount": 1,
                   "lastSeenAt": "2026-09-26T11:59:00Z",
-                  "protocolVersion": "remote.v1"
+                  "agentVersion": "0.1.0"
                 }
               }
             }
@@ -43,7 +40,7 @@ class RemoteControlProtocolTest {
 
         assertEquals("access-1", response.data?.accessToken)
         assertEquals("MacBook Pro", response.data?.host?.displayName)
-        assertEquals("remote.v1", response.data?.host?.protocolVersion)
+        assertEquals("0.1.0", response.data?.host?.agentVersion)
     }
 
     @Test
@@ -85,9 +82,8 @@ class RemoteControlProtocolTest {
               "data": {
                 "cursor": "cursor-2",
                 "resetRequired": false,
-                "hosts": [],
+                "host": {"id":"host-1","displayName":"MacBook Pro","connectionState":"connected","lastSeenAt":null,"agentVersion":"0.1.0"},
                 "sessions": [],
-                "removedSessionIds": ["session-old"],
                 "futureField": "ignored"
               }
             }
@@ -95,7 +91,7 @@ class RemoteControlProtocolTest {
         )
 
         assertEquals("cursor-2", response.data?.cursor)
-        assertEquals(listOf("session-old"), response.data?.removedSessionIds)
+        assertEquals("host-1", response.data?.host?.id)
         assertEquals(false, response.data?.hasMore)
     }
 
@@ -112,7 +108,6 @@ class RemoteControlProtocolTest {
                 "id": "session-1",
                 "title": "Fix login redirect",
                 "kind": "primary",
-                "host": {"id":"host-1","displayName":"MacBook Pro"},
                 "project": {"id":"project-1","displayName":"suncode"},
                 "state": "running",
                 "updatedAt": "2026-09-26T12:00:00Z",

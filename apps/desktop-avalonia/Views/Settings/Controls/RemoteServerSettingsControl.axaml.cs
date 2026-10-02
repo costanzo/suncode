@@ -18,10 +18,27 @@ public sealed partial class RemoteServerSettingsControl : UserControl
     public StackPanel PairingSectionControl => PairingSection;
     public TextBlock PairingPayloadTextControl => PairingPayloadText;
     public Image PairingQrImageControl => PairingQrImage;
+    public void SetPairingMetadata(string? hostId, string? accessTokenExpiresAt)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(hostId)) parts.Add($"Host ID: {hostId}");
+        if (!string.IsNullOrWhiteSpace(accessTokenExpiresAt)) parts.Add($"Access token expires: {accessTokenExpiresAt}");
+        PairingMetadataText.Text = string.Join(Environment.NewLine, parts);
+    }
     public void SetPairingPayload(string? payload)
     {
+        // The Rust remote controller supplies the complete application pairing URL.
+        // Keep the control transport-agnostic: both http:// and https:// QR links
+        // are valid according to the remote-control contract.
         PairingPayloadText.Text = payload ?? string.Empty;
         if (string.IsNullOrWhiteSpace(payload))
+        {
+            PairingQrImage.Source = null;
+            return;
+        }
+        if (!Uri.TryCreate(payload, UriKind.Absolute, out var uri)
+            || uri.Scheme is not ("http" or "https")
+            || string.IsNullOrWhiteSpace(uri.Query))
         {
             PairingQrImage.Source = null;
             return;

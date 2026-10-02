@@ -258,7 +258,6 @@ paths:
                         - id: "project-01J8YQ6M7C"
                           displayName: "suncode"
                           relativeRoot: "workspace"
-                          activeSessionCount: 1
                 encrypted:
                   value:
                     encPayload: "e2e-v1:base64url-ciphertext"
@@ -1156,17 +1155,13 @@ components:
             data: { $ref: '#/components/schemas/HostDetail' }
     Host:
       type: object
-      required: [id, displayName, endpoint, connectionState, projectCount, activeSessionCount, lastSeenAt]
+      required: [id, displayName, connectionState, lastSeenAt]
       properties:
         id: { type: string }
         displayName: { type: string }
-        endpoint: { type: string, description: Redacted or display-safe Desktop endpoint. }
         connectionState: { $ref: '#/components/schemas/ConnectionState' }
-        projectCount: { type: integer, minimum: 0 }
-        activeSessionCount: { type: integer, minimum: 0 }
         lastSeenAt: { type: [string, "null"], format: date-time }
-        desktopVersion: { type: [string, "null"] }
-        protocolVersion: { type: [string, "null"] }
+        agentVersion: { type: [string, "null"] }
     HostDetail:
       type: object
       required: [id, displayName, connectionState, lastSeenAt]

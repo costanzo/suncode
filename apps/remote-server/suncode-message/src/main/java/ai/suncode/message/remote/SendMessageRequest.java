@@ -1,4 +1,4 @@
 package ai.suncode.message.remote;
 
-public record SendMessageRequest(String text, String clientMessageId) {
+public record SendMessageRequest(String text, java.util.List<ImageInput> images) {
 }

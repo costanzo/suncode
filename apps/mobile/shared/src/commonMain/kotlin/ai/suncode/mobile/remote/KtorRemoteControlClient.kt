@@ -42,17 +42,24 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlin.random.Random
 
 interface RemoteTokenStore {
     suspend fun accessToken(): String?
     suspend fun refreshToken(): String?
     suspend fun save(tokens: TokenData)
     suspend fun clear()
+    /** Host binding and E2E key are persisted alongside credentials by production stores. */
+    suspend fun hostId(): String? = null
+    suspend fun saveHostId(hostId: String) = Unit
+    suspend fun saveAesKey(aesKey: String) = Unit
 }
 
 /** In-memory store for wiring and tests; production storage must be platform-secure. */
 class InMemoryRemoteTokenStore : RemoteTokenStore {
     private var tokens: TokenData? = null
+    private var pairedHostId: String? = null
+    private var aesKey: String? = null
 
     override suspend fun accessToken(): String? = tokens?.accessToken
 
@@ -64,7 +71,13 @@ class InMemoryRemoteTokenStore : RemoteTokenStore {
 
     override suspend fun clear() {
         tokens = null
+        pairedHostId = null
+        aesKey = null
     }
+
+    override suspend fun hostId(): String? = pairedHostId
+    override suspend fun saveHostId(hostId: String) { pairedHostId = hostId }
+    override suspend fun saveAesKey(aesKey: String) { this.aesKey = aesKey }
 }
 
 class RemoteHttpException(
@@ -93,49 +106,54 @@ class KtorRemoteControlClient(
     }
     private val refreshMutex = Mutex()
 
+    override suspend fun rememberPairingKey(key: String) = tokenStore.saveAesKey(key)
+
     /** Release the engine when the application scope is shut down. */
     fun close() {
         http.close()
     }
 
-    override suspend fun health(): ApiBaseRet<HealthData> = envelope { get("$baseUrl/v1/mobile/health") }
+    override suspend fun health(): ApiBaseRet<HealthData> = envelope { get("$baseUrl/v1/mobile/health") { routingHeaders(activeHostIdOrUnknown()) } }
 
-    override suspend fun exchangePairing(request: PairingExchangeRequest): ApiBaseRet<PairingExchangeData> {
-        val response = envelope<PairingExchangeData> { postJson("$baseUrl/v1/mobile/pairings/exchange", request) }
+    override suspend fun exchangePairing(hostId: String, request: PairingExchangeRequest): ApiBaseRet<PairingExchangeData> {
+        currentHostId = hostId
+        val response = envelope<PairingExchangeData> { postJson("$baseUrl/v1/mobile/pairings/exchange", request, hostId = hostId) }
         response.data?.let { pairing ->
             tokenStore.save(TokenData(pairing.accessToken, pairing.refreshToken, pairing.accessTokenExpiresAt))
+            tokenStore.saveHostId(hostId)
         }
         return response
     }
 
     override suspend fun refreshToken(request: RefreshTokenRequest): ApiBaseRet<TokenData> {
-        val response = envelope<TokenData> { postJson("$baseUrl/v1/mobile/auth/refresh", request) }
+        val hostId = activeHostId()
+        val response = envelope<TokenData> { postJson("$baseUrl/v1/mobile/auth/refresh", request, hostId = hostId) }
         response.data?.let { tokenStore.save(it) }
         return response
     }
 
-    override suspend fun logout(idempotencyKey: String) {
+    override suspend fun logout() {
         try {
-            authenticatedEmptyResponse { token -> post("$baseUrl/v1/mobile/auth/logout") { authenticated(token, idempotencyKey) } }
+            val hostId = activeHostId()
+            authenticatedEmptyResponse { token -> post("$baseUrl/v1/mobile/auth/logout") { authenticated(token, hostId) } }
         } finally {
             tokenStore.clear()
         }
     }
 
     override suspend fun getHost(hostId: String): ApiBaseRet<HostDto> {
-        return authenticatedEnvelope { token -> get("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}") { authenticated(token) } }
+        return authenticatedEnvelope { token -> get("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}") { authenticated(token, hostId) } }
     }
 
     override suspend fun listProjects(hostId: String): ApiBaseRet<ProjectsData> {
-        return authenticatedEnvelope { token -> get("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/projects") { authenticated(token) } }
+        return authenticatedEnvelope { token -> get("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/projects") { authenticated(token, hostId) } }
     }
 
-    override suspend fun listSessions(hostId: String?, projectId: String?, cursor: String?, limit: Int?): ApiBaseRet<SessionPageData> {
+    override suspend fun listSessions(hostId: String, projectId: String?, cursor: String?, limit: Int?): ApiBaseRet<SessionPageData> {
         return authenticatedEnvelope { token ->
-            get("$baseUrl/v1/mobile/sessions") {
-                authenticated(token)
+            get("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/sessions") {
+                authenticated(token, hostId)
                 url {
-                    hostId?.let { parameters.append("hostId", it) }
                     projectId?.let { parameters.append("projectId", it) }
                     cursor?.let { parameters.append("cursor", it) }
                     limit?.let { parameters.append("limit", it.toString()) }
@@ -144,38 +162,38 @@ class KtorRemoteControlClient(
         }
     }
 
-    override suspend fun createSession(request: CreateSessionRequest, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/mobile/sessions", request, idempotencyKey, token) }
+    override suspend fun createSession(hostId: String, request: CreateSessionRequest): ApiBaseRet<CommandAcceptedData> {
+        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/sessions", request, hostId = hostId, token = token) }
     }
 
-    override suspend fun getSession(sessionId: String): ApiBaseRet<SessionDetailDto> {
-        return authenticatedEnvelope { token -> get("$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}") { authenticated(token) } }
+    override suspend fun getSession(hostId: String, sessionId: String): ApiBaseRet<SessionDetailDto> {
+        return authenticatedEnvelope { token -> get("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}") { authenticated(token, hostId) } }
     }
 
-    override suspend fun sendMessage(sessionId: String, request: SendMessageRequest, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}/messages", request, idempotencyKey, token) }
+    override suspend fun sendMessage(hostId: String, sessionId: String, request: SendMessageRequest): ApiBaseRet<CommandAcceptedData> {
+        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}/messages", request, hostId = hostId, token = token) }
     }
 
-    override suspend fun resolveApproval(sessionId: String, approvalId: String, request: ApprovalResolutionRequest, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}/approvals/${approvalId.pathSegment()}", request, idempotencyKey, token) }
+    override suspend fun resolveApproval(hostId: String, sessionId: String, approvalId: String, request: ApprovalResolutionRequest): ApiBaseRet<CommandAcceptedData> {
+        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}/approvals/${approvalId.pathSegment()}", request, hostId = hostId, token = token) }
     }
 
-    override suspend fun replyQuestion(sessionId: String, questionId: String, request: QuestionReplyRequest, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}/questions/${questionId.pathSegment()}/reply", request, idempotencyKey, token) }
+    override suspend fun replyQuestion(hostId: String, sessionId: String, questionId: String, request: QuestionReplyRequest): ApiBaseRet<CommandAcceptedData> {
+        return authenticatedEnvelope { token -> postJson("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}/questions/${questionId.pathSegment()}/reply", request, hostId = hostId, token = token) }
     }
 
-    override suspend fun cancelTurn(sessionId: String, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope { token -> post("$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}/cancel") { authenticated(token, idempotencyKey) } }
+    override suspend fun cancelTurn(hostId: String, sessionId: String): ApiBaseRet<CommandAcceptedData> {
+        return authenticatedEnvelope { token -> post("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}/cancel") { authenticated(token, hostId) } }
     }
 
-    override suspend fun retryLastTurn(sessionId: String, idempotencyKey: String): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope { token -> post("$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}/retry") { authenticated(token, idempotencyKey) } }
+    override suspend fun retryLastTurn(hostId: String, sessionId: String): ApiBaseRet<CommandAcceptedData> {
+        return authenticatedEnvelope { token -> post("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}/retry") { authenticated(token, hostId) } }
     }
 
-    override suspend fun sync(cursor: String?, limit: Int?): ApiBaseRet<SyncData> {
+    override suspend fun sync(hostId: String, cursor: String?, limit: Int?): ApiBaseRet<SyncData> {
         return authenticatedEnvelope { token ->
-            get("$baseUrl/v1/mobile/sync") {
-                authenticated(token)
+            get("$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/sync") {
+                authenticated(token, hostId)
                 url {
                     cursor?.let { parameters.append("cursor", it) }
                     limit?.let { parameters.append("limit", it.toString()) }
@@ -184,29 +202,30 @@ class KtorRemoteControlClient(
         }
     }
 
-    override fun observeSessionEvents(sessionId: String, lastEventId: String?): Flow<SessionStreamEvent> = flow {
+    override fun observeSessionEvents(hostId: String, sessionId: String, lastEventId: String?): Flow<SessionStreamEvent> = flow {
         var token = accessTokenOrRefresh()
-        val url = "$baseUrl/v1/mobile/sessions/${sessionId.pathSegment()}/events"
+        val url = "$baseUrl/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}/events"
         try {
-            openEventStream(url, token, lastEventId) { emit(it) }
+            openEventStream(url, hostId, token, lastEventId) { emit(it) }
         } catch (failure: SSEClientException) {
             val status = failure.response?.status ?: HttpStatusCode.InternalServerError
             if (status != HttpStatusCode.Unauthorized) {
                 throw RemoteHttpException(status, null, "Remote Session event stream failed")
             }
             token = refreshAccessToken(token)
-            openEventStream(url, token, lastEventId) { emit(it) }
+            openEventStream(url, hostId, token, lastEventId) { emit(it) }
         }
     }
 
     private suspend fun openEventStream(
         url: String,
+        hostId: String,
         token: String,
         lastEventId: String?,
         onEvent: suspend (SessionStreamEvent) -> Unit,
     ) {
         http.sse(url, request = {
-            bearerAuth(token)
+            authenticated(token, hostId)
             lastEventId?.let { header("Last-Event-ID", it) }
         }) {
             incoming.collect { event ->
@@ -262,17 +281,19 @@ class KtorRemoteControlClient(
         return decoded ?: ApiBaseRet()
     }
 
-    private fun io.ktor.client.request.HttpRequestBuilder.authenticated(token: String, idempotencyKey: String? = null) {
+    private fun io.ktor.client.request.HttpRequestBuilder.authenticated(token: String, hostId: String?) {
         bearerAuth(token)
-        idempotencyKey?.let { header("Idempotency-Key", it) }
+        header("X-Host-Id", hostId ?: currentHostId.ifBlank { "unknown" })
+        header("X-Request-Id", requestId())
     }
 
-    private suspend inline fun <reified T> HttpClient.postJson(url: String, body: T, idempotencyKey: String? = null, token: String? = null): HttpResponse =
+    private suspend inline fun <reified T> HttpClient.postJson(url: String, body: T, hostId: String? = null, token: String? = null): HttpResponse =
         post(url) {
             contentType(ContentType.Application.Json)
             accept(ContentType.Application.Json)
             token?.let { bearerAuth(it) }
-            idempotencyKey?.let { header("Idempotency-Key", it) }
+            header("X-Host-Id", hostId ?: currentHostId)
+            header("X-Request-Id", requestId())
             setBody(body)
         }
 
@@ -285,7 +306,7 @@ class KtorRemoteControlClient(
             ?: throw IllegalStateException("An access token or refresh token is required")
         try {
             val response = envelope<TokenData> {
-                postJson("$baseUrl/v1/mobile/auth/refresh", RefreshTokenRequest(refreshToken))
+                postJson("$baseUrl/v1/mobile/auth/refresh", RefreshTokenRequest(refreshToken), hostId = activeHostId())
             }
             response.data?.accessToken ?: throw IllegalStateException("Remote Server returned no access token")
         } catch (failure: Throwable) {
@@ -295,6 +316,18 @@ class KtorRemoteControlClient(
     }
 
     private fun String.pathSegment(): String = encodeURLPathPart()
+
+    private var currentHostId: String = ""
+    private suspend fun activeHostId(): String =
+        currentHostId.takeIf { it.isNotBlank() } ?: tokenStore.hostId()?.also { currentHostId = it }
+        ?: throw IllegalStateException("A paired host is required")
+    private suspend fun activeHostIdOrUnknown(): String =
+        currentHostId.takeIf { it.isNotBlank() } ?: tokenStore.hostId() ?: "unknown"
+    private fun requestId(): String = "mobile-" + Random.nextLong().toString(16)
+    private fun io.ktor.client.request.HttpRequestBuilder.routingHeaders(hostId: String?) {
+        header("X-Host-Id", hostId ?: currentHostId.ifBlank { "unknown" })
+        header("X-Request-Id", requestId())
+    }
 }
 
 private fun String.encodeURLPathPart(): String = buildString {

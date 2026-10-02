@@ -40,6 +40,14 @@ public class DesktopAuthFilter implements Filter {
                 chain.doFilter(request, response);
                 return;
             }
+            if ("POST".equalsIgnoreCase(request.getMethod()) && path.endsWith("/auth/refresh")) {
+                if (!StringUtils.hasText(hostId)) {
+                    throw new BusinessException(PARAM_INVALID, "X-Host-Id is required");
+                }
+                ServiceContext.authenticate(ClientType.DESKTOP, hostId, null);
+                chain.doFilter(request, response);
+                return;
+            }
             if (!StringUtils.hasText(hostId)) {
                 throw new BusinessException(PARAM_INVALID, "X-Host-Id is required");
             }

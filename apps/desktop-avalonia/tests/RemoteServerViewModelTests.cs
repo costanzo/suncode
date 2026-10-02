@@ -41,4 +41,19 @@ public sealed class RemoteServerViewModelTests
         Assert.Equal("Remote connected", viewModel.StatusText);
         Assert.Contains(nameof(RemoteServerViewModel.StatusText), changed);
     }
+
+    [Fact]
+    public void StatusCarriesPairingMetadataAndExpiry()
+    {
+        using var viewModel = new RemoteServerViewModel(new FakeViewModelHost());
+        var status = new RemoteServerStatus(
+            true, true, false, "host-1", "https://remote.example?code=once&hostId=host-1&k=aes", null,
+            "2026-10-02T03:47:22.778Z", "once", "https://remote.example?code=once&hostId=host-1&k=aes");
+
+        viewModel.ApplyStatus(status);
+
+        Assert.True(viewModel.Configured);
+        Assert.True(viewModel.Connected);
+        Assert.Equal("Remote connected", viewModel.StatusText);
+    }
 }

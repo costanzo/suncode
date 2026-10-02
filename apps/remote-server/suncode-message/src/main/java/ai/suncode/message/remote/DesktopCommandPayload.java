@@ -14,11 +14,10 @@ public class DesktopCommandPayload {
     private String projectId;
     private String cursor;
     private Integer limit;
-    private String hostId;
     private String title;
     private String firstMessage;
     private String text;
-    private String clientMessageId;
+    private List<ImageInput> images;
     private String approvalId;
     private String action;
     private Integer expectedRevision;
@@ -35,17 +34,17 @@ public class DesktopCommandPayload {
 
     public static DesktopCommandPayload createSession(CreateSessionRequest request) {
         DesktopCommandPayload payload = new DesktopCommandPayload();
-        payload.setHostId(request.hostId());
         payload.setProjectId(request.projectId());
         payload.setTitle(request.title());
         payload.setFirstMessage(request.firstMessage());
+        payload.setImages(request.images());
         return payload;
     }
 
     public static DesktopCommandPayload sendMessage(SendMessageRequest request) {
         DesktopCommandPayload payload = new DesktopCommandPayload();
         payload.setText(request.text());
-        payload.setClientMessageId(request.clientMessageId());
+        payload.setImages(request.images());
         return payload;
     }
 

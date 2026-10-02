@@ -23,6 +23,7 @@ public class RemoteAuthService {
     private final ConcurrentHashMap<String, String> mobileTokens = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> refreshTokens = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> desktopTokens = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> desktopRefreshTokens = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, PendingPairing> pairings = new ConcurrentHashMap<>();
     private final String desktopPairingCode;
 
@@ -37,17 +38,18 @@ public class RemoteAuthService {
         }
         String hostId = UUID.randomUUID().toString();
         String desktopToken = UUID.randomUUID().toString();
+        String desktopRefresh = UUID.randomUUID().toString();
         desktopTokens.put(hostId, desktopToken);
+        desktopRefreshTokens.put(desktopRefresh, hostId);
         String displayName = request.displayName() == null || request.displayName().isBlank()
                 ? hostId : request.displayName();
         String mobilePairingPayload = createPairing(hostId, displayName);
         return new DesktopPairingPayload(
                 hostId,
                 desktopToken,
-                mobilePairingPayload,
-                "/v1/desktop/events",
-                "/v1/desktop/events",
-                "/v1/desktop/responses");
+                desktopRefresh,
+                Instant.now().plus(ACCESS_TOKEN_LIFETIME),
+                mobilePairingPayload);
     }
 
     public String createPairing(String hostId, String displayName) {
@@ -57,10 +59,10 @@ public class RemoteAuthService {
     }
 
     public PairingExchangeData exchange(PairingExchangeRequest request) {
-        if (request == null || request.pairingPayload() == null || request.pairingPayload().isBlank()) {
-            throw new BusinessException(PARAM_INVALID, "pairingPayload is required");
+        if (request == null || request.pairingCode() == null || request.pairingCode().isBlank()) {
+            throw new BusinessException(PARAM_INVALID, "pairingCode is required");
         }
-        PendingPairing pairing = pairings.remove(request.pairingPayload());
+        PendingPairing pairing = pairings.remove(request.pairingCode());
         if (pairing == null || pairing.expiresAtNanos() < System.nanoTime()) {
             throw new BusinessException(PAIRING_EXPIRED);
         }
@@ -72,7 +74,7 @@ public class RemoteAuthService {
                 access,
                 refresh,
                 Instant.now().plus(ACCESS_TOKEN_LIFETIME),
-                new HostDto(pairing.hostId(), pairing.displayName(), "", "offline", 0, 0, null, null, null));
+                new HostDto(pairing.hostId(), pairing.displayName(), "offline", null, null));
     }
 
     public TokenData refresh(RefreshTokenRequest request) {
@@ -85,6 +87,35 @@ public class RemoteAuthService {
         mobileTokens.put(access, hostId);
         refreshTokens.put(refresh, hostId);
         return new TokenData(access, refresh, Instant.now().plus(ACCESS_TOKEN_LIFETIME));
+    }
+
+    public TokenData refreshMobile(String hostId, RefreshTokenRequest request) {
+        String token = request == null ? null : request.refreshToken();
+        String tokenHost = token == null ? null : refreshTokens.get(token);
+        if (tokenHost == null || !tokenHost.equals(hostId)) {
+            throw new BusinessException(UNAUTHORIZED, "invalid refresh token");
+        }
+        refreshTokens.remove(token, hostId);
+        return refresh(request);
+    }
+
+    public TokenData refreshDesktop(String hostId, RefreshTokenRequest request) {
+        String tokenHost = request == null ? null : desktopRefreshTokens.remove(request.refreshToken());
+        if (tokenHost == null || !tokenHost.equals(hostId)) {
+            throw new BusinessException(UNAUTHORIZED, "invalid desktop refresh token");
+        }
+        String access = UUID.randomUUID().toString();
+        String refresh = UUID.randomUUID().toString();
+        desktopTokens.put(hostId, access);
+        desktopRefreshTokens.put(refresh, hostId);
+        return new TokenData(access, refresh, Instant.now().plus(ACCESS_TOKEN_LIFETIME));
+    }
+
+    public void requirePairingHost(String hostId, String pairingCode) {
+        PendingPairing pairing = pairings.get(pairingCode);
+        if (pairing == null || !pairing.hostId().equals(hostId)) {
+            throw new BusinessException(UNAUTHORIZED, "pairing code does not belong to host");
+        }
     }
 
     public String requireMobile(String authorization) {

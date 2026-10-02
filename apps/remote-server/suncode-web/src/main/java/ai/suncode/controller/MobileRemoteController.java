@@ -43,17 +43,25 @@ public class MobileRemoteController {
 
     @PostMapping("/pairings/exchange")
     public ApiBaseRet<?> exchange(@RequestBody PairingExchangeRequest request) {
-        return ApiBaseRet.success(authService.exchange(request));
+        String hostId = ServiceContext.current().hostId();
+        authService.requirePairingHost(hostId, request == null ? null : request.pairingCode());
+        ApiBaseRet<?> response = ApiBaseRet.success(authService.exchange(request));
+        relayService.notifyDesktop(hostId, ServiceContext.current().requestId(), "mobile.pairings.exchange.succeeded",
+                java.util.Map.of("pathParam", java.util.Map.of(), "queryParam", java.util.Map.of(), "requestBody", java.util.Map.of("deviceName", request.deviceName())));
+        return response;
     }
 
     @PostMapping("/auth/refresh")
     public ApiBaseRet<?> refresh(@RequestBody RefreshTokenRequest request) {
-        return ApiBaseRet.success(authService.refresh(request));
+        return ApiBaseRet.success(authService.refreshMobile(ServiceContext.current().hostId(), request));
     }
 
     @PostMapping("/auth/logout")
     public ResponseEntity<Void> logout() {
+        String hostId = ServiceContext.current().hostId();
         authService.logoutToken(ServiceContext.current().token());
+        relayService.notifyDesktop(hostId, ServiceContext.current().requestId(), "mobile.auth.logout",
+                java.util.Map.of("pathParam", java.util.Map.of(), "queryParam", java.util.Map.of(), "requestBody", java.util.Map.of()));
         return ResponseEntity.noContent().build();
     }
 
@@ -65,94 +73,91 @@ public class MobileRemoteController {
 
     @GetMapping("/hosts/{hostId}/projects")
     public ApiBaseRet<?> projects(@PathVariable String hostId) {
-        DesktopResponse response = relayService.request(hostId, null, "projects.list", empty(), null);
+        DesktopResponse response = relayService.request(hostId, null, "projects.list", empty(), ServiceContext.current().requestId());
         return responseEnvelope(response, ProjectsData.class);
     }
 
-    @GetMapping("/sessions")
-    public ApiBaseRet<?> sessions(@RequestParam(required = false) String hostId,
+    @GetMapping("/hosts/{hostId}/sessions")
+    public ApiBaseRet<?> sessions(@PathVariable String hostId,
                                   @RequestParam(required = false) String projectId,
                                   @RequestParam(required = false) String cursor,
                                   @RequestParam(required = false) Integer limit) {
-        String selectedHost = hostId;
-        if (selectedHost == null || selectedHost.isBlank()) {
-            selectedHost = ServiceContext.current().hostId();
-            String pairedHostId = selectedHost;
-            if (relayService.hosts().stream().noneMatch(host -> host.id().equals(pairedHostId))) {
-                return ApiBaseRet.success(new SessionPageData(List.of(), null, false));
-            }
-        }
         DesktopCommandPayload payload = DesktopCommandPayload.listSessions(projectId, cursor, limit);
-        return responseEnvelope(relayService.request(selectedHost, null, "sessions.list", payload, null), SessionPageData.class);
+        java.util.Map<String, Object> query = new java.util.LinkedHashMap<>();
+        if (projectId != null) query.put("projectId", projectId);
+        if (cursor != null) query.put("cursor", cursor);
+        if (limit != null) query.put("limit", limit);
+        return responseEnvelope(relayService.request(hostId, null, "sessions.list", payload, ServiceContext.current().requestId(), query), SessionPageData.class);
     }
 
-    @PostMapping("/sessions")
-    public ResponseEntity<ApiBaseRet<?>> createSession(@RequestHeader("Idempotency-Key") String idempotencyKey,
+    @PostMapping("/hosts/{hostId}/sessions")
+    public ResponseEntity<ApiBaseRet<?>> createSession(@PathVariable String hostId,
                                                        @RequestBody CreateSessionRequest request) {
-        DesktopResponse response = relayService.request(request.hostId(), null, "session.create", DesktopCommandPayload.createSession(request), idempotencyKey);
+        DesktopResponse response = relayService.request(hostId, null, "session.create", DesktopCommandPayload.createSession(request), ServiceContext.current().requestId());
         String sessionId = sessionId(response.payload());
-        relayService.rememberSession(sessionId, request.hostId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiBaseRet.success(new CommandAcceptedData(
-                response.requestId(), Instant.now(), sessionId)));
+        relayService.rememberSession(sessionId, hostId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiBaseRet.success(new CommandAcceptedData(sessionId)));
     }
 
-    @GetMapping("/sessions/{sessionId}")
-    public ApiBaseRet<?> session(@PathVariable String sessionId) {
-        String hostId = requireHost(sessionId);
-        return responseEnvelope(relayService.request(hostId, sessionId, "session.get", empty(), null), Object.class);
+    @GetMapping("/hosts/{hostId}/sessions/{sessionId}")
+    public ApiBaseRet<?> session(@PathVariable String hostId, @PathVariable String sessionId) {
+        return responseEnvelope(relayService.request(hostId, sessionId, "session.get", empty(), ServiceContext.current().requestId()), Object.class);
     }
 
-    @GetMapping(value = "/sessions/{sessionId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter sessionEvents(@PathVariable String sessionId,
+    @GetMapping(value = "/hosts/{hostId}/sessions/{sessionId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter sessionEvents(@PathVariable String hostId, @PathVariable String sessionId,
                                     @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId) {
-        return relayService.connectMobileSession(sessionId, lastEventId);
+        return relayService.connectMobileSession(hostId, sessionId, lastEventId);
     }
 
-    @PostMapping("/sessions/{sessionId}/messages")
-    public ApiBaseRet<?> message(@RequestHeader("Idempotency-Key") String idempotencyKey,
+    @PostMapping("/hosts/{hostId}/sessions/{sessionId}/messages")
+    public ApiBaseRet<?> message(@PathVariable String hostId,
                                  @PathVariable String sessionId,
                                  @RequestBody SendMessageRequest request) {
-        return command(idempotencyKey, sessionId, "session.message", DesktopCommandPayload.sendMessage(request));
+        return command(hostId, sessionId, "session.message", DesktopCommandPayload.sendMessage(request));
     }
 
-    @PostMapping("/sessions/{sessionId}/approvals/{approvalId}")
-    public ApiBaseRet<?> approval(@RequestHeader("Idempotency-Key") String idempotencyKey,
+    @PostMapping("/hosts/{hostId}/sessions/{sessionId}/approvals/{approvalId}")
+    public ApiBaseRet<?> approval(@PathVariable String hostId,
                                   @PathVariable String sessionId,
                                   @PathVariable String approvalId,
                                   @RequestBody ApprovalResolutionRequest request) {
-        return command(idempotencyKey, sessionId, "approval.resolve", DesktopCommandPayload.resolveApproval(approvalId, request));
+        return command(hostId, sessionId, "approval.resolve", DesktopCommandPayload.resolveApproval(approvalId, request));
     }
 
-    @PostMapping("/sessions/{sessionId}/questions/{questionId}/reply")
-    public ApiBaseRet<?> question(@RequestHeader("Idempotency-Key") String idempotencyKey,
+    @PostMapping("/hosts/{hostId}/sessions/{sessionId}/questions/{questionId}/reply")
+    public ApiBaseRet<?> question(@PathVariable String hostId,
                                   @PathVariable String sessionId,
                                   @PathVariable String questionId,
                                   @RequestBody QuestionReplyRequest request) {
-        return command(idempotencyKey, sessionId, "question.reply", DesktopCommandPayload.replyQuestion(questionId, request));
+        return command(hostId, sessionId, "question.reply", DesktopCommandPayload.replyQuestion(questionId, request));
     }
 
-    @PostMapping("/sessions/{sessionId}/cancel")
-    public ApiBaseRet<?> cancel(@RequestHeader("Idempotency-Key") String idempotencyKey,
+    @PostMapping("/hosts/{hostId}/sessions/{sessionId}/cancel")
+    public ApiBaseRet<?> cancel(@PathVariable String hostId,
                                 @PathVariable String sessionId) {
-        return command(idempotencyKey, sessionId, "turn.cancel", empty());
+        command(hostId, sessionId, "turn.cancel", empty());
+        return ApiBaseRet.success();
     }
 
-    @PostMapping("/sessions/{sessionId}/retry")
-    public ApiBaseRet<?> retry(@RequestHeader("Idempotency-Key") String idempotencyKey,
+    @PostMapping("/hosts/{hostId}/sessions/{sessionId}/retry")
+    public ApiBaseRet<?> retry(@PathVariable String hostId,
                                @PathVariable String sessionId) {
-        return command(idempotencyKey, sessionId, "turn.retry", empty());
+        command(hostId, sessionId, "turn.retry", empty());
+        return ApiBaseRet.success();
     }
 
-    @GetMapping("/sync")
-    public ApiBaseRet<?> sync() {
-        String hostId = ServiceContext.current().hostId();
-        List<HostDto> hosts = relayService.hosts().stream().filter(host -> host.id().equals(hostId)).toList();
-        return ApiBaseRet.success(new SyncData(UUID.randomUUID().toString(), false, hosts, List.of(), List.of(), false));
+    @GetMapping("/hosts/{hostId}/sync")
+    public ApiBaseRet<?> sync(@PathVariable String hostId) {
+        HostDto host = relayService.hosts().stream().filter(item -> item.id().equals(hostId)).findFirst().orElse(null);
+        com.fasterxml.jackson.databind.JsonNode snapshot = relayService.snapshot(hostId);
+        List<java.util.Map<String, Object>> sessions = snapshot != null && snapshot.has("sessions")
+                ? MarshallingUtils.convertValue(snapshot.get("sessions"), List.class) : List.of();
+        return ApiBaseRet.success(new SyncData(UUID.randomUUID().toString(), false, host, sessions, false));
     }
 
-    private ApiBaseRet<?> command(String idempotencyKey, String sessionId, String command, DesktopCommandPayload payload) {
-        String hostId = requireHost(sessionId);
-        DesktopResponse response = relayService.request(hostId, sessionId, command, payload, idempotencyKey);
+    private ApiBaseRet<?> command(String hostId, String sessionId, String command, DesktopCommandPayload payload) {
+        DesktopResponse response = relayService.request(hostId, sessionId, command, payload, ServiceContext.current().requestId());
         return responseEnvelope(response, CommandAcceptedData.class);
     }
 

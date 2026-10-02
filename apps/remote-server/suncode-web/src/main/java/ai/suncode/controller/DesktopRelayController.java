@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -38,6 +39,12 @@ public class DesktopRelayController {
         return ApiBaseRet.success(authService.createDesktopPairing(pairingRequest));
     }
 
+    @PostMapping("/auth/refresh")
+    public ApiBaseRet<?> refresh(@RequestBody RefreshTokenRequest request) {
+        ServiceContext context = ServiceContext.current();
+        return ApiBaseRet.success(authService.refreshDesktop(context.hostId(), request));
+    }
+
     @PostMapping("/snapshot")
     public ApiBaseRet<?> snapshot(@RequestBody JsonNode snapshot) {
         relayService.updateSnapshot(ServiceContext.current().hostId(), snapshot);
@@ -48,11 +55,8 @@ public class DesktopRelayController {
     public ApiBaseRet<?> response(@RequestBody String body) {
         DesktopResponse response = MarshallingUtils.fromJson(body, DesktopResponse.class);
         String hostId = ServiceContext.current().hostId();
-        if (response.hostId() != null && !hostId.equals(response.hostId())) {
-            throw new BusinessException(PARAM_INVALID, "hostId does not match the connection");
-        }
         relayService.complete(new DesktopResponse(
-                response.requestId(), hostId, response.sessionId(), response.success(), response.code(), response.message(), response.payload()));
+                ServiceContext.current().requestId(), hostId, response.sessionId(), response.code() != null && response.code() == 0, response.code(), response.message(), response.payload()));
         return ApiBaseRet.success();
     }
 

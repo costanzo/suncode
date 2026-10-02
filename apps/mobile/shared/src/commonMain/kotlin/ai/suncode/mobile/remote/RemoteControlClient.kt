@@ -27,55 +27,56 @@ import kotlinx.coroutines.flow.Flow
  * envelopes directly.
  */
 interface RemoteControlClient {
+    suspend fun rememberPairingKey(key: String) = Unit
     suspend fun health(): ApiBaseRet<HealthData>
 
-    suspend fun exchangePairing(request: PairingExchangeRequest): ApiBaseRet<PairingExchangeData>
+    suspend fun exchangePairing(hostId: String, request: PairingExchangeRequest): ApiBaseRet<PairingExchangeData>
 
     suspend fun refreshToken(request: RefreshTokenRequest): ApiBaseRet<TokenData>
 
-    suspend fun logout(idempotencyKey: String)
+    suspend fun logout()
 
     suspend fun getHost(hostId: String): ApiBaseRet<HostDto>
 
     suspend fun listProjects(hostId: String): ApiBaseRet<ProjectsData>
 
     suspend fun listSessions(
-        hostId: String? = null,
+        hostId: String,
         projectId: String? = null,
         cursor: String? = null,
         limit: Int? = null,
     ): ApiBaseRet<SessionPageData>
 
-    suspend fun createSession(request: CreateSessionRequest, idempotencyKey: String): ApiBaseRet<CommandAcceptedData>
+    suspend fun createSession(hostId: String, request: CreateSessionRequest): ApiBaseRet<CommandAcceptedData>
 
-    suspend fun getSession(sessionId: String): ApiBaseRet<SessionDetailDto>
+    suspend fun getSession(hostId: String, sessionId: String): ApiBaseRet<SessionDetailDto>
 
     suspend fun sendMessage(
+        hostId: String,
         sessionId: String,
         request: SendMessageRequest,
-        idempotencyKey: String,
     ): ApiBaseRet<CommandAcceptedData>
 
     suspend fun resolveApproval(
+        hostId: String,
         sessionId: String,
         approvalId: String,
         request: ApprovalResolutionRequest,
-        idempotencyKey: String,
     ): ApiBaseRet<CommandAcceptedData>
 
     suspend fun replyQuestion(
+        hostId: String,
         sessionId: String,
         questionId: String,
         request: QuestionReplyRequest,
-        idempotencyKey: String,
     ): ApiBaseRet<CommandAcceptedData>
 
-    suspend fun cancelTurn(sessionId: String, idempotencyKey: String): ApiBaseRet<CommandAcceptedData>
+    suspend fun cancelTurn(hostId: String, sessionId: String): ApiBaseRet<CommandAcceptedData>
 
-    suspend fun retryLastTurn(sessionId: String, idempotencyKey: String): ApiBaseRet<CommandAcceptedData>
+    suspend fun retryLastTurn(hostId: String, sessionId: String): ApiBaseRet<CommandAcceptedData>
 
-    suspend fun sync(cursor: String? = null, limit: Int? = null): ApiBaseRet<SyncData>
+    suspend fun sync(hostId: String, cursor: String? = null, limit: Int? = null): ApiBaseRet<SyncData>
 
     /** Emits SSE frames for one Session, including the initial `session.snapshot` frame. */
-    fun observeSessionEvents(sessionId: String, lastEventId: String? = null): Flow<SessionStreamEvent>
+    fun observeSessionEvents(hostId: String, sessionId: String, lastEventId: String? = null): Flow<SessionStreamEvent>
 }

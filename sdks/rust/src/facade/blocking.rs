@@ -23,9 +23,23 @@ impl DerefMut for AgentSdk {
 }
 
 impl AgentSdk {
-    pub fn preview_state(&self, project_id: &str) -> SdkResult<suncode_agent::PreviewState> { self.inner.preview_state(project_id) }
-    pub fn start_preview(&self, project_id: &str, program: &str, args: Vec<String>, cwd: Option<String>, url: &str) -> SdkResult<suncode_agent::PreviewState> { self.inner.start_preview(project_id, program, args, cwd, url) }
-    pub fn stop_preview(&self, project_id: &str) -> SdkResult<suncode_agent::PreviewState> { self.inner.stop_preview(project_id) }
+    pub fn preview_state(&self, project_id: &str) -> SdkResult<suncode_agent::PreviewState> {
+        self.inner.preview_state(project_id)
+    }
+    pub fn start_preview(
+        &self,
+        project_id: &str,
+        program: &str,
+        args: Vec<String>,
+        cwd: Option<String>,
+        url: &str,
+    ) -> SdkResult<suncode_agent::PreviewState> {
+        self.inner
+            .start_preview(project_id, program, args, cwd, url)
+    }
+    pub fn stop_preview(&self, project_id: &str) -> SdkResult<suncode_agent::PreviewState> {
+        self.inner.stop_preview(project_id)
+    }
     pub fn remote_server_configuration(&self) -> RemoteServerConfiguration {
         self.inner.remote_server_configuration()
     }

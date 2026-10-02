@@ -72,7 +72,8 @@ class RemoteMobileRepository(
     override fun observeSessions(): Flow<List<Session>> = sessions.asStateFlow()
 
     override suspend fun sendMessage(sessionId: String, message: String): Result<Unit> = runCatching {
-        client.sendMessage(sessionId, SendMessageRequest(message), key())
+        val session = requireSession(sessionId)
+        client.sendMessage(session.hostId, sessionId, SendMessageRequest(message),)
         refreshSession(sessionId)
     }
 
@@ -80,38 +81,38 @@ class RemoteMobileRepository(
         val session = requireSession(sessionId)
         val question = session.pendingQuestion ?: error("No pending question")
         client.replyQuestion(
+            session.hostId,
             sessionId,
             question.id,
             ai.suncode.mobile.remote.protocol.QuestionReplyRequest(listOf(answer), question.revision),
-            key(),
         )
         refreshSession(sessionId)
     }
 
     override suspend fun resolveApproval(sessionId: String, approvalId: String, action: String, expectedRevision: Int): Result<Unit> = runCatching {
         client.resolveApproval(
+            session.hostId,
             sessionId,
             approvalId,
             ai.suncode.mobile.remote.protocol.ApprovalResolutionRequest(action, expectedRevision),
-            key(),
         )
         refreshSession(sessionId)
     }
 
     override suspend fun cancelTurn(sessionId: String): Result<Unit> = runCatching {
-        client.cancelTurn(sessionId, key())
+        client.cancelTurn(requireSession(sessionId).hostId, sessionId)
         refreshSession(sessionId)
     }
 
     override suspend fun retryLastTurn(sessionId: String): Result<Unit> = runCatching {
-        client.retryLastTurn(sessionId, key())
+        client.retryLastTurn(requireSession(sessionId).hostId, sessionId)
         refreshSession(sessionId)
     }
 
     override suspend fun createSession(host: Host, project: Project, title: String, firstMessage: String): Result<String> = runCatching {
         val sessionId = client.createSession(
-            CreateSessionRequest(host.id, project.id, title.ifBlank { null }, firstMessage.ifBlank { null }),
-            key(),
+            host.id,
+            CreateSessionRequest(project.id, title.ifBlank { null }, firstMessage.ifBlank { null }),
         ).data?.sessionId ?: error("Create Session response did not include a Session ID")
         refreshSession(sessionId)
         sessionId
@@ -119,8 +120,13 @@ class RemoteMobileRepository(
 
     override suspend fun pairHost(pairingPayload: String): Result<Host> = runCatching {
         require(pairingPayload.isNotBlank()) { "Pairing payload is required" }
+        val query = parsePairingUrl(pairingPayload)
+        val hostId = query["hostId"] ?: error("Pairing URL has no hostId")
+        val code = query["code"] ?: error("Pairing URL has no code")
+        client.rememberPairingKey(query["k"] ?: error("Pairing URL has no encryption key"))
         val host = client.exchangePairing(
-            PairingExchangeRequest(pairingPayload.trim(), "SunCode Mobile"),
+            hostId,
+            PairingExchangeRequest(code, "SunCode Mobile"),
         ).data?.host ?: error("Pairing response did not include a Host")
         val pairedHost = host.toDomain().copy(
             projects = runCatching { client.listProjects(host.id).data?.items.orEmpty() }
@@ -165,9 +171,11 @@ class RemoteMobileRepository(
     }
 
     suspend fun refresh() {
-        val page = client.listSessions(limit = 100).data
+        val hostId = hosts.value.firstOrNull()?.id ?: return
+        val page = client.listSessions(hostId, limit = 100).data
         projectionMutex.withLock {
-            sessions.value = page?.items?.map { it.toDomain() } ?: emptyList()
+            val host = hosts.value.firstOrNull()
+            sessions.value = page?.items?.map { it.toDomain(host?.id.orEmpty(), host?.name.orEmpty()) } ?: emptyList()
             syncCursor = null
             reconcileSessionHosts()
             persistLocked()
@@ -178,12 +186,13 @@ class RemoteMobileRepository(
         var cursor = syncCursor
         var firstPage = true
         while (true) {
-            val data = client.sync(cursor, 100).data
+            val hostId = hosts.value.firstOrNull()?.id ?: return
+            val data = client.sync(hostId, cursor, 100).data
             if (data == null) {
                 if (firstPage) refresh()
                 return
             }
-            val projectedHosts = data.hosts.map { host ->
+            val projectedHosts = listOfNotNull(data.host).map { host ->
                 val current = hosts.value.firstOrNull { it.id == host.id }
                 if (current != null && current.projects.isNotEmpty()) {
                     host.toDomain().copy(projects = current.projects)
@@ -199,17 +208,15 @@ class RemoteMobileRepository(
             }
             projectionMutex.withLock {
                 if (firstPage && (cursor == null || data.resetRequired)) {
-                    sessions.value = data.sessions.map { it.toDomain() }
+                    sessions.value = data.sessions.map { it.toDomain(hostId, projectedHosts.firstOrNull()?.name.orEmpty()) }
                     hosts.value = projectedHosts
                 } else {
-                    val removed = data.removedSessionIds.toSet()
                     val incoming = data.sessions.associateBy { it.id }
                     val existingIds = sessions.value.mapTo(hashSetOf()) { it.id }
                     sessions.value = sessions.value
                         .asSequence()
-                        .filterNot { it.id in removed }
-                        .map { incoming[it.id]?.toDomain() ?: it }
-                        .plus(incoming.values.filterNot { it.id in existingIds }.map { it.toDomain() })
+                        .map { incoming[it.id]?.toDomain(hostId, projectedHosts.firstOrNull()?.name.orEmpty()) ?: it }
+                        .plus(incoming.values.filterNot { it.id in existingIds }.map { it.toDomain(hostId, projectedHosts.firstOrNull()?.name.orEmpty()) })
                         .toList()
                     val incomingHosts = projectedHosts.associateBy { it.id }
                     hosts.value = hosts.value.map { existing ->
@@ -239,12 +246,13 @@ class RemoteMobileRepository(
     }
 
     private suspend fun refreshSession(sessionId: String) {
-        val detail = client.getSession(sessionId).data ?: return
+        val detail = client.getSession(requireSession(sessionId).hostId, sessionId).data ?: return
         applySessionDetail(detail)
     }
 
     private suspend fun applySessionDetail(detail: ai.suncode.mobile.remote.protocol.SessionDetailDto) {
-        val updated = detail.toDomain()
+        val host = hosts.value.firstOrNull { it.projects.any { project -> project.id == detail.project.id } }
+        val updated = detail.toDomain(host?.id.orEmpty(), host?.name.orEmpty())
         projectionMutex.withLock {
             sessions.value = if (sessions.value.any { it.id == updated.id }) {
                 sessions.value.map { existing -> if (existing.id == updated.id) updated else existing }
@@ -310,7 +318,7 @@ class RemoteMobileRepository(
         var retryDelayMs = INITIAL_RETRY_DELAY_MS
         while (currentCoroutineContext().isActive && appForeground && activeSessionId == sessionId) {
             try {
-                client.observeSessionEvents(sessionId, lastEventIds[sessionId]).collect { frame ->
+                client.observeSessionEvents(requireSession(sessionId).hostId, sessionId, lastEventIds[sessionId]).collect { frame ->
                     handleSessionStreamEvent(sessionId, frame)
                 }
                 delay(withJitter(retryDelayMs))
@@ -381,7 +389,7 @@ class RemoteMobileRepository(
                 lastEventIds.putAll(snapshot.sessionEventIds)
                 lastEventSequences.putAll(snapshot.sessionEventSequences)
                 hosts.value = snapshot.hosts.map { it.toDomain() }
-                sessions.value = snapshot.sessions.map { it.toDomain() }
+                sessions.value = snapshot.sessions.map { it.toDomain(snapshot.hosts.firstOrNull()?.id.orEmpty(), snapshot.hosts.firstOrNull()?.name.orEmpty()) }
                 reconcileSessionHosts()
             }
         } catch (_: Throwable) {
@@ -401,7 +409,40 @@ class RemoteMobileRepository(
 
     private fun requireSession(sessionId: String): Session = sessions.value.firstOrNull { it.id == sessionId } ?: error("Unknown session: $sessionId")
 
-    private fun key(): String = "mobile-${Random.nextLong().toString(16)}-${Random.nextLong().toString(16)}"
+    private fun parsePairingUrl(value: String): Map<String, String> {
+        val trimmed = value.trim()
+        require(trimmed.startsWith("http://") || trimmed.startsWith("https://")) { "Pairing URL must use http or https" }
+        val query = trimmed.substringAfter('?', "")
+        require(query.isNotBlank()) { "Pairing URL must include a query" }
+        val values = query.split('&').mapNotNull { part ->
+            val separator = part.indexOf('=')
+            if (separator <= 0) return@mapNotNull null
+            percentDecode(part.substring(0, separator)) to percentDecode(part.substring(separator + 1))
+        }.toMap()
+        require(!values["code"].isNullOrBlank() && !values["hostId"].isNullOrBlank() && !values["k"].isNullOrBlank()) {
+            "Pairing URL is incomplete"
+        }
+        return values
+    }
+
+    private fun percentDecode(value: String): String {
+        val bytes = ByteArray(value.length)
+        var count = 0
+        var index = 0
+        while (index < value.length) {
+            if (value[index] == '%' && index + 2 < value.length) {
+                val hex = value.substring(index + 1, index + 3).toIntOrNull(16)
+                if (hex != null) {
+                    bytes[count++] = hex.toByte()
+                    index += 3
+                    continue
+                }
+            }
+            bytes[count++] = value[index].code.toByte()
+            index++
+        }
+        return bytes.copyOf(count).decodeToString()
+    }
 
     private companion object {
         const val INITIAL_RETRY_DELAY_MS = 1_000L
@@ -500,11 +541,11 @@ private fun JsonObject.questionItems(): List<EventQuestion> =
         EventQuestion(prompt, options, question["custom"]?.jsonPrimitive?.contentOrNull?.toBoolean() == true)
     }
 
-private fun ai.suncode.mobile.remote.protocol.SessionSummaryDto.toDomain() = Session(
+private fun ai.suncode.mobile.remote.protocol.SessionSummaryDto.toDomain(hostId: String, hostName: String) = Session(
     id = id,
     title = title,
-    hostId = host.id,
-    hostName = host.displayName,
+    hostId = hostId,
+    hostName = hostName,
     projectId = project.id,
     projectName = project.displayName,
     state = state.toSessionState(),
@@ -513,11 +554,11 @@ private fun ai.suncode.mobile.remote.protocol.SessionSummaryDto.toDomain() = Ses
     revision = 0,
 )
 
-private fun ai.suncode.mobile.remote.protocol.SessionDetailDto.toDomain() = Session(
+private fun ai.suncode.mobile.remote.protocol.SessionDetailDto.toDomain(hostId: String, hostName: String) = Session(
     id = id,
     title = title,
-    hostId = host.id,
-    hostName = host.displayName,
+    hostId = hostId,
+    hostName = hostName,
     projectId = project.id,
     projectName = project.displayName,
     state = state.toSessionState(),
@@ -532,7 +573,7 @@ private fun ai.suncode.mobile.remote.protocol.SessionDetailDto.toDomain() = Sess
 private fun ai.suncode.mobile.remote.protocol.HostDto.toDomain() = Host(
     id = id,
     name = displayName,
-    endpoint = endpoint,
+    endpoint = "",
     state = when (connectionState) {
         "connected" -> HostConnectionState.CONNECTED
         "connecting" -> HostConnectionState.CONNECTING

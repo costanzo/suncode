@@ -467,8 +467,13 @@ public sealed partial class SettingsWindow : Window
     private void RefreshRemotePresentation(SunCode.Sdk.Models.RemoteServerStatus status)
     {
         RemotePage.DisconnectButtonControl.IsVisible = status.Connected || status.Connecting;
-        RemotePage.PairingSectionControl.IsVisible = !string.IsNullOrWhiteSpace(status.MobilePairingPayload);
-        RemotePage.SetPairingPayload(status.MobilePairingPayload);
+        // Prefer the fully-qualified QR URL produced by the SDK. Keep the legacy
+        // payload fallback so persisted installations can migrate without losing
+        // their mobile pairing display.
+        var pairingUrl = status.MobilePairingUrl ?? status.MobilePairingPayload;
+        RemotePage.PairingSectionControl.IsVisible = !string.IsNullOrWhiteSpace(pairingUrl);
+        RemotePage.SetPairingPayload(pairingUrl);
+        RemotePage.SetPairingMetadata(status.HostId, status.AccessTokenExpiresAt);
         RemotePage.StatusTextControl.Text = status.Error ?? (status.Connected
             ? L("Loc_Connected", "Connected")
             : status.Configured ? L("Loc_Disconnected", "Disconnected") : string.Empty);

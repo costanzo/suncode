@@ -122,14 +122,14 @@
   <x:String x:Key="Loc_RemoteServerHint">Pair this Desktop with the Remote Server so a phone can view projects and control sessions.</x:String>
   <x:String x:Key="Loc_Connection">CONNECTION</x:String>
   <x:String x:Key="Loc_ServerUrl">Server URL</x:String>
-  <x:String x:Key="Loc_ServerUrlHint">Use the HTTPS address of your Remote Server.</x:String>
+  <x:String x:Key="Loc_ServerUrlHint">Use the HTTP or HTTPS address of your Remote Server (HTTPS is recommended).</x:String>
   <x:String x:Key="Loc_PairingCode">Pairing code</x:String>
   <x:String x:Key="Loc_PairingCodeHint">The code supplied by your Remote Server administrator.</x:String>
   <x:String x:Key="Loc_SaveAndConnect">Save and connect</x:String>
   <x:String x:Key="Loc_Disconnect">Disconnect</x:String>
   <x:String x:Key="Loc_Clear">Clear</x:String>
   <x:String x:Key="Loc_PhonePairing">PHONE PAIRING</x:String>
-  <x:String x:Key="Loc_ScanMobilePayload">Scan this payload from the SunCode Mobile app.</x:String>
+  <x:String x:Key="Loc_ScanMobilePayload">Scan this one-time pairing URL from the SunCode Mobile app.</x:String>
   <x:String x:Key="Loc_NetworkHint">Configure how the embedded Rust agent reaches HTTP and HTTPS services.</x:String>
   <x:String x:Key="Loc_Proxy">PROXY</x:String>
   <x:String x:Key="Loc_ProxyMode">Proxy mode</x:String>
