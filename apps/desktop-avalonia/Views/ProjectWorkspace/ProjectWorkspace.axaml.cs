@@ -27,6 +27,16 @@ public sealed partial class ProjectWorkspace : UserControl
     public ProjectWorkspace()
     {
         InitializeComponent();
+        var isWindows = OperatingSystem.IsWindows();
+        MacTitleBarControls.IsVisible = !isWindows;
+        MacTitleBarActions.IsVisible = !isWindows;
+        WindowsTitleBarControls.IsVisible = isWindows;
+        if (isWindows)
+        {
+            // The Windows title bar has no leading traffic lights, so keep
+            // the project switcher aligned with the client-area edge.
+            ProjectSwitcherControl.Margin = new Thickness(12, 0, 0, 0);
+        }
         ChatArea.ExpandedComposerRequested += ShowExpandedComposer;
         ChatArea.LongUserMessageRequested += ShowLongUserMessage;
         ChatArea.ToolDetailRequested += ShowToolActivity;
@@ -460,6 +470,7 @@ public sealed partial class ProjectWorkspace : UserControl
     }
     private void CloseProjectWindow(object? sender, RoutedEventArgs e) => Owner?.Close();
     private void MinimizeWindow(object? sender, RoutedEventArgs e) => Owner?.MinimizeWindow();
+    private void ToggleWindowMaximized(object? sender, RoutedEventArgs e) => Owner?.ToggleWindowMaximized();
     private void ToggleFullScreen(object? sender, RoutedEventArgs e) => Owner?.ToggleFullScreen();
     private void TitleBarPressed(object? sender, PointerPressedEventArgs e) => Owner?.TitleBarPressed(sender, e);
     private void TitleBarMoved(object? sender, PointerEventArgs e) => Owner?.TitleBarMoved(sender, e);
@@ -469,4 +480,15 @@ public sealed partial class ProjectWorkspace : UserControl
     private void TrafficLightExited(object? sender, PointerEventArgs e) => WorkspaceWindow.SetTrafficLightState(sender, "normal");
     private void TrafficLightPressed(object? sender, PointerPressedEventArgs e) => WorkspaceWindow.SetTrafficLightState(sender, "press");
     private void TrafficLightReleased(object? sender, PointerReleasedEventArgs e) => WorkspaceWindow.SetTrafficLightState(sender, "hover");
+    private void WindowsCloseEntered(object? sender, PointerEventArgs e) => SetWindowsCloseIconState(sender, "hover");
+    private void WindowsCloseExited(object? sender, PointerEventArgs e) => SetWindowsCloseIconState(sender, "normal");
+    private void WindowsClosePressed(object? sender, PointerPressedEventArgs e) => SetWindowsCloseIconState(sender, "press");
+    private void WindowsCloseReleased(object? sender, PointerReleasedEventArgs e) => SetWindowsCloseIconState(sender, "hover");
+
+    private void SetWindowsCloseIconState(object? sender, string state)
+    {
+        if (sender is not Button button || button.GetVisualDescendants().OfType<SvgControl>().FirstOrDefault() is not { } icon) return;
+        var resourceKey = state is "hover" or "press" ? "WindowCloseHoverSvgCss" : "IconSvgCss";
+        SvgControl.SetCss(icon, this.FindResource(resourceKey) as string);
+    }
 }

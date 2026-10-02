@@ -353,6 +353,7 @@
   <x:String x:Key="Loc_CloseWindow">关闭窗口</x:String>
   <x:String x:Key="Loc_MinimizeWindow">最小化窗口</x:String>
   <x:String x:Key="Loc_EnterFullScreen">进入全屏</x:String>
+  <x:String x:Key="Loc_MaximizeWindow">最大化窗口</x:String>
   <x:String x:Key="Loc_ShowSourceControl">显示或隐藏源代码管理</x:String>
   <x:String x:Key="Loc_ShowToolActivity">显示或隐藏工具活动</x:String>
   <x:String x:Key="Loc_ShowProviderTrace">显示或隐藏提供商调用记录</x:String>

@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia">
   <Style Selector="Window">
     <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
@@ -176,6 +177,42 @@
   <Style Selector="Button.titlebar:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <!-- Windows workspace chrome follows the native title-bar rhythm: 46-DIP
+       targets, settings immediately before the window controls, and a red
+       close hover state. macOS keeps the traffic-light treatment above. -->
+  <Style Selector="Button.windows-titlebar-control">
+    <Setter Property="Width" Value="46" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+  </Style>
+  <Style Selector="Button.windows-titlebar-control:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="Button.windows-titlebar-control:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+  </Style>
+  <Style Selector="Button.windows-titlebar-control.close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="#E81123" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="#ffffff" />
+  </Style>
+  <Style Selector="Button.windows-titlebar-control.close:pointerover svg|Svg">
+    <Setter Property="Css" Value="{DynamicResource WindowCloseHoverSvgCss}" />
+  </Style>
+  <Style Selector="Button.windows-titlebar-control.close:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="#8B0A14" />
+    <Setter Property="Foreground" Value="#ffffff" />
+  </Style>
+  <Style Selector="Button.windows-titlebar-control.close:pressed svg|Svg">
+    <Setter Property="Css" Value="{DynamicResource WindowCloseHoverSvgCss}" />
   </Style>
   <Style Selector="Button.navigation">
     <Setter Property="MinHeight" Value="34" />

@@ -353,6 +353,7 @@
   <x:String x:Key="Loc_CloseWindow">Close window</x:String>
   <x:String x:Key="Loc_MinimizeWindow">Minimize window</x:String>
   <x:String x:Key="Loc_EnterFullScreen">Enter full screen</x:String>
+  <x:String x:Key="Loc_MaximizeWindow">Maximize window</x:String>
   <x:String x:Key="Loc_ShowSourceControl">Show or hide source control</x:String>
   <x:String x:Key="Loc_ShowToolActivity">Show or hide Tool activity</x:String>
   <x:String x:Key="Loc_ShowProviderTrace">Show or hide provider trace</x:String>

@@ -163,11 +163,11 @@
 }
 .windows-window-controls .windows-window-close:hover {
   color: #fff;
-  background: #c42b1c;
+  background: #E81123;
 }
 .windows-window-controls .windows-window-close:active {
   color: #fff;
-  background: #a52518;
+  background: #8B0A14;
 }
 .native-window-client {
   min-width: 0;
