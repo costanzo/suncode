@@ -24,7 +24,7 @@ for (let index = 2; index < process.argv.length; index += 2) {
   args.set(process.argv[index], process.argv[index + 1]);
 }
 const target = args.get("--target") || hostTarget();
-const output = path.resolve(args.get("--output") || path.join(root, "..", "artifacts", "browser-runtime", target));
+const output = path.resolve(args.get("--output") || path.join(root, "..", "..", "artifacts", "runtimes", "browser-runtime", target));
 const reuseBrowsers = args.get("--reuse-browsers") === "true";
 if (target !== hostTarget()) {
   throw new Error(`Browser runtime packaging must run on its target host: requested ${target}, current ${hostTarget()}`);

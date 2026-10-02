@@ -710,7 +710,7 @@ mod tests {
     #[test]
     fn committed_runtime_lock_matches_protocol_and_current_target() {
         let lock: RuntimeLock = serde_json::from_str(include_str!(
-            "../../../../browser-runtime/runtime-lock.json"
+            "../../../../runtimes/browser-runtime/runtime-lock.json"
         ))
         .unwrap();
         assert_eq!(lock.protocol_version, PROTOCOL_VERSION);
@@ -723,7 +723,7 @@ mod tests {
     #[test]
     fn runtime_identity_mismatch_fails_closed() {
         let lock: RuntimeLock = serde_json::from_str(include_str!(
-            "../../../../browser-runtime/runtime-lock.json"
+            "../../../../runtimes/browser-runtime/runtime-lock.json"
         ))
         .unwrap();
         let hello = WorkerHello {

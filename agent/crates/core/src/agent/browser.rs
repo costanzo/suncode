@@ -927,17 +927,17 @@ impl Agent {
 fn default_runtime_root() -> PathBuf {
     let executable = std::env::current_exe().unwrap_or_default();
     let directory = executable.parent().unwrap_or_else(|| Path::new("."));
-    let sibling = directory.join("browser-runtime");
+    let sibling = directory.join("runtimes").join("browser-runtime");
     if sibling.is_dir() {
         return sibling;
     }
-    let mac_resources = directory.join("../Resources/browser-runtime");
+    let mac_resources = directory.join("../Resources/runtimes/browser-runtime");
     if mac_resources.is_dir() {
         return mac_resources;
     }
     #[cfg(debug_assertions)]
     {
-        let dev_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../browser-runtime");
+        let dev_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../runtimes/browser-runtime");
         return fs::canonicalize(&dev_root).unwrap_or(dev_root);
     }
     #[cfg(not(debug_assertions))]
@@ -1144,7 +1144,7 @@ mod tests {
 
     #[test]
     fn runtime_layout_is_fixed_beneath_the_runtime_root() {
-        let layout = runtime_layout(Path::new("/app/browser-runtime"));
+        let layout = runtime_layout(Path::new("/app/runtimes/browser-runtime"));
         assert!(layout.worker_path.ends_with("worker/index.mjs"));
         assert!(layout.runtime_lock_path.ends_with("runtime-lock.json"));
     }

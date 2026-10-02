@@ -225,7 +225,8 @@ mod tests {
         let translated = translate_arguments("bash", &json!({"command":"echo hello"})).unwrap();
         #[cfg(target_os = "windows")]
         {
-            assert_eq!(translated["program"], "powershell.exe");
+            let program = translated["program"].as_str().unwrap();
+            assert!(program.ends_with("pwsh.exe") || program == "powershell.exe");
             assert_eq!(
                 translated["args"],
                 json!([

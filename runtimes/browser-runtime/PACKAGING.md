@@ -4,22 +4,22 @@ Browser runtime artifacts are built on their target operating system and are nev
 
 | SunCode target | Build host | Runtime output |
 | --- | --- | --- |
-| macOS arm64 | macOS arm64 | `artifacts/browser-runtime/darwin-arm64` |
-| Windows x64 | Windows x64 | `artifacts/browser-runtime/win32-x64` |
-| Linux x64 | Ubuntu 22.04 or 24.04 x64 | `artifacts/browser-runtime/linux-x64` |
+| macOS arm64 | macOS arm64 | `artifacts/runtimes/browser-runtime/darwin-arm64` |
+| Windows x64 | Windows x64 | `artifacts/runtimes/browser-runtime/win32-x64` |
+| Linux x64 | Ubuntu 22.04 or 24.04 x64 | `artifacts/runtimes/browser-runtime/linux-x64` |
 
 Run:
 
 ```sh
-npm --prefix browser-runtime run package -- --target <target>
-npm --prefix browser-runtime run verify -- artifacts/browser-runtime/<target>
+npm --prefix runtimes/browser-runtime run package -- --target <target>
+npm --prefix runtimes/browser-runtime run verify -- artifacts/runtimes/browser-runtime/<target>
 ```
 
 Release CI must additionally run the Rust probe and smoke executables against the assembled directory before publishing the desktop package.
 
 ```sh
-cargo run --manifest-path agent/Cargo.toml -p suncode-browser --example probe -- artifacts/browser-runtime/<target>
-cargo run --manifest-path agent/Cargo.toml -p suncode-browser --example smoke -- artifacts/browser-runtime/<target>
+cargo run --manifest-path agent/Cargo.toml -p suncode-browser --example probe -- artifacts/runtimes/browser-runtime/<target>
+cargo run --manifest-path agent/Cargo.toml -p suncode-browser --example smoke -- artifacts/runtimes/browser-runtime/<target>
 ```
 
 ## macOS signing order

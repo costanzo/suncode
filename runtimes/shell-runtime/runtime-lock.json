@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "product": "PowerShell",
+  "version": "7.6.0",
+  "target": "win-x64",
+  "archive": "PowerShell-7.6.0-win-x64.zip",
+  "releaseUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.0/PowerShell-7.6.0-win-x64.zip"
+}

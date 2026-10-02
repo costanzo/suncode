@@ -15,7 +15,7 @@ const browserRuntimeComponents = [
   {
     label: "Node.js",
     value: "v24.11.1",
-    detail: "/Applications/SunCode.app/Contents/Resources/browser-runtime/node/bin/node",
+    detail: "/Applications/SunCode.app/Contents/Resources/runtimes/browser-runtime/node/bin/node",
   },
   {
     label: "Playwright",
@@ -26,7 +26,7 @@ const browserRuntimeComponents = [
     label: "Chromium",
     value: "140.0.7339.16 · revision 1187",
     detail:
-      "/Applications/SunCode.app/Contents/Resources/browser-runtime/browsers/chromium-1187/Chromium.app",
+      "/Applications/SunCode.app/Contents/Resources/runtimes/browser-runtime/browsers/chromium-1187/Chromium.app",
   },
   {
     label: "Worker protocol",

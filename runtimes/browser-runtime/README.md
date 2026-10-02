@@ -9,7 +9,7 @@ The worker is not an agent or extension host. Rust launches it with a filtered e
 ## Development
 
 ```sh
-cd browser-runtime/worker
+cd runtimes/browser-runtime/worker
 npm ci
 ```
 
