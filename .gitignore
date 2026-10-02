@@ -43,6 +43,9 @@ node_modules/
 
 # Build output and tool caches
 artifacts/
+# Reproducible font inputs are downloaded during the build and are never
+# committed to the source repository.
+apps/desktop-avalonia/Assets/fonts/*.ttf
 dist/
 .next/
 .ca/

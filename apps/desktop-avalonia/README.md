@@ -40,3 +40,12 @@ open apps/desktop-avalonia/bin/Release/net10.0/osx-arm64/publish/SunCode.app
 The build compiles `suncode-agent` as a dynamic native library and copies it beside the managed executable. The client does not access SQLite, providers, Git, or project files directly.
 
 Implemented workflows include the project hub, independent draggable project windows over one shared agent handle, project/session navigation, ordered conversation streaming, completed-response Markdown rendering, model selection, Enter-to-send and Shift+Enter newline handling, turn submission and cancellation, approvals, checkpoint undo, touched-file review, agent diagnostics, Git status and structured file diffs, provider credentials, default model selection, dark/light appearance, dialogs and traffic lights, full-screen geometry, the native macOS project menu, and background session-attention notifications with notification-click navigation. Notification activation uses a desktop-only Named Pipe on Windows and Unix Domain Socket on macOS/Linux; it never exposes the embedded agent over IPC.
+
+### Bundled fonts
+
+The desktop client bundles Noto Sans SC, JetBrains Mono, and Seti UI without
+committing font binaries to Git. Build and publish targets run
+`scripts/prepare-fonts.sh` on macOS/Linux or `scripts/prepare-fonts.ps1` on
+Windows. The scripts download immutable upstream revisions into the ignored
+`apps/desktop-avalonia/Assets/fonts/` directory and verify the SHA-256 values in
+`scripts/fonts.lock` before Avalonia embeds the files in the application.

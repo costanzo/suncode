@@ -87,5 +87,6 @@ internal static class Program
             .UsePlatformDetect()
             .With(new MacOSPlatformOptions { DisableSetProcessName = true, ShowInDock = true })
             .WithInterFont()
+            .UseSunCodeFonts()
             .LogToTrace();
 }

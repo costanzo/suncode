@@ -22,12 +22,12 @@
     <Style Selector="TextBlock.assistant-duration">
       <Setter Property="Margin" Value="0,2,0,0" />
       <Setter Property="FontSize" Value="10" />
-      <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
       <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
     </Style>
     <Style Selector="TextBlock.assistant-completed-time">
       <Setter Property="FontSize" Value="10" />
-      <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
       <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>

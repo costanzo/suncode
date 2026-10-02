@@ -14,7 +14,7 @@
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="TextBox.mono-input">
-      <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
       <Setter Property="FontSize" Value="14" />
     </Style>
   </Window.Styles>

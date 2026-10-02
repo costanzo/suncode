@@ -10,7 +10,7 @@
     <Setter Property="MinHeight" Value="36" />
     <Setter Property="Padding" Value="10,0" />
     <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="FontFamily" Value="Noto Sans, Noto Sans CJK SC, Noto Sans SC, PingFang SC, Helvetica Neue, Arial, sans-serif" />
+    <Setter Property="FontFamily" Value="fonts:SunCode#Noto Sans SC, Noto Sans, Noto Sans CJK SC, PingFang SC, Helvetica Neue, Arial, sans-serif" />
     <Setter Property="FontSize" Value="11" />
     <Setter Property="FontWeight" Value="Regular" />
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
@@ -80,7 +80,7 @@
     <Setter Property="Padding" Value="7,0" />
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="FontSize" Value="10" />
-    <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
     <Setter Property="FontWeight" Value="Regular" />
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />

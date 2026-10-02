@@ -17,7 +17,7 @@
     <Setter Property="Margin" Value="0" />
     <Setter Property="Padding" Value="8,6" />
     <Setter Property="MaxWidth" Value="180" />
-    <Setter Property="FontFamily" Value="Noto Sans, Noto Sans CJK SC, Noto Sans SC, PingFang SC, Helvetica Neue, Arial, sans-serif" />
+    <Setter Property="FontFamily" Value="fonts:SunCode#Noto Sans SC, Noto Sans, Noto Sans CJK SC, PingFang SC, Helvetica Neue, Arial, sans-serif" />
     <Setter Property="FontSize" Value="10" />
   </Style>
   <Style Selector="ToolTip /template/ Border">

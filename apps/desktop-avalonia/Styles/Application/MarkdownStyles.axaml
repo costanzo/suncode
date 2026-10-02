@@ -165,7 +165,7 @@
   </Style>
   <Style Selector="md|MarkdownTextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-    <Setter Property="FontFamily" Value="Noto Sans, Noto Sans CJK SC, Noto Sans SC, PingFang SC, Helvetica Neue, Arial, sans-serif" />
+    <Setter Property="FontFamily" Value="fonts:SunCode#Noto Sans SC, Noto Sans, Noto Sans CJK SC, PingFang SC, Helvetica Neue, Arial, sans-serif" />
     <Setter Property="FontSize" Value="14" />
     <Setter Property="LineHeight" Value="23.1" />
     <Setter Property="Margin" Value="0,7,0,7" />
@@ -177,7 +177,7 @@
   <Style Selector="md|CodeBlock">
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-    <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
     <Setter Property="FontSize" Value="12" />
     <Setter Property="Margin" Value="0,16" />
     <Setter Property="IsCodeWrapped" Value="False" />
@@ -265,7 +265,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
     <Setter Property="FontSize" Value="12" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
     <Setter Property="CornerRadius" Value="4" />
     <Setter Property="Padding" Value="2,0" />
     <Setter Property="Margin" Value="2,3,2,2" />
@@ -280,7 +280,7 @@
   <Style Selector="md|MarkdownRenderer.secondary md|CodeInline">
     <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
-    <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
     <Setter Property="FontSize" Value="11" />
     <Setter Property="BaselineAlignment" Value="Baseline" />
     <Setter Property="Padding" Value="1,0" />

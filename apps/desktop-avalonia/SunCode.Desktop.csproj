@@ -124,6 +124,14 @@
     <Content Include="packaging/linux/dev.suncode.desktop.desktop" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <Target Name="PrepareBundledFonts" BeforeTargets="GenerateAvaloniaResources"
+          Condition="'$(DesignTimeBuild)' != 'true' And '$(SkipFontPreparation)' != 'true'">
+    <Exec Condition="$([MSBuild]::IsOSPlatform('Windows'))"
+          Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/../../scripts/prepare-fonts.ps1&quot;" />
+    <Exec Condition="!$([MSBuild]::IsOSPlatform('Windows'))"
+          Command="/bin/bash &quot;$(MSBuildProjectDirectory)/../../scripts/prepare-fonts.sh&quot;" />
+  </Target>
+
 
   <Target Name="CreateMacOSAppBundle" AfterTargets="Publish" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
     <PropertyGroup>

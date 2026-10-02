@@ -13,7 +13,7 @@
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     </Style>
     <Style Selector="TextBlock.editor-meta">
-      <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
       <Setter Property="FontSize" Value="9" />
       <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
     </Style>
@@ -25,7 +25,7 @@
       <Setter Property="BorderThickness" Value="1" />
     </Style>
     <Style Selector="Border.editor-read-only TextBlock">
-      <Setter Property="FontFamily" Value="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
       <Setter Property="FontSize" Value="8" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="LetterSpacing" Value="0.5" />
@@ -87,7 +87,7 @@
                        HorizontalScrollBarVisibility="Auto"
                        VerticalScrollBarVisibility="Auto"
                        Background="{DynamicResource FieldBrush}"
-                       FontFamily="JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace"
+                       FontFamily="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace"
                        FontSize="11"
                        LineNumbersMargin="14,0,14,0"
                        Padding="0,12,20,18"
