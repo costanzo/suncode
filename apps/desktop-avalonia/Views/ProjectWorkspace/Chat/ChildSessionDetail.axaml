@@ -9,7 +9,7 @@
     <Grid RowDefinitions="52,*">
       <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="28,8,30,8,*,Auto" Margin="10,0,14,0">
-        <Button Classes="icon quiet" Width="28" Height="28" Padding="6" Click="BackToParent" ToolTip.Tip="{DynamicResource Loc_BackToMainSession}" VerticalAlignment="Center">
+        <Button Classes="icon quiet" Width="28" Height="28" Padding="6" Click="BackToParent" ToolTip.Tip="{DynamicResource LocBackToMainSession}" VerticalAlignment="Center">
           <svg:Svg Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" RenderTransformOrigin="50%,50%"><svg:Svg.RenderTransform><RotateTransform Angle="180" /></svg:Svg.RenderTransform></svg:Svg>
         </Button>
         <Border Grid.Column="2" Width="30" Height="30" CornerRadius="6" Background="{DynamicResource SurfaceAccentBrush}" VerticalAlignment="Center">
@@ -27,10 +27,10 @@
       <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="24,20,24,28" Spacing="18" MaxWidth="760" HorizontalAlignment="Center">
           <Grid ColumnDefinitions="*,*,*,*" Margin="0,0,0,6">
-            <StackPanel Spacing="4" Margin="0,0,12,0"><TextBlock Text="{DynamicResource Loc_AgentCaps}" Classes="eyebrow" /><TextBlock Text="{Binding SelectedChildSession.AgentId}" Classes="mono" FontSize="10" TextTrimming="CharacterEllipsis" /></StackPanel>
-            <StackPanel Grid.Column="1" Spacing="4" Margin="12,0"><TextBlock Text="{DynamicResource Loc_Model}" Classes="eyebrow" /><TextBlock Text="{Binding SelectedChildSession.ModelId}" Classes="mono" FontSize="10" TextTrimming="CharacterEllipsis" /></StackPanel>
-            <StackPanel Grid.Column="2" Spacing="4" Margin="12,0"><TextBlock Text="{DynamicResource Loc_StatusCaps}" Classes="eyebrow" /><TextBlock Text="{Binding SelectedChildSession.StateText}" FontSize="10" /></StackPanel>
-            <StackPanel Grid.Column="3" Spacing="4" Margin="12,0,0,0"><TextBlock Text="{DynamicResource Loc_CreatedCaps}" Classes="eyebrow" /><TextBlock Text="{Binding SelectedChildSession.RelativeActivity}" FontSize="10" /></StackPanel>
+            <StackPanel Spacing="4" Margin="0,0,12,0"><TextBlock Text="{DynamicResource LocAgentCaps}" Classes="eyebrow" /><TextBlock Text="{Binding SelectedChildSession.AgentId}" Classes="mono" FontSize="10" TextTrimming="CharacterEllipsis" /></StackPanel>
+            <StackPanel Grid.Column="1" Spacing="4" Margin="12,0"><TextBlock Text="{DynamicResource LocModel}" Classes="eyebrow" /><TextBlock Text="{Binding SelectedChildSession.ModelId}" Classes="mono" FontSize="10" TextTrimming="CharacterEllipsis" /></StackPanel>
+            <StackPanel Grid.Column="2" Spacing="4" Margin="12,0"><TextBlock Text="{DynamicResource LocStatusCaps}" Classes="eyebrow" /><TextBlock Text="{Binding SelectedChildSession.StateText}" FontSize="10" /></StackPanel>
+            <StackPanel Grid.Column="3" Spacing="4" Margin="12,0,0,0"><TextBlock Text="{DynamicResource LocCreatedCaps}" Classes="eyebrow" /><TextBlock Text="{Binding SelectedChildSession.RelativeActivity}" FontSize="10" /></StackPanel>
           </Grid>
           <Border Padding="14"
                   Margin="0,0,0,6"
@@ -59,8 +59,8 @@
                 </StackPanel>
               </Grid>
               <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
-                <Button Classes="compact primary" Content="{DynamicResource Loc_AllowOnce}" Click="ApproveOnce" />
-                <Button Classes="compact" Content="{DynamicResource Loc_Deny}" Click="DenyApproval" />
+                <Button Classes="compact primary" Content="{DynamicResource LocAllowOnce}" Click="ApproveOnce" />
+                <Button Classes="compact" Content="{DynamicResource LocDeny}" Click="DenyApproval" />
               </StackPanel>
             </Grid>
           </Border>

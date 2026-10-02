@@ -6,7 +6,7 @@
         xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
         x:Class="SunCode.Desktop.Views.Settings.SettingsWindow"
         x:DataType="vm:DesktopViewModel"
-        Title="{DynamicResource Loc_Settings}"
+        Title="{DynamicResource LocSettings}"
         Width="900" Height="672"
         MinWidth="720" MinHeight="552"
         Background="{DynamicResource SurfaceBrush}"
@@ -75,10 +75,10 @@
             BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="0,0,0,1">
       <Grid Margin="22,0" ColumnDefinitions="*,Auto">
-        <TextBlock Text="{DynamicResource Loc_Settings}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <TextBlock Text="{DynamicResource LocSettings}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
         <Button Grid.Column="1"
                 Classes="compact primary sc-button"
-                Content="{DynamicResource Loc_Done}"
+                Content="{DynamicResource LocDone}"
                 Click="CloseSettings"
                 VerticalAlignment="Center" />
       </Grid>
@@ -94,61 +94,61 @@
             <Button x:Name="DefaultsNavigation" Classes="navigation selected" Click="ShowDefaults">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/foundation.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_Defaults}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocDefaults}" VerticalAlignment="Center" />
               </Grid>
             </Button>
             <Button x:Name="AppearanceNavigation" Classes="navigation" Click="ShowAppearance">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/sun.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_Appearance}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocAppearance}" VerticalAlignment="Center" />
               </Grid>
             </Button>
             <Button x:Name="ShortcutsNavigation" Classes="navigation" Click="ShowShortcuts">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/keyboard.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_KeyboardShortcuts}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocKeyboardShortcuts}" VerticalAlignment="Center" />
               </Grid>
             </Button>
             <Button x:Name="NetworkNavigation" Classes="navigation" Click="ShowNetwork">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/platform.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_Network}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocNetwork}" VerticalAlignment="Center" />
               </Grid>
             </Button>
             <Button x:Name="RemoteNavigation" Classes="navigation" Click="ShowRemote">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/server.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_RemoteServer}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocRemoteServer}" VerticalAlignment="Center" />
               </Grid>
             </Button>
             <Button x:Name="ComputerNavigation" Classes="navigation" Click="ShowComputer">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/computer.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_ComputerUse}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocComputerUse}" VerticalAlignment="Center" />
               </Grid>
             </Button>
             <Button x:Name="BrowserNavigation" Classes="navigation" Click="ShowBrowser">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/tool.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_BrowserUse}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocBrowserUse}" VerticalAlignment="Center" />
               </Grid>
             </Button>
             <Button x:Name="McpNavigation" Classes="navigation" Click="ShowMcp">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/server.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_McpServers}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocMcpServers}" VerticalAlignment="Center" />
               </Grid>
             </Button>
             <Button x:Name="LanguageServersNavigation" Classes="navigation" Click="ShowLanguageServers">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/file-code.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_LanguageServers}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocLanguageServers}" VerticalAlignment="Center" />
               </Grid>
             </Button>
             <Button x:Name="AgentsNavigation" Classes="navigation" Click="ShowAgents">
               <Grid ColumnDefinitions="15,*,13" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/agent.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_Agents}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocAgents}" VerticalAlignment="Center" />
                 <svg:Svg x:Name="AgentsChevron" Grid.Column="2" Width="13" Height="13" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" RenderTransformOrigin="50%,50%" />
               </Grid>
             </Button>
@@ -166,13 +166,13 @@
             <Button x:Name="LoggingNavigation" Classes="navigation" Click="ShowLogging">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/assets.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_Logging}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocLogging}" VerticalAlignment="Center" />
               </Grid>
             </Button>
             <Button x:Name="ProvidersNavigation" Classes="navigation" Click="ShowProviders">
               <Grid ColumnDefinitions="15,*,13" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/components.svg" Css="{DynamicResource IconSvgCss}" />
-                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_ModelProviders}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocModelProviders}" VerticalAlignment="Center" />
                 <svg:Svg x:Name="ProvidersChevron"
                          Grid.Column="2"
                          Width="13"

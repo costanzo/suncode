@@ -35,26 +35,26 @@ public sealed class LanguageServerItem : ObservableObject
     public bool CanToggle => !IsPending && !IsStarting;
     public string StatusLabel => RuntimeStatus switch
     {
-        "ready" => LocalizationService.GetString("Loc_Ready", "Ready"),
-        "starting" => LocalizationService.GetString("Loc_Starting", "Starting"),
-        "indexing" => LocalizationService.GetString("Loc_Indexing", "Indexing"),
-        "failed" => LocalizationService.GetString("Loc_Failed", "Failed"),
-        "disabled" => LocalizationService.GetString("Loc_Disabled", "Disabled"),
-        _ => LocalizationService.GetString("Loc_NotStarted", "Not started")
+        "ready" => LocalizationService.GetString("LocReady", "Ready"),
+        "starting" => LocalizationService.GetString("LocStarting", "Starting"),
+        "indexing" => LocalizationService.GetString("LocIndexing", "Indexing"),
+        "failed" => LocalizationService.GetString("LocFailed", "Failed"),
+        "disabled" => LocalizationService.GetString("LocDisabled", "Disabled"),
+        _ => LocalizationService.GetString("LocNotStarted", "Not started")
     };
     public string StatusDetail => RuntimeStatus switch
     {
-        "ready" => $"{Server.CapabilityCount} {LocalizationService.GetString("Loc_Capabilities", "capabilities")}",
-        "starting" => LocalizationService.GetString("Loc_Initializing", "Initializing"),
-        "indexing" => LocalizationService.GetString("Loc_SemanticDataLoading", "Semantic data loading"),
-        "failed" => LocalizationService.GetString("Loc_NoSemanticResults", "No semantic results"),
-        _ => LocalizationService.GetString("Loc_NotRunning", "Not running")
+        "ready" => $"{Server.CapabilityCount} {LocalizationService.GetString("LocCapabilities", "capabilities")}",
+        "starting" => LocalizationService.GetString("LocInitializing", "Initializing"),
+        "indexing" => LocalizationService.GetString("LocSemanticDataLoading", "Semantic data loading"),
+        "failed" => LocalizationService.GetString("LocNoSemanticResults", "No semantic results"),
+        _ => LocalizationService.GetString("LocNotRunning", "Not running")
     };
     public string CommandSummary => string.Join(' ',
         new[] { Command }.Concat(Arguments).Where(value => !string.IsNullOrWhiteSpace(value)));
     public string ToggleLabel => Enabled
-        ? LocalizationService.GetString("Loc_On", "On")
-        : LocalizationService.GetString("Loc_Off", "Off");
+        ? LocalizationService.GetString("LocOn", "On")
+        : LocalizationService.GetString("LocOff", "Off");
 
     public bool IsPending
     {

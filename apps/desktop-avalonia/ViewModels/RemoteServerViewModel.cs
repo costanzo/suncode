@@ -21,10 +21,10 @@ public sealed class RemoteServerViewModel : ObservableObject, IDisposable
     public bool Connected { get => _connected; private set => SetProperty(ref _connected, value); }
     public bool Connecting { get => _connecting; private set => SetProperty(ref _connecting, value); }
     public string StatusText => Connected
-        ? LocalizationService.GetString("Loc_RemoteConnected", "Remote connected")
+        ? LocalizationService.GetString("LocRemoteConnected", "Remote connected")
         : Connecting
-            ? LocalizationService.GetString("Loc_RemoteConnecting", "Remote connecting")
-            : LocalizationService.GetString("Loc_RemoteDisconnected", "Remote disconnected");
+            ? LocalizationService.GetString("LocRemoteConnecting", "Remote connecting")
+            : LocalizationService.GetString("LocRemoteDisconnected", "Remote disconnected");
 
     public async Task<LoadResult> LoadAsync()
     {

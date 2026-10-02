@@ -45,7 +45,7 @@ public sealed partial class ProjectHubWindow : Window
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = this.TryGetResource("Loc_OpenLocalFolder", ActualThemeVariant, out var title)
+            Title = this.TryGetResource("LocOpenLocalFolder", ActualThemeVariant, out var title)
                 ? title as string ?? "Open a local project"
                 : "Open a local project",
             AllowMultiple = false

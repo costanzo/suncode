@@ -267,9 +267,9 @@
                               Margin="8,0,0,0"
                               VerticalAlignment="Center"
                               Click="ViewLongUserMessage"
-                              ToolTip.Tip="{DynamicResource Loc_ViewFullMessage}"
-                              AutomationProperties.Name="{DynamicResource Loc_ViewFullMessage}">
-                        <TextBlock Text="{DynamicResource Loc_ViewMore}"
+                              ToolTip.Tip="{DynamicResource LocViewFullMessage}"
+                              AutomationProperties.Name="{DynamicResource LocViewFullMessage}">
+                        <TextBlock Text="{DynamicResource LocViewMore}"
                                    FontSize="11"
                                    FontWeight="SemiBold"
                                    Foreground="{DynamicResource AccentBrush}" />
@@ -282,7 +282,7 @@
               <Button Classes="tool-card"
                       IsVisible="{Binding IsTool}"
                       Click="OpenToolDetail"
-                      ToolTip.Tip="{DynamicResource Loc_ViewInToolActivity}"
+                      ToolTip.Tip="{DynamicResource LocViewInToolActivity}"
                       AutomationProperties.Name="{Binding ToolSummaryText, StringFormat=View {0} in Tool activity}">
                 <Grid ColumnDefinitions="*,Auto,16">
                   <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="{Binding ToolSummaryText}" FontSize="12" Opacity="0.72" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
@@ -303,7 +303,7 @@
                   <controls:MarkdownText Markdown="{Binding Text}" FontSize="14" HorizontalAlignment="Stretch" />
                 </Grid>
                 <StackPanel Orientation="Horizontal" Spacing="6" Margin="-7,-7,0,0" HorizontalAlignment="Left">
-                  <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Padding="5" Click="CopyMessage" ToolTip.Tip="{DynamicResource Loc_CopyResponse}" AutomationProperties.Name="{DynamicResource Loc_CopyResponse}" IsVisible="{Binding ShowCopy}">
+                  <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Padding="5" Click="CopyMessage" ToolTip.Tip="{DynamicResource LocCopyResponse}" AutomationProperties.Name="{DynamicResource LocCopyResponse}" IsVisible="{Binding ShowCopy}">
                     <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
                   </Button>
                   <TextBlock Classes="assistant-completed-time"
@@ -324,16 +324,16 @@
                       Spacing="4"
                       IsVisible="{Binding IsTurnActive}">
             <Panel IsVisible="{Binding IsTurnThinking}">
-              <TextBlock Text="{DynamicResource Loc_Thinking}"
+              <TextBlock Text="{DynamicResource LocThinking}"
                          FontSize="11"
                          Foreground="{DynamicResource TextSecondaryBrush}"
                          Opacity="0.3" />
               <TextBlock Classes="thinking-reveal" 
-                         Text="{DynamicResource Loc_Thinking}"
+                         Text="{DynamicResource LocThinking}"
                          FontSize="11"
                          Foreground="{DynamicResource TextBrush}"/>
             </Panel>
-            <TextBlock Text="{DynamicResource Loc_CompactingContext}"
+            <TextBlock Text="{DynamicResource LocCompactingContext}"
                        FontSize="11"
                        Foreground="{DynamicResource TextSecondaryBrush}"
                        IsVisible="{Binding IsTurnCompacting}" />
@@ -357,8 +357,8 @@
               VerticalAlignment="Bottom"
               IsVisible="False"
               Click="ScrollToBottom"
-              ToolTip.Tip="{DynamicResource Loc_ScrollToBottom}"
-              AutomationProperties.Name="{DynamicResource Loc_ScrollToBottom}">
+              ToolTip.Tip="{DynamicResource LocScrollToBottom}"
+              AutomationProperties.Name="{DynamicResource LocScrollToBottom}">
         <svg:Svg Width="14"
                  Height="14"
                  Path="/Assets/icons/chevron-right.svg"
@@ -373,24 +373,24 @@
 
       <StackPanel ZIndex="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding IsSessionLoadingVisible}">
         <ProgressBar Width="160" Height="3" IsIndeterminate="True" />
-        <TextBlock Text="{DynamicResource Loc_LoadingConversation}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+        <TextBlock Text="{DynamicResource LocLoadingConversation}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
       </StackPanel>
 
       <StackPanel MaxWidth="420" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding HasSessionLoadError}">
-        <TextBlock Text="{DynamicResource Loc_ConversationLoadFailed}" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Text="{DynamicResource LocConversationLoadFailed}" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
         <TextBlock Text="{Binding SessionLoadError}" FontSize="12" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" TextAlignment="Center" />
         <Button Classes="compact" HorizontalAlignment="Center" Click="RetrySession">
           <StackPanel Orientation="Horizontal" Spacing="6">
             <svg:Svg Width="14" Height="14" Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
-            <TextBlock Text="{DynamicResource Loc_Retry}" />
+            <TextBlock Text="{DynamicResource LocRetry}" />
           </StackPanel>
         </Button>
       </StackPanel>
 
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="7" IsVisible="{Binding !HasSelectedSession}">
         <svg:Svg Width="24" Height="24" Path="/Assets/icons/panel-left.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
-        <TextBlock Text="{DynamicResource Loc_NoSessionSelected}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
-        <TextBlock Text="{DynamicResource Loc_CreateOrSelectSession}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+        <TextBlock Text="{DynamicResource LocNoSessionSelected}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Text="{DynamicResource LocCreateOrSelectSession}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
       </StackPanel>
 
       <chat:ChatInput x:Name="ChatInput" IsVisible="{Binding ShowChatInput}" />

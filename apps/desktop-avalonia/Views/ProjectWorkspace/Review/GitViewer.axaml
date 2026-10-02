@@ -43,22 +43,22 @@
         <Border Grid.Column="4" Width="1" Height="18" Background="{DynamicResource BorderBrush}" />
         <Border Grid.Column="6" Height="28" Padding="1" CornerRadius="6" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
           <StackPanel Orientation="Horizontal">
-            <ToggleButton Classes="scope" Content="{DynamicResource Loc_All}" IsChecked="{Binding Git.ScopeAll}" Click="GitScopeAll"
+            <ToggleButton Classes="scope" Content="{DynamicResource LocAll}" IsChecked="{Binding Git.ScopeAll}" Click="GitScopeAll"
                           HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
-            <ToggleButton Classes="scope" Content="{DynamicResource Loc_Staged}" IsChecked="{Binding Git.ScopeStaged}" Click="GitScopeStaged"
+            <ToggleButton Classes="scope" Content="{DynamicResource LocStaged}" IsChecked="{Binding Git.ScopeStaged}" Click="GitScopeStaged"
                           HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
-            <ToggleButton Classes="scope" Content="{DynamicResource Loc_Unstaged}" IsChecked="{Binding Git.ScopeUnstaged}" Click="GitScopeUnstaged"
+            <ToggleButton Classes="scope" Content="{DynamicResource LocUnstaged}" IsChecked="{Binding Git.ScopeUnstaged}" Click="GitScopeUnstaged"
                           HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
           </StackPanel>
         </Border>
-        <TextBox Grid.Column="8" Width="210" Height="28" MinHeight="28" Padding="10,5" VerticalAlignment="Center" FontSize="11" PlaceholderText="{DynamicResource Loc_FilterChangedFiles}" TextChanged="GitFilterChanged" />
-        <Button Grid.Column="10" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="RefreshGit" ToolTip.Tip="{DynamicResource Loc_RefreshGitStatus}" AutomationProperties.Name="{DynamicResource Loc_RefreshGitStatus}">
+        <TextBox Grid.Column="8" Width="210" Height="28" MinHeight="28" Padding="10,5" VerticalAlignment="Center" FontSize="11" PlaceholderText="{DynamicResource LocFilterChangedFiles}" TextChanged="GitFilterChanged" />
+        <Button Grid.Column="10" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="RefreshGit" ToolTip.Tip="{DynamicResource LocRefreshGitStatus}" AutomationProperties.Name="{DynamicResource LocRefreshGitStatus}">
           <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
-        <Button Grid.Column="12" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CopyPatch" ToolTip.Tip="{DynamicResource Loc_CopyPatch}" AutomationProperties.Name="{DynamicResource Loc_CopyPatch}">
+        <Button Grid.Column="12" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CopyPatch" ToolTip.Tip="{DynamicResource LocCopyPatch}" AutomationProperties.Name="{DynamicResource LocCopyPatch}">
           <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
-        <Button Grid.Column="14" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CloseGit" ToolTip.Tip="{DynamicResource Loc_CloseSourceControl}" AutomationProperties.Name="{DynamicResource Loc_CloseSourceControl}">
+        <Button Grid.Column="14" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CloseGit" ToolTip.Tip="{DynamicResource LocCloseSourceControl}" AutomationProperties.Name="{DynamicResource LocCloseSourceControl}">
           <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
       </Grid>
@@ -73,7 +73,7 @@
         <Grid Grid.Column="0" Background="{DynamicResource GitSidebarBrush}" RowDefinitions="30,*">
           <Grid Grid.Row="0" Margin="12,0,10,0" ColumnDefinitions="*,Auto">
             <TextBlock Text="{Binding Git.FileCountText}" Classes="eyebrow" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="1" Text="{DynamicResource Loc_Limited}" Classes="mono" FontSize="11" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" IsVisible="{Binding Git.StatusTruncated}" />
+            <TextBlock Grid.Column="1" Text="{DynamicResource LocLimited}" Classes="mono" FontSize="11" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" IsVisible="{Binding Git.StatusTruncated}" />
           </Grid>
           <ListBox Grid.Row="1" Classes="git-files" ItemsSource="{Binding Git.FilteredFiles}" SelectedItem="{Binding Git.SelectedFile}" SelectionChanged="GitFileSelected" Background="Transparent" BorderThickness="0">
             <ListBox.ItemTemplate>
@@ -126,7 +126,7 @@
               <TextBlock Text="{Binding Git.EmptyMessage}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" TextAlignment="Center" />
             </StackPanel>
             <Border Height="24" VerticalAlignment="Bottom" Background="{DynamicResource WarningSurfaceBrush}" IsVisible="{Binding Git.DiffTruncated}">
-              <TextBlock Text="{DynamicResource Loc_DiffTruncated}" FontSize="11" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <TextBlock Text="{DynamicResource LocDiffTruncated}" FontSize="11" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
           </Grid>
         </Grid>

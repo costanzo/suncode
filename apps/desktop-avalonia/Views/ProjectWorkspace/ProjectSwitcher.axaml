@@ -9,7 +9,7 @@
           Classes="project-switcher-trigger"
           MaxWidth="200"
           IsEnabled="{Binding CanOpenProjects}"
-          AutomationProperties.Name="{DynamicResource Loc_SwitchProject}">
+          AutomationProperties.Name="{DynamicResource LocSwitchProject}">
     <Grid ColumnDefinitions="14,6,*,6,12" VerticalAlignment="Center">
       <svg:Svg Grid.Column="0"
                Width="14"
@@ -59,8 +59,8 @@
                          Css="{DynamicResource AccentSvgCss}"
                          VerticalAlignment="Center" />
                 <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
-                  <TextBlock Text="{DynamicResource Loc_OpenLocalFolder}" FontSize="11" FontWeight="SemiBold" />
-                  <TextBlock Text="{DynamicResource Loc_ChooseLocalFolder}"
+                  <TextBlock Text="{DynamicResource LocOpenLocalFolder}" FontSize="11" FontWeight="SemiBold" />
+                  <TextBlock Text="{DynamicResource LocChooseLocalFolder}"
                              Classes="mono"
                              FontSize="10"
                              Foreground="{DynamicResource TextMutedBrush}" />
@@ -75,7 +75,7 @@
             </Button>
 
             <Border Grid.Row="2" Margin="2,0" Background="{DynamicResource BorderBrush}" />
-            <TextBlock Grid.Row="3" Classes="eyebrow" Text="{DynamicResource Loc_RecentProjects}" Margin="8,8,8,4" />
+            <TextBlock Grid.Row="3" Classes="eyebrow" Text="{DynamicResource LocRecentProjects}" Margin="8,8,8,4" />
 
             <Grid Grid.Row="4">
               <ScrollViewer MaxHeight="240"
@@ -120,7 +120,7 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
               </ScrollViewer>
-              <TextBlock Text="{DynamicResource Loc_NoRecentProjects}"
+              <TextBlock Text="{DynamicResource LocNoRecentProjects}"
                          Margin="8,8,8,10"
                          FontSize="11"
                          Foreground="{DynamicResource TextMutedBrush}"

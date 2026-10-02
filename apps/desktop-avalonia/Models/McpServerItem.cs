@@ -34,25 +34,25 @@ public sealed class McpServerItem : ObservableObject
     public bool IsInactive => !IsConnected && !IsConnecting && !IsFailed;
     public string StatusLabel => RuntimeStatus switch
     {
-        "connected" => LocalizationService.GetString("Loc_Connected", "Connected"),
-        "connecting" => LocalizationService.GetString("Loc_Connecting", "Connecting"),
-        "failed" => LocalizationService.GetString("Loc_Failed", "Failed"),
-        "disabled" => LocalizationService.GetString("Loc_Disabled", "Disabled"),
-        _ => LocalizationService.GetString("Loc_NotStarted", "Not started")
+        "connected" => LocalizationService.GetString("LocConnected", "Connected"),
+        "connecting" => LocalizationService.GetString("LocConnecting", "Connecting"),
+        "failed" => LocalizationService.GetString("LocFailed", "Failed"),
+        "disabled" => LocalizationService.GetString("LocDisabled", "Disabled"),
+        _ => LocalizationService.GetString("LocNotStarted", "Not started")
     };
     public string StatusDetail => RuntimeStatus switch
     {
-        "connected" => $"{Server.ToolCount} {LocalizationService.GetString("Loc_Tools", "tools")}",
-        "connecting" => LocalizationService.GetString("Loc_DiscoveringTools", "Discovering tools"),
-        "failed" => LocalizationService.GetString("Loc_NoToolsAvailable", "No tools available"),
-        _ => LocalizationService.GetString("Loc_NotRunning", "Not running")
+        "connected" => $"{Server.ToolCount} {LocalizationService.GetString("LocTools", "tools")}",
+        "connecting" => LocalizationService.GetString("LocDiscoveringTools", "Discovering tools"),
+        "failed" => LocalizationService.GetString("LocNoToolsAvailable", "No tools available"),
+        _ => LocalizationService.GetString("LocNotRunning", "Not running")
     };
     public string EndpointSummary => TransportType == "stdio"
         ? string.Join(' ', new[] { Command }.Concat(Arguments).Where(value => !string.IsNullOrWhiteSpace(value)))
         : Url ?? string.Empty;
     public string ToggleLabel => Enabled
-        ? LocalizationService.GetString("Loc_On", "On")
-        : LocalizationService.GetString("Loc_Off", "Off");
+        ? LocalizationService.GetString("LocOn", "On")
+        : LocalizationService.GetString("LocOff", "Off");
 
     public bool IsPending
     {

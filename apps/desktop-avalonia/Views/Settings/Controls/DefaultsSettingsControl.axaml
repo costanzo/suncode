@@ -5,30 +5,30 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
-      <TextBlock Text="{DynamicResource Loc_Defaults}" Classes="sc-text-title" />
-        <TextBlock Classes="settings-hint" Text="{DynamicResource Loc_ConfigureModelTurnDefaults}" />
+      <TextBlock Text="{DynamicResource LocDefaults}" Classes="sc-text-title" />
+        <TextBlock Classes="settings-hint" Text="{DynamicResource LocConfigureModelTurnDefaults}" />
       </StackPanel>
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="{DynamicResource Loc_DefaultModel}" />
+        <TextBlock Classes="section-label" Text="{DynamicResource LocDefaultModel}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_Model}" />
-            <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_RegisteredModelsOnly}" />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource LocModel}" />
+            <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocRegisteredModelsOnly}" />
           </StackPanel>
           <controls:SCFlatComboBox x:Name="DefaultModelSelector"
                                    Grid.Column="1"
                                    HorizontalAlignment="Stretch"
-                                   PlaceholderText="{DynamicResource Loc_ChooseModel}"
+                                   PlaceholderText="{DynamicResource LocChooseModel}"
                                    SelectionChanged="OnDefaultModelChanged" />
         </Grid>
       </StackPanel>
       <Border Classes="settings-divider" />
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="{DynamicResource Loc_TurnExecution}" />
+        <TextBlock Classes="section-label" Text="{DynamicResource LocTurnExecution}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_ToolCallLimit}" />
-            <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_MaxToolCalls}" />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource LocToolCallLimit}" />
+            <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocMaxToolCalls}" />
           </StackPanel>
           <controls:SCNumericInput x:Name="ToolCallLimitInput"
                                    Grid.Column="1"
@@ -43,7 +43,7 @@
       <StackPanel Classes="settings-actions">
         <Button x:Name="SaveToolCallLimitButton"
                 Classes="compact primary sc-button"
-                Content="{DynamicResource Loc_SaveProjectLimit}"
+                Content="{DynamicResource LocSaveProjectLimit}"
                 Click="OnSaveToolCallLimit" />
         <TextBlock x:Name="ToolCallLimitScope" Classes="sc-text-status" VerticalAlignment="Center" />
         <TextBlock x:Name="ToolCallLimitStatus" Classes="sc-text-status" VerticalAlignment="Center" />

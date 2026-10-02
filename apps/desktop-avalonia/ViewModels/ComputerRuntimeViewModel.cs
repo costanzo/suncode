@@ -51,7 +51,7 @@ public sealed class ComputerRuntimeViewModel : ObservableObject
         {
             Runtime = await _host.Sdk!.SetComputerUseEnabledAsync(enabled);
             StatusText = LocalizationService.GetString(
-                enabled ? "Loc_ComputerUseEnabledStatus" : "Loc_ComputerUseDisabledStatus",
+                enabled ? "LocComputerUseEnabledStatus" : "LocComputerUseDisabledStatus",
                 enabled ? "Computer Use enabled. Desktop input still requires approval." : "Computer Use disabled and held input was released.");
             return true;
         }
@@ -70,7 +70,7 @@ public sealed class ComputerRuntimeViewModel : ObservableObject
         {
             Runtime = await _host.Sdk!.RequestComputerCapturePermissionAsync();
             StatusText = LocalizationService.GetString(
-                Runtime.CapturePermission == "allowed" ? "Loc_ScreenCapturePermissionAvailable" : "Loc_ScreenCapturePermissionUnavailable",
+                Runtime.CapturePermission == "allowed" ? "LocScreenCapturePermissionAvailable" : "LocScreenCapturePermissionUnavailable",
                 Runtime.CapturePermission == "allowed" ? "Screen capture permission is available." : "Screen capture permission is still unavailable. Review the operating-system prompt or privacy settings.");
             return Runtime.CapturePermission == "allowed";
         }
@@ -89,7 +89,7 @@ public sealed class ComputerRuntimeViewModel : ObservableObject
         {
             Runtime = await _host.Sdk!.RequestComputerInputPermissionAsync();
             StatusText = LocalizationService.GetString(
-                Runtime.InputPermission == "allowed" ? "Loc_InputControlPermissionAvailable" : "Loc_InputControlPermissionUnavailable",
+                Runtime.InputPermission == "allowed" ? "LocInputControlPermissionAvailable" : "LocInputControlPermissionUnavailable",
                 Runtime.InputPermission == "allowed" ? "Input control permission is available." : "Input control permission is still unavailable. Review the operating-system prompt or privacy settings.");
             return Runtime.InputPermission == "allowed";
         }
@@ -107,7 +107,7 @@ public sealed class ComputerRuntimeViewModel : ObservableObject
         try
         {
             Runtime = await _host.Sdk!.EmergencyStopComputerUseAsync();
-            StatusText = LocalizationService.GetString("Loc_ComputerUseStopped", "Computer Use stopped. Held input was released.");
+            StatusText = LocalizationService.GetString("LocComputerUseStopped", "Computer Use stopped. Held input was released.");
             return true;
         }
         catch (Exception exception)
@@ -124,7 +124,7 @@ public sealed class ComputerRuntimeViewModel : ObservableObject
         try
         {
             Runtime = await _host.Sdk!.TakeComputerControlAsync();
-            StatusText = LocalizationService.GetString("Loc_YouControlDesktop", "You control the desktop. Computer Use tools are paused.");
+            StatusText = LocalizationService.GetString("LocYouControlDesktop", "You control the desktop. Computer Use tools are paused.");
             return true;
         }
         catch (Exception exception)
@@ -141,7 +141,7 @@ public sealed class ComputerRuntimeViewModel : ObservableObject
         try
         {
             Runtime = await _host.Sdk!.ReturnComputerControlAsync();
-            StatusText = LocalizationService.GetString("Loc_ControlReturnedFreshScreenshot", "Control returned to the agent. A fresh screenshot is required before coordinate input.");
+            StatusText = LocalizationService.GetString("LocControlReturnedFreshScreenshot", "Control returned to the agent. A fresh screenshot is required before coordinate input.");
             return true;
         }
         catch (Exception exception)

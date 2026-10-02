@@ -6,20 +6,20 @@
     <StackPanel Classes="settings-panel-content">
       <Grid Classes="settings-panel-heading settings-shortcuts-heading" ColumnDefinitions="*,Auto">
         <StackPanel Grid.Column="0" Classes="settings-panel-heading-copy">
-          <TextBlock Text="{DynamicResource Loc_KeyboardShortcuts}" Classes="sc-text-title" />
-          <TextBlock Classes="settings-hint" Text="{DynamicResource Loc_ViewShortcuts}" />
+          <TextBlock Text="{DynamicResource LocKeyboardShortcuts}" Classes="sc-text-title" />
+          <TextBlock Classes="settings-hint" Text="{DynamicResource LocViewShortcuts}" />
         </StackPanel>
         <Border Grid.Column="1" Classes="settings-read-only-badge">
-          <TextBlock Text="{DynamicResource Loc_ReadOnly}" />
+          <TextBlock Text="{DynamicResource LocReadOnly}" />
         </Border>
       </Grid>
 
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="{DynamicResource Loc_AvailableShortcuts}" />
+        <TextBlock Classes="section-label" Text="{DynamicResource LocAvailableShortcuts}" />
         <StackPanel Classes="settings-shortcut-list">
           <Border Classes="settings-shortcut-row">
             <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource Loc_OpenSettings}" />
+            <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource LocOpenSettings}" />
             <StackPanel Grid.Column="1" Classes="settings-key-chord">
               <Border Classes="settings-keycap"><TextBlock x:Name="OpenSettingsModifier" Classes="mono" Text="⌘" /></Border>
               <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="," /></Border>
@@ -28,7 +28,7 @@
           </Border>
           <Border Classes="settings-shortcut-row">
             <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource Loc_ToggleProjectNavigation}" />
+            <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource LocToggleProjectNavigation}" />
             <StackPanel Grid.Column="1" Classes="settings-key-chord">
               <Border Classes="settings-keycap"><TextBlock x:Name="ToggleNavigationModifier" Classes="mono" Text="⌘" /></Border>
               <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="1" /></Border>
@@ -37,7 +37,7 @@
           </Border>
           <Border Classes="settings-shortcut-row">
             <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource Loc_ToggleGitViewer}" />
+            <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource LocToggleGitViewer}" />
             <StackPanel Grid.Column="1" Classes="settings-key-chord">
               <Border Classes="settings-keycap"><TextBlock x:Name="ToggleGitModifier" Classes="mono" Text="⌘" /></Border>
               <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="9" /></Border>
@@ -46,7 +46,7 @@
           </Border>
           <Border Classes="settings-shortcut-row">
             <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource Loc_SendMessage}" />
+            <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource LocSendMessage}" />
             <StackPanel Grid.Column="1" Classes="settings-key-chord">
               <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="Enter" /></Border>
             </StackPanel>
@@ -54,7 +54,7 @@
           </Border>
           <Border Classes="settings-shortcut-row">
             <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource Loc_SubmitSessionDialog}" />
+            <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource LocSubmitSessionDialog}" />
             <StackPanel Grid.Column="1" Classes="settings-key-chord">
               <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="Enter" /></Border>
             </StackPanel>
@@ -62,7 +62,7 @@
           </Border>
           <Border Classes="settings-shortcut-row">
             <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource Loc_StopCurrentTurn}" />
+            <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource LocStopCurrentTurn}" />
             <StackPanel Grid.Column="1" Classes="settings-key-chord">
               <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="Escape" /></Border>
             </StackPanel>

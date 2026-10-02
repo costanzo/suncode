@@ -9,8 +9,8 @@
   <Border Classes="sidebar-card" PointerExited="NavigationPointerExited" SizeChanged="SidebarSizeChanged">
     <Grid Margin="16,14,16,12" RowDefinitions="34,10,*">
       <Grid Grid.Row="0" ColumnDefinitions="*,30">
-        <TextBlock Classes="section-label" Text="{DynamicResource Loc_Sessions}" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Classes="icon" Click="CreateSession" ToolTip.Tip="{DynamicResource Loc_NewSession}" AutomationProperties.Name="{DynamicResource Loc_NewSession}" IsEnabled="{Binding IsProjectOpen}">
+        <TextBlock Classes="section-label" Text="{DynamicResource LocSessions}" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="icon" Click="CreateSession" ToolTip.Tip="{DynamicResource LocNewSession}" AutomationProperties.Name="{DynamicResource LocNewSession}" IsEnabled="{Binding IsProjectOpen}">
           <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
       </Grid>
@@ -38,15 +38,15 @@
                   <Grid Grid.Column="2" ToolTip.Tip="{Binding AgentStateLabel}" AutomationProperties.Name="{Binding AgentStateLabel}" IsVisible="{Binding HasAgentState}">
                     <controls:SCStatusDot Status="{Binding AgentState}" />
                   </Grid>
-                  <Button Grid.Column="3" Classes="quiet session-actions-trigger" Width="28" Padding="6" ToolTip.Tip="{DynamicResource Loc_SessionActions}" AutomationProperties.Name="{Binding DisplayTitle, StringFormat=Actions for {0}}">
+                  <Button Grid.Column="3" Classes="quiet session-actions-trigger" Width="28" Padding="6" ToolTip.Tip="{DynamicResource LocSessionActions}" AutomationProperties.Name="{Binding DisplayTitle, StringFormat=Actions for {0}}">
                     <Button.Flyout>
                       <Flyout Placement="BottomEdgeAlignedRight" ShowMode="Standard" FlyoutPresenterClasses="session-actions-flyout">
                         <Border Width="94" Padding="4">
                           <StackPanel>
-                            <Button Content="{DynamicResource Loc_Rename}" Classes="session-action" CommandParameter="{Binding}" Click="RenameSessionItem" />
-                            <Button Content="{DynamicResource Loc_Pin}" Classes="session-action" CommandParameter="{Binding}" Click="PinSessionItem" IsVisible="{Binding !IsPinned}" />
-                            <Button Content="{DynamicResource Loc_Unpin}" Classes="session-action" CommandParameter="{Binding}" Click="UnpinSessionItem" IsVisible="{Binding IsPinned}" />
-                            <Button Content="{DynamicResource Loc_Archive}" Classes="session-action" CommandParameter="{Binding}" Click="ArchiveSessionItem" IsEnabled="{Binding !IsTurnActive}" />
+                            <Button Content="{DynamicResource LocRename}" Classes="session-action" CommandParameter="{Binding}" Click="RenameSessionItem" />
+                            <Button Content="{DynamicResource LocPin}" Classes="session-action" CommandParameter="{Binding}" Click="PinSessionItem" IsVisible="{Binding !IsPinned}" />
+                            <Button Content="{DynamicResource LocUnpin}" Classes="session-action" CommandParameter="{Binding}" Click="UnpinSessionItem" IsVisible="{Binding IsPinned}" />
+                            <Button Content="{DynamicResource LocArchive}" Classes="session-action" CommandParameter="{Binding}" Click="ArchiveSessionItem" IsEnabled="{Binding !IsTurnActive}" />
                           </StackPanel>
                         </Border>
                       </Flyout>
@@ -60,8 +60,8 @@
         </ScrollViewer>
         <StackPanel Grid.Row="0" IsVisible="{Binding !HasSessions}" Margin="0,44,0,32" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
           <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
-          <TextBlock Text="{DynamicResource Loc_NoSessionsYet}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" HorizontalAlignment="Center" />
-          <TextBlock Text="{DynamicResource Loc_UsePlusToCreateOne}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
+          <TextBlock Text="{DynamicResource LocNoSessionsYet}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <TextBlock Text="{DynamicResource LocUsePlusToCreateOne}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />
         </StackPanel>
         <Button Grid.Row="1" Classes="archive-drawer-toggle" Click="ToggleArchivedSessions" IsVisible="{Binding HasArchivedSessions}">
           <Grid ColumnDefinitions="18,*,Auto">
@@ -76,7 +76,7 @@
                 </RotateTransform>
               </svg:Svg.RenderTransform>
             </svg:Svg>
-            <TextBlock Grid.Column="1" Text="{DynamicResource Loc_ArchivedSessions}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{DynamicResource LocArchivedSessions}" VerticalAlignment="Center" />
             <TextBlock Grid.Column="2" Text="{Binding ArchivedSessions.Count}" Classes="mono" Foreground="{DynamicResource TextMutedBrush}" Margin="7,0,0,0" VerticalAlignment="Center" />
           </Grid>
         </Button>
@@ -84,8 +84,8 @@
                 BoxShadow="0 -8 24 0 #44000000" CornerRadius="6">
           <Grid RowDefinitions="34,*">
             <Grid Grid.Row="0" ColumnDefinitions="*,28" Margin="16,0,5,0">
-              <TextBlock Text="{DynamicResource Loc_Archived}" Classes="section-label" VerticalAlignment="Center" />
-              <Button Grid.Column="1" Classes="icon" Click="CloseArchivedSessions" ToolTip.Tip="{DynamicResource Loc_CloseArchivedSessions}" AutomationProperties.Name="{DynamicResource Loc_CloseArchivedSessions}">
+              <TextBlock Text="{DynamicResource LocArchived}" Classes="section-label" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Classes="icon" Click="CloseArchivedSessions" ToolTip.Tip="{DynamicResource LocCloseArchivedSessions}" AutomationProperties.Name="{DynamicResource LocCloseArchivedSessions}">
                 <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
               </Button>
             </Grid>
@@ -100,14 +100,14 @@
                           <TextBlock Text="{Binding RelativeActivity}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
                         </StackPanel>
                       </Button>
-                      <TextBlock Grid.Column="2" Text="{DynamicResource Loc_Archived}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
-                      <Button Grid.Column="3" Classes="quiet session-actions-trigger" Width="28" Padding="6" ToolTip.Tip="{DynamicResource Loc_ArchivedSessionActions}" AutomationProperties.Name="Archived session actions">
+                      <TextBlock Grid.Column="2" Text="{DynamicResource LocArchived}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                      <Button Grid.Column="3" Classes="quiet session-actions-trigger" Width="28" Padding="6" ToolTip.Tip="{DynamicResource LocArchivedSessionActions}" AutomationProperties.Name="Archived session actions">
                         <Button.Flyout>
                           <Flyout Placement="BottomEdgeAlignedRight" ShowMode="Standard" FlyoutPresenterClasses="session-actions-flyout">
                             <Border Width="142" Padding="4">
                               <StackPanel>
-                                <Button Content="{DynamicResource Loc_Restore}" Classes="session-action" CommandParameter="{Binding}" Click="RestoreSessionItem" />
-                                <Button Content="{DynamicResource Loc_DeletePermanently}" Classes="session-action danger" CommandParameter="{Binding}" Click="DeleteSessionItem" />
+                                <Button Content="{DynamicResource LocRestore}" Classes="session-action" CommandParameter="{Binding}" Click="RestoreSessionItem" />
+                                <Button Content="{DynamicResource LocDeletePermanently}" Classes="session-action danger" CommandParameter="{Binding}" Click="DeleteSessionItem" />
                               </StackPanel>
                             </Border>
                           </Flyout>

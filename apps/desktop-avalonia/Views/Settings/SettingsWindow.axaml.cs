@@ -160,8 +160,8 @@ public sealed partial class SettingsWindow : Window
             DefaultsPage.ToolCallLimit.Value = ViewModel.ToolCallLimit;
             DefaultsPage.ToolCallLimit.IsEnabled = ViewModel.IsProjectOpen;
             DefaultsPage.ToolCallLimitScopeText.Text = ViewModel.SelectedProject is { } project
-                ? LF("Loc_ProjectScope", "Project: {0}", project.DisplayName)
-                : L("Loc_OpenProjectToConfigure", "Open a project to configure this setting.");
+                ? LF("LocProjectScope", "Project: {0}", project.DisplayName)
+                : L("LocOpenProjectToConfigure", "Open a project to configure this setting.");
             _baselineToolCallLimit = ViewModel.ToolCallLimit;
             LoggingPage.LogDirectoryInputControl.Text = ViewModel.AppSettings.EffectiveLogDirectory;
             LoggingPage.ImageDirectoryInputControl.Text = ViewModel.AppSettings.EffectiveImageDirectory;
@@ -199,8 +199,8 @@ public sealed partial class SettingsWindow : Window
             RefreshHttpsCertificateWarning();
             RefreshCertificateTrustPresentation();
             RefreshProxyPresentation();
-            LoggingPage.LoggingStatusText.Text = L("Loc_LocalSettings", "Local settings");
-            LoggingPage.ImageDirectoryStatusText.Text = L("Loc_LocalSettings", "Local settings");
+            LoggingPage.LoggingStatusText.Text = L("LocLocalSettings", "Local settings");
+            LoggingPage.ImageDirectoryStatusText.Text = L("LocLocalSettings", "Local settings");
             RefreshDefaultsDirtyState();
             RefreshLoggingDirtyState();
             RefreshImageDirectoryDirtyState();
@@ -351,7 +351,7 @@ public sealed partial class SettingsWindow : Window
         ProviderManager.EndpointStatusBrush = this.FindResource("TextSecondaryBrush") as IBrush;
         ProviderManager.ApiKeyText = string.Empty;
         var providerName = ViewModel.Providers.FirstOrDefault(item => item.Id == provider)?.DisplayName ?? provider;
-        ProviderManager.ApiKeyPlaceholderText = LF("Loc_PasteApiKey", "Paste {0} API key", providerName);
+        ProviderManager.ApiKeyPlaceholderText = LF("LocPasteApiKey", "Paste {0} API key", providerName);
         RefreshProvider();
     }
 
@@ -446,8 +446,8 @@ public sealed partial class SettingsWindow : Window
         var result = await ViewModel.Remote.SaveAsync(RemotePage.ServerUrlInputControl.Text, RemotePage.PairingCodeInputControl.Text);
         RefreshRemotePresentation(result);
         RemotePage.StatusTextControl.Text = result.Error ?? (result.Connected
-            ? L("Loc_Connected", "Connected")
-            : L("Loc_SavedConnectionUnavailable", "Saved; connection unavailable"));
+            ? L("LocConnected", "Connected")
+            : L("LocSavedConnectionUnavailable", "Saved; connection unavailable"));
     }
 
     private async void DisconnectRemote(object? sender, RoutedEventArgs e)
@@ -475,8 +475,8 @@ public sealed partial class SettingsWindow : Window
         RemotePage.SetPairingPayload(pairingUrl);
         RemotePage.SetPairingMetadata(status.HostId, status.AccessTokenExpiresAt);
         RemotePage.StatusTextControl.Text = status.Error ?? (status.Connected
-            ? L("Loc_Connected", "Connected")
-            : status.Configured ? L("Loc_Disconnected", "Disconnected") : string.Empty);
+            ? L("LocConnected", "Connected")
+            : status.Configured ? L("LocDisconnected", "Disconnected") : string.Empty);
     }
 
     private async void LanguageServerPollTick(object? sender, EventArgs e)
@@ -513,14 +513,14 @@ public sealed partial class SettingsWindow : Window
             var modelSupported = model?.SupportsComputerUse == true;
             ComputerPage.EnabledToggleControl.IsChecked = runtime.Enabled;
             ComputerPage.ModelSupportTextControl.Text = model is null
-                ? L("Loc_NoModelSelected", "No model selected")
-                : modelSupported ? L("Loc_Supported", "Supported") : L("Loc_NotSupported", "Not supported");
-            ComputerPage.ModelNameTextControl.Text = model?.Id ?? L("Loc_NoModelSelected", "No model selected");
+                ? L("LocNoModelSelected", "No model selected")
+                : modelSupported ? L("LocSupported", "Supported") : L("LocNotSupported", "Not supported");
+            ComputerPage.ModelNameTextControl.Text = model?.Id ?? L("LocNoModelSelected", "No model selected");
             ComputerPage.ModelStatusDotControl.Fill = this.FindResource(
                 modelSupported ? "SuccessBrush" : model is null ? "TextMutedBrush" : "WarningBrush") as IBrush;
             ComputerPage.BackendStateTextControl.Text = !runtime.Enabled
-                ? L("Loc_Disabled", "Disabled")
-                : runtime.BackendAvailable ? L("Loc_Ready", "Ready") : L("Loc_Unavailable", "Unavailable");
+                ? L("LocDisabled", "Disabled")
+                : runtime.BackendAvailable ? L("LocReady", "Ready") : L("LocUnavailable", "Unavailable");
             ComputerPage.BackendStatusDotControl.Fill = this.FindResource(
                 !runtime.Enabled ? "TextMutedBrush" : runtime.BackendAvailable ? "SuccessBrush" : "DangerBrush") as IBrush;
             ComputerPage.TargetDisplayTextControl.Text = runtime.PixelWidth is { } width && runtime.PixelHeight is { } height
@@ -530,14 +530,14 @@ public sealed partial class SettingsWindow : Window
             ComputerPage.CapturePermissionDotControl.Fill = ComputerPermissionBrush(runtime.CapturePermission);
             ComputerPage.CapturePermissionButtonControl.IsEnabled = runtime.CapturePermission == "denied";
             ComputerPage.CapturePermissionButtonControl.Content = runtime.CapturePermission == "allowed"
-                ? L("Loc_ScreenCaptureAllowed", "Screen capture allowed")
-                : L("Loc_RequestScreenCapture", "Request screen capture");
+                ? L("LocScreenCaptureAllowed", "Screen capture allowed")
+                : L("LocRequestScreenCapture", "Request screen capture");
             ComputerPage.InputPermissionTextControl.Text = FormatComputerValue(runtime.InputPermission);
             ComputerPage.InputPermissionDotControl.Fill = ComputerPermissionBrush(runtime.InputPermission);
             ComputerPage.InputPermissionButtonControl.IsEnabled = runtime.InputPermission == "denied";
             ComputerPage.InputPermissionButtonControl.Content = runtime.InputPermission == "allowed"
-                ? L("Loc_InputControlAllowed", "Input control allowed")
-                : L("Loc_RequestInputControl", "Request input control");
+                ? L("LocInputControlAllowed", "Input control allowed")
+                : L("LocRequestInputControl", "Request input control");
             ComputerPage.ControlOwnerTextControl.Text = FormatComputerValue(runtime.ControlOwner);
             var agentControlled = runtime.ControlOwner == "agent";
             ComputerPage.TakeControlButtonControl.IsVisible = runtime.Enabled && agentControlled;
@@ -557,12 +557,12 @@ public sealed partial class SettingsWindow : Window
 
     private string FormatComputerValue(string value) => value switch
     {
-        "allowed" => L("Loc_Allowed", "Allowed"),
-        "denied" => L("Loc_Denied", "Denied"),
-        "unsupported" => L("Loc_Unsupported", "Unsupported"),
-        "primary_display" => L("Loc_PrimaryDisplay", "Primary display"),
-        "user" => L("Loc_User", "User"),
-        "agent" => L("Loc_Agent", "Agent"),
+        "allowed" => L("LocAllowed", "Allowed"),
+        "denied" => L("LocDenied", "Denied"),
+        "unsupported" => L("LocUnsupported", "Unsupported"),
+        "primary_display" => L("LocPrimaryDisplay", "Primary display"),
+        "user" => L("LocUser", "User"),
+        "agent" => L("LocAgent", "Agent"),
         _ when string.IsNullOrWhiteSpace(value) => "—",
         _ => string.Join(
             " ",
@@ -668,12 +668,12 @@ public sealed partial class SettingsWindow : Window
     {
         if (ViewModel.SelectedProject is not { } project) return;
         var dialog = new ConfirmationWindow(
-            L("Loc_ClearBrowserDataTitle", "Clear browser data?"),
-            L("Loc_ClearBrowserDataMessage", "Saved logins, cookies, site storage, and browsing state for this project will be removed. Project files are unchanged."),
+            L("LocClearBrowserDataTitle", "Clear browser data?"),
+            L("LocClearBrowserDataMessage", "Saved logins, cookies, site storage, and browsing state for this project will be removed. Project files are unchanged."),
             project.DisplayName,
             () => _ = ClearBrowserProfileConfirmedAsync(),
-            L("Loc_ProjectBrowserProfile", "PROJECT BROWSER PROFILE"),
-            L("Loc_ClearBrowserData", "Clear browser data"));
+            L("LocProjectBrowserProfile", "PROJECT BROWSER PROFILE"),
+            L("LocClearBrowserData", "Clear browser data"));
         IsEnabled = false;
         dialog.Closed += (_, _) => IsEnabled = true;
         _ = dialog.ShowDialog(this);
@@ -698,7 +698,7 @@ public sealed partial class SettingsWindow : Window
     {
         if (string.IsNullOrWhiteSpace(value) || TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard) return;
         await clipboard.SetTextAsync(value);
-        BrowserPage.StatusTextControl.Text = L("Loc_CopiedToClipboard", "Copied to clipboard.");
+        BrowserPage.StatusTextControl.Text = L("LocCopiedToClipboard", "Copied to clipboard.");
     }
 
     private void RefreshBrowserPresentation()
@@ -714,8 +714,8 @@ public sealed partial class SettingsWindow : Window
             BrowserPage.InstallationStatusDotControl.Fill = BrowserStateBrush(runtime.InstallationState);
             BrowserPage.RuntimeStatusDotControl.Fill = BrowserStateBrush(runtime.RuntimeState);
             BrowserPage.RuntimeScopeTextControl.Text = ViewModel.SelectedProject is { } project
-                ? LF("Loc_ProjectScope", "Project: {0}", project.DisplayName)
-                : L("Loc_NoProjectSelected", "No project selected");
+                ? LF("LocProjectScope", "Project: {0}", project.DisplayName)
+                : L("LocNoProjectSelected", "No project selected");
             BrowserPage.TargetTextControl.Text = EmptyAsDash(runtime.Target);
             BrowserPage.NodeVersionTextControl.Text = EmptyAsDash(runtime.NodeVersion);
             BrowserPage.NodePathTextControl.Text = EmptyAsDash(runtime.NodePath);
@@ -724,16 +724,16 @@ public sealed partial class SettingsWindow : Window
             BrowserPage.PlaywrightVersionTextControl.Text = EmptyAsDash(runtime.PlaywrightVersion);
             BrowserPage.ChromiumVersionTextControl.Text = string.IsNullOrWhiteSpace(runtime.ChromiumRevision)
                 ? EmptyAsDash(runtime.ChromiumVersion)
-                : LF("Loc_Revision", "revision {0}", runtime.ChromiumRevision);
+                : LF("LocRevision", "revision {0}", runtime.ChromiumRevision);
             BrowserPage.ChromiumPathTextControl.Text = EmptyAsDash(runtime.ChromiumPath);
             ToolTip.SetTip(BrowserPage.ChromiumPathTextControl, runtime.ChromiumPath);
             BrowserPage.CopyChromiumPathButtonControl.IsEnabled = !string.IsNullOrWhiteSpace(runtime.ChromiumPath);
             BrowserPage.WorkerProtocolTextControl.Text = runtime.WorkerProtocolVersion.ToString();
             BrowserPage.IntegrityTextControl.Text = runtime.IntegrityState switch
             {
-                "verified" => L("Loc_IntegrityVerified", "Integrity verified"),
-                "unverified" => L("Loc_IntegrityNotVerified", "Integrity not yet verified"),
-                _ => L("Loc_IntegrityUnavailable", "Integrity unavailable")
+                "verified" => L("LocIntegrityVerified", "Integrity verified"),
+                "unverified" => L("LocIntegrityNotVerified", "Integrity not yet verified"),
+                _ => L("LocIntegrityUnavailable", "Integrity unavailable")
             };
             var hasProject = ViewModel.SelectedProject is not null;
             BrowserPage.ProjectSectionControl.IsVisible = hasProject;
@@ -742,16 +742,16 @@ public sealed partial class SettingsWindow : Window
             ToolTip.SetTip(BrowserPage.ProfilePathTextControl, runtime.ProfilePath);
             BrowserPage.CopyProfilePathButtonControl.IsEnabled = !string.IsNullOrWhiteSpace(runtime.ProfilePath);
             BrowserPage.ProfileUsageTextControl.Text = runtime.ProfileSizeBytes is { } bytes
-                ? LF("Loc_ProfileUsageValue", "{0} · {1} active pages", FormatByteSize(bytes), runtime.ActivePageCount)
+                ? LF("LocProfileUsageValue", "{0} · {1} active pages", FormatByteSize(bytes), runtime.ActivePageCount)
                 : "—";
             BrowserPage.VisibilityTextControl.Text = FormatBrowserState(runtime.VisibilityCapability);
             var userControlled = runtime.RuntimeState == "user_controlled";
             BrowserPage.ControlTitleTextControl.Text = userControlled
-                ? L("Loc_YouControlChromium", "You control Chromium")
-                : L("Loc_AgentControlActive", "Agent control is active");
+                ? L("LocYouControlChromium", "You control Chromium")
+                : L("LocAgentControlActive", "Agent control is active");
             BrowserPage.ControlHintTextControl.Text = userControlled
-                ? L("Loc_BrowserToolsPaused", "Browser tools are paused. Returning control invalidates previous element references.")
-                : L("Loc_ShowingBrowserTransfers", "Showing the browser transfers exclusive control to you and pauses browser tools.");
+                ? L("LocBrowserToolsPaused", "Browser tools are paused. Returning control invalidates previous element references.")
+                : L("LocShowingBrowserTransfers", "Showing the browser transfers exclusive control to you and pauses browser tools.");
             BrowserPage.ErrorTextControl.Text = runtime.Error ?? string.Empty;
             BrowserPage.ErrorTextControl.IsVisible = !string.IsNullOrWhiteSpace(runtime.Error);
             BrowserPage.StatusTextControl.Text = ViewModel.Browser.StatusText;
@@ -775,17 +775,17 @@ public sealed partial class SettingsWindow : Window
 
     private string FormatBrowserState(string value) => value switch
     {
-        "ready" => L("Loc_Ready", "Ready"),
-        "not_started" => L("Loc_NotStarted", "Not started"),
-        "starting" => L("Loc_Starting", "Starting"),
-        "stopping" => L("Loc_Stopping", "Stopping"),
-        "verifying" => L("Loc_Verifying", "Verifying"),
-        "background" => L("Loc_Background", "Background"),
-        "user_controlled" => L("Loc_UserControlled", "User controlled"),
-        "missing" => L("Loc_Missing", "Missing"),
-        "invalid" => L("Loc_Invalid", "Invalid"),
-        "unsupported" => L("Loc_Unsupported", "Unsupported"),
-        "failed" => L("Loc_Failed", "Failed"),
+        "ready" => L("LocReady", "Ready"),
+        "not_started" => L("LocNotStarted", "Not started"),
+        "starting" => L("LocStarting", "Starting"),
+        "stopping" => L("LocStopping", "Stopping"),
+        "verifying" => L("LocVerifying", "Verifying"),
+        "background" => L("LocBackground", "Background"),
+        "user_controlled" => L("LocUserControlled", "User controlled"),
+        "missing" => L("LocMissing", "Missing"),
+        "invalid" => L("LocInvalid", "Invalid"),
+        "unsupported" => L("LocUnsupported", "Unsupported"),
+        "failed" => L("LocFailed", "Failed"),
         _ when string.IsNullOrWhiteSpace(value) => "—",
         _ => string.Join(
             " ",
@@ -836,12 +836,12 @@ public sealed partial class SettingsWindow : Window
     private void DeleteMcpServer(McpServerItem server)
     {
         var dialog = new ConfirmationWindow(
-            L("Loc_DeleteMcpServerTitle", "Delete MCP server?"),
-            L("Loc_DeleteMcpServerMessage", "Its tools will be removed from new model requests. An already executing call may finish."),
+            L("LocDeleteMcpServerTitle", "Delete MCP server?"),
+            L("LocDeleteMcpServerMessage", "Its tools will be removed from new model requests. An already executing call may finish."),
             server.DisplayName,
             () => _ = ViewModel.Mcp.DeleteServerAsync(server),
-            L("Loc_McpServerCaps", "MCP SERVER"),
-            L("Loc_DeleteServer", "Delete server"));
+            L("LocMcpServerCaps", "MCP SERVER"),
+            L("LocDeleteServer", "Delete server"));
         IsEnabled = false;
         dialog.Closed += (_, _) => IsEnabled = true;
         _ = dialog.ShowDialog(this);
@@ -870,12 +870,12 @@ public sealed partial class SettingsWindow : Window
     private void DeleteLanguageServer(LanguageServerItem server)
     {
         var dialog = new ConfirmationWindow(
-            L("Loc_DeleteLanguageServerTitle", "Delete language server?"),
-            L("Loc_DeleteLanguageServerMessage", "Its project runtimes will stop and semantic results will no longer be available to new agent turns."),
+            L("LocDeleteLanguageServerTitle", "Delete language server?"),
+            L("LocDeleteLanguageServerMessage", "Its project runtimes will stop and semantic results will no longer be available to new agent turns."),
             server.DisplayName,
             () => _ = ViewModel.LanguageServers.DeleteServerAsync(server),
-            L("Loc_LanguageServerCaps", "LANGUAGE SERVER"),
-            L("Loc_DeleteServer", "Delete server"));
+            L("LocLanguageServerCaps", "LANGUAGE SERVER"),
+            L("LocDeleteServer", "Delete server"));
         IsEnabled = false;
         dialog.Closed += (_, _) => IsEnabled = true;
         _ = dialog.ShowDialog(this);
@@ -942,7 +942,7 @@ public sealed partial class SettingsWindow : Window
             || retentionValue is < 0 or > 100
             || decimal.Truncate(retentionValue) != retentionValue)
         {
-            LoggingPage.LoggingStatusText.Text = L("Loc_LogValidation", "Log size must be 1–1000 MB and retained backups must be 0–100");
+            LoggingPage.LoggingStatusText.Text = L("LocLogValidation", "Log size must be 1–1000 MB and retained backups must be 0–100");
             LoggingPage.LoggingStatusText.Foreground = this.FindResource("DangerBrush") as IBrush;
             return;
         }
@@ -1053,18 +1053,18 @@ public sealed partial class SettingsWindow : Window
         var passwordConfigured = _baselineProxyPasswordConfigured && !_clearProxyPassword;
         NetworkPage.RemoveProxyPasswordButtonControl.IsVisible = passwordConfigured;
         NetworkPage.ProxyPasswordInputControl.PlaceholderText = passwordConfigured
-            ? L("Loc_PasswordStored", "Password stored")
-            : L("Loc_Optional", "Optional");
+            ? L("LocPasswordStored", "Password stored")
+            : L("LocOptional", "Optional");
         NetworkPage.ProxyPasswordHintText.Text = passwordConfigured
-            ? L("Loc_PasswordStoredHint", "Password stored. Leave empty to keep it or remove it explicitly.")
-            : L("Loc_ProxyPasswordHint", "Optional Basic proxy authentication password.");
+            ? L("LocPasswordStoredHint", "Password stored. Leave empty to keep it or remove it explicitly.")
+            : L("LocProxyPasswordHint", "Optional Basic proxy authentication password.");
         if (string.IsNullOrWhiteSpace(NetworkPage.ProxyStatusText.Text))
         {
             NetworkPage.ProxyStatusText.Text = mode switch
             {
-                "no_proxy" => L("Loc_DirectConnections", "Direct connections"),
-                "custom" => L("Loc_CustomProxyStatus", "Custom proxy"),
-                _ => L("Loc_SystemProxyStatus", "System proxy")
+                "no_proxy" => L("LocDirectConnections", "Direct connections"),
+                "custom" => L("LocCustomProxyStatus", "Custom proxy"),
+                _ => L("LocSystemProxyStatus", "System proxy")
             };
         }
     }
@@ -1101,14 +1101,14 @@ public sealed partial class SettingsWindow : Window
     {
         var useSystemCertificates = NetworkPage.UseSystemCertificatesToggleControl.IsChecked == true;
         NetworkPage.CertificatePathHintText.Text = useSystemCertificates
-            ? L("Loc_CertificatePathHint", "Disable system certificates to provide a custom certificate file.")
-            : L("Loc_CustomCertificatePathHint", "Choose a PEM, CRT, CER, or DER certificate file for custom trust.");
+            ? L("LocCertificatePathHint", "Disable system certificates to provide a custom certificate file.")
+            : L("LocCustomCertificatePathHint", "Choose a PEM, CRT, CER, or DER certificate file for custom trust.");
         RefreshHttpsCertificateWarning();
         NetworkPage.HttpsCertificateStatusText.Text = NetworkPage.VerifyHttpsCertificatesToggleControl.IsChecked == true
             ? useSystemCertificates
-                ? L("Loc_SystemTrustStore", "System trust store")
-                : L("Loc_CustomCertificateRequired", "Custom certificate required")
-            : L("Loc_ReviewRequired", "Review required");
+                ? L("LocSystemTrustStore", "System trust store")
+                : L("LocCustomCertificateRequired", "Custom certificate required")
+            : L("LocReviewRequired", "Review required");
     }
 
     private async void SaveToolCallLimit(object? sender, RoutedEventArgs e)
@@ -1172,8 +1172,8 @@ public sealed partial class SettingsWindow : Window
         var configured = ViewModel.IsProviderConfigured(_provider);
         ProviderManager.CredentialConfigured = configured;
         ProviderManager.CredentialStatusText = configured
-            ? L("Loc_ApiKeyConfigured", "API key configured")
-            : L("Loc_NoApiKeyConfigured", "No API key configured");
+            ? L("LocApiKeyConfigured", "API key configured")
+            : L("LocNoApiKeyConfigured", "No API key configured");
         ProviderManager.CanRemoveCredential = configured;
         ProviderManager.CanSaveCredential = !string.IsNullOrWhiteSpace(ProviderManager.ApiKeyText);
         RefreshProviderEndpointActions();

@@ -153,7 +153,7 @@
             <Grid>
               <Button Classes="attachment-preview"
                       Click="PreviewAttachment"
-                      ToolTip.Tip="{DynamicResource Loc_ViewImage}">
+                      ToolTip.Tip="{DynamicResource LocViewImage}">
                 <Image Source="{Binding Preview}"
                        Stretch="UniformToFill" />
               </Button>
@@ -162,7 +162,7 @@
                       VerticalAlignment="Top"
                       Margin="0,-7,-7,0"
                       Click="RemoveAttachment"
-                      ToolTip.Tip="{DynamicResource Loc_RemoveImage}">
+                      ToolTip.Tip="{DynamicResource LocRemoveImage}">
                 <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource AccentInkSvgCss}" />
               </Button>
             </Grid>
@@ -184,7 +184,7 @@
       <TextBlock Grid.Row="0"
                  Grid.ColumnSpan="2"
                  Classes="composer-status"
-                 Text="{DynamicResource Loc_ConfigureApiKey}"
+                 Text="{DynamicResource LocConfigureApiKey}"
                  IsVisible="{Binding IsModelUnavailable}"
                  VerticalAlignment="Top" />
       <TextBox x:Name="ComposerInput"
@@ -218,8 +218,8 @@
                 Classes="quiet"
                 Click="AddAttachment"
                 IsEnabled="{Binding CanAttachImages}"
-                ToolTip.Tip="{DynamicResource Loc_AddImage}"
-                AutomationProperties.Name="{DynamicResource Loc_AddImageAttachment}">
+                ToolTip.Tip="{DynamicResource LocAddImage}"
+                AutomationProperties.Name="{DynamicResource LocAddImageAttachment}">
           <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
 
@@ -230,8 +230,8 @@
                 Classes="quiet"
                 Click="ExpandComposer"
                 IsEnabled="{Binding CanCompose}"
-                ToolTip.Tip="{DynamicResource Loc_OpenExpandedComposer}"
-                AutomationProperties.Name="{DynamicResource Loc_OpenExpandedComposer}">
+                ToolTip.Tip="{DynamicResource LocOpenExpandedComposer}"
+                AutomationProperties.Name="{DynamicResource LocOpenExpandedComposer}">
           <svg:Svg Width="13" Height="13" Path="/Assets/icons/expand.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
       </StackPanel>
@@ -250,9 +250,9 @@
                              MinHeight="24"
                              Classes="mono composer-option"
                              UseMonospace="True"
-                             PlaceholderText="{DynamicResource Loc_ChooseModel}"
+                             PlaceholderText="{DynamicResource LocChooseModel}"
                              IsEnabled="{Binding CanChooseModel}"
-                             ToolTip.Tip="{DynamicResource Loc_ChooseModel}"
+                             ToolTip.Tip="{DynamicResource LocChooseModel}"
                              SelectionChanged="ModelSelectionChanged" />
 
         <controls:SCFlatComboBox x:Name="ReasoningSelector"
@@ -263,7 +263,7 @@
                              UseMonospace="True"
                              PlaceholderText=""
                              IsEnabled="{Binding CanChooseReasoningEffort}"
-                             ToolTip.Tip="{DynamicResource Loc_ReasoningEffort}"
+                             ToolTip.Tip="{DynamicResource LocReasoningEffort}"
                              SelectionChanged="ReasoningSelectionChanged" />
 
         <Button Width="24"
@@ -275,7 +275,7 @@
                 Click="SubmitTurn"
                 IsVisible="{Binding !IsTurnActive}"
                 IsEnabled="{Binding CanSubmit}"
-                ToolTip.Tip="{DynamicResource Loc_SendMessage}">
+                ToolTip.Tip="{DynamicResource LocSendMessage}">
           <svg:Svg Path="/Assets/icons/arrow-up.svg" Css="{DynamicResource AccentInkSvgCss}" />
         </Button>
 
@@ -287,7 +287,7 @@
                 Classes="danger"
                 Click="CancelTurn"
                 IsVisible="{Binding IsTurnActive}"
-                ToolTip.Tip="{DynamicResource Loc_StopTurn}">
+                ToolTip.Tip="{DynamicResource LocStopTurn}">
           <Border Width="8"
                   Height="8"
                   CornerRadius="1.5"

@@ -409,16 +409,16 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool HasFailedTurn => ActiveTurnState == "failed";
     public string ReviewHeadingText => HasFailedTurn ? "Turn stopped" : IsTurnCompacting ? "Compacting context" : IsTurnActive ? "1 active process" : HasPendingApproval || HasPendingQuestion ? "Awaiting input" : "No active process";
     public string ReviewStatusText => HasFailedTurn
-        ? LocalizationService.GetString("Loc_TurnFailed", "Turn failed")
+        ? LocalizationService.GetString("LocTurnFailed", "Turn failed")
         : IsTurnCompacting
-            ? LocalizationService.GetString("Loc_CompactingConversationContext", "Compacting conversation context")
+            ? LocalizationService.GetString("LocCompactingConversationContext", "Compacting conversation context")
             : IsTurnActive
-                ? LocalizationService.GetString("Loc_AgentRunning", "Agent running")
+                ? LocalizationService.GetString("LocAgentRunning", "Agent running")
                 : HasPendingApproval
-                    ? LocalizationService.GetString("Loc_WaitingForApproval", "Waiting for approval")
+                    ? LocalizationService.GetString("LocWaitingForApproval", "Waiting for approval")
                     : HasPendingQuestion
-                        ? LocalizationService.GetString("Loc_WaitingForAnswer", "Waiting for answer")
-                        : LocalizationService.GetString("Loc_AgentIdle", "Agent idle");
+                        ? LocalizationService.GetString("LocWaitingForAnswer", "Waiting for answer")
+                        : LocalizationService.GetString("LocAgentIdle", "Agent idle");
     public string ReviewStatusState => HasFailedTurn ? "failed" : IsTurnCompacting ? "compacting" : IsTurnActive ? "running" : HasPendingApproval ? "approval" : HasPendingQuestion ? "question" : "idle";
     public bool IsReviewIdle => !IsTurnActive && !HasPendingApproval && !HasPendingQuestion && !HasFailedTurn && !IsTurnCompacting;
     public bool IsReviewRunning => IsTurnActive && !IsTurnCompacting && !HasFailedTurn;

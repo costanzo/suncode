@@ -190,7 +190,7 @@ public sealed partial class ModelProviderSettingsControl : UserControl
 
         var provider = Providers?.FirstOrDefault(item => item.Id == selectedId);
         ProviderTitleText.Text = provider?.DisplayName ?? selectedId;
-        ProviderDescriptionText.Text = LocalizationService.GetString("Loc_ProviderDescription", "Configure the provider URL and credential used by the local agent.");
+        ProviderDescriptionText.Text = LocalizationService.GetString("LocProviderDescription", "Configure the provider URL and credential used by the local agent.");
 
         _syncingEndpoint = true;
         EndpointInput.Text = EndpointText ?? string.Empty;
@@ -202,7 +202,7 @@ public sealed partial class ModelProviderSettingsControl : UserControl
 
         ApiKeyInput.PlaceholderText = ApiKeyPlaceholderText ?? string.Format(
             System.Globalization.CultureInfo.CurrentCulture,
-            LocalizationService.GetString("Loc_PasteApiKey", "Paste {0} API key"),
+            LocalizationService.GetString("LocPasteApiKey", "Paste {0} API key"),
             provider?.DisplayName ?? selectedId);
         EndpointStatusTextBlock.Text = EndpointStatusText ?? string.Empty;
         EndpointStatusTextBlock.Foreground = EndpointStatusBrush ?? this.FindResource("TextSecondaryBrush") as IBrush;
@@ -211,15 +211,15 @@ public sealed partial class ModelProviderSettingsControl : UserControl
         ProviderModelsItemsControl.IsVisible = models.Length > 0;
         NoProviderModelsText.IsVisible = models.Length == 0;
         CredentialStatusTextBlock.Text = CredentialConfigured
-            ? LocalizationService.GetString("Loc_ApiKeyConfigured", "API key configured")
-            : LocalizationService.GetString("Loc_NoApiKeyConfigured", "No API key configured");
+            ? LocalizationService.GetString("LocApiKeyConfigured", "API key configured")
+            : LocalizationService.GetString("LocNoApiKeyConfigured", "No API key configured");
         CredentialWarningDot.IsVisible = !CredentialConfigured;
         CredentialSuccessDot.IsVisible = CredentialConfigured;
         ProviderUnconfiguredBanner.IsVisible = !CredentialConfigured;
-        ProviderUnconfiguredTitle.Text = LocalizationService.GetString("Loc_AddApiKeyToUseProvider", "Add an API key to use this provider");
+        ProviderUnconfiguredTitle.Text = LocalizationService.GetString("LocAddApiKeyToUseProvider", "Add an API key to use this provider");
         SaveCredentialButton.Content = CredentialConfigured
-            ? LocalizationService.GetString("Loc_ReplaceKey", "Replace key")
-            : LocalizationService.GetString("Loc_SaveKey", "Save key");
+            ? LocalizationService.GetString("LocReplaceKey", "Replace key")
+            : LocalizationService.GetString("LocSaveKey", "Save key");
         SaveEndpointButton.IsEnabled = CanSaveEndpoint;
         ResetEndpointButton.IsEnabled = CanResetEndpoint;
         SaveCredentialButton.IsEnabled = CanSaveCredential;

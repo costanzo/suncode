@@ -118,8 +118,8 @@
                       Classes="merged-project-tab-close"
                       HorizontalAlignment="Center"
                       VerticalAlignment="Center"
-                      ToolTip.Tip="{DynamicResource Loc_Close}"
-                      AutomationProperties.Name="{DynamicResource Loc_Close}"
+                      ToolTip.Tip="{DynamicResource LocClose}"
+                      AutomationProperties.Name="{DynamicResource LocClose}"
                       Click="CloseTab">
                 <svg:Svg Path="/Assets/icons/windows-close.svg"
                          Css="{DynamicResource IconSvgCss}" />

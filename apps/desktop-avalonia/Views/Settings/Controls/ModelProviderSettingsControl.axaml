@@ -36,8 +36,8 @@
                   HorizontalContentAlignment="Stretch">
       <StackPanel Classes="settings-panel-content" HorizontalAlignment="Stretch">
         <StackPanel Classes="settings-panel-heading">
-          <TextBlock Text="{DynamicResource Loc_ModelProviders}" Classes="sc-text-title" />
-          <TextBlock Text="{DynamicResource Loc_ModelProvidersHint}" Classes="sc-text-hint" />
+          <TextBlock Text="{DynamicResource LocModelProviders}" Classes="sc-text-title" />
+          <TextBlock Text="{DynamicResource LocModelProvidersHint}" Classes="sc-text-hint" />
         </StackPanel>
         <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
           <ItemsControl x:Name="ProviderItemsControl"
@@ -114,29 +114,29 @@
         </StackPanel>
 
         <StackPanel Classes="settings-panel-section">
-          <TextBlock Text="{DynamicResource Loc_ProviderUrl}" Classes="section-label" />
+          <TextBlock Text="{DynamicResource LocProviderUrl}" Classes="section-label" />
           <Grid Classes="settings-row" ColumnDefinitions="*,220">
             <StackPanel Classes="settings-row-copy">
-              <TextBlock Text="{DynamicResource Loc_ApiBaseUrl}" Classes="settings-row-title" />
-              <TextBlock Text="{DynamicResource Loc_ApiBaseUrlHint}" Classes="settings-row-hint" />
+              <TextBlock Text="{DynamicResource LocApiBaseUrl}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocApiBaseUrlHint}" Classes="settings-row-hint" />
             </StackPanel>
             <TextBox x:Name="EndpointInput"
                      Grid.Column="1"
                      Classes="mono settings-provider-input"
                      PlaceholderText="https://api.example.com/v1"
                      TextChanged="EndpointInputChanged"
-                     AutomationProperties.Name="{DynamicResource Loc_ProviderUrlAutomation}" />
+                     AutomationProperties.Name="{DynamicResource LocProviderUrlAutomation}" />
           </Grid>
         </StackPanel>
         <StackPanel Classes="settings-actions">
           <Button x:Name="SaveEndpointButton"
                   Classes="compact primary sc-button"
-                  Content="{DynamicResource Loc_SaveUrl}"
+                  Content="{DynamicResource LocSaveUrl}"
                   Click="SaveEndpoint"
                   IsEnabled="False" />
           <Button x:Name="ResetEndpointButton"
                   Classes="compact sc-button"
-                  Content="{DynamicResource Loc_ResetDefault}"
+                  Content="{DynamicResource LocResetDefault}"
                   Click="ResetEndpoint"
                   IsEnabled="False" />
           <TextBlock x:Name="EndpointStatusTextBlock"
@@ -147,7 +147,7 @@
         <Border Classes="settings-divider" />
 
         <StackPanel Classes="settings-panel-section">
-          <TextBlock Text="{DynamicResource Loc_Credential}" Classes="section-label" />
+          <TextBlock Text="{DynamicResource LocCredential}" Classes="section-label" />
           <Grid ColumnDefinitions="7,*" ColumnSpacing="9">
             <Ellipse x:Name="CredentialWarningDot"
                      Width="7"
@@ -164,7 +164,7 @@
                      IsVisible="False" />
             <StackPanel Grid.Column="1" Spacing="5">
               <TextBlock x:Name="CredentialStatusTextBlock"
-                         Text="{DynamicResource Loc_NoApiKeyConfigured}"
+                         Text="{DynamicResource LocNoApiKeyConfigured}"
                          FontSize="12"
                          FontWeight="SemiBold"
                          Foreground="{DynamicResource TextBrush}"
@@ -182,15 +182,15 @@
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
               <StackPanel Spacing="4">
                 <TextBlock x:Name="ProviderUnconfiguredTitle"
-                           Text="{DynamicResource Loc_AddApiKeyToUseProvider}"
+                           Text="{DynamicResource LocAddApiKeyToUseProvider}"
                            FontSize="12"
                            FontWeight="SemiBold" />
-                <TextBlock Text="{DynamicResource Loc_ModelsVisibleSendingPaused}"
+                <TextBlock Text="{DynamicResource LocModelsVisibleSendingPaused}"
                            Classes="settings-row-hint"
                            TextWrapping="Wrap" />
               </StackPanel>
                 <TextBlock Grid.Column="1"
-                         Text="{DynamicResource Loc_ApiKeyRequired}"
+                         Text="{DynamicResource LocApiKeyRequired}"
                          Classes="mono"
                          FontSize="11"
                          VerticalAlignment="Center" />
@@ -203,19 +203,19 @@
         <StackPanel Classes="settings-actions">
           <Button x:Name="SaveCredentialButton"
                   Classes="compact primary sc-button"
-                  Content="{DynamicResource Loc_SaveKey}"
+                  Content="{DynamicResource LocSaveKey}"
                   Click="SaveCredential"
                   IsEnabled="False" />
           <Button x:Name="RemoveCredentialButton"
                   Classes="compact danger sc-button"
-                  Content="{DynamicResource Loc_RemoveKey}"
+                  Content="{DynamicResource LocRemoveKey}"
                   Click="RemoveCredential" />
         </StackPanel>
 
         <Border Classes="settings-divider" />
 
         <StackPanel Classes="settings-panel-section">
-          <TextBlock Text="{DynamicResource Loc_AvailableModels}" Classes="section-label" />
+          <TextBlock Text="{DynamicResource LocAvailableModels}" Classes="section-label" />
           <ItemsControl x:Name="ProviderModelsItemsControl">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
@@ -245,7 +245,7 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
           <TextBlock x:Name="NoProviderModelsText"
-                     Text="{DynamicResource Loc_NoModelsAvailable}"
+                     Text="{DynamicResource LocNoModelsAvailable}"
                      Classes="settings-row-hint"
                      IsVisible="False" />
         </StackPanel>

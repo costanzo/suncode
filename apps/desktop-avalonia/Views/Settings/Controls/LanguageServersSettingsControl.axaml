@@ -32,25 +32,25 @@
     <StackPanel Classes="settings-panel-content" MaxWidth="840">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18" Margin="0,0,0,26">
         <StackPanel Spacing="4">
-          <TextBlock Text="{DynamicResource Loc_LanguageServers}" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="{DynamicResource Loc_LanguageServersHint}"
+          <TextBlock Text="{DynamicResource LocLanguageServers}" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="{DynamicResource LocLanguageServersHint}"
                      FontSize="12" Foreground="{DynamicResource TextMutedBrush}" />
         </StackPanel>
         <Button Grid.Column="1" Classes="compact primary sc-button" Click="AddClicked">
           <StackPanel Orientation="Horizontal" Spacing="7">
             <svg:Svg Width="14" Height="14" Path="/Assets/icons/plus.svg" Css="{DynamicResource AccentInkSvgCss}" />
-            <TextBlock Text="{DynamicResource Loc_AddServer}" />
+            <TextBlock Text="{DynamicResource LocAddServer}" />
           </StackPanel>
         </Button>
       </Grid>
 
       <StackPanel x:Name="RegularList" IsVisible="False">
         <Grid ColumnDefinitions="*,105,105,70,94" ColumnSpacing="10" MinHeight="31" Margin="4,0">
-          <TextBlock Text="{DynamicResource Loc_Server}" Classes="eyebrow" VerticalAlignment="Center" />
-          <TextBlock Grid.Column="1" Text="{DynamicResource Loc_Languages}" Classes="eyebrow" VerticalAlignment="Center" />
-          <TextBlock Grid.Column="2" Text="{DynamicResource Loc_Status}" Classes="eyebrow" VerticalAlignment="Center" />
-          <TextBlock Grid.Column="3" Text="{DynamicResource Loc_Enabled}" Classes="eyebrow" VerticalAlignment="Center" />
-          <TextBlock Grid.Column="4" Text="{DynamicResource Loc_Actions}" Classes="eyebrow" VerticalAlignment="Center" HorizontalAlignment="Right" />
+          <TextBlock Text="{DynamicResource LocServer}" Classes="eyebrow" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Text="{DynamicResource LocLanguages}" Classes="eyebrow" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="2" Text="{DynamicResource LocStatus}" Classes="eyebrow" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="3" Text="{DynamicResource LocEnabled}" Classes="eyebrow" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="4" Text="{DynamicResource LocActions}" Classes="eyebrow" VerticalAlignment="Center" HorizontalAlignment="Right" />
         </Grid>
         <ItemsControl ItemsSource="{Binding Servers}">
           <ItemsControl.ItemTemplate>
@@ -89,20 +89,20 @@
                   </Grid>
                   <ToggleSwitch Grid.Column="3" Classes="sc-toggle-switch settings-switch"
                                 IsChecked="{Binding Enabled, Mode=OneWay}"
-                                OnContent="{DynamicResource Loc_On}" OffContent="{DynamicResource Loc_Off}"
+                                OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}"
                                 IsEnabled="{Binding CanToggle}"
                                 Tag="{Binding}" Click="ToggleClicked" />
                   <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="2" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Button Classes="lsp-action quiet" Tag="{Binding}" Click="RetryClicked"
-                            IsVisible="{Binding CanRetry}" ToolTip.Tip="{DynamicResource Loc_RetryServer}">
+                            IsVisible="{Binding CanRetry}" ToolTip.Tip="{DynamicResource LocRetryServer}">
                       <svg:Svg Width="14" Height="14" Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
                     </Button>
                     <Button Classes="lsp-action quiet" Tag="{Binding}" Click="EditClicked"
-                            IsEnabled="{Binding !IsPending}" ToolTip.Tip="{DynamicResource Loc_EditServer}">
+                            IsEnabled="{Binding !IsPending}" ToolTip.Tip="{DynamicResource LocEditServer}">
                       <svg:Svg Width="14" Height="14" Path="/Assets/icons/pencil.svg" Css="{DynamicResource IconSvgCss}" />
                     </Button>
                     <Button Classes="lsp-action quiet" Tag="{Binding}" Click="DeleteClicked"
-                            IsEnabled="{Binding !IsPending}" ToolTip.Tip="{DynamicResource Loc_DeleteServer}">
+                            IsEnabled="{Binding !IsPending}" ToolTip.Tip="{DynamicResource LocDeleteServer}">
                       <svg:Svg Width="14" Height="14" Path="/Assets/icons/trash-2.svg" Css="{DynamicResource IconSvgCss}" />
                     </Button>
                   </StackPanel>
@@ -145,16 +145,16 @@
                   </StackPanel>
                 </Grid>
                 <ToggleSwitch Grid.Row="1" Grid.Column="1" Classes="sc-toggle-switch settings-switch"
-                              IsChecked="{Binding Enabled, Mode=OneWay}" OnContent="{DynamicResource Loc_On}" OffContent="{DynamicResource Loc_Off}"
+                              IsChecked="{Binding Enabled, Mode=OneWay}" OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}"
                               IsEnabled="{Binding CanToggle}" Tag="{Binding}" Click="ToggleClicked" />
                 <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="2" HorizontalAlignment="Right">
-                  <Button Classes="lsp-action quiet" Tag="{Binding}" Click="RetryClicked" IsVisible="{Binding CanRetry}" ToolTip.Tip="{DynamicResource Loc_RetryServer}">
+                  <Button Classes="lsp-action quiet" Tag="{Binding}" Click="RetryClicked" IsVisible="{Binding CanRetry}" ToolTip.Tip="{DynamicResource LocRetryServer}">
                     <svg:Svg Width="14" Height="14" Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
                   </Button>
-                  <Button Classes="lsp-action quiet" Tag="{Binding}" Click="EditClicked" IsEnabled="{Binding !IsPending}" ToolTip.Tip="{DynamicResource Loc_EditServer}">
+                  <Button Classes="lsp-action quiet" Tag="{Binding}" Click="EditClicked" IsEnabled="{Binding !IsPending}" ToolTip.Tip="{DynamicResource LocEditServer}">
                     <svg:Svg Width="14" Height="14" Path="/Assets/icons/pencil.svg" Css="{DynamicResource IconSvgCss}" />
                   </Button>
-                  <Button Classes="lsp-action quiet" Tag="{Binding}" Click="DeleteClicked" IsEnabled="{Binding !IsPending}" ToolTip.Tip="{DynamicResource Loc_DeleteServer}">
+                  <Button Classes="lsp-action quiet" Tag="{Binding}" Click="DeleteClicked" IsEnabled="{Binding !IsPending}" ToolTip.Tip="{DynamicResource LocDeleteServer}">
                     <svg:Svg Width="14" Height="14" Path="/Assets/icons/trash-2.svg" Css="{DynamicResource IconSvgCss}" />
                   </Button>
                 </StackPanel>
@@ -168,8 +168,8 @@
               BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
         <StackPanel Spacing="7" HorizontalAlignment="Center">
           <svg:Svg Width="22" Height="22" Path="/Assets/icons/file-code.svg" Css="{DynamicResource IconSvgCss}" />
-          <TextBlock Text="{DynamicResource Loc_NoLanguageServers}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
-          <TextBlock Text="{DynamicResource Loc_AddLanguageServerHint}"
+          <TextBlock Text="{DynamicResource LocNoLanguageServers}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <TextBlock Text="{DynamicResource LocAddLanguageServerHint}"
                      FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextAlignment="Center" TextWrapping="Wrap" />
         </StackPanel>
       </Border>

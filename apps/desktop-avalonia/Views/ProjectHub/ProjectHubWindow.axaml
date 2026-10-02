@@ -5,7 +5,7 @@
         xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
         x:Class="SunCode.Desktop.Views.ProjectHub.ProjectHubWindow"
         x:DataType="vm:ProjectHubViewModel"
-        Title="{DynamicResource Loc_WelcomeToSunCode}"
+        Title="{DynamicResource LocWelcomeToSunCode}"
         Width="980" Height="712"
         MinWidth="760" MinHeight="552"
         Background="{DynamicResource CanvasBrush}"
@@ -36,7 +36,7 @@
         <Grid Margin="22,0" ColumnDefinitions="Auto,12,Auto,*,Auto,8,Auto" RowDefinitions="*,Auto">
           <Image Grid.Column="0" Width="30" Height="30" Source="/Assets/logo/suncode-logo-small-64.png" VerticalAlignment="Center" />
           <TextBlock Grid.Column="2" Text="SunCode" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <Button Grid.Column="4" Classes="project-hub-action quiet" Content="{DynamicResource Loc_Settings}" Click="OpenSettings" VerticalAlignment="Center" />
+          <Button Grid.Column="4" Classes="project-hub-action quiet" Content="{DynamicResource LocSettings}" Click="OpenSettings" VerticalAlignment="Center" />
           <Button Grid.Column="6"
                   Classes="project-hub-action primary"
                   Click="OpenProject"
@@ -44,7 +44,7 @@
                   IsEnabled="{Binding CanOpenProjects}">
             <StackPanel Orientation="Horizontal" Spacing="7">
               <svg:Svg Width="13" Height="13" Path="/Assets/icons/plus.svg" Css="{DynamicResource AccentInkSvgCss}" />
-              <TextBlock Text="{DynamicResource Loc_OpenProject}" />
+              <TextBlock Text="{DynamicResource LocOpenProject}" />
             </StackPanel>
           </Button>
           <TextBlock Grid.Row="1"
@@ -60,7 +60,7 @@
       <Border Grid.Row="1" Margin="24" Classes="raised" Padding="18">
         <Grid RowDefinitions="Auto,14,*">
           <Border Grid.Row="0" Padding="2,0,2,12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-            <TextBlock Classes="section-label" Text="{DynamicResource Loc_RecentProjects}" />
+            <TextBlock Classes="section-label" Text="{DynamicResource LocRecentProjects}" />
           </Border>
           <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <Grid>
@@ -94,8 +94,8 @@
                       CornerRadius="6">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="7">
                   <svg:Svg Width="28" Height="28" Path="/Assets/icons/sidebar-project.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
-                  <TextBlock Text="{DynamicResource Loc_NoProjectsYet}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                  <TextBlock Text="{DynamicResource Loc_OpenLocalFolderFirst}"
+                  <TextBlock Text="{DynamicResource LocNoProjectsYet}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource LocOpenLocalFolderFirst}"
                              FontSize="10"
                              Foreground="{DynamicResource TextMutedBrush}"
                              TextAlignment="Center"

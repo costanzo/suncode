@@ -24,8 +24,8 @@
     <Grid>
       <StackPanel x:Name="OverviewPanel" Classes="settings-panel-content">
         <StackPanel Classes="settings-panel-heading">
-          <TextBlock Text="{DynamicResource Loc_Agents}" Classes="sc-text-title" />
-          <TextBlock Text="{DynamicResource Loc_AgentsHint}"
+          <TextBlock Text="{DynamicResource LocAgents}" Classes="sc-text-title" />
+          <TextBlock Text="{DynamicResource LocAgentsHint}"
                      Classes="sc-text-hint" />
         </StackPanel>
         <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
@@ -60,7 +60,7 @@
             <TextBlock x:Name="DetailDescription" MaxWidth="580" FontSize="12" LineHeight="18" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
           </StackPanel>
           <Border Grid.Column="1" Classes="settings-read-only-badge" Margin="18,2,0,0">
-            <TextBlock Text="{DynamicResource Loc_ReadOnly}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+            <TextBlock Text="{DynamicResource LocReadOnly}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
           </Border>
         </Grid>
 
@@ -76,21 +76,21 @@
 
         <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0,0,0,28">
           <Border Padding="12" MinHeight="58" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,1,0,0">
-            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource Loc_StableId}" Classes="eyebrow" /><TextBlock x:Name="DetailId" Classes="mono" FontSize="10" /></StackPanel>
+            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LocStableId}" Classes="eyebrow" /><TextBlock x:Name="DetailId" Classes="mono" FontSize="10" /></StackPanel>
           </Border>
           <Border Grid.Column="1" Padding="12" MinHeight="58" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,1,1,0">
-            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource Loc_Version}" Classes="eyebrow" /><TextBlock x:Name="DetailVersion" Classes="mono" FontSize="10" /></StackPanel>
+            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LocVersion}" Classes="eyebrow" /><TextBlock x:Name="DetailVersion" Classes="mono" FontSize="10" /></StackPanel>
           </Border>
           <Border Grid.Row="1" Padding="12" MinHeight="58" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource Loc_AgentModel}" Classes="eyebrow" /><TextBlock x:Name="DetailModelPolicy" FontSize="10" /></StackPanel>
+            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LocAgentModel}" Classes="eyebrow" /><TextBlock x:Name="DetailModelPolicy" FontSize="10" /></StackPanel>
           </Border>
           <Border Grid.Row="1" Grid.Column="1" Padding="12" MinHeight="58" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,1,1">
-            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource Loc_ToolLimit}" Classes="eyebrow" /><TextBlock x:Name="DetailToolLimit" FontSize="10" /></StackPanel>
+            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LocToolLimit}" Classes="eyebrow" /><TextBlock x:Name="DetailToolLimit" FontSize="10" /></StackPanel>
           </Border>
         </Grid>
 
         <StackPanel Spacing="12" Margin="0,0,0,30">
-          <TextBlock Text="{DynamicResource Loc_AllowedTools}" Classes="eyebrow" />
+          <TextBlock Text="{DynamicResource LocAllowedTools}" Classes="eyebrow" />
           <ItemsControl x:Name="AllowedTools">
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate><DataTemplate><Border Margin="0,0,8,8" Padding="8,6" CornerRadius="5" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"><TextBlock Text="{Binding}" Classes="mono" FontSize="10" /></Border></DataTemplate></ItemsControl.ItemTemplate>
@@ -98,11 +98,11 @@
         </StackPanel>
 
         <StackPanel Spacing="12">
-          <TextBlock Text="{DynamicResource Loc_Boundaries}" Classes="eyebrow" />
+          <TextBlock Text="{DynamicResource LocBoundaries}" Classes="eyebrow" />
           <Grid RowDefinitions="42,42,42">
-            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="{DynamicResource Loc_McpTools}" FontSize="11" VerticalAlignment="Center" /><TextBlock Grid.Column="1" x:Name="DetailMcp" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" /></Grid></Border>
-            <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="{DynamicResource Loc_DelegateAgain}" FontSize="11" VerticalAlignment="Center" /><TextBlock Grid.Column="1" x:Name="DetailDelegate" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" /></Grid></Border>
-            <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="{DynamicResource Loc_DirectUserChat}" FontSize="11" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Text="{DynamicResource Loc_NotAllowed}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" /></Grid></Border>
+            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="{DynamicResource LocMcpTools}" FontSize="11" VerticalAlignment="Center" /><TextBlock Grid.Column="1" x:Name="DetailMcp" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" /></Grid></Border>
+            <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="{DynamicResource LocDelegateAgain}" FontSize="11" VerticalAlignment="Center" /><TextBlock Grid.Column="1" x:Name="DetailDelegate" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" /></Grid></Border>
+            <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="{DynamicResource LocDirectUserChat}" FontSize="11" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Text="{DynamicResource LocNotAllowed}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" /></Grid></Border>
           </Grid>
         </StackPanel>
       </StackPanel>

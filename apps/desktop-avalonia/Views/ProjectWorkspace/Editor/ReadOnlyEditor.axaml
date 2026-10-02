@@ -72,7 +72,7 @@
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
             <TextBlock Classes="editor-meta" Text="{Binding Editor.LanguageLabel}" VerticalAlignment="Center" />
             <Border Classes="editor-read-only">
-              <TextBlock Text="{DynamicResource Loc_ReadOnlyStatus}" />
+              <TextBlock Text="{DynamicResource LocReadOnlyStatus}" />
             </Border>
           </StackPanel>
         </Grid>
@@ -102,23 +102,23 @@
       <Grid Grid.Row="1" Background="{DynamicResource FieldBrush}" IsVisible="{Binding Editor.IsLoading}">
         <StackPanel Classes="editor-state" Spacing="7" HorizontalAlignment="Center" VerticalAlignment="Center">
           <ProgressBar Width="80" Height="3" IsIndeterminate="True" />
-          <TextBlock Classes="state-title" Text="{DynamicResource Loc_LoadingFile}" />
-          <TextBlock Classes="state-description" Text="{DynamicResource Loc_ReadingFile}" />
+          <TextBlock Classes="state-title" Text="{DynamicResource LocLoadingFile}" />
+          <TextBlock Classes="state-description" Text="{DynamicResource LocReadingFile}" />
         </StackPanel>
       </Grid>
 
       <Grid Grid.Row="1" Background="{DynamicResource FieldBrush}" IsVisible="{Binding Editor.IsEmpty}">
         <StackPanel Classes="editor-state" Spacing="7" HorizontalAlignment="Center" VerticalAlignment="Center">
           <svg:Svg Width="24" Height="24" Path="/Assets/icons/file-text.svg" Css="{DynamicResource IconSvgCss}" />
-          <TextBlock Classes="state-title" Text="{DynamicResource Loc_EmptyDocument}" />
-          <TextBlock Classes="state-description" Text="{DynamicResource Loc_EmptyDocumentHint}" />
+          <TextBlock Classes="state-title" Text="{DynamicResource LocEmptyDocument}" />
+          <TextBlock Classes="state-description" Text="{DynamicResource LocEmptyDocumentHint}" />
         </StackPanel>
       </Grid>
 
       <Grid Grid.Row="1" Background="{DynamicResource FieldBrush}" IsVisible="{Binding Editor.IsError}">
         <StackPanel Classes="editor-state" Spacing="7" HorizontalAlignment="Center" VerticalAlignment="Center">
           <svg:Svg Width="24" Height="24" Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
-          <TextBlock Classes="state-title" Text="{DynamicResource Loc_UnableReadFile}" />
+          <TextBlock Classes="state-title" Text="{DynamicResource LocUnableReadFile}" />
           <TextBlock Classes="state-description" Text="{Binding Editor.Error}" />
         </StackPanel>
       </Grid>

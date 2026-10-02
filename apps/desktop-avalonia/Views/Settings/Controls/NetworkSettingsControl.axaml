@@ -6,57 +6,57 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
-        <TextBlock Text="{DynamicResource Loc_Network}" Classes="sc-text-title" />
-        <TextBlock Classes="settings-hint" Text="{DynamicResource Loc_NetworkHint}" />
+        <TextBlock Text="{DynamicResource LocNetwork}" Classes="sc-text-title" />
+        <TextBlock Classes="settings-hint" Text="{DynamicResource LocNetworkHint}" />
       </StackPanel>
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="{DynamicResource Loc_Proxy}" />
+        <TextBlock Classes="section-label" Text="{DynamicResource LocProxy}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_ProxyMode}" />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource LocProxyMode}" />
             <TextBlock Classes="settings-row-hint"
-                       Text="{DynamicResource Loc_ProxyModeHint}" />
+                       Text="{DynamicResource LocProxyModeHint}" />
           </StackPanel>
           <controls:SCFlatComboBox x:Name="ProxyModeSelector" Grid.Column="1" HorizontalAlignment="Stretch"
                                    SelectionChanged="OnProxyModeChanged" />
         </Grid>
         <Border x:Name="CustomProxySection" Classes="settings-subsection" IsVisible="False">
           <StackPanel Spacing="14">
-            <TextBlock Text="{DynamicResource Loc_CustomProxy}" Classes="section-label" />
+            <TextBlock Text="{DynamicResource LocCustomProxy}" Classes="section-label" />
             <Grid Classes="settings-row" ColumnDefinitions="*,220">
               <StackPanel Classes="settings-row-copy">
-                <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_ProxyUrl}" />
-                <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_ProxyUrlHint}" />
+                <TextBlock Classes="settings-row-title" Text="{DynamicResource LocProxyUrl}" />
+                <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocProxyUrlHint}" />
               </StackPanel>
               <TextBox x:Name="ProxyUrlInput" Grid.Column="1" Classes="mono settings-provider-input"
                        PlaceholderText="http://proxy.example.com:8080" TextChanged="OnProxyTextChanged" />
             </Grid>
             <Grid Classes="settings-row" ColumnDefinitions="*,220">
               <StackPanel Classes="settings-row-copy">
-                <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_Username}" />
-                <TextBlock Classes="settings-row-hint" Text="{DynamicResource Loc_ProxyUsernameHint}" />
+                <TextBlock Classes="settings-row-title" Text="{DynamicResource LocUsername}" />
+                <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocProxyUsernameHint}" />
               </StackPanel>
               <TextBox x:Name="ProxyUsernameInput" Grid.Column="1" Classes="mono settings-provider-input"
                        TextChanged="OnProxyTextChanged" />
             </Grid>
             <Grid Classes="settings-row" ColumnDefinitions="*,220">
               <StackPanel Classes="settings-row-copy">
-                <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_Password}" />
+                <TextBlock Classes="settings-row-title" Text="{DynamicResource LocPassword}" />
                 <TextBlock x:Name="ProxyPasswordHint" Classes="settings-row-hint"
-                           Text="{DynamicResource Loc_ProxyPasswordHint}" />
+                           Text="{DynamicResource LocProxyPasswordHint}" />
               </StackPanel>
               <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
                 <TextBox x:Name="ProxyPasswordInput" Classes="mono sc-secret-input settings-provider-input"
-                         PlaceholderText="{DynamicResource Loc_Optional}" TextChanged="OnProxyTextChanged" />
+                         PlaceholderText="{DynamicResource LocOptional}" TextChanged="OnProxyTextChanged" />
                 <Button x:Name="RemoveProxyPasswordButton" Grid.Column="1" Classes="compact quiet sc-button"
-                        Content="{DynamicResource Loc_Remove}" IsVisible="False" Click="OnRemoveProxyPassword" />
+                        Content="{DynamicResource LocRemove}" IsVisible="False" Click="OnRemoveProxyPassword" />
               </Grid>
             </Grid>
             <Grid Classes="settings-row" ColumnDefinitions="*,220" VerticalAlignment="Top">
               <StackPanel Classes="settings-row-copy">
-                <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_BypassRules}" />
+                <TextBlock Classes="settings-row-title" Text="{DynamicResource LocBypassRules}" />
                 <TextBlock Classes="settings-row-hint"
-                           Text="{DynamicResource Loc_BypassRulesHint}" />
+                           Text="{DynamicResource LocBypassRulesHint}" />
               </StackPanel>
               <TextBox x:Name="ProxyBypassInput" Grid.Column="1" Classes="mono settings-proxy-bypass"
                        AcceptsReturn="True" TextWrapping="NoWrap" Height="92"
@@ -65,47 +65,47 @@
           </StackPanel>
         </Border>
         <StackPanel Classes="settings-actions">
-          <Button x:Name="SaveProxyButton" Classes="compact primary sc-button" Content="{DynamicResource Loc_SaveProxySettings}"
+          <Button x:Name="SaveProxyButton" Classes="compact primary sc-button" Content="{DynamicResource LocSaveProxySettings}"
                   Click="OnSaveProxy" IsEnabled="False" />
           <TextBlock x:Name="ProxyStatus" Classes="sc-text-status" VerticalAlignment="Center" />
         </StackPanel>
       </StackPanel>
       <Border Classes="settings-divider" />
       <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="{DynamicResource Loc_HttpsSecurity}" />
+        <TextBlock Classes="section-label" Text="{DynamicResource LocHttpsSecurity}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
-            <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_VerifyServerCertificates}" />
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource LocVerifyServerCertificates}" />
             <TextBlock Classes="settings-row-hint"
-                       Text="{DynamicResource Loc_VerifyServerCertificatesHint}" />
+                       Text="{DynamicResource LocVerifyServerCertificatesHint}" />
           </StackPanel>
-          <ToggleSwitch x:Name="VerifyHttpsCertificatesToggle" Grid.Column="1" Classes="sc-toggle-switch" OnContent="{DynamicResource Loc_On}"
-                        OffContent="{DynamicResource Loc_Off}" HorizontalAlignment="Right" VerticalAlignment="Center"
+          <ToggleSwitch x:Name="VerifyHttpsCertificatesToggle" Grid.Column="1" Classes="sc-toggle-switch" OnContent="{DynamicResource LocOn}"
+                        OffContent="{DynamicResource LocOff}" HorizontalAlignment="Right" VerticalAlignment="Center"
                         Click="OnHttpsCertificateVerificationChanged" />
         </Grid>
         <Border x:Name="CertificateTrustSection" Classes="settings-subsection">
           <StackPanel Spacing="14">
-            <TextBlock Text="{DynamicResource Loc_CertificateTrustSource}" Classes="section-label" />
+            <TextBlock Text="{DynamicResource LocCertificateTrustSource}" Classes="section-label" />
             <Grid Classes="settings-row" ColumnDefinitions="*,220">
               <StackPanel Classes="settings-row-copy">
-                <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_UseSystemCertificates}" />
+                <TextBlock Classes="settings-row-title" Text="{DynamicResource LocUseSystemCertificates}" />
                 <TextBlock Classes="settings-row-hint"
-                           Text="{DynamicResource Loc_UseSystemCertificatesHint}" />
+                           Text="{DynamicResource LocUseSystemCertificatesHint}" />
               </StackPanel>
               <ToggleSwitch x:Name="UseSystemCertificatesToggle" Grid.Column="1" Classes="sc-toggle-switch"
-                            OnContent="{DynamicResource Loc_On}" OffContent="{DynamicResource Loc_Off}" IsChecked="True" HorizontalAlignment="Right"
+                            OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" IsChecked="True" HorizontalAlignment="Right"
                             VerticalAlignment="Center" Click="OnSystemCertificatesChanged" />
             </Grid>
             <Grid Classes="settings-row" ColumnDefinitions="*,220">
               <StackPanel Classes="settings-row-copy">
-                <TextBlock Classes="settings-row-title" Text="{DynamicResource Loc_CertificatePath}" />
+                <TextBlock Classes="settings-row-title" Text="{DynamicResource LocCertificatePath}" />
                 <TextBlock x:Name="CertificatePathHint" Classes="settings-row-hint"
-                           Text="{DynamicResource Loc_CertificatePathHint}" />
+                           Text="{DynamicResource LocCertificatePathHint}" />
               </StackPanel>
               <controls:SCFileSelector x:Name="CertificatePathInput" Grid.Column="1"
                                        Text="{Binding CertificatePath, Mode=TwoWay}"
                                        IsEnabled="{Binding !UseSystemCertificates}"
-                                       PlaceholderText="{DynamicResource Loc_UsingSystemCertificates}"
+                                       PlaceholderText="{DynamicResource LocUsingSystemCertificates}"
                                        DialogTitle="Choose certificate file" FileTypeName="Certificates"
                                        AllowedExtensions="pem,crt,cer,der" SelectionMode="File" />
             </Grid>
@@ -117,15 +117,15 @@
             <svg:Svg Width="16" Height="16" Path="/Assets/icons/platform.svg" Css="{DynamicResource IconSvgCss}"
                      VerticalAlignment="Top" />
             <StackPanel Grid.Column="1" Spacing="3">
-              <TextBlock Text="{DynamicResource Loc_CertificateVerificationOff}" FontSize="12" FontWeight="SemiBold" />
+              <TextBlock Text="{DynamicResource LocCertificateVerificationOff}" FontSize="12" FontWeight="SemiBold" />
               <TextBlock Classes="settings-row-hint" Foreground="{DynamicResource TextSecondaryBrush}"
-                         Text="{DynamicResource Loc_CertificateVerificationWarning}" />
+                         Text="{DynamicResource LocCertificateVerificationWarning}" />
             </StackPanel>
           </Grid>
         </Border>
       </StackPanel>
       <StackPanel Classes="settings-actions">
-        <Button x:Name="SaveHttpsCertificateButton" Classes="compact primary sc-button" Content="{DynamicResource Loc_SaveHttpsSetting}"
+        <Button x:Name="SaveHttpsCertificateButton" Classes="compact primary sc-button" Content="{DynamicResource LocSaveHttpsSetting}"
                 Click="OnSaveHttpsCertificateVerification" 
                 IsEnabled="False"/>
         <TextBlock x:Name="HttpsCertificateStatus" Classes="sc-text-status" VerticalAlignment="Center" />

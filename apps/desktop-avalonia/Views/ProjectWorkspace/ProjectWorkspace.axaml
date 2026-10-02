@@ -79,13 +79,13 @@
               PointerReleased="TitleBarReleased"
               DoubleTapped="TitleBarDoubleTapped">
           <StackPanel x:Name="MacTitleBarControls" Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="8,0,0,0" VerticalAlignment="Center">
-            <Button x:Name="ProjectCloseLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="CloseProjectWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="{DynamicResource Loc_CloseWindow}">
+            <Button x:Name="ProjectCloseLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="CloseProjectWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="{DynamicResource LocCloseWindow}">
               <svg:Svg Path="/Assets/traffic-lights/1-close-1-normal.svg" />
             </Button>
-            <Button x:Name="ProjectMinimizeLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="MinimizeWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="{DynamicResource Loc_MinimizeWindow}">
+            <Button x:Name="ProjectMinimizeLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="MinimizeWindow" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="{DynamicResource LocMinimizeWindow}">
               <svg:Svg Path="/Assets/traffic-lights/2-minimize-1-normal.svg" />
             </Button>
-            <Button x:Name="ProjectMaximizeLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="ToggleFullScreen" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="{DynamicResource Loc_EnterFullScreen}">
+            <Button x:Name="ProjectMaximizeLight" Classes="titlebar" Focusable="False" Width="18" Height="18" Padding="2" Click="ToggleFullScreen" PointerEntered="TrafficLightEntered" PointerExited="TrafficLightExited" PointerPressed="TrafficLightPressed" PointerReleased="TrafficLightReleased" ToolTip.Tip="{DynamicResource LocEnterFullScreen}">
               <svg:Svg Path="/Assets/traffic-lights/3-maximize-1-normal.svg" />
             </Button>
           </StackPanel>
@@ -101,21 +101,21 @@
                                      HorizontalAlignment="Center"
                                      VerticalAlignment="Center" />
           <StackPanel x:Name="MacTitleBarActions" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="2" Margin="0,0,6,0">
-            <Button Classes="titlebar" Width="26" Height="28" Click="OpenSettings" ToolTip.Tip="{DynamicResource Loc_OpenSettings}" AutomationProperties.Name="{DynamicResource Loc_OpenSettings}">
+            <Button Classes="titlebar" Width="26" Height="28" Click="OpenSettings" ToolTip.Tip="{DynamicResource LocOpenSettings}" AutomationProperties.Name="{DynamicResource LocOpenSettings}">
               <svg:Svg Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
           </StackPanel>
           <StackPanel x:Name="WindowsTitleBarControls" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Stretch">
-            <Button Classes="windows-titlebar-control" Click="OpenSettings" ToolTip.Tip="{DynamicResource Loc_OpenSettings}" AutomationProperties.Name="{DynamicResource Loc_OpenSettings}">
+            <Button Classes="windows-titlebar-control" Click="OpenSettings" ToolTip.Tip="{DynamicResource LocOpenSettings}" AutomationProperties.Name="{DynamicResource LocOpenSettings}">
               <svg:Svg Width="14" Height="14" Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
-            <Button Classes="windows-titlebar-control" Click="MinimizeWindow" ToolTip.Tip="{DynamicResource Loc_MinimizeWindow}" AutomationProperties.Name="{DynamicResource Loc_MinimizeWindow}">
+            <Button Classes="windows-titlebar-control" Click="MinimizeWindow" ToolTip.Tip="{DynamicResource LocMinimizeWindow}" AutomationProperties.Name="{DynamicResource LocMinimizeWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-minimize.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
-            <Button Classes="windows-titlebar-control" Click="ToggleWindowMaximized" ToolTip.Tip="{DynamicResource Loc_MaximizeWindow}" AutomationProperties.Name="{DynamicResource Loc_MaximizeWindow}">
+            <Button Classes="windows-titlebar-control" Click="ToggleWindowMaximized" ToolTip.Tip="{DynamicResource LocMaximizeWindow}" AutomationProperties.Name="{DynamicResource LocMaximizeWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-maximize.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
-            <Button x:Name="WindowsCloseButton" Classes="windows-titlebar-control close" Click="CloseProjectWindow" PointerEntered="WindowsCloseEntered" PointerExited="WindowsCloseExited" PointerPressed="WindowsClosePressed" PointerReleased="WindowsCloseReleased" ToolTip.Tip="{DynamicResource Loc_CloseWindow}" AutomationProperties.Name="{DynamicResource Loc_CloseWindow}">
+            <Button x:Name="WindowsCloseButton" Classes="windows-titlebar-control close" Click="CloseProjectWindow" PointerEntered="WindowsCloseEntered" PointerExited="WindowsCloseExited" PointerPressed="WindowsClosePressed" PointerReleased="WindowsCloseReleased" ToolTip.Tip="{DynamicResource LocCloseWindow}" AutomationProperties.Name="{DynamicResource LocCloseWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-close.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
           </StackPanel>
@@ -133,32 +133,32 @@
             <ColumnDefinition Width="{Binding WorkspaceGutterWidth}" />
           </Grid.ColumnDefinitions>
           <Grid Grid.Column="0" RowDefinitions="Auto,6,Auto,*,Auto,6,Auto,6,Auto" Margin="4,7" IsVisible="{Binding WorkspaceGuttersVisible}">
-            <Button Grid.Row="0" Classes="icon gutter" Classes.active="{Binding SessionSidebarVisible}" Click="ToggleNavigation" ToolTip.Tip="{DynamicResource Loc_ShowSessions}" AutomationProperties.Name="Show or hide sessions">
+            <Button Grid.Row="0" Classes="icon gutter" Classes.active="{Binding SessionSidebarVisible}" Click="ToggleNavigation" ToolTip.Tip="{DynamicResource LocShowSessions}" AutomationProperties.Name="Show or hide sessions">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-left.svg" IsVisible="{Binding !SessionSidebarVisible}" />
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-left.svg" IsVisible="{Binding SessionSidebarVisible}" />
               </Grid>
             </Button>
-            <Button Grid.Row="2" Classes="icon gutter" Classes.active="{Binding ExplorerSidebarVisible}" Click="ToggleExplorer" ToolTip.Tip="{DynamicResource Loc_ShowExplorer}" AutomationProperties.Name="Show or hide explorer">
+            <Button Grid.Row="2" Classes="icon gutter" Classes.active="{Binding ExplorerSidebarVisible}" Click="ToggleExplorer" ToolTip.Tip="{DynamicResource LocShowExplorer}" AutomationProperties.Name="Show or hide explorer">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/workspace-files.svg" IsVisible="{Binding !ExplorerSidebarVisible}" />
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/workspace-files.svg" IsVisible="{Binding ExplorerSidebarVisible}" />
               </Grid>
             </Button>
             <Border Grid.Row="3" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" Background="Transparent"/>
-            <Button Grid.Row="4" Classes="icon gutter" Classes.active="{Binding GitVisible}" Click="ToggleGit" ToolTip.Tip="{DynamicResource Loc_ShowSourceControl}" AutomationProperties.Name="{DynamicResource Loc_ShowSourceControl}">
+            <Button Grid.Row="4" Classes="icon gutter" Classes.active="{Binding GitVisible}" Click="ToggleGit" ToolTip.Tip="{DynamicResource LocShowSourceControl}" AutomationProperties.Name="{DynamicResource LocShowSourceControl}">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/git-branch.svg" IsVisible="{Binding !GitVisible}" />
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/git-branch.svg" IsVisible="{Binding GitVisible}" />
               </Grid>
             </Button>
-            <Button Grid.Row="6" Classes="icon gutter" Classes.active="{Binding ToolActivityVisible}" Click="ToggleToolActivity" ToolTip.Tip="{DynamicResource Loc_ShowToolActivity}" AutomationProperties.Name="{DynamicResource Loc_ShowToolActivity}">
+            <Button Grid.Row="6" Classes="icon gutter" Classes.active="{Binding ToolActivityVisible}" Click="ToggleToolActivity" ToolTip.Tip="{DynamicResource LocShowToolActivity}" AutomationProperties.Name="{DynamicResource LocShowToolActivity}">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/tool.svg" IsVisible="{Binding !ToolActivityVisible}" />
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/tool.svg" IsVisible="{Binding ToolActivityVisible}" />
               </Grid>
             </Button>
-            <Button Grid.Row="8" Classes="icon gutter" Classes.active="{Binding ProviderTraceVisible}" Click="ToggleProviderTrace" ToolTip.Tip="{DynamicResource Loc_ShowProviderTrace}" AutomationProperties.Name="{DynamicResource Loc_ShowProviderTrace}">
+            <Button Grid.Row="8" Classes="icon gutter" Classes.active="{Binding ProviderTraceVisible}" Click="ToggleProviderTrace" ToolTip.Tip="{DynamicResource LocShowProviderTrace}" AutomationProperties.Name="{DynamicResource LocShowProviderTrace}">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding !ProviderTraceVisible}" />
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding ProviderTraceVisible}" />
@@ -229,14 +229,14 @@
             <Button Classes="icon gutter" Classes.active="{Binding PreviewVisible}" Click="TogglePreview" ToolTip.Tip="Show browser preview" AutomationProperties.Name="Show browser preview" Margin="0,0,0,6">
               <svg:Svg Width="15" Height="15" Path="/Assets/icons/computer.svg" />
             </Button>
-            <Button Classes="icon gutter" Classes.active="{Binding EffectiveReviewVisible}" Click="ToggleReview" ToolTip.Tip="{DynamicResource Loc_ShowReview}" AutomationProperties.Name="{DynamicResource Loc_ShowReview}">
+            <Button Classes="icon gutter" Classes.active="{Binding EffectiveReviewVisible}" Click="ToggleReview" ToolTip.Tip="{DynamicResource LocShowReview}" AutomationProperties.Name="{DynamicResource LocShowReview}">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-right.svg" IsVisible="{Binding !ReviewVisible}" />
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-right.svg" IsVisible="{Binding ReviewVisible}" />
                 <Ellipse Classes="gutter-attention" IsVisible="{Binding ReviewGutterAttention}" />
               </Grid>
             </Button>
-            <Button Classes="icon gutter" Classes.active="{Binding ChildSessionsVisible}" Click="ToggleChildSessions" ToolTip.Tip="{DynamicResource Loc_ShowChildSessions}" AutomationProperties.Name="{DynamicResource Loc_ShowChildSessions}" Margin="0,6,0,0">
+            <Button Classes="icon gutter" Classes.active="{Binding ChildSessionsVisible}" Click="ToggleChildSessions" ToolTip.Tip="{DynamicResource LocShowChildSessions}" AutomationProperties.Name="{DynamicResource LocShowChildSessions}" Margin="0,6,0,0">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/agent.svg" />
                 <Ellipse Classes="gutter-attention" IsVisible="{Binding ChildSessionsGutterAttention}" />
@@ -282,13 +282,13 @@
     <controls:SCModal x:Name="SessionDialogModal"
                       DialogWidth="360"
                       IsOpen="False"
-                      PrimaryButtonText="{DynamicResource Loc_Create}"
-                      SecondaryButtonText="{DynamicResource Loc_Cancel}"
+                      PrimaryButtonText="{DynamicResource LocCreate}"
+                      SecondaryButtonText="{DynamicResource LocCancel}"
                       PrimaryAction="SubmitSessionDialog"
                       SecondaryAction="CloseSessionDialog"
                       CloseRequested="CloseSessionDialog">
       <TextBox x:Name="SessionTitleInput"
-               PlaceholderText="{DynamicResource Loc_SessionName}"
+               PlaceholderText="{DynamicResource LocSessionName}"
                TextChanged="SessionTitleChanged"
                KeyDown="SessionTitleKeyDown" />
     </controls:SCModal>
@@ -298,8 +298,8 @@
                       IsOpen="False"
                       Title="Undo this turn's file changes?"
                       Description="SunCode will restore the files changed during this turn."
-                      PrimaryButtonText="{DynamicResource Loc_UndoChanges}"
-                      SecondaryButtonText="{DynamicResource Loc_Cancel}"
+                      PrimaryButtonText="{DynamicResource LocUndoChanges}"
+                      SecondaryButtonText="{DynamicResource LocCancel}"
                       CloseOnOverlayPress="False"
                       PrimaryAction="ConfirmUndoDialog"
                       SecondaryAction="CloseUndoDialog"
@@ -310,7 +310,7 @@
             <TextBlock x:Name="UndoPathsText" Classes="mono" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
           </ScrollViewer>
         </Border>
-        <TextBlock Text="{DynamicResource Loc_ExternalSideEffects}" FontSize="12" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" />
+        <TextBlock Text="{DynamicResource LocExternalSideEffects}" FontSize="12" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" />
       </StackPanel>
     </controls:SCModal>
 
@@ -318,8 +318,8 @@
                       DialogWidth="420"
                       IsOpen="False"
                       Title="Delete dependency?"
-                      PrimaryButtonText="{DynamicResource Loc_DeleteDependency}"
-                      SecondaryButtonText="{DynamicResource Loc_Cancel}"
+                      PrimaryButtonText="{DynamicResource LocDeleteDependency}"
+                      SecondaryButtonText="{DynamicResource LocCancel}"
                       PrimaryIsDanger="True"
                       PrimaryAction="ConfirmDependencyDeleteDialog"
                       SecondaryAction="CloseDependencyDeleteDialog"
@@ -335,8 +335,8 @@
                       DialogWidth="860"
                       IsOpen="False"
                       HideClose="True"
-                      PrimaryButtonText="{DynamicResource Loc_SendMessage}"
-                      SecondaryButtonText="{DynamicResource Loc_Close}"
+                      PrimaryButtonText="{DynamicResource LocSendMessage}"
+                      SecondaryButtonText="{DynamicResource LocClose}"
                       PrimaryAction="SubmitExpandedComposer"
                       SecondaryAction="CloseExpandedComposer"
                       CloseRequested="CloseExpandedComposer">
@@ -373,7 +373,7 @@
                       Title="Message"
                       PrimaryButtonText=""
                       HidePrimaryButton="True"
-                      SecondaryButtonText="{DynamicResource Loc_Close}"
+                      SecondaryButtonText="{DynamicResource LocClose}"
                       SecondaryAction="CloseLongUserMessage"
                       CloseRequested="CloseLongUserMessage">
       <Grid RowDefinitions="*,Auto" Height="620" Margin="0,4,0,0">
@@ -397,8 +397,8 @@
                   MinHeight="26"
                   Padding="5"
                   Click="CopyLongUserMessage"
-                  ToolTip.Tip="{DynamicResource Loc_CopyMessage}"
-                  AutomationProperties.Name="{DynamicResource Loc_CopyMessage}">
+                  ToolTip.Tip="{DynamicResource LocCopyMessage}"
+                  AutomationProperties.Name="{DynamicResource LocCopyMessage}">
             <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
           </Button>
           <TextBlock x:Name="LongUserMessageCount"

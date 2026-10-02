@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="SunCode.Desktop.Views.About.AboutWindow"
-        Title="{DynamicResource Loc_AboutSunCode}"
+        Title="{DynamicResource LocAboutSunCode}"
         Width="420" Height="320"
         MinWidth="360" MinHeight="280"
         Background="{DynamicResource CanvasBrush}"
@@ -12,12 +12,12 @@
     <TextBlock Text="SunCode" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" TextAlignment="Center" />
     <Border Width="220" Padding="12,9" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
       <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="6">
-        <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource Loc_Desktop}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource LocDesktop}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
         <TextBlock Grid.Row="0" Grid.Column="1" x:Name="DesktopVersionText" Classes="mono" FontSize="12" Foreground="{DynamicResource TextBrush}" />
-        <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource Loc_AgentSdk}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource LocAgentSdk}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
         <TextBlock Grid.Row="1" Grid.Column="1" x:Name="AgentSdkVersionText" Classes="mono" FontSize="12" Foreground="{DynamicResource TextBrush}" />
       </Grid>
     </Border>
-    <TextBlock Text="{DynamicResource Loc_GeneralPurposeCodingAgent}" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+    <TextBlock Text="{DynamicResource LocGeneralPurposeCodingAgent}" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
   </StackPanel>
 </Window>
