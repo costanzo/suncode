@@ -48,17 +48,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DesktopPairingResponse'
+                $ref: '#/components/schemas/DesktopPairingPayload'
               examples:
                 plaintext:
                   value:
-                    code: 0
-                    data:
-                      hostId: "host-01J8YQ6M7A"
-                      accessToken: "desktop-access-token-issued-by-server"
-                      refreshToken: "desktop-refresh-token-issued-by-server"
-                      accessTokenExpiresAt: "2026-10-02T02:47:22.778Z"
-                      mobilePairingCode: "mobile-pairing-code-once"
+                    hostId: "host-01J8YQ6M7A"
+                    accessToken: "desktop-access-token-issued-by-server"
+                    refreshToken: "desktop-refresh-token-issued-by-server"
+                    accessTokenExpiresAt: "2026-10-02T02:47:22.778Z"
+                    mobilePairingCode: "mobile-pairing-code-once"
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -97,15 +95,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DesktopTokenResponse'
+                $ref: '#/components/schemas/DesktopTokenData'
               examples:
                 plaintext:
                   value:
-                    code: 0
-                    data:
-                      accessToken: "desktop-access-token-rotated-by-server"
-                      refreshToken: "desktop-refresh-token-rotated-by-server"
-                      accessTokenExpiresAt: "2026-10-02T03:47:22.778Z"
+                    accessToken: "desktop-access-token-rotated-by-server"
+                    refreshToken: "desktop-refresh-token-rotated-by-server"
+                    accessTokenExpiresAt: "2026-10-02T03:47:22.778Z"
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -167,12 +163,11 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ApiBaseRet'
+                  - $ref: '#/components/schemas/EmptySuccessResponse'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
-                  value:
-                    code: 0
+                  value: {}
                 encrypted:
                   value:
                     encPayload: "e2e-v1:base64url-ciphertext"
@@ -339,12 +334,11 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ApiBaseRet'
+                  - $ref: '#/components/schemas/EmptySuccessResponse'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
-                  value:
-                    code: 0
+                  value: {}
                 encrypted:
                   value:
                     encPayload: "e2e-v1:base64url-ciphertext"
@@ -373,11 +367,8 @@ paths:
               plaintext:
                 summary: Unencrypted Desktop response
                 value:
-                  code: 0
-                  message: null
-                  payload:
-                    sessionId: "session-01"
-                    status: "idle"
+                  sessionId: "session-01"
+                  status: "idle"
               encrypted:
                 summary: End-to-end encrypted Desktop response
                 value:
@@ -389,12 +380,11 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ApiBaseRet'
+                  - $ref: '#/components/schemas/EmptySuccessResponse'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
-                  value:
-                    code: 0
+                  value: {}
                 encrypted:
                   value:
                     encPayload: "e2e-v1:base64url-ciphertext"
@@ -408,7 +398,7 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ApiBaseRet'
+                  - $ref: '#/components/schemas/ApiError'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
@@ -444,7 +434,7 @@ components:
         application/json:
           schema:
             oneOf:
-              - $ref: '#/components/schemas/ApiBaseRet'
+              - $ref: '#/components/schemas/ApiError'
               - $ref: '#/components/schemas/EncryptedPayload'
     Unauthorized:
       description: Access token or host ID is missing or invalid
@@ -452,7 +442,7 @@ components:
         application/json:
           schema:
             oneOf:
-              - $ref: '#/components/schemas/ApiBaseRet'
+              - $ref: '#/components/schemas/ApiError'
               - $ref: '#/components/schemas/EncryptedPayload'
     NotFound:
       description: Host or command was not found
@@ -460,17 +450,19 @@ components:
         application/json:
           schema:
             oneOf:
-              - $ref: '#/components/schemas/ApiBaseRet'
+              - $ref: '#/components/schemas/ApiError'
               - $ref: '#/components/schemas/EncryptedPayload'
   schemas:
-    ApiBaseRet:
+    EmptySuccessResponse:
       type: object
-      required: [code]
+      additionalProperties: false
+    ApiError:
+      type: object
+      required: [code, message]
       additionalProperties: false
       properties:
-        code: { type: integer }
-        message: { type: [string, "null"] }
-        data: {}
+        code: { type: integer, description: Application error code. }
+        message: { type: string, description: Safe human-readable error message. }
     EncryptedPayload:
       type: object
       required: [encPayload]
@@ -490,12 +482,6 @@ components:
         pairingCode: { type: string, minLength: 1, maxLength: 256 }
         displayName: { type: string, minLength: 1, maxLength: 120 }
         agentVersion: { type: string, maxLength: 120 }
-    DesktopPairingResponse:
-      allOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
-        - type: object
-          properties:
-            data: { $ref: '#/components/schemas/DesktopPairingPayload' }
     DesktopPairingPayload:
       type: object
       required: [hostId, accessToken, refreshToken, accessTokenExpiresAt, mobilePairingCode]
@@ -511,12 +497,6 @@ components:
       additionalProperties: false
       properties:
         refreshToken: { type: string, minLength: 1 }
-    DesktopTokenResponse:
-      allOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
-        - type: object
-          properties:
-            data: { $ref: '#/components/schemas/DesktopTokenData' }
     DesktopTokenData:
       type: object
       required: [accessToken, refreshToken, accessTokenExpiresAt]
@@ -626,23 +606,30 @@ components:
             - "e2e-v1:base64url-ciphertext"
     DesktopResponse:
       oneOf:
-        - $ref: '#/components/schemas/DesktopPlainResponse'
+        - $ref: '#/components/schemas/DesktopResponsePayload'
+        - $ref: '#/components/schemas/DesktopErrorResponse'
         - $ref: '#/components/schemas/DesktopEncryptedResponse'
       description: |
-        A Desktop response must use exactly one representation. In encrypted
-        mode the request body contains only `encPayload`; the Server forwards
-        it without decoding or interpreting its contents. In the plaintext
-        representation, `code: 0` means success; any non-zero code means
-        failure. Request and host correlation are supplied by the HTTP
-        headers, not repeated in the JSON body.
-    DesktopPlainResponse:
+        A Desktop response must use exactly one representation. Successful
+        plaintext results expose the command payload at the top level. Errors
+        use `code` and `message`. In encrypted mode the request body contains
+        only `encPayload`; the Server forwards it without decoding or
+        interpreting its contents. Request and host correlation are supplied
+        by the HTTP headers.
+    DesktopResponsePayload:
       type: object
-      required: [code]
+      properties:
+        code: { type: 'null' }
+        message: { type: 'null' }
+        encPayload: { type: 'null' }
+      additionalProperties: true
+    DesktopErrorResponse:
+      type: object
+      required: [code, message]
       additionalProperties: false
       properties:
-        code: { type: integer, description: Zero indicates success; non-zero values indicate failure. }
-        message: { type: [string, "null"] }
-        payload: { type: [object, "null"], additionalProperties: true }
+        code: { type: integer, description: Application error code. }
+        message: { type: string, description: Safe human-readable error message. }
     DesktopEncryptedResponse:
       type: object
       required: [encPayload]

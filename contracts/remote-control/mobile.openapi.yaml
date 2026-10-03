@@ -39,15 +39,13 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/HealthResponse'
+                  - $ref: '#/components/schemas/HealthData'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
                   value:
-                    code: 0
-                    data:
-                      status: ok
-                      serverTime: "2026-10-02T01:47:22.778Z"
+                    status: ok
+                    serverTime: "2026-10-02T01:47:22.778Z"
                 encrypted:
                   value:
                     encPayload: "e2e-v1:base64url-ciphertext"
@@ -92,21 +90,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PairingExchangeResponse'
+                $ref: '#/components/schemas/PairingExchangeData'
               examples:
                 pairingExchanged:
                   summary: Mobile credentials and paired Host
                   value:
-                    code: 0
-                    data:
-                      accessToken: "opaque-access-token"
-                      refreshToken: "opaque-refresh-token"
-                      accessTokenExpiresAt: "2026-10-01T03:30:00Z"
-                      host:
-                        id: "host-01J8YQ6M7A"
-                        displayName: "Development PC"
-                        connectionState: "connected"
-                        agentVersion: "0.1.0"
+                    accessToken: "opaque-access-token"
+                    refreshToken: "opaque-refresh-token"
+                    accessTokenExpiresAt: "2026-10-01T03:30:00Z"
+                    host:
+                      id: "host-01J8YQ6M7A"
+                      displayName: "Development PC"
+                      connectionState: "connected"
+                      agentVersion: "0.1.0"
         '400':
           $ref: '#/components/responses/PlainInvalidRequest'
         '409':
@@ -148,15 +144,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenResponse'
+                $ref: '#/components/schemas/TokenData'
               examples:
                 plaintext:
                   value:
-                    code: 0
-                    data:
-                      accessToken: "opaque-access-token"
-                      refreshToken: "opaque-refresh-token"
-                      accessTokenExpiresAt: "2026-10-01T03:30:00Z"
+                    accessToken: "opaque-access-token"
+                    refreshToken: "opaque-refresh-token"
+                    accessTokenExpiresAt: "2026-10-01T03:30:00Z"
         '401':
           $ref: '#/components/responses/PlainUnauthorized'
 
@@ -205,18 +199,16 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/HostResponse'
+                  - $ref: '#/components/schemas/HostDetail'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
                   value:
-                    code: 0
-                    data:
-                      id: "host-01J8YQ6M7A"
-                      displayName: "Development PC"
-                      connectionState: connected
-                      lastSeenAt: "2026-10-02T01:47:22.778Z"
-                      agentVersion: "0.1.0"
+                    id: "host-01J8YQ6M7A"
+                    displayName: "Development PC"
+                    connectionState: connected
+                    lastSeenAt: "2026-10-02T01:47:22.778Z"
+                    agentVersion: "0.1.0"
                 encrypted:
                   value:
                     encPayload: "e2e-v1:base64url-ciphertext"
@@ -247,17 +239,16 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ApiBaseRetProjects'
+                  - $ref: '#/components/schemas/ProjectsData'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
                   value:
-                    code: 0
-                    data:
-                      items:
-                        - id: "project-01J8YQ6M7C"
-                          displayName: "suncode"
-                          relativeRoot: "workspace"
+                    items:
+                      - id: "project-01J8YQ6M7C"
+                        displayName: "suncode"
+                        relativeRoot: "workspace"
+                        activeSessionCount: 0
                 encrypted:
                   value:
                     encPayload: "e2e-v1:base64url-ciphertext"
@@ -295,16 +286,14 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ApiBaseRetSessionPage'
+                  - $ref: '#/components/schemas/SessionPageData'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
                   value:
-                    code: 0
-                    data:
-                      items: []
-                      nextCursor: null
-                      hasMore: false
+                    items: []
+                    nextCursor: null
+                    hasMore: false
                 encrypted:
                   value:
                     encPayload: "e2e-v1:base64url-ciphertext"
@@ -352,14 +341,13 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ApiBaseRetSessionCreated'
+                  - $ref: '#/components/schemas/SessionCreatedData'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
                   value:
-                    code: 0
-                    data:
-                      sessionId: "session-01J8YQ6M7B"
+                    requestId: "request-01J8YQ6M7D"
+                    acceptedAt: "2026-10-02T01:47:22.778Z"
                 encrypted:
                   summary: End-to-end encrypted Session creation response
                   value:
@@ -401,28 +389,26 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ApiBaseRetSessionDetail'
+                  - $ref: '#/components/schemas/SessionDetailData'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
                   value:
-                    code: 0
-                    data:
-                      id: "session-01J8YQ6M7B"
-                      title: "Investigate remote control"
-                      kind: primary
-                      project:
-                        id: "project-01J8YQ6M7C"
-                        displayName: "suncode"
-                      state: idle
-                      updatedAt: "2026-10-02T01:45:10Z"
-                      preview: "Review the remote control contract"
-                      revision: 7
-                      eventSequence: 42
-                      archived: false
-                      messages: []
-                      pendingApproval: null
-                      pendingQuestion: null
+                    id: "session-01J8YQ6M7B"
+                    title: "Investigate remote control"
+                    kind: primary
+                    project:
+                      id: "project-01J8YQ6M7C"
+                      displayName: "suncode"
+                    state: idle
+                    updatedAt: "2026-10-02T01:45:10Z"
+                    preview: "Review the remote control contract"
+                    revision: 7
+                    eventSequence: 42
+                    archived: false
+                    messages: []
+                    pendingApproval: null
+                    pendingQuestion: null
                 encrypted:
                   value:
                     encPayload: "e2e-v1:base64url-ciphertext"
@@ -575,14 +561,13 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ApiBaseRetCommandAccepted'
+                  - $ref: '#/components/schemas/CommandAcceptedData'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
                   value:
-                    code: 0
-                    data:
-                      sessionId: "session-01J8YQ6M7B"
+                    requestId: "request-01J8YQ6M7D"
+                    acceptedAt: "2026-10-02T01:47:22.778Z"
                 encrypted:
                   summary: End-to-end encrypted command response
                   value:
@@ -646,14 +631,13 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ApiBaseRetCommandAccepted'
+                  - $ref: '#/components/schemas/CommandAcceptedData'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
                   value:
-                    code: 0
-                    data:
-                      sessionId: "session-01J8YQ6M7B"
+                    requestId: "request-01J8YQ6M7D"
+                    acceptedAt: "2026-10-02T01:47:22.778Z"
                 encrypted:
                   summary: End-to-end encrypted approval response
                   value:
@@ -719,14 +703,13 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ApiBaseRetCommandAccepted'
+                  - $ref: '#/components/schemas/CommandAcceptedData'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
                   value:
-                    code: 0
-                    data:
-                      sessionId: "session-01J8YQ6M7B"
+                    requestId: "request-01J8YQ6M7D"
+                    acceptedAt: "2026-10-02T01:47:22.778Z"
                 encrypted:
                   summary: End-to-end encrypted question response
                   value:
@@ -767,12 +750,11 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/CommandCodeResponse'
+                  - $ref: '#/components/schemas/EmptySuccessResponse'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
-                  value:
-                    code: 0
+                  value: {}
                 encrypted:
                   value:
                     encPayload: "e2e-v1:base64url-ciphertext"
@@ -810,12 +792,11 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/CommandCodeResponse'
+                  - $ref: '#/components/schemas/EmptySuccessResponse'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 plaintext:
-                  value:
-                    code: 0
+                  value: {}
                 encrypted:
                   value:
                     encPayload: "e2e-v1:base64url-ciphertext"
@@ -856,35 +837,33 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: '#/components/schemas/ApiBaseRetSync'
+                  - $ref: '#/components/schemas/SyncData'
                   - $ref: '#/components/schemas/EncryptedPayload'
               examples:
                 projection:
                   summary: Host-scoped synchronization projection
                   value:
-                    code: 0
-                    data:
-                      cursor: "sync-cursor-01J8YQ6M7A"
-                      resetRequired: false
-                      host:
-                        id: "host-01J8YQ6M7A"
-                        displayName: "Development PC"
-                        connectionState: connected
-                        lastSeenAt: "2026-10-02T01:47:22.778Z"
-                        agentVersion: "0.1.0"
-                      sessions:
-                        - id: "session-01J8YQ6M7B"
-                          title: "Investigate remote control"
-                          kind: primary
-                          project:
-                            id: "project-01J8YQ6M7C"
-                            displayName: "suncode"
-                          state: idle
-                          updatedAt: "2026-10-02T01:45:10Z"
-                          preview: "Review the remote control contract"
-                          pendingApproval: false
-                          pendingQuestion: false
-                      hasMore: false
+                    cursor: "sync-cursor-01J8YQ6M7A"
+                    resetRequired: false
+                    host:
+                      id: "host-01J8YQ6M7A"
+                      displayName: "Development PC"
+                      connectionState: connected
+                      lastSeenAt: "2026-10-02T01:47:22.778Z"
+                      agentVersion: "0.1.0"
+                    sessions:
+                      - id: "session-01J8YQ6M7B"
+                        title: "Investigate remote control"
+                        kind: primary
+                        project:
+                          id: "project-01J8YQ6M7C"
+                          displayName: "suncode"
+                        state: idle
+                        updatedAt: "2026-10-02T01:45:10Z"
+                        preview: "Review the remote control contract"
+                        pendingApproval: false
+                        pendingQuestion: false
+                    hasMore: false
                 encrypted:
                   summary: End-to-end encrypted synchronization response
                   value:
@@ -1009,67 +988,26 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/PlainApiBaseRetError' }
   schemas:
-    ApiBaseRet:
+    EmptySuccessResponse:
       type: object
-      required: [code]
+      additionalProperties: false
+    ApiError:
+      type: object
+      required: [code, message]
       additionalProperties: false
       properties:
         code:
           type: integer
-          description: Application result code. Zero means success in the current Remote Server implementation.
+          description: Application error code.
         message:
-          type: [string, "null"]
-        data:
-          type: object
-          description: Optional response data object. Its concrete shape is defined by each operation's response schema.
-    ApiBaseRetProjects:
-      allOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
-        - type: object
-          properties:
-            data: { $ref: '#/components/schemas/ProjectsData' }
-    ApiBaseRetSessionPage:
-      allOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
-        - type: object
-          properties:
-            data: { $ref: '#/components/schemas/SessionPageData' }
-    ApiBaseRetSessionDetail:
-      allOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
-        - type: object
-          properties:
-            data: { $ref: '#/components/schemas/SessionDetailData' }
-    ApiBaseRetSessionCreated:
-      allOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
-        - type: object
-          properties:
-            data: { $ref: '#/components/schemas/SessionCreatedData' }
-    ApiBaseRetCommandAccepted:
-      allOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
-        - type: object
-          properties:
-            data: { $ref: '#/components/schemas/CommandAcceptedData' }
-    CommandCodeResponse:
-      type: object
-      required: [code]
-      additionalProperties: false
-      properties:
-        code: { type: integer, const: 0 }
-    ApiBaseRetSync:
-      allOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
-        - type: object
-          properties:
-            data: { $ref: '#/components/schemas/SyncData' }
+          type: string
+          description: Safe human-readable error message.
     ApiBaseRetError:
       oneOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
+        - $ref: '#/components/schemas/ApiError'
         - $ref: '#/components/schemas/EncryptedPayload'
     PlainApiBaseRetError:
-      $ref: '#/components/schemas/ApiBaseRet'
+      $ref: '#/components/schemas/ApiError'
     EncryptedPayload:
       type: object
       required: [encPayload]
@@ -1094,12 +1032,6 @@ components:
           type: string
           minLength: 1
           maxLength: 120
-    PairingExchangeResponse:
-      allOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
-        - type: object
-          properties:
-            data: { $ref: '#/components/schemas/PairingExchangeData' }
     PairingExchangeData:
       type: object
       required: [accessToken, refreshToken, accessTokenExpiresAt, host]
@@ -1122,12 +1054,6 @@ components:
       additionalProperties: false
       properties:
         refreshToken: { type: string }
-    TokenResponse:
-      allOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
-        - type: object
-          properties:
-            data: { $ref: '#/components/schemas/TokenData' }
     TokenData:
       type: object
       required: [accessToken, refreshToken, accessTokenExpiresAt]
@@ -1135,24 +1061,12 @@ components:
         accessToken: { type: string }
         refreshToken: { type: string }
         accessTokenExpiresAt: { type: string, format: date-time }
-    HealthResponse:
-      allOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
-        - type: object
-          properties:
-            data: { $ref: '#/components/schemas/HealthData' }
     HealthData:
       type: object
       required: [status, serverTime]
       properties:
         status: { type: string, enum: [ok, degraded] }
         serverTime: { type: string, format: date-time }
-    HostResponse:
-      allOf:
-        - $ref: '#/components/schemas/ApiBaseRet'
-        - type: object
-          properties:
-            data: { $ref: '#/components/schemas/HostDetail' }
     Host:
       type: object
       required: [id, displayName, connectionState, lastSeenAt]
