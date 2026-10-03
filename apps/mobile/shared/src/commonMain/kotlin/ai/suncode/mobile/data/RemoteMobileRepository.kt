@@ -52,6 +52,7 @@ class RemoteMobileRepository(
     private val projectionMutex = Mutex()
     private val transportMutex = Mutex()
     private var syncCursor: String? = null
+    private val syncCursors = mutableMapOf<String, String?>()
     private var appForeground = true
     private var activeSessionId: String? = null
     private var pollingJob: Job? = null
@@ -90,6 +91,7 @@ class RemoteMobileRepository(
     }
 
     override suspend fun resolveApproval(sessionId: String, approvalId: String, action: String, expectedRevision: Int): Result<Unit> = runCatching {
+        val session = requireSession(sessionId)
         client.resolveApproval(
             session.hostId,
             sessionId,
@@ -123,12 +125,17 @@ class RemoteMobileRepository(
         val query = parsePairingUrl(pairingPayload)
         val hostId = query["hostId"] ?: error("Pairing URL has no hostId")
         val code = query["code"] ?: error("Pairing URL has no code")
-        client.rememberPairingKey(query["k"] ?: error("Pairing URL has no encryption key"))
+        client.configureHost(
+            hostId = hostId,
+            endpoint = query["endpoint"] ?: error("Pairing URL has no endpoint"),
+            aesKey = query["k"] ?: error("Pairing URL has no encryption key"),
+        )
         val host = client.exchangePairing(
             hostId,
             PairingExchangeRequest(code, "SunCode Mobile"),
         ).data?.host ?: error("Pairing response did not include a Host")
         val pairedHost = host.toDomain().copy(
+            endpoint = query["endpoint"].orEmpty(),
             projects = runCatching { client.listProjects(host.id).data?.items.orEmpty() }
                 .getOrDefault(emptyList())
                 .map { project -> Project(project.id, project.displayName, project.activeSessionCount) },
@@ -162,6 +169,7 @@ class RemoteMobileRepository(
         cachePersistJob?.cancel()
         projectionMutex.withLock {
             syncCursor = null
+            syncCursors.clear()
             lastEventIds.clear()
             lastEventSequences.clear()
             sessions.value = emptyList()
@@ -171,34 +179,45 @@ class RemoteMobileRepository(
     }
 
     suspend fun refresh() {
-        val hostId = hosts.value.firstOrNull()?.id ?: return
+        hosts.value.map { it.id }.forEach { hostId ->
+            refreshHost(hostId)
+        }
+        syncCursor = null
+    }
+
+    private suspend fun refreshHost(hostId: String) {
         val page = client.listSessions(hostId, limit = 100).data
         projectionMutex.withLock {
-            val host = hosts.value.firstOrNull()
-            sessions.value = page?.items?.map { it.toDomain(host?.id.orEmpty(), host?.name.orEmpty()) } ?: emptyList()
-            syncCursor = null
+            val host = hosts.value.firstOrNull { it.id == hostId }
+            val incoming = page?.items.orEmpty().map { it.toDomain(hostId, host?.name.orEmpty()) }
+            sessions.value = sessions.value.filterNot { it.hostId == hostId } + incoming
+            syncCursors.remove(hostId)
             reconcileSessionHosts()
             persistLocked()
         }
     }
 
     private suspend fun synchronize() {
-        var cursor = syncCursor
+        hosts.value.map { it.id }.forEach { hostId -> runCatching { synchronizeHost(hostId) } }
+    }
+
+    private suspend fun synchronizeHost(hostId: String) {
+        var cursor = syncCursors[hostId] ?: syncCursor
         var firstPage = true
         while (true) {
-            val hostId = hosts.value.firstOrNull()?.id ?: return
             val data = client.sync(hostId, cursor, 100).data
             if (data == null) {
-                if (firstPage) refresh()
+                if (firstPage) refreshHost(hostId)
                 return
             }
             val projectedHosts = listOfNotNull(data.host).map { host ->
                 val current = hosts.value.firstOrNull { it.id == host.id }
-                if (current != null && current.projects.isNotEmpty()) {
-                    host.toDomain().copy(projects = current.projects)
+                if (current != null) {
+                    host.toDomain().copy(endpoint = current.endpoint, projects = current.projects)
                 } else {
                     runCatching {
                         host.toDomain().copy(
+                            endpoint = current?.endpoint.orEmpty(),
                             projects = client.listProjects(host.id).data?.items.orEmpty().map { project ->
                                 Project(project.id, project.displayName, project.activeSessionCount)
                             },
@@ -208,14 +227,15 @@ class RemoteMobileRepository(
             }
             projectionMutex.withLock {
                 if (firstPage && (cursor == null || data.resetRequired)) {
-                    sessions.value = data.sessions.map { it.toDomain(hostId, projectedHosts.firstOrNull()?.name.orEmpty()) }
-                    hosts.value = projectedHosts
+                    val incoming = data.sessions.map { it.toDomain(hostId, projectedHosts.firstOrNull()?.name.orEmpty()) }
+                    sessions.value = sessions.value.filterNot { it.hostId == hostId } + incoming
+                    hosts.value = hosts.value.filterNot { it.id == hostId } + projectedHosts
                 } else {
                     val incoming = data.sessions.associateBy { it.id }
-                    val existingIds = sessions.value.mapTo(hashSetOf()) { it.id }
+                    val existingIds = sessions.value.filter { it.hostId == hostId }.mapTo(hashSetOf()) { it.id }
                     sessions.value = sessions.value
                         .asSequence()
-                        .map { incoming[it.id]?.toDomain(hostId, projectedHosts.firstOrNull()?.name.orEmpty()) ?: it }
+                        .map { if (it.hostId == hostId) incoming[it.id]?.toDomain(hostId, projectedHosts.firstOrNull()?.name.orEmpty()) ?: it else it }
                         .plus(incoming.values.filterNot { it.id in existingIds }.map { it.toDomain(hostId, projectedHosts.firstOrNull()?.name.orEmpty()) })
                         .toList()
                     val incomingHosts = projectedHosts.associateBy { it.id }
@@ -225,6 +245,7 @@ class RemoteMobileRepository(
                 }
                 cursor = data.cursor
                 syncCursor = cursor
+                syncCursors[hostId] = cursor
                 reconcileSessionHosts()
                 persistLocked()
             }
@@ -386,10 +407,11 @@ class RemoteMobileRepository(
             val snapshot = json.decodeFromString<MobileCacheSnapshot>(raw)
             projectionMutex.withLock {
                 syncCursor = snapshot.syncCursor
+                syncCursors.putAll(snapshot.syncCursors)
                 lastEventIds.putAll(snapshot.sessionEventIds)
                 lastEventSequences.putAll(snapshot.sessionEventSequences)
                 hosts.value = snapshot.hosts.map { it.toDomain() }
-                sessions.value = snapshot.sessions.map { it.toDomain(snapshot.hosts.firstOrNull()?.id.orEmpty(), snapshot.hosts.firstOrNull()?.name.orEmpty()) }
+                sessions.value = snapshot.sessions.map { it.toDomain() }
                 reconcileSessionHosts()
             }
         } catch (_: Throwable) {
@@ -400,6 +422,7 @@ class RemoteMobileRepository(
     private suspend fun persistLocked() {
         cacheStore.write(MobileCacheSnapshot(
             syncCursor = syncCursor,
+            syncCursors = syncCursors.mapValues { it.value.orEmpty() }.filterValues { it.isNotEmpty() },
             sessionEventIds = lastEventIds.toMap(),
             sessionEventSequences = lastEventSequences.toMap(),
             sessions = sessions.value.map { it.toCached() },
@@ -412,6 +435,8 @@ class RemoteMobileRepository(
     private fun parsePairingUrl(value: String): Map<String, String> {
         val trimmed = value.trim()
         require(trimmed.startsWith("http://") || trimmed.startsWith("https://")) { "Pairing URL must use http or https" }
+        val endpoint = trimmed.substringBefore('?').trimEnd('/')
+        require(endpoint.startsWith("http://") || endpoint.startsWith("https://")) { "Pairing URL must use http or https" }
         val query = trimmed.substringAfter('?', "")
         require(query.isNotBlank()) { "Pairing URL must include a query" }
         val values = query.split('&').mapNotNull { part ->
@@ -422,7 +447,7 @@ class RemoteMobileRepository(
         require(!values["code"].isNullOrBlank() && !values["hostId"].isNullOrBlank() && !values["k"].isNullOrBlank()) {
             "Pairing URL is incomplete"
         }
-        return values
+        return values + ("endpoint" to endpoint)
     }
 
     private fun percentDecode(value: String): String {

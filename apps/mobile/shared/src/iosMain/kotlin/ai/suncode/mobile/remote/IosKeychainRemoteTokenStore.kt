@@ -2,7 +2,8 @@
 
 package ai.suncode.mobile.remote
 
-import ai.suncode.mobile.remote.protocol.TokenData
+import ai.suncode.mobile.remote.RemoteHostCredentials
+import ai.suncode.mobile.remote.RemoteHostCredentialStore
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.memScoped
@@ -47,19 +48,29 @@ import platform.Security.kSecValueData
 class IosKeychainRemoteTokenStore : RemoteTokenStore {
     private val json = Json { ignoreUnknownKeys = true }
 
-    override suspend fun accessToken(): String? = read()?.accessToken
+    override suspend fun load(hostId: String): RemoteHostCredentials? = read()[hostId]
 
-    override suspend fun refreshToken(): String? = read()?.refreshToken
+    override suspend fun save(hostId: String, credentials: RemoteHostCredentials) {
+        val values = read().toMutableMap()
+        values[hostId] = credentials
+        write(values)
+    }
 
-    override suspend fun save(tokens: TokenData) {
-        val bytes = json.encodeToString(TokenData.serializer(), tokens).encodeToByteArray()
+    override suspend fun clear(hostId: String) {
+        val values = read().toMutableMap()
+        values.remove(hostId)
+        write(values)
+    }
+
+    private fun write(values: Map<String, RemoteHostCredentials>) {
+        val bytes = json.encodeToString(RemoteHostCredentialStore.serializer(), RemoteHostCredentialStore(values)).encodeToByteArray()
         val data = bytes.usePinned { CFDataCreate(null, it.addressOf(0).reinterpret<UByteVar>(), bytes.size.toLong()) }
             ?: error("Unable to encode Remote Control credential")
         val query = baseQuery()
         try {
             CFDictionarySetValue(query, kSecValueData, data)
             CFDictionarySetValue(query, kSecAttrAccessible, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
-            clear()
+            deleteStored()
             check(SecItemAdd(query, null) == errSecSuccess) { "Unable to save Remote Control credential" }
         } finally {
             CFRelease(data)
@@ -67,7 +78,7 @@ class IosKeychainRemoteTokenStore : RemoteTokenStore {
         }
     }
 
-    override suspend fun clear() {
+    private fun deleteStored() {
         val query = baseQuery()
         try {
             val status = SecItemDelete(query)
@@ -77,14 +88,14 @@ class IosKeychainRemoteTokenStore : RemoteTokenStore {
         }
     }
 
-    private fun read(): TokenData? = memScoped {
+    private fun read(): Map<String, RemoteHostCredentials> = memScoped {
         val query = baseQuery()
         try {
             CFDictionarySetValue(query, kSecReturnData, kCFBooleanTrue)
             CFDictionarySetValue(query, kSecMatchLimit, kSecMatchLimitOne)
             val result = alloc<CFTypeRefVar>()
             when (SecItemCopyMatching(query, result.ptr)) {
-                errSecItemNotFound -> null
+                errSecItemNotFound -> emptyMap()
                 errSecSuccess -> {
                     val data = result.value as? CFDataRef
                         ?: error("Invalid Remote Control credential")
@@ -93,7 +104,7 @@ class IosKeychainRemoteTokenStore : RemoteTokenStore {
                         val pointer: CPointer<UByteVar> = CFDataGetBytePtr(data)
                             ?: error("Invalid Remote Control credential")
                         val bytes = pointer.readBytes(size)
-                        json.decodeFromString<TokenData>(bytes.decodeToString())
+                        json.decodeFromString<RemoteHostCredentialStore>(bytes.decodeToString()).hosts
                     } finally {
                         CFRelease(data)
                     }

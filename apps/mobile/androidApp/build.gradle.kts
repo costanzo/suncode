@@ -37,8 +37,6 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
-        val remoteControlBaseUrl = providers.gradleProperty("remoteControlBaseUrl").orNull.orEmpty()
-        buildConfigField("String", "REMOTE_CONTROL_BASE_URL", "\"${remoteControlBaseUrl.replace("\"", "\\\"")}\"")
     }
     packaging {
         resources {

@@ -27,14 +27,14 @@ import kotlinx.coroutines.flow.Flow
  * envelopes directly.
  */
 interface RemoteControlClient {
-    suspend fun rememberPairingKey(key: String) = Unit
-    suspend fun health(): ApiBaseRet<HealthData>
+    suspend fun configureHost(hostId: String, endpoint: String, aesKey: String? = null)
+    suspend fun health(hostId: String): ApiBaseRet<HealthData>
 
     suspend fun exchangePairing(hostId: String, request: PairingExchangeRequest): ApiBaseRet<PairingExchangeData>
 
-    suspend fun refreshToken(request: RefreshTokenRequest): ApiBaseRet<TokenData>
+    suspend fun refreshToken(hostId: String, request: RefreshTokenRequest): ApiBaseRet<TokenData>
 
-    suspend fun logout()
+    suspend fun logout(hostId: String)
 
     suspend fun getHost(hostId: String): ApiBaseRet<HostDto>
 

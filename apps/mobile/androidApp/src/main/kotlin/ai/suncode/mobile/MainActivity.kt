@@ -9,7 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import ai.suncode.mobile.data.FakeMobileRepository
 import ai.suncode.mobile.data.AndroidMobileCacheStore
 import ai.suncode.mobile.data.MobileRepository
 import ai.suncode.mobile.data.RemoteMobileRepository
@@ -46,10 +45,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun createRepository(): MobileRepository {
-        val baseUrl = BuildConfig.REMOTE_CONTROL_BASE_URL.trim()
-        if (baseUrl.isBlank()) return FakeMobileRepository()
         val remoteClient = KtorRemoteControlClient(
-            baseUrl = baseUrl,
             tokenStore = AndroidKeystoreRemoteTokenStore(applicationContext),
         )
         client = remoteClient

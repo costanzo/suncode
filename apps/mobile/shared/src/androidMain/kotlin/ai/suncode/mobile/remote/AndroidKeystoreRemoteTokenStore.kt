@@ -2,7 +2,8 @@ package ai.suncode.mobile.remote
 
 import android.content.Context
 import android.util.Base64
-import ai.suncode.mobile.remote.protocol.TokenData
+import ai.suncode.mobile.remote.RemoteHostCredentials
+import ai.suncode.mobile.remote.RemoteHostCredentialStore
 import kotlinx.serialization.json.Json
 import java.security.KeyStore
 import java.security.SecureRandom
@@ -18,31 +19,38 @@ class AndroidKeystoreRemoteTokenStore(context: Context) : RemoteTokenStore {
     private val preferences = context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true }
 
-    override suspend fun accessToken(): String? = read()?.accessToken
+    override suspend fun load(hostId: String): RemoteHostCredentials? = read()[hostId]
 
-    override suspend fun refreshToken(): String? = read()?.refreshToken
+    override suspend fun save(hostId: String, credentials: RemoteHostCredentials) {
+        val values = read().toMutableMap()
+        values[hostId] = credentials
+        write(values)
+    }
 
-    override suspend fun save(tokens: TokenData) {
+    override suspend fun clear(hostId: String) {
+        val values = read().toMutableMap()
+        values.remove(hostId)
+        write(values)
+    }
+
+    private fun write(values: Map<String, RemoteHostCredentials>) {
         val iv = ByteArray(12).also(SecureRandom()::nextBytes)
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key(), GCMParameterSpec(128, iv))
-        val encrypted = cipher.doFinal(json.encodeToString(TokenData.serializer(), tokens).encodeToByteArray())
+        val encoded = json.encodeToString(RemoteHostCredentialStore.serializer(), RemoteHostCredentialStore(values))
+        val encrypted = cipher.doFinal(encoded.encodeToByteArray())
         preferences.edit().putString(STORAGE_KEY, Base64.encodeToString(iv + encrypted, Base64.NO_WRAP)).apply()
     }
 
-    override suspend fun clear() {
-        preferences.edit().remove(STORAGE_KEY).apply()
-    }
-
-    private fun read(): TokenData? {
-        val encoded = preferences.getString(STORAGE_KEY, null) ?: return null
+    private fun read(): Map<String, RemoteHostCredentials> {
+        val encoded = preferences.getString(STORAGE_KEY, null) ?: return emptyMap()
         return runCatching {
             val combined = Base64.decode(encoded, Base64.NO_WRAP)
             require(combined.size > 12)
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, combined.copyOfRange(0, 12)))
-            json.decodeFromString<TokenData>(String(cipher.doFinal(combined.copyOfRange(12, combined.size))))
-        }.getOrNull()
+            json.decodeFromString<RemoteHostCredentialStore>(String(cipher.doFinal(combined.copyOfRange(12, combined.size)))).hosts
+        }.getOrDefault(emptyMap())
     }
 
     private fun key(): SecretKey {
