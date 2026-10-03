@@ -8,4 +8,4 @@ server:
 
 suncode:
   remote:
-    desktop-pairing-code: ${SUNCODE_REMOTE_PAIRING_CODE:}
+    desktop-pairing-code: 123456

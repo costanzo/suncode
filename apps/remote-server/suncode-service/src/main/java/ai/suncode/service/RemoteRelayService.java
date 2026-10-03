@@ -48,7 +48,7 @@ public class RemoteRelayService {
     private final ConcurrentHashMap<String, DesktopResponse> idempotentResults = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> sessionHosts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, HostEvents> hostEvents = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, JsonNode> snapshots = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> snapshots = new ConcurrentHashMap<>();
     private final Object connectionLifecycleLock = new Object();
     private volatile boolean shuttingDown;
 
@@ -199,9 +199,6 @@ public class RemoteRelayService {
         if (future == null) {
             throw new BusinessException(REQUEST_EXPIRED);
         }
-        if (response.sessionId() != null) {
-            sessionHosts.put(response.sessionId(), response.hostId());
-        }
         future.complete(response);
     }
 
@@ -249,9 +246,6 @@ public class RemoteRelayService {
         connection.emitter().onError(error -> removeMobile(connection));
         try {
             DesktopResponse snapshot = request(hostId, sessionId, "session.get", new DesktopCommandPayload(), null);
-            if (!snapshot.success()) {
-                throw new BusinessException(CONFLICT, snapshot.message() == null ? "desktop_request_failed" : snapshot.message());
-            }
             HostEvents state = hostEvents.computeIfAbsent(hostId, ignored -> new HostEvents());
             long snapshotSequence = state.sequence().get();
             String snapshotId = hostId + ":" + snapshotSequence;
@@ -312,17 +306,13 @@ public class RemoteRelayService {
         }
     }
 
-    public void updateSnapshot(String hostId, JsonNode snapshot) {
+    public void updateSnapshot(String hostId, String snapshot) {
         requireText(hostId, "hostId is required");
-        if (snapshot == null || !snapshot.isObject()) {
-            throw new BusinessException(PARAM_INVALID, "snapshot must be a JSON object");
-        }
-        snapshots.put(hostId, snapshot.deepCopy());
+        snapshots.put(hostId, snapshot);
     }
 
-    public JsonNode snapshot(String hostId) {
-        JsonNode snapshot = snapshots.get(hostId);
-        return snapshot == null ? null : snapshot.deepCopy();
+    public String snapshot(String hostId) {
+        return snapshots.get(hostId);
     }
 
     public void notifyDesktop(String hostId, String requestId, String eventType, Object body) {

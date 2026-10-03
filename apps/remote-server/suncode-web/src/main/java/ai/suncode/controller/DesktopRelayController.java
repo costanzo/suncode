@@ -9,6 +9,7 @@ import ai.suncode.service.RemoteAuthService;
 import ai.suncode.service.RemoteRelayService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,39 +36,38 @@ public class DesktopRelayController {
     }
 
     @PostMapping("/pairings")
-    public ApiBaseRet<?> createPairing(@RequestBody(required = false) DesktopPairingRequest pairingRequest) {
-        return ApiBaseRet.success(authService.createDesktopPairing(pairingRequest));
+    public ResponseEntity<DesktopPairingPayload> createPairing(@RequestBody(required = false) DesktopPairingRequest pairingRequest) {
+        return ResponseEntity.ok(authService.createDesktopPairing(pairingRequest));
     }
 
     @PostMapping("/auth/refresh")
-    public ApiBaseRet<?> refresh(@RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<TokenData> refresh(@RequestBody RefreshTokenRequest request) {
         ServiceContext context = ServiceContext.current();
-        return ApiBaseRet.success(authService.refreshDesktop(context.hostId(), request));
+        return ResponseEntity.ok(authService.refreshDesktop(context.hostId(), request));
     }
 
     @PostMapping("/snapshot")
-    public ApiBaseRet<?> snapshot(@RequestBody JsonNode snapshot) {
+    public ResponseEntity<Void> snapshot(@RequestBody String snapshot) {
         relayService.updateSnapshot(ServiceContext.current().hostId(), snapshot);
-        return ApiBaseRet.success();
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/responses")
-    public ApiBaseRet<?> response(@RequestBody String body) {
-        DesktopResponse response = MarshallingUtils.fromJson(body, DesktopResponse.class);
+    public ResponseEntity<Void> response(@RequestBody String body) {
         String hostId = ServiceContext.current().hostId();
-        relayService.complete(new DesktopResponse(
-                ServiceContext.current().requestId(), hostId, response.sessionId(), response.code() != null && response.code() == 0, response.code(), response.message(), response.payload()));
-        return ApiBaseRet.success();
+        String requestId = ServiceContext.current().requestId();
+        relayService.complete(new DesktopResponse(requestId, hostId, body));
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/events")
-    public ApiBaseRet<?> event(@RequestBody String body) {
+    public ResponseEntity<Void> event(@RequestBody String body) {
         DesktopEvent event = MarshallingUtils.fromJson(body, DesktopEvent.class);
         String hostId = ServiceContext.current().hostId();
         DesktopEvent normalized = new DesktopEvent(
                 hostId, event.sessionId(), event.requestId(), event.eventType(), event.occurredAt(), event.payload());
         relayService.publish(normalized);
-        return ApiBaseRet.success();
+        return ResponseEntity.noContent().build();
     }
 
 }
