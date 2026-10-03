@@ -29,15 +29,15 @@ public class ErrorControllerAdvice {
     @ExceptionHandler(value = BusinessException.class)
     @ResponseBody
     public ResponseEntity<ApiBaseRet<?>> businessException(BusinessException e) {
-        log.info("BusinessException: {}", e.getMessage());
+        log.info("BusinessException: ", e);
         return ResponseEntity.status(e.getErrorCode().getHttpStatus())
                 .body(ApiBaseRet.error(e.getErrorCode().getCode(), e.getMessage()));
     }
 
-    @ExceptionHandler(value = Exception.class)
+    @ExceptionHandler(value = Throwable.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ResponseBody
-    public ApiBaseRet<?> exception(Exception e) {
+    public ApiBaseRet<?> exception(Throwable e) {
         log.error("Unknown error ", e);
         return ApiBaseRet.error(INTERNAL_ERROR.getCode(), INTERNAL_ERROR.getMessage());
     }

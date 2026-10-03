@@ -157,7 +157,7 @@ paths:
                 value:
                   encPayload: "e2e-v1:base64url-ciphertext"
       responses:
-        '200':
+        '204':
           description: Snapshot accepted
           content:
             application/json:
@@ -328,7 +328,7 @@ paths:
                 value:
                   encPayload: "e2e-v1:base64url-ciphertext"
       responses:
-        '200':
+        '204':
           description: Event accepted
           content:
             application/json:
@@ -374,7 +374,7 @@ paths:
                 value:
                   encPayload: "e2e-v1:base64url-ciphertext"
       responses:
-        '200':
+        '204':
           description: Response accepted
           content:
             application/json:

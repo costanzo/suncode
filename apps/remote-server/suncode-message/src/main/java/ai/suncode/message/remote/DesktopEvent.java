@@ -9,6 +9,6 @@ public record DesktopEvent(
         @JsonAlias("session_id") String sessionId,
         @JsonAlias("request_id") String requestId,
         @JsonAlias("event_type") String eventType,
-        @JsonAlias("occurred_at") Instant occurredAt,
+        @JsonAlias("occurred_at") String occurredAt,
         EventPayload payload) {
 }

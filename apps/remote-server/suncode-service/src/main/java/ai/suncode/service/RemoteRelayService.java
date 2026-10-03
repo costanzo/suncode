@@ -214,7 +214,7 @@ public class RemoteRelayService {
                 event.sessionId(),
                 event.requestId(),
                 event.eventType(),
-                event.occurredAt() == null ? Instant.now() : event.occurredAt(),
+                event.occurredAt(),
                 event.payload() == null ? new EventPayload() : event.payload());
         synchronized (state.replay()) {
             state.replay().addLast(mobileEvent);
