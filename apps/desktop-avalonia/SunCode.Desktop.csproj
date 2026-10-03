@@ -28,8 +28,14 @@
     <PowerShellRuntimeDevelopmentSource Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeDevelopmentSource>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>None</DebugType>
+  </PropertyGroup>
+
   <ItemGroup>
-    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3"
+                      Condition="'$(Configuration)' != 'Release'" />
     <ProjectReference Include="../../sdks/csharp/SunCode.Sdk.csproj" />
     <ProjectReference Include="Compatibility/CefGlueAvalonia12/CefGlueAvalonia12.csproj" />
     <PackageReference Include="cef.runtime.osx-arm64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'osx-arm64'" PrivateAssets="all" />
@@ -101,6 +107,21 @@
     <Exec Command="cmd /c &quot;robocopy &quot;&quot;$(PowerShellRuntimeSource)&quot;&quot; &quot;&quot;$(PublishDir)runtimes/powershell&quot;&quot; /E /NFL /NDL /NJH /NJS /NP &amp; IF ERRORLEVEL 8 exit /B 8 &amp; exit /B 0&quot;" />
   </Target>
 
+  <Target Name="CopyWindowsCefRuntime" AfterTargets="Publish"
+          Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' == 'win-x64'">
+    <PropertyGroup>
+      <CefWindowsPackageRoot>$(NuGetPackageRoot)chromiumembeddedframework.runtime.win-x64/152.0.6</CefWindowsPackageRoot>
+    </PropertyGroup>
+    <ItemGroup>
+      <CefWindowsNativeFiles Include="$(CefWindowsPackageRoot)/runtimes/win-x64/native/*.*" />
+      <CefWindowsAdditionalFiles Include="$(CefWindowsPackageRoot)/CEF/win-x64/**/*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(CefWindowsNativeFiles)"
+          DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(CefWindowsAdditionalFiles)"
+          DestinationFolder="$(PublishDir)%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+
   <Target Name="CopyLinuxBrowserRuntime" AfterTargets="Publish"
           Condition="$([MSBuild]::IsOSPlatform('Linux')) And '$(BrowserRuntimeTarget)' == 'linux-x64' And Exists('$(BrowserRuntimeSource)')">
     <RemoveDir Directories="$(PublishDir)runtimes/browser-runtime" />
@@ -162,5 +183,13 @@
     <MakeDir Directories="$(CefPreviewFrameworkDestination)" />
     <Exec Command="chmod 755 &quot;$(CefPreviewPackageRoot)/deploy-cef-framework.sh&quot;" />
     <Exec Command="bash &quot;$(CefPreviewPackageRoot)/deploy-cef-framework.sh&quot; &quot;$(CefPreviewFrameworkSource)&quot; &quot;$(CefPreviewFrameworkDestination)&quot; &quot;SunCode&quot; &quot;dev.suncode.desktop&quot; &quot;-&quot; &quot;$(CefPreviewPackageRoot)/cef.entitlements&quot; &quot;$(MSBuildProjectDirectory)/Assets/suncode-desktop.icns&quot;" />
+  </Target>
+
+  <Target Name="RemoveReleasePublishSymbols" AfterTargets="Publish"
+          Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <ReleasePublishSymbols Include="$(PublishDir)**/*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(ReleasePublishSymbols)" />
   </Target>
 </Project>

@@ -258,6 +258,13 @@ impl WorkerProcess {
                 format!("browser worker could not be resolved: {error}"),
             )
         })?;
+        #[cfg(windows)]
+        let worker_path = worker_path
+            .as_os_str()
+            .to_string_lossy()
+            .strip_prefix(r"\\?\")
+            .map(PathBuf::from)
+            .unwrap_or(worker_path);
         std::fs::create_dir_all(&launch.working_directory).map_err(|error| {
             browser_error(
                 "browser_runtime_unavailable",
