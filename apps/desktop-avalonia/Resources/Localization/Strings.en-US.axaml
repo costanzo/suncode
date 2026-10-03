@@ -125,6 +125,8 @@
   <x:String x:Key="LocServerUrlHint">Use the HTTP or HTTPS address of your Remote Server (HTTPS is recommended).</x:String>
   <x:String x:Key="LocPairingCode">Pairing code</x:String>
   <x:String x:Key="LocPairingCodeHint">The code supplied by your Remote Server administrator.</x:String>
+  <x:String x:Key="LocRemoteE2e">End-to-end encryption</x:String>
+  <x:String x:Key="LocRemoteE2eHint">Use encrypted request bodies for every Remote Server request. Routing fields remain visible for delivery.</x:String>
   <x:String x:Key="LocSaveAndConnect">Save and connect</x:String>
   <x:String x:Key="LocDisconnect">Disconnect</x:String>
   <x:String x:Key="LocClear">Clear</x:String>

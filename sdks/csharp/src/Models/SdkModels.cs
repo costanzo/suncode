@@ -98,7 +98,7 @@ public sealed record ProjectRecord(
 
 public sealed record ProjectsResult(IReadOnlyList<ProjectRecord> Projects);
 
-public sealed record RemoteServerConfiguration(string ServerUrl, string PairingCode);
+public sealed record RemoteServerConfiguration(string ServerUrl, string PairingCode, bool E2eEnabled = true);
 
 public sealed record RemoteServerStatus(
     [property: JsonPropertyName("configured")] bool Configured,

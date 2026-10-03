@@ -128,7 +128,7 @@ class RemoteMobileRepository(
         client.configureHost(
             hostId = hostId,
             endpoint = query["endpoint"] ?: error("Pairing URL has no endpoint"),
-            aesKey = query["k"] ?: error("Pairing URL has no encryption key"),
+            aesKey = query["k"]?.takeIf { query["e2e"] != "0" },
         )
         val host = client.exchangePairing(
             hostId,

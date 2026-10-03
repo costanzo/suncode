@@ -186,6 +186,7 @@ public sealed partial class SettingsWindow : Window
             var remote = await ViewModel.Remote.LoadAsync();
             RemotePage.ServerUrlInputControl.Text = remote.Configuration.ServerUrl;
             RemotePage.PairingCodeInputControl.Text = remote.Configuration.PairingCode;
+            RemotePage.E2eToggleControl.IsChecked = remote.Configuration.E2eEnabled;
             RefreshRemotePresentation(remote.Status);
             _baselineProxyMode = ViewModel.Network.ProxyMode;
             _baselineProxyUrl = ViewModel.Network.ProxyUrl;
@@ -443,7 +444,7 @@ public sealed partial class SettingsWindow : Window
 
     private async void SaveRemote(object? sender, RoutedEventArgs e)
     {
-        var result = await ViewModel.Remote.SaveAsync(RemotePage.ServerUrlInputControl.Text, RemotePage.PairingCodeInputControl.Text);
+        var result = await ViewModel.Remote.SaveAsync(RemotePage.ServerUrlInputControl.Text, RemotePage.PairingCodeInputControl.Text, RemotePage.E2eToggleControl.IsChecked == true);
         RefreshRemotePresentation(result);
         RemotePage.StatusTextControl.Text = result.Error ?? (result.Connected
             ? L("LocConnected", "Connected")
@@ -461,6 +462,7 @@ public sealed partial class SettingsWindow : Window
         var status = await ViewModel.Remote.ClearAsync();
         RemotePage.ServerUrlInputControl.Text = string.Empty;
         RemotePage.PairingCodeInputControl.Text = string.Empty;
+        RemotePage.E2eToggleControl.IsChecked = true;
         RefreshRemotePresentation(status);
     }
 

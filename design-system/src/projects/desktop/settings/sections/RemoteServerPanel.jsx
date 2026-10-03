@@ -32,6 +32,7 @@ function PairingCodeGrid({ seed }) {
 export function RemoteServerPanel({ onSave }) {
   const [serverUrl, setServerUrl] = useState("https://relay.suncode.dev");
   const [pairingCode, setPairingCode] = useState("");
+  const [e2eEnabled, setE2eEnabled] = useState(true);
   const [connected, setConnected] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [error, setError] = useState("");
@@ -105,6 +106,21 @@ export function RemoteServerPanel({ onSave }) {
             />
           </SettingRow>
         )}
+        <SettingRow
+          label="End-to-end encryption"
+          hint="Encrypt every Remote Server request body. Routing fields remain visible so Desktop can dispatch the request."
+        >
+          <label className="settings-switch">
+            <input
+              type="checkbox"
+              checked={e2eEnabled}
+              onChange={(event) => setE2eEnabled(event.target.checked)}
+              aria-label="Enable end-to-end encryption"
+            />
+            <span className="settings-switch-track"><span /></span>
+            <b>{e2eEnabled ? "On" : "Off"}</b>
+          </label>
+        </SettingRow>
 
         {error && (
           <div className="remote-server-error" role="alert">

@@ -50,7 +50,7 @@ public sealed partial class AgentSdk
     public Task<RemoteServerConfiguration> GetRemoteServerConfigurationAsync() => Typed<RemoteServerConfiguration>(RawRemoteServerConfigurationAsync());
     public Task<RemoteServerStatus> GetRemoteServerStatusAsync() => Typed<RemoteServerStatus>(RawRemoteServerStatusAsync());
     public Task<RemoteServerStatus> SaveRemoteServerConfigurationAsync(RemoteServerConfiguration configuration) =>
-        Typed<RemoteServerStatus>(RawSaveRemoteServerConfigurationAsync(configuration.ServerUrl, configuration.PairingCode));
+        Typed<RemoteServerStatus>(RawSaveRemoteServerConfigurationAsync(configuration.ServerUrl, configuration.PairingCode, configuration.E2eEnabled));
     public Task<RemoteServerStatus> ConnectRemoteServerAsync() => Typed<RemoteServerStatus>(RawConnectRemoteServerAsync());
     public Task<RemoteServerStatus> DisconnectRemoteServerAsync() => Typed<RemoteServerStatus>(RawDisconnectRemoteServerAsync());
     public Task<RemoteServerStatus> ClearRemoteServerConfigurationAsync() => Typed<RemoteServerStatus>(RawClearRemoteServerConfigurationAsync());

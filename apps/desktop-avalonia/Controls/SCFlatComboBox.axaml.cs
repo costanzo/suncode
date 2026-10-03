@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
@@ -28,6 +29,7 @@ public sealed partial class SCFlatComboBox : UserControl
     private string _displayText = string.Empty;
     private bool _syncingSelection;
     private PathIcon? _dropDownChevron;
+    private RotateTransform? _dropDownChevronTransform;
 
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
 
@@ -123,17 +125,33 @@ public sealed partial class SCFlatComboBox : UserControl
     private void SyncDropDownState()
     {
         if (_dropDownChevron is null || FlatCombo is null) return;
-        if (_dropDownChevron.RenderTransform is RotateTransform rotation)
-            rotation.Angle = FlatCombo.IsDropDownOpen ? 180 : 0;
-        else
-            _dropDownChevron.RenderTransform = new RotateTransform(FlatCombo.IsDropDownOpen ? 180 : 0);
+        _dropDownChevronTransform ??= CreateDropDownChevronTransform();
+        _dropDownChevronTransform.Angle = FlatCombo.IsDropDownOpen ? 180 : 0;
+        if (!ReferenceEquals(_dropDownChevron.RenderTransform, _dropDownChevronTransform))
+            _dropDownChevron.RenderTransform = _dropDownChevronTransform;
     }
 
     private void FlatComboTemplateApplied(object? sender, TemplateAppliedEventArgs e)
     {
         _dropDownChevron = e.NameScope.Find<PathIcon>("DropDownGlyph");
+        _dropDownChevronTransform = CreateDropDownChevronTransform();
+        if (_dropDownChevron is not null)
+            _dropDownChevron.RenderTransform = _dropDownChevronTransform;
         SyncDropDownState();
     }
+
+    private static RotateTransform CreateDropDownChevronTransform() =>
+        new(0)
+        {
+            Transitions = new Transitions
+            {
+                new DoubleTransition
+                {
+                    Property = RotateTransform.AngleProperty,
+                    Duration = TimeSpan.FromMilliseconds(160),
+                },
+            },
+        };
 
     private void FlatSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {

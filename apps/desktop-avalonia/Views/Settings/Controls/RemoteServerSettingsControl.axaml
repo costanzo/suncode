@@ -16,6 +16,10 @@
           <StackPanel Classes="settings-row-copy"><TextBlock Classes="settings-row-title" Text="{DynamicResource LocPairingCode}" /><TextBlock Classes="settings-row-hint" Text="{DynamicResource LocPairingCodeHint}" /></StackPanel>
           <TextBox x:Name="PairingCodeInput" Grid.Column="1" PasswordChar="•" PlaceholderText="{DynamicResource LocPairingCodePlaceholder}" />
         </Grid>
+        <Grid Classes="settings-row" ColumnDefinitions="*,260">
+          <StackPanel Classes="settings-row-copy"><TextBlock Classes="settings-row-title" Text="{DynamicResource LocRemoteE2e}" /><TextBlock Classes="settings-row-hint" Text="{DynamicResource LocRemoteE2eHint}" TextWrapping="Wrap" /></StackPanel>
+          <ToggleSwitch x:Name="E2eToggle" Grid.Column="1" Classes="sc-toggle-switch settings-switch" IsChecked="True" OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" />
+        </Grid>
       </StackPanel>
       <StackPanel Classes="settings-actions">
         <StackPanel Orientation="Horizontal" Spacing="8">

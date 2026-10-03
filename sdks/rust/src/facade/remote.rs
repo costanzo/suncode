@@ -1,5 +1,8 @@
 use super::*;
-use aes_gcm::{aead::{Aead, KeyInit}, Aes256Gcm, Nonce};
+use aes_gcm::{
+    aead::{Aead, KeyInit},
+    Aes256Gcm, Nonce,
+};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use futures_util::StreamExt;
 use reqwest::{Client, Response};
@@ -16,6 +19,7 @@ const REMOTE_REFRESH_TOKEN: &str = "remote_refresh_token";
 const REMOTE_ACCESS_TOKEN_EXPIRES_AT: &str = "remote_access_token_expires_at";
 const REMOTE_MOBILE_PAIRING_CODE: &str = "remote_mobile_pairing_code";
 const REMOTE_AES_KEY: &str = "remote_aes_key";
+const REMOTE_E2E_ENABLED: &str = "remote_e2e_enabled";
 
 const UPLOAD_EVENT_TYPES: &[&str] = &[
     "turn.state",
@@ -42,9 +46,16 @@ const UPLOAD_EVENT_TYPES: &[&str] = &[
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct RemoteServerConfiguration {
     pub server_url: String,
     pub pairing_code: String,
+    #[serde(default = "default_e2e_enabled")]
+    pub e2e_enabled: bool,
+}
+
+fn default_e2e_enabled() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -81,15 +92,16 @@ struct PairResponse {
 }
 
 impl PairResponse {
-    fn mobile_pairing_url(&self, endpoint: &str) -> String {
+    fn mobile_pairing_url(&self, endpoint: &str, e2e_enabled: bool) -> String {
         let separator = if endpoint.contains('?') { '&' } else { '?' };
         format!(
-            "{}{}code={}&hostId={}&k={}",
+            "{}{}code={}&hostId={}&k={}&e2e={}",
             endpoint.trim_end_matches('/'),
             separator,
             urlencoding(&self.mobile_pairing_code),
             urlencoding(&self.host_id),
-            urlencoding(&self.aes_key)
+            urlencoding(&self.aes_key),
+            if e2e_enabled { "1" } else { "0" }
         )
     }
 }
@@ -169,18 +181,22 @@ impl RemoteController {
             host_id: persisted
                 .as_ref()
                 .map(|value| value.pairing.host_id.clone()),
-            mobile_pairing_payload: persisted
-                .as_ref()
-                .map(|value| value.pairing.mobile_pairing_url(&value.config.server_url)),
+            mobile_pairing_payload: persisted.as_ref().map(|value| {
+                value
+                    .pairing
+                    .mobile_pairing_url(&value.config.server_url, value.config.e2e_enabled)
+            }),
             access_token_expires_at: persisted
                 .as_ref()
                 .map(|value| value.pairing.access_token_expires_at.clone()),
             mobile_pairing_code: persisted
                 .as_ref()
                 .map(|value| value.pairing.mobile_pairing_code.clone()),
-            mobile_pairing_url: persisted
-                .as_ref()
-                .map(|value| value.pairing.mobile_pairing_url(&value.config.server_url)),
+            mobile_pairing_url: persisted.as_ref().map(|value| {
+                value
+                    .pairing
+                    .mobile_pairing_url(&value.config.server_url, value.config.e2e_enabled)
+            }),
             error: None,
         };
         Self {
@@ -204,6 +220,11 @@ impl RemoteController {
         RemoteServerConfiguration {
             server_url: get(REMOTE_SERVER_URL),
             pairing_code: get(REMOTE_PAIRING_CODE),
+            e2e_enabled: values
+                .iter()
+                .find(|entry| entry.key == REMOTE_E2E_ENABLED)
+                .and_then(|entry| entry.value.as_bool())
+                .unwrap_or(true),
         }
     }
 
@@ -230,6 +251,7 @@ impl RemoteController {
         for (key, value) in [
             (REMOTE_SERVER_URL, json!(config.server_url)),
             (REMOTE_PAIRING_CODE, json!(config.pairing_code)),
+            (REMOTE_E2E_ENABLED, json!(config.e2e_enabled)),
         ] {
             self.store.set_setting("global", "global", key, &value)?;
         }
@@ -367,6 +389,7 @@ impl RemoteController {
             REMOTE_ACCESS_TOKEN_EXPIRES_AT,
             REMOTE_MOBILE_PAIRING_CODE,
             REMOTE_AES_KEY,
+            REMOTE_E2E_ENABLED,
         ] {
             self.store
                 .set_setting("global", "global", key, &Value::Null)?;
@@ -409,14 +432,14 @@ impl RemoteController {
             mobile_pairing_payload: Some(
                 persisted
                     .pairing
-                    .mobile_pairing_url(&persisted.config.server_url),
+                    .mobile_pairing_url(&persisted.config.server_url, persisted.config.e2e_enabled),
             ),
             access_token_expires_at: Some(persisted.pairing.access_token_expires_at.clone()),
             mobile_pairing_code: Some(persisted.pairing.mobile_pairing_code.clone()),
             mobile_pairing_url: Some(
                 persisted
                     .pairing
-                    .mobile_pairing_url(&persisted.config.server_url),
+                    .mobile_pairing_url(&persisted.config.server_url, persisted.config.e2e_enabled),
             ),
             error: None,
         });
@@ -472,6 +495,7 @@ impl AsyncAgentSdk {
             .unwrap_or(RemoteServerConfiguration {
                 server_url: String::new(),
                 pairing_code: String::new(),
+                e2e_enabled: true,
             })
     }
 
@@ -616,6 +640,11 @@ fn load_persisted(store: &Store) -> SdkResult<Option<PersistedRemote>> {
         config: RemoteServerConfiguration {
             server_url,
             pairing_code,
+            e2e_enabled: values
+                .iter()
+                .find(|entry| entry.key == REMOTE_E2E_ENABLED)
+                .and_then(|entry| entry.value.as_bool())
+                .unwrap_or(true),
         },
         pairing: PairResponse {
             host_id,
@@ -743,9 +772,10 @@ async fn upload_desktop_snapshot(
     let payload = json!({ "projects": projects, "sessions": sessions });
     let request_id = uuid::Uuid::new_v4().to_string();
     let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/snapshot");
+    let body = remote_request_body(&payload, persisted)?;
     let response = request_headers(client.post(url), persisted, host_id)
         .header("X-Request-Id", request_id)
-        .json(&payload)
+        .json(&body)
         .send()
         .await
         .map_err(remote_http_error)?;
@@ -795,7 +825,11 @@ fn subscribe_existing_sessions(
                                 let event_id = uuid::Uuid::new_v4().to_string();
                                 let body = RemoteEventEnvelope { session_id: event.session_id.clone(), occurred_at: event.occurred_at.clone(), event_type: event_type.to_string(), payload: event.payload.clone().into_value() };
                                 let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/events");
-                                let response = request_headers(client.post(url), &persisted, &host_id).header("X-Request-Id", &event_id).json(&body).send().await;
+                                let body = remote_request_body(&serde_json::to_value(&body).unwrap_or_else(|_| json!({})), &persisted);
+                                let response = match body {
+                                    Ok(body) => request_headers(client.post(url), &persisted, &host_id).header("X-Request-Id", &event_id).json(&body).send().await,
+                                    Err(error) => { logging::warn("remote", &format!("event encryption failed: {}", error.message)); continue; }
+                                };
                                 if let Err(error) = response { logging::warn("remote", &format!("event upload failed: {error}")); }
                             }
                             Some(Err(error)) => { logging::warn("remote", &format!("session event stream ended: {error}")); break; }
@@ -866,48 +900,96 @@ fn parse_sse_request(frame: &[u8], aes_key: &str) -> Option<RemoteRequest> {
     if event.starts_with("mobile.") {
         let request_id = id;
         let operation = mobile_event_operation(&event)?;
-        let mut arguments = if let Some(enc_payload) = value.get("encPayload").and_then(Value::as_str) {
-            decrypt_remote_payload(enc_payload, aes_key).ok()?
-        } else {
-            value.get("requestBody").cloned().unwrap_or_else(|| json!({}))
-        };
-        if !arguments.is_object() { arguments = json!({}); }
+        let mut arguments =
+            if let Some(enc_payload) = value.get("encPayload").and_then(Value::as_str) {
+                decrypt_remote_payload(enc_payload, aes_key).ok()?
+            } else {
+                value
+                    .get("requestBody")
+                    .cloned()
+                    .unwrap_or_else(|| json!({}))
+            };
+        if !arguments.is_object() {
+            arguments = json!({});
+        }
         if let Some(path) = value.get("pathParam").and_then(Value::as_object) {
             if let Some(object) = arguments.as_object_mut() {
-                for (key, value) in path { object.entry(key.clone()).or_insert_with(|| value.clone()); }
+                for (key, value) in path {
+                    object.entry(key.clone()).or_insert_with(|| value.clone());
+                }
             }
         }
         if let Some(query) = value.get("queryParam").and_then(Value::as_object) {
             if let Some(object) = arguments.as_object_mut() {
-                for (key, value) in query { object.entry(key.clone()).or_insert_with(|| value.clone()); }
+                for (key, value) in query {
+                    object.entry(key.clone()).or_insert_with(|| value.clone());
+                }
             }
         }
-        return Some(RemoteRequest { request_id, operation: operation.into(), arguments });
+        return Some(RemoteRequest {
+            request_id,
+            operation: operation.into(),
+            arguments,
+        });
     }
-    if event != "desktop.request" && event != "desktop.command" { return None; }
+    if event != "desktop.request" && event != "desktop.command" {
+        return None;
+    }
     if value.get("request_id").is_none() && value.get("requestId").is_none() {
         value["request_id"] = Value::String(id);
     }
-    serde_json::from_value(value).ok().filter(|request: &RemoteRequest| !request.request_id.trim().is_empty())
+    serde_json::from_value(value)
+        .ok()
+        .filter(|request: &RemoteRequest| !request.request_id.trim().is_empty())
 }
 
 fn decrypt_remote_payload(payload: &str, key_text: &str) -> SdkResult<Value> {
-    let encoded = payload.strip_prefix("e2e-v1:")
+    let encoded = payload
+        .strip_prefix("e2e-v1:")
         .ok_or_else(|| BusinessError::invalid("unsupported encrypted payload version"))?;
-    let bytes = URL_SAFE_NO_PAD.decode(encoded)
+    let bytes = URL_SAFE_NO_PAD
+        .decode(encoded)
         .map_err(|_| BusinessError::invalid("encrypted payload is not valid base64url"))?;
     if bytes.len() < 12 + 16 {
         return Err(BusinessError::invalid("encrypted payload is truncated"));
     }
-    let key = URL_SAFE_NO_PAD.decode(key_text)
+    let key = URL_SAFE_NO_PAD
+        .decode(key_text)
         .map_err(|_| BusinessError::invalid("remote encryption key is not valid base64url"))?;
     let cipher = Aes256Gcm::new_from_slice(&key)
         .map_err(|_| BusinessError::invalid("remote encryption key is invalid"))?;
     let nonce = Nonce::from_slice(&bytes[..12]);
-    let plaintext = cipher.decrypt(nonce, &bytes[12..])
+    let plaintext = cipher
+        .decrypt(nonce, &bytes[12..])
         .map_err(|_| BusinessError::invalid("encrypted payload authentication failed"))?;
     serde_json::from_slice(&plaintext)
         .map_err(|_| BusinessError::invalid("encrypted payload JSON is invalid"))
+}
+
+fn encrypt_remote_payload(value: &Value, key_text: &str) -> SdkResult<String> {
+    let key = URL_SAFE_NO_PAD
+        .decode(key_text)
+        .map_err(|_| BusinessError::invalid("remote encryption key is not valid base64url"))?;
+    let cipher = Aes256Gcm::new_from_slice(&key)
+        .map_err(|_| BusinessError::invalid("remote encryption key is invalid"))?;
+    let nonce_source = uuid::Uuid::new_v4();
+    let nonce_bytes = &nonce_source.as_bytes()[..12];
+    let nonce = Nonce::from_slice(nonce_bytes);
+    let plaintext = serde_json::to_vec(value)
+        .map_err(|_| BusinessError::invalid("remote payload JSON is invalid"))?;
+    let ciphertext = cipher
+        .encrypt(nonce, plaintext.as_ref())
+        .map_err(|_| BusinessError::unavailable("remote payload encryption failed"))?;
+    let mut bytes = nonce_bytes.to_vec();
+    bytes.extend_from_slice(&ciphertext);
+    Ok(format!("e2e-v1:{}", URL_SAFE_NO_PAD.encode(bytes)))
+}
+
+fn remote_request_body(value: &Value, persisted: &PersistedRemote) -> SdkResult<Value> {
+    if !persisted.config.e2e_enabled {
+        return Ok(value.clone());
+    }
+    Ok(json!({ "encPayload": encrypt_remote_payload(value, &persisted.pairing.aes_key)? }))
 }
 
 fn mobile_event_operation(event: &str) -> Option<&'static str> {
@@ -957,9 +1039,22 @@ async fn handle_remote_request(
         },
     };
     let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/responses");
+    let body = match remote_request_body(
+        &serde_json::to_value(&result).unwrap_or_else(|_| json!({})),
+        persisted,
+    ) {
+        Ok(body) => body,
+        Err(error) => {
+            logging::warn(
+                "remote",
+                &format!("response encryption failed: {}", error.message),
+            );
+            return;
+        }
+    };
     let _ = request_headers(client.post(url), persisted, host_id)
         .header("X-Request-Id", &request_id)
-        .json(&result)
+        .json(&body)
         .send()
         .await;
 }
@@ -1007,18 +1102,22 @@ async fn dispatch_request(
         }
         "session.cancel" | "turn.cancel" => {
             let session_id = string("session_id", "sessionId")?;
-            let turn_id = arguments.get("turn_id").and_then(Value::as_str)
+            let turn_id = arguments
+                .get("turn_id")
+                .and_then(Value::as_str)
                 .or_else(|| arguments.get("turnId").and_then(Value::as_str));
             let result = if let Some(turn_id) = turn_id {
                 sdk.cancel_turn(session_id, turn_id)?
             } else {
                 let snapshot = sdk.session_snapshot(session_id, 0)?;
-                let turn_id = snapshot.conversation_turns.last().map(|turn| turn.turn_id.as_str())
+                let turn_id = snapshot
+                    .conversation_turns
+                    .last()
+                    .map(|turn| turn.turn_id.as_str())
                     .ok_or_else(|| BusinessError::invalid("turnId is required"))?;
                 sdk.cancel_turn(session_id, turn_id)?
             };
-            serde_json::to_value(result)
-                .map_err(|e| BusinessError::unavailable(e.to_string()))
+            serde_json::to_value(result).map_err(|e| BusinessError::unavailable(e.to_string()))
         }
         "session.retry" | "turn.retry" => {
             let session_id = string("session_id", "sessionId")?;
@@ -1082,9 +1181,14 @@ mod tests {
         let request = parse_sse_request(b"event: desktop.request\ndata: {\"request_id\":\"req-1\",\"operation\":\"projects.list\"}\n\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
         assert_eq!(request.request_id, "req-1");
         assert!(parse_sse_request(b"event: desktop.request\r\ndata: {\"request_id\":\"req-2\",\"operation\":\"projects.list\"}\r\n\r\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").is_some());
-        assert!(parse_sse_request(b"event: heartbeat\ndata: {}\n\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").is_none());
         assert!(parse_sse_request(
-            b"event: desktop.request\ndata: {\"operation\":\"projects.list\"}\n\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            b"event: heartbeat\ndata: {}\n\n",
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        )
+        .is_none());
+        assert!(parse_sse_request(
+            b"event: desktop.request\ndata: {\"operation\":\"projects.list\"}\n\n",
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         )
         .is_none());
     }

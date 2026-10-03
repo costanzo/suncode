@@ -40,11 +40,11 @@ The remote-control setup is a two-stage pairing flow:
 4. Desktop builds a QR URL containing the Remote Server endpoint, Host ID, one-time Mobile pairing code, and the AES key. Both `http` and `https` schemes are supported by the QR format:
 
    ```text
-   https://remote-endpoint?code=mobile-pairing-code&hostId=host-01J8YQ6M7A&k=base64url-aes-key
-   http://remote-endpoint?code=mobile-pairing-code&hostId=host-01J8YQ6M7A&k=base64url-aes-key
+   https://remote-endpoint?code=mobile-pairing-code&hostId=host-01J8YQ6M7A&k=base64url-aes-key&e2e=1
+   http://remote-endpoint?code=mobile-pairing-code&hostId=host-01J8YQ6M7A&k=base64url-aes-key&e2e=0
    ```
 
-   `k` is the Desktop-generated AES key. The deployment should prefer `https`; `http` is supported only when the deployment explicitly accepts its transport risk. The QR URL is an application pairing payload, not a Server API request, and the Server must never log or persist the AES key.
+   `k` is the Desktop-generated AES key and `e2e` records the Desktop setting (`1` enabled, `0` plaintext). The deployment should prefer `https`; `http` is supported only when the deployment explicitly accepts its transport risk. The QR URL is an application pairing payload, not a Server API request, and the Server must never log or persist the AES key.
 5. Desktop renders that URL as a QR code. Mobile scans it, validates the endpoint, `hostId`, `code`, and key, then calls `POST /v1/mobile/pairings/exchange` with both `X-Host-Id` and `X-Request-Id`. The request is plaintext because the Server must consume the pairing code. On success, Mobile stores the returned Host identity, access token, refresh token, and `accessTokenExpiresAt`, together with the AES key from the QR payload.
 6. After pairing, Mobile uses `Authorization: Bearer <access-token>`, `X-Host-Id`, and `X-Request-Id` for normal HTTP calls. Session SSE uses the same bearer token, Host header, and a `Last-Event-ID` when reconnecting. E2E-capable bodies use either the documented plaintext object or an object containing only `encPayload`; the Desktop SSE forwarding envelope keeps `pathParam` and `queryParam` beside that encrypted payload.
 

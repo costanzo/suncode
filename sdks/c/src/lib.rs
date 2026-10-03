@@ -724,11 +724,13 @@ pub unsafe extern "C" fn suncode_agent_sdk_save_remote_server_configuration(
     handle: *mut SunCodeAgentHandle,
     server_url: *const c_char,
     pairing_code: *const c_char,
+    e2e_enabled: u8,
 ) -> *mut c_char {
     ffi_call(handle, |sdk| {
         sdk.save_remote_server_configuration(suncode_sdk::RemoteServerConfiguration {
             server_url: c_string(server_url, "server_url")?,
             pairing_code: c_string(pairing_code, "pairing_code")?,
+            e2e_enabled: e2e_enabled != 0,
         })
     })
 }

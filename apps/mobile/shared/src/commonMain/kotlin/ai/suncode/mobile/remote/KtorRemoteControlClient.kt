@@ -321,17 +321,17 @@ class KtorRemoteControlClient(
             header("X-Host-Id", hostId)
             header("X-Request-Id", requestId())
             url { query.forEach { (key, value) -> parameters.append(key, value) } }
-            setBody(if (encrypted) encryptedBody(hostId, body) else body)
+            setBody(if (encrypted && tokenStore.load(hostId)?.aesKey != null) encryptedBody(hostId, body) else body)
         }
 
     private suspend inline fun <reified T> encryptedBody(hostId: String, body: T): EncryptedPayload {
-        val key = tokenStore.load(hostId)?.aesKey ?: error("Remote E2E key is unavailable")
+        val key = tokenStore.load(hostId)?.aesKey ?: error("Remote E2E is disabled for this Host")
         return EncryptedPayload(E2eCrypto.encrypt(key, json.encodeToString(body).encodeToByteArray()))
     }
 
     private suspend fun decryptPayload(hostId: String, body: String): String {
         val wrapper = runCatching { json.decodeFromString<EncryptedPayload>(body) }.getOrNull() ?: return body
-        val key = tokenStore.load(hostId)?.aesKey ?: error("Remote E2E key is unavailable")
+        val key = tokenStore.load(hostId)?.aesKey ?: return body
         return E2eCrypto.decrypt(key, wrapper.encPayload).decodeToString()
     }
 

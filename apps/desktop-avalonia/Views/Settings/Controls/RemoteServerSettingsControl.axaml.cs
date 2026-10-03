@@ -13,6 +13,7 @@ public sealed partial class RemoteServerSettingsControl : UserControl
     public event EventHandler<RoutedEventArgs>? ClearRequested;
     public TextBox ServerUrlInputControl => ServerUrlInput;
     public TextBox PairingCodeInputControl => PairingCodeInput;
+    public ToggleSwitch E2eToggleControl => E2eToggle;
     public TextBlock StatusTextControl => StatusText;
     public Button DisconnectButtonControl => DisconnectButton;
     public StackPanel PairingSectionControl => PairingSection;

@@ -71,8 +71,8 @@ public sealed partial class AgentSdk : IDisposable
     private Task<JsonElement> RawListProjectsAsync() => CallAsync(NativeMethods.suncode_agent_sdk_list_projects);
     private Task<JsonElement> RawRemoteServerConfigurationAsync() => CallAsync(NativeMethods.suncode_agent_sdk_remote_server_configuration);
     private Task<JsonElement> RawRemoteServerStatusAsync() => CallAsync(NativeMethods.suncode_agent_sdk_remote_server_status);
-    private Task<JsonElement> RawSaveRemoteServerConfigurationAsync(string serverUrl, string pairingCode) => WithUtf8Async(
-        [serverUrl, pairingCode], values => NativeMethods.suncode_agent_sdk_save_remote_server_configuration(_handle, values[0], values[1]));
+    private Task<JsonElement> RawSaveRemoteServerConfigurationAsync(string serverUrl, string pairingCode, bool e2eEnabled) => WithUtf8Async(
+        [serverUrl, pairingCode], values => NativeMethods.suncode_agent_sdk_save_remote_server_configuration(_handle, values[0], values[1], e2eEnabled ? (byte)1 : (byte)0));
     private Task<JsonElement> RawConnectRemoteServerAsync() => CallAsync(NativeMethods.suncode_agent_sdk_connect_remote_server);
     private Task<JsonElement> RawDisconnectRemoteServerAsync() => CallAsync(NativeMethods.suncode_agent_sdk_disconnect_remote_server);
     private Task<JsonElement> RawClearRemoteServerConfigurationAsync() => CallAsync(NativeMethods.suncode_agent_sdk_clear_remote_server_configuration);

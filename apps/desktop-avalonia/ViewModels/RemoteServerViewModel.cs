@@ -35,13 +35,13 @@ public sealed class RemoteServerViewModel : ObservableObject, IDisposable
         return new LoadResult(await sdk.GetRemoteServerConfigurationAsync(), status);
     }
 
-    public async Task<RemoteServerStatus> SaveAsync(string? serverUrl, string? pairingCode)
+    public async Task<RemoteServerStatus> SaveAsync(string? serverUrl, string? pairingCode, bool e2eEnabled = true)
     {
         if (!await _host.EnsureSdkReadyAsync()) return new RemoteServerStatus(false, false, false, null, null, "Local agent unavailable");
         var sdk = _host.Sdk!;
         try
         {
-            await sdk.SaveRemoteServerConfigurationAsync(new RemoteServerConfiguration(serverUrl?.Trim() ?? string.Empty, pairingCode?.Trim() ?? string.Empty));
+            await sdk.SaveRemoteServerConfigurationAsync(new RemoteServerConfiguration(serverUrl?.Trim() ?? string.Empty, pairingCode?.Trim() ?? string.Empty, e2eEnabled));
             var status = await sdk.ConnectRemoteServerAsync();
             ApplyStatus(status);
             return status;

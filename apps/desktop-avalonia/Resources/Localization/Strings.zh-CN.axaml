@@ -125,6 +125,8 @@
   <x:String x:Key="LocServerUrlHint">填写远程服务器的 HTTP 或 HTTPS 地址（推荐使用 HTTPS）。</x:String>
   <x:String x:Key="LocPairingCode">配对码</x:String>
   <x:String x:Key="LocPairingCodeHint">远程服务器管理员提供的代码。</x:String>
+  <x:String x:Key="LocRemoteE2e">端到端加密</x:String>
+  <x:String x:Key="LocRemoteE2eHint">所有远程服务器请求使用加密请求体；路由字段仍会保留以便转发。</x:String>
   <x:String x:Key="LocSaveAndConnect">保存并连接</x:String>
   <x:String x:Key="LocDisconnect">断开连接</x:String>
   <x:String x:Key="LocClear">清除</x:String>
