@@ -43,7 +43,8 @@ Implemented workflows include the project hub, independent draggable project win
 
 ### Bundled fonts
 
-The desktop client bundles Noto Sans SC, JetBrains Mono, and Seti UI without
+The desktop client bundles static Noto Sans SC regular/medium/semibold/bold
+faces, JetBrains Mono, and Seti UI without
 committing font binaries to Git. Build and publish targets run
 `scripts/prepare-fonts.sh` on macOS/Linux or `scripts/prepare-fonts.ps1` on
 Windows. The scripts download immutable upstream revisions into the ignored

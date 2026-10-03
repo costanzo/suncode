@@ -1,6 +1,12 @@
 # name|download URL|sha256|license
 # Keep URLs pinned to immutable commits and verify every downloaded file.
-NotoSansSC-wght.ttf|https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf|a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da|OFL-1.1
+# Use static faces instead of the variable font. Avalonia's embedded font
+# collection can then resolve FontWeight to the bundled face deterministically.
+NotoSansSC-Regular.ttf|https://fonts.gstatic.com/s/notosanssc/v41/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG9_FnYw.ttf|450625c8d46ab3df97b7904ded955ec2746d17ec76740cb1e91d1ba63a0f89af|OFL-1.1
+NotoSansSC-Medium.ttf|https://fonts.gstatic.com/s/notosanssc/v41/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG-3FnYw.ttf|09f17deea660cdd9cc2ba1e8b90adad18eabeca73b62b3c5f76b7ec3b61b33e0|OFL-1.1
+NotoSansSC-SemiBold.ttf|https://fonts.gstatic.com/s/notosanssc/v41/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaGwHCnYw.ttf|7c941d13e1f99a7c78fc89ef734b9322404804573a936085f7a910b47b8bb984|OFL-1.1
+NotoSansSC-Bold.ttf|https://fonts.gstatic.com/s/notosanssc/v41/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaGzjCnYw.ttf|0066a522a1ac007c1d72bc4fccb114f80ff7294641c78cead9715bd14d43b9ea|OFL-1.1
 JetBrainsMono-Regular.ttf|https://raw.githubusercontent.com/JetBrains/JetBrainsMono/19371302b95d218af43299bce79ddbddd0bc364d/fonts/ttf/JetBrainsMono-Regular.ttf|e6fd0d7e91550b3ed2b735d4312474362c4716edc4fc0577a0f61ed782d5aed1|OFL-1.1
 JetBrainsMono-SemiBold.ttf|https://raw.githubusercontent.com/JetBrains/JetBrainsMono/19371302b95d218af43299bce79ddbddd0bc364d/fonts/ttf/JetBrainsMono-SemiBold.ttf|12d4b18fe6e1af528e4bea69cb0997aeff22f9e52fccffcf66342dd88aa32ab8|OFL-1.1
+JetBrainsMono-Bold.ttf|https://raw.githubusercontent.com/JetBrains/JetBrainsMono/19371302b95d218af43299bce79ddbddd0bc364d/fonts/ttf/JetBrainsMono-Bold.ttf|d22c4f3821d725eb01210d278d95dfcfcaadc34699a06658d47c8a5cc5830ada|OFL-1.1
 seti.ttf|https://raw.githubusercontent.com/jesseweed/seti-ui/2d6c5e68b4ded73c92dac291845ee44e1182d511/styles/_fonts/seti/seti.ttf|655e602ea20d969733b95e28d8e39d31c0c807888d6f7d39684712f85af1923c|MIT

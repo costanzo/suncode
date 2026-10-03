@@ -5,6 +5,10 @@ $lockFile = Join-Path $repoRoot 'scripts/fonts.lock'
 $fontDir = Join-Path $repoRoot 'apps/desktop-avalonia/Assets/fonts'
 New-Item -ItemType Directory -Force -Path $fontDir | Out-Null
 
+# Remove the old variable face so it cannot shadow the static faces when an
+# existing checkout is rebuilt on Windows.
+Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $fontDir 'NotoSansSC-wght.ttf')
+
 foreach ($line in Get-Content $lockFile) {
     if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith('#')) { continue }
     $parts = $line -split '\|', 4

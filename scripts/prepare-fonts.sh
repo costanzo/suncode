@@ -17,6 +17,10 @@ sha256() {
 
 mkdir -p "$font_dir"
 
+# The previous bundle used a variable Noto Sans SC face. Remove it so it
+# cannot shadow the static faces below when rebuilding an existing checkout.
+rm -f "$font_dir/NotoSansSC-wght.ttf"
+
 while IFS='|' read -r name url expected_sha license || [[ -n "$name" ]]; do
   [[ -z "$name" || "$name" == \#* ]] && continue
   destination="$font_dir/$name"
