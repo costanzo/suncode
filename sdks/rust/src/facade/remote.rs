@@ -1,4 +1,5 @@
 use super::*;
+use aes_gcm::{aead::{Aead, KeyInit}, Aes256Gcm, Nonce};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use futures_util::StreamExt;
 use reqwest::{Client, Response};
@@ -700,7 +701,7 @@ async fn remote_worker(
                                 buffer.extend_from_slice(&bytes);
                                 while let Some((boundary, delimiter_len)) = sse_frame_boundary(&buffer) {
                                     let frame = buffer.drain(..boundary + delimiter_len).collect::<Vec<_>>();
-                                    if let Some(request) = parse_sse_request(&frame) {
+                                    if let Some(request) = parse_sse_request(&frame, &persisted.pairing.aes_key) {
                                         handle_remote_request(&sdk, &client, &persisted, &host_id, request).await;
                                     }
                                 }
@@ -842,7 +843,7 @@ fn request_headers(
         .bearer_auth(&persisted.pairing.access_token)
 }
 
-fn parse_sse_request(frame: &[u8]) -> Option<RemoteRequest> {
+fn parse_sse_request(frame: &[u8], aes_key: &str) -> Option<RemoteRequest> {
     let text = std::str::from_utf8(frame).ok()?;
     let mut event = String::new();
     let mut id = String::new();
@@ -865,10 +866,20 @@ fn parse_sse_request(frame: &[u8]) -> Option<RemoteRequest> {
     if event.starts_with("mobile.") {
         let request_id = id;
         let operation = mobile_event_operation(&event)?;
-        let mut arguments = value.get("requestBody").cloned().unwrap_or_else(|| json!({}));
+        let mut arguments = if let Some(enc_payload) = value.get("encPayload").and_then(Value::as_str) {
+            decrypt_remote_payload(enc_payload, aes_key).ok()?
+        } else {
+            value.get("requestBody").cloned().unwrap_or_else(|| json!({}))
+        };
+        if !arguments.is_object() { arguments = json!({}); }
         if let Some(path) = value.get("pathParam").and_then(Value::as_object) {
             if let Some(object) = arguments.as_object_mut() {
                 for (key, value) in path { object.entry(key.clone()).or_insert_with(|| value.clone()); }
+            }
+        }
+        if let Some(query) = value.get("queryParam").and_then(Value::as_object) {
+            if let Some(object) = arguments.as_object_mut() {
+                for (key, value) in query { object.entry(key.clone()).or_insert_with(|| value.clone()); }
             }
         }
         return Some(RemoteRequest { request_id, operation: operation.into(), arguments });
@@ -878,6 +889,25 @@ fn parse_sse_request(frame: &[u8]) -> Option<RemoteRequest> {
         value["request_id"] = Value::String(id);
     }
     serde_json::from_value(value).ok().filter(|request: &RemoteRequest| !request.request_id.trim().is_empty())
+}
+
+fn decrypt_remote_payload(payload: &str, key_text: &str) -> SdkResult<Value> {
+    let encoded = payload.strip_prefix("e2e-v1:")
+        .ok_or_else(|| BusinessError::invalid("unsupported encrypted payload version"))?;
+    let bytes = URL_SAFE_NO_PAD.decode(encoded)
+        .map_err(|_| BusinessError::invalid("encrypted payload is not valid base64url"))?;
+    if bytes.len() < 12 + 16 {
+        return Err(BusinessError::invalid("encrypted payload is truncated"));
+    }
+    let key = URL_SAFE_NO_PAD.decode(key_text)
+        .map_err(|_| BusinessError::invalid("remote encryption key is not valid base64url"))?;
+    let cipher = Aes256Gcm::new_from_slice(&key)
+        .map_err(|_| BusinessError::invalid("remote encryption key is invalid"))?;
+    let nonce = Nonce::from_slice(&bytes[..12]);
+    let plaintext = cipher.decrypt(nonce, &bytes[12..])
+        .map_err(|_| BusinessError::invalid("encrypted payload authentication failed"))?;
+    serde_json::from_slice(&plaintext)
+        .map_err(|_| BusinessError::invalid("encrypted payload JSON is invalid"))
 }
 
 fn mobile_event_operation(event: &str) -> Option<&'static str> {
@@ -1049,12 +1079,12 @@ mod tests {
 
     #[test]
     fn parses_only_sse_request_frames_with_request_ids() {
-        let request = parse_sse_request(b"event: desktop.request\ndata: {\"request_id\":\"req-1\",\"operation\":\"projects.list\"}\n\n").unwrap();
+        let request = parse_sse_request(b"event: desktop.request\ndata: {\"request_id\":\"req-1\",\"operation\":\"projects.list\"}\n\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
         assert_eq!(request.request_id, "req-1");
-        assert!(parse_sse_request(b"event: desktop.request\r\ndata: {\"request_id\":\"req-2\",\"operation\":\"projects.list\"}\r\n\r\n").is_some());
-        assert!(parse_sse_request(b"event: heartbeat\ndata: {}\n\n").is_none());
+        assert!(parse_sse_request(b"event: desktop.request\r\ndata: {\"request_id\":\"req-2\",\"operation\":\"projects.list\"}\r\n\r\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").is_some());
+        assert!(parse_sse_request(b"event: heartbeat\ndata: {}\n\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").is_none());
         assert!(parse_sse_request(
-            b"event: desktop.request\ndata: {\"operation\":\"projects.list\"}\n\n"
+            b"event: desktop.request\ndata: {\"operation\":\"projects.list\"}\n\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         )
         .is_none());
     }
@@ -1062,12 +1092,25 @@ mod tests {
     #[test]
     fn accepts_java_desktop_command_envelope_and_camel_case_payload() {
         let request = parse_sse_request(
-            b"event: desktop.command\ndata: {\"requestId\":\"req-1\",\"hostId\":\"host-1\",\"sessionId\":\"session-1\",\"command\":\"session.message\",\"payload\":{\"text\":\"hello\"}}\n\n",
+            b"event: desktop.command\ndata: {\"requestId\":\"req-1\",\"hostId\":\"host-1\",\"sessionId\":\"session-1\",\"command\":\"session.message\",\"payload\":{\"text\":\"hello\"}}\n\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         )
         .unwrap();
         assert_eq!(request.request_id, "req-1");
         assert_eq!(request.operation, "session.message");
         assert_eq!(request.arguments["text"], "hello");
+    }
+
+    #[test]
+    fn keeps_desktop_sse_routing_values_with_plaintext_body() {
+        let request = parse_sse_request(
+            b"event: mobile.sessions.approvals.resolve\nid: req-1\ndata: {\"pathParam\":{\"sessionId\":\"session-1\",\"approvalId\":\"approval-1\"},\"queryParam\":{\"revision\":7},\"requestBody\":{\"action\":\"allow_once\"}}\n\n",
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        ).unwrap();
+        assert_eq!(request.operation, "approval.resolve");
+        assert_eq!(request.arguments["sessionId"], "session-1");
+        assert_eq!(request.arguments["approvalId"], "approval-1");
+        assert_eq!(request.arguments["revision"], 7);
+        assert_eq!(request.arguments["action"], "allow_once");
     }
 
     #[test]

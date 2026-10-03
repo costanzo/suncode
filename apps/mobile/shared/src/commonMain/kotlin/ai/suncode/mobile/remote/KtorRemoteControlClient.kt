@@ -188,7 +188,7 @@ class KtorRemoteControlClient(
     }
 
     override suspend fun createSession(hostId: String, request: CreateSessionRequest): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope(hostId) { token -> postJson("${endpoint(hostId)}/v1/mobile/hosts/${hostId.pathSegment()}/sessions", request, hostId = hostId, token = token, encrypted = true) }
+        return authenticatedEnvelope(hostId) { token -> postJson("${endpoint(hostId)}/v1/mobile/hosts/${hostId.pathSegment()}/sessions", request, hostId = hostId, token = token, encrypted = true, query = mapOf("projectId" to request.projectId)) }
     }
 
     override suspend fun getSession(hostId: String, sessionId: String): ApiBaseRet<SessionDetailDto> {
@@ -313,13 +313,14 @@ class KtorRemoteControlClient(
         header("X-Request-Id", requestId())
     }
 
-    private suspend inline fun <reified T> HttpClient.postJson(url: String, body: T, hostId: String, token: String? = null, encrypted: Boolean = false): HttpResponse =
+    private suspend inline fun <reified T> HttpClient.postJson(url: String, body: T, hostId: String, token: String? = null, encrypted: Boolean = false, query: Map<String, String> = emptyMap()): HttpResponse =
         post(url) {
             contentType(ContentType.Application.Json)
             accept(ContentType.Application.Json)
             token?.let { bearerAuth(it) }
             header("X-Host-Id", hostId)
             header("X-Request-Id", requestId())
+            url { query.forEach { (key, value) -> parameters.append(key, value) } }
             setBody(if (encrypted) encryptedBody(hostId, body) else body)
         }
 

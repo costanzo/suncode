@@ -96,6 +96,44 @@ public class RemoteRelayService {
             DesktopCommandPayload payload,
             String requestIdHeader,
             Map<String, Object> queryParam) {
+        return request(hostId, sessionId, command, payload, null, requestIdHeader, queryParam, null);
+    }
+
+    /**
+     * Forward a request whose body is end-to-end encrypted. Routing values are
+     * still sent in the clear path/query sections of the Desktop SSE envelope;
+     * the relay never parses or decrypts {@code encPayload}.
+     */
+    public DesktopResponse requestEncrypted(
+            String hostId,
+            String sessionId,
+            String command,
+            String requestIdHeader,
+            Map<String, Object> queryParam,
+            String encPayload) {
+        return request(hostId, sessionId, command, null, null, requestIdHeader, queryParam, encPayload);
+    }
+
+    public DesktopResponse requestEncrypted(
+            String hostId,
+            String sessionId,
+            String command,
+            String routeId,
+            String requestIdHeader,
+            Map<String, Object> queryParam,
+            String encPayload) {
+        return request(hostId, sessionId, command, null, routeId, requestIdHeader, queryParam, encPayload);
+    }
+
+    private DesktopResponse request(
+            String hostId,
+            String sessionId,
+            String command,
+            DesktopCommandPayload payload,
+            String routeId,
+            String requestIdHeader,
+            Map<String, Object> queryParam,
+            String encPayload) {
         DesktopConnection connection = desktopConnections.get(hostId);
         if (connection == null) {
             throw new BusinessException(DESKTOP_UNAVAILABLE);
@@ -122,12 +160,17 @@ public class RemoteRelayService {
             Map<String, Object> path = new java.util.LinkedHashMap<>();
             if (hostId != null) path.put("hostId", hostId);
             if (sessionId != null) path.put("sessionId", sessionId);
-            if (command.startsWith("approval.")) path.put("approvalId", commandPayload.getApprovalId());
-            if (command.startsWith("question.")) path.put("questionId", commandPayload.getQuestionId());
-            DesktopMobileHttpRequest requestEnvelope = new DesktopMobileHttpRequest(
-                    path,
-                    queryParam == null ? Map.of() : queryParam,
-                    MarshallingUtils.convertValue(commandPayload, Map.class));
+            if (command.startsWith("approval.") && (routeId != null || commandPayload.getApprovalId() != null)) {
+                path.put("approvalId", routeId != null ? routeId : commandPayload.getApprovalId());
+            }
+            if (command.startsWith("question.") && (routeId != null || commandPayload.getQuestionId() != null)) {
+                path.put("questionId", routeId != null ? routeId : commandPayload.getQuestionId());
+            }
+            DesktopMobileHttpRequest requestEnvelope = encPayload == null || encPayload.isBlank()
+                    ? new DesktopMobileHttpRequest(path, queryParam == null ? Map.of() : queryParam,
+                    MarshallingUtils.convertValue(commandPayload, Map.class), null)
+                    : new DesktopMobileHttpRequest(path, queryParam == null ? Map.of() : queryParam,
+                    null, encPayload);
             send(connection.emitter(), mobileEventName(command), requestId, requestEnvelope);
             try {
                 DesktopResponse response = future.get(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);

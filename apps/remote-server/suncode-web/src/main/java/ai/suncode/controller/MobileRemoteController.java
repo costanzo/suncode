@@ -20,10 +20,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
+import java.util.function.Function;
 
 import static ai.suncode.common.exception.ErrorCode.CONFLICT;
 import static ai.suncode.common.exception.ErrorCode.HOST_NOT_FOUND;
@@ -92,8 +96,11 @@ public class MobileRemoteController {
 
     @PostMapping("/hosts/{hostId}/sessions")
     public ResponseEntity<ApiBaseRet<?>> createSession(@PathVariable String hostId,
-                                                       @RequestBody CreateSessionRequest request) {
-        DesktopResponse response = relayService.request(hostId, null, "session.create", DesktopCommandPayload.createSession(request), ServiceContext.current().requestId());
+                                                       @RequestParam(required = false) String projectId,
+                                                       @RequestBody JsonNode request) {
+        Map<String, Object> query = projectId == null ? Map.of() : Map.of("projectId", projectId);
+        DesktopResponse response = requestDesktop(hostId, null, "session.create", null, request, query,
+                body -> DesktopCommandPayload.createSession(MarshallingUtils.convertValue(body, CreateSessionRequest.class)));
         String sessionId = sessionId(response.payload());
         relayService.rememberSession(sessionId, hostId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiBaseRet.success(new CommandAcceptedData(sessionId)));
@@ -113,24 +120,27 @@ public class MobileRemoteController {
     @PostMapping("/hosts/{hostId}/sessions/{sessionId}/messages")
     public ApiBaseRet<?> message(@PathVariable String hostId,
                                  @PathVariable String sessionId,
-                                 @RequestBody SendMessageRequest request) {
-        return command(hostId, sessionId, "session.message", DesktopCommandPayload.sendMessage(request));
+                                 @RequestBody JsonNode request) {
+        return responseEnvelope(requestDesktop(hostId, sessionId, "session.message", null, request, Map.of(),
+                body -> DesktopCommandPayload.sendMessage(MarshallingUtils.convertValue(body, SendMessageRequest.class))), CommandAcceptedData.class);
     }
 
     @PostMapping("/hosts/{hostId}/sessions/{sessionId}/approvals/{approvalId}")
     public ApiBaseRet<?> approval(@PathVariable String hostId,
                                   @PathVariable String sessionId,
                                   @PathVariable String approvalId,
-                                  @RequestBody ApprovalResolutionRequest request) {
-        return command(hostId, sessionId, "approval.resolve", DesktopCommandPayload.resolveApproval(approvalId, request));
+                                  @RequestBody JsonNode request) {
+        return responseEnvelope(requestDesktop(hostId, sessionId, "approval.resolve", approvalId, request, Map.of(),
+                body -> DesktopCommandPayload.resolveApproval(approvalId, MarshallingUtils.convertValue(body, ApprovalResolutionRequest.class))), CommandAcceptedData.class);
     }
 
     @PostMapping("/hosts/{hostId}/sessions/{sessionId}/questions/{questionId}/reply")
     public ApiBaseRet<?> question(@PathVariable String hostId,
                                   @PathVariable String sessionId,
                                   @PathVariable String questionId,
-                                  @RequestBody QuestionReplyRequest request) {
-        return command(hostId, sessionId, "question.reply", DesktopCommandPayload.replyQuestion(questionId, request));
+                                  @RequestBody JsonNode request) {
+        return responseEnvelope(requestDesktop(hostId, sessionId, "question.reply", questionId, request, Map.of(),
+                body -> DesktopCommandPayload.replyQuestion(questionId, MarshallingUtils.convertValue(body, QuestionReplyRequest.class))), CommandAcceptedData.class);
     }
 
     @PostMapping("/hosts/{hostId}/sessions/{sessionId}/cancel")
@@ -159,6 +169,25 @@ public class MobileRemoteController {
     private ApiBaseRet<?> command(String hostId, String sessionId, String command, DesktopCommandPayload payload) {
         DesktopResponse response = relayService.request(hostId, sessionId, command, payload, ServiceContext.current().requestId());
         return responseEnvelope(response, CommandAcceptedData.class);
+    }
+
+    private DesktopResponse requestDesktop(String hostId, String sessionId, String command, String routeId,
+                                           JsonNode request, Map<String, Object> query,
+                                           Function<JsonNode, DesktopCommandPayload> plaintextMapper) {
+        String encrypted = encryptedPayload(request);
+        String requestId = ServiceContext.current().requestId();
+        if (encrypted != null) {
+            return relayService.requestEncrypted(hostId, sessionId, command, routeId, requestId, query, encrypted);
+        }
+        JsonNode body = request == null ? JsonNodeFactory.instance.objectNode() : request;
+        return relayService.request(hostId, sessionId, command, plaintextMapper.apply(body), requestId, query);
+    }
+
+    private static String encryptedPayload(JsonNode request) {
+        if (request == null || !request.isObject()) return null;
+        JsonNode encrypted = request.get("encPayload");
+        return encrypted != null && encrypted.isTextual() && !encrypted.textValue().isBlank()
+                ? encrypted.textValue() : null;
     }
 
     private <T> ApiBaseRet<?> responseEnvelope(DesktopResponse response, Class<T> type) {

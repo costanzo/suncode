@@ -298,7 +298,7 @@ paths:
                   value:
                     - event: mobile.sessions.messages.send
                       id: mobile-request-10
-                      data: '{"encPayload":"e2e-v1:base64url-ciphertext"}'
+                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{},"encPayload":"e2e-v1:base64url-ciphertext"}'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -706,8 +706,8 @@ components:
         data:
           type: string
           description: |
-            JSON string containing the plaintext request envelope or the encrypted
-            encPayload wrapper. Pairing-success and logout lifecycle notifications
+            JSON string containing `pathParam`, `queryParam`, and either the
+            plaintext `requestBody` or the encrypted `encPayload`. Pairing-success and logout lifecycle notifications
             are always sanitized plaintext and never contain credentials.
           contentMediaType: application/json
           contentSchema:
@@ -729,17 +729,25 @@ components:
           description: Parsed JSON request body; an empty object is used when the request has no body.
     DesktopEncryptedMobileHttpRequestData:
       type: object
-      required: [encPayload]
+      required: [pathParam, queryParam, encPayload]
       additionalProperties: false
       properties:
+        pathParam:
+          type: object
+          description: Decoded path parameters from the Mobile HTTP route; always visible for Desktop routing.
+          additionalProperties: true
+        queryParam:
+          type: object
+          description: Decoded query parameters from the Mobile HTTP request; always visible for Desktop routing.
+          additionalProperties: true
         encPayload:
           type: string
           minLength: 1
-          description: Opaque encrypted DesktopMobileHttpRequestData. The Server forwards it without decryption.
+          description: Opaque encrypted request body. The Server forwards it without decryption.
           examples:
             - "e2e-v1:base64url-ciphertext"
     DesktopMobileHttpRequestDataEnvelope:
       oneOf:
         - $ref: '#/components/schemas/DesktopMobileHttpRequestData'
         - $ref: '#/components/schemas/DesktopEncryptedMobileHttpRequestData'
-      description: Plaintext request data or an opaque encrypted wrapper. Exactly one representation is sent.
+      description: Request routing values are always visible. The body is either plaintext `requestBody` or opaque encrypted `encPayload`; the two body representations are mutually exclusive.
