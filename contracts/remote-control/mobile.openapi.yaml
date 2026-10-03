@@ -555,23 +555,8 @@ paths:
                 value:
                   encPayload: "e2e-v1:base64url-ciphertext"
       responses:
-        '202':
+        '204':
           description: Message accepted for Desktop delivery
-          content:
-            application/json:
-              schema:
-                oneOf:
-                  - $ref: '#/components/schemas/CommandAcceptedData'
-                  - $ref: '#/components/schemas/EncryptedPayload'
-              examples:
-                plaintext:
-                  value:
-                    requestId: "request-01J8YQ6M7D"
-                    acceptedAt: "2026-10-02T01:47:22.778Z"
-                encrypted:
-                  summary: End-to-end encrypted command response
-                  value:
-                    encPayload: "e2e-v1:base64url-ciphertext"
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -625,23 +610,8 @@ paths:
                 value:
                   encPayload: "e2e-v1:base64url-ciphertext"
       responses:
-        '202':
+        '204':
           description: Approval resolution accepted
-          content:
-            application/json:
-              schema:
-                oneOf:
-                  - $ref: '#/components/schemas/CommandAcceptedData'
-                  - $ref: '#/components/schemas/EncryptedPayload'
-              examples:
-                plaintext:
-                  value:
-                    requestId: "request-01J8YQ6M7D"
-                    acceptedAt: "2026-10-02T01:47:22.778Z"
-                encrypted:
-                  summary: End-to-end encrypted approval response
-                  value:
-                    encPayload: "e2e-v1:base64url-ciphertext"
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -697,23 +667,8 @@ paths:
                 value:
                   encPayload: "e2e-v1:base64url-ciphertext"
       responses:
-        '202':
+        '204':
           description: Answer accepted
-          content:
-            application/json:
-              schema:
-                oneOf:
-                  - $ref: '#/components/schemas/CommandAcceptedData'
-                  - $ref: '#/components/schemas/EncryptedPayload'
-              examples:
-                plaintext:
-                  value:
-                    requestId: "request-01J8YQ6M7D"
-                    acceptedAt: "2026-10-02T01:47:22.778Z"
-                encrypted:
-                  summary: End-to-end encrypted question response
-                  value:
-                    encPayload: "e2e-v1:base64url-ciphertext"
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':

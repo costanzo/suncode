@@ -98,15 +98,9 @@ public class MobileRemoteController {
     }
 
     @PostMapping("/hosts/{hostId}/sessions")
-    public ResponseEntity<ApiBaseRet<?>> createSession(@PathVariable String hostId,
-                                                       @RequestParam(required = false) String projectId,
-                                                       @RequestBody JsonNode request) {
-        Map<String, Object> query = projectId == null ? Map.of() : Map.of("projectId", projectId);
-        DesktopResponse response = requestDesktop(hostId, null, "session.create", null, request, query,
-                body -> DesktopCommandPayload.createSession(MarshallingUtils.convertValue(body, CreateSessionRequest.class)));
-        String sessionId = sessionId(response.payload());
-        relayService.rememberSession(sessionId, hostId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiBaseRet.success(new CommandAcceptedData(sessionId)));
+    public ResponseEntity<CreateSessionResponse> createSession(@PathVariable String hostId, @RequestBody String request) {
+        DesktopResponse response = requestDesktop(hostId, null, "session.create", null, request, Map.of());
+        return ResponseEntity.status(HttpStatus.CREATED).body(MarshallingUtils.fromJson(response.payload(), CreateSessionResponse.class));
     }
 
     @GetMapping("/hosts/{hostId}/sessions/{sessionId}")
@@ -121,29 +115,29 @@ public class MobileRemoteController {
     }
 
     @PostMapping("/hosts/{hostId}/sessions/{sessionId}/messages")
-    public ResponseEntity<CommandAcceptedData> message(@PathVariable String hostId,
+    public ResponseEntity<Void> message(@PathVariable String hostId,
                                  @PathVariable String sessionId,
-                                 @RequestBody JsonNode request) {
-        return ResponseEntity.ok(responseEnvelope(requestDesktop(hostId, sessionId, "session.message", null, request, Map.of(),
-                body -> DesktopCommandPayload.sendMessage(MarshallingUtils.convertValue(body, SendMessageRequest.class))), CommandAcceptedData.class));
+                                 @RequestBody String request) {
+        requestDesktop(hostId, sessionId, "session.message", null, request, Map.of());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/hosts/{hostId}/sessions/{sessionId}/approvals/{approvalId}")
-    public ResponseEntity<CommandAcceptedData> approval(@PathVariable String hostId,
+    public ResponseEntity<Void> approval(@PathVariable String hostId,
                                   @PathVariable String sessionId,
                                   @PathVariable String approvalId,
-                                  @RequestBody JsonNode request) {
-        return ResponseEntity.ok(responseEnvelope(requestDesktop(hostId, sessionId, "approval.resolve", approvalId, request, Map.of(),
-                body -> DesktopCommandPayload.resolveApproval(approvalId, MarshallingUtils.convertValue(body, ApprovalResolutionRequest.class))), CommandAcceptedData.class));
+                                  @RequestBody String request) {
+        requestDesktop(hostId, sessionId, "approval.resolve", approvalId, request, Map.of());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/hosts/{hostId}/sessions/{sessionId}/questions/{questionId}/reply")
-    public ResponseEntity<CommandAcceptedData> question(@PathVariable String hostId,
+    public ResponseEntity<Void> question(@PathVariable String hostId,
                                   @PathVariable String sessionId,
                                   @PathVariable String questionId,
-                                  @RequestBody JsonNode request) {
-        return ResponseEntity.ok(responseEnvelope(requestDesktop(hostId, sessionId, "question.reply", questionId, request, Map.of(),
-                body -> DesktopCommandPayload.replyQuestion(questionId, MarshallingUtils.convertValue(body, QuestionReplyRequest.class))), CommandAcceptedData.class));
+                                  @RequestBody String request) {
+        requestDesktop(hostId, sessionId, "question.reply", questionId, request, Map.of());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/hosts/{hostId}/sessions/{sessionId}/cancel")
@@ -175,22 +169,10 @@ public class MobileRemoteController {
     }
 
     private DesktopResponse requestDesktop(String hostId, String sessionId, String command, String routeId,
-                                           JsonNode request, Map<String, Object> query,
-                                           Function<JsonNode, DesktopCommandPayload> plaintextMapper) {
-        String encrypted = encryptedPayload(request);
+                                           String request, Map<String, Object> query) {
         String requestId = ServiceContext.current().requestId();
-        if (encrypted != null) {
-            return relayService.requestEncrypted(hostId, sessionId, command, routeId, requestId, query, encrypted);
-        }
-        JsonNode body = request == null ? JsonNodeFactory.instance.objectNode() : request;
-        return relayService.request(hostId, sessionId, command, plaintextMapper.apply(body), requestId, query);
-    }
-
-    private static String encryptedPayload(JsonNode request) {
-        if (request == null || !request.isObject()) return null;
-        JsonNode encrypted = request.get("encPayload");
-        return encrypted != null && encrypted.isTextual() && !encrypted.textValue().isBlank()
-                ? encrypted.textValue() : null;
+        DesktopCommandPayload commandPayload = MarshallingUtils.fromJson(request, DesktopCommandPayload.class);
+        return relayService.request(hostId, sessionId, command, commandPayload, requestId, query);
     }
 
     private <T> T responseEnvelope(DesktopResponse response, Class<T> type) {
@@ -200,13 +182,4 @@ public class MobileRemoteController {
     private static DesktopCommandPayload empty() {
         return new DesktopCommandPayload();
     }
-
-    private static String sessionId(String payload) {
-        CommandAcceptedData created = payload == null ? null : MarshallingUtils.fromJson(payload, CommandAcceptedData.class);
-        if (created == null || created.sessionId() == null || created.sessionId().isBlank()) {
-            return UUID.randomUUID().toString();
-        }
-        return created.sessionId();
-    }
-
 }

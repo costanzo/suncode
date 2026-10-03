@@ -46,7 +46,6 @@ public class RemoteRelayService {
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<MobileConnection>> mobileConnections = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CompletableFuture<DesktopResponse>> pending = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, DesktopResponse> idempotentResults = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, String> sessionHosts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, HostEvents> hostEvents = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> snapshots = new ConcurrentHashMap<>();
     private final Object connectionLifecycleLock = new Object();
@@ -223,7 +222,6 @@ public class RemoteRelayService {
             }
         }
         if (event.sessionId() != null) {
-            sessionHosts.put(event.sessionId(), event.hostId());
             for (MobileConnection mobile : mobileConnections.getOrDefault(event.sessionId(), new CopyOnWriteArrayList<>())) {
                 send(mobile.emitter(), "agent.event", mobileEvent.eventId(), mobileEvent);
             }
@@ -294,16 +292,6 @@ public class RemoteRelayService {
             result.add(new HostDto(entry.getKey(), entry.getKey(), "connected", Instant.now(), null));
         }
         return result;
-    }
-
-    public String hostForSession(String sessionId) {
-        return sessionHosts.get(sessionId);
-    }
-
-    public void rememberSession(String sessionId, String hostId) {
-        if (sessionId != null && hostId != null) {
-            sessionHosts.put(sessionId, hostId);
-        }
     }
 
     public void updateSnapshot(String hostId, String snapshot) {
