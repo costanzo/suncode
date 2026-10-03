@@ -17,6 +17,7 @@ import ai.suncode.mobile.remote.protocol.SessionPageData
 import ai.suncode.mobile.remote.protocol.SessionStreamEvent
 import ai.suncode.mobile.remote.protocol.SyncData
 import ai.suncode.mobile.remote.protocol.TokenData
+import ai.suncode.mobile.remote.protocol.EncryptedPayload
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -123,8 +124,15 @@ class KtorRemoteControlClient(
         http.close()
     }
 
-    override suspend fun health(hostId: String): ApiBaseRet<HealthData> =
-        envelope { get("${endpoint(hostId)}/v1/mobile/health") { routingHeaders(hostId) } }
+    override suspend fun health(hostId: String): ApiBaseRet<HealthData> {
+        val response = http.get("${endpoint(hostId)}/v1/mobile/health") { routingHeaders(hostId) }
+        val body = decryptPayload(hostId, response.bodyAsText())
+        val decoded = body.takeIf(String::isNotBlank)?.let { json.decodeFromString<ApiBaseRet<HealthData>>(it) }
+        if (!response.status.isSuccess() || decoded?.code?.let { it != 0 } == true) {
+            throw RemoteHttpException(response.status, decoded?.code, decoded?.message ?: "Remote Server request failed")
+        }
+        return decoded ?: ApiBaseRet()
+    }
 
     override suspend fun exchangePairing(hostId: String, request: PairingExchangeRequest): ApiBaseRet<PairingExchangeData> {
         val response = envelope<PairingExchangeData> {
@@ -180,7 +188,7 @@ class KtorRemoteControlClient(
     }
 
     override suspend fun createSession(hostId: String, request: CreateSessionRequest): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope(hostId) { token -> postJson("${endpoint(hostId)}/v1/mobile/hosts/${hostId.pathSegment()}/sessions", request, hostId = hostId, token = token) }
+        return authenticatedEnvelope(hostId) { token -> postJson("${endpoint(hostId)}/v1/mobile/hosts/${hostId.pathSegment()}/sessions", request, hostId = hostId, token = token, encrypted = true) }
     }
 
     override suspend fun getSession(hostId: String, sessionId: String): ApiBaseRet<SessionDetailDto> {
@@ -188,15 +196,15 @@ class KtorRemoteControlClient(
     }
 
     override suspend fun sendMessage(hostId: String, sessionId: String, request: SendMessageRequest): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope(hostId) { token -> postJson("${endpoint(hostId)}/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}/messages", request, hostId = hostId, token = token) }
+        return authenticatedEnvelope(hostId) { token -> postJson("${endpoint(hostId)}/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}/messages", request, hostId = hostId, token = token, encrypted = true) }
     }
 
     override suspend fun resolveApproval(hostId: String, sessionId: String, approvalId: String, request: ApprovalResolutionRequest): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope(hostId) { token -> postJson("${endpoint(hostId)}/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}/approvals/${approvalId.pathSegment()}", request, hostId = hostId, token = token) }
+        return authenticatedEnvelope(hostId) { token -> postJson("${endpoint(hostId)}/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}/approvals/${approvalId.pathSegment()}", request, hostId = hostId, token = token, encrypted = true) }
     }
 
     override suspend fun replyQuestion(hostId: String, sessionId: String, questionId: String, request: QuestionReplyRequest): ApiBaseRet<CommandAcceptedData> {
-        return authenticatedEnvelope(hostId) { token -> postJson("${endpoint(hostId)}/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}/questions/${questionId.pathSegment()}/reply", request, hostId = hostId, token = token) }
+        return authenticatedEnvelope(hostId) { token -> postJson("${endpoint(hostId)}/v1/mobile/hosts/${hostId.pathSegment()}/sessions/${sessionId.pathSegment()}/questions/${questionId.pathSegment()}/reply", request, hostId = hostId, token = token, encrypted = true) }
     }
 
     override suspend fun cancelTurn(hostId: String, sessionId: String): ApiBaseRet<CommandAcceptedData> {
@@ -247,7 +255,7 @@ class KtorRemoteControlClient(
         }) {
             incoming.collect { event ->
                 event.data?.let { data ->
-                    onEvent(SessionStreamEvent(event.id, event.event, data))
+                    onEvent(SessionStreamEvent(event.id, event.event, decryptPayload(hostId, data)))
                 }
             }
         }
@@ -271,7 +279,7 @@ class KtorRemoteControlClient(
             token = refreshAccessToken(hostId, token)
             response = request(http, token)
         }
-        return decodeEnvelope(response)
+        return decodeEnvelope(hostId, response)
     }
 
     private suspend inline fun authenticatedEmptyResponse(hostId: String, crossinline request: suspend HttpClient.(String) -> HttpResponse) {
@@ -289,9 +297,10 @@ class KtorRemoteControlClient(
         }
     }
 
-    private suspend inline fun <reified T> decodeEnvelope(response: HttpResponse): ApiBaseRet<T> {
+    private suspend inline fun <reified T> decodeEnvelope(hostId: String, response: HttpResponse): ApiBaseRet<T> {
         val body = response.bodyAsText()
-        val decoded = body.takeIf(String::isNotBlank)?.let { json.decodeFromString<ApiBaseRet<T>>(it) }
+        val decodedBody = decryptPayload(hostId, body)
+        val decoded = decodedBody.takeIf(String::isNotBlank)?.let { json.decodeFromString<ApiBaseRet<T>>(it) }
         if (!response.status.isSuccess() || decoded?.code?.let { it != 0 } == true) {
             throw RemoteHttpException(response.status, decoded?.code, decoded?.message ?: "Remote Server request failed")
         }
@@ -304,15 +313,26 @@ class KtorRemoteControlClient(
         header("X-Request-Id", requestId())
     }
 
-    private suspend inline fun <reified T> HttpClient.postJson(url: String, body: T, hostId: String, token: String? = null): HttpResponse =
+    private suspend inline fun <reified T> HttpClient.postJson(url: String, body: T, hostId: String, token: String? = null, encrypted: Boolean = false): HttpResponse =
         post(url) {
             contentType(ContentType.Application.Json)
             accept(ContentType.Application.Json)
             token?.let { bearerAuth(it) }
             header("X-Host-Id", hostId)
             header("X-Request-Id", requestId())
-            setBody(body)
+            setBody(if (encrypted) encryptedBody(hostId, body) else body)
         }
+
+    private suspend inline fun <reified T> encryptedBody(hostId: String, body: T): EncryptedPayload {
+        val key = tokenStore.load(hostId)?.aesKey ?: error("Remote E2E key is unavailable")
+        return EncryptedPayload(E2eCrypto.encrypt(key, json.encodeToString(body).encodeToByteArray()))
+    }
+
+    private suspend fun decryptPayload(hostId: String, body: String): String {
+        val wrapper = runCatching { json.decodeFromString<EncryptedPayload>(body) }.getOrNull() ?: return body
+        val key = tokenStore.load(hostId)?.aesKey ?: error("Remote E2E key is unavailable")
+        return E2eCrypto.decrypt(key, wrapper.encPayload).decodeToString()
+    }
 
     private suspend fun accessTokenOrRefresh(hostId: String): String =
         tokenStore.load(hostId)?.tokens?.accessToken ?: refreshAccessToken(hostId, null)

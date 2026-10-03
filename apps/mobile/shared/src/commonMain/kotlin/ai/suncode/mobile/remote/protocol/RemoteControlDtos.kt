@@ -13,6 +13,9 @@ data class ApiBaseRet<T>(
 )
 
 @Serializable
+data class EncryptedPayload(val encPayload: String)
+
+@Serializable
 data class HealthData(
     val status: String,
     val serverTime: String,
