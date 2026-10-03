@@ -77,6 +77,12 @@ fn configure_command(mut command: Command, args: &ProcessArguments) -> Command {
         "ComSpec",
         "PATHEXT",
         "USERPROFILE",
+        "http_proxy",
+        "https_proxy",
+        "no_proxy",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
     ] {
         if let Some(value) = std::env::var_os(key) {
             command.env(key, value);

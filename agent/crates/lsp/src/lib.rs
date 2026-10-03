@@ -813,6 +813,12 @@ fn default_environment(
             "PATHEXT",
             "USERNAME",
             "OS",
+            "http_proxy",
+            "https_proxy",
+            "no_proxy",
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "NO_PROXY",
         ] {
             insert_host(&mut values, key);
         }
@@ -856,6 +862,12 @@ fn default_environment(
             "XDG_CONFIG_HOME",
             "XDG_DATA_HOME",
             "XDG_CACHE_HOME",
+            "http_proxy",
+            "https_proxy",
+            "no_proxy",
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "NO_PROXY",
             "NVM_BIN",
             "PNPM_HOME",
             "VIRTUAL_ENV",
