@@ -1,6 +1,8 @@
 spring:
   application:
     name: suncode-remote-server
+  jackson:
+    default-property-inclusion: non_null
 
 server:
   servlet:

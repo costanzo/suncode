@@ -8,7 +8,6 @@ import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -31,7 +30,6 @@ import static ai.suncode.common.exception.ErrorCode.DESKTOP_TIMEOUT;
 import static ai.suncode.common.exception.ErrorCode.REQUEST_EXPIRED;
 import static ai.suncode.common.exception.ErrorCode.SESSION_NOT_FOUND;
 import static ai.suncode.common.exception.ErrorCode.CURSOR_EXPIRED;
-import static ai.suncode.common.exception.ErrorCode.CONFLICT;
 import static ai.suncode.common.exception.ErrorCode.INTERNAL_ERROR;
 
 /** Single-node relay state. The interfaces are intentionally kept behind this service for a later shared store. */
@@ -111,17 +109,6 @@ public class RemoteRelayService {
             Map<String, Object> queryParam,
             String encPayload) {
         return request(hostId, sessionId, command, null, null, requestIdHeader, queryParam, encPayload);
-    }
-
-    public DesktopResponse requestEncrypted(
-            String hostId,
-            String sessionId,
-            String command,
-            String routeId,
-            String requestIdHeader,
-            Map<String, Object> queryParam,
-            String encPayload) {
-        return request(hostId, sessionId, command, null, routeId, requestIdHeader, queryParam, encPayload);
     }
 
     private DesktopResponse request(
