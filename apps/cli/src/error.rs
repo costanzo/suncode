@@ -24,6 +24,14 @@ impl CliError {
         }
     }
 
+    pub fn internal(message: impl Into<String>) -> Self {
+        Self {
+            code: "internal_error".into(),
+            message: message.into(),
+            exit_code: 1,
+        }
+    }
+
     pub fn interrupted() -> Self {
         Self {
             code: "interrupted".into(),

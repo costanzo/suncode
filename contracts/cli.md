@@ -104,9 +104,9 @@ Provider HTTP status codes and OS process exit codes are never forwarded directl
 
 ## Signals and shutdown
 
-During an active turn, the first interrupt requests `cancel_turn` and continues draining events until the turn reaches a terminal state or the shutdown deadline expires. A second interrupt requests immediate CLI termination but still attempts bounded SDK shutdown. When no turn is active, interrupt exits with status 130 after shutdown.
+During an active turn, the first interrupt requests `cancel_turn` once the active turn ID is known and continues draining events until the turn reaches a terminal state. A second interrupt stops waiting and exits with status 130 after SDK shutdown, which is bounded by the SDK shutdown grace period. When no turn is active, interrupt stops the command and exits with status 130 after SDK shutdown.
 
-Normal return, argument failure after SDK open, event-stream failure, and panic containment all attempt consuming SDK shutdown. Secrets and user/provider content are not written to diagnostics during this path.
+Normal return, argument failure after SDK open, event-stream failure, and a panic during command execution all attempt consuming SDK shutdown. A contained panic is reported as `internal_error` with exit status 1. Secrets and user/provider content are not written to diagnostics during this path.
 
 ## Configuration and environment
 
