@@ -1,6 +1,7 @@
 package ai.suncode.controller;
 
 import ai.suncode.common.exception.BusinessException;
+import ai.suncode.common.utils.DesktopPayloadMapper;
 import ai.suncode.common.utils.MarshallingUtils;
 import ai.suncode.message.remote.*;
 import ai.suncode.common.http.ServiceContext;
@@ -72,7 +73,7 @@ public class MobileRemoteController {
     @GetMapping("/hosts/{hostId}/projects")
     public ResponseEntity<ProjectsData> projects(@PathVariable String hostId) {
         DesktopResponse response = relayService.request(hostId, null, "projects.list", empty(), ServiceContext.current().requestId());
-        return ResponseEntity.ok(responseEnvelope(response, ProjectsData.class));
+        return ResponseEntity.ok(DesktopPayloadMapper.projects(response.payload()));
     }
 
     @GetMapping("/hosts/{hostId}/sessions")
@@ -85,13 +86,14 @@ public class MobileRemoteController {
         if (projectId != null) query.put("projectId", projectId);
         if (cursor != null) query.put("cursor", cursor);
         if (limit != null) query.put("limit", limit);
-        return ResponseEntity.ok(responseEnvelope(relayService.request(hostId, null, "sessions.list", payload, ServiceContext.current().requestId(), query), SessionPageData.class));
+        DesktopResponse response = relayService.request(hostId, null, "sessions.list", payload, ServiceContext.current().requestId(), query);
+        return ResponseEntity.ok(DesktopPayloadMapper.sessions(response.payload()));
     }
 
     @PostMapping("/hosts/{hostId}/sessions")
     public ResponseEntity<CreateSessionResponse> createSession(@PathVariable String hostId, @RequestBody String request) {
         DesktopResponse response = requestDesktop(hostId, null, "session.create", null, request, Map.of());
-        return ResponseEntity.status(HttpStatus.CREATED).body(MarshallingUtils.fromJson(response.payload(), CreateSessionResponse.class));
+        return ResponseEntity.status(HttpStatus.CREATED).body(responseEnvelope(response, CreateSessionResponse.class));
     }
 
     @GetMapping("/hosts/{hostId}/sessions/{sessionId}")
@@ -151,7 +153,9 @@ public class MobileRemoteController {
         if (snapshot == null) {
             return ResponseEntity.ok().build();
         } else {
-            return ResponseEntity.ok(MarshallingUtils.fromJson(snapshot, SyncData.class));
+            HostDto host = relayService.hosts().stream().filter(item -> item.id().equals(hostId)).findFirst()
+                    .orElse(new HostDto(hostId, hostId, "offline", null, null));
+            return ResponseEntity.ok(DesktopPayloadMapper.sync(snapshot, host));
         }
     }
 

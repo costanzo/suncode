@@ -59,19 +59,18 @@ Mobile may inspect Hosts, Projects, active primary Sessions, cached content, app
 - Refresh and logout operate on the current mobile device credential only.
 - Tokens are opaque and must not be written to logs, events, analytics, or Session content.
 
-## HTTP response envelope
+## HTTP response bodies
 
-The Java Spring Boot Remote Server uses `ApiBaseRet<T>` for JSON responses:
+Successful responses return the documented DTO directly, with no `code` wrapper. Jackson `NON_NULL` inclusion omits null fields. Errors use the `ApiBaseRet` body with a stable integer `code` and a safe `message`, and keep their HTTP error status. `POST /v1/mobile/hosts/{hostId}/sessions` returns `201` with only `sessionId`. The client can open the Session SSE stream right away; later state arrives through that stream.
 
-```json
-{
-  "code": 0,
-  "message": "optional",
-  "data": {}
-}
-```
+Desktop follows the same rule on `POST /v1/desktop/responses`. On success it posts the bare Rust SDK result, or `{"encPayload": ...}` when end-to-end encryption is on. On failure it posts only `{"code", "message"}`, unencrypted, and the Server returns that to Mobile as `desktop_request_failed` (HTTP 504) with the Desktop message. For plaintext bodies the Server maps Rust results to Mobile DTOs:
 
-`code` is always present. `message` and `data` are omitted when null because the server uses Jackson `NON_NULL` inclusion. HTTP error status codes still apply, but their JSON body uses the same envelope. `POST /v1/mobile/hosts/{hostId}/sessions` returns `201` with only `sessionId`. The client can immediately open the Session SSE stream; subsequent state arrives through that stream.
+- `projects.list`: `{projects: [ProjectRecord]}` becomes `ProjectsData.items`. `projectId` maps to `id`, archived projects are dropped, and `canonicalRoot` is never forwarded.
+- `sessions.list`: `{project_id, sessions: [SessionRecord], sessionStates}` becomes one `SessionPageData` page (`hasMore: false`). Child and archived sessions are dropped. The states `approval` and `question` map to `waiting_for_approval` and `waiting_for_answer`.
+- `session.create`: the Server reads `sessionId` from the `SessionRecord`.
+- `POST /v1/desktop/snapshot`: `{projects, sessions, sessionStates}` becomes `SyncData` for `GET /v1/mobile/hosts/{hostId}/sync`. A snapshot is always a full single page (`resetRequired: true`, `hasMore: false`) and its `cursor` is a content hash, so an unchanged snapshot keeps the same cursor.
+
+The Server cannot remap encrypted bodies, so Mobile must apply the same mapping after decrypting them.
 
 ## Request identity and concurrency
 

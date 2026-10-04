@@ -128,14 +128,15 @@ struct RemoteRequest {
     arguments: Value,
 }
 
+/// Desktop failure body for `POST /v1/desktop/responses`. Successful results are
+/// posted as the bare command payload (or `encPayload`), never wrapped.
 #[derive(Debug, Serialize)]
-struct RemoteResult {
+struct RemoteErrorBody {
     code: i32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    message: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    payload: Option<Value>,
+    message: String,
 }
+
+const REMOTE_DESKTOP_ERROR_CODE: i32 = 50400;
 
 #[derive(Debug, Serialize)]
 struct RemoteEventEnvelope {
@@ -785,11 +786,17 @@ async fn upload_desktop_snapshot(
 ) -> SdkResult<()> {
     let projects = sdk.list_projects()?.projects;
     let mut sessions = Vec::new();
+    let mut session_states = std::collections::HashMap::new();
     for project in &projects {
         let result = sdk.list_sessions(&project.project_id)?;
         sessions.extend(result.sessions);
+        session_states.extend(result.session_states);
     }
-    let payload = json!({ "projects": projects, "sessions": sessions });
+    let payload = json!({
+        "projects": projects,
+        "sessions": sessions,
+        "sessionStates": session_states,
+    });
     let request_id = uuid::Uuid::new_v4().to_string();
     let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/snapshot");
     let body = remote_request_body(&payload, persisted)?;
@@ -1090,6 +1097,23 @@ fn remote_request_body(value: &Value, persisted: &PersistedRemote) -> SdkResult<
     Ok(json!({ "encPayload": encrypt_remote_payload(value, &persisted.pairing.aes_key)? }))
 }
 
+/// Builds the `/v1/desktop/responses` body: the plain payload (or its
+/// `encPayload` wrapper) on success, and an unencrypted `{code, message}` on
+/// failure so the Server can map it to an HTTP error for Mobile.
+fn remote_response_body(
+    outcome: SdkResult<Value>,
+    persisted: &PersistedRemote,
+) -> SdkResult<Value> {
+    match outcome {
+        Ok(data) => remote_request_body(&data, persisted),
+        Err(error) => serde_json::to_value(RemoteErrorBody {
+            code: REMOTE_DESKTOP_ERROR_CODE,
+            message: error.message,
+        })
+        .map_err(|e| BusinessError::unavailable(e.to_string())),
+    }
+}
+
 fn mobile_event_operation(event: &str) -> Option<&'static str> {
     Some(match event {
         "mobile.projects.list" => "projects.list",
@@ -1131,23 +1155,8 @@ async fn handle_remote_request(
         ),
     );
     let outcome = dispatch_request(sdk, &request_id, &request.operation, request.arguments).await;
-    let result = match outcome {
-        Ok(data) => RemoteResult {
-            code: 0,
-            message: None,
-            payload: Some(data),
-        },
-        Err(error) => RemoteResult {
-            code: 1,
-            message: Some(error.message.into()),
-            payload: None,
-        },
-    };
     let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/responses");
-    let body = match remote_request_body(
-        &serde_json::to_value(&result).unwrap_or_else(|_| json!({})),
-        persisted,
-    ) {
+    let body = match remote_response_body(outcome, persisted) {
         Ok(body) => body,
         Err(error) => {
             logging::warn(
@@ -1285,6 +1294,54 @@ fn normalize_question_answers(answers: Value) -> SdkResult<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn persisted_fixture(e2e_enabled: bool) -> PersistedRemote {
+        PersistedRemote {
+            config: RemoteServerConfiguration {
+                server_url: "https://example.test".into(),
+                pairing_code: "pair".into(),
+                e2e_enabled,
+            },
+            pairing: PairResponse {
+                host_id: "host-1".into(),
+                access_token: "access".into(),
+                refresh_token: "refresh".into(),
+                access_token_expires_at: "2026-10-04T00:00:00Z".into(),
+                mobile_pairing_code: "once".into(),
+                aes_key: generate_aes_key(),
+            },
+        }
+    }
+
+    #[test]
+    fn response_body_posts_plain_success_payload_without_code_envelope() {
+        let body = remote_response_body(
+            Ok(json!({"projects": [{"projectId": "p-1"}]})),
+            &persisted_fixture(false),
+        )
+        .unwrap();
+        assert_eq!(body, json!({"projects": [{"projectId": "p-1"}]}));
+        assert!(body.get("code").is_none());
+        assert!(body.get("payload").is_none());
+    }
+
+    #[test]
+    fn response_body_encrypts_only_success_payloads() {
+        let persisted = persisted_fixture(true);
+        let body = remote_response_body(Ok(json!({"ok": true})), &persisted).unwrap();
+        assert_eq!(body.as_object().unwrap().len(), 1);
+        assert!(body["encPayload"].is_string());
+
+        let error = remote_response_body(
+            Err(BusinessError::invalid("projectId is required")),
+            &persisted,
+        )
+        .unwrap();
+        assert_eq!(
+            error,
+            json!({"code": REMOTE_DESKTOP_ERROR_CODE, "message": "projectId is required"})
+        );
+    }
 
     #[test]
     fn allowlist_uploads_complete_assistant_and_never_delta() {

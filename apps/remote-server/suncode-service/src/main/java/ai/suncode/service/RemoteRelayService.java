@@ -1,6 +1,7 @@
 package ai.suncode.service;
 
 import ai.suncode.common.exception.BusinessException;
+import ai.suncode.common.utils.DesktopPayloadMapper;
 import ai.suncode.common.utils.MarshallingUtils;
 import ai.suncode.message.remote.*;
 import lombok.extern.slf4j.Slf4j;
@@ -160,6 +161,9 @@ public class RemoteRelayService {
                 }
                 return response;
             } catch (ExecutionException error) {
+                if (error.getCause() instanceof BusinessException businessError) {
+                    throw businessError;
+                }
                 throw new BusinessException(DESKTOP_REQUEST_FAILED, "desktop_request_failed", error.getCause());
             }
         } catch (TimeoutException error) {
@@ -181,7 +185,11 @@ public class RemoteRelayService {
         if (future == null) {
             throw new BusinessException(REQUEST_EXPIRED);
         }
-        future.complete(response);
+        // Success bodies are the bare payload; only a {code, message} body signals a Desktop failure.
+        DesktopPayloadMapper.error(response.payload()).ifPresentOrElse(
+                error -> future.completeExceptionally(new BusinessException(DESKTOP_REQUEST_FAILED,
+                        error.message() == null || error.message().isBlank() ? "desktop_request_failed" : error.message())),
+                () -> future.complete(response));
     }
 
     public MobileEvent publish(DesktopEvent event) {

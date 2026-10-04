@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MarshallingUtilsTest {
     @Test
     void serializesEventTimeAndConvertsRecordToTree() {
-        Instant occurredAt = Instant.parse("2026-09-27T10:00:00Z");
+        String occurredAt = "2026-09-27T10:00:00Z";
         EventPayload payload = new EventPayload();
         payload.setTurnId("turn-1");
         payload.setState("running");
@@ -85,10 +85,9 @@ class MarshallingUtilsTest {
 
     @Test
     void keepsOpenResponseAsRawJsonWhileWritingObjectShapedSnapshot() {
-        DesktopResponse response = MarshallingUtils.fromJson("""
-                {"requestId":"request-1","hostId":"host-1","success":true,
-                 "payload":{"sessionId":"session-1","nested":{"count":2}}}
-                """, DesktopResponse.class);
+        // The controller builds DesktopResponse from the raw /v1/desktop/responses body; it is never deserialized.
+        DesktopResponse response = new DesktopResponse(
+                "request-1", "host-1", "{\"sessionId\":\"session-1\",\"nested\":{\"count\":2}}");
 
         assertEquals("{\"sessionId\":\"session-1\",\"nested\":{\"count\":2}}", response.payload());
         assertEquals("session-1", MarshallingUtils.fromJson(response.payload(), CommandAcceptedData.class).sessionId());
