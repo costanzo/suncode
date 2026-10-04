@@ -74,6 +74,13 @@ cargo test --manifest-path sdks/rust/Cargo.toml --lib
 cargo test --manifest-path sdks/c/Cargo.toml --lib
 ```
 
+To count lines of code with `cloc` while excluding dependencies, build output, and bundled runtime artifacts:
+
+```sh
+cloc . \
+  --exclude-dir=.git,.codex,node_modules,target,bin,obj,dist,artifacts
+```
+
 For a release publish on Apple Silicon macOS:
 
 ```sh
