@@ -9,7 +9,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The earlier local heuristic compaction only changed an in-memory turn continuation. A later turn reloaded full normalized history, and request budgeting omitted system and tool context. A new compaction table would require another current-schema compatibility path.
 - Decision: Store internal context checkpoints in the existing `session_call` projection with `finish_reason=context_compacted`, retained provider messages, structured summary, and message/tool rowid boundaries. Keep transcript and audit rows intact. Count the current system and advertised tool schemas, model output reserve, and image estimates when selecting context. Keep tool-call/result groups together. Ask the selected model for a bounded structured summary, use the local summary on failure, and allow one forced compact-and-retry after a typed provider context-overflow error. Project summary calls as ordinary provider exchanges with real usage; checkpoint rows have null usage. Exclude transient image bytes and raw retained messages from the public compaction event.
 - Consequences: Long conversations reuse their latest checkpoint across turns without a schema or SDK protocol change. Summary generation adds a provider call when compaction drops history. Token estimates remain approximate and the one-time overflow retry bounds recovery. Existing transcript and undo behavior remain unchanged.
-- Details: `requirements/2026-09-27-context-compaction/`, `specs/agent-phase-1.md`, `contracts/persistence.md`, `contracts/sqlite-schema.md`
+- Details: `features/context-compaction/`, `specs/agent-phase-1.md`, `contracts/persistence.md`, `contracts/sqlite-schema.md`
 
 ## ADR-20260923-desktop-notification-activation-ipc
 
@@ -18,7 +18,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Background agent work can complete, fail, or suspend for approval or a question while the Avalonia client is not foreground. The desktop watches only its selected primary session and has no process-activation channel. The embedded SDK decision excludes cross-process agent attach, but notification activation may launch a second desktop process that must hand navigation to the process already owning the agent data directory.
 - Decision: Add a Rust-owned typed global attention stream and bounded normalized reconciliation query for primary completion/failure, primary or child approval requests, and primary questions. Avalonia suppresses notifications whenever any SunCode window is foreground, records delivered or foreground-suppressed correlation IDs in a bounded local presentation ledger, and owns native macOS, Windows, and Linux notification adapters. Add a versioned desktop-only activation IPC channel keyed by agent data directory: current-user Named Pipe on Windows and restricted Unix Domain Socket on macOS/Linux. A secondary activation process forwards one bounded `activate.session` request and exits before opening the SDK. The primary process revalidates IDs through the SDK and navigates to the relevant primary session or child approval surface. The IPC never proxies SDK calls, SQLite, provider traffic, operations, approvals, or question answers.
 - Consequences: Notification monitoring no longer depends on the selected-session watch, and notification clicks can reuse the existing project window without creating a second agent owner. The C ABI gains attention subscription/query symbols, platform packaging gains notification activation metadata, and installed-application verification is required on all three desktop platforms. This decision narrows the prior IPC deferral only for desktop activation; general client-facing IPC, daemon attach, and shared live-agent access remain deferred. Foreground-suppressed events are not replayed later, child completion/failure do not notify, and cancelled/interrupted turns do not notify.
-- Details: `requirements/2026-09-23-session-attention-notifications/`
+- Details: `features/session-attention-notifications/`, `specs/desktop-notifications.md`
 
 ## ADR-20260920-cli-one-shot-session-resume
 
@@ -28,7 +28,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Users need to continue durable session context from scripts and line-oriented commands, but do not require an interactive multi-turn chat client. A resumed command must not bypass an unresolved durable approval or structured question.
 - Decision: Implement `session resume SESSION_ID (--prompt TEXT | --stdin)` as exactly one new turn in an existing primary session. Reopen archived sessions, establish atomic watch, and reuse the same typed event/cancellation/tail-drain driver as `run`. Add a narrow Rust SDK `pending_approval(session_id)` query; combine it with snapshot `pendingQuestion` and return exit status 4 before provider submission when suspended state exists. Emit `session.resume.result` on success. Keep interactive chat deferred.
 - Consequences: CLI users can build on persisted conversation context without a TUI or prompt loop. Resume does not print history or resolve human interaction, child sessions remain read-only, and the CLI still has no persistence dependency. The Rust-only query adds no schema or C ABI change.
-- Details: `requirements/2026-09-20-cli-session-resume/`, `features/cli-session-resume/`, `apps/cli/`, `sdks/rust/`, `contracts/cli.md`
+- Details: `features/cli-session-resume/`, `apps/cli/`, `sdks/rust/`, `contracts/cli.md`
 
 ## ADR-20260920-cli-session-administration
 
@@ -37,7 +37,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: One-shot `run` creates durable sessions, but the CLI had no way to discover or archive them. The complete command contract also names `session resume`, whose correct behavior is interactive conversation continuation rather than administrative snapshot output.
 - Decision: Add `session list [PATH]` and `session archive SESSION_ID` as typed SDK adapters. List opens the canonical project and returns all primary sessions plus SDK-projected states; archive delegates ownership and lifecycle validation to `archive_session`. This delivery did not expose a placeholder resume command.
 - Consequences: Users can inspect and archive CLI or desktop-created sessions without direct persistence access. The command grammar remains add-only, child-session lifecycle remains SDK-owned, and no schema, provider, policy, C ABI, or desktop change is introduced. The later resume shape is defined by `ADR-20260920-cli-one-shot-session-resume`.
-- Details: `requirements/2026-09-20-cli-session-administration/`, `features/cli-session-administration/`, `apps/cli/`, `contracts/cli.md`
+- Details: `features/cli-session-administration/`, `apps/cli/`, `contracts/cli.md`
 
 ## ADR-20260920-cli-one-shot-run
 
@@ -46,7 +46,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The administrative CLI foundation proved SDK startup, configuration, output, and shutdown, but it could not yet execute a coding turn. The async SDK already exposed project/session operations, atomic watch, a standard typed stream, cancellation, and terminal turn responses.
 - Decision: Implement `suncode run [PATH] (--prompt TEXT | --stdin)` as one new-session turn. Establish `watch_session` before submission, consume typed events with deterministic signal/event priority, drain events queued before the submission future returns, and re-watch after lag. Emit progress on stderr plus final assistant text on stdout in text mode, or typed event envelopes followed by `run.result` in JSONL mode. The first interrupt requests `cancel_turn`; the second returns 130. Approval or question suspension returns 4 without reusing prompt stdin. Model and reasoning defaults use `SUNCODE_MODEL` and `SUNCODE_REASONING_EFFORT`, with explicit flags taking precedence.
 - Consequences: The CLI is now a usable non-interactive one-shot coding client without duplicating provider, policy, persistence, or operation behavior. It still does not provide interactive continuation, session resume/list/archive, or a general CI authority profile. Browser and Computer capabilities remain unavailable in this host. `TurnResponse` is re-exported by the Rust SDK so the CLI does not depend on agent core directly.
-- Details: `requirements/2026-09-20-cli-run-command/`, `features/cli-run/`, `apps/cli/`, `contracts/cli.md`
+- Details: `features/cli-run/`, `apps/cli/`, `contracts/cli.md`
 
 ## ADR-20260920-cli-foundation-commands
 
@@ -55,7 +55,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The approved CLI architecture needed a real executable foundation before conversational event, approval, and signal behavior could be added safely. Administrative SDK methods already existed and provided a bounded first vertical slice.
 - Decision: Create an independent `apps/cli` Rust package producing `suncode`. Implement doctor, models, auth list/set/remove, and config list; explicit-over-`SUNCODE_` configuration; text and JSONL reports; stable exit mapping; no-echo interactive credential input; CLI host capabilities; and consuming SDK shutdown before success output. Do not expose placeholder run/chat/session commands.
 - Consequences: CLI can administer and diagnose the embedded agent. JSONL foundation output and exit codes follow `contracts/cli.md`. Credentials remain SQLite-only. One-shot turn execution was added by `ADR-20260920-cli-one-shot-run`; interactive approval/question prompts and session workflows remain later work.
-- Details: `requirements/2026-09-20-cli-foundation-implementation/`, `features/cli-foundation/`, `apps/cli/`, `contracts/cli.md`
+- Details: `features/cli-foundation/`, `apps/cli/`, `contracts/cli.md`
 
 ## ADR-20260920-sdk-host-capability-ceiling
 
@@ -64,7 +64,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Persisted Browser and Computer enablement represented user preference but not whether a particular SDK host had packaging or interaction UX for those capabilities. The approved CLI must not initialize or advertise them, even when it shares settings previously enabled by the desktop.
 - Decision: Add typed `SdkOpenOptions` and `SdkHostCapabilities` to async and blocking Rust startup. Defaults enable both capabilities for compatibility. Map options to immutable core `AgentHostCapabilities`; enforce them in Browser/Computer runtime information, catalogs, backend initialization, execution, permission/control calls, and SDK mutations. Reject unavailable mutations before persistence.
 - Consequences: The future CLI can safely share a data directory without changing desktop preferences or exposing unsupported model tools. Capability ceilings remain distinct from policy and cannot grant authority. C ABI 13 and managed startup remain unchanged on default capabilities. Additional ceilings require a concrete host need.
-- Details: `requirements/2026-09-20-sdk-host-capabilities/`, `sdks/rust/src/types.rs`, `sdks/rust/src/facade/lifecycle.rs`, `agent/crates/core/src/agent/browser.rs`, `agent/crates/core/src/agent/computer.rs`
+- Details: `features/rust-sdk/`, `sdks/rust/src/types.rs`, `sdks/rust/src/facade/lifecycle.rs`, `agent/crates/core/src/agent/browser.rs`, `agent/crates/core/src/agent/computer.rs`
 
 ## ADR-20260920-rust-cli-production-surface
 
@@ -74,7 +74,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: CLI was deferred while the Rust SDK had a hidden runtime, callback-shaped subscriptions, a snapshot/subscription race, and drop-only cleanup. The SDK now has a caller-owned async facade, typed fused event streams, atomic session watch, and consuming shutdown. Developers also need a line-oriented interactive client and a future script/CI surface without duplicating the agent or introducing IPC.
 - Decision: Approve a native Rust CLI under `apps/cli` as the next production client. It embeds `AsyncAgentSdk` directly on Tokio and owns only arguments, terminal rendering, prompts, signals, JSONL output, and exit codes. Preserve the one-process-per-data-directory lock; do not add a daemon or desktop attach. Initial CLI startup uses the typed SDK host capability ceiling to exclude Browser and Computer Use; their focused packaging/UX remains later work. Interactive CLI may precede general CI support, but pre-authorized non-interactive execution requires Rust-owned named policy profiles. All SunCode CLI environment variables use the `SUNCODE_` prefix and provider credentials remain SQLite-only.
 - Consequences: CLI is no longer deferred and now has buildable administrative commands with focused tests, but it must not be described as a conversational coding client until run/chat/session/event/approval behavior exists. The desktop remains the Phase 1 reference client. TUI, PTY, IPC, Browser/Computer terminal UX, and hosted modes remain deferred. The CLI contract is versioned independently of human terminal formatting and does not change agent authority.
-- Details: `requirements/2026-09-20-cli-foundation-and-architecture/`, `contracts/cli.md`, `PRODUCT.md`, `ARCHITECTURE.md`
+- Details: `features/cli-foundation/`, `contracts/cli.md`, `PRODUCT.md`, `ARCHITECTURE.md`
 
 ## ADR-20260919-explicit-rust-sdk-shutdown
 
@@ -83,7 +83,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The async-first facade owned no executor but also had no explicit asynchronous cleanup contract. Drop released ordinary values, while background continuations and Browser, MCP, LSP, Computer Use, and event resources could remain attached to a host runtime. The blocking adapter happened to abort remaining runtime tasks when its executor was dropped.
 - Decision: Add consuming `AsyncAgentSdk::shutdown().await` and `blocking::AgentSdk::shutdown()` operations backed by one idempotent core shutdown. Shutdown rejects new turn/continuation admission, cancels active turns, clears queued input, performs Computer Use emergency stop, drains Browser/MCP/LSP resources, waits up to five seconds for active turns, closes event subscribers, and then releases the facade and data-directory lock. Native handle close invokes the blocking shutdown path and logs cleanup failures without changing its existing `void` ABI.
 - Consequences: Async hosts get deterministic cleanup independent of runtime destruction, blocking/native hosts keep their runtime alive until cleanup finishes, late process startups cannot reinstall after closure, and session receivers wake before shutdown returns. Rust callers should prefer explicit shutdown; ordinary drop remains a non-graceful fallback. The current C ABI version and managed APIs do not change.
-- Details: `requirements/2026-09-19-rust-sdk-explicit-shutdown/`, `agent/crates/core/src/agent/lifecycle.rs`, `sdks/rust/src/facade/lifecycle.rs`, `sdks/rust/src/facade/blocking.rs`, `sdks/c/src/lib.rs`
+- Details: `features/rust-sdk/`, `agent/crates/core/src/agent/lifecycle.rs`, `sdks/rust/src/facade/lifecycle.rs`, `sdks/rust/src/facade/blocking.rs`, `sdks/c/src/lib.rs`
 
 ## ADR-20260919-first-party-computer-use
 
@@ -92,7 +92,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: SunCode needs to observe and operate native desktop applications without treating Browser Use or MCP as the desktop-control boundary. Claude's native Computer Use protocol requires ordered member calls and image-bearing results, while real-desktop input needs stricter authority and privacy behavior than ordinary project tools.
 - Decision: Implement Computer Use as a first-party Rust capability. Pin the maintained Enigo fork for primary-display capture, coordinate mapping, and mouse/keyboard input; keep provider-neutral execution in `suncode-computer`; use Anthropic Messages and `computer_toolset_20260801` for the first provider route. Observation actions may follow the interactive default, but every input batch requires approval, Full Control does not bypass it, and non-interactive use is denied. Screenshot bytes remain transient provider context. Settings exposes only built-in enablement and redacted runtime state, never an MCP server, external executable, or backend path.
 - Consequences: Computer Use remains independent of Browser Use and cannot claim an OS sandbox or undo for external applications. Emergency stop disables the capability, cooperatively cancels work, and releases held input. macOS, Windows, X11, and Wayland need platform capture/permission conformance before each is described as stable; Wayland additionally needs a unified portal ScreenCast and RemoteDesktop session.
-- Details: `requirements/2026-09-19-computer-use/`, `DESIGN.md`, `contracts/agent-sdk/README.md`
+- Details: `features/computer-use/`, `DESIGN.md`, `contracts/agent-sdk/README.md`
 
 ## ADR-20260919-rust-sdk-standard-session-stream
 
@@ -101,7 +101,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The typed Rust session subscription supported direct async, blocking, and nonblocking receives but did not implement the standard `Stream` trait. Async hosts therefore could not use `StreamExt`, generic stream consumers, or ordinary stream combinators without a custom adapter.
 - Decision: Implement `futures_core::Stream<Item = Result<Arc<AgentEvent>, SubscriptionError>>` and `FusedStream` on `SessionEventStream`. Normal close is end-of-stream, lag is emitted once as a typed error and then terminates the stream, and existing direct receive methods remain available. Add only a minimal poll primitive to the core subscription; C continues using the blocking receive adapter.
 - Consequences: Rust async hosts can consume atomic session watches with standard stream tooling and `select!` while retaining typed fail-closed lag recovery. C ABI 10, C#, Avalonia, persistence, queue bounds, and event envelopes do not change. `futures-core` becomes a small public SDK dependency, with `futures-util` used only in tests.
-- Details: `requirements/2026-09-19-rust-sdk-standard-stream/`, `agent/crates/core/src/agent/event_hub.rs`, `sdks/rust/src/facade/subscriptions.rs`, `sdks/rust/README.md`, `contracts/agent-sdk/README.md`
+- Details: `features/rust-sdk/`, `agent/crates/core/src/agent/event_hub.rs`, `sdks/rust/src/facade/subscriptions.rs`, `sdks/rust/README.md`, `contracts/agent-sdk/README.md`
 
 ## ADR-20260919-async-first-rust-sdk
 
@@ -110,7 +110,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The reusable Rust facade owned a hidden Tokio runtime and exposed core async work by calling `block_on`. That was convenient for C# but unsuitable for future Rust CLI/TUI and other async hosts, which need natural cancellation and `select!` without nested-runtime risk.
 - Decision: Make `AsyncAgentSdk` the runtime-free semantic facade. Startup and runtime-dependent Browser, MCP, LSP, turn, approval, question, and network-reconciliation methods are native async operations on the caller's Tokio runtime; pure local persistence and DTO methods remain synchronous. Add `blocking::AgentSdk`, re-exported at the crate root as compatibility `AgentSdk`, which owns one Tokio runtime, dereferences to `AsyncAgentSdk` for synchronous methods, and adapts awaited methods only. C embeds the blocking adapter.
 - Consequences: Rust async hosts gain a true async SDK with no hidden executor or facade-level `block_on`; existing C/C#/Avalonia behavior and ABI 10 remain unchanged. The two surfaces share one implementation rather than duplicating authority or persistence logic. Synchronous SQLite work remains explicit and may block an async executor thread; profiling may justify targeted `spawn_blocking` helpers later. Calling the blocking wrapper from an async runtime is unsupported.
-- Details: `requirements/2026-09-19-async-first-rust-sdk/`, `sdks/rust/src/facade/blocking.rs`, `sdks/rust/src/facade/lifecycle.rs`, `sdks/rust/README.md`, `contracts/agent-sdk/README.md`
+- Details: `features/rust-sdk/`, `sdks/rust/src/facade/blocking.rs`, `sdks/rust/src/facade/lifecycle.rs`, `sdks/rust/README.md`, `contracts/agent-sdk/README.md`
 
 ## ADR-20260919-native-dormant-session-watch
 
@@ -119,7 +119,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Rust `watch_session` atomically established a snapshot and stream, but immediately starting a native callback worker would allow events to reach C# before Avalonia had applied the matching snapshot. Keeping the old desktop order preserved a notification-loss window.
 - Decision: Advance the C ABI to version 10 with `watch_session` and single-use `subscription_start`. Native watch returns snapshot JSON plus an opaque dormant subscription handle; events queue in its bounded typed stream without a worker. C# exposes `SessionWatch` with typed `Snapshot`, `Start`, and `Dispose`. Avalonia applies snapshot and auxiliary session state, revalidates the latest-selection load token, installs the watch as its current subscription, then starts callback delivery. Stale and failed loads dispose dormant handles. Keep the existing immediate subscription function as a compatibility path.
 - Consequences: Primary desktop session load and `resync.required` recovery consume the Rust atomic watch guarantee without changing visuals or event envelopes. Callback delivery cannot begin against incomplete or stale presentation state. Dormant overflow still fails closed through the existing lag/resync behavior. Child-session read-only inspection remains snapshot-only. Native clients must rebuild for ABI 10.
-- Details: `requirements/2026-09-19-native-dormant-session-watch/`, `sdks/c/src/lib.rs`, `sdks/csharp/src/AgentSdk.cs`, `apps/desktop-avalonia/ViewModels/DesktopViewModel.ProjectActions.cs`, `contracts/agent-sdk/README.md`
+- Details: `features/rust-sdk/`, `sdks/c/src/lib.rs`, `sdks/csharp/src/AgentSdk.cs`, `apps/desktop-avalonia/ViewModels/DesktopViewModel.ProjectActions.cs`, `contracts/agent-sdk/README.md`
 
 ## ADR-20260919-atomic-rust-session-watch
 
@@ -128,7 +128,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Separate snapshot and subscription calls leave a boundary race. Reading the snapshot first can miss an event published before subscriber registration, while subscribing first can deliver an event already represented by the later snapshot. The typed event stream intentionally has no durable replay cursor.
 - Decision: Add one in-memory synchronization gate per session. Event producers hold the gate across event projection and typed publication; live-only publishers use the same gate. Rust `watch_session` holds the gate while registering a bounded subscriber and reading the normalized snapshot, returning both as `SessionWatch`. An earlier event projection completes before the snapshot; a later event projection publishes after registration. Snapshot failure drops the provisional subscriber. Keep standalone snapshot and subscribe operations for compatibility, without claiming that their combination is atomic.
 - Consequences: Rust hosts can initialize or resynchronize without a notification falling into the snapshot/subscription gap and without adding a persistent event journal. Some normalized lifecycle writes intentionally precede notification projection, so stream application remains idempotent. Gates are session-scoped, so unrelated sessions do not block one another. The gate covers bounded local SQLite work only. C, C#, and Avalonia do not consume this helper until a later binding contract introduces dormant subscription creation and explicit callback activation after snapshot application.
-- Details: `requirements/2026-09-19-atomic-session-watch/`, `agent/crates/core/src/agent/event_hub.rs`, `sdks/rust/src/facade/sessions.rs`, `contracts/agent-sdk/README.md`
+- Details: `features/rust-sdk/`, `agent/crates/core/src/agent/event_hub.rs`, `sdks/rust/src/facade/sessions.rs`, `contracts/agent-sdk/README.md`
 
 ## ADR-20260919-rust-sdk-typed-session-events
 
@@ -137,7 +137,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Core constructed typed event payloads but converted them to string-plus-JSON values before broadcasting them through one global channel. The Rust SDK then exposed a C callback and raw pointer, created one OS thread per subscription, and filtered unrelated session traffic after receipt. This weakened Rust type safety, placed FFI concerns in the reusable facade, and let activity from one session create lag pressure for another.
 - Decision: Preserve non-exhaustive typed `AgentEvent` values through core and the Rust SDK. Route them through bounded session-scoped subscriber queues and expose a pull-based Rust `SessionEventStream` with async, blocking, and nonblocking receive methods plus explicit close control. Keep live events non-durable and require snapshot resync after lag. Move callback threads, C strings, raw pointers, legacy JSON envelope serialization, and `resync.required` compatibility translation into `sdks/c` without changing the C ABI version or Avalonia wire shape.
 - Consequences: Rust hosts no longer parse JSON or depend on C-shaped callbacks, unrelated sessions cannot fill one another's queues, and each native binding owns adaptation to its host runtime. Slow subscribers fail closed with a typed lag outcome. Atomic snapshot-plus-stream establishment and the async-first SDK facade remain follow-up work; this decision does not introduce event replay or a persisted event journal.
-- Details: `requirements/2026-09-19-rust-sdk-event-stream/`, `agent/crates/core/src/agent/events.rs`, `agent/crates/core/src/agent/event_hub.rs`, `sdks/rust/src/facade/subscriptions.rs`, `sdks/c/src/lib.rs`, `contracts/agent-sdk/README.md`
+- Details: `features/rust-sdk/`, `agent/crates/core/src/agent/events.rs`, `agent/crates/core/src/agent/event_hub.rs`, `sdks/rust/src/facade/subscriptions.rs`, `sdks/c/src/lib.rs`, `contracts/agent-sdk/README.md`
 
 ## ADR-20260919-bundled-playwright-browser-runtime
 
@@ -147,7 +147,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Static WebFetch cannot exercise JavaScript applications, authenticated browser state, semantic page controls, frontend flows, or visual outcomes. MCP would add an external configuration and trust boundary for a capability intended to be a first-party product primitive. A pure Rust CDP implementation would duplicate Playwright's locator, waiting, page, download, and recovery behavior and delay delivery.
 - Decision: Bundle one exact Node.js runtime, one exact Playwright package, Playwright's matching regular Chromium build, and its required pinned FFmpeg helper for macOS arm64, Windows x64, and Linux x64. Rust remains the only agent implementation and owns enablement, runtime validation, project-scoped lifecycle, policy, approvals, audit, artifacts, cancellation, recovery, SDK contracts, and UI state. A fixed JavaScript worker owns only Playwright browser adaptation over a private bounded stdio protocol. Profiles are persistent and project-isolated; the browser runs outside the foreground by default and explicit user handoff pauses agent control. Runtime installation or update never occurs after packaging.
 - Consequences: Release artifacts become substantially larger and require nested signing/notarization, Linux dependency validation, target-specific manifests, SBOM/license output, and offline smoke tests. Browser actions can affect external systems and are not covered by filesystem undo. Browser content is untrusted, sensitive/high-consequence actions require point-of-risk confirmation, and non-interactive Browser Use is denied initially. No other production Node.js path, arbitrary JavaScript execution, extension loading, provider access, SQLite access, or second agent loop is authorized by this exception.
-- Details: `requirements/2026-09-19-playwright-browser-use/`, `agent/crates/browser/`, `browser-runtime/`, `contracts/browser-worker.md`
+- Details: `features/browser-use/`, `agent/crates/browser/`, `browser-runtime/`, `contracts/browser-worker.md`
 
 ## ADR-20260919-rust-owned-language-server-support
 
@@ -156,7 +156,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Text search and bounded reads cannot provide compiler-grade diagnostics, symbol identity, definitions, references, or hover information. Direct Avalonia ownership, an MCP bridge, repository-controlled commands, or a generic model-facing LSP request would weaken the embedded Rust authority boundary.
 - Decision: Add a Rust-owned `suncode-lsp` local-stdio protocol adapter and a project-scoped core manager. Persist global definitions in `language_server`, expose named Rust/C/C# SDK management methods, and add exactly five bounded read-only semantic tools: diagnostics, definition, references, hover, and document symbols. Launch only explicit structured commands with a filtered environment; do not bundle language servers or Node/Bun. Reject server-requested edits and arbitrary commands.
 - Consequences: Users configure external language-server executables explicitly. Runtime state and document versions are memory-only per project. Semantic tools reuse authorized project/dependency reads, normalize locations, and return recoverable `lsp_*` failures. The SQLite schema advances to 18 tables and the C ABI to version 8. Rename, code actions, formatting, completion UI, and editable-editor behavior remain out of scope.
-- Details: `requirements/2026-09-19-language-server-support/`, `agent/crates/lsp/`, `agent/crates/core/src/agent/lsp.rs`, `contracts/agent-sdk/README.md`
+- Details: `features/language-servers/`, `agent/crates/lsp/`, `agent/crates/core/src/agent/lsp.rs`, `contracts/agent-sdk/README.md`
 
 ## ADR-20260918-built-in-specialist-agents
 
@@ -491,7 +491,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Users need tools from local and remote MCP servers to become available to existing sessions immediately. Requiring a cross-platform OS sandbox first would prevent the feature, while describing an ordinary child process as isolated would be incorrect.
 - Decision: Phase 1 supports MCP tools over structured local stdio processes and remote Streamable HTTP. Rust owns global desired configuration in SQLite and project-scoped live clients. Every exposed tool is namespaced, enters the existing external-tool policy and audit path, and requires interactive approval unless Full Control is active. Local processes use no shell and receive a bounded baseline environment plus configured values, but run with the user's OS authority. Settings and approvals explicitly state that MCP side effects may be outside SunCode's undo boundary. Prompts, resources, OAuth, executable plugins, and third-party provider adapters remain deferred.
 - Consequences: Existing sessions receive a rebuilt MCP catalog before their next provider request; configuration mutations retire stale generations immediately. Connection state is not a trust signal. Secret values remain Rust-owned plaintext SQLite data and never enter read DTOs or logs. A future OS sandbox can strengthen local execution without changing the SDK ownership boundary.
-- Details: `requirements/2026-09-08-mcp-server-support/`, `contracts/agent-sdk/README.md`, `contracts/persistence.md`
+- Details: `features/mcp-servers/`, `contracts/agent-sdk/README.md`, `contracts/persistence.md`
 
 ## ADR-20260807-durable-stream-separation
 

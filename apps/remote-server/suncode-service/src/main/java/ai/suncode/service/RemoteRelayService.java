@@ -130,29 +130,24 @@ public class RemoteRelayService {
             String command,
             DesktopCommandPayload payload,
             String routeId,
-            String requestIdHeader,
+            String requestId,
             Map<String, Object> queryParam,
             String encPayload) {
         DesktopConnection connection = desktopConnections.get(hostId);
         if (connection == null) {
             throw new BusinessException(DESKTOP_UNAVAILABLE);
         }
-        String idempotencyId = requestIdHeader == null || requestIdHeader.isBlank()
-                ? null : hostId + ":" + command + ":" + requestIdHeader;
-        if (idempotencyId != null) {
-            DesktopResponse previous = idempotentResults.get(idempotencyId);
-            if (previous != null) {
-                return previous;
-            }
+        String idempotencyId = hostId + ":" + requestId;
+        DesktopResponse previous = idempotentResults.get(idempotencyId);
+        if (previous != null) {
+            return previous;
         }
-        String requestId = requestIdHeader == null || requestIdHeader.isBlank()
-                ? UUID.randomUUID().toString() : requestIdHeader;
         CompletableFuture<DesktopResponse> future = new CompletableFuture<>();
         synchronized (connectionLifecycleLock) {
             if (shuttingDown) {
                 throw new BusinessException(DESKTOP_UNAVAILABLE, "sever is shutting down");
             }
-            pending.put(requestId, future);
+            pending.put(idempotencyId, future);
         }
         try {
             DesktopCommandPayload commandPayload = payload == null ? new DesktopCommandPayload() : payload;
@@ -186,15 +181,16 @@ public class RemoteRelayService {
             Thread.currentThread().interrupt();
             throw new BusinessException(DESKTOP_REQUEST_FAILED, "desktop_request_interrupted", error);
         } finally {
-            pending.remove(requestId);
+            pending.remove(idempotencyId);
         }
     }
 
     public void complete(DesktopResponse response) {
-        if (response == null || response.requestId() == null) {
-            throw new BusinessException(PARAM_INVALID, "requestId is required");
+        if (response == null || response.requestId() == null || response.hostId() == null) {
+            throw new BusinessException(PARAM_INVALID, "requestId/hostId is required");
         }
-        CompletableFuture<DesktopResponse> future = pending.get(response.requestId());
+        String idempotencyId = response.hostId() + ":" + response.requestId();
+        CompletableFuture<DesktopResponse> future = pending.get(idempotencyId);
         if (future == null) {
             throw new BusinessException(REQUEST_EXPIRED);
         }

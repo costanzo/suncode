@@ -6,6 +6,6 @@
 
 Resume and run share one typed event, lag recovery, tail-drain, cancellation, and terminal-response implementation. Text mode writes only final assistant content to stdout; JSONL emits typed events followed by `session.resume.result`.
 
-The Rust SDK exposes the current pending approval for a validated session, while pending question state comes from the atomic snapshot. Resume checks both before provider submission and returns exit status 4 when either exists. It does not resolve approvals or questions and never reuses prompt stdin for continuation input.
+The Rust SDK exposes the current pending approval for a validated session, while pending question state comes from the atomic snapshot. Resume checks both before reopening the session or contacting the provider and returns exit status 4 when either exists, so a suspended archived session stays archived. It does not resolve approvals or questions and never reuses prompt stdin for continuation input.
 
 Interactive multi-turn chat remains deferred.

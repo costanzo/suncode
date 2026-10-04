@@ -2,7 +2,7 @@
 
 **Status:** Implemented and focused-tested
 
-`suncode run [PATH] (--prompt TEXT | --stdin)` opens the project through `AsyncAgentSdk`, creates a primary session, establishes an atomic `watch_session`, and submits one turn. `--model` and `--reasoning-effort` override `SUNCODE_MODEL` and `SUNCODE_REASONING_EFFORT`; ordinary SDK configuration supplies later defaults.
+`suncode run [PATH] (--prompt TEXT | --stdin)` opens the project through `AsyncAgentSdk`, creates a primary session, establishes an atomic `watch_session`, and submits one turn. `--model` and `--reasoning-effort` override `SUNCODE_MODEL` and `SUNCODE_REASONING_EFFORT`; ordinary SDK configuration supplies later defaults. `--stdin` refuses an interactive terminal, and empty prompts are rejected. Each turn uses a fresh input idempotency key; a queued response is treated as a failure because the session is new.
 
 The command consumes typed SDK events with the standard Rust stream interface. JSONL mode adapts every received event into the versioned CLI envelope and finishes with `run.result`. Text mode sends turn/tool/context progress to stderr and emits only the final assistant text to stdout. Events already queued when submission returns are drained before the result is written. Lag establishes a fresh atomic watch rather than treating terminal state as authoritative.
 

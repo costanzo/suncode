@@ -12,4 +12,4 @@ Keep each spec short and current. Prefer one file per stable boundary:
 
 The approved target architecture remains in `../ARCHITECTURE.md`.
 
-Current focused specifications include [`built-in-subagents.md`](built-in-subagents.md) for the immutable specialist catalog and child-session lifecycle.
+Current focused specifications include [`built-in-subagents.md`](built-in-subagents.md) for the immutable specialist catalog and child-session lifecycle, and [`desktop-notifications.md`](desktop-notifications.md) for the attention-notification boundary and activation IPC.

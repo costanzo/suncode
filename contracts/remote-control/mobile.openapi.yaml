@@ -346,8 +346,7 @@ paths:
               examples:
                 plaintext:
                   value:
-                    requestId: "request-01J8YQ6M7D"
-                    acceptedAt: "2026-10-02T01:47:22.778Z"
+                    sessionId: "session-01J8YQ6M7D"
                 encrypted:
                   summary: End-to-end encrypted Session creation response
                   value:
@@ -1184,12 +1183,6 @@ components:
           type: array
           items: { type: string }
         expectedRevision: { type: integer, minimum: 0 }
-    CommandAcceptedData:
-      type: object
-      required: [requestId, acceptedAt]
-      properties:
-        requestId: { type: string }
-        acceptedAt: { type: string, format: date-time }
     SessionCreatedData:
       type: object
       required: [sessionId]
