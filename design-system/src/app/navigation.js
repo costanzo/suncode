@@ -379,6 +379,34 @@ export const primaryModules = [
         ],
       },
       {
+        path: "/projects/web",
+        label: "Web",
+        icon: "platform",
+        keywords: "browser remote control sessions pairing e2e encryption sse responsive",
+        children: [
+          {
+            path: "/projects/web/shell",
+            label: "Control desk",
+            keywords: "browser shell hosts projects sessions conversation review",
+          },
+          {
+            path: "/projects/web/pairing",
+            label: "Secure pairing",
+            keywords: "qr pairing e2e encryption key fingerprint trust browser",
+          },
+          {
+            path: "/projects/web/session",
+            label: "Session detail",
+            keywords: "sse stream approval question reconnect composer",
+          },
+          {
+            path: "/projects/web/security",
+            label: "Security settings",
+            keywords: "token encryption unpair recovery https",
+          },
+        ],
+      },
+      {
         path: "/projects/proxy-tool",
         label: "Proxy Tool",
         icon: "activity",

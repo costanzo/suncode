@@ -26,6 +26,14 @@ export function ProjectsPage() {
             tone="implemented"
           />
           <ModuleLink
+            to="/projects/web"
+            icon="platform"
+            title="Web"
+            description="Browser control desk for the same paired Desktop sessions and E2E remote-control contract."
+            status="Design reference"
+            tone="implemented"
+          />
+          <ModuleLink
             to="/projects/proxy-tool"
             icon="activity"
             title="Proxy Tool"

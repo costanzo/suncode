@@ -66,6 +66,12 @@ const paths = {
       <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
     </>
   ),
+  warning: (
+    <>
+      <path d="m12 3 9 17H3z" />
+      <path d="M12 9v5M12 17h.01" />
+    </>
+  ),
   folder: <path d="M3 6h7l2 2h9v11H3z" />,
   dependencies: (
     <>

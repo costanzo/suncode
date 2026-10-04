@@ -57,6 +57,13 @@ import {
   MobileShellPage,
 } from "../projects/mobile/index.jsx";
 import { ProxyToolPage } from "../projects/proxy-tool/index.jsx";
+import {
+  WebPairingPage,
+  WebProjectPage,
+  WebSecurityPage,
+  WebSessionPage,
+  WebShellPage,
+} from "../projects/web/index.jsx";
 import { DialogWindowPage } from "../projects/desktop/dialog-window/index.jsx";
 import { SettingsPage } from "../projects/desktop/settings/index.jsx";
 import { WorkspacePage } from "../projects/desktop/workspace/index.jsx";
@@ -132,6 +139,11 @@ const routes = {
   "/projects/desktop": DesktopProjectPage,
   "/projects/mobile": MobileProjectPage,
   "/projects/proxy-tool": ProxyToolPage,
+  "/projects/web": WebProjectPage,
+  "/projects/web/shell": WebShellPage,
+  "/projects/web/pairing": WebPairingPage,
+  "/projects/web/session": WebSessionPage,
+  "/projects/web/security": WebSecurityPage,
   "/projects/mobile/shell": MobileShellPage,
   "/projects/mobile/sessions": MobileSessionsPage,
   "/projects/mobile/new-session": MobileNewSessionPage,

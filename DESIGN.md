@@ -64,6 +64,12 @@ The visual review surface starts at [`design-system/index.html`](design-system/i
 
 Desktop Workspace review children also include Editor and Tool activity. Editor owns the read-only file-viewing states described below and remains specification tooling rather than a production web editor.
 
+The Web remote-control review surface lives under Projects → Web. It is a design reference for a future React/Vite client, not a production runtime. The Web shell reuses the Mobile remote-control contract: a compact left rail selects the paired Host, then renders Projects as disclosure rows whose nested Sessions are the primary navigation. Pairing, Host management, and encryption belong in Settings rather than permanent workspace tabs. The conversation remains dominant, and an optional Review bay exposes approvals, questions, context, touched files, and runtime health. At constrained widths the Review bay yields before the conversation becomes unusable; the project/session rail remains the single supporting navigation surface and can scroll independently.
+
+Web pairing is a trust step, not an onboarding illustration. The specimen shows the Remote Server endpoint, Host identity, one-time pairing exchange, and a shortened key fingerprint while never rendering the AES key or access/refresh tokens. The copy states that AES-256-GCM payloads and Session SSE events are end-to-end encrypted between Desktop and the paired browser, while routing headers remain visible to the relay. HTTPS is preferred; HTTP is shown only as an explicit transport-risk warning. Key rotation, missing keys, cursor expiry, unauthorized responses, and Desktop degradation all lead to visible re-pair or recovery actions. The browser surface must not imply that the Remote Server is an agent, policy authority, or sandbox.
+
+Web Session detail keeps the same `session.snapshot` / `agent.event` vocabulary and Last-Event-ID recovery language as Mobile. Approval and question cards use the shared authority patterns, name the affected operation, and preserve the Desktop checkpoint/undo limitation. The Web review route uses fixture data only; its eventual `apps/web` implementation must use WebCrypto, the hand-written mobile contract DTOs, and one active SSE stream per selected Session.
+
 ## Overview
 
 **Creative North Star: “Quiet Control Desk”**
