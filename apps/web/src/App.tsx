@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { MarkdownMessage } from "./MarkdownMessage";
 import { useWebStore } from "./store";
 import type { Project, SessionSummary } from "./types";
 
@@ -271,7 +272,11 @@ function Conversation() {
         {snapshot.messages.map((message) => (
           <article className={`message message-${message.role}`} key={message.id}>
             <span className="message-author">{message.role === "user" ? "You" : "SunCode"}</span>
-            <div>{renderText(message.text)}</div>
+            {message.role === "user" ? (
+              <div>{message.text}</div>
+            ) : (
+              <MarkdownMessage text={message.text} />
+            )}
           </article>
         ))}
         {snapshot.pendingApproval && (
@@ -510,17 +515,6 @@ function Pairing({ onBack, onPaired }: { onBack: () => void; onPaired: () => voi
   );
 }
 
-function renderText(text: string) {
-  return text
-    .split(/(`[^`]+`)/g)
-    .map((part, index) =>
-      part.startsWith("`") ? (
-        <code key={index}>{part.slice(1, -1)}</code>
-      ) : (
-        <span key={index}>{part}</span>
-      ),
-    );
-}
 function timeAgo(value: string) {
   const seconds = Math.max(1, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
   if (seconds < 60) return `${seconds}s ago`;
