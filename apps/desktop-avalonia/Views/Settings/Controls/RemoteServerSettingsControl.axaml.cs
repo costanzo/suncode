@@ -11,11 +11,14 @@ public sealed partial class RemoteServerSettingsControl : UserControl
     public event EventHandler<RoutedEventArgs>? SaveRequested;
     public event EventHandler<RoutedEventArgs>? DisconnectRequested;
     public event EventHandler<RoutedEventArgs>? ClearRequested;
+    public event EventHandler<RoutedEventArgs>? CopyPairingRequested;
     public TextBox ServerUrlInputControl => ServerUrlInput;
     public TextBox PairingCodeInputControl => PairingCodeInput;
     public ToggleSwitch E2eToggleControl => E2eToggle;
     public TextBlock StatusTextControl => StatusText;
     public Button DisconnectButtonControl => DisconnectButton;
+    public Button SaveButtonControl => SaveButton;
+    public Button CopyPairingButtonControl => CopyPairingButton;
     public StackPanel PairingSectionControl => PairingSection;
     public TextBlock PairingPayloadTextControl => PairingPayloadText;
     public Image PairingQrImageControl => PairingQrImage;
@@ -32,6 +35,7 @@ public sealed partial class RemoteServerSettingsControl : UserControl
         // Keep the control transport-agnostic: both http:// and https:// QR links
         // are valid according to the remote-control contract.
         PairingPayloadText.Text = payload ?? string.Empty;
+        CopyPairingButton.IsEnabled = !string.IsNullOrWhiteSpace(payload);
         if (string.IsNullOrWhiteSpace(payload))
         {
             PairingQrImage.Source = null;
@@ -54,4 +58,5 @@ public sealed partial class RemoteServerSettingsControl : UserControl
     private void OnSave(object? sender, RoutedEventArgs e) => SaveRequested?.Invoke(this, e);
     private void OnDisconnect(object? sender, RoutedEventArgs e) => DisconnectRequested?.Invoke(this, e);
     private void OnClear(object? sender, RoutedEventArgs e) => ClearRequested?.Invoke(this, e);
+    private void OnCopyPairing(object? sender, RoutedEventArgs e) => CopyPairingRequested?.Invoke(this, e);
 }

@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Views.Settings.Controls.RemoteServerSettingsControl">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
@@ -33,11 +34,18 @@
       <StackPanel Classes="settings-panel-section" IsVisible="False" x:Name="PairingSection">
         <TextBlock Classes="section-label" Text="{DynamicResource LocPhonePairing}" />
         <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocScanMobilePayload}" TextWrapping="Wrap" />
-        <Grid ColumnDefinitions="160,*" ColumnSpacing="18" Margin="0,12,0,0">
+        <Grid RowDefinitions="Auto,Auto" Margin="0,12,0,0">
           <Border Width="160" Height="160" Background="White" Padding="8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
             <Image x:Name="PairingQrImage" Stretch="Uniform" />
           </Border>
-          <TextBlock x:Name="PairingPayloadText" Grid.Column="1" TextWrapping="Wrap" FontFamily="monospace" VerticalAlignment="Center" />
+          <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,12,0,0">
+            <TextBlock x:Name="PairingPayloadText" TextWrapping="Wrap" FontFamily="monospace" VerticalAlignment="Center" />
+            <Button x:Name="CopyPairingButton" Grid.Column="1" Classes="icon quiet sc-button"
+                    ToolTip.Tip="{DynamicResource LocCopyPairingLink}"
+                    AutomationProperties.Name="{DynamicResource LocCopyPairingLink}" Click="OnCopyPairing">
+              <svg:Svg Width="14" Height="14" Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
+            </Button>
+          </Grid>
         </Grid>
         <TextBlock x:Name="PairingMetadataText" Margin="0,12,0,0" Classes="settings-hint" TextWrapping="Wrap" />
       </StackPanel>

@@ -176,6 +176,10 @@ export function RemoteServerPanel({ onSave }) {
                   <strong>Scan with SunCode Mobile</strong>
                   <span>One-time pairing code</span>
                   <code>SC-{String(pairingGeneration).padStart(2, "0")}7K-4M2P</code>
+                  <div className="remote-pairing-link">
+                    <code>https://relay.example.com/?code=••••••</code>
+                    <Button variant="quiet" size="sm" icon="copy" aria-label="Copy pairing link" />
+                  </div>
                   <small>This code expires in 10 minutes.</small>
                   <div className="remote-pairing-actions">
                     <Button

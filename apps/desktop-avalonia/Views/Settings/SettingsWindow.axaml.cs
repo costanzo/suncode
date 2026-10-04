@@ -111,6 +111,7 @@ public sealed partial class SettingsWindow : Window
         RemotePage.SaveRequested += SaveRemote;
         RemotePage.DisconnectRequested += DisconnectRemote;
         RemotePage.ClearRequested += ClearRemote;
+        RemotePage.CopyPairingRequested += CopyRemotePairing;
         ComputerPage.EnabledChanged += ComputerEnabledChanged;
         ComputerPage.CapturePermissionRequested += RequestComputerCapturePermission;
         ComputerPage.InputPermissionRequested += RequestComputerInputPermission;
@@ -233,6 +234,7 @@ public sealed partial class SettingsWindow : Window
         {
             if (_subscribedViewModel is not null)
                 _subscribedViewModel.Remote.StatusChanged -= RemoteStatusChanged;
+            RemotePage.CopyPairingRequested -= CopyRemotePairing;
             _mcpPollTimer.Stop();
             _languageServerPollTimer.Stop();
             _computerPollTimer.Stop();
@@ -468,9 +470,18 @@ public sealed partial class SettingsWindow : Window
         RefreshRemotePresentation(status);
     }
 
+    private async void CopyRemotePairing(object? sender, RoutedEventArgs e)
+    {
+        var payload = RemotePage.PairingPayloadTextControl.Text;
+        if (string.IsNullOrWhiteSpace(payload) || TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard) return;
+        await clipboard.SetTextAsync(payload);
+        RemotePage.StatusTextControl.Text = L("LocCopiedToClipboard", "Copied to clipboard.");
+    }
+
     private void RefreshRemotePresentation(SunCode.Sdk.Models.RemoteServerStatus status)
     {
         RemotePage.DisconnectButtonControl.IsVisible = status.Connected || status.Connecting;
+        RemotePage.SaveButtonControl.IsVisible = !status.Connected;
         // Prefer the fully-qualified QR URL produced by the SDK. Keep the legacy
         // payload fallback so persisted installations can migrate without losing
         // their mobile pairing display.

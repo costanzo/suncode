@@ -132,6 +132,7 @@
   <x:String x:Key="LocClear">清除</x:String>
   <x:String x:Key="LocPhonePairing">手机配对</x:String>
   <x:String x:Key="LocScanMobilePayload">使用 SunCode Mobile 扫描此一次性配对链接。</x:String>
+  <x:String x:Key="LocCopyPairingLink">复制配对链接</x:String>
   <x:String x:Key="LocNetworkHint">配置嵌入式 Rust 代理访问 HTTP 和 HTTPS 服务的方式。</x:String>
   <x:String x:Key="LocProxy">代理</x:String>
   <x:String x:Key="LocProxyMode">代理模式</x:String>

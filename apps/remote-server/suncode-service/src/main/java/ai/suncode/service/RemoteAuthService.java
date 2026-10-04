@@ -7,11 +7,12 @@ import org.springframework.beans.factory.annotation.Value;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 import static ai.suncode.common.exception.ErrorCode.PARAM_INVALID;
 import static ai.suncode.common.exception.ErrorCode.PAIRING_EXPIRED;
@@ -20,6 +21,11 @@ import static ai.suncode.common.exception.ErrorCode.UNAUTHORIZED;
 @Service
 public class RemoteAuthService {
     private static final Duration ACCESS_TOKEN_LIFETIME = Duration.ofHours(1);
+    private static final int HOST_ID_LENGTH = 10;
+    private static final int MOBILE_PAIRING_CODE_LENGTH = 6;
+    private static final String HOST_ID_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    private static final String DIGITS = "0123456789";
+    private static final SecureRandom RANDOM = new SecureRandom();
     private final ConcurrentHashMap<String, String> mobileTokens = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> refreshTokens = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> desktopTokens = new ConcurrentHashMap<>();
@@ -36,7 +42,10 @@ public class RemoteAuthService {
         if (request == null || !matchesPairingCode(request.pairingCode())) {
             throw new BusinessException(UNAUTHORIZED, "invalid desktop pairing code");
         }
-        String hostId = UUID.randomUUID().toString();
+        String hostId;
+        do {
+            hostId = randomToken(HOST_ID_ALPHABET, HOST_ID_LENGTH);
+        } while (desktopTokens.containsKey(hostId));
         String desktopToken = UUID.randomUUID().toString();
         String desktopRefresh = UUID.randomUUID().toString();
         desktopTokens.put(hostId, desktopToken);
@@ -53,7 +62,10 @@ public class RemoteAuthService {
     }
 
     public String createPairing(String hostId, String displayName) {
-        String payload = UUID.randomUUID().toString();
+        String payload;
+        do {
+            payload = randomToken(DIGITS, MOBILE_PAIRING_CODE_LENGTH);
+        } while (pairings.containsKey(payload));
         pairings.put(payload, new PendingPairing(hostId, displayName, System.nanoTime() + TimeUnit.MINUTES.toNanos(5)));
         return payload;
     }
@@ -163,6 +175,14 @@ public class RemoteAuthService {
         return MessageDigest.isEqual(
                 desktopPairingCode.getBytes(StandardCharsets.UTF_8),
                 candidate.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String randomToken(String alphabet, int length) {
+        StringBuilder token = new StringBuilder(length);
+        for (int index = 0; index < length; index++) {
+            token.append(alphabet.charAt(RANDOM.nextInt(alphabet.length())));
+        }
+        return token.toString();
     }
 
     public void logoutToken(String token) {

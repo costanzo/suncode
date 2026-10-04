@@ -132,6 +132,7 @@
   <x:String x:Key="LocClear">Clear</x:String>
   <x:String x:Key="LocPhonePairing">PHONE PAIRING</x:String>
   <x:String x:Key="LocScanMobilePayload">Scan this one-time pairing URL from the SunCode Mobile app.</x:String>
+  <x:String x:Key="LocCopyPairingLink">Copy pairing link</x:String>
   <x:String x:Key="LocNetworkHint">Configure how the embedded Rust agent reaches HTTP and HTTPS services.</x:String>
   <x:String x:Key="LocProxy">PROXY</x:String>
   <x:String x:Key="LocProxyMode">Proxy mode</x:String>

@@ -89,7 +89,7 @@
 
 .remote-pairing-preview {
   display: grid;
-  grid-template-columns: 178px minmax(0, 1fr);
+  grid-template-columns: 178px;
   align-items: center;
   gap: 20px;
   width: min(100%, 500px);
@@ -141,6 +141,20 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   font: 12px var(--font-mono);
+}
+
+.remote-pairing-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.remote-pairing-link code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .remote-pairing-actions {
