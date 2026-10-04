@@ -38,7 +38,7 @@ public class MobileAuthFilter implements Filter {
             chain.doFilter(servletRequest, servletResponse);
             return;
         }
-        String path = applicationPath(request);
+        String path = request.getServletPath();
         if (isPublic(request)) {
             String publicHost = request.getHeader("X-Host-Id");
             if (publicHost == null || publicHost.isBlank()) {
@@ -67,7 +67,7 @@ public class MobileAuthFilter implements Filter {
     }
 
     private boolean isPublic(HttpServletRequest request) {
-        String path = applicationPath(request);
+        String path = request.getServletPath();
         return "/v1/mobile/health".equals(path)
                 || "/v1/mobile/pairings/exchange".equals(path)
                 || "/v1/mobile/auth/refresh".equals(path);
@@ -84,12 +84,4 @@ public class MobileAuthFilter implements Filter {
         }
         return authService.hostForMobileToken(token);
     }
-
-    private static String applicationPath(HttpServletRequest request) {
-        String uri = request.getRequestURI();
-        String contextPath = request.getContextPath();
-        return contextPath != null && !contextPath.isEmpty() && uri.startsWith(contextPath)
-                ? uri.substring(contextPath.length()) : uri;
-    }
-
 }

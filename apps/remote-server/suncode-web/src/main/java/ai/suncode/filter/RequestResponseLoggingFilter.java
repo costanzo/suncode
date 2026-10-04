@@ -4,6 +4,8 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.util.PathMatcher;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
@@ -14,6 +16,7 @@ import java.util.Map;
 
 @Slf4j
 public class RequestResponseLoggingFilter implements Filter {
+    private static final PathMatcher PATH_MATCHER = new AntPathMatcher();
     private static final int MAX_PAYLOAD_LENGTH = 2048;
     private static final int MAX_CACHED_PAYLOAD_LENGTH = 5 * 1024 * 1024; // 5MB
 
@@ -23,15 +26,20 @@ public class RequestResponseLoggingFilter implements Filter {
         return uri.startsWith("/actuator");
     }
 
+    private boolean shouldSkipCachingSSE(String uri) {
+        // Example: skip caching for large file downloads
+        return uri.equals("/v1/desktop/events") ||
+                PATH_MATCHER.match("/v1/mobile/hosts/{hostId}/sessions/{sessionId}/events", uri);
+    }
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
 
         long startTime = System.currentTimeMillis();
         ContentCachingRequestWrapper requestWrapper = new ContentCachingRequestWrapper((HttpServletRequest) request, MAX_CACHED_PAYLOAD_LENGTH);
-        ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper((HttpServletResponse) response);
 
-        if (!shouldSkipLogging(requestWrapper.getRequestURI())) {
+        if (!shouldSkipLogging(requestWrapper.getServletPath())) {
             try {
                 logRequest(requestWrapper);
             } catch (Exception e) {
@@ -39,12 +47,18 @@ public class RequestResponseLoggingFilter implements Filter {
             }
         }
 
+        if (shouldSkipCachingSSE(requestWrapper.getServletPath())) {
+            chain.doFilter(requestWrapper, response);
+            return;
+        }
+
+        ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper((HttpServletResponse) response);
         try {
             chain.doFilter(requestWrapper, responseWrapper);
         } finally {
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
-            if (!shouldSkipLogging(requestWrapper.getRequestURI())) {
+            if (!shouldSkipLogging(requestWrapper.getServletPath())) {
                 try {
                     logResponse(responseWrapper, duration);
                 } catch (Exception e) {
@@ -85,7 +99,7 @@ public class RequestResponseLoggingFilter implements Filter {
         }
 
         log.info("REQUEST ==> Method: {}, URL: {}, QueryParams: {}, Body: {}, IP: {}",
-                request.getMethod(), request.getRequestURI(), queryString, requestBodyStr, getIpAddress(request));
+                request.getMethod(), request.getServletPath(), queryString, requestBodyStr, getIpAddress(request));
     }
 
     private boolean isMultipartRequest(String contentType) {

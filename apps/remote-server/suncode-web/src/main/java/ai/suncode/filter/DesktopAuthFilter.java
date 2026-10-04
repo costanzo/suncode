@@ -31,7 +31,7 @@ public class DesktopAuthFilter implements Filter {
             chain.doFilter(servletRequest, servletResponse);
             return;
         }
-        String path = applicationPath(request);
+        String path = request.getServletPath();
         String hostId = request.getHeader("X-Host-Id");
         String token;
         try {
@@ -61,12 +61,5 @@ public class DesktopAuthFilter implements Filter {
         }
         ServiceContext.authenticate(ClientType.DESKTOP, hostId, token);
         chain.doFilter(request, response);
-    }
-
-    private static String applicationPath(HttpServletRequest request) {
-        String uri = request.getRequestURI();
-        String contextPath = request.getContextPath();
-        return contextPath != null && !contextPath.isEmpty() && uri.startsWith(contextPath)
-                ? uri.substring(contextPath.length()) : uri;
     }
 }
