@@ -68,6 +68,9 @@ public sealed partial class BrowserPreviewPane : UserControl
                     RequestHandler = new PreviewRequestHandler(),
                     LifeSpanHandler = new PreviewLifeSpanHandler()
                 };
+                // Windowless CEF defaults to 30 fps, which reads as dropped frames while
+                // scrolling. Must be set before the browser is created on first layout.
+                _browser.Settings.WindowlessFrameRate = 60;
                 _browser.LoadEnd += (_, args) =>
                 {
                     if (args.Frame.IsMain) Dispatcher.UIThread.Post(() => StatusText.Text = "Live");

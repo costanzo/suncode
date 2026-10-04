@@ -39,10 +39,6 @@
                       Condition="'$(Configuration)' != 'Release'" />
     <ProjectReference Include="../../sdks/csharp/SunCode.Sdk.csproj" />
     <ProjectReference Include="$(CefGlueForkRoot)/CefGlue.Avalonia/CefGlue.Avalonia.csproj" />
-    <!-- CEF's macOS Cocoa classes overlap with AvaloniaNative. ReactiveUI's
-         Avalonia integration is required by CefGlue's macOS initialization
-         path and matches the upstream CEF 134 workaround. -->
-    <PackageReference Include="ReactiveUI.Avalonia" Version="12.1.1" PrivateAssets="all" />
     <PackageReference Include="cef.runtime.osx-arm64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'osx-arm64'" PrivateAssets="all" />
     <PackageReference Include="cef.runtime.osx-x64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'osx-x64'" PrivateAssets="all" />
     <PackageReference Include="cef.runtime.linux-x64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'linux-x64'" PrivateAssets="all" />
@@ -160,11 +156,15 @@
       <CefPreviewLibraries Include="$(CefPreviewFrameworkSource)/Libraries/**/*.*" />
       <CefPreviewResources Include="$(CefPreviewFrameworkSource)/Resources/**/*.*" />
     </ItemGroup>
-    <MakeDir Directories="$(TargetDir)runtimes/osx/native;$(TargetDir)Libraries;$(TargetDir)Resources" />
+    <!-- CefGlue sets FrameworkDirPath to the directory holding libcef.dylib, and
+         Chromium loads icudtl.dat, paks, and Libraries relative to it. They must
+         sit beside libcef.dylib, not in the output root. -->
+    <MakeDir Directories="$(TargetDir)runtimes/osx/native/Libraries;$(TargetDir)runtimes/osx/native/Resources" />
     <Delete Files="$(TargetDir)libcef.dylib" />
+    <RemoveDir Directories="$(TargetDir)Libraries;$(TargetDir)Resources" />
     <Copy SourceFiles="@(CefPreviewMain)" DestinationFiles="$(TargetDir)runtimes/osx/native/libcef.dylib" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(CefPreviewLibraries)" DestinationFolder="$(TargetDir)Libraries/%(RecursiveDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(CefPreviewResources)" DestinationFolder="$(TargetDir)Resources/%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(CefPreviewLibraries)" DestinationFolder="$(TargetDir)runtimes/osx/native/Libraries/%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(CefPreviewResources)" DestinationFolder="$(TargetDir)runtimes/osx/native/Resources/%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>
 
   <ItemGroup>

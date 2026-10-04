@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Xilium.CefGlue;
+using Xilium.CefGlue.BrowserProcess;
 using Xilium.CefGlue.Common;
 
 namespace SunCode.Desktop.Infrastructure;
@@ -23,6 +24,10 @@ internal static class CefPreviewRuntime
             CefRuntimeLoader.Initialize(new CefSettings
             {
                 RootCachePath = CacheRoot,
+                // CEF CHECK-fails inside cef_initialize when no subprocess path is set,
+                // and CefGlue only resolves the macOS bundle, framework, and resource
+                // paths when it is. The app re-enters itself through CefSubProcess.Run.
+                BrowserSubprocessPath = CefSubProcess.GetSubProcessPath(),
                 // Avalonia owns the macOS Cocoa view hierarchy. Windowed CEF tries to
                 // attach another native browser view and collides with AvaloniaNative's
                 // Objective-C classes (and can deadlock while the view is attached).

@@ -106,7 +106,10 @@ fn validate_url(value: &str) -> Result<(), BusinessError> {
 fn wait_until_ready(value: &str, process: &BackgroundProcess) -> Result<(), BusinessError> {
     let parsed = url::Url::parse(value).map_err(|_| BusinessError::invalid("preview URL is invalid"))?;
     let port = parsed.port_or_known_default().ok_or_else(|| BusinessError::invalid("preview URL must include a known HTTP port"))?;
-    let addresses: Vec<SocketAddr> = ("127.0.0.1", port)
+    // validate_url limits the host to localhost/127.0.0.1. Resolve it rather than
+    // assuming IPv4: dev servers such as Vite bind `localhost`, which is ::1 on macOS.
+    let host = parsed.host_str().unwrap_or("127.0.0.1");
+    let addresses: Vec<SocketAddr> = (host, port)
         .to_socket_addrs()
         .map_err(|_| BusinessError::new("preview_server_unavailable", "preview server address could not be resolved"))?
         .collect();

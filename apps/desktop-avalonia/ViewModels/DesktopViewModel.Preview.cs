@@ -16,7 +16,7 @@ public sealed partial class DesktopViewModel
             var settings = (await _sdk!.GetSettingsAsync(new(SelectedProject.ProjectId, null))).Settings;
             var program = settings.FirstOrDefault(item => item.Key == "preview_program")?.Value.GetString() ?? "npm";
             var url = string.IsNullOrWhiteSpace(requestedUrl)
-                ? settings.FirstOrDefault(item => item.Key == "preview_url")?.Value.GetString() ?? "http://127.0.0.1:5173/"
+                ? settings.FirstOrDefault(item => item.Key == "preview_url")?.Value.GetString() ?? "http://localhost:5173/"
                 : requestedUrl;
             var cwd = settings.FirstOrDefault(item => item.Key == "preview_cwd")?.Value.GetString();
             var args = settings.FirstOrDefault(item => item.Key == "preview_args")?.Value.ValueKind == JsonValueKind.Array

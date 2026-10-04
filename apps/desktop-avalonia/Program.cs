@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Threading;
-using ReactiveUI.Avalonia;
 using SunCode.Desktop.Infrastructure;
 using Xilium.CefGlue.BrowserProcess;
 
@@ -13,7 +12,10 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        if (!OperatingSystem.IsMacOS()) CefSubProcess.Run(args, true);
+        // CEF relaunches this executable with --type=... for its renderer, GPU,
+        // and utility processes on every platform. Divert them before any app
+        // startup work (logging, single-instance IPC, Avalonia).
+        CefSubProcess.Run(args, true);
         DiagnosticLog.Initialize();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
@@ -86,7 +88,6 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
-            .UseReactiveUI(_ => { })
             .With(new MacOSPlatformOptions { DisableSetProcessName = true, ShowInDock = true })
             .WithInterFont()
             .UseSunCodeFonts()
