@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Threading;
+using ReactiveUI.Avalonia;
 using SunCode.Desktop.Infrastructure;
 using Xilium.CefGlue.BrowserProcess;
 
@@ -85,6 +86,7 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            .UseReactiveUI(_ => { })
             .With(new MacOSPlatformOptions { DisableSetProcessName = true, ShowInDock = true })
             .WithInterFont()
             .UseSunCodeFonts()

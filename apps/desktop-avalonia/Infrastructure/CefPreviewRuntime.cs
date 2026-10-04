@@ -23,7 +23,14 @@ internal static class CefPreviewRuntime
             CefRuntimeLoader.Initialize(new CefSettings
             {
                 RootCachePath = CacheRoot,
-                WindowlessRenderingEnabled = false,
+                // Avalonia owns the macOS Cocoa view hierarchy. Windowed CEF tries to
+                // attach another native browser view and collides with AvaloniaNative's
+                // Objective-C classes (and can deadlock while the view is attached).
+                // The forked Avalonia adapter provides the OSR bitmap/input path. Use
+                // it on macOS, where windowed CEF's Cocoa view collides with
+                // AvaloniaNative's Objective-C classes. Keep the existing native
+                // hosting path on other platforms.
+                WindowlessRenderingEnabled = OperatingSystem.IsMacOS(),
                 LogSeverity = CefLogSeverity.Error
             });
             Available = true;
