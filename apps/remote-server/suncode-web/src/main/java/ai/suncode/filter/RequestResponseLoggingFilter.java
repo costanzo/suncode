@@ -1,12 +1,12 @@
 package ai.suncode.filter;
 
+import ai.suncode.message.remote.CachedBodyRequest;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.PathMatcher;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
@@ -18,7 +18,6 @@ import java.util.Map;
 public class RequestResponseLoggingFilter implements Filter {
     private static final PathMatcher PATH_MATCHER = new AntPathMatcher();
     private static final int MAX_PAYLOAD_LENGTH = 2048;
-    private static final int MAX_CACHED_PAYLOAD_LENGTH = 5 * 1024 * 1024; // 5MB
 
     // Skip some urls if needed
     private boolean shouldSkipLogging(String uri) {
@@ -37,19 +36,22 @@ public class RequestResponseLoggingFilter implements Filter {
             throws IOException, ServletException {
 
         long startTime = System.currentTimeMillis();
-        ContentCachingRequestWrapper requestWrapper = new ContentCachingRequestWrapper((HttpServletRequest) request, MAX_CACHED_PAYLOAD_LENGTH);
-
-        if (!shouldSkipLogging(requestWrapper.getServletPath())) {
-            try {
-                logRequest(requestWrapper);
-            } catch (Exception e) {
-                log.error("Error logging request", e);
-            }
-        }
+        CachedBodyRequest requestWrapper = new CachedBodyRequest((HttpServletRequest) request);
 
         if (shouldSkipCachingSSE(requestWrapper.getServletPath())) {
             chain.doFilter(requestWrapper, response);
             return;
+        }
+
+        // Read and retain the body before entering the chain. Unlike
+        // ContentCachingRequestWrapper, this makes the payload available for
+        // the entry log while still allowing Spring MVC to read it later.
+        if (!shouldSkipLogging(requestWrapper.getServletPath())) {
+            try {
+                logRequest(requestWrapper, requestWrapper.body());
+            } catch (Exception e) {
+                log.error("Error logging request", e);
+            }
         }
 
         ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper((HttpServletResponse) response);
@@ -69,7 +71,7 @@ public class RequestResponseLoggingFilter implements Filter {
         }
     }
 
-    private void logRequest(ContentCachingRequestWrapper request) {
+    private void logRequest(HttpServletRequest request, byte[] requestBody) {
         String queryString = request.getQueryString() != null ? request.getQueryString() : "";
 
         String contentType = request.getContentType();
@@ -77,7 +79,6 @@ public class RequestResponseLoggingFilter implements Filter {
         if (isMultipartRequest(contentType)) {
             requestBodyStr = String.format("[Multipart request, Content-Length: %d]", request.getContentLength());
         } else {
-            byte[] requestBody = request.getContentAsByteArray();
             if (requestBody.length == 0 &&
                     contentType != null &&
                     contentType.toLowerCase().contains("application/x-www-form-urlencoded")) {
@@ -148,7 +149,7 @@ public class RequestResponseLoggingFilter implements Filter {
                 || normalizedContentType.contains("presentationml");
     }
 
-    private String buildFormDataString(ContentCachingRequestWrapper request) {
+    private String buildFormDataString(HttpServletRequest request) {
         Map<String, String[]> parameterMap = request.getParameterMap();
 
         if (parameterMap.isEmpty()) {

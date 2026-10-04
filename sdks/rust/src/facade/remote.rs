@@ -311,13 +311,15 @@ impl RemoteController {
                 BusinessError::unavailable(format!("Remote HTTP client could not start: {error}"))
             })?;
         let endpoint = resolve_endpoint(url.as_str(), "/v1/desktop/pairings");
+        let pair_body = PairRequest {
+            pairing_code: config.pairing_code.clone(),
+            display_name: hostname(),
+            agent_version: suncode_agent::version().to_string(),
+        };
+        log_http_request("POST", &endpoint, &pair_body);
         let response = client
             .post(endpoint)
-            .json(&PairRequest {
-                pairing_code: config.pairing_code.clone(),
-                display_name: hostname(),
-                agent_version: suncode_agent::version().to_string(),
-            })
+            .json(&pair_body)
             .send()
             .await
             .map_err(remote_http_error)?;
@@ -707,6 +709,7 @@ async fn remote_worker(
         }
         set_worker_status(&status, false, None);
         let request_url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/events");
+        log_http_request("GET", &request_url, &json!({"accept": "text/event-stream"}));
         let response = request_headers(client.get(request_url), &persisted, &host_id)
             .header("Accept", "text/event-stream")
             .send()
@@ -731,8 +734,24 @@ async fn remote_worker(
                                 buffer.extend_from_slice(&bytes);
                                 while let Some((boundary, delimiter_len)) = sse_frame_boundary(&buffer) {
                                     let frame = buffer.drain(..boundary + delimiter_len).collect::<Vec<_>>();
+                                    log_sse_frame(&frame);
+                                    if is_sse_comment(&frame) {
+                                        logging::debug("remote", "SSE comment received (heartbeat)");
+                                        continue;
+                                    }
                                     if let Some(request) = parse_sse_request(&frame, &persisted.pairing.aes_key) {
+                                        logging::debug(
+                                            "remote",
+                                            format!(
+                                                "SSE event accepted request_id={} operation={} arguments={}",
+                                                request.request_id,
+                                                request.operation,
+                                                redact_remote_value(&request.arguments)
+                                            ),
+                                        );
                                         handle_remote_request(&sdk, &client, &persisted, &host_id, request).await;
+                                    } else {
+                                        logging::debug("remote", "SSE event ignored or could not be parsed");
                                     }
                                 }
                             }
@@ -774,6 +793,7 @@ async fn upload_desktop_snapshot(
     let request_id = uuid::Uuid::new_v4().to_string();
     let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/snapshot");
     let body = remote_request_body(&payload, persisted)?;
+    log_http_request("POST", &url, &body);
     let response = request_headers(client.post(url), persisted, host_id)
         .header("X-Request-Id", request_id)
         .json(&body)
@@ -828,7 +848,10 @@ fn subscribe_existing_sessions(
                                 let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/events");
                                 let body = remote_request_body(&serde_json::to_value(&body).unwrap_or_else(|_| json!({})), &persisted);
                                 let response = match body {
-                                    Ok(body) => request_headers(client.post(url), &persisted, &host_id).header("X-Request-Id", &event_id).json(&body).send().await,
+                                    Ok(body) => {
+                                        log_http_request("POST", &url, &body);
+                                        request_headers(client.post(url), &persisted, &host_id).header("X-Request-Id", &event_id).json(&body).send().await
+                                    },
                                     Err(error) => { logging::warn("remote", &format!("event encryption failed: {}", error.message)); continue; }
                                 };
                                 if let Err(error) = response { logging::warn("remote", &format!("event upload failed: {error}")); }
@@ -876,6 +899,80 @@ fn request_headers(
     request
         .header("X-Host-Id", host_id)
         .bearer_auth(&persisted.pairing.access_token)
+}
+
+fn redact_remote_value(value: &Value) -> String {
+    let mut value = value.clone();
+    redact_remote_object(&mut value);
+    serde_json::to_string(&value).unwrap_or_else(|_| "<invalid-json>".into())
+}
+
+fn redact_remote_object(value: &mut Value) {
+    match value {
+        Value::Object(object) => {
+            for (key, value) in object.iter_mut() {
+                if matches!(
+                    key.as_str(),
+                    "encPayload"
+                        | "accessToken"
+                        | "refreshToken"
+                        | "apiKey"
+                        | "password"
+                        | "pairingCode"
+                        | "pairing_code"
+                        | "code"
+                        | "k"
+                ) {
+                    *value = Value::String("<redacted>".into());
+                } else {
+                    redact_remote_object(value);
+                }
+            }
+        }
+        Value::Array(values) => values.iter_mut().for_each(redact_remote_object),
+        _ => {}
+    }
+}
+
+fn log_http_request<T: Serialize>(method: &str, url: &str, body: &T) {
+    let body = serde_json::to_value(body).unwrap_or_else(|_| json!({}));
+    logging::debug(
+        "remote",
+        format!(
+            "HTTP request method={method} url={url} query={} body={}",
+            Url::parse(url)
+                .ok()
+                .and_then(|url| url.query().map(str::to_owned))
+                .unwrap_or_default(),
+            redact_remote_value(&body)
+        ),
+    );
+}
+
+fn log_sse_frame(frame: &[u8]) {
+    let text = String::from_utf8_lossy(frame);
+    let rendered = text
+        .lines()
+        .map(|line| {
+            line.strip_prefix("data:")
+                .and_then(|data| serde_json::from_str::<Value>(data.trim()).ok())
+                .map(|value| format!("data: {}", redact_remote_value(&value)))
+                .unwrap_or_else(|| line.to_owned())
+        })
+        .collect::<Vec<_>>()
+        .join("\\n");
+    logging::debug(
+        "remote",
+        format!("SSE event received frame={}", rendered.trim()),
+    );
+}
+
+fn is_sse_comment(frame: &[u8]) -> bool {
+    frame
+        .split(|byte| *byte == b'\n' || *byte == b'\r')
+        .map(|line| line.strip_prefix(b" ").unwrap_or(line))
+        .filter(|line| !line.is_empty())
+        .all(|line| line.starts_with(b":"))
 }
 
 fn parse_sse_request(frame: &[u8], aes_key: &str) -> Option<RemoteRequest> {
@@ -1026,6 +1123,13 @@ async fn handle_remote_request(
     request: RemoteRequest,
 ) {
     let request_id = request.request_id;
+    logging::debug(
+        "remote",
+        format!(
+            "dispatching remote request request_id={request_id} operation={}",
+            request.operation
+        ),
+    );
     let outcome = dispatch_request(sdk, &request_id, &request.operation, request.arguments).await;
     let result = match outcome {
         Ok(data) => RemoteResult {
@@ -1053,11 +1157,25 @@ async fn handle_remote_request(
             return;
         }
     };
-    let _ = request_headers(client.post(url), persisted, host_id)
+    log_http_request("POST", &url, &body);
+    match request_headers(client.post(url), persisted, host_id)
         .header("X-Request-Id", &request_id)
         .json(&body)
         .send()
-        .await;
+        .await
+    {
+        Ok(response) => logging::debug(
+            "remote",
+            format!(
+                "remote response uploaded request_id={request_id} status={}",
+                response.status()
+            ),
+        ),
+        Err(error) => logging::warn(
+            "remote",
+            format!("remote response upload failed request_id={request_id} error={error}"),
+        ),
+    }
 }
 
 async fn dispatch_request(
@@ -1216,6 +1334,18 @@ mod tests {
         assert_eq!(request.arguments["approvalId"], "approval-1");
         assert_eq!(request.arguments["revision"], 7);
         assert_eq!(request.arguments["action"], "allow_once");
+    }
+
+    #[test]
+    fn parses_mobile_projects_list_event() {
+        let request = parse_sse_request(
+            b"event: mobile.projects.list\nid: 1791094808946\ndata: {\"pathParam\":{\"hostId\":\"BwyviZPiGD\"},\"queryParam\":{},\"requestBody\":{}}\n\n",
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        )
+        .expect("mobile projects list event should be accepted");
+        assert_eq!(request.request_id, "1791094808946");
+        assert_eq!(request.operation, "projects.list");
+        assert_eq!(request.arguments["hostId"], "BwyviZPiGD");
     }
 
     #[test]
