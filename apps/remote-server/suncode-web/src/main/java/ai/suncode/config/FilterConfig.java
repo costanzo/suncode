@@ -3,6 +3,7 @@ package ai.suncode.config;
 import ai.suncode.common.http.ContextFilter;
 import ai.suncode.filter.DesktopAuthFilter;
 import ai.suncode.filter.MobileAuthFilter;
+import ai.suncode.filter.RequestResponseLoggingFilter;
 import ai.suncode.service.RemoteAuthService;
 import ai.suncode.service.RemoteRelayService;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -11,6 +12,16 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class FilterConfig {
+    @Bean
+    public FilterRegistrationBean<RequestResponseLoggingFilter> requestResponseLoggingFilterFilterFilterRegistration() {
+        FilterRegistrationBean<RequestResponseLoggingFilter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(new RequestResponseLoggingFilter());
+        registrationBean.addUrlPatterns("/*");
+        registrationBean.setName("requestResponseLoggingFilter");
+        registrationBean.setOrder(2);
+        return registrationBean;
+    }
+
     @Bean
     public FilterRegistrationBean<ContextFilter> contextFilterRegistration() {
         FilterRegistrationBean<ContextFilter> registrationBean = new FilterRegistrationBean<>();

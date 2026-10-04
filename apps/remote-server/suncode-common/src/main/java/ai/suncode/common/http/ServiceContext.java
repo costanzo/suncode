@@ -10,8 +10,7 @@ public record ServiceContext(
         ClientType clientType,
         String hostId,
         String token,
-        String requestId,
-        String logId) {
+        String requestId) {
     private static final ThreadLocal<ServiceContext> CURRENT = new ThreadLocal<>();
 
     public static ServiceContext current() {
@@ -28,7 +27,7 @@ public record ServiceContext(
 
     public static void authenticate(ClientType clientType, String hostId, String token) {
         ServiceContext context = current();
-        CURRENT.set(new ServiceContext(clientType, hostId, token, context.requestId(), context.logId()));
+        CURRENT.set(new ServiceContext(clientType, hostId, token, context.requestId()));
     }
 
     public static void clear() {

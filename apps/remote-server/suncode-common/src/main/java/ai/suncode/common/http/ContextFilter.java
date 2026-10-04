@@ -13,15 +13,14 @@ import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 
-import static ai.suncode.common.utils.TracingUtils.createNewLogId;
 import static ai.suncode.common.utils.TracingUtils.createNewRequestId;
 
 
 public class ContextFilter implements Filter {
-    public static final String MDC_KEY_LOG_ID = "logId";
     public static final String MDC_KEY_REQUEST_ID = "requestId";
-    public static final String LOG_ID_HEADER = "x-log-id";
+    public static final String MDC_KEY_HOST_ID = "hostId";
     public static final String REQUEST_ID_HEADER = "x-request-id";
+    public static final String HOST_ID_HEADER = "x-host-id";
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
@@ -30,19 +29,15 @@ public class ContextFilter implements Filter {
             return;
         }
 
-        String logId = request.getHeader(LOG_ID_HEADER);
-        if (!StringUtils.hasText(logId)) {
-            logId = createNewLogId();
-        }
+        String hostId = request.getHeader(HOST_ID_HEADER);
         String requestId = request.getHeader(REQUEST_ID_HEADER);
         if (!StringUtils.hasText(requestId)) {
             requestId = createNewRequestId();
         }
 
-        MDC.put(MDC_KEY_LOG_ID, logId);
+        MDC.put(MDC_KEY_HOST_ID, hostId);
         MDC.put(MDC_KEY_REQUEST_ID, requestId);
-        response.addHeader(LOG_ID_HEADER, logId);
-        ServiceContext.setCurrent(new ServiceContext(clientType(request), null, null, requestId, logId));
+        ServiceContext.setCurrent(new ServiceContext(clientType(request), hostId, null, requestId));
 
         try {
             filterChain.doFilter(servletRequest, servletResponse);
