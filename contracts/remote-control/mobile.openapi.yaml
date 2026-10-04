@@ -699,20 +699,8 @@ paths:
           required: true
           schema: { type: string, minLength: 1 }
       responses:
-        '202':
+        '204':
           description: Cancellation accepted
-          content:
-            application/json:
-              schema:
-                oneOf:
-                  - $ref: '#/components/schemas/EmptySuccessResponse'
-                  - $ref: '#/components/schemas/EncryptedPayload'
-              examples:
-                plaintext:
-                  value: {}
-                encrypted:
-                  value:
-                    encPayload: "e2e-v1:base64url-ciphertext"
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -741,20 +729,8 @@ paths:
           required: true
           schema: { type: string, minLength: 1 }
       responses:
-        '202':
+        '204':
           description: Retry accepted
-          content:
-            application/json:
-              schema:
-                oneOf:
-                  - $ref: '#/components/schemas/EmptySuccessResponse'
-                  - $ref: '#/components/schemas/EncryptedPayload'
-              examples:
-                plaintext:
-                  value: {}
-                encrypted:
-                  value:
-                    encPayload: "e2e-v1:base64url-ciphertext"
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
