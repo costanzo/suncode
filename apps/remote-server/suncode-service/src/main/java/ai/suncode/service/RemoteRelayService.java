@@ -337,9 +337,12 @@ public class RemoteRelayService {
 
     private void send(SseEmitter emitter, String event, String id, Object data) {
         try {
-            emitter.send(SseEmitter.event().name(event).id(id).data(MarshallingUtils.toJson(data)));
-        } catch (IOException | IllegalStateException ignored) {
-            emitter.completeWithError(ignored);
+            String json = MarshallingUtils.toJson(data);
+            log.info("SSE SEND ==> event: {}, id: {}, data: {}", event, id, json);
+            emitter.send(SseEmitter.event().name(event).id(id).data(json));
+        } catch (Exception e) {
+            log.warn("SSE send failed, event={}, id={}", event, id, e);
+            emitter.completeWithError(e);
         }
     }
 

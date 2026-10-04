@@ -2,13 +2,11 @@ package ai.suncode.controller;
 
 import ai.suncode.common.exception.BusinessException;
 import ai.suncode.common.utils.MarshallingUtils;
-import ai.suncode.message.ApiBaseRet;
 import ai.suncode.message.remote.*;
 import ai.suncode.common.http.ServiceContext;
 import ai.suncode.service.RemoteAuthService;
 import ai.suncode.service.RemoteRelayService;
 import lombok.RequiredArgsConstructor;
-import org.apache.el.parser.Token;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,18 +19,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
 import java.util.Map;
-import java.util.function.Function;
 
-import static ai.suncode.common.exception.ErrorCode.CONFLICT;
 import static ai.suncode.common.exception.ErrorCode.HOST_NOT_FOUND;
-import static ai.suncode.common.exception.ErrorCode.SESSION_NOT_FOUND;
 
 @RestController
 @RequestMapping("/v1/mobile")
