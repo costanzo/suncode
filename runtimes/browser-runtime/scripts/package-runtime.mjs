@@ -68,7 +68,13 @@ try {
   for (const file of ["index.mjs", "package.json", "package-lock.json"]) {
     await fs.copyFile(path.join(root, "worker", file), path.join(workerOutput, file));
   }
-  await run("npm", ["ci", "--omit=dev", "--omit=optional", "--ignore-scripts"], { cwd: workerOutput });
+  // Node's Windows child-process launcher does not resolve npm.cmd when
+  // invoked as the bare `npm` command. Select the native command name so
+  // packaging works consistently from both PowerShell and CI.
+  const npmCommand = process.platform === "win32"
+    ? [process.execPath, path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js")]
+    : ["npm"];
+  await run(npmCommand[0], [...npmCommand.slice(1), "ci", "--omit=dev", "--omit=optional", "--ignore-scripts"], { cwd: workerOutput });
 
   const licensesOutput = path.join(stagedOutput, "licenses");
   await fs.mkdir(licensesOutput, { recursive: true });

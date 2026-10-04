@@ -18,7 +18,9 @@ try {
   await fs.writeFile(archive, Buffer.from(await response.arrayBuffer()));
   const extracted = path.join(temporary, "extracted");
   await fs.mkdir(extracted);
-  await run("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", "Expand-Archive", "-LiteralPath", archive, "-DestinationPath", extracted, "-Force"]);
+  const powershellCommand = process.env.SUNCODE_POWERSHELL
+    || (process.platform === "win32" ? "powershell.exe" : "powershell");
+  await run(powershellCommand, ["-NoProfile", "-NonInteractive", "-Command", `Expand-Archive -LiteralPath '${archive.replaceAll("'", "''")}' -DestinationPath '${extracted.replaceAll("'", "''")}' -Force`]);
   await fs.rm(output, { recursive: true, force: true });
   await fs.mkdir(output, { recursive: true });
   await fs.cp(extracted, output, { recursive: true, verbatimSymlinks: true });
