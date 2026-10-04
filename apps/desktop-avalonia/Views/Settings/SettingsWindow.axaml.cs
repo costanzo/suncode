@@ -231,6 +231,8 @@ public sealed partial class SettingsWindow : Window
         };
         Closed += (_, _) =>
         {
+            if (_subscribedViewModel is not null)
+                _subscribedViewModel.Remote.StatusChanged -= RemoteStatusChanged;
             _mcpPollTimer.Stop();
             _languageServerPollTimer.Stop();
             _computerPollTimer.Stop();
@@ -1202,6 +1204,7 @@ public sealed partial class SettingsWindow : Window
         {
             _subscribedViewModel.Models.CollectionChanged -= ModelsCollectionChanged;
             _subscribedViewModel.AppSettings.LanguageChanged -= ViewModelLanguageChanged;
+            _subscribedViewModel.Remote.StatusChanged -= RemoteStatusChanged;
         }
 
         _subscribedViewModel = DataContext as DesktopViewModel;
@@ -1209,7 +1212,19 @@ public sealed partial class SettingsWindow : Window
         {
             _subscribedViewModel.Models.CollectionChanged += ModelsCollectionChanged;
             _subscribedViewModel.AppSettings.LanguageChanged += ViewModelLanguageChanged;
+            _subscribedViewModel.Remote.StatusChanged += RemoteStatusChanged;
         }
+    }
+
+    private void RemoteStatusChanged(object? sender, SunCode.Sdk.Models.RemoteServerStatus status)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => RemoteStatusChanged(sender, status));
+            return;
+        }
+
+        RefreshRemotePresentation(status);
     }
 
     private void ViewModelLanguageChanged(string locale)

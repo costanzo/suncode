@@ -15,6 +15,9 @@ public sealed class RemoteServerViewModel : ObservableObject, IDisposable
 
     internal RemoteServerViewModel(IViewModelHost host) => _host = host;
 
+    /// <summary>Raised whenever the Rust remote controller publishes a new status.</summary>
+    internal event EventHandler<RemoteServerStatus>? StatusChanged;
+
     public sealed record LoadResult(RemoteServerConfiguration Configuration, RemoteServerStatus Status);
 
     public bool Configured { get => _configured; private set => SetProperty(ref _configured, value); }
@@ -89,6 +92,7 @@ public sealed class RemoteServerViewModel : ObservableObject, IDisposable
         Connected = status.Connected;
         Connecting = status.Connecting;
         OnPropertyChanged(nameof(StatusText));
+        StatusChanged?.Invoke(this, status);
     }
 
     private async void StatusTick(object? sender, EventArgs e)

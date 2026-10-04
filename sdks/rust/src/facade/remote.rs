@@ -59,6 +59,7 @@ fn default_e2e_enabled() -> bool {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct RemoteServerStatus {
     pub configured: bool,
     pub connected: bool,
@@ -1246,5 +1247,25 @@ mod tests {
             resolve_endpoint("https://example.test", "/v1/desktop/events"),
             "https://example.test/v1/desktop/events"
         );
+    }
+
+    #[test]
+    fn remote_status_uses_camel_case_for_managed_clients() {
+        let status = RemoteServerStatus {
+            configured: true,
+            connected: true,
+            connecting: false,
+            host_id: Some("host-1".into()),
+            mobile_pairing_payload: Some("https://relay.example/pair".into()),
+            access_token_expires_at: Some("2026-10-04T00:00:00Z".into()),
+            mobile_pairing_code: Some("once".into()),
+            mobile_pairing_url: Some("https://relay.example/pair".into()),
+            error: None,
+        };
+        let value = serde_json::to_value(status).unwrap();
+        assert_eq!(value["hostId"], "host-1");
+        assert_eq!(value["mobilePairingUrl"], "https://relay.example/pair");
+        assert!(value.get("host_id").is_none());
+        assert!(value.get("mobile_pairing_url").is_none());
     }
 }
