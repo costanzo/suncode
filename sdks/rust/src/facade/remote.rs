@@ -1084,15 +1084,18 @@ fn parse_sse_request(frame: &[u8], aes_key: &str) -> Option<RemoteRequest> {
     if event.starts_with("mobile.") {
         let request_id = id;
         let operation = mobile_event_operation(&event)?;
-        let mut arguments =
-            if let Some(enc_payload) = value.get("encPayload").and_then(Value::as_str) {
-                decrypt_remote_payload(enc_payload, aes_key).ok()?
-            } else {
-                value
-                    .get("requestBody")
-                    .cloned()
-                    .unwrap_or_else(|| json!({}))
-            };
+        let encrypted_payload = value
+            .get("encPayload")
+            .and_then(Value::as_str)
+            .filter(|payload| !payload.trim().is_empty());
+        let mut arguments = if let Some(enc_payload) = encrypted_payload {
+            decrypt_remote_payload(enc_payload, aes_key).ok()?
+        } else {
+            value
+                .get("requestBody")
+                .cloned()
+                .unwrap_or_else(|| json!({}))
+        };
         if !arguments.is_object() {
             arguments = json!({});
         }
@@ -1485,6 +1488,26 @@ mod tests {
         assert_eq!(request.arguments["approvalId"], "approval-1");
         assert_eq!(request.arguments["revision"], 7);
         assert_eq!(request.arguments["action"], "allow_once");
+    }
+
+    #[test]
+    fn decrypts_top_level_encrypted_mobile_payload_on_desktop() {
+        let key = generate_aes_key();
+        let encrypted = encrypt_remote_payload(&json!({"text": "hello"}), &key).unwrap();
+        let data = json!({
+            "pathParam": {"sessionId": "session-1"},
+            "queryParam": {"expectedRevision": 7},
+            "encPayload": encrypted,
+        });
+        let frame = format!(
+            "event: mobile.sessions.messages.send\nid: req-1\ndata: {}\n\n",
+            data
+        );
+        let request = parse_sse_request(frame.as_bytes(), &key).unwrap();
+        assert_eq!(request.operation, "session.message");
+        assert_eq!(request.arguments["text"], "hello");
+        assert_eq!(request.arguments["sessionId"], "session-1");
+        assert_eq!(request.arguments["expectedRevision"], 7);
     }
 
     #[test]

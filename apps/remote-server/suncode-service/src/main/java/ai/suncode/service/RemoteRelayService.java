@@ -97,6 +97,17 @@ public class RemoteRelayService {
         return request(hostId, sessionId, command, payload, null, requestIdHeader, queryParam, null);
     }
 
+    public DesktopResponse request(
+            String hostId,
+            String sessionId,
+            String command,
+            DesktopCommandPayload payload,
+            String routeId,
+            String requestIdHeader,
+            Map<String, Object> queryParam) {
+        return request(hostId, sessionId, command, payload, routeId, requestIdHeader, queryParam, null);
+    }
+
     /**
      * Forward a request whose body is end-to-end encrypted. Routing values are
      * still sent in the clear path/query sections of the Desktop SSE envelope;
@@ -109,7 +120,18 @@ public class RemoteRelayService {
             String requestIdHeader,
             Map<String, Object> queryParam,
             String encPayload) {
-        return request(hostId, sessionId, command, null, null, requestIdHeader, queryParam, encPayload);
+        return requestEncrypted(hostId, sessionId, command, null, requestIdHeader, queryParam, encPayload);
+    }
+
+    public DesktopResponse requestEncrypted(
+            String hostId,
+            String sessionId,
+            String command,
+            String routeId,
+            String requestIdHeader,
+            Map<String, Object> queryParam,
+            String encPayload) {
+        return request(hostId, sessionId, command, null, routeId, requestIdHeader, queryParam, encPayload);
     }
 
     private DesktopResponse request(

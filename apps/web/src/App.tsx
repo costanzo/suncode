@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { useWebStore } from "./store";
 import type { Project, SessionSummary } from "./types";
@@ -177,7 +177,8 @@ function Composer() {
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.shiftKey) {
+          const composing = event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229;
+          if (event.key === "Enter" && !event.shiftKey && !composing) {
             event.preventDefault();
             void submit();
           }
@@ -210,7 +211,13 @@ function Conversation() {
     error,
   } = useWebStore();
   const cleanup = useWebStore((state) => state.connectStream);
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const followLatestRef = useRef(true);
   useEffect(() => cleanup(), [cleanup, snapshot?.id]);
+  useLayoutEffect(() => {
+    const messages = messagesRef.current;
+    if (messages && followLatestRef.current) messages.scrollTop = messages.scrollHeight;
+  }, [snapshot?.id, snapshot?.messages.length, snapshot?.messages.at(-1)?.text, snapshot?.state]);
   if (!snapshot)
     return (
       <main className="conversation empty-conversation">
@@ -268,7 +275,15 @@ function Conversation() {
         <code>event {snapshot.eventSequence}</code>
       </div>
       {error && <div className="workspace-error">{error}</div>}
-      <div className="messages">
+      <div
+        className="messages"
+        ref={messagesRef}
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          followLatestRef.current =
+            element.scrollHeight - element.scrollTop - element.clientHeight < 96;
+        }}
+      >
         {snapshot.messages.map((message) => (
           <article className={`message message-${message.role}`} key={message.id}>
             <span className="message-author">{message.role === "user" ? "You" : "SunCode"}</span>
@@ -308,6 +323,14 @@ function Conversation() {
           </div>
         )}
         {snapshot.pendingQuestion && <QuestionCard />}
+        {snapshot.state === "running" && (
+          <div className="thinking-indicator" role="status" aria-live="polite">
+            <span>SunCode is thinking</span>
+            <i />
+            <i />
+            <i />
+          </div>
+        )}
         {snapshot.state === "failed" && (
           <div className="approval-card">
             <strong>Turn failed</strong>
@@ -403,7 +426,7 @@ function ReviewPanel() {
 }
 
 function Settings({ onBack, onPair }: { onBack: () => void; onPair: () => void }) {
-  const { credential, host, unpair } = useWebStore();
+  const { credential, host, unpair, setEncryptionEnabled } = useWebStore();
   return (
     <main className="settings-page">
       <header>
@@ -420,9 +443,20 @@ function Settings({ onBack, onPair }: { onBack: () => void; onPair: () => void }
           <div>
             <span>{icon("lock")}</span>
             <strong>
-              End-to-end encryption<small>AES-256-GCM payloads and Session SSE events</small>
+              Encrypt outgoing requests
+              <small>Send request bodies as AES-256-GCM payloads when enabled</small>
             </strong>
-            <b>{credential?.e2eKey ? "Enabled" : "Unavailable"}</b>
+            <label className="settings-toggle">
+              <input
+                type="checkbox"
+                checked={Boolean(credential?.encryptionEnabled && credential.e2eKey)}
+                disabled={!credential?.e2eKey}
+                onChange={(event) => setEncryptionEnabled(event.target.checked)}
+              />
+              <span>
+                {credential?.e2eKey ? (credential.encryptionEnabled ? "On" : "Off") : "Unavailable"}
+              </span>
+            </label>
           </div>
           <div>
             <span>{icon("monitor")}</span>

@@ -5,6 +5,7 @@ import ai.suncode.common.utils.DesktopPayloadMapper;
 import ai.suncode.common.utils.MarshallingUtils;
 import ai.suncode.message.remote.*;
 import ai.suncode.common.http.ServiceContext;
+import com.fasterxml.jackson.databind.JsonNode;
 import ai.suncode.service.RemoteAuthService;
 import ai.suncode.service.RemoteRelayService;
 import lombok.RequiredArgsConstructor;
@@ -167,8 +168,14 @@ public class MobileRemoteController {
     private DesktopResponse requestDesktop(String hostId, String sessionId, String command, String routeId,
                                            String request, Map<String, Object> query) {
         String requestId = ServiceContext.current().requestId();
+        JsonNode raw = MarshallingUtils.fromJson(request, JsonNode.class);
+        JsonNode encryptedPayload = raw == null ? null : raw.get("encPayload");
+        if (encryptedPayload != null && encryptedPayload.isTextual() && !encryptedPayload.asText().isBlank()) {
+            return relayService.requestEncrypted(
+                    hostId, sessionId, command, routeId, requestId, query, encryptedPayload.asText());
+        }
         DesktopCommandPayload commandPayload = MarshallingUtils.fromJson(request, DesktopCommandPayload.class);
-        return relayService.request(hostId, sessionId, command, commandPayload, requestId, query);
+        return relayService.request(hostId, sessionId, command, commandPayload, routeId, requestId, query);
     }
 
     private <T> T responseEnvelope(DesktopResponse response, Class<T> type) {

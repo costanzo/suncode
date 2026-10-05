@@ -77,6 +77,7 @@ export interface CredentialState {
   accessTokenExpiresAt: string;
   e2eKey?: CryptoKey;
   e2eKeyRaw?: string;
+  encryptionEnabled: boolean;
 }
 
 export interface ApiError {

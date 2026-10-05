@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { RemoteApi, RemoteApiError } from "./api";
+import { normalizePendingQuestion, RemoteApi, RemoteApiError } from "./api";
 import { importPairingKey, parsePairingUrl } from "./crypto";
 import type {
   CredentialState,
@@ -57,6 +57,7 @@ function nextSessionState(
   payload: Record<string, unknown>,
   current: SessionState,
 ): SessionState {
+  if (type === "turn.queued" || type === "provider.exchange.started") return "running";
   if (type === "approval.requested") return "waiting_for_approval";
   if (type === "question.asked") return "waiting_for_answer";
   if (
@@ -123,13 +124,7 @@ function applyEvent(snapshot: SessionSnapshot, event: SseEnvelope): SessionSnaps
     };
   } else if (type === "approval.resolved") pendingApproval = null;
   if (type === "question.asked") {
-    const question = (payload.question ?? payload) as Record<string, unknown>;
-    pendingQuestion = {
-      id: String(question.id ?? payload.question_id ?? messageId),
-      revision: Number(question.revision ?? event.session_revision),
-      prompt: String(question.prompt ?? "SunCode needs an answer"),
-      options: Array.isArray(question.options) ? question.options.map(String) : [],
-    };
+    pendingQuestion = normalizePendingQuestion(payload.question ?? payload, event.session_revision);
   } else if (type === "question.replied" || type === "question.rejected") pendingQuestion = null;
   return {
     ...snapshot,
@@ -173,6 +168,7 @@ interface WebStore {
   retryTurn: () => Promise<void>;
   unpair: () => Promise<void>;
   connectStream: () => () => void;
+  setEncryptionEnabled: (enabled: boolean) => void;
 }
 
 export const useWebStore = create<WebStore>((set, get) => {
@@ -230,6 +226,7 @@ export const useWebStore = create<WebStore>((set, get) => {
         const credential: CredentialState = {
           ...saved,
           e2eKey: saved.e2eKeyRaw ? await importPairingKey(saved.e2eKeyRaw) : undefined,
+          encryptionEnabled: saved.encryptionEnabled ?? Boolean(saved.e2eKeyRaw),
         };
         const endpoint = sessionStorage.getItem(`${STORAGE_KEY}.endpoint`) ?? "";
         if (!endpoint) throw new Error("Saved pairing endpoint is missing.");
@@ -259,12 +256,25 @@ export const useWebStore = create<WebStore>((set, get) => {
       }
     },
     toggleReview: () => set((state) => ({ reviewOpen: !state.reviewOpen })),
+    setEncryptionEnabled: (enabled) => {
+      const credential = get().credential;
+      if (!credential) return;
+      updateCredential({
+        ...credential,
+        encryptionEnabled: enabled && Boolean(credential.e2eKey),
+      });
+    },
     pairFromUrl: async (value, deviceName = "SunCode Web") => {
       try {
         const pairing = parsePairingUrl(value);
         const result = await api.exchangePairing(pairing.endpoint, pairing, deviceName);
         const e2eKey = pairing.key ? await importPairingKey(pairing.key) : undefined;
-        const credential: CredentialState = { ...result, e2eKey, e2eKeyRaw: pairing.key };
+        const credential: CredentialState = {
+          ...result,
+          e2eKey,
+          e2eKeyRaw: pairing.key,
+          encryptionEnabled: pairing.e2e && Boolean(e2eKey),
+        };
         sessionStorage.setItem(`${STORAGE_KEY}.endpoint`, pairing.endpoint);
         updateCredential(credential);
         set({ pairing, pairingError: null, error: null });
@@ -306,10 +316,31 @@ export const useWebStore = create<WebStore>((set, get) => {
     sendMessage: async (text) => {
       const { endpoint, credential, selectedSessionId } = get();
       if (!credential || !endpoint || !selectedSessionId || !text.trim()) return;
+      const previousState = get().snapshot?.state ?? "idle";
+      set((state) => ({
+        snapshot:
+          state.snapshot?.id === selectedSessionId
+            ? { ...state.snapshot, state: "running" }
+            : state.snapshot,
+        sessions: state.sessions.map((session) =>
+          session.id === selectedSessionId ? { ...session, state: "running" } : session,
+        ),
+      }));
       try {
         await api.sendMessage(endpoint, credential.host.id, selectedSessionId, text.trim());
         set({ error: null });
       } catch (error) {
+        set((state) => ({
+          snapshot:
+            state.snapshot?.id === selectedSessionId && state.snapshot.state === "running"
+              ? { ...state.snapshot, state: previousState }
+              : state.snapshot,
+          sessions: state.sessions.map((session) =>
+            session.id === selectedSessionId && session.state === "running"
+              ? { ...session, state: previousState }
+              : session,
+          ),
+        }));
         setError(error);
         throw error;
       }

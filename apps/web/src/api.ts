@@ -5,6 +5,7 @@ import type {
   Host,
   PairingPayload,
   Project,
+  Question,
   SessionSnapshot,
   SessionSummary,
   SseEnvelope,
@@ -25,6 +26,30 @@ function messageText(value: unknown): string {
   if (Array.isArray(object.content)) return object.content.map(messageText).join("");
   if (object.content) return messageText(object.content);
   return "";
+}
+
+export function normalizePendingQuestion(value: unknown, revision = 0): Question | null {
+  if (!value || typeof value !== "object") return null;
+  const source = value as Record<string, unknown>;
+  const entries = Array.isArray(source.questions) ? source.questions : [source];
+  const first = (entries[0] ?? {}) as Record<string, unknown>;
+  const options = Array.isArray(first.options)
+    ? first.options.map((option) => {
+        if (option && typeof option === "object") {
+          const item = option as Record<string, unknown>;
+          return String(item.label ?? item.value ?? item.description ?? "");
+        }
+        return String(option);
+      })
+    : [];
+  return {
+    id: String(source.request_id ?? source.questionId ?? source.id ?? ""),
+    revision: Number(source.revision ?? revision),
+    prompt: String(
+      first.question ?? first.prompt ?? source.prompt ?? first.header ?? "SunCode needs an answer",
+    ),
+    options,
+  };
 }
 
 export function normalizeSessionSnapshot(
@@ -49,7 +74,7 @@ export function normalizeSessionSnapshot(
       })
     : [];
   const approval = raw.pendingApproval;
-  const question = raw.pendingQuestion;
+  const question = normalizePendingQuestion(raw.pendingQuestion);
   return {
     id: String(session.sessionId ?? ""),
     title: String(session.title ?? "New session"),
@@ -70,14 +95,7 @@ export function normalizeSessionSnapshot(
           detail: approval.detail == null ? null : String(approval.detail),
         }
       : null,
-    pendingQuestion: question
-      ? {
-          id: String(question.questionId ?? question.id ?? "question"),
-          revision: Number(question.revision ?? 0),
-          prompt: String(question.prompt ?? "SunCode needs an answer"),
-          options: Array.isArray(question.options) ? question.options.map(String) : [],
-        }
-      : null,
+    pendingQuestion: question,
   };
 }
 
@@ -173,7 +191,7 @@ export class RemoteApi {
       headers.set("X-Host-Id", credential.host.id);
     }
     let body = init.body;
-    if (body && encrypted && credential?.e2eKey) {
+    if (body && encrypted && credential?.e2eKey && credential.encryptionEnabled) {
       const plain = typeof body === "string" ? JSON.parse(body) : body;
       body = JSON.stringify({ encPayload: await encryptPayload(plain, credential.e2eKey) });
       headers.set("Content-Type", "application/json");
