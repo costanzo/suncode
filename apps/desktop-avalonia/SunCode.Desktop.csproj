@@ -68,7 +68,7 @@
   <Target Name="CopyWindowsCefRuntime" AfterTargets="Publish"
           Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' == 'win-x64'">
     <PropertyGroup>
-      <CefWindowsPackageRoot>$(NuGetPackageRoot)chromiumembeddedframework.runtime.win-x64/152.0.6</CefWindowsPackageRoot>
+      <CefWindowsPackageRoot>$(NuGetPackageRoot)/chromiumembeddedframework.runtime.win-x64/152.0.6</CefWindowsPackageRoot>
     </PropertyGroup>
     <ItemGroup>
       <CefWindowsNativeFiles Include="$(CefWindowsPackageRoot)/runtimes/win-x64/native/*.*" />
@@ -96,7 +96,7 @@
     <PropertyGroup>
       <CefPreviewMacArchitecture Condition="$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture) == 'Arm64'">arm64</CefPreviewMacArchitecture>
       <CefPreviewMacArchitecture Condition="$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture) == 'X64'">x64</CefPreviewMacArchitecture>
-      <CefPreviewPackageRoot>$(NuGetPackageRoot)cef.runtime.osx-$(CefPreviewMacArchitecture)/152.0.6/CEF</CefPreviewPackageRoot>
+      <CefPreviewPackageRoot>$(NuGetPackageRoot)/cef.runtime.osx-$(CefPreviewMacArchitecture)/152.0.6/CEF</CefPreviewPackageRoot>
       <CefPreviewFrameworkSource>$(CefPreviewPackageRoot)/osx-$(CefPreviewMacArchitecture)/Chromium Embedded Framework.framework</CefPreviewFrameworkSource>
     </PropertyGroup>
     <Error Condition="'$(CefPreviewMacArchitecture)' == '' Or !Exists('$(CefPreviewFrameworkSource)')"
@@ -119,7 +119,12 @@
 
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
+    <Compile Remove="Compatibility/**/*.cs" />
     <AvaloniaResource Include="Assets/**" />
+    <!-- The old variable Noto Sans SC face is intentionally removed by the
+         font preparation script; keep stale incremental item caches from
+         reintroducing it into Avalonia resource generation. -->
+    <AvaloniaResource Remove="Assets/fonts/NotoSansSC-wght.ttf" />
     <AvaloniaResource Include="Resources/**" />
     <Content Include="Assets/logo/suncode-logo-1024.png" CopyToOutputDirectory="PreserveNewest" Link="suncode-logo-1024.png" />
     <Content Include="packaging/linux/dev.suncode.desktop.desktop" CopyToOutputDirectory="PreserveNewest" />
@@ -152,7 +157,7 @@
   <Target Name="DeployCefPreviewMacOS" AfterTargets="CreateMacOSAppBundle"
           Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(RuntimeIdentifier)' == 'osx-arm64'">
     <PropertyGroup>
-      <CefPreviewPackageRoot>$(NuGetPackageRoot)cef.runtime.osx-arm64/152.0.6/CEF</CefPreviewPackageRoot>
+      <CefPreviewPackageRoot>$(NuGetPackageRoot)/cef.runtime.osx-arm64/152.0.6/CEF</CefPreviewPackageRoot>
       <CefPreviewFrameworkSource>$(CefPreviewPackageRoot)/osx-arm64</CefPreviewFrameworkSource>
       <CefPreviewFrameworkDestination>$(SunCodeAppBundle)/Contents/Frameworks</CefPreviewFrameworkDestination>
     </PropertyGroup>
@@ -161,11 +166,17 @@
     <Exec Command="bash &quot;$(CefPreviewPackageRoot)/deploy-cef-framework.sh&quot; &quot;$(CefPreviewFrameworkSource)&quot; &quot;$(CefPreviewFrameworkDestination)&quot; &quot;SunCode&quot; &quot;dev.suncode.desktop&quot; &quot;-&quot; &quot;$(CefPreviewPackageRoot)/cef.entitlements&quot; &quot;$(MSBuildProjectDirectory)/Assets/suncode-desktop.icns&quot;" />
   </Target>
 
-  <Target Name="RemoveReleasePublishSymbols" AfterTargets="Publish"
+  <Target Name="RemoveReleasePublishSymbols" BeforeTargets="CreateMacOSAppBundle" AfterTargets="Publish"
           Condition="'$(Configuration)' == 'Release'">
     <ItemGroup>
       <ReleasePublishSymbols Include="$(PublishDir)**/*.pdb" />
     </ItemGroup>
     <Delete Files="@(ReleasePublishSymbols)" />
+  </Target>
+
+  <Target Name="FinalizeMacOSAppBundleSignature"
+          AfterTargets="CreateMacOSAppBundle;DeployCefPreviewMacOS;RemoveReleasePublishSymbols"
+          Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(RuntimeIdentifier)' == 'osx-arm64'">
+    <Exec Command="/usr/bin/codesign --force --deep --sign - --identifier dev.suncode.desktop &quot;$(SunCodeAppBundle)&quot;" />
   </Target>
 </Project>
