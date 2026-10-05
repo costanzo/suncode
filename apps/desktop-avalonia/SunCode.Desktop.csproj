@@ -120,6 +120,7 @@
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
     <Compile Remove="Compatibility/**/*.cs" />
+    <Compile Remove="artifacts/**/*.cs" />
     <AvaloniaResource Include="Assets/**" />
     <!-- The old variable Noto Sans SC face is intentionally removed by the
          font preparation script; keep stale incremental item caches from
