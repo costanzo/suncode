@@ -6,7 +6,7 @@ These are two separate capabilities. Each has its own profile, and they do not s
 
 ## Browser Use (CEF CDP)
 
-The Rust `suncode-browser` client and core `BrowserManager` connect over WebSocket to the CEF remote debugging endpoint configured by the Avalonia client. Rust sends bounded CDP commands and owns policy, lifecycle, and artifacts; CEF owns Chromium and UI.
+The Rust `suncode-browser` client uses `chromiumoxide` to connect over WebSocket to the CEF remote debugging endpoint configured by the Avalonia client. The agent owns policy, lifecycle, request timeouts, and artifacts; CEF owns Chromium and UI.
 
 - `browser_use_enabled` is global and defaults to `false`. Enabling does not launch anything. The first browser call starts one project-scoped worker with a headed persistent Chromium context. Disabling retires the tools, cancels calls, and stops processes while keeping profiles. The host capability ceiling (for example, the CLI) can suppress Browser Use entirely.
 - Each project has one persistent profile under the agent data directory. Profiles never live inside the project and never reuse the user's own browser profile. The worker receives a filtered environment, Rust-chosen profile and download paths, and the global proxy mode, and it never receives provider credentials.

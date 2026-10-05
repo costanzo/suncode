@@ -35,7 +35,7 @@ Rust SunCode agent core
 
 CEF Chromium instance (owned by the Avalonia client)
     |- remote debugging endpoint on localhost
-    |- Rust CDP WebSocket client
+    |- Rust `chromiumoxide` CDP client
     `- project-isolated persistent profile
 
 Future TypeScript N-API and Python PyO3 bindings embed the same SDK.
@@ -47,7 +47,7 @@ Approved Rust CLI (administration and one-shot new/resumed turns implemented)
     `- same Rust SunCode agent core and ownership boundaries
 ```
 
-There is no agent-to-core process boundary and no client-facing server. Operations are Rust modules called in-process after policy authorization. The old TypeScript runtime, core client, runtime server, JSON-RPC stdio core, and loopback HTTP/SSE adapter are not production architecture. Provider adapters still make outbound HTTPS requests to configured model providers. Computer Use remains in-process and Rust-owned through a pinned Enigo backend. Browser Use stays inside the CEF process owned by the Avalonia client. Rust connects to the localhost CDP WebSocket endpoint; it does not launch a browser process or a JavaScript worker.
+There is no agent-to-core process boundary and no client-facing server. Operations are Rust modules called in-process after policy authorization. The old TypeScript runtime, core client, runtime server, JSON-RPC stdio core, and loopback HTTP/SSE adapter are not production architecture. Provider adapters still make outbound HTTPS requests to configured model providers. Computer Use remains in-process and Rust-owned through a pinned Enigo backend. Browser Use stays inside the CEF process owned by the Avalonia client. Rust uses `chromiumoxide` to connect to the localhost CDP WebSocket endpoint; it does not launch a browser process or a JavaScript worker.
 
 ## 3. Ownership Boundaries
 
@@ -92,7 +92,7 @@ This internal boundary is for auditability and testing. It is not a child-proces
 
 ### 3.5 Browser Use worker
 
-The Browser Use boundary is a CEF Chromium instance initialized by the Avalonia client with a fixed localhost remote debugging port. Rust owns CDP command construction, target discovery, bounded responses, policy, approvals, and audited tool calls. The client owns CEF startup, windows, resources, and profiles. Page content remains untrusted and cannot authorize operations.
+The Browser Use boundary is a CEF Chromium instance initialized by the Avalonia client with a fixed localhost remote debugging port. Rust uses `chromiumoxide` for CDP transport and owns target discovery, request timeouts, policy, approvals, and audited tool calls. The client owns CEF startup, windows, resources, and profiles. Page content remains untrusted and cannot authorize operations.
 
 Rust owns the worker and Chromium process tree, validates the runtime handshake against the packaged manifest, serializes project operations, and fails closed on a version, target, integrity, protocol, path, or generation mismatch. This containment is an auditable ownership boundary, not an OS sandbox.
 

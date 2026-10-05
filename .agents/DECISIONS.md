@@ -562,6 +562,6 @@ Newest first. Historical context is retained only when it still explains a curre
 - Date: 2026-10-05
 - Status: Accepted
 - Supersedes: ADR-20260919-bundled-playwright-browser-runtime
-- Decision: Remove the bundled Node.js, Playwright, worker, and Chromium packaging path. Avalonia-owned CefGlue initializes CEF with a localhost remote debugging port (9222); the Rust `suncode-browser` crate discovers a page target and drives it through a bounded WebSocket CDP client. Rust retains Browser Use policy, approvals, lifecycle, artifacts, cancellation, and audit ownership.
-- Consequences: CEF resources and profile/window lifecycle remain desktop-owned. CDP responses are bounded and command IDs are correlated. The initial semantic action subset is intentionally smaller than Playwright and must grow through explicit CDP contracts.
+- Decision: Remove the bundled Node.js, Playwright, worker, and Chromium packaging path. Avalonia-owned CefGlue initializes CEF with a localhost remote debugging port (9222); the Rust `suncode-browser` crate uses `chromiumoxide` to attach to a page target through CDP. Rust retains Browser Use policy, approvals, lifecycle, artifacts, cancellation, and audit ownership.
+- Consequences: CEF resources and profile/window lifecycle remain desktop-owned. `chromiumoxide` owns CDP transport, target attachment, event handling, and command correlation; the agent applies request bounds and stable errors. The initial semantic action subset is intentionally smaller than Playwright and must grow through explicit CDP contracts.
 - Details: `contracts/browser-cdp.md`, `agent/crates/browser/`, `apps/desktop-avalonia/Infrastructure/CefPreviewRuntime.cs`
