@@ -7,7 +7,7 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use futures_util::StreamExt;
 use reqwest::{Client, Response};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, thread::JoinHandle, time::Duration};
+use std::{collections::HashSet, error::Error, thread::JoinHandle, time::Duration};
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
@@ -305,12 +305,7 @@ impl RemoteController {
             mobile_pairing_url: None,
             error: None,
         });
-        let client = Client::builder()
-            .timeout(Duration::from_secs(15))
-            .build()
-            .map_err(|error| {
-                BusinessError::unavailable(format!("Remote HTTP client could not start: {error}"))
-            })?;
+        let client = remote_http_client(&sdk.state, Duration::from_secs(15))?;
         let endpoint = resolve_endpoint(url.as_str(), "/v1/desktop/pairings");
         let pair_body = PairRequest {
             pairing_code: config.pairing_code.clone(),
@@ -679,7 +674,77 @@ async fn decode_pair_response(response: Response) -> SdkResult<PairResponse> {
 }
 
 fn remote_http_error(error: reqwest::Error) -> BusinessError {
-    BusinessError::unavailable(format!("Remote Server request failed: {error}"))
+    let mut causes = Vec::new();
+    let mut source = error.source();
+    while let Some(current) = source {
+        causes.push(current.to_string());
+        source = current.source();
+    }
+    let detail = causes.last().map(|cause| format!("; cause: {cause}"));
+    BusinessError::unavailable(format!(
+        "Remote Server request failed: {error}{}",
+        detail.unwrap_or_default()
+    ))
+}
+
+fn remote_http_client(state: &AgentState, timeout: Duration) -> SdkResult<Client> {
+    let verify_certificates = state
+        .verify_https_certificates
+        .load(std::sync::atomic::Ordering::SeqCst);
+    let use_system_certificates = state
+        .use_system_certificates
+        .load(std::sync::atomic::Ordering::SeqCst);
+    let mut builder = Client::builder()
+        .timeout(timeout)
+        .danger_accept_invalid_certs(!verify_certificates)
+        .danger_accept_invalid_hostnames(!verify_certificates);
+    if verify_certificates {
+        if !use_system_certificates {
+            builder = builder.tls_built_in_root_certs(false);
+        }
+        if let Some(path) = state
+            .certificate_path
+            .read()
+            .ok()
+            .and_then(|path| path.clone())
+        {
+            let bytes = std::fs::read(&path).map_err(|error| {
+                BusinessError::unavailable(format!(
+                    "Remote Server certificate file could not be read: {error}"
+                ))
+            })?;
+            let certificate = reqwest::Certificate::from_pem(&bytes)
+                .or_else(|_| reqwest::Certificate::from_der(&bytes))
+                .map_err(|error| {
+                    BusinessError::unavailable(format!(
+                        "Remote Server certificate file is invalid: {error}"
+                    ))
+                })?;
+            builder = builder.add_root_certificate(certificate);
+        }
+    }
+    let proxy = state
+        .proxy_configuration
+        .read()
+        .map(|configuration| configuration.clone())
+        .unwrap_or_default();
+    builder = match proxy.mode {
+        suncode_common::HttpProxyMode::NoProxy => builder.no_proxy(),
+        suncode_common::HttpProxyMode::System => builder,
+        suncode_common::HttpProxyMode::Custom => {
+            let mut configured = reqwest::Proxy::all(&proxy.url)
+                .map_err(|_| BusinessError::unavailable("Remote Server proxy URL is invalid"))?;
+            if !proxy.username.is_empty() {
+                configured = configured.basic_auth(&proxy.username, &proxy.password);
+            }
+            configured =
+                configured.no_proxy(reqwest::NoProxy::from_string(&proxy.no_proxy_value()));
+            builder.no_proxy().proxy(configured)
+        }
+    };
+    builder.build().map_err(|error| {
+        BusinessError::unavailable(format!("Remote HTTP client could not start: {error}"))
+    })
 }
 
 async fn remote_worker(
@@ -688,10 +753,10 @@ async fn remote_worker(
     stop: CancellationToken,
     status: Arc<Mutex<RemoteServerStatus>>,
 ) {
-    let client = match Client::builder().timeout(Duration::from_secs(45)).build() {
+    let client = match remote_http_client(&sdk.state, Duration::from_secs(45)) {
         Ok(client) => client,
         Err(error) => {
-            set_worker_status(&status, false, Some(error.to_string()));
+            set_worker_status(&status, false, Some(error.message));
             return;
         }
     };
