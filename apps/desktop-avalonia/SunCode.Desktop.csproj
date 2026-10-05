@@ -15,15 +15,6 @@
     <AvaloniaVersion>12.1.1</AvaloniaVersion>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
-    <BrowserRuntimeTarget Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">darwin-arm64</BrowserRuntimeTarget>
-    <BrowserRuntimeTarget Condition="'$(RuntimeIdentifier)' == 'win-x64'">win32-x64</BrowserRuntimeTarget>
-    <BrowserRuntimeTarget Condition="'$(RuntimeIdentifier)' == 'linux-x64'">linux-x64</BrowserRuntimeTarget>
-    <BrowserRuntimeSource Condition="'$(BrowserRuntimeTarget)' != ''">$(MSBuildProjectDirectory)/../../artifacts/runtimes/browser-runtime/$(BrowserRuntimeTarget)</BrowserRuntimeSource>
-    <BrowserRuntimeDevelopmentTarget Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)' == 'Arm64'">darwin-arm64</BrowserRuntimeDevelopmentTarget>
-    <BrowserRuntimeDevelopmentTarget Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)' == 'X64'">win32-x64</BrowserRuntimeDevelopmentTarget>
-    <BrowserRuntimeDevelopmentTarget Condition="$([MSBuild]::IsOSPlatform('Linux')) And '$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)' == 'X64'">linux-x64</BrowserRuntimeDevelopmentTarget>
-    <BrowserRuntimeDevelopmentSource Condition="'$(BrowserRuntimeDevelopmentTarget)' != ''">$(MSBuildProjectDirectory)/../../artifacts/runtimes/browser-runtime/$(BrowserRuntimeDevelopmentTarget)</BrowserRuntimeDevelopmentSource>
-    <BrowserRuntimeDevelopmentDestination>$(MSBuildProjectDirectory)/bin/$(Configuration)/$(TargetFramework)/runtimes/browser-runtime</BrowserRuntimeDevelopmentDestination>
     <PowerShellRuntimeSource Condition="'$(RuntimeIdentifier)' == 'win-x64'">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeSource>
     <PowerShellRuntimeDevelopmentSource Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeDevelopmentSource>
     <CefGlueForkRoot Condition="'$(CefGlueForkRoot)' == ''">$(MSBuildProjectDirectory)/../../../../github/costanzo/CefGlue</CefGlueForkRoot>
@@ -58,13 +49,6 @@
                       Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.1" />
   </ItemGroup>
-
-  <Target Name="EnsureBrowserRuntimePresent" BeforeTargets="Publish"
-          Condition="'$(BrowserRuntimeTarget)' != ''">
-    <Error Condition="!Exists('$(BrowserRuntimeSource)/runtime-manifest.json')"
-           Text="The packaged Browser Use runtime for $(BrowserRuntimeTarget) is missing. Build and verify $(BrowserRuntimeSource) before publishing." />
-  </Target>
-
   <Target Name="EnsurePowerShellRuntimePresent" BeforeTargets="Publish"
           Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' == 'win-x64'">
     <Error Condition="!Exists('$(PowerShellRuntimeSource)/pwsh.exe')"
@@ -75,33 +59,6 @@
           Condition="$([MSBuild]::IsOSPlatform('Windows'))">
     <Exec Command="npm --prefix &quot;$(MSBuildProjectDirectory)/../../runtimes/shell-runtime&quot; run package -- &quot;$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64&quot;" />
   </Target>
-  
-  <Target Name="PrepareBrowserRuntime">
-    <Error Condition="'$(BrowserRuntimeDevelopmentTarget)' == ''"
-           Text="Browser User development runtime preparation is unsupported on this platform. Only Windows, Linux, and macOS are supported." />
-    <Exec Command="npm --prefix &quot;$(MSBuildProjectDirectory)/../../runtimes/browser-runtime&quot; run package -- --target $(BrowserRuntimeDevelopmentTarget)"/>
-    <Exec Command="npm --prefix &quot;$(MSBuildProjectDirectory)/../../runtimes/browser-runtime&quot; run verify -- &quot;$(BrowserRuntimeDevelopmentSource)&quot;"/>
-    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(BrowserRuntimeDevelopmentDestination)'))" />
-    <Exec Condition="!$([MSBuild]::IsOSPlatform('Windows'))"
-            Command="rm -rf &quot;$(BrowserRuntimeDevelopmentDestination)&quot; &amp;&amp; ln -s &quot;$(BrowserRuntimeDevelopmentSource)&quot; &quot;$(BrowserRuntimeDevelopmentDestination)&quot;" />
-    <Exec Condition="$([MSBuild]::IsOSPlatform('Windows'))"
-            Command="cmd /c &quot;IF EXIST &quot;&quot;$(BrowserRuntimeDevelopmentDestination)&quot;&quot; rmdir /S /Q &quot;&quot;$(BrowserRuntimeDevelopmentDestination)&quot;&quot; &amp;&amp; mklink /J &quot;&quot;$(BrowserRuntimeDevelopmentDestination)&quot;&quot; &quot;&quot;$(BrowserRuntimeDevelopmentSource)&quot;&quot;&quot;" />
-  </Target>
-  
-  <Target Name="EnsureDevelopmentBrowserRuntimePresent" BeforeTargets="Build"
-          Condition="'$(Configuration)' == 'Debug' And '$(DesignTimeBuild)' != 'true' And '$(SkipBrowserRuntimeCheck)' != 'true'">
-    <Error Condition="'$(BrowserRuntimeDevelopmentTarget)' == ''"
-                 Text="Browser User development runtime is unsupported on this platform. Set SkipBrowserRuntimeCheck=true to build without it." />
-    <Error Condition="!Exists('$(BrowserRuntimeDevelopmentSource)/runtime-manifest.json')"
-           Text="The development Browser Use runtime for $(BrowserRuntimeDevelopmentTarget) is missing. Run: dotnet build apps/desktop/SunCode.Desktop.csproj -t:PrepareBrowserRuntime. To build without browser use, set SkipBrowserRuntimeCheck=true." />
-  </Target>
-
-  <Target Name="CopyWindowsBrowserRuntime" AfterTargets="Publish"
-          Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(BrowserRuntimeTarget)' == 'win32-x64' And Exists('$(BrowserRuntimeSource)')">
-    <RemoveDir Directories="$(PublishDir)runtimes/browser-runtime" />
-    <Exec Command="cmd /c &quot;robocopy &quot;&quot;$(BrowserRuntimeSource)&quot;&quot; &quot;&quot;$(PublishDir)runtimes/browser-runtime&quot;&quot; /E /NFL /NDL /NJH /NJS /NP &amp; IF ERRORLEVEL 8 exit /B 8 &amp; exit /B 0&quot;" />
-  </Target>
-
   <Target Name="CopyWindowsPowerShellRuntime" AfterTargets="Publish"
           Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' == 'win-x64' And Exists('$(PowerShellRuntimeSource)')">
     <RemoveDir Directories="$(PublishDir)runtimes/powershell" />
@@ -122,13 +79,6 @@
     <Copy SourceFiles="@(CefWindowsAdditionalFiles)"
           DestinationFolder="$(PublishDir)%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>
-
-  <Target Name="CopyLinuxBrowserRuntime" AfterTargets="Publish"
-          Condition="$([MSBuild]::IsOSPlatform('Linux')) And '$(BrowserRuntimeTarget)' == 'linux-x64' And Exists('$(BrowserRuntimeSource)')">
-    <RemoveDir Directories="$(PublishDir)runtimes/browser-runtime" />
-    <Exec Command="/bin/mkdir -p &quot;$(PublishDir)runtimes&quot; &amp;&amp; /bin/cp -a &quot;$(BrowserRuntimeSource)&quot; &quot;$(PublishDir)runtimes/browser-runtime&quot;" />
-  </Target>
-
   <Target Name="BuildMacOSNotificationBridge"
           BeforeTargets="Build"
           Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(DesignTimeBuild)' != 'true'"
@@ -197,10 +147,6 @@
     <Copy SourceFiles="Assets/suncode-desktop.icns" DestinationFolder="$(SunCodeAppBundle)/Contents/Resources" />
     <Exec Command="/usr/bin/xcrun swiftc -parse-as-library -emit-library -o &quot;$(SunCodeAppBundle)/Contents/MacOS/libsuncode_notifications.dylib&quot; &quot;Native/macOS/SunCodeNotifications.swift&quot;" />
     <Exec Command="/usr/bin/codesign --force --deep --sign - --identifier dev.suncode.desktop &quot;$(SunCodeAppBundle)&quot;" />
-    <RemoveDir Directories="$(SunCodeAppBundle)/Contents/Resources/runtimes/browser-runtime"
-               Condition="'$(BrowserRuntimeTarget)' == 'darwin-arm64' And Exists('$(BrowserRuntimeSource)')" />
-    <Exec Command="/usr/bin/ditto &quot;$(BrowserRuntimeSource)&quot; &quot;$(SunCodeAppBundle)/Contents/Resources/runtimes/browser-runtime&quot;"
-          Condition="'$(BrowserRuntimeTarget)' == 'darwin-arm64' And Exists('$(BrowserRuntimeSource)')" />
   </Target>
 
   <Target Name="DeployCefPreviewMacOS" AfterTargets="CreateMacOSAppBundle"

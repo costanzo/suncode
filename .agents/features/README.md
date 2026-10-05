@@ -23,7 +23,7 @@ Agent and SDK:
 - [`built-in-subagents/`](built-in-subagents/README.md): fixed specialist catalog, restricted delegation, linked child sessions, and desktop inspection.
 - [`mcp-servers/`](mcp-servers/README.md): local and remote MCP servers with background project loading.
 - [`language-servers/`](language-servers/README.md): local stdio language server definitions and runtime.
-- [`browser-use/`](browser-use/README.md): bundled Playwright Browser Use worker and the embedded CEF preview (partial).
+- [`browser-use/`](browser-use/README.md): Rust CDP Browser Use client and embedded CEF preview.
 - [`computer-use/`](computer-use/README.md): first-party Computer Use (partial).
 - [`network/`](network/README.md): HTTPS certificate verification, proxy settings, and the development proxy tool.
 - [`diagnostic-logging/`](diagnostic-logging/README.md): persisted, rotating, redacted diagnostics.

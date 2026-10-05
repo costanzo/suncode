@@ -198,9 +198,9 @@
   <x:String x:Key="LocClearTemporaryScreenshots">清除临时屏幕截图</x:String>
   <x:String x:Key="LocComputerUseWarningTitle">计算机操作控制真实桌面，而不是沙箱</x:String>
   <x:String x:Key="LocComputerUseWarning">屏幕内容不受信任，不能授予权限。安全桌面和锁定会话不可用，外部应用中的操作无法由 SunCode 撤销。</x:String>
-  <x:String x:Key="LocBrowserUseHint">运行内置 Playwright Chromium 进行动态网页检查和交互。网站更改和浏览器数据不受文件系统撤销覆盖。</x:String>
+  <x:String x:Key="LocBrowserUseHint">通过 CDP 连接内置 CEF Chromium 进行动态网页检查和交互。网站更改和浏览器数据不受文件系统撤销覆盖。</x:String>
   <x:String x:Key="LocEnableBrowserUse">启用浏览器操作</x:String>
-  <x:String x:Key="LocEnableBrowserUseHint">启用浏览器工具。项目需要时才会按需启动 Node.js 和 Chromium。</x:String>
+  <x:String x:Key="LocEnableBrowserUseHint">通过 CEF CDP 端点启用浏览器工具。</x:String>
   <x:String x:Key="LocDisabled">已禁用</x:String>
   <x:String x:Key="LocBundledInstallation">内置安装</x:String>
   <x:String x:Key="LocNotStarted">尚未启动</x:String>
@@ -209,11 +209,8 @@
   <x:String x:Key="LocBundledRuntime">内置运行时</x:String>
   <x:String x:Key="LocTarget">目标</x:String>
   <x:String x:Key="LocBundledForInstallation">随此 SunCode 安装包提供</x:String>
-  <x:String x:Key="LocNodeJs">Node.js</x:String>
-  <x:String x:Key="LocPlaywright">Playwright</x:String>
   <x:String x:Key="LocChromium">Chromium</x:String>
   <x:String x:Key="LocWorkerProtocol">工作进程协议</x:String>
-  <x:String x:Key="LocCopyNodePath">复制 Node.js 路径</x:String>
   <x:String x:Key="LocCopyChromiumPath">复制 Chromium 路径</x:String>
   <x:String x:Key="LocIntegrityUnavailable">完整性信息不可用</x:String>
   <x:String x:Key="LocIntegrityHint">版本、打包路径和运行时目录树会根据应用保护的清单进行检查。</x:String>

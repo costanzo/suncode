@@ -14,7 +14,6 @@ public sealed partial class BrowserUseSettingsControl : UserControl
     public event EventHandler<RoutedEventArgs>? RestartRequested;
     public event EventHandler<RoutedEventArgs>? StopRequested;
     public event EventHandler<RoutedEventArgs>? ClearRequested;
-    public event EventHandler<RoutedEventArgs>? CopyNodePathRequested;
     public event EventHandler<RoutedEventArgs>? CopyChromiumPathRequested;
     public event EventHandler<RoutedEventArgs>? CopyProfilePathRequested;
 
@@ -27,9 +26,6 @@ public sealed partial class BrowserUseSettingsControl : UserControl
     public Ellipse RuntimeStatusDotControl => RuntimeStatusDot;
     public TextBlock RuntimeScopeTextControl => RuntimeScopeText;
     public TextBlock TargetTextControl => TargetText;
-    public TextBlock NodeVersionTextControl => NodeVersionText;
-    public TextBlock NodePathTextControl => NodePathText;
-    public TextBlock PlaywrightVersionTextControl => PlaywrightVersionText;
     public TextBlock ChromiumVersionTextControl => ChromiumVersionText;
     public TextBlock ChromiumPathTextControl => ChromiumPathText;
     public TextBlock WorkerProtocolTextControl => WorkerProtocolText;
@@ -43,7 +39,6 @@ public sealed partial class BrowserUseSettingsControl : UserControl
     public TextBlock ControlHintTextControl => ControlHintText;
     public TextBlock ErrorTextControl => ErrorText;
     public TextBlock StatusTextControl => StatusText;
-    public Button CopyNodePathButtonControl => CopyNodePathButton;
     public Button CopyChromiumPathButtonControl => CopyChromiumPathButton;
     public Button CopyProfilePathButtonControl => CopyProfilePathButton;
     public Button VerifyButtonControl => VerifyButton;
@@ -62,7 +57,6 @@ public sealed partial class BrowserUseSettingsControl : UserControl
     private void OnRestart(object? sender, RoutedEventArgs e) => RestartRequested?.Invoke(this, e);
     private void OnStop(object? sender, RoutedEventArgs e) => StopRequested?.Invoke(this, e);
     private void OnClear(object? sender, RoutedEventArgs e) => ClearRequested?.Invoke(this, e);
-    private void OnCopyNodePath(object? sender, RoutedEventArgs e) => CopyNodePathRequested?.Invoke(this, e);
     private void OnCopyChromiumPath(object? sender, RoutedEventArgs e) => CopyChromiumPathRequested?.Invoke(this, e);
     private void OnCopyProfilePath(object? sender, RoutedEventArgs e) => CopyProfilePathRequested?.Invoke(this, e);
 }

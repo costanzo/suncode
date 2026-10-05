@@ -1,8 +1,8 @@
 //! Cross-table event projection into normalized table-owned rows.
 
 use crate::operations::{
-    checkpoint::load_changed_paths, session_message::load_messages, session_tool_use::load_tool_uses,
-    session_turn_todo::load_todos,
+    checkpoint::load_changed_paths, session_message::load_messages,
+    session_tool_use::load_tool_uses, session_turn_todo::load_todos,
 };
 use crate::{
     domain::{SessionConversationTurn, SessionEvent},

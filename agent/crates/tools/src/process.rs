@@ -16,7 +16,10 @@ use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
-use std::sync::{atomic::{AtomicBool, AtomicU64, Ordering}, Mutex};
+use std::sync::{
+    atomic::{AtomicBool, AtomicU64, Ordering},
+    Mutex,
+};
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -142,10 +145,15 @@ impl BackgroundProcess {
 }
 
 impl Drop for BackgroundProcess {
-    fn drop(&mut self) { self.stop(); }
+    fn drop(&mut self) {
+        self.stop();
+    }
 }
 
-pub fn start_background(project_root: &Path, args: &ProcessArguments) -> Result<BackgroundProcess, BusinessError> {
+pub fn start_background(
+    project_root: &Path,
+    args: &ProcessArguments,
+) -> Result<BackgroundProcess, BusinessError> {
     let root = require_project(Some(project_root))?;
     let (program, command_args) = command_arguments(args)?;
     let cwd = process_cwd(root, args)?;
@@ -156,7 +164,9 @@ pub fn start_background(project_root: &Path, args: &ProcessArguments) -> Result<
         .stderr(Stdio::null())
         .spawn()
         .map_err(process_start_failure)?;
-    Ok(BackgroundProcess { child: Mutex::new(child) })
+    Ok(BackgroundProcess {
+        child: Mutex::new(child),
+    })
 }
 
 fn process_start_failure(error: std::io::Error) -> BusinessError {

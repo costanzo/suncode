@@ -8,6 +8,8 @@ namespace SunCode.Desktop.Infrastructure;
 
 internal static class CefPreviewRuntime
 {
+    // Rust connects to this CEF-owned CDP endpoint; CEF remains the sole browser process owner.
+    internal const int RemoteDebuggingPort = 9222;
     private static bool _initialized;
     private static readonly string CacheRoot = Path.Combine(AppDataPaths.DataDirectory, "cef-preview");
 
@@ -24,6 +26,7 @@ internal static class CefPreviewRuntime
             CefRuntimeLoader.Initialize(new CefSettings
             {
                 RootCachePath = CacheRoot,
+                RemoteDebuggingPort = RemoteDebuggingPort,
                 // CEF CHECK-fails inside cef_initialize when no subprocess path is set,
                 // and CefGlue only resolves the macOS bundle, framework, and resource
                 // paths when it is. The app re-enters itself through CefSubProcess.Run.

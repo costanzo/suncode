@@ -126,7 +126,6 @@ public sealed partial class SettingsWindow : Window
         BrowserPage.RestartRequested += RestartBrowserRuntime;
         BrowserPage.StopRequested += StopBrowserRuntime;
         BrowserPage.ClearRequested += ClearBrowserProfile;
-        BrowserPage.CopyNodePathRequested += CopyBrowserNodePath;
         BrowserPage.CopyChromiumPathRequested += CopyBrowserChromiumPath;
         BrowserPage.CopyProfilePathRequested += CopyBrowserProfilePath;
         McpPage.AddRequested += AddMcpServer;
@@ -700,9 +699,6 @@ public sealed partial class SettingsWindow : Window
         RefreshBrowserPresentation();
     }
 
-    private async void CopyBrowserNodePath(object? sender, RoutedEventArgs e) =>
-        await CopyBrowserValueAsync(ViewModel.Browser.Runtime?.NodePath);
-
     private async void CopyBrowserChromiumPath(object? sender, RoutedEventArgs e) =>
         await CopyBrowserValueAsync(ViewModel.Browser.Runtime?.ChromiumPath);
 
@@ -732,11 +728,6 @@ public sealed partial class SettingsWindow : Window
                 ? LF("LocProjectScope", "Project: {0}", project.DisplayName)
                 : L("LocNoProjectSelected", "No project selected");
             BrowserPage.TargetTextControl.Text = EmptyAsDash(runtime.Target);
-            BrowserPage.NodeVersionTextControl.Text = EmptyAsDash(runtime.NodeVersion);
-            BrowserPage.NodePathTextControl.Text = EmptyAsDash(runtime.NodePath);
-            ToolTip.SetTip(BrowserPage.NodePathTextControl, runtime.NodePath);
-            BrowserPage.CopyNodePathButtonControl.IsEnabled = !string.IsNullOrWhiteSpace(runtime.NodePath);
-            BrowserPage.PlaywrightVersionTextControl.Text = EmptyAsDash(runtime.PlaywrightVersion);
             BrowserPage.ChromiumVersionTextControl.Text = string.IsNullOrWhiteSpace(runtime.ChromiumRevision)
                 ? EmptyAsDash(runtime.ChromiumVersion)
                 : LF("LocRevision", "revision {0}", runtime.ChromiumRevision);

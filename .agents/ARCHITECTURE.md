@@ -29,14 +29,14 @@ Rust SunCode agent core
     |- SQLite, settings, events, and credentials
     |- filesystem, search, process, and artifacts
     |- project-scoped language-server protocol clients
-    |- project-scoped Browser Use lifecycle and audited browser tools
+    |- project-scoped Browser Use lifecycle and audited CEF CDP browser tools
     |- first-party Computer Use lifecycle and audited desktop input/capture
     `- checkpoints and operation journal
 
-Bundled Browser Use worker (lazy, one per active browser project)
-    |- fixed Node.js runtime
-    |- fixed Playwright package
-    `- fixed Chromium build and project-isolated persistent profile
+CEF Chromium instance (owned by the Avalonia client)
+    |- remote debugging endpoint on localhost
+    |- Rust CDP WebSocket client
+    `- project-isolated persistent profile
 
 Future TypeScript N-API and Python PyO3 bindings embed the same SDK.
 
@@ -47,7 +47,7 @@ Approved Rust CLI (administration and one-shot new/resumed turns implemented)
     `- same Rust SunCode agent core and ownership boundaries
 ```
 
-There is no agent-to-core process boundary and no client-facing server. Operations are Rust modules called in-process after policy authorization. The old TypeScript runtime, core client, runtime server, JSON-RPC stdio core, and loopback HTTP/SSE adapter are not production architecture. Provider adapters still make outbound HTTPS requests to configured model providers. Computer Use remains in-process and Rust-owned through a pinned Enigo backend. Browser Use is the narrow exception to the otherwise Rust-only process topology: Rust may launch the exact bundled Node.js worker over a private framed stdio protocol, but that worker is a browser driver rather than an agent, provider, database owner, or extension host.
+There is no agent-to-core process boundary and no client-facing server. Operations are Rust modules called in-process after policy authorization. The old TypeScript runtime, core client, runtime server, JSON-RPC stdio core, and loopback HTTP/SSE adapter are not production architecture. Provider adapters still make outbound HTTPS requests to configured model providers. Computer Use remains in-process and Rust-owned through a pinned Enigo backend. Browser Use stays inside the CEF process owned by the Avalonia client. Rust connects to the localhost CDP WebSocket endpoint; it does not launch a browser process or a JavaScript worker.
 
 ## 3. Ownership Boundaries
 
@@ -92,7 +92,7 @@ This internal boundary is for auditability and testing. It is not a child-proces
 
 ### 3.5 Browser Use worker
 
-The Browser Use worker is first-party, version-locked JavaScript running on the bundled Node.js executable. It owns Playwright objects, Chromium pages, accessibility snapshots, semantic locator resolution, and the private worker protocol. It receives dedicated profile, temporary, and staging directories plus a filtered environment. It cannot open SQLite, call model providers, choose policy, issue approvals, inspect project files, load plugins or browser extensions, or execute arbitrary model-authored JavaScript.
+The Browser Use boundary is a CEF Chromium instance initialized by the Avalonia client with a fixed localhost remote debugging port. Rust owns CDP command construction, target discovery, bounded responses, policy, approvals, and audited tool calls. The client owns CEF startup, windows, resources, and profiles. Page content remains untrusted and cannot authorize operations.
 
 Rust owns the worker and Chromium process tree, validates the runtime handshake against the packaged manifest, serializes project operations, and fails closed on a version, target, integrity, protocol, path, or generation mismatch. This containment is an auditable ownership boundary, not an OS sandbox.
 
@@ -175,7 +175,7 @@ agent/crates/tools/      `suncode-tool` package for built-in definitions and aud
 agent/crates/mcp/        bounded MCP client transports, discovery, invocation, and result normalization
 agent/crates/lsp/        bounded local-stdio LSP framing, lifecycle, document sync, and semantic requests
 agent/crates/browser/    bounded Browser Use worker protocol, runtime validation, and process lifecycle
-browser-runtime/        fixed JavaScript worker plus target-specific Node.js, Playwright, and Chromium packaging inputs
+agent/crates/browser/    bounded Browser Use CDP client and target lifecycle
 sdks/rust/                typed Rust SDK facade over the agent harness
     sdks/c/                   stable C ABI/native library
     sdks/csharp/              typed managed SDK and native integration for Avalonia
@@ -197,7 +197,7 @@ The old `typescript/` packages and retired `rust/` workspace were migration sour
 - The LLM crate does not depend on the database, agent core, SDK, desktop, or tools crates.
 - The Rust SDK composition supplies credentials to the LLM crate through its provider-neutral resolver interface; the agent core supplies tool schemas through provider-neutral request DTOs.
 - Tools do not depend on agent, provider, persistence projections, or client DTOs.
-- No production TypeScript agent path remains in Phase 1. The only production Node.js process is the fixed bundled Playwright Browser Use worker; no other package may depend on it or use it as a general execution or extension host.
+- No production TypeScript, Node.js, or Playwright path remains in Phase 1. Browser Use uses the CEF CDP endpoint owned by the desktop client.
 
 ## 12. Deferred Scope
 

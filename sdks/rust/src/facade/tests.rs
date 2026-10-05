@@ -1121,9 +1121,8 @@ fn browser_use_enablement_is_global_and_reports_packaged_runtime_identity() {
     let sdk = test_sdk(directory.path());
     let disabled = sdk.browser_runtime_info(None).unwrap();
     assert!(!disabled.enabled);
-    assert_eq!(disabled.node_version, "24.11.1");
-    assert_eq!(disabled.playwright_version, "1.55.0");
-    assert_eq!(disabled.chromium_revision, "1187");
+    assert_eq!(disabled.chromium_version, "CEF");
+    assert!(disabled.chromium_revision.is_empty());
 
     let enabled = sdk.set_browser_use_enabled(true).unwrap();
     assert!(enabled.enabled);

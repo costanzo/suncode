@@ -41,7 +41,7 @@ export const settingsGuide = {
       "Browser use is globally enabled but lazily started per project. Browser profiles and remote site changes are outside filesystem undo.",
       "Computer use targets the real primary display, remains approval-gated for input, and is unavailable to non-interactive turns.",
       "Computer use screenshots are transient provider context and external desktop changes are outside filesystem undo.",
-      "Node.js, Playwright, and Chromium paths are fixed read-only installation facts; Settings never selects an external runtime.",
+      "CEF CDP endpoint and embedded Chromium identity are read-only runtime facts; Settings never selects an external browser runtime.",
       "Server-requested file edits and command execution are refused; the surface specifies semantic read capabilities only.",
       "Settings reopens to the last valid destination, including the selected provider and its expanded navigation state.",
     ],

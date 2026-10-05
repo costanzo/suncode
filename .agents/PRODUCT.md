@@ -40,7 +40,7 @@ A paired mobile client can drive desktop sessions through the remote-control rel
 
 ## Constraints
 
-- Rust is the only supported Phase 1 agent implementation. One fixed, bundled Node.js runtime is permitted solely for the first-party Playwright Browser Use worker; it contains no provider access, agent loop, persistence, plugin loading, or general code-execution surface. Bun and other production Node.js paths remain prohibited.
+- Rust is the only supported Phase 1 agent implementation. Browser Use connects to the Avalonia-owned CEF CDP endpoint. Node.js, Playwright, and Bun are not production dependencies.
 - The production desktop application uses .NET 10 and Avalonia; other desktop UI toolkits and Electron are not supported production dependencies.
 - The trusted OS layer is Rust.
 - Protocol contracts are written as documentation and hand-implemented in each language. Contract-driven code generation is not used.

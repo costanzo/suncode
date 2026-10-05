@@ -198,9 +198,9 @@
   <x:String x:Key="LocClearTemporaryScreenshots">Clear temporary screenshots</x:String>
   <x:String x:Key="LocComputerUseWarningTitle">Computer Use controls the real desktop, not a sandbox</x:String>
   <x:String x:Key="LocComputerUseWarning">On-screen content is untrusted and cannot grant authority. Secure desktops and locked sessions are unavailable, and actions in external applications cannot be undone by SunCode.</x:String>
-  <x:String x:Key="LocBrowserUseHint">Run the bundled Playwright Chromium for dynamic web inspection and interaction. Website changes and browser data are outside filesystem undo.</x:String>
+  <x:String x:Key="LocBrowserUseHint">Connect to the embedded CEF Chromium through CDP for dynamic web inspection and interaction. Website changes and browser data are outside filesystem undo.</x:String>
   <x:String x:Key="LocEnableBrowserUse">Enable Browser Use</x:String>
-  <x:String x:Key="LocEnableBrowserUseHint">Makes browser tools available. Node.js and Chromium start lazily when a project needs them.</x:String>
+  <x:String x:Key="LocEnableBrowserUseHint">Makes browser tools available through the CEF CDP endpoint.</x:String>
   <x:String x:Key="LocDisabled">Disabled</x:String>
   <x:String x:Key="LocBundledInstallation">Bundled installation</x:String>
   <x:String x:Key="LocNotStarted">Not started</x:String>
@@ -209,11 +209,8 @@
   <x:String x:Key="LocBundledRuntime">BUNDLED RUNTIME</x:String>
   <x:String x:Key="LocTarget">Target</x:String>
   <x:String x:Key="LocBundledForInstallation">Bundled for this SunCode installation</x:String>
-  <x:String x:Key="LocNodeJs">Node.js</x:String>
-  <x:String x:Key="LocPlaywright">Playwright</x:String>
   <x:String x:Key="LocChromium">Chromium</x:String>
   <x:String x:Key="LocWorkerProtocol">Worker protocol</x:String>
-  <x:String x:Key="LocCopyNodePath">Copy Node.js path</x:String>
   <x:String x:Key="LocCopyChromiumPath">Copy Chromium path</x:String>
   <x:String x:Key="LocIntegrityUnavailable">Integrity unavailable</x:String>
   <x:String x:Key="LocIntegrityHint">Versions, packaged paths, and runtime trees are checked against the application-protected manifest.</x:String>

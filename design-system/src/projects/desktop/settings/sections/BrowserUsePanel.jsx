@@ -7,32 +7,10 @@ import { Icon } from "../../../../shared/Icon.jsx";
 import { SettingRow } from "../components/SettingRow.jsx";
 
 const browserRuntimeComponents = [
-  {
-    label: "Target",
-    value: "darwin-arm64",
-    detail: "Bundled for this SunCode installation",
-  },
-  {
-    label: "Node.js",
-    value: "v24.11.1",
-    detail: "/Applications/SunCode.app/Contents/Resources/runtimes/browser-runtime/node/bin/node",
-  },
-  {
-    label: "Playwright",
-    value: "1.55.0",
-    detail: "Exact production package",
-  },
-  {
-    label: "Chromium",
-    value: "140.0.7339.16 · revision 1187",
-    detail:
-      "/Applications/SunCode.app/Contents/Resources/runtimes/browser-runtime/browsers/chromium-1187/Chromium.app",
-  },
-  {
-    label: "Worker protocol",
-    value: "1",
-    detail: "Rust-managed framed stdio",
-  },
+  { label: "Target", value: "CEF CDP", detail: "Avalonia-owned Chromium remote debugging" },
+  { label: "Chromium", value: "Embedded CEF", detail: "CEF resources and window lifecycle are owned by the desktop client" },
+  { label: "CDP endpoint", value: "127.0.0.1:9222", detail: "Rust connects over a bounded WebSocket" },
+  { label: "Protocol", value: "CDP 1", detail: "Rust-managed command and response correlation" },
 ];
 
 export function BrowserUsePanel({ onSave }) {
@@ -101,7 +79,7 @@ export function BrowserUsePanel({ onSave }) {
       <div className="settings-panel-heading">
         <h2>Browser use</h2>
         <p>
-          Run the bundled Playwright Chromium for dynamic web inspection and interaction. Website
+          Connect to embedded CEF Chromium through CDP for dynamic web inspection and interaction. Website
           changes and browser data are outside filesystem undo.
         </p>
       </div>
@@ -109,7 +87,7 @@ export function BrowserUsePanel({ onSave }) {
         <span className="settings-section-label">Availability</span>
         <SettingRow
           label="Enable Browser Use"
-          hint="Makes browser tools available. Node.js and Chromium start lazily when a project needs them."
+          hint="Makes browser tools available through the CEF CDP endpoint."
         >
           <label className="settings-switch">
             <input

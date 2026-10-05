@@ -55,17 +55,6 @@
             <TextBlock x:Name="TargetText" Classes="mono" FontSize="10" Text="—" />
             <TextBlock Text="{DynamicResource LocBundledForInstallation}" Classes="settings-row-hint" />
           </StackPanel>
-          <TextBlock Grid.Row="1" Text="{DynamicResource LocNodeJs}" Classes="settings-row-hint" VerticalAlignment="Center" />
-          <StackPanel Grid.Row="1" Grid.Column="1" Spacing="3" Margin="0,9">
-            <TextBlock x:Name="NodeVersionText" Classes="mono" FontSize="10" Text="—" />
-            <TextBlock x:Name="NodePathText" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
-          </StackPanel>
-          <Button x:Name="CopyNodePathButton" Grid.Row="1" Grid.Column="2" Classes="icon quiet sc-button" ToolTip.Tip="{DynamicResource LocCopyNodePath}"
-                  AutomationProperties.Name="{DynamicResource LocCopyNodePath}" Click="OnCopyNodePath">
-            <svg:Svg Width="14" Height="14" Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
-          </Button>
-          <TextBlock Grid.Row="2" Text="{DynamicResource LocPlaywright}" Classes="settings-row-hint" VerticalAlignment="Center" />
-          <TextBlock x:Name="PlaywrightVersionText" Grid.Row="2" Grid.Column="1" Classes="mono" FontSize="10" Margin="0,13" Text="—" />
           <TextBlock Grid.Row="3" Text="{DynamicResource LocChromium}" Classes="settings-row-hint" VerticalAlignment="Center" />
           <StackPanel Grid.Row="3" Grid.Column="1" Spacing="3" Margin="0,9">
             <TextBlock x:Name="ChromiumVersionText" Classes="mono" FontSize="10" Text="—" />

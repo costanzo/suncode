@@ -2,11 +2,12 @@ use super::*;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::{
-    collections::BTreeMap,
     fs,
     sync::atomic::{AtomicBool, Ordering},
 };
-use suncode_browser::{RuntimeLayout, RuntimeLock, WorkerLaunch, WorkerProcess};
+use suncode_browser::{
+    CdpLaunch as WorkerLaunch, WorkerProcess, DEFAULT_CDP_PORT, PROTOCOL_VERSION,
+};
 use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -47,8 +48,6 @@ pub struct BrowserRuntimeInfo {
     pub runtime_state: BrowserRuntimeState,
     pub target: String,
     pub node_path: String,
-    pub node_version: String,
-    pub playwright_version: String,
     pub chromium_path: String,
     pub chromium_version: String,
     pub chromium_revision: String,
@@ -69,7 +68,7 @@ pub(super) struct BrowserManager {
 
 struct Inner {
     data_dir: PathBuf,
-    runtime_root: PathBuf,
+    cdp_port: u16,
     enabled: AtomicBool,
     verified: AtomicBool,
     verification_error: std::sync::RwLock<Option<String>>,
@@ -109,19 +108,19 @@ impl BrowserManager {
                     .and_then(|setting| setting.value.as_bool())
             })
             .unwrap_or(false);
-        Self::new_with_runtime_root(data_dir, default_runtime_root(), enabled, host_available)
+        Self::new_with_cdp_port(data_dir, DEFAULT_CDP_PORT, enabled, host_available)
     }
 
-    fn new_with_runtime_root(
+    fn new_with_cdp_port(
         data_dir: PathBuf,
-        runtime_root: PathBuf,
+        cdp_port: u16,
         enabled: bool,
         host_available: bool,
     ) -> Self {
         Self {
             inner: Arc::new(Inner {
                 data_dir,
-                runtime_root,
+                cdp_port,
                 enabled: AtomicBool::new(enabled),
                 verified: AtomicBool::new(false),
                 verification_error: std::sync::RwLock::new(None),
@@ -139,13 +138,13 @@ impl BrowserManager {
         project_id: Option<&str>,
     ) -> Result<BrowserRuntimeInfo, BusinessError> {
         let enabled = self.inner.enabled.load(Ordering::SeqCst);
-        let (layout, lock, installation_state, error) = if self.inner.host_available {
+        let (_layout, _lock, installation_state, error) = if self.inner.host_available {
             self.installation_snapshot(enabled)
         } else {
-            let layout = runtime_layout(&self.inner.runtime_root);
+            let layout = PathBuf::new();
             (
                 layout,
-                read_lock(&self.inner.runtime_root),
+                None,
                 BrowserInstallationState::Unsupported,
                 Some("Browser Use is unavailable in this host".into()),
             )
@@ -174,31 +173,12 @@ impl BrowserManager {
             enabled,
             installation_state,
             runtime_state,
-            target: suncode_browser::target_name().into(),
-            node_path: layout.node_path.to_string_lossy().into_owned(),
-            node_version: lock
-                .as_ref()
-                .map(|value| value.node.version.clone())
-                .unwrap_or_default(),
-            playwright_version: lock
-                .as_ref()
-                .map(|value| value.playwright.version.clone())
-                .unwrap_or_default(),
-            chromium_path: chromium_path(&self.inner.runtime_root, lock.as_ref())
-                .to_string_lossy()
-                .into_owned(),
-            chromium_version: lock
-                .as_ref()
-                .map(|value| value.chromium.version.clone())
-                .unwrap_or_default(),
-            chromium_revision: lock
-                .as_ref()
-                .map(|value| value.chromium.revision.clone())
-                .unwrap_or_default(),
-            worker_protocol_version: lock
-                .as_ref()
-                .map(|value| value.protocol_version)
-                .unwrap_or(suncode_browser::PROTOCOL_VERSION),
+            target: format!("cef-cdp:{}", self.inner.cdp_port),
+            node_path: String::new(),
+            chromium_path: "CEF (embedded)".into(),
+            chromium_version: "CEF".into(),
+            chromium_revision: String::new(),
+            worker_protocol_version: PROTOCOL_VERSION,
             integrity_state: if integrity_verified {
                 "verified"
             } else if installation_ready {
@@ -620,28 +600,11 @@ impl BrowserManager {
             })
     }
 
-    async fn spawn_worker(&self, scope: &str) -> Result<Arc<WorkerProcess>, BusinessError> {
-        let layout = runtime_layout(&self.inner.runtime_root);
-        let environment = BTreeMap::from([(
-            "PLAYWRIGHT_BROWSERS_PATH".into(),
-            self.inner
-                .runtime_root
-                .join("browsers")
-                .to_string_lossy()
-                .into_owned(),
-        )]);
+    async fn spawn_worker(&self, _scope: &str) -> Result<Arc<WorkerProcess>, BusinessError> {
         WorkerProcess::spawn(WorkerLaunch {
-            layout,
-            working_directory: self.inner.data_dir.join("browser").join("runtime").join(
-                if scope == "verify" {
-                    "verify".into()
-                } else {
-                    project_directory_name(scope)
-                },
-            ),
+            port: self.inner.cdp_port,
             startup_timeout: Duration::from_secs(15),
             request_timeout: Duration::from_secs(60),
-            environment,
         })
         .await
         .map(Arc::new)
@@ -688,7 +651,7 @@ impl BrowserManager {
     }
 
     fn verify_integrity(&self) -> Result<(), BusinessError> {
-        suncode_browser::verify_runtime_tree(&self.inner.runtime_root).map(|_| ())
+        Ok(())
     }
 
     fn worker_proxy(&self) -> Value {
@@ -715,76 +678,28 @@ impl BrowserManager {
         &self,
         enabled: bool,
     ) -> (
-        RuntimeLayout,
-        Option<RuntimeLock>,
+        PathBuf,
+        Option<()>,
         BrowserInstallationState,
         Option<String>,
     ) {
-        let layout = runtime_layout(&self.inner.runtime_root);
         if !enabled {
             return (
-                layout,
-                read_lock(&self.inner.runtime_root),
+                PathBuf::new(),
+                None,
                 BrowserInstallationState::Disabled,
                 None,
             );
         }
-        if suncode_browser::target_name() == "unsupported" {
+        if !self.inner.host_available {
             return (
-                layout,
-                read_lock(&self.inner.runtime_root),
+                PathBuf::new(),
+                None,
                 BrowserInstallationState::Unsupported,
-                Some("Browser Use is unavailable on this platform".into()),
+                Some("Browser Use is unavailable in this host".into()),
             );
         }
-        let lock = match RuntimeLock::read(&layout.runtime_lock_path) {
-            Ok(lock) => lock,
-            Err(error) => {
-                return (
-                    layout,
-                    None,
-                    BrowserInstallationState::Missing,
-                    Some(error.message),
-                )
-            }
-        };
-        if !layout.node_path.is_file()
-            || !layout.worker_path.is_file()
-            || !self
-                .inner
-                .runtime_root
-                .join("runtime-manifest.json")
-                .is_file()
-            || !chromium_path(&self.inner.runtime_root, Some(&lock)).is_file()
-            || !self
-                .inner
-                .runtime_root
-                .join("browsers")
-                .join(format!("ffmpeg-{}", lock.ffmpeg.revision))
-                .is_dir()
-        {
-            return (
-                layout,
-                Some(lock),
-                BrowserInstallationState::Missing,
-                Some("Bundled Node.js or browser worker is missing".into()),
-            );
-        }
-        if let Some(error) = self
-            .inner
-            .verification_error
-            .read()
-            .ok()
-            .and_then(|error| error.clone())
-        {
-            return (
-                layout,
-                Some(lock),
-                BrowserInstallationState::Invalid,
-                Some(error),
-            );
-        }
-        (layout, Some(lock), BrowserInstallationState::Ready, None)
+        (PathBuf::new(), None, BrowserInstallationState::Ready, None)
     }
 
     fn profile_path(&self, project_id: &str) -> PathBuf {
@@ -877,9 +792,24 @@ pub(super) fn validate_browser_arguments(
 }
 
 impl Agent {
-    pub fn preview_state(&self, project_id: &str) -> crate::agent::PreviewState { self.preview.state(project_id) }
-    pub fn start_preview(&self, project_id: &str, project_root: &str, program: &str, args: Vec<String>, cwd: Option<String>, url: &str) -> Result<crate::agent::PreviewState, BusinessError> { self.preview.start(project_id, Path::new(project_root), program, args, cwd, url) }
-    pub fn stop_preview(&self, project_id: &str) -> crate::agent::PreviewState { self.preview.stop(project_id) }
+    pub fn preview_state(&self, project_id: &str) -> crate::agent::PreviewState {
+        self.preview.state(project_id)
+    }
+    pub fn start_preview(
+        &self,
+        project_id: &str,
+        project_root: &str,
+        program: &str,
+        args: Vec<String>,
+        cwd: Option<String>,
+        url: &str,
+    ) -> Result<crate::agent::PreviewState, BusinessError> {
+        self.preview
+            .start(project_id, Path::new(project_root), program, args, cwd, url)
+    }
+    pub fn stop_preview(&self, project_id: &str) -> crate::agent::PreviewState {
+        self.preview.stop(project_id)
+    }
     pub async fn browser_runtime_info(
         &self,
         project_id: Option<&str>,
@@ -922,55 +852,6 @@ impl Agent {
     pub async fn clear_browser_profile(&self, project_id: &str) -> Result<(), BusinessError> {
         self.browser.clear_profile(project_id).await
     }
-}
-
-fn default_runtime_root() -> PathBuf {
-    let executable = std::env::current_exe().unwrap_or_default();
-    let directory = executable.parent().unwrap_or_else(|| Path::new("."));
-    let sibling = directory.join("runtimes").join("browser-runtime");
-    if sibling.is_dir() {
-        return sibling;
-    }
-    let mac_resources = directory.join("../Resources/runtimes/browser-runtime");
-    if mac_resources.is_dir() {
-        return mac_resources;
-    }
-    #[cfg(debug_assertions)]
-    {
-        let dev_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../runtimes/browser-runtime");
-        return fs::canonicalize(&dev_root).unwrap_or(dev_root);
-    }
-    #[cfg(not(debug_assertions))]
-    sibling
-}
-
-fn runtime_layout(root: &Path) -> RuntimeLayout {
-    RuntimeLayout {
-        node_path: if cfg!(windows) {
-            root.join("node/node.exe")
-        } else {
-            root.join("node/bin/node")
-        },
-        worker_path: root.join("worker/index.mjs"),
-        runtime_lock_path: root.join("runtime-lock.json"),
-    }
-}
-
-fn chromium_path(root: &Path, lock: Option<&RuntimeLock>) -> PathBuf {
-    let revision = lock
-        .map(|lock| lock.chromium.revision.as_str())
-        .unwrap_or("unknown");
-    let directory = root.join("browsers").join(format!("chromium-{revision}"));
-    match suncode_browser::target_name() {
-        "darwin-arm64" => directory.join("chrome-mac/Chromium.app/Contents/MacOS/Chromium"),
-        "win32-x64" => directory.join("chrome-win/chrome.exe"),
-        "linux-x64" => directory.join("chrome-linux/chrome"),
-        _ => directory,
-    }
-}
-
-fn read_lock(root: &Path) -> Option<RuntimeLock> {
-    RuntimeLock::read(&root.join("runtime-lock.json")).ok()
 }
 
 fn project_directory_name(project_id: &str) -> String {
@@ -1140,13 +1021,6 @@ mod tests {
         assert_eq!(value.len(), 32);
         assert!(!value.contains("project"));
         assert!(value.chars().all(|character| character.is_ascii_hexdigit()));
-    }
-
-    #[test]
-    fn runtime_layout_is_fixed_beneath_the_runtime_root() {
-        let layout = runtime_layout(Path::new("/app/runtimes/browser-runtime"));
-        assert!(layout.worker_path.ends_with("worker/index.mjs"));
-        assert!(layout.runtime_lock_path.ends_with("runtime-lock.json"));
     }
 
     #[test]

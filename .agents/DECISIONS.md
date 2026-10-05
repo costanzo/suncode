@@ -142,12 +142,12 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20260919-bundled-playwright-browser-runtime
 
 - Date: 2026-09-19
-- Status: Accepted
+- Status: Superseded by ADR-20261005-cef-cdp-browser
 - Supersedes: the blanket production Node.js prohibition in the current product and architecture records; the removal of the obsolete TypeScript agent/runtime path remains accepted
 - Context: Static WebFetch cannot exercise JavaScript applications, authenticated browser state, semantic page controls, frontend flows, or visual outcomes. MCP would add an external configuration and trust boundary for a capability intended to be a first-party product primitive. A pure Rust CDP implementation would duplicate Playwright's locator, waiting, page, download, and recovery behavior and delay delivery.
 - Decision: Bundle one exact Node.js runtime, one exact Playwright package, Playwright's matching regular Chromium build, and its required pinned FFmpeg helper for macOS arm64, Windows x64, and Linux x64. Rust remains the only agent implementation and owns enablement, runtime validation, project-scoped lifecycle, policy, approvals, audit, artifacts, cancellation, recovery, SDK contracts, and UI state. A fixed JavaScript worker owns only Playwright browser adaptation over a private bounded stdio protocol. Profiles are persistent and project-isolated; the browser runs outside the foreground by default and explicit user handoff pauses agent control. Runtime installation or update never occurs after packaging.
 - Consequences: Release artifacts become substantially larger and require nested signing/notarization, Linux dependency validation, target-specific manifests, SBOM/license output, and offline smoke tests. Browser actions can affect external systems and are not covered by filesystem undo. Browser content is untrusted, sensitive/high-consequence actions require point-of-risk confirmation, and non-interactive Browser Use is denied initially. No other production Node.js path, arbitrary JavaScript execution, extension loading, provider access, SQLite access, or second agent loop is authorized by this exception.
-- Details: `features/browser-use/`, `agent/crates/browser/`, `browser-runtime/`, `contracts/browser-worker.md`
+- Details: `features/browser-use/`, `agent/crates/browser/`, `contracts/browser-cdp.md`
 
 ## ADR-20260919-rust-owned-language-server-support
 
@@ -556,3 +556,12 @@ Newest first. Historical context is retained only when it still explains a curre
 - Decision: Embed `git2` with vendored libgit2 in the audited Rust operations crate. Expose bounded read-only status and per-file diff methods through the typed Rust SDK and C ABI. Repository discovery may locate a root above the opened project, but every result and requested path remains filtered to the opened project. Qt owns only transient drawer presentation state.
 - Consequences: The desktop can review all, staged, unstaged, untracked, renamed, deleted, binary, and conflicted local changes without an installed Git executable or system libgit2. Vendoring increases build time and binary size, and the Qt static-library link must include libgit2's native compression and character-conversion dependencies. Stage, discard, commit, refs, remotes, and credentials require separate policy and recovery designs.
 - Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/git.rs`
+
+## ADR-20261005-cef-cdp-browser
+
+- Date: 2026-10-05
+- Status: Accepted
+- Supersedes: ADR-20260919-bundled-playwright-browser-runtime
+- Decision: Remove the bundled Node.js, Playwright, worker, and Chromium packaging path. Avalonia-owned CefGlue initializes CEF with a localhost remote debugging port (9222); the Rust `suncode-browser` crate discovers a page target and drives it through a bounded WebSocket CDP client. Rust retains Browser Use policy, approvals, lifecycle, artifacts, cancellation, and audit ownership.
+- Consequences: CEF resources and profile/window lifecycle remain desktop-owned. CDP responses are bounded and command IDs are correlated. The initial semantic action subset is intentionally smaller than Playwright and must grow through explicit CDP contracts.
+- Details: `contracts/browser-cdp.md`, `agent/crates/browser/`, `apps/desktop-avalonia/Infrastructure/CefPreviewRuntime.cs`

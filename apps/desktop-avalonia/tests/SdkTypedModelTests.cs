@@ -153,13 +153,11 @@ public sealed class SdkTypedModelTests
     public void Deserializes_browser_runtime_contract()
     {
         const string json = """
-            {"enabled":true,"installationState":"ready","runtimeState":"background","target":"darwin-arm64","nodePath":"/app/runtimes/browser-runtime/node/bin/node","nodeVersion":"24.11.1","playwrightVersion":"1.55.0","chromiumPath":"/app/runtimes/browser-runtime/browsers/chromium-1187","chromiumVersion":"140.0.7339.16","chromiumRevision":"1187","workerProtocolVersion":1,"integrityState":"verified","controlOwner":"agent","profilePath":"/data/browser/profiles/abc","profileSizeBytes":1024,"activePageCount":2,"visibilityCapability":"full","error":null}
+            {"enabled":true,"installationState":"ready","runtimeState":"background","target":"darwin-arm64","chromiumPath":"CEF (embedded)","chromiumVersion":"CEF","chromiumRevision":"","workerProtocolVersion":1,"integrityState":"verified","controlOwner":"agent","profilePath":"/data/browser/profiles/abc","profileSizeBytes":1024,"activePageCount":2,"visibilityCapability":"full","error":null}
             """;
         var runtime = JsonSerializer.Deserialize<BrowserRuntimeInfo>(json, Options);
 
         Assert.NotNull(runtime);
-        Assert.Equal("24.11.1", runtime.NodeVersion);
-        Assert.Equal("1.55.0", runtime.PlaywrightVersion);
         Assert.Equal("background", runtime.RuntimeState);
         Assert.Equal(2, runtime.ActivePageCount);
     }
