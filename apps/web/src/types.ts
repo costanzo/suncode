@@ -34,6 +34,8 @@ export interface SessionMessage {
   role: "user" | "assistant" | "thinking";
   text: string;
   createdAt: string;
+  turnId?: string;
+  streaming?: boolean;
 }
 
 export interface Approval {

@@ -70,6 +70,10 @@ export function normalizeSessionSnapshot(
           role,
           text: messageText(message),
           createdAt: String(message.createdAt ?? new Date(0).toISOString()),
+          turnId:
+            message.turnId == null && message.turn_id == null
+              ? undefined
+              : String(message.turnId ?? message.turn_id),
         } as SessionSnapshot["messages"][number];
       })
     : [];

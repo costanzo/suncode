@@ -20,6 +20,8 @@ const REMOTE_ACCESS_TOKEN_EXPIRES_AT: &str = "remote_access_token_expires_at";
 const REMOTE_MOBILE_PAIRING_CODE: &str = "remote_mobile_pairing_code";
 const REMOTE_AES_KEY: &str = "remote_aes_key";
 const REMOTE_E2E_ENABLED: &str = "remote_e2e_enabled";
+const REMOTE_DELTA_MAX_CHARS: usize = 160;
+const REMOTE_DELTA_FLUSH_INTERVAL: Duration = Duration::from_millis(120);
 
 const UPLOAD_EVENT_TYPES: &[&str] = &[
     "turn.state",
@@ -28,6 +30,7 @@ const UPLOAD_EVENT_TYPES: &[&str] = &[
     "tool.result",
     "message.user",
     "message.assistant",
+    "assistant.delta",
     "message.tool",
     "turn.queued",
     "turn.completed",
@@ -595,7 +598,7 @@ fn normalize_server_url(value: &str) -> SdkResult<Url> {
 }
 
 pub fn should_upload_event(event_type: &str) -> bool {
-    UPLOAD_EVENT_TYPES.contains(&event_type) && event_type != "assistant.delta"
+    UPLOAD_EVENT_TYPES.contains(&event_type)
 }
 
 fn hostname() -> String {
@@ -922,33 +925,244 @@ fn subscribe_existing_sessions(
             let host_id = host_id.to_string();
             let stop = stop.clone();
             tokio::spawn(async move {
+                let mut pending_delta = RemoteAssistantDeltaBuffer::default();
+                let mut flush_tick = tokio::time::interval(REMOTE_DELTA_FLUSH_INTERVAL);
+                flush_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+                flush_tick.tick().await;
                 loop {
                     tokio::select! {
-                        _ = stop.cancelled() => break,
+                        _ = stop.cancelled() => {
+                            flush_remote_assistant_delta(
+                                &mut pending_delta,
+                                &client,
+                                &persisted,
+                                &host_id,
+                                &session.session_id,
+                            ).await;
+                            break;
+                        },
+                        _ = flush_tick.tick() => {
+                            flush_remote_assistant_delta(
+                                &mut pending_delta,
+                                &client,
+                                &persisted,
+                                &host_id,
+                                &session.session_id,
+                            ).await;
+                        }
                         event = stream.next() => match event {
                             Some(Ok(event)) => {
                                 let event_type = event.event_type().as_str();
+                                if event_type == "assistant.delta" {
+                                    let payload = event.payload.clone().into_value();
+                                    let occurred_at = event.occurred_at.clone();
+                                    for chunk in pending_delta.push(payload, &occurred_at) {
+                                        upload_remote_session_event(
+                                            &client,
+                                            &persisted,
+                                            &host_id,
+                                            &session.session_id,
+                                            "assistant.delta",
+                                            pending_delta.occurred_at(),
+                                            chunk,
+                                        ).await;
+                                    }
+                                    continue;
+                                }
+                                flush_remote_assistant_delta(
+                                    &mut pending_delta,
+                                    &client,
+                                    &persisted,
+                                    &host_id,
+                                    &session.session_id,
+                                ).await;
                                 if !should_upload_event(event_type) { continue; }
-                                let event_id = uuid::Uuid::new_v4().to_string();
-                                let body = RemoteEventEnvelope { session_id: event.session_id.clone(), occurred_at: event.occurred_at.clone(), event_type: event_type.to_string(), payload: event.payload.clone().into_value() };
-                                let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/events");
-                                let body = remote_request_body(&serde_json::to_value(&body).unwrap_or_else(|_| json!({})), &persisted);
-                                let response = match body {
-                                    Ok(body) => {
-                                        log_http_request("POST", &url, &body);
-                                        request_headers(client.post(url), &persisted, &host_id).header("X-Request-Id", &event_id).json(&body).send().await
-                                    },
-                                    Err(error) => { logging::warn("remote", &format!("event encryption failed: {}", error.message)); continue; }
-                                };
-                                if let Err(error) = response { logging::warn("remote", &format!("event upload failed: {error}")); }
+                                upload_remote_session_event(
+                                    &client,
+                                    &persisted,
+                                    &host_id,
+                                    &event.session_id,
+                                    event_type,
+                                    &event.occurred_at,
+                                    event.payload.clone().into_value(),
+                                ).await;
                             }
-                            Some(Err(error)) => { logging::warn("remote", &format!("session event stream ended: {error}")); break; }
-                            None => break,
+                            Some(Err(error)) => {
+                                flush_remote_assistant_delta(
+                                    &mut pending_delta,
+                                    &client,
+                                    &persisted,
+                                    &host_id,
+                                    &session.session_id,
+                                ).await;
+                                logging::warn("remote", &format!("session event stream ended: {error}"));
+                                break;
+                            }
+                            None => {
+                                flush_remote_assistant_delta(
+                                    &mut pending_delta,
+                                    &client,
+                                    &persisted,
+                                    &host_id,
+                                    &session.session_id,
+                                ).await;
+                                break;
+                            },
                         }
                     }
                 }
             });
         }
+    }
+}
+
+#[derive(Default)]
+struct RemoteAssistantDeltaBuffer {
+    turn_id: Option<String>,
+    text: String,
+    occurred_at: String,
+}
+
+impl RemoteAssistantDeltaBuffer {
+    fn push(&mut self, payload: Value, occurred_at: &str) -> Vec<Value> {
+        let text = payload
+            .get("text")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        if text.is_empty() {
+            return Vec::new();
+        }
+        let turn_id = payload
+            .get("turn_id")
+            .and_then(Value::as_str)
+            .map(str::to_owned);
+        let mut ready = Vec::new();
+        if self.turn_id.is_some() && self.turn_id != turn_id {
+            if let Some(payload) = self.flush() {
+                ready.push(payload);
+            }
+        }
+        self.turn_id = turn_id;
+        self.text.push_str(text);
+        self.occurred_at = occurred_at.to_owned();
+
+        while let Some(end) = self.next_chunk_end() {
+            ready.push(self.take_chunk(end));
+        }
+        ready
+    }
+
+    fn flush(&mut self) -> Option<Value> {
+        if self.text.is_empty() {
+            return None;
+        }
+        let text = std::mem::take(&mut self.text);
+        Some(json!({"turn_id": self.turn_id, "text": text}))
+    }
+
+    fn occurred_at(&self) -> &str {
+        &self.occurred_at
+    }
+
+    fn next_chunk_end(&self) -> Option<usize> {
+        let max_end = self
+            .text
+            .char_indices()
+            .nth(REMOTE_DELTA_MAX_CHARS)
+            .map(|(index, _)| index)
+            .or_else(|| {
+                (self.text.chars().count() >= REMOTE_DELTA_MAX_CHARS).then_some(self.text.len())
+            });
+        if let Some(end) = paragraph_end(&self.text) {
+            if max_end.is_none_or(|limit| end <= limit) {
+                return Some(end);
+            }
+        }
+        max_end
+    }
+
+    fn take_chunk(&mut self, end: usize) -> Value {
+        let remaining = self.text.split_off(end);
+        let text = std::mem::replace(&mut self.text, remaining);
+        json!({"turn_id": self.turn_id, "text": text})
+    }
+}
+
+fn paragraph_end(text: &str) -> Option<usize> {
+    let lf = text.find("\n\n").map(|index| index + 2);
+    let crlf = text.find("\r\n\r\n").map(|index| index + 4);
+    match (lf, crlf) {
+        (Some(left), Some(right)) => Some(left.min(right)),
+        (Some(end), None) | (None, Some(end)) => Some(end),
+        (None, None) => None,
+    }
+}
+
+async fn flush_remote_assistant_delta(
+    buffer: &mut RemoteAssistantDeltaBuffer,
+    client: &Client,
+    persisted: &PersistedRemote,
+    host_id: &str,
+    session_id: &str,
+) {
+    if let Some(payload) = buffer.flush() {
+        let occurred_at = buffer.occurred_at().to_owned();
+        upload_remote_session_event(
+            client,
+            persisted,
+            host_id,
+            session_id,
+            "assistant.delta",
+            &occurred_at,
+            payload,
+        )
+        .await;
+    }
+}
+
+async fn upload_remote_session_event(
+    client: &Client,
+    persisted: &PersistedRemote,
+    host_id: &str,
+    session_id: &str,
+    event_type: &str,
+    occurred_at: &str,
+    payload: Value,
+) {
+    let event_id = uuid::Uuid::new_v4().to_string();
+    let event = RemoteEventEnvelope {
+        session_id: session_id.to_owned(),
+        occurred_at: occurred_at.to_owned(),
+        event_type: event_type.to_owned(),
+        payload,
+    };
+    let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/events");
+    let body = match remote_request_body(
+        &serde_json::to_value(&event).unwrap_or_else(|_| json!({})),
+        persisted,
+    ) {
+        Ok(body) => body,
+        Err(error) => {
+            logging::warn(
+                "remote",
+                &format!("event encryption failed: {}", error.message),
+            );
+            return;
+        }
+    };
+    log_http_request("POST", &url, &body);
+    match request_headers(client.post(url), persisted, host_id)
+        .header("X-Request-Id", &event_id)
+        .json(&body)
+        .send()
+        .await
+    {
+        Ok(response) if !response.status().is_success() => logging::warn(
+            "remote",
+            format!("event upload returned HTTP {}", response.status()),
+        ),
+        Err(error) => logging::warn("remote", format!("event upload failed: {error}")),
+        _ => {}
     }
 }
 
@@ -1441,12 +1655,84 @@ mod tests {
     }
 
     #[test]
-    fn allowlist_uploads_complete_assistant_and_never_delta() {
+    fn allowlist_uploads_complete_assistant_and_coalesced_delta_events() {
         assert!(should_upload_event("message.assistant"));
         assert!(should_upload_event("message.user"));
-        assert!(!should_upload_event("assistant.delta"));
+        assert!(should_upload_event("assistant.delta"));
         assert!(!should_upload_event("provider.exchange.progress"));
         assert!(!should_upload_event("unknown.event"));
+    }
+
+    #[test]
+    fn remote_delta_buffer_combines_fragments_until_flush() {
+        let mut buffer = RemoteAssistantDeltaBuffer::default();
+        assert!(buffer
+            .push(json!({"turn_id": "turn-1", "text": "Hello"}), "t1")
+            .is_empty());
+        assert!(buffer
+            .push(json!({"turn_id": "turn-1", "text": " world"}), "t2")
+            .is_empty());
+        assert_eq!(
+            buffer.flush(),
+            Some(json!({"turn_id": "turn-1", "text": "Hello world"}))
+        );
+        assert_eq!(buffer.occurred_at(), "t2");
+    }
+
+    #[test]
+    fn remote_delta_buffer_splits_at_unicode_character_limit() {
+        let mut buffer = RemoteAssistantDeltaBuffer::default();
+        let text = "你".repeat(REMOTE_DELTA_MAX_CHARS + 2);
+        let chunks = buffer.push(json!({"turn_id": "turn-1", "text": text}), "t1");
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(
+            chunks[0]["text"].as_str().unwrap().chars().count(),
+            REMOTE_DELTA_MAX_CHARS
+        );
+        assert_eq!(
+            buffer.flush().unwrap()["text"]
+                .as_str()
+                .unwrap()
+                .chars()
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn remote_delta_buffer_caps_long_paragraphs_at_character_limit() {
+        let mut buffer = RemoteAssistantDeltaBuffer::default();
+        let text = format!(
+            "{}\n\nLater paragraph",
+            "x".repeat(REMOTE_DELTA_MAX_CHARS + 20)
+        );
+        let chunks = buffer.push(json!({"turn_id": "turn-1", "text": text}), "t1");
+        assert!(chunks.len() >= 2);
+        assert!(
+            chunks
+                .iter()
+                .all(|chunk| chunk["text"].as_str().unwrap().chars().count()
+                    <= REMOTE_DELTA_MAX_CHARS)
+        );
+    }
+
+    #[test]
+    fn remote_delta_buffer_prefers_paragraph_boundary_and_flushes_on_turn_change() {
+        let mut buffer = RemoteAssistantDeltaBuffer::default();
+        let chunks = buffer.push(
+            json!({"turn_id": "turn-1", "text": "First paragraph.\n\nSecond"}),
+            "t1",
+        );
+        assert_eq!(
+            chunks,
+            vec![json!({"turn_id": "turn-1", "text": "First paragraph.\n\n"})]
+        );
+        let chunks = buffer.push(json!({"turn_id": "turn-2", "text": "Next turn"}), "t2");
+        assert_eq!(chunks, vec![json!({"turn_id": "turn-1", "text": "Second"})]);
+        assert_eq!(
+            buffer.flush(),
+            Some(json!({"turn_id": "turn-2", "text": "Next turn"}))
+        );
     }
 
     #[test]

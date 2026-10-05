@@ -52,6 +52,15 @@ function eventText(value: unknown): string | null {
 function payloadRecord(payload: Record<string, unknown> | undefined) {
   return payload ?? {};
 }
+function findStreamingMessageIndex(messages: SessionMessage[], turnId: string): number {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role === "assistant" && message.streaming && message.turnId === turnId) {
+      return index;
+    }
+  }
+  return -1;
+}
 function nextSessionState(
   type: string,
   payload: Record<string, unknown>,
@@ -87,30 +96,58 @@ function applyEvent(snapshot: SessionSnapshot, event: SseEnvelope): SessionSnaps
   const messageValue = payload.message as Record<string, unknown> | undefined;
   const text = eventText(messageValue ?? payload.text);
   const messageId = String(payload.message_id ?? payload.id ?? `event-${event.sequence}`);
+  const turnIdValue = payload.turn_id ?? payload.turnId;
+  const turnId = turnIdValue == null ? undefined : String(turnIdValue);
   const role =
     type === "message.user" ? "user" : type === "message.tool" ? "thinking" : "assistant";
-  if (
-    (type === "message.user" || type === "message.assistant" || type === "message.tool") &&
-    text
-  ) {
+  if ((type === "message.user" || type === "message.tool") && text) {
     const next: SessionMessage = {
       id: messageId,
       role,
       text,
       createdAt: String(payload.occurred_at ?? event.occurred_at ?? new Date().toISOString()),
+      turnId,
     };
     messages = messages.some((item) => item.id === next.id)
       ? messages.map((item) => (item.id === next.id ? next : item))
       : [...messages, next];
   } else if (type === "assistant.delta" && text) {
-    const last = messages[messages.length - 1];
-    messages =
-      last?.role === "assistant"
-        ? [...messages.slice(0, -1), { ...last, text: `${last.text}${text}` }]
-        : [
-            ...messages,
-            { id: messageId, role: "assistant", text, createdAt: new Date().toISOString() },
-          ];
+    const streamTurnId = turnId ?? `event-${event.sequence}`;
+    const streamingIndex = findStreamingMessageIndex(messages, streamTurnId);
+    if (streamingIndex >= 0) {
+      messages = messages.map((item, index) =>
+        index === streamingIndex ? { ...item, text: `${item.text}${text}` } : item,
+      );
+    } else {
+      messages = [
+        ...messages,
+        {
+          id: `assistant-stream-${streamTurnId}-${event.sequence}`,
+          role: "assistant",
+          text,
+          createdAt: event.occurred_at ?? new Date().toISOString(),
+          turnId: streamTurnId,
+          streaming: true,
+        },
+      ];
+    }
+  } else if (type === "message.assistant" && text) {
+    const streamTurnId = turnId;
+    const streamingIndex = streamTurnId ? findStreamingMessageIndex(messages, streamTurnId) : -1;
+    const next: SessionMessage = {
+      id: messageId,
+      role: "assistant",
+      text,
+      createdAt: String(payload.occurred_at ?? event.occurred_at ?? new Date().toISOString()),
+      turnId,
+    };
+    if (streamingIndex >= 0) {
+      messages = messages.map((item, index) => (index === streamingIndex ? next : item));
+    } else {
+      messages = messages.some((item) => item.id === next.id)
+        ? messages.map((item) => (item.id === next.id ? next : item))
+        : [...messages, next];
+    }
   }
   let pendingApproval = snapshot.pendingApproval;
   let pendingQuestion = snapshot.pendingQuestion;
