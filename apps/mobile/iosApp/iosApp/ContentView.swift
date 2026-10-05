@@ -3,7 +3,7 @@ import SwiftUI
 import Shared
 
 struct ComposeView: UIViewControllerRepresentable {
-    let onScanPairing: (((String) -> Void) -> Void)
+    let onScanPairing: ((@escaping (String) -> KotlinUnit) -> Void)
 
     func makeUIViewController(context: Self.Context) -> UIViewController {
         MainViewControllerKt.MainViewController(onScanPairing: onScanPairing)
@@ -14,8 +14,10 @@ struct ComposeView: UIViewControllerRepresentable {
 
 struct ContentView: View {
     var body: some View {
-        ComposeView { onResult in
-            presentScanner(onResult: onResult)
+        ComposeView { (onResult: @escaping (String) -> KotlinUnit) in
+            presentScanner { payload in
+                _ = onResult(payload)
+            }
         }
             .ignoresSafeArea()
     }
