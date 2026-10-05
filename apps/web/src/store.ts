@@ -194,7 +194,8 @@ export const useWebStore = create<WebStore>((set, get) => {
       streamState: "connecting",
     });
     try {
-      const snapshot = await api.getSession(endpoint, credential.host.id, sessionId);
+      const project = get().sessions.find((session) => session.id === sessionId)?.project;
+      const snapshot = await api.getSession(endpoint, credential.host.id, sessionId, project);
       set({ snapshot, loading: false, lastEventId: null });
     } catch (error) {
       set({ loading: false, streamState: "failed" });
@@ -415,7 +416,16 @@ export const useWebStore = create<WebStore>((set, get) => {
           set((state) => ({
             streamState: "live",
             lastEventId: event.event_id,
-            snapshot: state.snapshot ? applyEvent(state.snapshot, event) : (event.snapshot ?? null),
+            snapshot: state.snapshot
+              ? applyEvent(state.snapshot, event)
+              : event.snapshot
+                ? {
+                    ...event.snapshot,
+                    project:
+                      state.sessions.find((session) => session.id === selectedSessionId)?.project ??
+                      event.snapshot.project,
+                  }
+                : null,
             sessions: state.sessions.map((session) =>
               session.id === selectedSessionId && state.snapshot
                 ? {

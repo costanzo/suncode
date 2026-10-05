@@ -10,6 +10,77 @@ import type {
   SseEnvelope,
 } from "./types";
 
+type RawSessionSnapshot = {
+  session?: Record<string, unknown>;
+  messages?: unknown[];
+  pendingApproval?: Record<string, unknown> | null;
+  pendingQuestion?: Record<string, unknown> | null;
+};
+
+function messageText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return "";
+  const object = value as Record<string, unknown>;
+  if (typeof object.text === "string") return object.text;
+  if (Array.isArray(object.content)) return object.content.map(messageText).join("");
+  if (object.content) return messageText(object.content);
+  return "";
+}
+
+export function normalizeSessionSnapshot(
+  value: unknown,
+  project?: { id: string; displayName: string },
+): SessionSnapshot {
+  const raw = (value ?? {}) as RawSessionSnapshot;
+  const session = raw.session ?? {};
+  const projectId = String(session.projectId ?? project?.id ?? "");
+  const sessionProject = project ?? { id: projectId, displayName: projectId || "Project" };
+  const messages = Array.isArray(raw.messages)
+    ? raw.messages.map((item, index) => {
+        const message = (item ?? {}) as Record<string, unknown>;
+        const role =
+          message.role === "user" || message.role === "thinking" ? message.role : "assistant";
+        return {
+          id: String(message.messageId ?? message.id ?? `message-${index}`),
+          role,
+          text: messageText(message),
+          createdAt: String(message.createdAt ?? new Date(0).toISOString()),
+        } as SessionSnapshot["messages"][number];
+      })
+    : [];
+  const approval = raw.pendingApproval;
+  const question = raw.pendingQuestion;
+  return {
+    id: String(session.sessionId ?? ""),
+    title: String(session.title ?? "New session"),
+    kind: "primary",
+    project: sessionProject,
+    state: approval ? "waiting_for_approval" : question ? "waiting_for_answer" : "idle",
+    updatedAt: String(session.updatedAt ?? session.lastActivityAt ?? new Date(0).toISOString()),
+    preview: messages.at(-1)?.text ?? "",
+    revision: 0,
+    eventSequence: 0,
+    messages,
+    pendingApproval: approval
+      ? {
+          id: String(approval.approvalId ?? approval.id ?? "approval"),
+          revision: Number(approval.revision ?? 0),
+          summary: String(approval.summary ?? approval.operation ?? "Approval required"),
+          scope: String(approval.scope ?? ""),
+          detail: approval.detail == null ? null : String(approval.detail),
+        }
+      : null,
+    pendingQuestion: question
+      ? {
+          id: String(question.questionId ?? question.id ?? "question"),
+          revision: Number(question.revision ?? 0),
+          prompt: String(question.prompt ?? "SunCode needs an answer"),
+          options: Array.isArray(question.options) ? question.options.map(String) : [],
+        }
+      : null,
+  };
+}
+
 export class RemoteApiError extends Error {
   constructor(
     public readonly status: number,
@@ -157,10 +228,11 @@ export class RemoteApi {
       `${endpoint}/v1/mobile/hosts/${encodeURIComponent(hostId)}/sessions${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ""}`,
     );
   }
-  getSession(endpoint: string, hostId: string, sessionId: string) {
-    return this.request<SessionSnapshot>(
+  async getSession(endpoint: string, hostId: string, sessionId: string, project?: Project) {
+    const value = await this.request<unknown>(
       `${endpoint}/v1/mobile/hosts/${encodeURIComponent(hostId)}/sessions/${encodeURIComponent(sessionId)}`,
     );
+    return normalizeSessionSnapshot(value, project);
   }
   sendMessage(endpoint: string, hostId: string, sessionId: string, text: string) {
     return this.request<void>(
@@ -285,7 +357,11 @@ export class RemoteApi {
               "encPayload" in parsed && parsed.encPayload && credential?.e2eKey
                 ? await decryptPayload(parsed.encPayload, credential.e2eKey)
                 : parsed;
-            onEvent(decrypted as SseEnvelope);
+            const event = decrypted as SseEnvelope;
+            if (event.snapshot) {
+              event.snapshot = normalizeSessionSnapshot(event.snapshot, undefined);
+            }
+            onEvent(event);
           }
         }
       } catch (error) {

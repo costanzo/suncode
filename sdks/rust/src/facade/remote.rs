@@ -762,10 +762,6 @@ async fn remote_worker(
     };
     let host_id = persisted.pairing.host_id.clone();
     let mut subscribed = HashSet::new();
-    if let Err(error) = upload_desktop_snapshot(&sdk, &client, &persisted, &host_id).await {
-        logging::write_business_error("remote", "snapshot", &error, "phase=initial-sync");
-    }
-    subscribe_existing_sessions(&sdk, &client, &persisted, &host_id, &stop, &mut subscribed);
     let mut delay = Duration::from_secs(1);
     let mut snapshot_tick = tokio::time::interval(Duration::from_secs(30));
     snapshot_tick.tick().await;
@@ -784,6 +780,24 @@ async fn remote_worker(
             Ok(response) if response.status().is_success() => {
                 set_worker_status(&status, true, None);
                 delay = Duration::from_secs(1);
+                if let Err(error) =
+                    upload_desktop_snapshot(&sdk, &client, &persisted, &host_id).await
+                {
+                    logging::write_business_error(
+                        "remote",
+                        "snapshot",
+                        &error,
+                        "phase=initial-sync",
+                    );
+                }
+                subscribe_existing_sessions(
+                    &sdk,
+                    &client,
+                    &persisted,
+                    &host_id,
+                    &stop,
+                    &mut subscribed,
+                );
                 let mut stream = response.bytes_stream();
                 let mut buffer = Vec::new();
                 loop {
@@ -1268,8 +1282,23 @@ async fn dispatch_request(
             .map_err(|e| BusinessError::unavailable(e.to_string())),
         "sessions.list" => {
             let project_id = string("project_id", "projectId")?;
-            serde_json::to_value(sdk.list_sessions(project_id)?)
-                .map_err(|e| BusinessError::unavailable(e.to_string()))
+            let result = if project_id.trim().is_empty() {
+                let mut sessions = Vec::new();
+                let mut session_states = std::collections::HashMap::new();
+                for project in sdk.list_projects()?.projects {
+                    let result = sdk.list_sessions(&project.project_id)?;
+                    sessions.extend(result.sessions);
+                    session_states.extend(result.session_states);
+                }
+                SessionsResult {
+                    project_id: String::new(),
+                    sessions,
+                    session_states,
+                }
+            } else {
+                sdk.list_sessions(project_id)?
+            };
+            serde_json::to_value(result).map_err(|e| BusinessError::unavailable(e.to_string()))
         }
         "session.create" => {
             let project_id = string("project_id", "projectId")?;

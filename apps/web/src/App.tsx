@@ -234,7 +234,7 @@ function Conversation() {
           <span className="eyebrow">PRIMARY SESSION</span>
           <h1>{snapshot.title}</h1>
           <small>
-            {snapshot.project.displayName} · updated {timeAgo(snapshot.updatedAt)}
+            {snapshot.project?.displayName ?? "Project"} · updated {timeAgo(snapshot.updatedAt)}
           </small>
         </div>
         <div className="header-actions">

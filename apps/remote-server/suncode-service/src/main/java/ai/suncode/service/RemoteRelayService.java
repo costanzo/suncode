@@ -125,7 +125,14 @@ public class RemoteRelayService {
         if (connection == null) {
             throw new BusinessException(DESKTOP_UNAVAILABLE);
         }
-        String idempotencyId = hostId + ":" + requestId;
+        // Internal relay operations, such as the initial Session snapshot, do
+        // not originate from a Mobile HTTP request. They still need a unique
+        // SSE id so Spring can serialize the event and Desktop can correlate
+        // the response.
+        String effectiveRequestId = requestId == null || requestId.isBlank()
+                ? UUID.randomUUID().toString()
+                : requestId;
+        String idempotencyId = hostId + ":" + effectiveRequestId;
         DesktopResponse previous = idempotentResults.get(idempotencyId);
         if (previous != null) {
             return previous;
@@ -153,12 +160,10 @@ public class RemoteRelayService {
                     MarshallingUtils.convertValue(commandPayload, Map.class), null)
                     : new DesktopMobileHttpRequest(path, queryParam == null ? Map.of() : queryParam,
                     null, encPayload);
-            send(connection.emitter(), mobileEventName(command), requestId, requestEnvelope);
+            send(connection.emitter(), mobileEventName(command), effectiveRequestId, requestEnvelope);
             try {
                 DesktopResponse response = future.get(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                if (idempotencyId != null) {
-                    idempotentResults.putIfAbsent(idempotencyId, response);
-                }
+                idempotentResults.putIfAbsent(idempotencyId, response);
                 return response;
             } catch (ExecutionException error) {
                 if (error.getCause() instanceof BusinessException businessError) {
@@ -220,7 +225,8 @@ public class RemoteRelayService {
         return mobileEvent;
     }
 
-    public SseEmitter connectMobileSession(String hostId, String sessionId, String lastEventId) {
+    public SseEmitter connectMobileSession(String hostId, String sessionId, String lastEventId,
+                                           String requestId) {
         if (hostId == null || sessionId == null) throw new BusinessException(SESSION_NOT_FOUND);
         MobileConnection connection = new MobileConnection(sessionId, new SseEmitter(0L));
         synchronized (connectionLifecycleLock) {
@@ -234,7 +240,7 @@ public class RemoteRelayService {
         connection.emitter().onTimeout(() -> removeMobile(connection));
         connection.emitter().onError(error -> removeMobile(connection));
         try {
-            DesktopResponse snapshot = request(hostId, sessionId, "session.get", new DesktopCommandPayload(), null);
+            DesktopResponse snapshot = request(hostId, sessionId, "session.get", new DesktopCommandPayload(), requestId);
             HostEvents state = hostEvents.computeIfAbsent(hostId, ignored -> new HostEvents());
             long snapshotSequence = state.sequence().get();
             String snapshotId = hostId + ":" + snapshotSequence;

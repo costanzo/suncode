@@ -104,7 +104,8 @@ public class MobileRemoteController {
     @GetMapping(value = "/hosts/{hostId}/sessions/{sessionId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter sessionEvents(@PathVariable String hostId, @PathVariable String sessionId,
                                     @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId) {
-        return relayService.connectMobileSession(hostId, sessionId, lastEventId);
+        return relayService.connectMobileSession(hostId, sessionId, lastEventId,
+                ServiceContext.current().requestId());
     }
 
     @PostMapping("/hosts/{hostId}/sessions/{sessionId}/messages")
