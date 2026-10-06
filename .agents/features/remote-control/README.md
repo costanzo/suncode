@@ -6,7 +6,7 @@ A paired phone can browse a Desktop's Projects and active primary Sessions, open
 
 ## Components
 
-- **Desktop connection (Rust SDK, `sdks/rust/src/facade/remote.rs`).** `RemoteController` owns configuration, pairing, the reconnecting worker, request dispatch, and event upload. It is exposed through the C ABI and typed C# SDK; the SDK lifecycle starts a saved connection on launch and stops the worker on shutdown or configuration replacement.
+- **Desktop connection (Rust agent transport, `agent/crates/remote`).** `suncode-remote` owns configuration, pairing, encryption, the reconnecting worker, SSE request/response transport, and event upload. `suncode-agent::Agent` owns remote snapshots and command dispatch; the Rust SDK facade supplies only the host configuration and event-stream bridge, then exposes the unchanged methods through the C ABI and typed C# SDK.
 - **Desktop UI (Avalonia).** Settings has a Remote Server panel for server URL, Desktop pairing code, an end-to-end encryption toggle (on by default), connect/disconnect/clear, and the Mobile pairing QR code (rendered locally with QRCoder). The Workspace footer shows a connected/disconnected indicator only when a server is configured.
 - **Remote Server (`apps/remote-server`, Java Spring Boot).** Relays Mobile HTTP requests to the Desktop SSE stream, serves Mobile Session SSE with snapshot, replay, and heartbeat, and issues Desktop and Mobile tokens. It is a relay, not an agent, provider, SQLite owner, or policy authority. Pairings, tokens, and relay state are held in memory, so a server restart requires re-pairing.
 - **Mobile client.** See [`mobile-client/`](../mobile-client/README.md).

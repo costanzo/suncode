@@ -16,6 +16,7 @@ pub type SdkResult<T> = Result<T, BusinessError>;
 pub struct SdkHostCapabilities {
     pub browser_use: bool,
     pub computer_use: bool,
+    pub remote_control: bool,
 }
 
 impl Default for SdkHostCapabilities {
@@ -23,6 +24,7 @@ impl Default for SdkHostCapabilities {
         Self {
             browser_use: true,
             computer_use: true,
+            remote_control: true,
         }
     }
 }

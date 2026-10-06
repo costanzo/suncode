@@ -206,6 +206,7 @@ async fn host_capability_ceiling_disables_browser_and_computer_without_mutating_
             host_capabilities: SdkHostCapabilities {
                 browser_use: false,
                 computer_use: false,
+                remote_control: true,
             },
         },
     )

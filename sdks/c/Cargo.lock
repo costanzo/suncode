@@ -2748,6 +2748,7 @@ dependencies = [
  "suncode-llm",
  "suncode-lsp",
  "suncode-mcp",
+ "suncode-remote",
  "suncode-skills",
  "suncode-tool",
  "tokio",
@@ -2854,6 +2855,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "suncode-remote"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "base64 0.22.1",
+ "futures-util",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "suncode-common",
+ "suncode-data",
+ "tokio",
+ "tokio-util",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "suncode-sdk"
 version = "0.1.0"
 dependencies = [
@@ -2873,6 +2892,7 @@ dependencies = [
  "suncode-config",
  "suncode-data",
  "suncode-llm",
+ "suncode-remote",
  "suncode-skills",
  "suncode-tool",
  "tokio",

@@ -1,0 +1,22 @@
+[package]
+name = "suncode-remote"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "suncode_remote"
+path = "src/lib.rs"
+
+[dependencies]
+aes-gcm = "0.10"
+base64 = "0.22"
+futures-util = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "system-proxy"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+suncode-common = { path = "../common" }
+suncode-data = { path = "../data" }
+tokio = { version = "1", features = ["sync", "time", "rt", "macros"] }
+tokio-util = "0.7"
+uuid = { version = "1", features = ["v4", "serde"] }
+url = "2"

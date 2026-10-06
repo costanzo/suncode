@@ -191,5 +191,6 @@ include!("run.rs");
 include!("tools.rs");
 include!("lifecycle.rs");
 include!("support.rs");
+include!("remote.rs");
 #[cfg(test)]
 include!("tests.rs");

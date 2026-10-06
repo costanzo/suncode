@@ -24,6 +24,7 @@ suncode-computer = { path = "../../agent/crates/computer" }
 suncode-config = { path = "../../agent/crates/config" }
 suncode-data = { path = "../../agent/crates/data" }
 suncode-llm = { path = "../../agent/crates/llm" }
+suncode-remote = { path = "../../agent/crates/remote" }
 suncode-skills = { path = "../../agent/crates/skills" }
 suncode-tool = { path = "../../agent/crates/tools" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }

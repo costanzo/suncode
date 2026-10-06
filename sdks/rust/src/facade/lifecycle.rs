@@ -50,15 +50,23 @@ impl AsyncAgentSdk {
             }
         })?;
         let state = build_state(&config, &user_id, options, configure_providers).await?;
-        let remote = Arc::new(remote::RemoteController::new(state.store.clone()));
+        let remote = options.host_capabilities.remote_control.then(|| {
+            let remote_host = Arc::new(remote::SdkRemoteHost {
+                state: state.clone(),
+            });
+            Arc::new(suncode_remote::RemoteController::new(
+                state.store.clone(),
+                remote_host,
+            ))
+        });
         let sdk = Self {
             _lock: Some(lock),
             data_dir: config.data_dir,
             state,
-            remote: Some(remote),
+            remote,
         };
         if let Some(remote) = &sdk.remote {
-            if let Err(error) = remote.start_saved(&sdk) {
+            if let Err(error) = remote.start_saved() {
                 logging::write_business_error("remote", "restore", &error, "phase=open");
             }
         }

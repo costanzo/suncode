@@ -43,6 +43,7 @@ async fn main() -> ExitCode {
             host_capabilities: SdkHostCapabilities {
                 browser_use: false,
                 computer_use: false,
+                remote_control: false,
             },
         },
     )

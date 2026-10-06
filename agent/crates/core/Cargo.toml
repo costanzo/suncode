@@ -23,6 +23,7 @@ suncode-config = { path = "../config" }
 suncode-data = { path = "../data" }
 suncode-llm = { path = "../llm" }
 suncode-mcp = { path = "../mcp" }
+suncode-remote = { path = "../remote" }
 suncode-lsp = { path = "../lsp" }
 suncode-browser = { path = "../browser" }
 suncode-computer = { path = "../computer" }
