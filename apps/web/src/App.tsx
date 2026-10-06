@@ -161,11 +161,12 @@ function Composer() {
   const [value, setValue] = useState("");
   const submit = async () => {
     if (!value.trim()) return;
+    const submittedValue = value;
+    setValue("");
     try {
-      await sendMessage(value);
-      setValue("");
+      await sendMessage(submittedValue);
     } catch {
-      /* error is shown in the workspace */
+      setValue((current) => (current.trim() ? current : submittedValue));
     }
   };
   return (

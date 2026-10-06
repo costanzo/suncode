@@ -97,17 +97,6 @@ public class RemoteRelayService {
         return requestInternal(hostId, sessionId, command, payload, null, requestIdHeader, queryParam);
     }
 
-    public DesktopResponse request(
-            String hostId,
-            String sessionId,
-            Command command,
-            DesktopCommandPayload payload,
-            String routeId,
-            String requestIdHeader,
-            Map<String, Object> queryParam) {
-        return requestInternal(hostId, sessionId, command, payload, routeId, requestIdHeader, queryParam);
-    }
-
     private DesktopResponse requestInternal(
             String hostId,
             String sessionId,
