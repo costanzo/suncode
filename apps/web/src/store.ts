@@ -210,6 +210,13 @@ interface WebStore {
 
 export const useWebStore = create<WebStore>((set, get) => {
   let streamCleanup: (() => void) | undefined;
+  let streamGeneration = 0;
+  const disconnectStream = () => {
+    streamGeneration += 1;
+    const cleanup = streamCleanup;
+    streamCleanup = undefined;
+    cleanup?.();
+  };
   const updateCredential = (credential: CredentialState | null) => {
     persist(credential);
     set({ credential });
@@ -284,8 +291,7 @@ export const useWebStore = create<WebStore>((set, get) => {
       const { endpoint, credential } = get();
       if (!credential || !endpoint || (sessionId === get().selectedSessionId && get().snapshot))
         return;
-      streamCleanup?.();
-      streamCleanup = undefined;
+      disconnectStream();
       try {
         await loadSnapshot(sessionId, endpoint, credential);
       } catch {
@@ -445,8 +451,7 @@ export const useWebStore = create<WebStore>((set, get) => {
     },
     unpair: async () => {
       const { endpoint, credential } = get();
-      streamCleanup?.();
-      streamCleanup = undefined;
+      disconnectStream();
       if (endpoint && credential) {
         try {
           await api.logout(endpoint, credential.host.id);
@@ -470,9 +475,17 @@ export const useWebStore = create<WebStore>((set, get) => {
       });
     },
     connectStream: () => {
-      const { endpoint, credential, selectedSessionId } = get();
-      if (!credential || !endpoint || !selectedSessionId) return () => undefined;
-      streamCleanup?.();
+      const { endpoint, credential, selectedSessionId, snapshot } = get();
+      if (
+        !credential ||
+        !endpoint ||
+        !selectedSessionId ||
+        !snapshot ||
+        snapshot.id !== selectedSessionId
+      )
+        return () => undefined;
+      disconnectStream();
+      const generation = streamGeneration;
       set({ streamState: "connecting" });
       const cleanup = api.streamSession(
         endpoint,
@@ -480,6 +493,7 @@ export const useWebStore = create<WebStore>((set, get) => {
         selectedSessionId,
         get().lastEventId ?? undefined,
         (event) => {
+          if (generation !== streamGeneration) return;
           if (event.session_id && event.session_id !== get().selectedSessionId) return;
           set((state) => ({
             streamState: "live",
@@ -507,10 +521,11 @@ export const useWebStore = create<WebStore>((set, get) => {
           }));
         },
         async (error) => {
+          if (generation !== streamGeneration) return;
           if (error instanceof RemoteApiError && error.status === 410) {
             try {
               await loadSnapshot(selectedSessionId, endpoint, credential);
-              streamCleanup = get().connectStream();
+              if (generation === streamGeneration) streamCleanup = get().connectStream();
               return;
             } catch {
               /* visible error already set */
@@ -523,8 +538,18 @@ export const useWebStore = create<WebStore>((set, get) => {
           setError(error);
         },
       );
-      streamCleanup = cleanup;
-      return cleanup;
+      let disposed = false;
+      const guardedCleanup = () => {
+        if (disposed) return;
+        disposed = true;
+        if (streamCleanup === guardedCleanup) {
+          streamCleanup = undefined;
+          streamGeneration += 1;
+        }
+        cleanup();
+      };
+      streamCleanup = guardedCleanup;
+      return guardedCleanup;
     },
   };
 });

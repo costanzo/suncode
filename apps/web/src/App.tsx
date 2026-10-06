@@ -212,9 +212,13 @@ function Conversation() {
     error,
   } = useWebStore();
   const cleanup = useWebStore((state) => state.connectStream);
+  const selectedSessionId = useWebStore((state) => state.selectedSessionId);
   const messagesRef = useRef<HTMLDivElement>(null);
   const followLatestRef = useRef(true);
-  useEffect(() => cleanup(), [cleanup, snapshot?.id]);
+  useEffect(() => {
+    if (!snapshot || snapshot.id !== selectedSessionId) return;
+    return cleanup();
+  }, [cleanup, selectedSessionId, snapshot?.id]);
   useLayoutEffect(() => {
     const messages = messagesRef.current;
     if (messages && followLatestRef.current) messages.scrollTop = messages.scrollHeight;
