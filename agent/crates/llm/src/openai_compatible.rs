@@ -412,6 +412,7 @@ mod tests {
         assert_eq!(body["model"], "company-model-v1");
         assert_eq!(body["reasoning"]["effort"], "high");
         assert_eq!(body["tools"][0]["name"], "read");
+        assert_eq!(body["tools"][1]["name"], "computer_screenshot");
         let response = concat!(
             "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp-response-1\"}}\n\n",
             "data: {\"type\":\"response.output_text.delta\",\"delta\":\"hello\"}\n\n",
@@ -446,11 +447,18 @@ mod tests {
             Arc::new(TestKeys),
         );
         let messages = vec![Message::text("user", "hello")];
-        let tools = vec![ToolDefinition {
-            name: "read".into(),
-            description: "Read a file".into(),
-            parameters: json!({"type": "object"}),
-        }];
+        let tools = vec![
+            ToolDefinition {
+                name: "read".into(),
+                description: "Read a file".into(),
+                parameters: json!({"type": "object"}),
+            },
+            ToolDefinition {
+                name: "computer_screenshot".into(),
+                description: "Capture the primary display".into(),
+                parameters: json!({"type": "object", "properties": {}, "additionalProperties": false}),
+            },
+        ];
         let (sender, mut receiver) = mpsc::unbounded_channel();
         let (transfer_sender, mut transfer_receiver) = mpsc::unbounded_channel();
         let result = provider

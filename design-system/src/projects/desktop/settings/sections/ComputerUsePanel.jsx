@@ -47,15 +47,15 @@ export function ComputerUsePanel({ onSave }) {
       <div className="settings-panel-heading">
         <h2>Computer use</h2>
         <p>
-          Let supported models observe and operate the real primary display. Screenshots may be sent
-          to the selected provider, and changes in other applications are outside filesystem undo.
+          Provide SunCode desktop tools to models that support function calling and vision. Screenshots
+          may be sent to the selected provider, and changes in other applications are outside filesystem undo.
         </p>
       </div>
       <div className="settings-panel-section">
         <span className="settings-section-label">Availability</span>
         <SettingRow
           label="Enable Computer Use"
-          hint="Makes the built-in desktop tools available when the selected model and operating system support them."
+          hint="Makes SunCode's provider-neutral desktop tools available when the selected model supports function calling and vision."
         >
           <label className="settings-switch">
             <input
@@ -75,7 +75,7 @@ export function ComputerUsePanel({ onSave }) {
             <span className="settings-status-dot" />
             <div>
               <strong>Supported</strong>
-              <span>Selected model · claude-sonnet-5</span>
+              <span>Selected model · gpt-5.6-sol</span>
             </div>
           </div>
           <div className={`computer-runtime-state ${enabled ? "is-ready" : "is-disabled"}`}>

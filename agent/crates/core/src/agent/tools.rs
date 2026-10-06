@@ -126,15 +126,17 @@ impl Agent {
                     }
                 }
             } else if computer::is_computer_call(call) {
+                let member = computer::member_name(call).unwrap_or(&call.name);
                 (
-                    format!("computer.{}", call.name),
-                    json!({"toolsetName":"computer","member":call.name,"input":call.arguments}),
+                    format!("computer.{member}"),
+                    json!({"toolsetName":"computer","member":member,"input":call.arguments}),
                 )
             } else {
                 (call.name.clone(), call.arguments.clone())
             };
             let validation = if computer::is_computer_call(call) {
-                suncode_computer::ComputerAction::from_member(&call.name, &call.arguments)
+                let member = computer::member_name(call).unwrap_or(&call.name);
+                suncode_computer::ComputerAction::from_member(member, &call.arguments)
                     .map(|_| ())
                     .map_err(|error| BusinessError::invalid(error.to_string()))
             } else {
@@ -240,7 +242,7 @@ impl Agent {
                             "toolsetName":"computer",
                             "actions":batch.iter().map(|candidate| json!({
                                 "toolCallId":candidate.call_id,
-                                "member":candidate.name,
+                                "member":computer::member_name(candidate).unwrap_or(&candidate.name),
                                 "input":candidate.arguments,
                             })).collect::<Vec<_>>(),
                         });
@@ -587,9 +589,10 @@ impl Agent {
             return self.record_call_success(context, call, result);
         }
         if computer::is_computer_call(call) {
+            let member = computer::member_name(call).unwrap_or(&call.name);
             let result = match self
                 .computer
-                .execute(&call.name, &call.arguments, token)
+                .execute(member, &call.arguments, token)
                 .await
             {
                 Ok(result) => result,

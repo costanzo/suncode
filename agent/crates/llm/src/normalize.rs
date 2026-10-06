@@ -39,7 +39,7 @@ pub fn responses_input_items(messages: &[Message]) -> Vec<Value> {
             items.push(json!({
                 "type": "function_call_output",
                 "call_id": message.tool_call_id.clone().unwrap_or_default(),
-                "output": message.text_content(),
+                "output": response_tool_output(message),
             }));
             continue;
         }
@@ -88,6 +88,23 @@ pub fn responses_input_items(messages: &[Message]) -> Vec<Value> {
         items.push(json!({"role": message.role, "content": content}));
     }
     items
+}
+
+fn response_tool_output(message: &Message) -> Value {
+    if message.content.iter().all(|part| part.kind == "text") {
+        return Value::String(message.text_content());
+    }
+    Value::Array(
+        message
+            .content
+            .iter()
+            .filter_map(|part| match part.kind.as_str() {
+                "text" => Some(json!({"type": "input_text", "text": part.text})),
+                "image_url" => Some(json!({"type": "input_image", "image_url": part.text})),
+                _ => None,
+            })
+            .collect(),
+    )
 }
 
 pub fn cancelled() -> BusinessError {
@@ -188,6 +205,27 @@ mod tests {
                 json!({"type":"function_call","call_id":"call-1","name":"read","arguments":"{\"path\":\"README.md\"}"}),
                 json!({"type":"function_call_output","call_id":"call-1","output":"hello"}),
             ]
+        );
+    }
+
+    #[test]
+    fn responses_function_outputs_preserve_screenshot_images() {
+        let mut output = Message::text("tool", "Computer screenshot captured.");
+        output.content.push(ContentPart {
+            kind: "image_url".into(),
+            text: "data:image/png;base64,cG5n".into(),
+        });
+        output.tool_call_id = Some("call-1".into());
+        assert_eq!(
+            responses_input_items(&[output]),
+            vec![json!({
+                "type":"function_call_output",
+                "call_id":"call-1",
+                "output":[
+                    {"type":"input_text","text":"Computer screenshot captured."},
+                    {"type":"input_image","image_url":"data:image/png;base64,cG5n"}
+                ]
+            })]
         );
     }
 }

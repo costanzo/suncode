@@ -161,10 +161,10 @@
   <x:String x:Key="LocCertificateVerificationOff">证书验证已关闭</x:String>
   <x:String x:Key="LocCertificateVerificationWarning">SunCode 将接受无效证书和主机名，行为类似 curl -k。这可能使提供商凭据和获取的内容暴露给中间人攻击。</x:String>
   <x:String x:Key="LocSaveHttpsSetting">保存 HTTPS 设置</x:String>
-  <x:String x:Key="LocComputerUseHint">允许支持的模型观察和操作真实的主显示器。屏幕截图可能会发送给所选提供商，其他应用中的更改不受文件系统撤销覆盖。</x:String>
+  <x:String x:Key="LocComputerUseHint">向支持工具调用和视觉输入的模型提供 SunCode 桌面工具。屏幕截图可能会发送给所选提供商，其他应用中的更改不受文件系统撤销覆盖。</x:String>
   <x:String x:Key="LocAvailability">可用性</x:String>
   <x:String x:Key="LocEnableComputerUse">启用计算机操作</x:String>
-  <x:String x:Key="LocEnableComputerUseHint">当所选模型和操作系统支持时，启用内置桌面工具。</x:String>
+  <x:String x:Key="LocEnableComputerUseHint">当所选模型支持工具调用和视觉输入时，启用 SunCode 的通用桌面工具。</x:String>
   <x:String x:Key="LocUnknown">未知</x:String>
   <x:String x:Key="LocNoModelSelected">未选择模型</x:String>
   <x:String x:Key="LocUnavailable">不可用</x:String>

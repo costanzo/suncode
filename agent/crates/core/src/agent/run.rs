@@ -88,8 +88,13 @@ impl Agent {
                 tool_definitions.extend(self.mcp.catalog(&context.project_id).await);
                 tool_definitions.extend(self.browser.catalog().await);
             }
-            let client_toolsets = self.computer.catalog(self.providers.supports_computer_use(&context.model));
-            let fixed_request_tokens = serde_json::to_string(&(&base_system_messages, &tool_definitions, &client_toolsets))
+            if context.allowed_tools.is_empty() {
+                tool_definitions.extend(
+                    self.computer
+                        .catalog(self.providers.supports_computer_use(&context.model)),
+                );
+            }
+            let fixed_request_tokens = serde_json::to_string(&(&base_system_messages, &tool_definitions))
                 .map(|value| value.len().div_ceil(4))
                 .unwrap_or(0)
                 .saturating_add(
@@ -153,7 +158,7 @@ impl Agent {
                         messages: &llm_messages,
                         wire_model: &provider.wire_model,
                         tools: &tool_definitions,
-                        client_toolsets: &client_toolsets,
+                        client_toolsets: &[],
                         reasoning_effort: context.reasoning_effort.as_deref(),
                         max_output_tokens: self
                             .providers

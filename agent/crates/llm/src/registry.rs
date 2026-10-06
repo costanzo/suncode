@@ -152,7 +152,11 @@ impl ModelProviderRegistry {
                 .models
                 .iter()
                 .find(|model| model.id == model_id)
-                .is_some_and(|model| model.capabilities.computer_use)
+                .is_some_and(|model| {
+                    model.capabilities.computer_use
+                        && model.capabilities.tool_use
+                        && model.capabilities.vision
+                })
         })
     }
 

@@ -6,10 +6,14 @@ use suncode_computer::{
 
 pub(super) fn is_computer_call(call: &ToolCall) -> bool {
     call.toolset_name.as_deref() == Some("computer")
+        || call
+            .name
+            .strip_prefix("computer_")
+            .is_some_and(is_known_member)
 }
 
 pub(super) fn risk(name: &str) -> Option<Risk> {
-    match name {
+    match computer_member(name)? {
         "screenshot" | "zoom" | "cursor_position" | "wait" | "mouse_move" => {
             Some(Risk::ComputerObserve)
         }
@@ -18,6 +22,46 @@ pub(super) fn risk(name: &str) -> Option<Risk> {
         | "hold_key" => Some(Risk::ComputerInput),
         _ => None,
     }
+}
+
+pub(super) fn member_name(call: &ToolCall) -> Option<&str> {
+    if call.toolset_name.as_deref() == Some("computer") {
+        return is_known_member(&call.name).then_some(call.name.as_str());
+    }
+    call.name
+        .strip_prefix("computer_")
+        .filter(|name| is_known_member(name))
+}
+
+fn computer_member(name: &str) -> Option<&str> {
+    if is_known_member(name) {
+        return Some(name);
+    }
+    name.strip_prefix("computer_")
+        .filter(|member| is_known_member(member))
+}
+
+fn is_known_member(name: &str) -> bool {
+    matches!(
+        name,
+        "screenshot"
+            | "zoom"
+            | "left_click"
+            | "right_click"
+            | "middle_click"
+            | "double_click"
+            | "triple_click"
+            | "left_click_drag"
+            | "mouse_move"
+            | "left_mouse_down"
+            | "left_mouse_up"
+            | "cursor_position"
+            | "scroll"
+            | "type"
+            | "key"
+            | "hold_key"
+            | "wait"
+    )
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -221,7 +265,7 @@ impl ComputerManager {
     pub(super) fn catalog(
         &self,
         model_supports_computer_use: bool,
-    ) -> Vec<suncode_llm::ClientToolsetDefinition> {
+    ) -> Vec<suncode_llm::ToolDefinition> {
         if !self.inner.host_available {
             return Vec::new();
         }
@@ -233,11 +277,7 @@ impl ComputerManager {
         {
             return Vec::new();
         }
-        vec![suncode_llm::ClientToolsetDefinition {
-            type_name: "computer_toolset_20260801".into(),
-            toolset_name: "computer".into(),
-            configuration: json!({}),
-        }]
+        computer_tool_definitions()
     }
 
     pub(super) async fn execute(
@@ -293,6 +333,163 @@ impl ComputerManager {
             ))
         }
     }
+}
+
+fn computer_tool_definitions() -> Vec<suncode_llm::ToolDefinition> {
+    let empty = || {
+        json!({
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+        })
+    };
+    let point = || {
+        json!({
+            "type": "object",
+            "properties": {
+                "x": {"type": "integer", "minimum": 0},
+                "y": {"type": "integer", "minimum": 0}
+            },
+            "required": ["x", "y"],
+            "additionalProperties": false
+        })
+    };
+    let region = || {
+        json!({
+            "type": "object",
+            "properties": {
+                "x": {"type": "integer", "minimum": 0},
+                "y": {"type": "integer", "minimum": 0},
+                "width": {"type": "integer", "minimum": 1},
+                "height": {"type": "integer", "minimum": 1}
+            },
+            "required": ["x", "y", "width", "height"],
+            "additionalProperties": false
+        })
+    };
+    let modifiers = || {
+        json!({
+            "type": "array",
+            "items": {"type": "string", "enum": ["shift", "control", "alt", "super"]},
+            "uniqueItems": true
+        })
+    };
+    let definition = |member: &str, description: &str, properties: Value, required: &[&str]| {
+        suncode_llm::ToolDefinition {
+            name: format!("computer_{member}"),
+            description: description.into(),
+            parameters: json!({
+                "type": "object",
+                "properties": properties,
+                "required": required,
+                "additionalProperties": false
+            }),
+        }
+    };
+    vec![
+        definition(
+            "screenshot",
+            "Capture the current primary display and return it as an image.",
+            empty(),
+            &[],
+        ),
+        definition(
+            "zoom",
+            "Crop a region from the most recent screenshot.",
+            json!({"region": region()}),
+            &["region"],
+        ),
+        definition(
+            "left_click",
+            "Click the left mouse button, optionally at a screenshot coordinate.",
+            json!({"coordinate": point(), "modifiers": modifiers()}),
+            &[],
+        ),
+        definition(
+            "right_click",
+            "Click the right mouse button, optionally at a screenshot coordinate.",
+            json!({"coordinate": point(), "modifiers": modifiers()}),
+            &[],
+        ),
+        definition(
+            "middle_click",
+            "Click the middle mouse button, optionally at a screenshot coordinate.",
+            json!({"coordinate": point(), "modifiers": modifiers()}),
+            &[],
+        ),
+        definition(
+            "double_click",
+            "Double-click the left mouse button, optionally at a screenshot coordinate.",
+            json!({"coordinate": point(), "modifiers": modifiers()}),
+            &[],
+        ),
+        definition(
+            "triple_click",
+            "Triple-click the left mouse button, optionally at a screenshot coordinate.",
+            json!({"coordinate": point(), "modifiers": modifiers()}),
+            &[],
+        ),
+        definition(
+            "left_click_drag",
+            "Drag the left mouse button between two screenshot coordinates.",
+            json!({"start_coordinate": point(), "coordinate": point(), "modifiers": modifiers()}),
+            &["start_coordinate", "coordinate"],
+        ),
+        definition(
+            "mouse_move",
+            "Move the pointer to a screenshot coordinate.",
+            json!({"coordinate": point()}),
+            &["coordinate"],
+        ),
+        definition(
+            "left_mouse_down",
+            "Press and hold the left mouse button.",
+            empty(),
+            &[],
+        ),
+        definition(
+            "left_mouse_up",
+            "Release the left mouse button.",
+            empty(),
+            &[],
+        ),
+        definition(
+            "cursor_position",
+            "Return the current pointer position.",
+            empty(),
+            &[],
+        ),
+        definition(
+            "scroll",
+            "Scroll at an optional screenshot coordinate.",
+            json!({"direction": {"type": "string", "enum": ["up", "down", "left", "right"]}, "scroll_amount": {"type": "integer", "minimum": 1}, "coordinate": point(), "modifiers": modifiers()}),
+            &["direction", "scroll_amount"],
+        ),
+        definition(
+            "type",
+            "Type text into the focused desktop application.",
+            json!({"text": {"type": "string"}}),
+            &["text"],
+        ),
+        definition(
+            "key",
+            "Press a key or key chord one or more times.",
+            json!({"text": {"type": "string"}, "repeat": {"type": "integer", "minimum": 1, "maximum": 100}}),
+            &["text"],
+        ),
+        definition(
+            "hold_key",
+            "Hold a key chord for a bounded duration.",
+            json!({"text": {"type": "string"}, "duration_seconds": {"type": "number", "minimum": 0, "maximum": 300}}),
+            &["text", "duration_seconds"],
+        ),
+        definition(
+            "wait",
+            "Wait for a bounded duration before the next desktop action.",
+            json!({"duration_seconds": {"type": "number", "minimum": 0, "maximum": 300}}),
+            &["duration_seconds"],
+        ),
+    ]
 }
 
 impl Agent {
@@ -379,5 +576,30 @@ mod tests {
             manager.set_enabled(true).unwrap_err().code,
             "computer_host_unavailable"
         );
+    }
+
+    #[test]
+    fn generic_catalog_uses_stable_namespaced_function_tools() {
+        let definitions = computer_tool_definitions();
+        assert_eq!(definitions.len(), 17);
+        assert!(definitions
+            .iter()
+            .all(|definition| definition.name.starts_with("computer_")));
+        assert!(definitions
+            .iter()
+            .any(|definition| definition.name == "computer_screenshot"));
+    }
+
+    #[test]
+    fn generic_calls_map_to_existing_computer_members() {
+        let call = ToolCall {
+            call_id: "call-1".into(),
+            name: "computer_left_click".into(),
+            arguments: json!({}),
+            toolset_name: None,
+        };
+        assert!(is_computer_call(&call));
+        assert_eq!(member_name(&call), Some("left_click"));
+        assert_eq!(risk(&call.name), Some(Risk::ComputerInput));
     }
 }

@@ -161,10 +161,10 @@
   <x:String x:Key="LocCertificateVerificationOff">Certificate verification is off</x:String>
   <x:String x:Key="LocCertificateVerificationWarning">SunCode will accept invalid certificates and hostnames, similar to curl -k. This can expose provider credentials and fetched content to man-in-the-middle attacks.</x:String>
   <x:String x:Key="LocSaveHttpsSetting">Save HTTPS setting</x:String>
-  <x:String x:Key="LocComputerUseHint">Let supported models observe and operate the real primary display. Screenshots may be sent to the selected provider, and changes in other applications are outside filesystem undo.</x:String>
+  <x:String x:Key="LocComputerUseHint">Provide SunCode desktop tools to models that support function calling and vision. Screenshots may be sent to the selected provider, and changes in other applications are outside filesystem undo.</x:String>
   <x:String x:Key="LocAvailability">AVAILABILITY</x:String>
   <x:String x:Key="LocEnableComputerUse">Enable Computer Use</x:String>
-  <x:String x:Key="LocEnableComputerUseHint">Makes the built-in desktop tools available when the selected model and operating system support them.</x:String>
+  <x:String x:Key="LocEnableComputerUseHint">Makes SunCode's provider-neutral desktop tools available when the selected model supports function calling and vision.</x:String>
   <x:String x:Key="LocUnknown">Unknown</x:String>
   <x:String x:Key="LocNoModelSelected">No model selected</x:String>
   <x:String x:Key="LocUnavailable">Unavailable</x:String>

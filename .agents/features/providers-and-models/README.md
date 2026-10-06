@@ -22,8 +22,8 @@ Every `adapter_type=openai` provider posts to `<endpoint>/responses`. This inclu
 - function tools with `strict: false`;
 - `stream: true`, `store: false`, optional `reasoning.effort`, and optional `max_output_tokens`.
 
-SunCode never sends `previous_response_id`. The local transcript and context compaction remain the only source of conversation state, and `store: false` keeps responses from being retained on the provider side. A semantic SSE parser turns text deltas, function-call argument events, terminal response events, usage, request/response IDs, and errors into provider-neutral completions. Tool results are correlated by `call_id`. OpenAI built-in tools are not exposed. The OpenAI-compatible adapter rejects native client toolsets (`provider_capability_unsupported`), so Computer Use requires the Anthropic route.
+SunCode never sends `previous_response_id`. The local transcript and context compaction remain the only source of conversation state, and `store: false` keeps responses from being retained on the provider side. A semantic SSE parser turns text deltas, function-call argument events, terminal response events, usage, request/response IDs, and errors into provider-neutral completions. Tool results are correlated by `call_id`. OpenAI built-in tools are not exposed. The OpenAI-compatible adapter accepts SunCode's ordinary `computer_*` function tools and preserves screenshot images in multimodal function results; provider-native client toolsets remain optional.
 
-The `anthropic` adapter posts to `<endpoint>/messages` and carries native client toolsets such as Computer Use.
+The `anthropic` adapter posts to `<endpoint>/messages` and supports the same ordinary `computer_*` function tools. Native client toolsets such as Computer Use remain available as an optional provider-specific optimization.
 
 Both adapters apply the global HTTPS certificate and proxy settings described in [`network/`](../network/README.md). Credential, usage, and trace rules are covered in [`agent-phase-1/`](../agent-phase-1/README.md) and [`contracts/agent-sdk/README.md`](../../../contracts/agent-sdk/README.md).
