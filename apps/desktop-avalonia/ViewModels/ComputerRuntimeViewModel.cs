@@ -1,4 +1,5 @@
 using SunCode.Desktop.Infrastructure;
+using SunCode.Sdk;
 using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
@@ -57,7 +58,11 @@ public sealed class ComputerRuntimeViewModel : ObservableObject
         }
         catch (Exception exception)
         {
-            StatusText = exception.Message;
+            StatusText = exception is SdkException { Code: "computer_input_permission_required" }
+                ? LocalizationService.GetString(
+                    "LocComputerInputPermissionRequired",
+                    "Computer Use needs input control permission. Allow SunCode in System Settings > Privacy & Security > Accessibility, then try again.")
+                : exception.Message;
             _host.ReportError(exception);
             return false;
         }

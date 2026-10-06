@@ -13,9 +13,10 @@ Computer Use is a first-party Rust capability that observes and operates the use
 - Recovery never replays an input action whose completion is unknown after restart.
 - Emergency stop persists the disabled state, cancels active work, and releases every held key and mouse button before it returns. Re-enabling is explicit.
 - `computer_runtime_info` returns only redacted facts: backend availability, display and screenshot sizes, capture and input permission state, control owner, and a safe error. Desktop Settings has a Computer Use page with enablement, model support, runtime and permission state, explicit permission requests, and emergency stop.
+- Enabling Computer Use checks input permission before creating the backend and requests the operating-system permission when supported. If permission remains denied, the SDK returns `computer_input_permission_required` and does not persist enablement.
 
 Capture backends exist for macOS (with Retina point-to-pixel normalization), Windows (per-monitor-DPI GDI), and X11 (RandR primary output).
 
-Not implemented: complete serial-batch halt semantics across durable approval continuation; verified macOS, Windows, and X11 conformance across DPI, scaling, and multi-display layouts; Wayland (needs a unified portal ScreenCast and RemoteDesktop session); multi-display control; desktop permission onboarding and a Computer Use approval UI; secure or locked desktops; and Computer Use adapters for other providers.
+Not implemented: complete serial-batch halt semantics across durable approval continuation; verified macOS, Windows, and X11 conformance across DPI, scaling, and multi-display layouts; Wayland (needs a unified portal ScreenCast and RemoteDesktop session); multi-display control; a Computer Use approval UI; secure or locked desktops; and Computer Use adapters for other providers.
 
 Contract: [`contracts/agent-sdk/README.md`](../../../contracts/agent-sdk/README.md). Decision: `ADR-20260919-first-party-computer-use`.

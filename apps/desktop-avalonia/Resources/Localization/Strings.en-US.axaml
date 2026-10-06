@@ -488,6 +488,7 @@
   <x:String x:Key="LocScreenCapturePermissionUnavailable">Screen capture permission is still unavailable. Review the operating-system prompt or privacy settings.</x:String>
   <x:String x:Key="LocInputControlPermissionAvailable">Input control permission is available.</x:String>
   <x:String x:Key="LocInputControlPermissionUnavailable">Input control permission is still unavailable. Review the operating-system prompt or privacy settings.</x:String>
+  <x:String x:Key="LocComputerInputPermissionRequired">Computer Use needs input control permission. Allow SunCode in System Settings &gt; Privacy &amp; Security &gt; Accessibility, then try again.</x:String>
   <x:String x:Key="LocComputerUseStopped">Computer Use stopped. Held input was released.</x:String>
   <x:String x:Key="LocYouControlDesktop">You control the desktop. Computer Use tools are paused.</x:String>
   <x:String x:Key="LocControlReturnedFreshScreenshot">Control returned to the agent. A fresh screenshot is required before coordinate input.</x:String>

@@ -92,10 +92,44 @@ fn computer_enablement_desired(store: &Store) -> bool {
 
 pub(super) fn apply_computer_enablement(agent: &Agent, enabled: bool) -> SdkResult<()> {
     if enabled && !agent.computer_runtime_info().backend_available {
+        let runtime = agent.computer_runtime_info();
+        if runtime.input_permission == "denied" {
+            let permission = agent.request_computer_input_permission()?;
+            if permission.input_permission == "denied" {
+                return Err(computer_input_permission_required());
+            }
+        }
         agent.install_computer_backend(Box::new(
             suncode_computer::EnigoBackend::new()
-                .map_err(|error| BusinessError::unavailable(error.to_string()))?,
+                .map_err(|error| {
+                    let message = error.to_string();
+                    if message.contains("permission to simulate input") {
+                        computer_input_permission_required()
+                    } else {
+                        BusinessError::unavailable(message)
+                    }
+                })?,
         ))?;
     }
     agent.set_computer_use_enabled(enabled)
+}
+
+fn computer_input_permission_required() -> BusinessError {
+    BusinessError::new(
+        "computer_input_permission_required",
+        "Computer Use requires input control permission. Grant SunCode access in the operating system privacy settings, then try again.",
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn denied_input_permission_has_a_stable_sdk_error() {
+        let error = computer_input_permission_required();
+
+        assert_eq!(error.code, "computer_input_permission_required");
+        assert!(error.message.contains("input control permission"));
+    }
 }

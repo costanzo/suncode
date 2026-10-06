@@ -488,6 +488,7 @@
   <x:String x:Key="LocScreenCapturePermissionUnavailable">屏幕捕获权限仍不可用。请检查操作系统提示或隐私设置。</x:String>
   <x:String x:Key="LocInputControlPermissionAvailable">输入控制权限可用。</x:String>
   <x:String x:Key="LocInputControlPermissionUnavailable">输入控制权限仍不可用。请检查操作系统提示或隐私设置。</x:String>
+  <x:String x:Key="LocComputerInputPermissionRequired">计算机操作需要输入控制权限。请在“系统设置 &gt; 隐私与安全性 &gt; 辅助功能”中允许 SunCode，然后重试。</x:String>
   <x:String x:Key="LocComputerUseStopped">计算机操作已停止，已释放按住的输入。</x:String>
   <x:String x:Key="LocYouControlDesktop">你正在控制桌面。计算机操作工具已暂停。</x:String>
   <x:String x:Key="LocControlReturnedFreshScreenshot">控制权已交还代理。执行坐标输入前需要新的屏幕截图。</x:String>

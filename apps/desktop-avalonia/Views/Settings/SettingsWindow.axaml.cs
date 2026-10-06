@@ -548,7 +548,7 @@ public sealed partial class SettingsWindow : Window
                 : L("LocRequestScreenCapture", "Request screen capture");
             ComputerPage.InputPermissionTextControl.Text = FormatComputerValue(runtime.InputPermission);
             ComputerPage.InputPermissionDotControl.Fill = ComputerPermissionBrush(runtime.InputPermission);
-            ComputerPage.InputPermissionButtonControl.IsEnabled = runtime.InputPermission == "denied";
+            ComputerPage.InputPermissionButtonControl.IsEnabled = runtime.InputPermission is "denied" or "unknown";
             ComputerPage.InputPermissionButtonControl.Content = runtime.InputPermission == "allowed"
                 ? L("LocInputControlAllowed", "Input control allowed")
                 : L("LocRequestInputControl", "Request input control");

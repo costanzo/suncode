@@ -66,6 +66,9 @@ impl AsyncAgentSdk {
                 ))
             }
         };
+        if scope == "global" && key == "computer_use_enabled" {
+            apply_computer_enablement(&self.state.agent, value.as_bool().unwrap_or(false))?;
+        }
         self.state.store.set_setting(scope, scope_id, key, value)?;
         if scope == "global" && key == "verify_https_certificates" {
             self.state
@@ -90,9 +93,6 @@ impl AsyncAgentSdk {
                 .agent
                 .set_browser_use_enabled(value.as_bool().unwrap_or(false))
                 .await;
-        }
-        if scope == "global" && key == "computer_use_enabled" {
-            apply_computer_enablement(&self.state.agent, value.as_bool().unwrap_or(false))?;
         }
         if scope == "global" && (key == "use_system_certificates" || key == "certificate_path") {
             self.state.operations.set_certificate_configuration(
