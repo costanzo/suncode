@@ -44,17 +44,20 @@ fn command_arguments(args: &ProcessArguments) -> Result<(String, Vec<String>), B
 }
 
 fn process_cwd(root: &Path, args: &ProcessArguments) -> Result<std::path::PathBuf, BusinessError> {
-    let relative = args.cwd.as_deref().unwrap_or(".");
-    let path = root
-        .join(safe_relative_path(relative)?)
-        .canonicalize()
-        .map_err(|_| {
-            BusinessError::new(
-                "process_working_directory_unavailable",
-                "working directory is unavailable",
-            )
-            .with_retryable(false)
-        })?;
+    let requested = args.cwd.as_deref().unwrap_or(".");
+    let requested_path = Path::new(requested);
+    let candidate = if requested_path.is_absolute() {
+        requested_path.to_path_buf()
+    } else {
+        root.join(safe_relative_path(requested)?)
+    };
+    let path = candidate.canonicalize().map_err(|_| {
+        BusinessError::new(
+            "process_working_directory_unavailable",
+            "working directory is unavailable",
+        )
+        .with_retryable(false)
+    })?;
     if !path.starts_with(root) || !path.is_dir() {
         return Err(
             BusinessError::new("scope_denied", "working directory is outside the project")
@@ -518,7 +521,7 @@ pub(super) fn run(
 
 #[cfg(test)]
 mod tests {
-    use super::{command_arguments, process_start_failure, run};
+    use super::{command_arguments, process_cwd, process_start_failure, run};
     use crate::arguments::ProcessArguments;
     use base64::{engine::general_purpose::STANDARD, Engine};
     use std::sync::atomic::AtomicBool;
@@ -545,6 +548,72 @@ mod tests {
     fn missing_executable_has_a_stable_error_code() {
         let failure = process_start_failure(std::io::Error::from(std::io::ErrorKind::NotFound));
         assert_eq!(failure.code, "process_executable_not_found");
+    }
+
+    #[test]
+    fn absolute_working_directory_inside_project_is_allowed() {
+        let root = std::env::temp_dir().join(format!(
+            "suncode-process-cwd-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let nested = root.join("nested");
+        std::fs::create_dir_all(&nested).unwrap();
+        let root = root.canonicalize().unwrap();
+        let nested = nested.canonicalize().unwrap();
+        let params = ProcessArguments {
+            program: "echo".into(),
+            args: Vec::new(),
+            cwd: Some(nested.to_string_lossy().into_owned()),
+            env: Default::default(),
+            timeout_ms: None,
+            sandbox_profile: None,
+            idempotency_key: None,
+            operation_id: None,
+        };
+
+        assert_eq!(process_cwd(&root, &params).unwrap(), nested);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn absolute_working_directory_outside_project_is_denied() {
+        let root = std::env::temp_dir().join(format!(
+            "suncode-process-cwd-root-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let outside = std::env::temp_dir().join(format!(
+            "suncode-process-cwd-outside-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+        let root = root.canonicalize().unwrap();
+        let params = ProcessArguments {
+            program: "echo".into(),
+            args: Vec::new(),
+            cwd: Some(outside.to_string_lossy().into_owned()),
+            env: Default::default(),
+            timeout_ms: None,
+            sandbox_profile: None,
+            idempotency_key: None,
+            operation_id: None,
+        };
+
+        assert_eq!(
+            process_cwd(&root, &params).unwrap_err().code,
+            "scope_denied"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+        std::fs::remove_dir_all(outside).unwrap();
     }
 
     #[test]

@@ -10,7 +10,7 @@ pub fn definition() -> (&'static str, &'static str, Value) {
             "properties":{
                 "command":{"type":"string","description":"Shell command string to execute"},
                 "timeout":{"type":"integer","description":"Timeout in milliseconds. Defaults to 120000 and may not exceed 600000."},
-                "workdir":{"type":"string","description":"Working directory for the command. Defaults to the active project directory."}
+                "workdir":{"type":"string","description":"Working directory for the command, as a path relative to the active project or an absolute path inside it. Defaults to the active project directory."}
             },
             "additionalProperties":false
         }),
