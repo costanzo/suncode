@@ -12,7 +12,7 @@ public record MobileEvent(
         String hostId,
         String sessionId,
         String requestId,
-        String eventType,
+        EventType eventType,
         String occurredAt,
         EventPayload payload) {
 }

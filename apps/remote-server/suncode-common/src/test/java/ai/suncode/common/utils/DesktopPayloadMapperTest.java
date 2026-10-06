@@ -1,5 +1,6 @@
 package ai.suncode.common.utils;
 
+import ai.suncode.message.remote.ConnectionState;
 import ai.suncode.message.remote.HostDto;
 import ai.suncode.message.remote.ProjectsData;
 import ai.suncode.message.remote.SessionPageData;
@@ -86,7 +87,7 @@ class DesktopPayloadMapperTest {
                    {"sessionId":"s-2","projectId":"p-1","kind":"primary","archivedAt":"t"}],
                  "sessionStates":{"s-1":"question"}}
                 """;
-        HostDto host = new HostDto("host-1", "Dev PC", "connected", null, "0.1.0");
+        HostDto host = new HostDto("host-1", "Dev PC", ConnectionState.CONNECTED, null, "0.1.0");
         SyncData sync = DesktopPayloadMapper.sync(body, host);
         assertTrue(sync.resetRequired());
         assertFalse(sync.hasMore());

@@ -81,7 +81,7 @@ public class RemoteRelayService {
     public DesktopResponse request(
             String hostId,
             String sessionId,
-            String command,
+            Command command,
             DesktopCommandPayload payload,
             String requestIdHeader) {
         return request(hostId, sessionId, command, payload, requestIdHeader, Map.of());
@@ -90,7 +90,7 @@ public class RemoteRelayService {
     public DesktopResponse request(
             String hostId,
             String sessionId,
-            String command,
+            Command command,
             DesktopCommandPayload payload,
             String requestIdHeader,
             Map<String, Object> queryParam) {
@@ -100,16 +100,16 @@ public class RemoteRelayService {
     public DesktopResponse request(
             String hostId,
             String sessionId,
-            String command,
+            Command command,
             DesktopCommandPayload payload,
             String routeId,
             String requestIdHeader,
             Map<String, Object> queryParam) {
         String effectiveRouteId = routeId;
         if (effectiveRouteId == null && payload != null) {
-            if (command.startsWith("approval.")) {
+            if (command.isApproval()) {
                 effectiveRouteId = payload.getApprovalId();
-            } else if (command.startsWith("question.")) {
+            } else if (command.isQuestion()) {
                 effectiveRouteId = payload.getQuestionId();
             }
         }
@@ -120,7 +120,7 @@ public class RemoteRelayService {
     public DesktopResponse requestEncrypted(
             String hostId,
             String sessionId,
-            String command,
+            Command command,
             String requestIdHeader,
             Map<String, Object> queryParam,
             String encPayload) {
@@ -131,7 +131,7 @@ public class RemoteRelayService {
     public DesktopResponse requestEncrypted(
             String hostId,
             String sessionId,
-            String command,
+            Command command,
             String routeId,
             String requestIdHeader,
             Map<String, Object> queryParam,
@@ -143,7 +143,7 @@ public class RemoteRelayService {
     private DesktopResponse requestInternal(
             String hostId,
             String sessionId,
-            String command,
+            Command command,
             DesktopCommandPayload payload,
             String routeId,
             String requestId,
@@ -155,7 +155,7 @@ public class RemoteRelayService {
     public DesktopResponse requestRaw(
             String hostId,
             String sessionId,
-            String command,
+            Command command,
             String routeId,
             String requestId,
             Map<String, Object> queryParam,
@@ -187,10 +187,10 @@ public class RemoteRelayService {
             Map<String, Object> path = new java.util.LinkedHashMap<>();
             if (hostId != null) path.put("hostId", hostId);
             if (sessionId != null) path.put("sessionId", sessionId);
-            if (command.startsWith("approval.") && routeId != null) {
+            if (command.isApproval() && routeId != null) {
                 path.put("approvalId", routeId);
             }
-            if (command.startsWith("question.") && routeId != null) {
+            if (command.isQuestion() && routeId != null) {
                 path.put("questionId", routeId);
             }
             DesktopMobileHttpRequest requestEnvelope = new DesktopMobileHttpRequest(
@@ -276,7 +276,7 @@ public class RemoteRelayService {
         connection.emitter().onTimeout(() -> removeMobile(connection));
         connection.emitter().onError(error -> removeMobile(connection));
         try {
-            DesktopResponse snapshot = request(hostId, sessionId, "session.get", new DesktopCommandPayload(), requestId);
+            DesktopResponse snapshot = request(hostId, sessionId, Command.SESSION_GET, new DesktopCommandPayload(), requestId);
             HostEvents state = hostEvents.computeIfAbsent(hostId, ignored -> new HostEvents());
             long snapshotSequence = state.sequence().get();
             String snapshotId = hostId + ":" + snapshotSequence;
@@ -322,7 +322,7 @@ public class RemoteRelayService {
     public List<HostDto> hosts() {
         List<HostDto> result = new ArrayList<>();
         for (Map.Entry<String, DesktopConnection> entry : desktopConnections.entrySet()) {
-            result.add(new HostDto(entry.getKey(), entry.getKey(), "connected", Instant.now(), null));
+            result.add(new HostDto(entry.getKey(), entry.getKey(), ConnectionState.CONNECTED, Instant.now(), null));
         }
         return result;
     }
@@ -336,10 +336,10 @@ public class RemoteRelayService {
         return snapshots.get(hostId);
     }
 
-    public void notifyDesktop(String hostId, String requestId, String eventType, Object body) {
+    public void notifyDesktop(String hostId, String requestId, EventType eventType, Object body) {
         DesktopConnection connection = desktopConnections.get(hostId);
         if (connection != null) {
-            send(connection.emitter(), eventType, requestId == null ? UUID.randomUUID().toString() : requestId,
+            send(connection.emitter(), eventType.value(), requestId == null ? UUID.randomUUID().toString() : requestId,
                     new DesktopMobileHttpRequest(Map.of(), Map.of(),
                             MarshallingUtils.toJson(body == null ? Map.of() : body)));
         }
@@ -435,18 +435,17 @@ public class RemoteRelayService {
         }
     }
 
-    private static String mobileEventName(String command) {
+    private static String mobileEventName(Command command) {
         return switch (command) {
-            case "projects.list" -> "mobile.projects.list";
-            case "sessions.list" -> "mobile.sessions.list";
-            case "session.create" -> "mobile.sessions.create";
-            case "session.get" -> "mobile.sessions.get";
-            case "session.message", "session.send_message" -> "mobile.sessions.messages.send";
-            case "approval.resolve" -> "mobile.sessions.approvals.resolve";
-            case "question.reply" -> "mobile.sessions.questions.reply";
-            case "turn.cancel", "session.cancel" -> "mobile.sessions.cancel";
-            case "turn.retry", "session.retry" -> "mobile.sessions.retry";
-            default -> "mobile." + command.replace('.', '_');
+            case PROJECTS_LIST -> "mobile.projects.list";
+            case SESSIONS_LIST -> "mobile.sessions.list";
+            case SESSION_CREATE -> "mobile.sessions.create";
+            case SESSION_GET -> "mobile.sessions.get";
+            case SESSION_MESSAGE, SESSION_SEND_MESSAGE -> "mobile.sessions.messages.send";
+            case APPROVAL_RESOLVE -> "mobile.sessions.approvals.resolve";
+            case QUESTION_REPLY -> "mobile.sessions.questions.reply";
+            case TURN_CANCEL, SESSION_CANCEL -> "mobile.sessions.cancel";
+            case TURN_RETRY, SESSION_RETRY -> "mobile.sessions.retry";
         };
     }
 

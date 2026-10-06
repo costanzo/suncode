@@ -4,6 +4,6 @@ public record DesktopCommand(
         String requestId,
         String hostId,
         String sessionId,
-        String command,
+        Command command,
         DesktopCommandPayload payload) {
 }

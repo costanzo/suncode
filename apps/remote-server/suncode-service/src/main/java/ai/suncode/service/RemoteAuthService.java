@@ -86,7 +86,7 @@ public class RemoteAuthService {
                 access,
                 refresh,
                 Instant.now().plus(ACCESS_TOKEN_LIFETIME),
-                new HostDto(pairing.hostId(), pairing.displayName(), "offline", null, null));
+                new HostDto(pairing.hostId(), pairing.displayName(), ConnectionState.OFFLINE, null, null));
     }
 
     public TokenData refresh(RefreshTokenRequest request) {

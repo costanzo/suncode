@@ -1,14 +1,17 @@
 package ai.suncode.common.utils;
 
+import ai.suncode.message.remote.ApprovalResolutionRequest;
+import ai.suncode.message.remote.Command;
+import ai.suncode.message.remote.CommandAcceptedData;
+import ai.suncode.message.remote.ConnectionState;
 import ai.suncode.message.remote.DesktopCommand;
 import ai.suncode.message.remote.DesktopCommandPayload;
 import ai.suncode.message.remote.DesktopEvent;
 import ai.suncode.message.remote.DesktopResponse;
+import ai.suncode.message.remote.EventType;
 import ai.suncode.message.remote.EventPayload;
 import ai.suncode.message.remote.MobileEvent;
 import ai.suncode.message.remote.SessionSnapshot;
-import ai.suncode.message.remote.ApprovalResolutionRequest;
-import ai.suncode.message.remote.CommandAcceptedData;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -27,7 +30,7 @@ class MarshallingUtilsTest {
         payload.setTurnId("turn-1");
         payload.setState("running");
         MobileEvent event = new MobileEvent(
-                "host:1", 1, "host", "session", "request", "turn.state", occurredAt,
+                "host:1", 1, "host", "session", "request", EventType.TURN_STATE, occurredAt,
                 payload);
 
         String json = MarshallingUtils.toJson(event);
@@ -40,7 +43,7 @@ class MarshallingUtilsTest {
         assertFalse(json.contains("approval_id"));
         assertEquals("2026-09-27T10:00:00Z", MarshallingUtils.convertValue(event, Map.class).get("occurred_at"));
 
-        DesktopCommand command = new DesktopCommand("request", "host", "session", "session.get", new DesktopCommandPayload());
+        DesktopCommand command = new DesktopCommand("request", "host", "session", Command.SESSION_GET, new DesktopCommandPayload());
         assertEquals("session.get", MarshallingUtils.convertValue(command, Map.class).get("command"));
     }
 
@@ -62,9 +65,21 @@ class MarshallingUtilsTest {
                  "content":[{"type":"text","text":"Hello"}]}}}
                 """, DesktopEvent.class);
 
-        assertEquals("message.assistant", event.eventType());
+        assertEquals(EventType.MESSAGE_ASSISTANT, event.eventType());
+        assertTrue(MarshallingUtils.toJson(event).contains("\"eventType\":\"message.assistant\""));
         assertEquals("turn-1", event.payload().getTurnId());
         assertEquals("Hello", event.payload().getMessage().content().get(0).text());
+    }
+
+    @Test
+    void serializesAndReadsProtocolEnumsAsTheirWireValues() {
+        assertEquals("session.get", MarshallingUtils.toJson(Command.SESSION_GET));
+        assertEquals(Command.SESSION_GET, MarshallingUtils.fromJson("\"session.get\"", Command.class));
+        assertEquals("connected", MarshallingUtils.toJson(ConnectionState.CONNECTED));
+        assertEquals(ConnectionState.CONNECTED,
+                MarshallingUtils.fromJson("\"connected\"", ConnectionState.class));
+        assertEquals(EventType.MESSAGE_ASSISTANT,
+                MarshallingUtils.fromJson("\"message.assistant\"", EventType.class));
     }
 
     @Test
@@ -72,7 +87,7 @@ class MarshallingUtilsTest {
         DesktopCommandPayload payload = DesktopCommandPayload.resolveApproval(
                 "approval-1", new ApprovalResolutionRequest("approve", 7));
         String commandJson = MarshallingUtils.toJson(new DesktopCommand(
-                "request-1", "host-1", "session-1", "approval.resolve", payload));
+                "request-1", "host-1", "session-1", Command.APPROVAL_RESOLVE, payload));
 
         assertTrue(commandJson.contains("\"approvalId\":\"approval-1\""));
         assertTrue(commandJson.contains("\"expectedRevision\":7"));

@@ -5,7 +5,7 @@ import java.time.Instant;
 public record HostDto(
         String id,
         String displayName,
-        String connectionState,
+        ConnectionState connectionState,
         Instant lastSeenAt,
         String agentVersion) {
 }
