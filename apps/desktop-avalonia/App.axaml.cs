@@ -22,6 +22,7 @@ public sealed partial class App : Application
     private UiStateStore? _uiStateStore;
     private ProjectHubWindow? _hubWindow;
     private SettingsWindow? _settingsWindow;
+    private readonly Dictionary<Control, bool> _suspendedSettingsTooltips = [];
     private AboutWindow? _aboutWindow;
     private SessionAttentionCoordinator? _attentionCoordinator;
     private MergedWorkspaceWindow? _mergedWindow;
@@ -364,7 +365,7 @@ public sealed partial class App : Application
         window.Activate();
     }
 
-    internal void ShowSettings(Window owner)
+    internal void ShowSettings(Window owner, Control? source = null)
     {
         var viewModel = owner.DataContext switch
         {
@@ -378,15 +379,37 @@ public sealed partial class App : Application
             _settingsWindow.Activate();
             return;
         }
+        SuspendSettingsTooltip(source);
 
         _settingsWindow = new SettingsWindow { DataContext = viewModel };
         SetOtherWindowsEnabled(owner, false);
         _settingsWindow.Closed += (_, _) =>
         {
             SetOtherWindowsEnabled(owner, true);
+            RestoreSettingsTooltips();
             _settingsWindow = null;
         };
         _ = _settingsWindow.ShowDialog(owner);
+    }
+
+    private void SuspendSettingsTooltip(Control? source)
+    {
+        if (source is null) return;
+        if (!_suspendedSettingsTooltips.ContainsKey(source))
+            _suspendedSettingsTooltips[source] = ToolTip.GetServiceEnabled(source);
+
+        // The pointer is still over the button when ShowDialog disables its owner.
+        // Stop the tooltip service before the modal transition so it cannot reopen
+        // against a disabled owner and keep invalidating the UI layout.
+        ToolTip.SetIsOpen(source, false);
+        ToolTip.SetServiceEnabled(source, false);
+    }
+
+    private void RestoreSettingsTooltips()
+    {
+        foreach (var (control, wasEnabled) in _suspendedSettingsTooltips)
+            ToolTip.SetServiceEnabled(control, wasEnabled);
+        _suspendedSettingsTooltips.Clear();
     }
 
     internal void ShowAbout(Window owner)

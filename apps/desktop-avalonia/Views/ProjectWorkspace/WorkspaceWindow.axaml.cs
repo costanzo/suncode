@@ -167,9 +167,9 @@ public partial class WorkspaceWindow : Window
         }
     }
 
-    internal void ShowSettings()
+    internal void ShowSettings(Control? source = null)
     {
-        if (Application.Current is App app) app.ShowSettings(this);
+        if (Application.Current is App app) app.ShowSettings(this, source);
     }
 
     internal void ShowArchiveConfirmation(SessionItem session)

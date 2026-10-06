@@ -450,7 +450,8 @@ public sealed partial class ProjectWorkspace : UserControl
         }
     }
 
-    private void OpenSettings(object? sender, RoutedEventArgs e) => Owner?.ShowSettings();
+    private void OpenSettings(object? sender, RoutedEventArgs e) =>
+        Owner?.ShowSettings(sender as Control);
     private async void OpenProjectRequested(object? sender, EventArgs e)
     {
         if (Owner is { } owner) await owner.OpenProjectPickerAsync();
