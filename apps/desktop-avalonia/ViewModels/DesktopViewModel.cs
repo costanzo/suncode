@@ -365,6 +365,41 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             OnPropertyChanged(nameof(PreviewWidth));
         }
     }
+
+    /// <summary>
+    /// Activates the review destination from the right gutter. Returns true when
+    /// an open browser preview was closed as part of the switch.
+    /// </summary>
+    internal bool ToggleReviewDestination()
+    {
+        if (PreviewVisible)
+        {
+            PreviewVisible = false;
+            if (!ReviewVisible) ReviewVisible = true;
+            return true;
+        }
+
+        ReviewVisible = !ReviewVisible;
+        return false;
+    }
+
+    /// <summary>
+    /// Activates the child-sessions destination from the right gutter. Returns
+    /// true when an open browser preview was closed as part of the switch.
+    /// </summary>
+    internal bool ToggleChildSessionsDestination()
+    {
+        if (PreviewVisible)
+        {
+            PreviewVisible = false;
+            if (!ChildSessionsVisible) ChildSessionsVisible = true;
+            return true;
+        }
+
+        ChildSessionsVisible = !ChildSessionsVisible;
+        return false;
+    }
+
     public bool EffectivePreviewVisible => PreviewVisible && IsProjectOpen;
     public bool PreviewChatVisible => !PreviewVisible || _layoutWidth >= 1030;
     public GridLength ConversationWidth => PreviewVisible

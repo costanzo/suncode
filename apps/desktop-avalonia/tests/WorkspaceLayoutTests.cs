@@ -116,12 +116,48 @@ public sealed class WorkspaceLayoutTests
         Assert.False(viewModel.ReviewVisible);
         Assert.True(viewModel.ChildSessionsVisible);
         Assert.True(viewModel.EffectiveChildSessionsVisible);
+        Assert.False(viewModel.EffectiveReviewInspectorVisible);
 
         viewModel.ReviewVisible = true;
 
         Assert.True(viewModel.ReviewVisible);
         Assert.False(viewModel.ChildSessionsVisible);
         Assert.True(viewModel.EffectiveReviewInspectorVisible);
+    }
+
+    [Fact]
+    public void ReviewGutterSwitchesAwayFromBrowserPreview()
+    {
+        using var viewModel = new DesktopViewModel
+        {
+            PreviewVisible = true,
+            ReviewVisible = true
+        };
+        viewModel.SetSelectedProjectForTests(new ProjectItem("project", "Project", "/tmp/project"));
+        viewModel.UpdateLayoutWidth(1440);
+
+        var closedPreview = viewModel.ToggleReviewDestination();
+
+        Assert.True(closedPreview);
+        Assert.False(viewModel.PreviewVisible);
+        Assert.True(viewModel.ReviewVisible);
+        Assert.True(viewModel.EffectiveReviewVisible);
+    }
+
+    [Fact]
+    public void ChildSessionsGutterSwitchesAwayFromBrowserPreview()
+    {
+        using var viewModel = new DesktopViewModel { PreviewVisible = true };
+        viewModel.SetSelectedProjectForTests(new ProjectItem("project", "Project", "/tmp/project"));
+        viewModel.UpdateLayoutWidth(1440);
+
+        var closedPreview = viewModel.ToggleChildSessionsDestination();
+
+        Assert.True(closedPreview);
+        Assert.False(viewModel.PreviewVisible);
+        Assert.True(viewModel.ChildSessionsVisible);
+        Assert.False(viewModel.ReviewVisible);
+        Assert.True(viewModel.EffectiveChildSessionsVisible);
     }
 
     [Fact]

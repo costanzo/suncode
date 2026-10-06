@@ -419,7 +419,10 @@ mod tests {
                 && message
                     .get("output")
                     .and_then(Value::as_str)
-                    .map(|content| content.contains("invalid_arguments"))
+                    .map(|content| {
+                        content.contains("invalid_arguments")
+                            || content.contains("path_unavailable")
+                    })
                     .unwrap_or(false)
         });
         let user_text = messages
@@ -496,6 +499,10 @@ mod tests {
         } else if user_text.contains("invalid arguments") && !has_tool_error {
             vec![
                 json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"invalid-read-call","function":{"name":"read","arguments":"{\"path\":123}"}}]},"finish_reason":"tool_calls"}]}),
+            ]
+        } else if user_text.contains("missing file") && !has_tool_error {
+            vec![
+                json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"missing-read-call","function":{"name":"read","arguments":"{\"path\":\"missing.txt\"}"}}]},"finish_reason":"tool_calls"}]}),
             ]
         } else if last_role == Some("tool") {
             vec![
@@ -863,6 +870,38 @@ mod tests {
         assert_eq!(tool.tool_call_id.as_deref(), Some("invalid-read-call"));
         assert!(tool.text_content().contains("invalid_arguments"));
         assert!(tool.text_content().contains("path is required"));
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn tool_execution_errors_are_returned_to_model_for_recovery() {
+        let (agent, store, _root, server, session_id) = fixture().await;
+        let response = agent
+            .submit(&session_id, "missing-file-1", "read the missing file", None, None)
+            .await
+            .unwrap();
+        assert!(matches!(
+            response,
+            TurnResponse::Completed {
+                iterations: 2,
+                tool_calls: 1,
+                ..
+            }
+        ));
+        let context = store.context_messages(&session_id).unwrap();
+        let tool = context
+            .iter()
+            .find(|message| message.role == "tool")
+            .expect("tool execution error should be retained in context");
+        assert_eq!(tool.tool_call_id.as_deref(), Some("missing-read-call"));
+        assert!(tool.text_content().contains("path_unavailable"));
+        assert!(tool.text_content().contains("path is unavailable"));
+        let turns = store.session_conversation_turns(&session_id).unwrap();
+        assert_eq!(turns[0].tool_uses[0].state, "failed");
+        assert_eq!(
+            turns[0].tool_uses[0].error_code.as_deref(),
+            Some("path_unavailable")
+        );
         server.abort();
     }
 

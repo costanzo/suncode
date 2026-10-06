@@ -229,14 +229,14 @@
             <Button Classes="icon gutter" Classes.active="{Binding PreviewVisible}" Click="TogglePreview" ToolTip.Tip="Show browser preview" AutomationProperties.Name="Show browser preview" Margin="0,0,0,6">
               <svg:Svg Width="15" Height="15" Path="/Assets/icons/computer.svg" />
             </Button>
-            <Button Classes="icon gutter" Classes.active="{Binding EffectiveReviewVisible}" Click="ToggleReview" ToolTip.Tip="{DynamicResource LocShowReview}" AutomationProperties.Name="{DynamicResource LocShowReview}">
+            <Button Classes="icon gutter" Classes.active="{Binding EffectiveReviewInspectorVisible}" Click="ToggleReview" ToolTip.Tip="{DynamicResource LocShowReview}" AutomationProperties.Name="{DynamicResource LocShowReview}">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-right.svg" IsVisible="{Binding !ReviewVisible}" />
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-right.svg" IsVisible="{Binding ReviewVisible}" />
                 <Ellipse Classes="gutter-attention" IsVisible="{Binding ReviewGutterAttention}" />
               </Grid>
             </Button>
-            <Button Classes="icon gutter" Classes.active="{Binding ChildSessionsVisible}" Click="ToggleChildSessions" ToolTip.Tip="{DynamicResource LocShowChildSessions}" AutomationProperties.Name="{DynamicResource LocShowChildSessions}" Margin="0,6,0,0">
+            <Button Classes="icon gutter" Classes.active="{Binding EffectiveChildSessionsVisible}" Click="ToggleChildSessions" ToolTip.Tip="{DynamicResource LocShowChildSessions}" AutomationProperties.Name="{DynamicResource LocShowChildSessions}" Margin="0,6,0,0">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/agent.svg" />
                 <Ellipse Classes="gutter-attention" IsVisible="{Binding ChildSessionsGutterAttention}" />

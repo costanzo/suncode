@@ -182,7 +182,7 @@ public sealed partial class ProjectWorkspace : UserControl
     private void ToggleReview(object? sender, RoutedEventArgs e)
     {
         if (ViewModel.ReviewPaneWidth < DesktopViewModel.MinimumReviewPaneWidth) ViewModel.ReviewPaneWidth = DesktopViewModel.DefaultReviewPaneWidth;
-        ViewModel.ReviewVisible = !ViewModel.ReviewVisible;
+        if (ViewModel.ToggleReviewDestination()) BrowserPreview.CloseBrowser();
     }
 
     private void TogglePreview(object? sender, RoutedEventArgs e)
@@ -200,7 +200,7 @@ public sealed partial class ProjectWorkspace : UserControl
     private void ToggleChildSessions(object? sender, RoutedEventArgs e)
     {
         if (ViewModel.ReviewPaneWidth < DesktopViewModel.MinimumReviewPaneWidth) ViewModel.ReviewPaneWidth = DesktopViewModel.DefaultReviewPaneWidth;
-        ViewModel.ChildSessionsVisible = !ViewModel.ChildSessionsVisible;
+        if (ViewModel.ToggleChildSessionsDestination()) BrowserPreview.CloseBrowser();
         if (ViewModel.ChildSessionsVisible) _ = ViewModel.LoadChildSessionsAsync();
     }
 

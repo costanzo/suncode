@@ -604,7 +604,15 @@ impl Agent {
             return self.record_computer_success(context, call, result);
         }
         if call.name == "skill" {
-            let result = self.execute_skill_call(context, call)?;
+            let result = match self.execute_skill_call(context, call) {
+                Ok(result) => result,
+                Err(error) => {
+                    if !self.record_recoverable_call_error(context, call, &error)? {
+                        return Err(error);
+                    }
+                    return Ok(());
+                }
+            };
             return self.record_call_success(context, call, result);
         }
         let (project_root, mut params) = match self.prepare_call(context, call) {
@@ -682,18 +690,8 @@ impl Agent {
         error: &BusinessError,
     ) -> Result<bool, BusinessError> {
         self.tool_state(context, call, "failed", Some(&error.code))?;
-        if !matches!(
-            error.code.as_str(),
-            "invalid_arguments" | "malformed_tool_call"
-        ) {
-            if !error.code.starts_with("mcp_")
-                && !error.code.starts_with("lsp_")
-                && !error.code.starts_with("browser_")
-                && !error.code.starts_with("computer_")
-                && !error.code.starts_with("skill_")
-            {
-                return Ok(false);
-            }
+        if !is_recoverable_tool_error(&error.code) {
+            return Ok(false);
         }
         let result = json!({
             "error": {
@@ -1132,6 +1130,23 @@ impl Agent {
             tool_call_id: None,
         }))
     }
+}
+
+fn is_recoverable_tool_error(code: &str) -> bool {
+    !matches!(
+        code,
+        "agent_tool_denied"
+            | "agent_unavailable"
+            | "approval_required"
+            | "authorization_denied"
+            | "cancelled"
+            | "database_error"
+            | "question_required"
+            | "scope_denied"
+            | "tool_budget_exceeded"
+            | "tool_stall_detected"
+            | "unsafe_command_blocked"
+    )
 }
 
 fn prune_computer_screenshot_images(messages: &mut [Message], keep_latest: usize) {
