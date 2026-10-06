@@ -191,7 +191,11 @@ paths:
         operations also emit sanitized lifecycle notifications; pairing payloads
         and credentials are never sent. Other Server-owned operations (including
         health, token refresh, Host detail, and sync) are not forwarded. SSE
-        comments may be sent as heartbeats.
+        comments may be sent as heartbeats. A forwarded Mobile request has two
+        `data:` lines in the same SSE event: the first is a JSON object containing
+        `pathParam` and `queryParam`; the second is the request body passed through
+        unchanged. The Server does not parse, merge, wrap, or decrypt the second
+        line.
       security:
         - desktopBearer: []
       parameters:
@@ -221,79 +225,105 @@ paths:
                   value:
                     - event: mobile.pairings.exchange.succeeded
                       id: mobile-request-pair-01
-                      data: '{"pathParam":{},"queryParam":{},"requestBody":{"pairingCode":"482917","deviceName":"Phone"}}'
+                      data:
+                        - '{"pathParam":{},"queryParam":{}}'
+                        - '{"pairingCode":"482917","deviceName":"Phone"}'
                 mobileLogout:
                   summary: Current Mobile credential logged out
                   value:
                     - event: mobile.auth.logout
                       id: mobile-request-logout-01
-                      data: '{"pathParam":{},"queryParam":{},"requestBody":{}}'
+                      data:
+                        - '{"pathParam":{},"queryParam":{}}'
+                        - '{}'
                 listHostProjects:
                   summary: Mobile GET /hosts/{hostId}/projects
                   value:
                     - event: mobile.projects.list
                       id: mobile-request-01
-                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A"},"queryParam":{},"requestBody":{}}'
+                      data:
+                        - '{"pathParam":{"hostId":"host-01J8YQ6M7A"},"queryParam":{}}'
+                        - '{}'
                 listSessions:
                   summary: Mobile GET /hosts/{hostId}/sessions
                   value:
                     - event: mobile.sessions.list
                       id: mobile-request-02
-                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A"},"queryParam":{"projectId":"project-01","cursor":"cursor-01","limit":50},"requestBody":{}}'
+                      data:
+                        - '{"pathParam":{"hostId":"host-01J8YQ6M7A"},"queryParam":{"projectId":"project-01","cursor":"cursor-01","limit":50}}'
+                        - '{}'
                 createSession:
                   summary: Mobile POST /hosts/{hostId}/sessions
                   value:
                     - event: mobile.sessions.create
                       id: mobile-request-03
-                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A"},"queryParam":{},"requestBody":{"projectId":"project-01","title":"New session","firstMessage":"Inspect this project","images":[{"mimeType":"image/png","data":"iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB","fileName":"context.png"}]}}'
+                      data:
+                        - '{"pathParam":{"hostId":"host-01J8YQ6M7A"},"queryParam":{}}'
+                        - '{"projectId":"project-01","title":"New session","firstMessage":"Inspect this project","images":[{"mimeType":"image/png","data":"iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB","fileName":"context.png"}]}'
                 getSession:
                   summary: Mobile GET /hosts/{hostId}/sessions/{sessionId}
                   value:
                     - event: mobile.sessions.get
                       id: mobile-request-04
-                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{},"requestBody":{}}'
+                      data:
+                        - '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{}}'
+                        - '{}'
                 openSessionEventStream:
                   summary: Mobile GET /hosts/{hostId}/sessions/{sessionId}/events
                   value:
                     - event: mobile.sessions.events.open
                       id: mobile-request-04a
-                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{},"requestBody":{}}'
+                      data:
+                        - '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{}}'
+                        - '{}'
                 sendMessage:
                   summary: Mobile POST /hosts/{hostId}/sessions/{sessionId}/messages
                   value:
                     - event: mobile.sessions.messages.send
                       id: mobile-request-05
-                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{},"requestBody":{"text":"Continue the task","images":[{"mimeType":"image/jpeg","data":"/9j/4AAQSkZJRgABAQAAAQABAAD","fileName":"context.jpg"}]}}'
+                      data:
+                        - '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{}}'
+                        - '{"text":"Continue the task","images":[{"mimeType":"image/jpeg","data":"/9j/4AAQSkZJRgABAQAAAQABAAD","fileName":"context.jpg"}]}'
                 resolveApproval:
                   summary: Mobile POST /hosts/{hostId}/sessions/{sessionId}/approvals/{approvalId}
                   value:
                     - event: mobile.sessions.approvals.resolve
                       id: mobile-request-06
-                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01","approvalId":"approval-01"},"queryParam":{},"requestBody":{"action":"allow_once","expectedRevision":7}}'
+                      data:
+                        - '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01","approvalId":"approval-01"},"queryParam":{}}'
+                        - '{"action":"allow_once","expectedRevision":7}'
                 replyQuestion:
                   summary: Mobile POST /hosts/{hostId}/sessions/{sessionId}/questions/{questionId}/reply
                   value:
                     - event: mobile.sessions.questions.reply
                       id: mobile-request-07
-                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01","questionId":"question-01"},"queryParam":{},"requestBody":{"answers":["Option A"],"expectedRevision":8}}'
+                      data:
+                        - '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01","questionId":"question-01"},"queryParam":{}}'
+                        - '{"answers":["Option A"],"expectedRevision":8}'
                 cancelTurn:
                   summary: Mobile POST /hosts/{hostId}/sessions/{sessionId}/cancel
                   value:
                     - event: mobile.sessions.cancel
                       id: mobile-request-08
-                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{},"requestBody":{}}'
+                      data:
+                        - '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{}}'
+                        - '{}'
                 retryTurn:
                   summary: Mobile POST /hosts/{hostId}/sessions/{sessionId}/retry
                   value:
                     - event: mobile.sessions.retry
                       id: mobile-request-09
-                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{},"requestBody":{}}'
+                      data:
+                        - '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{}}'
+                        - '{}'
                 encryptedRequest:
                   summary: End-to-end encrypted Mobile HTTP request
                   value:
                     - event: mobile.sessions.messages.send
                       id: mobile-request-10
-                      data: '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{},"encPayload":"e2e-v1:base64url-ciphertext"}'
+                      data:
+                        - '{"pathParam":{"hostId":"host-01J8YQ6M7A","sessionId":"session-01"},"queryParam":{}}'
+                        - '{"encPayload":"e2e-v1:base64url-ciphertext"}'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -691,17 +721,29 @@ components:
           minLength: 1
           description: SSE event ID copied from the forwarded Mobile HTTP request's X-Request-Id.
         data:
-          type: string
+          type: array
+          minItems: 2
+          maxItems: 2
+          prefixItems:
+            - type: string
+              description: |
+                First SSE data line. A JSON-serialized object containing only
+                `pathParam` and `queryParam`; both maps are present and may be empty.
+              contentMediaType: application/json
+              contentSchema:
+                $ref: '#/components/schemas/DesktopMobileHttpRequestRoutingData'
+            - type: string
+              description: |
+                Second SSE data line. The Mobile HTTP request body passed through
+                unchanged. It may be plaintext JSON or an encrypted body. The
+                Server does not parse, merge, wrap, or decrypt this value. An empty
+                request is represented by `{}`.
           description: |
-            JSON string containing `pathParam`, `queryParam`, and either the
-            plaintext `requestBody` or the encrypted `encPayload`. Pairing-success and logout lifecycle notifications
-            are always sanitized plaintext and never contain credentials.
-          contentMediaType: application/json
-          contentSchema:
-            $ref: '#/components/schemas/DesktopMobileHttpRequestDataEnvelope'
-    DesktopMobileHttpRequestData:
+            Exactly two SSE `data:` lines for one forwarded Mobile request. Pairing-success
+            and logout lifecycle notifications remain sanitized and never contain credentials.
+    DesktopMobileHttpRequestRoutingData:
       type: object
-      required: [pathParam, queryParam, requestBody]
+      required: [pathParam, queryParam]
       additionalProperties: false
       properties:
         pathParam:
@@ -712,29 +754,3 @@ components:
           type: object
           description: Decoded query parameters from the Mobile HTTP request; empty when none were supplied.
           additionalProperties: true
-        requestBody:
-          description: Parsed JSON request body; an empty object is used when the request has no body.
-    DesktopEncryptedMobileHttpRequestData:
-      type: object
-      required: [pathParam, queryParam, encPayload]
-      additionalProperties: false
-      properties:
-        pathParam:
-          type: object
-          description: Decoded path parameters from the Mobile HTTP route; always visible for Desktop routing.
-          additionalProperties: true
-        queryParam:
-          type: object
-          description: Decoded query parameters from the Mobile HTTP request; always visible for Desktop routing.
-          additionalProperties: true
-        encPayload:
-          type: string
-          minLength: 1
-          description: Opaque encrypted request body. The Server forwards it without decryption.
-          examples:
-            - "e2e-v1:base64url-ciphertext"
-    DesktopMobileHttpRequestDataEnvelope:
-      oneOf:
-        - $ref: '#/components/schemas/DesktopMobileHttpRequestData'
-        - $ref: '#/components/schemas/DesktopEncryptedMobileHttpRequestData'
-      description: Request routing values are always visible. The body is either plaintext `requestBody` or opaque encrypted `encPayload`; the two body representations are mutually exclusive.
