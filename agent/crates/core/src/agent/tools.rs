@@ -810,20 +810,38 @@ impl Agent {
                 let metadata = json!({"type":"computer_text","text":text});
                 (metadata, Message::text("tool", text))
             }
-            suncode_computer::ActionOutcome::Image(frame) => {
-                let png = frame
+            suncode_computer::ActionOutcome::Image {
+                frame,
+                source_frame,
+            } => {
+                let source_png = source_frame
                     .png()
                     .map_err(|error| BusinessError::new("computer_capture_failed", error.to_string()))?;
+                let provider_png = frame
+                    .png()
+                    .map_err(|error| BusinessError::new("computer_capture_failed", error.to_string()))?;
+                let artifact_id = self.computer.persist_screenshot(&source_png)?;
                 let metadata = json!({
                     "type":"computer_image",
+                    "artifact_id":artifact_id,
+                    "relative_path":format!("computer/artifacts/{artifact_id}.png"),
+                    "mime_type":"image/png",
+                    "bytes":source_png.len(),
                     "pixelWidth":frame.display.pixel_width,
                     "pixelHeight":frame.display.pixel_height,
+                    "sourcePixelWidth":source_frame.display.pixel_width,
+                    "sourcePixelHeight":source_frame.display.pixel_height,
                     "displayGeneration":frame.display.generation,
                 });
-                let mut message = Message::text("tool", "Computer screenshot captured.");
+                let mut message = Message::text(
+                    "tool",
+                    format!(
+                        "Computer screenshot captured and saved as artifact {artifact_id} at computer/artifacts/{artifact_id}.png."
+                    ),
+                );
                 message.content.push(crate::domain::ContentPart {
                     kind: "image_url".into(),
-                    text: format!("data:image/png;base64,{}", STANDARD.encode(png)),
+                    text: format!("data:image/png;base64,{}", STANDARD.encode(provider_png)),
                 });
                 (metadata, message)
             }
@@ -1159,7 +1177,9 @@ fn prune_computer_screenshot_images(messages: &mut [Message], keep_latest: usize
             && message
                 .content
                 .iter()
-                .any(|part| part.kind == "text" && part.text == "Computer screenshot captured.")
+                .any(|part| {
+                    part.kind == "text" && part.text.starts_with("Computer screenshot captured")
+                })
             && message.content.iter().any(|part| part.kind == "image_url");
         if !computer_screenshot {
             continue;

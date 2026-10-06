@@ -44,7 +44,10 @@ impl Error for ComputerError {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActionOutcome {
     Text(String),
-    Image(ComputerFrame),
+    Image {
+        frame: ComputerFrame,
+        source_frame: ComputerFrame,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -115,21 +118,27 @@ impl<B: ComputerBackend> ComputerExecutor<B> {
         self.check_cancelled(cancelled)?;
         match action {
             ComputerAction::Screenshot => {
-                let source = self.backend.capture_primary()?;
-                let frame = source.provider_frame()?;
-                self.last_source_frame = Some(source);
+                let source_frame = self.backend.capture_primary()?;
+                let frame = source_frame.provider_frame()?;
+                self.last_source_frame = Some(source_frame.clone());
                 self.last_frame = Some(frame.clone());
-                Ok(ActionOutcome::Image(frame))
+                Ok(ActionOutcome::Image {
+                    frame,
+                    source_frame,
+                })
             }
             ComputerAction::Zoom { region } => {
                 let source_region = self.source_region(*region)?;
-                let frame = self
+                let source_frame = self
                     .last_source_frame
                     .as_ref()
                     .ok_or(ComputerError::FrameRequired)?
-                    .crop(source_region)?
-                    .provider_frame()?;
-                Ok(ActionOutcome::Image(frame))
+                    .crop(source_region)?;
+                let frame = source_frame.provider_frame()?;
+                Ok(ActionOutcome::Image {
+                    frame,
+                    source_frame,
+                })
             }
             ComputerAction::LeftClick {
                 coordinate,
@@ -556,7 +565,7 @@ mod tests {
                 &|| false,
             )
             .unwrap();
-        let ActionOutcome::Image(frame) = result else {
+        let ActionOutcome::Image { frame, .. } = result else {
             panic!("expected image");
         };
         assert_eq!(

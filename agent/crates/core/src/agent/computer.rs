@@ -86,6 +86,7 @@ pub(super) struct ComputerManager {
 }
 
 struct Inner {
+    data_dir: PathBuf,
     enabled: AtomicBool,
     host_available: bool,
     control_owner: AtomicU8,
@@ -96,7 +97,7 @@ const CONTROL_USER: u8 = 0;
 const CONTROL_AGENT: u8 = 1;
 
 impl ComputerManager {
-    pub(super) fn new(store: &Store, host_available: bool) -> Self {
+    pub(super) fn new(store: &Store, host_available: bool, data_dir: PathBuf) -> Self {
         let enabled = store
             .settings(None, None)
             .ok()
@@ -109,6 +110,7 @@ impl ComputerManager {
             .unwrap_or(false);
         Self {
             inner: Arc::new(Inner {
+                data_dir,
                 enabled: AtomicBool::new(enabled),
                 host_available,
                 control_owner: AtomicU8::new(if enabled { CONTROL_AGENT } else { CONTROL_USER }),
@@ -323,6 +325,26 @@ impl ComputerManager {
         .map_err(|_| BusinessError::unavailable("Computer Use executor stopped unexpectedly"))?
     }
 
+    pub(super) fn persist_screenshot(&self, png: &[u8]) -> Result<String, BusinessError> {
+        if png.is_empty() || png.len() > suncode_computer::MAX_PROVIDER_PNG_BYTES {
+            return Err(BusinessError::new(
+                "computer_capture_failed",
+                "Computer screenshot is outside the supported PNG size limit",
+            ));
+        }
+        let root = self.inner.data_dir.join("computer");
+        let directory = root.join("artifacts");
+        prepare_artifact_directory(&directory, &root)?;
+        let artifact_id = format!("computer-{}", Uuid::new_v4());
+        fs::write(directory.join(format!("{artifact_id}.png")), png).map_err(|error| {
+            BusinessError::new(
+                "computer_artifact_failed",
+                format!("Computer screenshot could not be stored: {error}"),
+            )
+        })?;
+        Ok(artifact_id)
+    }
+
     pub(super) fn ensure_host_available(&self) -> Result<(), BusinessError> {
         if self.inner.host_available {
             Ok(())
@@ -535,6 +557,49 @@ fn computer_error(error: suncode_computer::ComputerError) -> BusinessError {
     BusinessError::new("computer_action_failed", error.to_string())
 }
 
+fn prepare_artifact_directory(path: &Path, root: &Path) -> Result<(), BusinessError> {
+    fs::create_dir_all(root).map_err(|error| {
+        BusinessError::new(
+            "computer_artifact_failed",
+            format!("Computer data root could not be created: {error}"),
+        )
+    })?;
+    if fs::symlink_metadata(path)
+        .map(|metadata| metadata.file_type().is_symlink())
+        .unwrap_or(false)
+    {
+        return Err(BusinessError::new(
+            "computer_artifact_failed",
+            "Computer artifact directory must not be a symbolic link",
+        ));
+    }
+    fs::create_dir_all(path).map_err(|error| {
+        BusinessError::new(
+            "computer_artifact_failed",
+            format!("Computer artifact directory could not be created: {error}"),
+        )
+    })?;
+    let canonical_root = fs::canonicalize(root).map_err(|error| {
+        BusinessError::new(
+            "computer_artifact_failed",
+            format!("Computer data root could not be resolved: {error}"),
+        )
+    })?;
+    let canonical_path = fs::canonicalize(path).map_err(|error| {
+        BusinessError::new(
+            "computer_artifact_failed",
+            format!("Computer artifact directory could not be resolved: {error}"),
+        )
+    })?;
+    if !canonical_path.starts_with(canonical_root) {
+        return Err(BusinessError::new(
+            "computer_artifact_failed",
+            "Computer artifact directory escaped its managed root",
+        ));
+    }
+    Ok(())
+}
+
 const fn permission_name(permission: PermissionState) -> &'static str {
     match permission {
         PermissionState::Allowed => "allowed",
@@ -559,7 +624,8 @@ mod tests {
                 &Value::Bool(true),
             )
             .unwrap();
-        let manager = ComputerManager::new(&store, false);
+        let manager =
+            ComputerManager::new(&store, false, tempfile::tempdir().unwrap().path().into());
 
         assert!(manager.catalog(true).is_empty());
         let info = manager.info();
@@ -590,6 +656,20 @@ mod tests {
                 definition.parameters
             );
         }
+    }
+
+    #[test]
+    fn persists_screenshot_artifacts_under_the_managed_computer_directory() {
+        let store = Store::open_memory().unwrap();
+        let data_dir = tempfile::tempdir().unwrap();
+        let manager = ComputerManager::new(&store, false, data_dir.path().into());
+        let artifact_id = manager.persist_screenshot(b"png-bytes").unwrap();
+        let path = data_dir
+            .path()
+            .join("computer")
+            .join("artifacts")
+            .join(format!("{artifact_id}.png"));
+        assert_eq!(std::fs::read(path).unwrap(), b"png-bytes");
     }
 
     #[test]

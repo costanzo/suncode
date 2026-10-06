@@ -112,7 +112,10 @@ impl ComputerBackend for EnigoBackend {
     fn capture_primary(&mut self) -> ComputerResult<ComputerFrame> {
         let frame = self.enigo.capture_primary().map_err(backend_error)?;
         let geometry = self.geometry_from_capture(&frame)?;
-        ComputerFrame::new(geometry, frame.rgba)
+        ComputerFrame::new(
+            geometry,
+            normalize_capture_rgba(frame.pixel_width, frame.pixel_height, frame.rgba)?,
+        )
     }
 
     fn move_pointer(&mut self, x: i32, y: i32) -> ComputerResult<()> {
@@ -165,6 +168,35 @@ impl ComputerBackend for EnigoBackend {
     }
 }
 
+fn normalize_capture_rgba(width: u32, height: u32, mut rgba: Vec<u8>) -> ComputerResult<Vec<u8>> {
+    let row_bytes = usize::try_from(width)
+        .ok()
+        .and_then(|width| width.checked_mul(4))
+        .ok_or(ComputerError::InvalidFrame("capture row is too large"))?;
+    let expected = row_bytes
+        .checked_mul(
+            usize::try_from(height)
+                .map_err(|_| ComputerError::InvalidFrame("capture dimensions are too large"))?,
+        )
+        .ok_or(ComputerError::InvalidFrame(
+            "capture dimensions are too large",
+        ))?;
+    if rgba.len() != expected {
+        return Err(ComputerError::InvalidFrame(
+            "capture payload length does not match its dimensions",
+        ));
+    }
+    #[cfg(target_os = "macos")]
+    for row in 0..(height as usize / 2) {
+        let opposite = height as usize - row - 1;
+        let (top, rest) = rgba.split_at_mut((row + 1) * row_bytes);
+        let top_row = &mut top[row * row_bytes..(row + 1) * row_bytes];
+        let bottom_row = &mut rest[(opposite - row - 1) * row_bytes..(opposite - row) * row_bytes];
+        top_row.swap_with_slice(bottom_row);
+    }
+    Ok(rgba)
+}
+
 fn parse_key(value: &str) -> ComputerResult<Key> {
     let normalized = value.trim().to_ascii_lowercase();
     let key = match normalized.as_str() {
@@ -215,6 +247,30 @@ const fn key_direction(state: KeyState) -> Direction {
         KeyState::Press => Direction::Press,
         KeyState::Release => Direction::Release,
         KeyState::Click => Direction::Click,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_capture_rgba;
+
+    #[test]
+    fn capture_rows_are_normalized_to_top_to_bottom_order() {
+        let rows = vec![
+            1, 1, 1, 255, 2, 2, 2, 255, // source top row
+            3, 3, 3, 255, 4, 4, 4, 255, // source bottom row
+        ];
+        let normalized = normalize_capture_rgba(2, 2, rows).unwrap();
+        #[cfg(target_os = "macos")]
+        assert_eq!(
+            normalized,
+            vec![3, 3, 3, 255, 4, 4, 4, 255, 1, 1, 1, 255, 2, 2, 2, 255,]
+        );
+        #[cfg(not(target_os = "macos"))]
+        assert_eq!(
+            normalized,
+            vec![1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 255,]
+        );
     }
 }
 

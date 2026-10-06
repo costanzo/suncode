@@ -64,7 +64,11 @@ impl Agent {
             host_capabilities.browser_use,
         );
         let preview = preview::PreviewManager::new(operations.clone());
-        let computer = ComputerManager::new(&store, host_capabilities.computer_use);
+        let computer = ComputerManager::new(
+            &store,
+            host_capabilities.computer_use,
+            application_data.clone(),
+        );
         Self {
             user_id,
             store,
