@@ -5,7 +5,6 @@ import ai.suncode.common.utils.DesktopPayloadMapper;
 import ai.suncode.common.utils.MarshallingUtils;
 import ai.suncode.message.remote.*;
 import ai.suncode.common.http.ServiceContext;
-import com.fasterxml.jackson.databind.JsonNode;
 import ai.suncode.service.RemoteAuthService;
 import ai.suncode.service.RemoteRelayService;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +44,7 @@ public class MobileRemoteController {
         authService.requirePairingHost(hostId, request == null ? null : request.pairingCode());
         PairingExchangeData data = authService.exchange(request);
         relayService.notifyDesktop(hostId, ServiceContext.current().requestId(), "mobile.pairings.exchange.succeeded",
-                java.util.Map.of("pathParam", java.util.Map.of(), "queryParam", java.util.Map.of(), "requestBody", java.util.Map.of("deviceName", request.deviceName())));
+                java.util.Map.of("deviceName", request.deviceName()));
         return ResponseEntity.ok(data);
     }
 
@@ -60,7 +59,7 @@ public class MobileRemoteController {
         String hostId = ServiceContext.current().hostId();
         authService.logoutToken(ServiceContext.current().token());
         relayService.notifyDesktop(hostId, ServiceContext.current().requestId(), "mobile.auth.logout",
-                java.util.Map.of("pathParam", java.util.Map.of(), "queryParam", java.util.Map.of(), "requestBody", java.util.Map.of()));
+                java.util.Map.of());
         return ResponseEntity.noContent().build();
     }
 
@@ -168,14 +167,8 @@ public class MobileRemoteController {
     private DesktopResponse requestDesktop(String hostId, String sessionId, String command, String routeId,
                                            String request, Map<String, Object> query) {
         String requestId = ServiceContext.current().requestId();
-        JsonNode raw = MarshallingUtils.fromJson(request, JsonNode.class);
-        JsonNode encryptedPayload = raw == null ? null : raw.get("encPayload");
-        if (encryptedPayload != null && encryptedPayload.isTextual() && !encryptedPayload.asText().isBlank()) {
-            return relayService.requestEncrypted(
-                    hostId, sessionId, command, routeId, requestId, query, encryptedPayload.asText());
-        }
-        DesktopCommandPayload commandPayload = MarshallingUtils.fromJson(request, DesktopCommandPayload.class);
-        return relayService.request(hostId, sessionId, command, commandPayload, routeId, requestId, query);
+        return relayService.requestRaw(hostId, sessionId, command, routeId, requestId, query,
+                request == null || request.isBlank() ? "{}" : request);
     }
 
     private <T> T responseEnvelope(DesktopResponse response, Class<T> type) {
