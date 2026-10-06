@@ -336,13 +336,7 @@ impl ComputerManager {
 }
 
 fn computer_tool_definitions() -> Vec<suncode_llm::ToolDefinition> {
-    let empty = || {
-        json!({
-            "type": "object",
-            "properties": {},
-            "additionalProperties": false
-        })
-    };
+    let empty = || json!({});
     let point = || {
         json!({
             "type": "object",
@@ -588,6 +582,14 @@ mod tests {
         assert!(definitions
             .iter()
             .any(|definition| definition.name == "computer_screenshot"));
+        for definition in definitions {
+            assert!(
+                jsonschema::validator_for(&definition.parameters).is_ok(),
+                "invalid schema for {}: {}",
+                definition.name,
+                definition.parameters
+            );
+        }
     }
 
     #[test]
