@@ -6,7 +6,7 @@ namespace SunCode.Desktop.Tests;
 public sealed class RuntimeViewModelTests
 {
     [Fact]
-    public async Task BrowserProjectActionsRequireAnOpenProject()
+    public async Task BrowserProjectControlActionsRequireAnOpenProject()
     {
         var browser = new BrowserRuntimeViewModel(new FakeViewModelHost());
 

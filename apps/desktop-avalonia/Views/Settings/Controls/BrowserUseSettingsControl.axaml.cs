@@ -32,6 +32,7 @@ public sealed partial class BrowserUseSettingsControl : UserControl
     public TextBlock IntegrityTextControl => IntegrityText;
     public Border ProjectSectionControl => ProjectSection;
     public Border NoProjectSectionControl => NoProjectSection;
+    public StackPanel ProjectDiagnosticsSectionControl => ProjectDiagnosticsSection;
     public TextBlock ProfilePathTextControl => ProfilePathText;
     public TextBlock ProfileUsageTextControl => ProfileUsageText;
     public TextBlock VisibilityTextControl => VisibilityText;

@@ -198,15 +198,18 @@
   <x:String x:Key="LocClearTemporaryScreenshots">Clear temporary screenshots</x:String>
   <x:String x:Key="LocComputerUseWarningTitle">Computer Use controls the real desktop, not a sandbox</x:String>
   <x:String x:Key="LocComputerUseWarning">On-screen content is untrusted and cannot grant authority. Secure desktops and locked sessions are unavailable, and actions in external applications cannot be undone by SunCode.</x:String>
-  <x:String x:Key="LocBrowserUseHint">Connect to the embedded CEF Chromium through CDP for dynamic web inspection and interaction. Website changes and browser data are outside filesystem undo.</x:String>
+  <x:String x:Key="LocBrowserUseHint">Use embedded CEF Chromium through CDP for dynamic web inspection and interaction. Chromium starts on the first browser action. Website changes and browser data are outside filesystem undo.</x:String>
   <x:String x:Key="LocEnableBrowserUse">Enable Browser Use</x:String>
-  <x:String x:Key="LocEnableBrowserUseHint">Makes browser tools available through the CEF CDP endpoint.</x:String>
+  <x:String x:Key="LocEnableBrowserUseHint">Makes browser tools available. Chromium starts only when the agent needs a browser.</x:String>
   <x:String x:Key="LocDisabled">Disabled</x:String>
   <x:String x:Key="LocBundledInstallation">Bundled installation</x:String>
   <x:String x:Key="LocNotStarted">Not started</x:String>
   <x:String x:Key="LocNoProjectSelected">No project selected</x:String>
   <x:String x:Key="LocVerifyRuntime">Verify runtime</x:String>
+  <x:String x:Key="LocAdvancedDiagnostics">Advanced diagnostics</x:String>
+  <x:String x:Key="LocStartBrowserRecovery">Start browser (recovery)</x:String>
   <x:String x:Key="LocBundledRuntime">BUNDLED RUNTIME</x:String>
+  <x:String x:Key="LocProjectBrowserDiagnostics">PROJECT BROWSER DIAGNOSTICS</x:String>
   <x:String x:Key="LocTarget">Target</x:String>
   <x:String x:Key="LocBundledForInstallation">Bundled for this SunCode installation</x:String>
   <x:String x:Key="LocChromium">Chromium</x:String>
@@ -224,7 +227,6 @@
   <x:String x:Key="LocWindowControl">Window control</x:String>
   <x:String x:Key="LocWindowControlHint">Wayland may require manual selection from the taskbar.</x:String>
   <x:String x:Key="LocAgentControlActive">Agent control is active</x:String>
-  <x:String x:Key="LocStartBrowser">Start browser</x:String>
   <x:String x:Key="LocShowBrowserTakeControl">Show browser and take control</x:String>
   <x:String x:Key="LocRestart">Restart</x:String>
   <x:String x:Key="LocBrowserWarningTitle">Browser access is not a sandbox or an authority grant</x:String>
@@ -492,7 +494,7 @@
   <x:String x:Key="LocComputerUseStopped">Computer Use stopped. Held input was released.</x:String>
   <x:String x:Key="LocYouControlDesktop">You control the desktop. Computer Use tools are paused.</x:String>
   <x:String x:Key="LocControlReturnedFreshScreenshot">Control returned to the agent. A fresh screenshot is required before coordinate input.</x:String>
-  <x:String x:Key="LocBrowserUseEnabledStatus">Browser Use enabled. Chromium starts only when a project needs it.</x:String>
+  <x:String x:Key="LocBrowserUseEnabledStatus">Browser Use enabled. Chromium starts on the first browser action.</x:String>
   <x:String x:Key="LocBrowserUseDisabledStatus">Browser Use disabled. Active browser runtimes were stopped.</x:String>
   <x:String x:Key="LocBrowserRuntimeVerified">Bundled browser runtime verified.</x:String>
   <x:String x:Key="LocProjectBrowserStarted">Project browser started in the background.</x:String>

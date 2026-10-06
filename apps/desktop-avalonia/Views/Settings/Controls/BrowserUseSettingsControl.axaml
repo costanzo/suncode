@@ -40,43 +40,7 @@
             </Grid>
           </Grid>
         </Border>
-        <StackPanel Classes="settings-actions">
-          <Button x:Name="VerifyButton" Classes="compact quiet sc-button" Content="{DynamicResource LocVerifyRuntime}" Click="OnVerify" />
-          <TextBlock x:Name="StatusText" Classes="sc-text-status" VerticalAlignment="Center" TextWrapping="Wrap" />
-        </StackPanel>
-      </StackPanel>
-
-      <Border Classes="settings-divider" />
-      <StackPanel Classes="settings-panel-section">
-        <TextBlock Classes="section-label" Text="{DynamicResource LocBundledRuntime}" />
-        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="112,*,32">
-          <TextBlock Text="{DynamicResource LocTarget}" Classes="settings-row-hint" VerticalAlignment="Center" />
-          <StackPanel Grid.Column="1" Spacing="3" Margin="0,9">
-            <TextBlock x:Name="TargetText" Classes="mono" FontSize="10" Text="—" />
-            <TextBlock Text="{DynamicResource LocBundledForInstallation}" Classes="settings-row-hint" />
-          </StackPanel>
-          <TextBlock Grid.Row="3" Text="{DynamicResource LocChromium}" Classes="settings-row-hint" VerticalAlignment="Center" />
-          <StackPanel Grid.Row="3" Grid.Column="1" Spacing="3" Margin="0,9">
-            <TextBlock x:Name="ChromiumVersionText" Classes="mono" FontSize="10" Text="—" />
-            <TextBlock x:Name="ChromiumPathText" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
-          </StackPanel>
-          <Button x:Name="CopyChromiumPathButton" Grid.Row="3" Grid.Column="2" Classes="icon quiet sc-button" ToolTip.Tip="{DynamicResource LocCopyChromiumPath}"
-                  AutomationProperties.Name="{DynamicResource LocCopyChromiumPath}" Click="OnCopyChromiumPath">
-            <svg:Svg Width="14" Height="14" Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
-          </Button>
-          <TextBlock Grid.Row="4" Text="{DynamicResource LocWorkerProtocol}" Classes="settings-row-hint" VerticalAlignment="Center" />
-          <TextBlock x:Name="WorkerProtocolText" Grid.Row="4" Grid.Column="1" Classes="mono" FontSize="10" Margin="0,13" Text="—" />
-        </Grid>
-        <Border Background="{DynamicResource SurfaceInsetBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,12,0,0">
-          <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
-            <svg:Svg Width="15" Height="15" Path="/Assets/icons/lock.svg" Css="{DynamicResource IconSvgCss}" />
-            <StackPanel Grid.Column="1" Spacing="3">
-              <TextBlock x:Name="IntegrityText" Text="{DynamicResource LocIntegrityUnavailable}" FontSize="11" FontWeight="SemiBold" />
-              <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocIntegrityHint}" />
-            </StackPanel>
-          </Grid>
-        </Border>
+        <TextBlock x:Name="StatusText" Classes="sc-text-status" Margin="0,16,0,0" TextWrapping="Wrap" />
       </StackPanel>
 
       <Border Classes="settings-divider" />
@@ -93,36 +57,8 @@
       <Border x:Name="ProjectSection" IsVisible="False">
         <StackPanel Classes="settings-panel-section">
           <TextBlock Classes="section-label" Text="{DynamicResource LocCurrentProjectBrowser}" />
-          <Grid Classes="settings-row" ColumnDefinitions="*,220">
-            <StackPanel Classes="settings-row-copy">
-              <TextBlock Classes="settings-row-title" Text="{DynamicResource LocProfilePath}" />
-              <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocProfilePathHint}" />
-            </StackPanel>
-            <Grid Grid.Column="1" ColumnDefinitions="*,32">
-              <TextBlock x:Name="ProfilePathText" Classes="mono" FontSize="9" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-              <Button x:Name="CopyProfilePathButton" Grid.Column="1" Classes="icon quiet sc-button" ToolTip.Tip="{DynamicResource LocCopyProfilePath}"
-                      AutomationProperties.Name="{DynamicResource LocCopyProfilePath}" Click="OnCopyProfilePath">
-                <svg:Svg Width="14" Height="14" Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
-              </Button>
-            </Grid>
-          </Grid>
-          <Grid Classes="settings-row" ColumnDefinitions="*,220">
-            <StackPanel Classes="settings-row-copy">
-              <TextBlock Classes="settings-row-title" Text="{DynamicResource LocProfileUsage}" />
-              <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocProfileUsageHint}" />
-            </StackPanel>
-            <TextBlock x:Name="ProfileUsageText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" />
-          </Grid>
-          <Grid Classes="settings-row" ColumnDefinitions="*,220">
-            <StackPanel Classes="settings-row-copy">
-              <TextBlock Classes="settings-row-title" Text="{DynamicResource LocWindowControl}" />
-              <TextBlock Classes="settings-row-hint" TextWrapping="Wrap"
-                         Text="{DynamicResource LocWindowControlHint}" />
-            </StackPanel>
-            <TextBlock x:Name="VisibilityText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" />
-          </Grid>
           <Border Background="{DynamicResource SurfaceInsetBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                  BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,7,0,0">
+                  BorderThickness="1" CornerRadius="8" Padding="12,10">
             <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
               <svg:Svg Width="15" Height="15" Path="/Assets/icons/lock.svg" Css="{DynamicResource IconSvgCss}" />
               <StackPanel Grid.Column="1" Spacing="3">
@@ -131,18 +67,87 @@
               </StackPanel>
             </Grid>
           </Border>
-          <TextBlock x:Name="ErrorText" IsVisible="False" Foreground="{DynamicResource DangerBrush}"
-                     FontSize="10" TextWrapping="Wrap" Margin="0,10,0,0" />
           <WrapPanel Classes="settings-actions">
-            <Button x:Name="StartButton" Classes="compact quiet sc-button" Content="{DynamicResource LocStartBrowser}" Click="OnStart" />
             <Button x:Name="TakeControlButton" Classes="compact quiet sc-button" Content="{DynamicResource LocShowBrowserTakeControl}" Click="OnTakeControl" />
             <Button x:Name="ReturnControlButton" Classes="compact primary sc-button" Content="{DynamicResource LocReturnControlToAgent}" Click="OnReturnControl" IsVisible="False" />
-            <Button x:Name="RestartButton" Classes="compact quiet sc-button" Content="{DynamicResource LocRestart}" Click="OnRestart" />
             <Button x:Name="StopButton" Classes="compact quiet sc-button" Content="{DynamicResource LocStop}" Click="OnStop" />
             <Button x:Name="ClearButton" Classes="compact danger sc-button" Content="{DynamicResource LocClearBrowserData}" Click="OnClear" />
           </WrapPanel>
         </StackPanel>
       </Border>
+
+      <Expander x:Name="AdvancedDiagnosticsExpander" Header="{DynamicResource LocAdvancedDiagnostics}" Margin="0,28,0,0">
+        <StackPanel Classes="settings-panel-section" Margin="0,16,0,0">
+          <StackPanel Classes="settings-actions" Margin="0">
+            <Button x:Name="VerifyButton" Classes="compact quiet sc-button" Content="{DynamicResource LocVerifyRuntime}" Click="OnVerify" />
+            <Button x:Name="StartButton" Classes="compact quiet sc-button" Content="{DynamicResource LocStartBrowserRecovery}" Click="OnStart" />
+            <Button x:Name="RestartButton" Classes="compact quiet sc-button" Content="{DynamicResource LocRestart}" Click="OnRestart" />
+          </StackPanel>
+          <StackPanel Classes="settings-panel-section">
+            <TextBlock Classes="section-label" Text="{DynamicResource LocBundledRuntime}" />
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="112,*,32">
+              <TextBlock Text="{DynamicResource LocTarget}" Classes="settings-row-hint" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="3" Margin="0,9">
+                <TextBlock x:Name="TargetText" Classes="mono" FontSize="10" Text="—" />
+                <TextBlock Text="{DynamicResource LocBundledForInstallation}" Classes="settings-row-hint" />
+              </StackPanel>
+              <TextBlock Grid.Row="3" Text="{DynamicResource LocChromium}" Classes="settings-row-hint" VerticalAlignment="Center" />
+              <StackPanel Grid.Row="3" Grid.Column="1" Spacing="3" Margin="0,9">
+                <TextBlock x:Name="ChromiumVersionText" Classes="mono" FontSize="10" Text="—" />
+                <TextBlock x:Name="ChromiumPathText" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <Button x:Name="CopyChromiumPathButton" Grid.Row="3" Grid.Column="2" Classes="icon quiet sc-button" ToolTip.Tip="{DynamicResource LocCopyChromiumPath}"
+                      AutomationProperties.Name="{DynamicResource LocCopyChromiumPath}" Click="OnCopyChromiumPath">
+                <svg:Svg Width="14" Height="14" Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
+              </Button>
+              <TextBlock Grid.Row="4" Text="{DynamicResource LocWorkerProtocol}" Classes="settings-row-hint" VerticalAlignment="Center" />
+              <TextBlock x:Name="WorkerProtocolText" Grid.Row="4" Grid.Column="1" Classes="mono" FontSize="10" Margin="0,13" Text="—" />
+            </Grid>
+            <Border Background="{DynamicResource SurfaceInsetBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,12,0,0">
+              <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/lock.svg" Css="{DynamicResource IconSvgCss}" />
+                <StackPanel Grid.Column="1" Spacing="3">
+                  <TextBlock x:Name="IntegrityText" Text="{DynamicResource LocIntegrityUnavailable}" FontSize="11" FontWeight="SemiBold" />
+                  <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocIntegrityHint}" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </StackPanel>
+          <StackPanel x:Name="ProjectDiagnosticsSection" Classes="settings-panel-section" IsVisible="False">
+            <TextBlock Classes="section-label" Text="{DynamicResource LocProjectBrowserDiagnostics}" />
+            <Grid Classes="settings-row" ColumnDefinitions="*,220">
+              <StackPanel Classes="settings-row-copy">
+                <TextBlock Classes="settings-row-title" Text="{DynamicResource LocProfilePath}" />
+                <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocProfilePathHint}" />
+              </StackPanel>
+              <Grid Grid.Column="1" ColumnDefinitions="*,32">
+                <TextBlock x:Name="ProfilePathText" Classes="mono" FontSize="9" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <Button x:Name="CopyProfilePathButton" Grid.Column="1" Classes="icon quiet sc-button" ToolTip.Tip="{DynamicResource LocCopyProfilePath}"
+                        AutomationProperties.Name="{DynamicResource LocCopyProfilePath}" Click="OnCopyProfilePath">
+                  <svg:Svg Width="14" Height="14" Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
+                </Button>
+              </Grid>
+            </Grid>
+            <Grid Classes="settings-row" ColumnDefinitions="*,220">
+              <StackPanel Classes="settings-row-copy">
+                <TextBlock Classes="settings-row-title" Text="{DynamicResource LocProfileUsage}" />
+                <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocProfileUsageHint}" />
+              </StackPanel>
+              <TextBlock x:Name="ProfileUsageText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" />
+            </Grid>
+            <Grid Classes="settings-row" ColumnDefinitions="*,220">
+              <StackPanel Classes="settings-row-copy">
+                <TextBlock Classes="settings-row-title" Text="{DynamicResource LocWindowControl}" />
+                <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource LocWindowControlHint}" />
+              </StackPanel>
+              <TextBlock x:Name="VisibilityText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" />
+            </Grid>
+            <TextBlock x:Name="ErrorText" IsVisible="False" Foreground="{DynamicResource DangerBrush}"
+                       FontSize="10" TextWrapping="Wrap" Margin="0,4,0,0" />
+          </StackPanel>
+        </StackPanel>
+      </Expander>
 
       <Border Background="{DynamicResource WarningSurfaceBrush}" BorderBrush="{DynamicResource WarningBorderBrush}"
               BorderThickness="1" Classes="settings-warning" Margin="0,28,0,0">

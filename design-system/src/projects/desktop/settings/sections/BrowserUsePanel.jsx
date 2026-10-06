@@ -79,15 +79,15 @@ export function BrowserUsePanel({ onSave }) {
       <div className="settings-panel-heading">
         <h2>Browser use</h2>
         <p>
-          Connect to embedded CEF Chromium through CDP for dynamic web inspection and interaction. Website
-          changes and browser data are outside filesystem undo.
+          Use embedded CEF Chromium through CDP for dynamic web inspection and interaction. Chromium starts
+          on the first browser action. Website changes and browser data are outside filesystem undo.
         </p>
       </div>
       <div className="settings-panel-section">
         <span className="settings-section-label">Availability</span>
         <SettingRow
           label="Enable Browser Use"
-          hint="Makes browser tools available through the CEF CDP endpoint."
+          hint="Makes browser tools available. Chromium starts only when the agent needs a browser."
         >
           <label className="settings-switch">
             <input
@@ -118,75 +118,10 @@ export function BrowserUsePanel({ onSave }) {
             </div>
           </div>
         </div>
-        <div className="settings-actions">
-          <Button
-            size="sm"
-            disabled={!enabled || installationState === "verifying"}
-            onClick={verifyRuntime}
-          >
-            {installationState === "verifying" ? "Verifying…" : "Verify runtime"}
-          </Button>
-        </div>
-      </div>
-      <div className="settings-divider" />
-      <div className="settings-panel-section">
-        <span className="settings-section-label">Bundled runtime</span>
-        <div className="browser-component-list" aria-label="Bundled Browser Use components">
-          {browserRuntimeComponents.map((component) => (
-            <div className="browser-component-row" key={component.label}>
-              <span>{component.label}</span>
-              <div>
-                <code>{component.value}</code>
-                <small title={component.detail}>{component.detail}</small>
-              </div>
-              <button
-                type="button"
-                className="btn btn-icon btn-quiet"
-                aria-label={`Copy ${component.label}`}
-                title={`Copy ${component.label}`}
-                onClick={() => navigator.clipboard?.writeText(component.detail)}
-              >
-                <Icon name="copy" size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="browser-integrity-note is-ready">
-          <Icon name="lock" size={15} />
-          <div>
-            <strong>Integrity verified</strong>
-            <span>
-              Versions, packaged paths, and runtime trees match the application-protected manifest.
-            </span>
-          </div>
-        </div>
       </div>
       <div className="settings-divider" />
       <div className="settings-panel-section">
         <span className="settings-section-label">Current project browser</span>
-        <SettingRow
-          label="Profile scope"
-          hint="Cookies and site data persist only for this project."
-        >
-          <code className="browser-readonly-value">Persistent per project</code>
-        </SettingRow>
-        <SettingRow label="Profile path" hint="Stored under the local SunCode data directory.">
-          <code
-            className="browser-readonly-value"
-            title="~/.suncode/data/browser/profiles/prj_suncode"
-          >
-            ~/.suncode/data/browser/profiles/prj_suncode
-          </code>
-        </SettingRow>
-        <SettingRow label="Profile usage" hint="Browser data is not part of the opened project.">
-          <code className="browser-readonly-value">38.4 MB · 2 active pages</code>
-        </SettingRow>
-        <SettingRow
-          label="Window control"
-          hint="The full Chromium window is minimized in background mode. Wayland may require manual foreground selection."
-        >
-          <code className="browser-readonly-value">Full · macOS</code>
-        </SettingRow>
         <div className="browser-control-note">
           <Icon name={runtimeState === "user_controlled" ? "unlock" : "lock"} size={15} />
           <div>
@@ -219,13 +154,6 @@ export function BrowserUsePanel({ onSave }) {
           <Button
             size="sm"
             disabled={!enabled || runtimeState === "not_started"}
-            onClick={restartRuntime}
-          >
-            Restart
-          </Button>
-          <Button
-            size="sm"
-            disabled={!enabled || runtimeState === "not_started"}
             onClick={stopRuntime}
           >
             Stop
@@ -240,6 +168,70 @@ export function BrowserUsePanel({ onSave }) {
           </Button>
         </div>
       </div>
+      <details className="browser-diagnostics">
+        <summary>Advanced diagnostics</summary>
+        <div className="browser-diagnostics-content">
+          <div className="settings-actions browser-runtime-actions">
+            <Button
+              size="sm"
+              disabled={!enabled || installationState === "verifying"}
+              onClick={verifyRuntime}
+            >
+              {installationState === "verifying" ? "Verifying…" : "Verify runtime"}
+            </Button>
+            <Button
+              size="sm"
+              disabled={!enabled || runtimeState === "not_started" || runtimeState === "user_controlled"}
+              onClick={restartRuntime}
+            >
+              Restart
+            </Button>
+          </div>
+          <span className="settings-section-label">Bundled runtime</span>
+          <div className="browser-component-list" aria-label="Bundled Browser Use components">
+            {browserRuntimeComponents.map((component) => (
+              <div className="browser-component-row" key={component.label}>
+                <span>{component.label}</span>
+                <div>
+                  <code>{component.value}</code>
+                  <small title={component.detail}>{component.detail}</small>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-icon btn-quiet"
+                  aria-label={`Copy ${component.label}`}
+                  title={`Copy ${component.label}`}
+                  onClick={() => navigator.clipboard?.writeText(component.detail)}
+                >
+                  <Icon name="copy" size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="browser-integrity-note is-ready">
+            <Icon name="lock" size={15} />
+            <div>
+              <strong>Integrity verified</strong>
+              <span>Versions, packaged paths, and runtime trees match the application-protected manifest.</span>
+            </div>
+          </div>
+          <span className="settings-section-label">Project browser diagnostics</span>
+          <SettingRow label="Profile scope" hint="Cookies and site data persist only for this project.">
+            <code className="browser-readonly-value">Persistent per project</code>
+          </SettingRow>
+          <SettingRow label="Profile path" hint="Stored under the local SunCode data directory.">
+            <code className="browser-readonly-value" title="~/.suncode/data/browser/profiles/prj_suncode">
+              ~/.suncode/data/browser/profiles/prj_suncode
+            </code>
+          </SettingRow>
+          <SettingRow label="Profile usage" hint="Browser data is not part of the opened project.">
+            <code className="browser-readonly-value">38.4 MB · 2 active pages</code>
+          </SettingRow>
+          <SettingRow label="Window control" hint="The full Chromium window is minimized in background mode. Wayland may require manual foreground selection.">
+            <code className="browser-readonly-value">Full · macOS</code>
+          </SettingRow>
+        </div>
+      </details>
       <div className="browser-authority-note">
         <Icon name="lock" size={15} />
         <div>

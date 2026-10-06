@@ -569,6 +569,28 @@
 .browser-runtime-actions {
   align-items: stretch;
 }
+.browser-diagnostics {
+  margin-top: 28px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.browser-diagnostics summary {
+  min-height: 42px;
+  padding: 12px 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style-position: inside;
+}
+.browser-diagnostics summary::marker {
+  color: var(--text-muted);
+}
+.browser-diagnostics-content {
+  display: grid;
+  gap: 16px;
+  padding: 0 0 18px;
+}
 .settings-switch {
   display: inline-flex;
   align-items: center;

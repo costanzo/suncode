@@ -744,6 +744,7 @@ public sealed partial class SettingsWindow : Window
             var hasProject = ViewModel.SelectedProject is not null;
             BrowserPage.ProjectSectionControl.IsVisible = hasProject;
             BrowserPage.NoProjectSectionControl.IsVisible = !hasProject;
+            BrowserPage.ProjectDiagnosticsSectionControl.IsVisible = hasProject;
             BrowserPage.ProfilePathTextControl.Text = EmptyAsDash(runtime.ProfilePath);
             ToolTip.SetTip(BrowserPage.ProfilePathTextControl, runtime.ProfilePath);
             BrowserPage.CopyProfilePathButtonControl.IsEnabled = !string.IsNullOrWhiteSpace(runtime.ProfilePath);
@@ -769,8 +770,9 @@ public sealed partial class SettingsWindow : Window
             BrowserPage.TakeControlButtonControl.IsVisible = hasProject && runtime.RuntimeState == "background";
             BrowserPage.TakeControlButtonControl.IsEnabled = installationReady;
             BrowserPage.ReturnControlButtonControl.IsVisible = hasProject && userControlled;
+            BrowserPage.RestartButtonControl.IsVisible = hasProject;
             BrowserPage.RestartButtonControl.IsEnabled = installationReady && !notStarted && !userControlled;
-            BrowserPage.StopButtonControl.IsEnabled = !notStarted;
+            BrowserPage.StopButtonControl.IsEnabled = hasProject && !notStarted;
             BrowserPage.ClearButtonControl.IsEnabled = hasProject && notStarted;
         }
         finally

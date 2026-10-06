@@ -198,15 +198,18 @@
   <x:String x:Key="LocClearTemporaryScreenshots">清除临时屏幕截图</x:String>
   <x:String x:Key="LocComputerUseWarningTitle">计算机操作控制真实桌面，而不是沙箱</x:String>
   <x:String x:Key="LocComputerUseWarning">屏幕内容不受信任，不能授予权限。安全桌面和锁定会话不可用，外部应用中的操作无法由 SunCode 撤销。</x:String>
-  <x:String x:Key="LocBrowserUseHint">通过 CDP 连接内置 CEF Chromium 进行动态网页检查和交互。网站更改和浏览器数据不受文件系统撤销覆盖。</x:String>
+  <x:String x:Key="LocBrowserUseHint">通过 CDP 使用内置 CEF Chromium 检查和交互动态网页。首次执行浏览器操作时才会启动 Chromium。网站更改和浏览器数据不受文件系统撤销覆盖。</x:String>
   <x:String x:Key="LocEnableBrowserUse">启用浏览器操作</x:String>
-  <x:String x:Key="LocEnableBrowserUseHint">通过 CEF CDP 端点启用浏览器工具。</x:String>
+  <x:String x:Key="LocEnableBrowserUseHint">启用浏览器工具。只有代理需要浏览器时才会启动 Chromium。</x:String>
   <x:String x:Key="LocDisabled">已禁用</x:String>
   <x:String x:Key="LocBundledInstallation">内置安装</x:String>
   <x:String x:Key="LocNotStarted">尚未启动</x:String>
   <x:String x:Key="LocNoProjectSelected">未选择项目</x:String>
   <x:String x:Key="LocVerifyRuntime">验证运行时</x:String>
+  <x:String x:Key="LocAdvancedDiagnostics">高级诊断</x:String>
+  <x:String x:Key="LocStartBrowserRecovery">启动浏览器（故障恢复）</x:String>
   <x:String x:Key="LocBundledRuntime">内置运行时</x:String>
+  <x:String x:Key="LocProjectBrowserDiagnostics">项目浏览器诊断</x:String>
   <x:String x:Key="LocTarget">目标</x:String>
   <x:String x:Key="LocBundledForInstallation">随此 SunCode 安装包提供</x:String>
   <x:String x:Key="LocChromium">Chromium</x:String>
@@ -224,7 +227,6 @@
   <x:String x:Key="LocWindowControl">窗口控制</x:String>
   <x:String x:Key="LocWindowControlHint">Wayland 可能需要从任务栏手动选择窗口。</x:String>
   <x:String x:Key="LocAgentControlActive">代理控制已激活</x:String>
-  <x:String x:Key="LocStartBrowser">启动浏览器</x:String>
   <x:String x:Key="LocShowBrowserTakeControl">显示浏览器并接管控制</x:String>
   <x:String x:Key="LocRestart">重新启动</x:String>
   <x:String x:Key="LocBrowserWarningTitle">浏览器访问不是沙箱，也不是权限授予</x:String>
@@ -492,7 +494,7 @@
   <x:String x:Key="LocComputerUseStopped">计算机操作已停止，已释放按住的输入。</x:String>
   <x:String x:Key="LocYouControlDesktop">你正在控制桌面。计算机操作工具已暂停。</x:String>
   <x:String x:Key="LocControlReturnedFreshScreenshot">控制权已交还代理。执行坐标输入前需要新的屏幕截图。</x:String>
-  <x:String x:Key="LocBrowserUseEnabledStatus">浏览器操作已启用。只有项目需要时才会启动 Chromium。</x:String>
+  <x:String x:Key="LocBrowserUseEnabledStatus">浏览器操作已启用。首次执行浏览器操作时才会启动 Chromium。</x:String>
   <x:String x:Key="LocBrowserUseDisabledStatus">浏览器操作已禁用，活动浏览器运行时已停止。</x:String>
   <x:String x:Key="LocBrowserRuntimeVerified">内置浏览器运行时已验证。</x:String>
   <x:String x:Key="LocProjectBrowserStarted">项目浏览器已在后台启动。</x:String>
