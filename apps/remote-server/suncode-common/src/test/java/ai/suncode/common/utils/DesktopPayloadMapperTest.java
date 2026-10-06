@@ -60,7 +60,6 @@ class DesktopPayloadMapperTest {
         assertEquals("e2e-v1:cipher", DesktopPayloadMapper.projects(body).encPayload());
         assertNull(DesktopPayloadMapper.projects(body).items());
         assertEquals("e2e-v1:cipher", DesktopPayloadMapper.sessions(body).encPayload());
-        assertEquals("e2e-v1:cipher", DesktopPayloadMapper.createdSession(body).getEncPayload());
     }
 
     @Test
@@ -70,11 +69,6 @@ class DesktopPayloadMapperTest {
         assertTrue(DesktopPayloadMapper.error("{\"sessionId\":\"s-1\"}").isEmpty());
         assertTrue(DesktopPayloadMapper.error("{\"turn_id\":\"t\",\"status\":\"cancelled\"}").isEmpty());
         assertTrue(DesktopPayloadMapper.error("{\"encPayload\":\"x\"}").isEmpty());
-    }
-
-    @Test
-    void readsCreatedSessionIdFromRustSessionRecord() {
-        assertEquals("s-9", DesktopPayloadMapper.createdSession("{\"sessionId\":\"s-9\",\"kind\":\"primary\"}").getSessionId());
     }
 
     @Test

@@ -1279,7 +1279,7 @@ fn parse_sse_request(frame: &[u8], aes_key: &str) -> Option<RemoteRequest> {
     let text = std::str::from_utf8(frame).ok()?;
     let mut event = String::new();
     let mut id = String::new();
-    let mut data = String::new();
+    let mut data_lines = Vec::new();
     for line in text.lines() {
         if let Some(value) = line.strip_prefix("event:") {
             event = value.trim().into();
@@ -1288,47 +1288,42 @@ fn parse_sse_request(frame: &[u8], aes_key: &str) -> Option<RemoteRequest> {
             id = value.trim().into();
         }
         if let Some(value) = line.strip_prefix("data:") {
-            if !data.is_empty() {
-                data.push('\n');
-            }
-            data.push_str(value.trim_start());
+            data_lines.push(value.strip_prefix(' ').unwrap_or(value).to_owned());
         }
     }
-    let mut value: Value = serde_json::from_str(&data).ok()?;
     if event.starts_with("mobile.") {
-        let request_id = id;
+        if data_lines.len() != 2 || id.trim().is_empty() {
+            return None;
+        }
+        let routing: Value = serde_json::from_str(&data_lines[0]).ok()?;
+        let path = routing.get("pathParam")?.as_object()?;
+        let query = routing.get("queryParam")?.as_object()?;
+        let body: Value = serde_json::from_str(&data_lines[1]).ok()?;
         let operation = mobile_event_operation(&event)?;
-        let encrypted_payload = value
+        let encrypted_payload = body
             .get("encPayload")
             .and_then(Value::as_str)
             .filter(|payload| !payload.trim().is_empty());
         let mut arguments = if let Some(enc_payload) = encrypted_payload {
             decrypt_remote_payload(enc_payload, aes_key).ok()?
         } else {
-            value
-                .get("requestBody")
-                .cloned()
-                .unwrap_or_else(|| json!({}))
+            body
         };
         if !arguments.is_object() {
             arguments = json!({});
         }
-        if let Some(path) = value.get("pathParam").and_then(Value::as_object) {
-            if let Some(object) = arguments.as_object_mut() {
-                for (key, value) in path {
-                    object.entry(key.clone()).or_insert_with(|| value.clone());
-                }
+        if let Some(object) = arguments.as_object_mut() {
+            for (key, value) in path {
+                object.entry(key.clone()).or_insert_with(|| value.clone());
             }
         }
-        if let Some(query) = value.get("queryParam").and_then(Value::as_object) {
-            if let Some(object) = arguments.as_object_mut() {
-                for (key, value) in query {
-                    object.entry(key.clone()).or_insert_with(|| value.clone());
-                }
+        if let Some(object) = arguments.as_object_mut() {
+            for (key, value) in query {
+                object.entry(key.clone()).or_insert_with(|| value.clone());
             }
         }
         return Some(RemoteRequest {
-            request_id,
+            request_id: id,
             operation: operation.into(),
             arguments,
         });
@@ -1336,6 +1331,7 @@ fn parse_sse_request(frame: &[u8], aes_key: &str) -> Option<RemoteRequest> {
     if event != "desktop.request" && event != "desktop.command" {
         return None;
     }
+    let mut value: Value = serde_json::from_str(&data_lines.join("\n")).ok()?;
     if value.get("request_id").is_none() && value.get("requestId").is_none() {
         value["request_id"] = Value::String(id);
     }
@@ -1766,7 +1762,7 @@ mod tests {
     #[test]
     fn keeps_desktop_sse_routing_values_with_plaintext_body() {
         let request = parse_sse_request(
-            b"event: mobile.sessions.approvals.resolve\nid: req-1\ndata: {\"pathParam\":{\"sessionId\":\"session-1\",\"approvalId\":\"approval-1\"},\"queryParam\":{\"revision\":7},\"requestBody\":{\"action\":\"allow_once\"}}\n\n",
+            b"event: mobile.sessions.approvals.resolve\nid: req-1\ndata: {\"pathParam\":{\"sessionId\":\"session-1\",\"approvalId\":\"approval-1\"},\"queryParam\":{\"revision\":7}}\ndata: {\"action\":\"allow_once\"}\n\n",
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         ).unwrap();
         assert_eq!(request.operation, "approval.resolve");
@@ -1777,17 +1773,26 @@ mod tests {
     }
 
     #[test]
+    fn rejects_mobile_sse_frames_without_both_data_lines() {
+        assert!(parse_sse_request(
+            b"event: mobile.sessions.messages.send\nid: req-1\ndata: {\"pathParam\":{},\"queryParam\":{}}\n\n",
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        )
+        .is_none());
+    }
+
+    #[test]
     fn decrypts_top_level_encrypted_mobile_payload_on_desktop() {
         let key = generate_aes_key();
         let encrypted = encrypt_remote_payload(&json!({"text": "hello"}), &key).unwrap();
-        let data = json!({
+        let routing = json!({
             "pathParam": {"sessionId": "session-1"},
             "queryParam": {"expectedRevision": 7},
-            "encPayload": encrypted,
         });
+        let body = json!({"encPayload": encrypted});
         let frame = format!(
-            "event: mobile.sessions.messages.send\nid: req-1\ndata: {}\n\n",
-            data
+            "event: mobile.sessions.messages.send\nid: req-1\ndata: {}\ndata: {}\n\n",
+            routing, body
         );
         let request = parse_sse_request(frame.as_bytes(), &key).unwrap();
         assert_eq!(request.operation, "session.message");
@@ -1799,7 +1804,7 @@ mod tests {
     #[test]
     fn parses_mobile_projects_list_event() {
         let request = parse_sse_request(
-            b"event: mobile.projects.list\nid: 1791094808946\ndata: {\"pathParam\":{\"hostId\":\"BwyviZPiGD\"},\"queryParam\":{},\"requestBody\":{}}\n\n",
+            b"event: mobile.projects.list\nid: 1791094808946\ndata: {\"pathParam\":{\"hostId\":\"BwyviZPiGD\"},\"queryParam\":{}}\ndata: {}\n\n",
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         )
         .expect("mobile projects list event should be accepted");

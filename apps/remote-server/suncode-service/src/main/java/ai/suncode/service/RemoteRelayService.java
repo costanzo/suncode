@@ -105,39 +105,7 @@ public class RemoteRelayService {
             String routeId,
             String requestIdHeader,
             Map<String, Object> queryParam) {
-        String effectiveRouteId = routeId;
-        if (effectiveRouteId == null && payload != null) {
-            if (command.isApproval()) {
-                effectiveRouteId = payload.getApprovalId();
-            } else if (command.isQuestion()) {
-                effectiveRouteId = payload.getQuestionId();
-            }
-        }
-        return requestInternal(hostId, sessionId, command, payload, effectiveRouteId, requestIdHeader, queryParam);
-    }
-
-    /** Forward an encrypted request body without interpreting its contents. */
-    public DesktopResponse requestEncrypted(
-            String hostId,
-            String sessionId,
-            Command command,
-            String requestIdHeader,
-            Map<String, Object> queryParam,
-            String encPayload) {
-        return requestRaw(hostId, sessionId, command, null, requestIdHeader, queryParam,
-                MarshallingUtils.toJson(Map.of("encPayload", encPayload)));
-    }
-
-    public DesktopResponse requestEncrypted(
-            String hostId,
-            String sessionId,
-            Command command,
-            String routeId,
-            String requestIdHeader,
-            Map<String, Object> queryParam,
-            String encPayload) {
-        return requestRaw(hostId, sessionId, command, routeId, requestIdHeader, queryParam,
-                MarshallingUtils.toJson(Map.of("encPayload", encPayload)));
+        return requestInternal(hostId, sessionId, command, payload, routeId, requestIdHeader, queryParam);
     }
 
     private DesktopResponse requestInternal(
@@ -195,7 +163,7 @@ public class RemoteRelayService {
             }
             DesktopMobileHttpRequest requestEnvelope = new DesktopMobileHttpRequest(
                     path, queryParam == null ? Map.of() : queryParam,
-                    requestBody == null || requestBody.isBlank() ? "{}" : requestBody);
+                    requestBody == null ? "{}" : requestBody);
             send(connection.emitter(), mobileEventName(command), effectiveRequestId, requestEnvelope);
             try {
                 DesktopResponse response = future.get(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -375,8 +343,7 @@ public class RemoteRelayService {
                 String routingJson = MarshallingUtils.toJson(Map.of(
                         "pathParam", request.pathParam() == null ? Map.of() : request.pathParam(),
                         "queryParam", request.queryParam() == null ? Map.of() : request.queryParam()));
-                String requestBody = request.requestBody() == null || request.requestBody().isBlank()
-                        ? "{}" : request.requestBody();
+                String requestBody = request.requestBody() == null ? "{}" : request.requestBody();
                 log.info("SSE SEND ==> event: {}, id: {}, routingData: {}, bodyData: {}",
                         event, id, routingJson, requestBody);
                 emitter.send(SseEmitter.event().name(event).id(id).data(routingJson).data(requestBody));

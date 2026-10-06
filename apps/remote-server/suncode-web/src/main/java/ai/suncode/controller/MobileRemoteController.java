@@ -168,7 +168,7 @@ public class MobileRemoteController {
                                            String request, Map<String, Object> query) {
         String requestId = ServiceContext.current().requestId();
         return relayService.requestRaw(hostId, sessionId, command, routeId, requestId, query,
-                request == null || request.isBlank() ? "{}" : request);
+                request == null ? "{}" : request);
     }
 
     private <T> T responseEnvelope(DesktopResponse response, Class<T> type) {

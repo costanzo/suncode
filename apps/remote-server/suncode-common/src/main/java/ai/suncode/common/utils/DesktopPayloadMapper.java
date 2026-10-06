@@ -56,6 +56,9 @@ public final class DesktopPayloadMapper {
 
     public static ProjectsData projects(String body) {
         DesktopProjectsResult result = MarshallingUtils.fromJson(body, DesktopProjectsResult.class);
+        if (result.encPayload() != null) {
+            return ProjectsData.encrypted(result.encPayload());
+        }
         List<ProjectDto> items = Optional.ofNullable(result.projects()).orElse(List.of()).stream()
                 .filter(Objects::nonNull)
                 .filter(project -> project.archivedAt() == null)
@@ -67,6 +70,9 @@ public final class DesktopPayloadMapper {
 
     public static SessionPageData sessions(String body) {
         DesktopSessionsResult result = MarshallingUtils.fromJson(body, DesktopSessionsResult.class);
+        if (result.encPayload() != null) {
+            return SessionPageData.encrypted(result.encPayload());
+        }
         List<SessionSummaryDto> items = summaries(result.sessions(), result.sessionStates(), Map.of(), result.projectId());
         // The Rust SDK returns the full project list in one page.
         return new SessionPageData(items, null, false, null);
@@ -78,6 +84,9 @@ public final class DesktopPayloadMapper {
      */
     public static SyncData sync(String body, HostDto host) {
         DesktopSnapshot snapshot = MarshallingUtils.fromJson(body, DesktopSnapshot.class);
+        if (snapshot.encPayload() != null) {
+            return SyncData.encrypted(snapshot.encPayload());
+        }
         Map<String, String> projectNames = Optional.ofNullable(snapshot.projects()).orElse(List.of()).stream()
                 .filter(Objects::nonNull)
                 .filter(project -> project.projectId() != null)

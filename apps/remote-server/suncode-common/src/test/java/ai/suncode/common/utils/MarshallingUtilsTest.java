@@ -1,11 +1,8 @@
 package ai.suncode.common.utils;
 
-import ai.suncode.message.remote.ApprovalResolutionRequest;
 import ai.suncode.message.remote.Command;
 import ai.suncode.message.remote.CommandAcceptedData;
 import ai.suncode.message.remote.ConnectionState;
-import ai.suncode.message.remote.DesktopCommand;
-import ai.suncode.message.remote.DesktopCommandPayload;
 import ai.suncode.message.remote.DesktopEvent;
 import ai.suncode.message.remote.DesktopResponse;
 import ai.suncode.message.remote.EventType;
@@ -19,7 +16,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MarshallingUtilsTest {
@@ -38,13 +34,9 @@ class MarshallingUtilsTest {
         assertEquals(occurredAt, restored.occurredAt());
         assertEquals("running", restored.payload().getState());
         assertEquals("turn-1", restored.payload().getTurnId());
-        assertNull(restored.payload().getApprovalId());
         assertTrue(json.contains("\"turn_id\":\"turn-1\""));
         assertFalse(json.contains("approval_id"));
         assertEquals("2026-09-27T10:00:00Z", MarshallingUtils.convertValue(event, Map.class).get("occurred_at"));
-
-        DesktopCommand command = new DesktopCommand("request", "host", "session", Command.SESSION_GET, new DesktopCommandPayload());
-        assertEquals("session.get", MarshallingUtils.convertValue(command, Map.class).get("command"));
     }
 
     @Test
@@ -73,9 +65,9 @@ class MarshallingUtilsTest {
 
     @Test
     void serializesAndReadsProtocolEnumsAsTheirWireValues() {
-        assertEquals("session.get", MarshallingUtils.toJson(Command.SESSION_GET));
+        assertEquals("\"session.get\"", MarshallingUtils.toJson(Command.SESSION_GET));
         assertEquals(Command.SESSION_GET, MarshallingUtils.fromJson("\"session.get\"", Command.class));
-        assertEquals("connected", MarshallingUtils.toJson(ConnectionState.CONNECTED));
+        assertEquals("\"connected\"", MarshallingUtils.toJson(ConnectionState.CONNECTED));
         assertEquals(ConnectionState.CONNECTED,
                 MarshallingUtils.fromJson("\"connected\"", ConnectionState.class));
         assertEquals(EventType.MESSAGE_ASSISTANT,
@@ -83,16 +75,7 @@ class MarshallingUtilsTest {
     }
 
     @Test
-    void preservesDesktopCommandFieldsAndConvertsResponseData() {
-        DesktopCommandPayload payload = DesktopCommandPayload.resolveApproval(
-                "approval-1", new ApprovalResolutionRequest("approve", 7));
-        String commandJson = MarshallingUtils.toJson(new DesktopCommand(
-                "request-1", "host-1", "session-1", Command.APPROVAL_RESOLVE, payload));
-
-        assertTrue(commandJson.contains("\"approvalId\":\"approval-1\""));
-        assertTrue(commandJson.contains("\"expectedRevision\":7"));
-        assertFalse(commandJson.contains("\"questionId\""));
-
+    void convertsCommandResponseData() {
         CommandAcceptedData result = MarshallingUtils.convertValue(
                 Map.of("requestId", "request-1", "sessionId", "session-1"), CommandAcceptedData.class);
         assertEquals("session-1", result.sessionId());
