@@ -116,6 +116,28 @@ fn pending_approval_is_exposed_by_validated_session() {
     assert!(sdk.pending_approval("missing-session").is_err());
 }
 
+#[test]
+fn skill_catalog_is_exposed_through_the_typed_sdk() {
+    let directory = tempfile::tempdir().unwrap();
+    let skill_dir = directory.path().join(".suncode/skills/release");
+    std::fs::create_dir_all(&skill_dir).unwrap();
+    std::fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: release\ndescription: release workflow\n---\nRun the release checks.",
+    )
+    .unwrap();
+    let sdk = test_sdk(directory.path());
+    let project = sdk
+        .state
+        .store
+        .project_for_user("default", directory.path().to_str().unwrap(), "Skills")
+        .unwrap();
+    let listed = sdk.list_skills(&project.project_id).unwrap();
+    assert_eq!(listed.skills[0].name, "release");
+    let loaded = sdk.load_skill(&project.project_id, "release").unwrap();
+    assert_eq!(loaded.content, "Run the release checks.");
+}
+
 #[tokio::test(flavor = "current_thread")]
 async fn async_sdk_opens_and_shuts_down_inside_an_existing_tokio_runtime() {
     let _guard = ENVIRONMENT

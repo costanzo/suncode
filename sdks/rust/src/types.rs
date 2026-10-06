@@ -308,6 +308,40 @@ pub struct ProjectsResult {
     pub projects: Vec<ProjectRecord>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SkillDto {
+    pub name: String,
+    pub description: String,
+    pub location: String,
+    pub base_directory: String,
+    pub source: String,
+    pub explicit_only: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SkillDiagnosticDto {
+    pub kind: String,
+    pub message: String,
+    pub path: Option<String>,
+    pub skill_name: Option<String>,
+    pub winner: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SkillsResult {
+    pub project_id: String,
+    pub skills: Vec<SkillDto>,
+    pub diagnostics: Vec<SkillDiagnosticDto>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SkillDocumentResult {
+    pub project_id: String,
+    pub skill: SkillDto,
+    pub content: String,
+    pub resource_files: Vec<String>,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectDependencyDto {

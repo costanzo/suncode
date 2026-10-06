@@ -39,6 +39,7 @@ mod projects;
 mod remote;
 mod sessions;
 mod settings;
+mod skills;
 mod subscriptions;
 #[cfg(test)]
 mod tests;

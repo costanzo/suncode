@@ -310,6 +310,7 @@ mod tests {
             allowed_tools: &["read".into(), "grep".into()],
             agent_id: None,
             dependency_context: None,
+            skill_guidance: None,
         })
         .unwrap();
         let text = messages

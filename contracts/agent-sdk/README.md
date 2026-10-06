@@ -72,6 +72,8 @@ The Rust API uses typed inputs and outputs. Async Rust hosts use `AsyncAgentSdk`
 | `remove_project_dependency` | Remove one dependency registration without changing its files |
 | `list_project_directory` | Lazily list one bounded project or dependency directory for Explorer |
 | `read_project_file` | Read one bounded UTF-8 project or dependency file for the desktop viewer |
+| `list_skills` | Discover validated local project and user Skills with diagnostics for one project |
+| `load_skill` | Load one bounded local Skill document and its relative resource listing |
 | `git_status` | Read the bounded Git index/worktree status and aggregate change counts for a project |
 | `git_diff_file` | Read one bounded structured file diff for the all, staged, or unstaged scope |
 | `list_sessions` | List primary sessions in a project, including archived status and the persisted model and reasoning-effort preference |
@@ -160,6 +162,8 @@ Models advertise `capabilities.reasoning_effort` and a `reasoning_efforts` catal
 
 Project dependency DTOs contain `dependencyId`, `projectId`, `displayName`, and `createdAt`, but never the canonical absolute root. `list_project_directory` selects the main project when `dependencyId` is null and a registered dependency otherwise. It returns at most 500 directories/files for one level, directories first, with root-relative slash-separated paths and a `truncated` flag. Symlinks and non-file entries are omitted. Adding a dependency rejects the project root, ancestors or descendants of the project, and roots that overlap another dependency.
 `read_project_file` applies the same project/dependency root selection and canonical scope checks. It accepts one root-relative regular-file path, rejects symbolic links, NUL-containing/binary content, and non-UTF-8 content, and returns at most 1 MiB for the read-only desktop viewer. Files above the bound fail with `file_too_large`; the SDK never returns a partial document or creates an artifact for this client read.
+
+`list_skills` and `load_skill` are Rust facade methods backed by the independent `suncode-skills` crate. Discovery scans project `.suncode/skills` and `.agents/skills`, user `~/.config/suncode/skills` and `~/.agents/skills`, and keeps the first deterministic name winner while returning collision and validation diagnostics. `load_skill` returns bounded Markdown content and at most ten relative resource names. Skill files are untrusted guidance and do not grant authority or change policy; interactive client selectors and slash commands are deferred.
 
 The model addresses dependency content as `dependency:<dependencyId>/<relativePath>`. Only `read`, `glob`, and `grep` accept this alias; their results preserve the same prefix so later calls cannot accidentally resolve against the main project. Writes, edits, deletion, moves, processes, Git operations, checkpoints, and other authority remain scoped to the opened project and reject dependency aliases with `scope_denied`.
 

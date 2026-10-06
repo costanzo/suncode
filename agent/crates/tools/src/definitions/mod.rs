@@ -8,6 +8,7 @@ mod lsp;
 mod question;
 mod read;
 mod shell;
+mod skill;
 mod todowrite;
 mod webfetch;
 mod write;
@@ -36,6 +37,7 @@ pub fn all() -> Vec<ToolDefinition> {
         write::definition(),
         edit::definition(),
         shell::definition(),
+        skill::definition(),
         webfetch::definition(),
     ]
     .into_iter()
@@ -84,6 +86,7 @@ mod tests {
                 "lsp_symbols",
                 "question",
                 "read",
+                "skill",
                 "todowrite",
                 "webfetch",
                 "write",

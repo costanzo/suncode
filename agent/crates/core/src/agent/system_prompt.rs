@@ -15,6 +15,7 @@ pub(super) struct PromptContext<'a> {
     pub allowed_tools: &'a [String],
     pub agent_id: Option<&'a str>,
     pub dependency_context: Option<Message>,
+    pub skill_guidance: Option<String>,
 }
 
 pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>, BusinessError> {
@@ -49,6 +50,9 @@ pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>,
     }
     if let Some(message) = context.dependency_context {
         messages.push(message);
+    }
+    if let Some(guidance) = context.skill_guidance.filter(|value| !value.is_empty()) {
+        messages.push(Message::text("system", guidance));
     }
     messages.push(Message::text(
         "system",

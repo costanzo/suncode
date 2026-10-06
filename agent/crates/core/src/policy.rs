@@ -41,7 +41,7 @@ pub fn tool_risk(name: &str) -> Option<Risk> {
     }
     match name {
         "read" | "glob" | "grep" | "lsp_diagnostics" | "lsp_definition" | "lsp_references"
-        | "lsp_hover" | "lsp_symbols" | "question" | "todowrite" => Some(Risk::ReadOnly),
+        | "lsp_hover" | "lsp_symbols" | "question" | "skill" | "todowrite" => Some(Risk::ReadOnly),
         "webfetch" => Some(Risk::NetworkAccess),
         "write" | "edit" => Some(Risk::ProjectWrite),
         "bash" => Some(Risk::ProcessExecution),
@@ -55,6 +55,7 @@ mod tests {
     #[test]
     fn defaults_match_contract() {
         assert_eq!(evaluate(tool_risk("read"), false, false), Decision::Allow);
+        assert_eq!(evaluate(tool_risk("skill"), false, false), Decision::Allow);
         assert_eq!(
             evaluate(tool_risk("write"), false, false),
             Decision::ApprovalRequired

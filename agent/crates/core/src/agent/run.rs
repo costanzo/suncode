@@ -17,6 +17,16 @@ fn delegate_agent_definition() -> suncode_llm::ToolDefinition {
     }
 }
 
+fn skill_guidance(project_root: &str) -> Option<String> {
+    let catalog = suncode_skills::SkillCatalog::discover(&suncode_skills::DiscoveryOptions {
+        project_root: project_root.into(),
+        user_config_directory: None,
+        user_home_directory: None,
+        explicit_paths: Vec::new(),
+    });
+    Some(suncode_skills::render_available_skills(catalog.visible().cloned()))
+}
+
 impl Agent {
     async fn run(
         &self,
@@ -45,6 +55,7 @@ impl Agent {
             allowed_tools: &context.allowed_tools,
             agent_id: context.agent_id.as_deref(),
             dependency_context: self.dependency_context_message(&context.project_id)?,
+            skill_guidance: if context.allowed_tools.is_empty() { skill_guidance(&context.project_root) } else { None },
         })?;
         while context.iterations < 1024 {
             if token.is_cancelled() {
