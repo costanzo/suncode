@@ -121,7 +121,7 @@ public sealed class MessageItem : ObservableObject, IDisposable
     public bool IsTurnMarker => Kind == "turn_marker";
     public bool IsConversationAssistant => IsAssistant && !IsTurnMarker && !IsCompaction;
     public bool IsIntermediateAssistant => IsConversationAssistant && !IsFinalAssistant;
-    public bool IsCompaction => Kind == "context.compacted";
+    public bool IsCompaction => Kind == AgentEventTypes.ContextCompacted;
     // Keep the timeline compact for unusually large submitted prompts while
     // retaining the canonical text for the read-only detail dialog.
     public bool IsLongUserMessage => IsUser && (Text.Length > 340 || Text.Count(c => c == '\n') >= 5);

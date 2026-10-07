@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
+using SunCode.Desktop.Models;
 using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
@@ -29,12 +30,12 @@ public sealed class ProviderTrafficViewModel : ObservableObject
         var exchangeId = payload.ExchangeId;
         if (string.IsNullOrWhiteSpace(exchangeId)) return;
 
-        if (value.EventType == "provider.exchange.started")
+        if (value.EventType == AgentEventTypes.ProviderExchangeStarted)
         {
             _transfers[exchangeId] = new ProviderTransferState(payload.Provider ?? "LLM", payload.ModelId ?? payload.WireModel ?? "model");
             StartTimer();
         }
-        else if (value.EventType == "provider.exchange.progress")
+        else if (value.EventType == AgentEventTypes.ProviderExchangeProgress)
         {
             if (!_transfers.TryGetValue(exchangeId, out var transfer))
             {
@@ -49,7 +50,7 @@ public sealed class ProviderTrafficViewModel : ObservableObject
             transfer.UploadedBytes = uploaded;
             transfer.DownloadedBytes = downloaded;
         }
-        else if (value.EventType is "provider.exchange.completed" or "provider.exchange.failed")
+        else if (value.EventType is AgentEventTypes.ProviderExchangeCompleted or AgentEventTypes.ProviderExchangeFailed)
         {
             _transfers.Remove(exchangeId);
         }
