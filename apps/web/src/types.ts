@@ -73,6 +73,8 @@ export interface PairingPayload {
 }
 
 export interface CredentialState {
+  /** Pairing endpoint, which may include a path prefix before `/v1/mobile`. */
+  endpoint: string;
   host: Host;
   accessToken: string;
   refreshToken: string;

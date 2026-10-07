@@ -42,6 +42,7 @@ function ConnectionLamp({ state = "connected" }) {
     degraded: "Desktop unavailable",
     reconnecting: "Reconnecting",
     offline: "Offline",
+    unauthorized: "Unauthorized",
   };
   return (
     <span className={`web-connection is-${state}`}>
@@ -156,7 +157,7 @@ function Conversation({ state = "approval", sessionTitle = "Fix login redirect",
         <Message role="assistant"><p>I found the redirect loop in <code>auth/redirect.ts</code>. I’m checking the existing test coverage before writing the fix.</p><div className="web-activity-row"><span className="web-activity-icon"><Icon name="search" size={14} /></span><span><strong>Read</strong> <code>src/auth/redirect.ts</code></span><em>completed</em></div></Message>
         <Message role="assistant"><p>The fix is ready. Writing one file needs your approval.</p>{state === "approval" && <ApprovalCard />}{state === "question" && <QuestionCard />}</Message>
       </div>
-      <div className="web-composer"><button type="button" className="web-attach" aria-label="Attach image"><Icon name="plus" size={16} /></button><span>Message SunCode…</span><button type="button" className="web-send" aria-label="Send message"><Icon name="arrow-up" size={15} /></button></div>
+      <div className="web-composer"><button type="button" className="web-attach" aria-label="Attach image" title="Image attachments are not available in the web client yet" disabled><Icon name="plus" size={16} /></button><span>Message SunCode…</span><button type="button" className="web-send" aria-label="Send message"><Icon name="arrow-up" size={15} /></button></div>
       <footer className="web-conversation-footer"><span>Cancel turn</span><span><code>Last-Event-ID: host-01:42</code> · SSE session stream</span></footer>
     </main>
   );

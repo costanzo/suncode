@@ -36,7 +36,7 @@ export async function renderMarkdown(text: string): Promise<string> {
 function stripWrappedMarkup(text: string): string {
   const wrapped = /^\s*<([A-Za-z]\w*)>\s*([\s\S]*?)\s*<\/\1>\s*$/;
   const match = text.match(wrapped);
-  return match ? match[2] : text;
+  return match?.[2] ?? text;
 }
 
 const inlineMathRegex = /^\\\(((?:\\.|[^\\\n])*?)\\\)/;
@@ -57,7 +57,7 @@ const katexExtension: MarkedExtension = {
         return {
           type: "inlineKatex",
           raw: match[0],
-          text: match[1].trim(),
+          text: (match[1] ?? "").trim(),
           displayMode: false,
         };
       },
@@ -72,7 +72,7 @@ const katexExtension: MarkedExtension = {
         return {
           type: "blockKatex",
           raw: match[0],
-          text: match[1].trim(),
+          text: (match[1] ?? "").trim(),
           displayMode: true,
         };
       },
