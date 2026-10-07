@@ -13,6 +13,7 @@ namespace SunCode.Desktop.Views.ProjectWorkspace;
 
 public sealed partial class ProjectWorkspace : UserControl
 {
+    private bool _trafficLightsActive = true;
     private SessionItem? _sessionDialogTarget;
     private CheckpointItem? _pendingCheckpoint;
     private ExplorerNode? _pendingDependencyDeletion;
@@ -483,10 +484,33 @@ public sealed partial class ProjectWorkspace : UserControl
     private void TitleBarMoved(object? sender, PointerEventArgs e) => Owner?.TitleBarMoved(sender, e);
     private void TitleBarReleased(object? sender, PointerReleasedEventArgs e) => Owner?.TitleBarReleased(sender, e);
     private void TitleBarDoubleTapped(object? sender, TappedEventArgs e) => Owner?.TitleBarDoubleTapped(sender, e);
-    private void TrafficLightEntered(object? sender, PointerEventArgs e) => WorkspaceWindow.SetTrafficLightState(sender, "hover");
-    private void TrafficLightExited(object? sender, PointerEventArgs e) => WorkspaceWindow.SetTrafficLightState(sender, "normal");
-    private void TrafficLightPressed(object? sender, PointerPressedEventArgs e) => WorkspaceWindow.SetTrafficLightState(sender, "press");
-    private void TrafficLightReleased(object? sender, PointerReleasedEventArgs e) => WorkspaceWindow.SetTrafficLightState(sender, "hover");
+    internal void SetTrafficLightFocus(bool isActive)
+    {
+        _trafficLightsActive = isActive;
+        WorkspaceWindow.SetTrafficLightFocusState(ProjectCloseLight, isActive);
+        WorkspaceWindow.SetTrafficLightFocusState(ProjectMinimizeLight, isActive);
+        WorkspaceWindow.SetTrafficLightFocusState(ProjectMaximizeLight, isActive);
+    }
+
+    private void TrafficLightEntered(object? sender, PointerEventArgs e)
+    {
+        if (_trafficLightsActive) WorkspaceWindow.SetTrafficLightState(sender, "hover");
+    }
+
+    private void TrafficLightExited(object? sender, PointerEventArgs e)
+    {
+        if (_trafficLightsActive) WorkspaceWindow.SetTrafficLightState(sender, "normal");
+    }
+
+    private void TrafficLightPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_trafficLightsActive) WorkspaceWindow.SetTrafficLightState(sender, "press");
+    }
+
+    private void TrafficLightReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_trafficLightsActive) WorkspaceWindow.SetTrafficLightState(sender, "hover");
+    }
     private void WindowsCloseEntered(object? sender, PointerEventArgs e) => SetWindowsCloseIconState(sender, "hover");
     private void WindowsCloseExited(object? sender, PointerEventArgs e) => SetWindowsCloseIconState(sender, "normal");
     private void WindowsClosePressed(object? sender, PointerPressedEventArgs e) => SetWindowsCloseIconState(sender, "press");

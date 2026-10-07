@@ -25,11 +25,11 @@ function WindowsWindowControls({ onClose }) {
   );
 }
 
-export function NativeTitlebar({ platform, title, applicationName = "SunCode", onClose }) {
+export function NativeTitlebar({ platform, title, applicationName = "SunCode", onClose, isActive = true }) {
   if (platform === "macos") {
     return (
       <div className="native-titlebar native-titlebar-macos">
-        <TrafficLights onClose={onClose} />
+        <TrafficLights onClose={onClose} isActive={isActive} />
         <strong>{title}</strong>
         <span className="native-titlebar-spacer" aria-hidden="true" />
       </div>
@@ -55,6 +55,7 @@ export function NativeWindowFrame({
   width,
   height,
   onClose,
+  isActive = true,
   children,
   className = "",
 }) {
@@ -72,6 +73,7 @@ export function NativeWindowFrame({
         title={title}
         applicationName={applicationName}
         onClose={onClose}
+        isActive={isActive}
       />
       <div className="native-window-client">{children}</div>
     </div>

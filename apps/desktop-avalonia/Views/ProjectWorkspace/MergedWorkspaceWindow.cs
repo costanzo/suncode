@@ -34,9 +34,18 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
 
     internal bool ContainsProject(string projectId) => _projectWindows.ContainsKey(projectId);
 
+    protected override void UpdateTrafficLightFocus(bool isActive)
+    {
+        if (_content.Content is ProjectWorkspace workspace)
+            workspace.SetTrafficLightFocus(isActive);
+        else
+            base.UpdateTrafficLightFocus(isActive);
+    }
+
     internal void AddProject(string projectId, WorkspaceWindow source)
     {
         source.Workspace.DataContext = source.DataContext;
+        source.Workspace.SetTrafficLightFocus(IsActive);
         source.UpdateLayout();
         source.Content = null;
         var title = source.DataContext is DesktopViewModel viewModel && !string.IsNullOrWhiteSpace(viewModel.ProjectTitle)
@@ -59,6 +68,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
             _content.Content = source.Workspace;
             source.Workspace.SetMergedTabs(_tabs);
         }
+        source.Workspace.SetTrafficLightFocus(IsActive);
         _activeProjectId = selected.ProjectId;
         DataContext = source.DataContext;
         _tabs.Select(projectId);

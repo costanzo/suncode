@@ -32,11 +32,13 @@ const specimens = [
   {
     platform: "macos",
     name: "macOS",
+    isActive: true,
     description: "Traffic lights lead the title bar; the window title remains optically centered.",
   },
   {
     platform: "windows",
     name: "Windows",
+    isActive: true,
     description:
       "Application identity leads; minimize, maximize, and close actions occupy the trailing edge.",
   },
@@ -69,12 +71,31 @@ export function DesktopTitlebarPage() {
                 title={specimen.platform === "macos" ? "Welcome to SunCode" : "SunCode — suncode"}
                 width="760px"
                 height="440px"
+                isActive={specimen.isActive}
               >
                 <WindowTemplateContent />
               </NativeWindowFrame>
             </article>
           ))}
-        </div>
+        <article className="native-window-specimen">
+          <div className="native-window-specimen-heading">
+            <div>
+              <strong>macOS inactive</strong>
+              <span>When another application is focused, all three controls use the system's muted gray state.</span>
+            </div>
+            <code>760 × 440</code>
+          </div>
+          <NativeWindowFrame
+            platform="macos"
+            title="Welcome to SunCode"
+            width="760px"
+            height="440px"
+            isActive={false}
+          >
+            <WindowTemplateContent />
+          </NativeWindowFrame>
+        </article>
+      </div>
       </Section>
     </>
   );

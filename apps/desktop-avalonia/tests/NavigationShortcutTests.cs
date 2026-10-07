@@ -56,4 +56,23 @@ public sealed class NavigationShortcutTests
         Assert.True(WorkspaceWindow.OriginatesFromButton(new Button()));
         Assert.False(WorkspaceWindow.OriginatesFromButton(new Border()));
     }
+
+    [Theory]
+    [InlineData("close", "normal", "1-close-1-normal.svg")]
+    [InlineData("minimize", "hover", "2-minimize-2-hover.svg")]
+    [InlineData("maximize", "press", "3-maximize-3-press.svg")]
+    public void ActiveTrafficLightsKeepTheirInteractionAssets(string kind, string state, string expected)
+    {
+        Assert.Equal(expected, WorkspaceWindow.GetTrafficLightAsset(kind, state, isActive: true));
+    }
+
+    [Theory]
+    [InlineData("close")]
+    [InlineData("minimize")]
+    [InlineData("maximize")]
+    public void InactiveTrafficLightsUseTheMutedAssetForEveryControl(string kind)
+    {
+        Assert.Equal("0-all-three-nofocus.svg", WorkspaceWindow.GetTrafficLightAsset(kind, "normal", isActive: false));
+        Assert.Equal("0-all-three-nofocus.svg", WorkspaceWindow.GetTrafficLightAsset(kind, "hover", isActive: false));
+    }
 }

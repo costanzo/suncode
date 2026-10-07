@@ -37,6 +37,8 @@ public partial class WorkspaceWindow : Window
         Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
         Opened += OnOpened;
         Closing += OnClosing;
+        Activated += (_, _) => UpdateTrafficLightFocus(true);
+        Deactivated += (_, _) => UpdateTrafficLightFocus(false);
         _mcpLoadTimer.Tick += McpLoadTick;
         SizeChanged += (_, _) =>
         {
@@ -62,6 +64,7 @@ public partial class WorkspaceWindow : Window
         {
             RestoreWindowGeometry();
             UpdateNativeProjectMenu();
+            UpdateTrafficLightFocus(IsActive);
             return;
         }
         await ViewModel.Mcp.StartProjectAsync();
@@ -70,6 +73,7 @@ public partial class WorkspaceWindow : Window
         if (!IsMergedHost) ConfigureProjectWindow();
         UpdateNativeProjectMenu();
         if (ViewModel.SelectedSession != null) SessionEntered();
+        UpdateTrafficLightFocus(IsActive);
     }
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
@@ -344,6 +348,29 @@ public partial class WorkspaceWindow : Window
     internal static bool OriginatesFromButton(object? source) =>
         source is Button || source is Visual visual && visual.FindAncestorOfType<Button>() is not null;
 
+    internal static string GetTrafficLightAsset(string kind, string state, bool isActive = true)
+    {
+        if (!isActive) return "0-all-three-nofocus.svg";
+
+        return (kind, state) switch
+        {
+            ("close", "hover") => "2-close-2-hover.svg",
+            ("close", "press") => "2-close-3-press.svg",
+            ("close", _) => "1-close-1-normal.svg",
+            ("minimize", "hover") => "2-minimize-2-hover.svg",
+            ("minimize", "press") => "2-minimize-3-press.svg",
+            ("minimize", _) => "2-minimize-1-normal.svg",
+            ("maximize", "hover") => "3-maximize-2-hover.svg",
+            ("maximize", "press") => "3-maximize-3-press.svg",
+            _ => "3-maximize-1-normal.svg"
+        };
+    }
+
+    protected virtual void UpdateTrafficLightFocus(bool isActive)
+    {
+        ProjectWorkspaceView.SetTrafficLightFocus(isActive);
+    }
+
     internal void MinimizeWindow()
     {
         SaveWindowGeometry();
@@ -393,19 +420,16 @@ public partial class WorkspaceWindow : Window
         var kind = button.Name?.Contains("Close", StringComparison.Ordinal) == true
             ? "close"
             : button.Name?.Contains("Minimize", StringComparison.Ordinal) == true ? "minimize" : "maximize";
-        var file = (kind, state) switch
-        {
-            ("close", "hover") => "2-close-2-hover.svg",
-            ("close", "press") => "2-close-3-press.svg",
-            ("close", _) => "1-close-1-normal.svg",
-            ("minimize", "hover") => "2-minimize-2-hover.svg",
-            ("minimize", "press") => "2-minimize-3-press.svg",
-            ("minimize", _) => "2-minimize-1-normal.svg",
-            ("maximize", "hover") => "3-maximize-2-hover.svg",
-            ("maximize", "press") => "3-maximize-3-press.svg",
-            _ => "3-maximize-1-normal.svg"
-        };
-        icon.Path = $"/Assets/traffic-lights/{file}";
+        icon.Path = $"/Assets/traffic-lights/{GetTrafficLightAsset(kind, state)}";
+    }
+
+    internal static void SetTrafficLightFocusState(object? sender, bool isActive)
+    {
+        if (sender is not Button button || button.GetVisualDescendants().OfType<SvgControl>().FirstOrDefault() is not { } icon) return;
+        var kind = button.Name?.Contains("Close", StringComparison.Ordinal) == true
+            ? "close"
+            : button.Name?.Contains("Minimize", StringComparison.Ordinal) == true ? "minimize" : "maximize";
+        icon.Path = $"/Assets/traffic-lights/{GetTrafficLightAsset(kind, "normal", isActive)}";
     }
 
     private void ConfigureProjectWindow()
