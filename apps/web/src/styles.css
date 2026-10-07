@@ -275,6 +275,9 @@ svg {
 .connection-offline {
   color: var(--web-text-subtle);
 }
+.connection-unauthorized {
+  color: var(--danger);
+}
 .settings-link {
   display: flex;
   gap: 7px;
@@ -690,8 +693,12 @@ svg {
   color: var(--web-text-tertiary);
   background: transparent;
 }
-.composer-icon:hover {
+.composer-icon:hover:not(:disabled) {
   background: var(--surface-hover);
+}
+.composer-icon:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 .send-button {
   color: var(--accent-ink);
