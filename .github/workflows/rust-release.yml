@@ -1,0 +1,97 @@
+name: Rust CLI Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+          - os: macos-14
+            target: aarch64-apple-darwin
+            archive: tar.gz
+          - os: macos-13
+            target: x86_64-apple-darwin
+            archive: tar.gz
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            archive: zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            apps/cli -> apps/cli/target
+            sdks/rust -> sdks/rust/target
+            agent -> agent/target
+
+      - name: Build native CLI
+        run: cargo build --manifest-path apps/cli/Cargo.toml --release --locked --target ${{ matrix.target }}
+
+      - name: Package Unix binary
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          archive="suncode-${GITHUB_REF_NAME}-${{ matrix.target }}.tar.gz"
+          tar -C "apps/cli/target/${{ matrix.target }}/release" -czf "$archive" suncode
+
+      - name: Package Windows binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $archive = "suncode-$env:GITHUB_REF_NAME-${{ matrix.target }}.zip"
+          Compress-Archive `
+            -Path "apps/cli/target/${{ matrix.target }}/release/suncode.exe" `
+            -DestinationPath $archive
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: suncode-${{ matrix.target }}
+          path: suncode-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.archive }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

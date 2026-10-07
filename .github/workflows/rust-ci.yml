@@ -1,0 +1,66 @@
+name: Rust CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  checks:
+    name: Format, build, and test Rust crates
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustfmt
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            agent -> agent/target
+            sdks/rust -> sdks/rust/target
+            sdks/c -> sdks/c/target
+            apps/cli -> apps/cli/target
+
+      - name: Check formatting
+        run: |
+          cargo fmt --manifest-path agent/Cargo.toml --all -- --check
+          cargo fmt --manifest-path sdks/rust/Cargo.toml -- --check
+          cargo fmt --manifest-path sdks/c/Cargo.toml -- --check
+          cargo fmt --manifest-path apps/cli/Cargo.toml -- --check
+
+      - name: Check locked dependency metadata
+        run: |
+          cargo metadata --manifest-path agent/Cargo.toml --locked --no-deps --format-version 1 >/dev/null
+          cargo metadata --manifest-path sdks/rust/Cargo.toml --locked --no-deps --format-version 1 >/dev/null
+          cargo metadata --manifest-path sdks/c/Cargo.toml --locked --no-deps --format-version 1 >/dev/null
+          cargo metadata --manifest-path apps/cli/Cargo.toml --locked --no-deps --format-version 1 >/dev/null
+
+      - name: Test agent workspace
+        run: cargo test --manifest-path agent/Cargo.toml --workspace --all-targets --locked
+
+      - name: Test Rust SDK
+        run: cargo test --manifest-path sdks/rust/Cargo.toml --lib --locked
+
+      - name: Test C ABI crate
+        run: cargo test --manifest-path sdks/c/Cargo.toml --lib --locked
+
+      - name: Test native CLI
+        run: cargo test --manifest-path apps/cli/Cargo.toml --locked
