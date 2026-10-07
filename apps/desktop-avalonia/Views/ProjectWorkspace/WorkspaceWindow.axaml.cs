@@ -34,7 +34,7 @@ public partial class WorkspaceWindow : Window
         InitializeComponent();
         WindowDecorations = Avalonia.Controls.WindowDecorations.BorderOnly;
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
-        Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
+        Icon = AppIcon.Window;
         Opened += OnOpened;
         Closing += OnClosing;
         Activated += (_, _) => UpdateTrafficLightFocus(true);

@@ -5,20 +5,23 @@ using SunCode.Desktop.Controls;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 using SunCode.Sdk.Models;
+using SunCode.Desktop.Infrastructure;
 
 namespace SunCode.Desktop.Views.Settings;
 
 public sealed partial class McpServerEditorWindow : Window
 {
+    private static string L(string key, string fallback) => LocalizationService.GetString(key, fallback);
+
     private readonly SCComboBoxItem[] _transportItems =
     [
-        new("Local process (stdio)", "stdio"),
-        new("Remote (Streamable HTTP)", "streamable_http")
+        new(L("LocMcpTransportStdio", "Local process (stdio)"), "stdio"),
+        new(L("LocMcpTransportHttp", "Remote (Streamable HTTP)"), "streamable_http")
     ];
     private readonly SCComboBoxItem[] _workingDirectoryItems =
     [
-        new("Project directory", "project"),
-        new("Application data directory", "application_data")
+        new(L("LocProjectDirectory", "Project directory"), "project"),
+        new(L("LocApplicationDataDirectory", "Application data directory"), "application_data")
     ];
     private readonly McpServersViewModel? _viewModel;
     private readonly McpServerItem? _server;
@@ -52,15 +55,14 @@ public sealed partial class McpServerEditorWindow : Window
         WorkingDirectorySelector.ItemsSource = _workingDirectoryItems;
     }
 
-    private void SetIcon() => Icon = new WindowIcon(
-        Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
+    private void SetIcon() => Icon = AppIcon.Window;
 
     private void Populate()
     {
         var editing = _server is not null;
-        Title = editing ? "Edit MCP server" : "Add MCP server";
+        Title = editing ? L("LocEditMcpServer", "Edit MCP server") : L("LocAddMcpServer", "Add MCP server");
         HeadingText.Text = Title;
-        SaveButton.Content = editing ? "Save changes" : "Add server";
+        SaveButton.Content = editing ? L("LocSaveChanges", "Save changes") : L("LocAddServer", "Add server");
         TransportSelector.SelectedItem = _server?.TransportType == "streamable_http" ? _transportItems[1] : _transportItems[0];
         WorkingDirectorySelector.SelectedItem = _server?.WorkingDirectory == "application_data" ? _workingDirectoryItems[1] : _workingDirectoryItems[0];
         ServerNameInput.Text = _server?.DisplayName ?? string.Empty;
@@ -82,18 +84,18 @@ public sealed partial class McpServerEditorWindow : Window
         WorkingDirectoryField.IsVisible = IsStdio;
         ArgumentsField.IsVisible = IsStdio;
         HttpUrlField.IsVisible = !IsStdio;
-        SecretsLabel.Text = IsStdio ? "Environment" : "HTTP headers";
+        SecretsLabel.Text = IsStdio ? L("LocEnvironment", "Environment") : L("LocHttpHeaders", "HTTP headers");
         SecretsInput.PlaceholderText = _server is null
-            ? IsStdio ? "NAME=value" : "Authorization=Bearer ..."
-            : "NAME=value replaces; -NAME removes";
+            ? IsStdio ? L("LocNameValue", "NAME=value") : "Authorization=Bearer ..."
+            : L("LocNameValueEditHint", "NAME=value replaces; -NAME removes");
         var keys = IsStdio ? _server?.EnvironmentKeys : _server?.HeaderKeys;
         StoredKeysText.IsVisible = keys is { Count: > 0 };
         StoredKeysText.Text = keys is { Count: > 0 }
-            ? $"Stored keys: {string.Join(", ", keys)}"
+            ? string.Format(L("LocStoredKeys", "Stored keys: {0}"), string.Join(", ", keys))
             : string.Empty;
         EnableHintText.Text = IsStdio
-            ? "Starts a local process with your user authority."
-            : "Connects to the remote endpoint after saving.";
+            ? L("LocLocalProcessHint", "Starts a local process with your user authority.")
+            : L("LocRemoteEndpointHint", "Connects to the remote endpoint after saving.");
     }
 
     private void WindowKeyDown(object? sender, KeyEventArgs e)
@@ -129,13 +131,13 @@ public sealed partial class McpServerEditorWindow : Window
         var displayName = ServerNameInput.Text?.Trim() ?? string.Empty;
         if (displayName.Length == 0)
         {
-            ValidationText.Text = "Server name is required.";
+            ValidationText.Text = L("LocServerNameRequired", "Server name is required.");
             return false;
         }
         if (!ulong.TryParse(StartupTimeoutInput.Text?.Trim(), out var startupTimeout) || startupTimeout is < 1 or > 120
             || !ulong.TryParse(RequestTimeoutInput.Text?.Trim(), out var requestTimeout) || requestTimeout is < 1 or > 600)
         {
-            ValidationText.Text = "Startup timeout must be 1-120 seconds and request timeout must be 1-600 seconds.";
+            ValidationText.Text = L("LocTimeoutRangeInvalid", "Startup timeout must be 1-120 seconds and request timeout must be 1-600 seconds.");
             return false;
         }
         if (!TryParseSecrets(out var secretChanges)) return false;
@@ -146,7 +148,7 @@ public sealed partial class McpServerEditorWindow : Window
             var command = CommandInput.Text?.Trim() ?? string.Empty;
             if (command.Length == 0)
             {
-                ValidationText.Text = "Executable is required.";
+                ValidationText.Text = L("LocExecutableRequired", "Executable is required.");
                 return false;
             }
             var arguments = (ArgumentsInput.Text ?? string.Empty)
@@ -167,7 +169,7 @@ public sealed partial class McpServerEditorWindow : Window
             var url = UrlInput.Text?.Trim() ?? string.Empty;
             if (url.Length == 0)
             {
-                ValidationText.Text = "Server URL is required.";
+                ValidationText.Text = L("LocServerUrlRequired", "Server URL is required.");
                 return false;
             }
             transport = new McpStreamableHttpTransportRequest(
@@ -200,7 +202,7 @@ public sealed partial class McpServerEditorWindow : Window
                 var key = line[1..].Trim();
                 if (key.Length == 0 || key.Contains('='))
                 {
-                    ValidationText.Text = "Secret removals must use -NAME.";
+                    ValidationText.Text = L("LocSecretRemovalFormat", "Secret removals must use -NAME.");
                     changes = null;
                     return false;
                 }
@@ -210,7 +212,7 @@ public sealed partial class McpServerEditorWindow : Window
             var separator = line.IndexOf('=');
             if (separator <= 0 || separator == line.Length - 1)
             {
-                ValidationText.Text = "Secrets must use NAME=value, or -NAME to remove a stored key.";
+                ValidationText.Text = L("LocSecretFormat", "Secrets must use NAME=value, or -NAME to remove a stored key.");
                 changes = null;
                 return false;
             }

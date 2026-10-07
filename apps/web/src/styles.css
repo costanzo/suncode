@@ -344,8 +344,7 @@ svg {
   gap: 10px;
   align-items: center;
 }
-.review-button,
-.more-button {
+.review-button {
   display: inline-flex;
   gap: 5px;
   align-items: center;
@@ -358,15 +357,10 @@ svg {
   font-size: 10px;
 }
 .review-button:hover,
-.review-button.active,
-.more-button:hover {
+.review-button.active {
   color: #17202a;
   background: #eef2f5;
   border-color: #d5dde4;
-}
-.more-button {
-  font-size: 15px;
-  letter-spacing: 2px;
 }
 .stream-status {
   display: flex;
@@ -788,40 +782,6 @@ svg {
   background: transparent;
   border: 0;
   font-size: 18px;
-}
-.context-card {
-  display: grid;
-  gap: 7px;
-  padding: 11px;
-  background: #f4f7f9;
-  border: 1px solid #d5dde4;
-  border-radius: 8px;
-  font-size: 10px;
-}
-.context-card strong {
-  font:
-    12px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-}
-.context-card small {
-  color: #65717d;
-  font:
-    9px ui-sans-serif,
-    system-ui;
-}
-.context-card > div {
-  height: 4px;
-  overflow: hidden;
-  background: #e7edf1;
-  border-radius: 4px;
-}
-.context-card i {
-  display: block;
-  width: 68%;
-  height: 100%;
-  background: #527994;
 }
 .review-panel section {
   display: grid;

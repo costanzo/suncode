@@ -5,11 +5,14 @@ using Avalonia.Interactivity;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 using SunCode.Sdk.Models;
+using SunCode.Desktop.Infrastructure;
 
 namespace SunCode.Desktop.Views.Settings;
 
 public sealed partial class LanguageServerEditorWindow : Window
 {
+    private static string L(string key, string fallback) => LocalizationService.GetString(key, fallback);
+
     private readonly LanguageServersViewModel? _viewModel;
     private readonly LanguageServerItem? _server;
 
@@ -32,15 +35,14 @@ public sealed partial class LanguageServerEditorWindow : Window
         Opened += (_, _) => ServerNameInput.Focus();
     }
 
-    private void SetIcon() => Icon = new WindowIcon(
-        Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
+    private void SetIcon() => Icon = AppIcon.Window;
 
     private void Populate()
     {
         var editing = _server is not null;
-        Title = editing ? "Edit language server" : "Add language server";
+        Title = editing ? L("LocEditLanguageServer", "Edit language server") : L("LocAddLanguageServer", "Add language server");
         HeadingText.Text = Title;
-        SaveButton.Content = editing ? "Save changes" : "Add server";
+        SaveButton.Content = editing ? L("LocSaveChanges", "Save changes") : L("LocAddServer", "Add server");
         ServerNameInput.Text = _server?.DisplayName ?? string.Empty;
         CommandInput.Text = _server?.Command ?? string.Empty;
         ArgumentsInput.Text = _server is null ? string.Empty : string.Join(Environment.NewLine, _server.Arguments);
@@ -56,9 +58,11 @@ public sealed partial class LanguageServerEditorWindow : Window
         EnabledToggle.IsChecked = _server?.Enabled ?? true;
         StoredKeysText.IsVisible = _server?.EnvironmentKeys.Count > 0;
         StoredKeysText.Text = _server?.EnvironmentKeys.Count > 0
-            ? $"Stored keys: {string.Join(", ", _server.EnvironmentKeys)}"
+            ? string.Format(L("LocStoredKeys", "Stored keys: {0}"), string.Join(", ", _server.EnvironmentKeys))
             : string.Empty;
-        EnvironmentInput.PlaceholderText = editing ? "NAME=value replaces; -NAME removes" : "NAME=value";
+        EnvironmentInput.PlaceholderText = editing
+            ? L("LocNameValueEditHint", "NAME=value replaces; -NAME removes")
+            : L("LocNameValue", "NAME=value");
     }
 
     private void WindowKeyDown(object? sender, KeyEventArgs e)
@@ -95,24 +99,24 @@ public sealed partial class LanguageServerEditorWindow : Window
         var command = CommandInput.Text?.Trim() ?? string.Empty;
         if (displayName.Length == 0)
         {
-            ValidationText.Text = "Server name is required.";
+            ValidationText.Text = L("LocServerNameRequired", "Server name is required.");
             return false;
         }
         if (command.Length == 0)
         {
-            ValidationText.Text = "Executable is required.";
+            ValidationText.Text = L("LocExecutableRequired", "Executable is required.");
             return false;
         }
         var languageIds = Lines(LanguageIdsInput.Text);
         if (languageIds.Length == 0)
         {
-            ValidationText.Text = "At least one language ID is required.";
+            ValidationText.Text = L("LocAtLeastOneLanguageId", "At least one language ID is required.");
             return false;
         }
         if (!ulong.TryParse(StartupTimeoutInput.Text?.Trim(), out var startupTimeout) || startupTimeout is < 1 or > 120
             || !ulong.TryParse(RequestTimeoutInput.Text?.Trim(), out var requestTimeout) || requestTimeout is < 1 or > 600)
         {
-            ValidationText.Text = "Startup timeout must be 1-120 seconds and request timeout must be 1-600 seconds.";
+            ValidationText.Text = L("LocTimeoutRangeInvalid", "Startup timeout must be 1-120 seconds and request timeout must be 1-600 seconds.");
             return false;
         }
         JsonElement initializationOptions;
@@ -123,14 +127,14 @@ public sealed partial class LanguageServerEditorWindow : Window
                 : InitializationOptionsInput.Text);
             if (document.RootElement.ValueKind != JsonValueKind.Object)
             {
-                ValidationText.Text = "Initialization options must be a JSON object.";
+                ValidationText.Text = L("LocInitializationOptionsNotObject", "Initialization options must be a JSON object.");
                 return false;
             }
             initializationOptions = document.RootElement.Clone();
         }
         catch (JsonException)
         {
-            ValidationText.Text = "Initialization options contain invalid JSON.";
+            ValidationText.Text = L("LocInitializationOptionsInvalidJson", "Initialization options contain invalid JSON.");
             return false;
         }
         if (!TryParseEnvironment(out var environment)) return false;
@@ -161,7 +165,7 @@ public sealed partial class LanguageServerEditorWindow : Window
                 var key = line[1..].Trim();
                 if (key.Length == 0 || key.Contains('='))
                 {
-                    ValidationText.Text = "Environment removals must use -NAME.";
+                    ValidationText.Text = L("LocEnvironmentRemovalFormat", "Environment removals must use -NAME.");
                     changes = null;
                     return false;
                 }
@@ -171,7 +175,7 @@ public sealed partial class LanguageServerEditorWindow : Window
             var separator = line.IndexOf('=');
             if (separator <= 0 || separator == line.Length - 1)
             {
-                ValidationText.Text = "Environment entries must use NAME=value, or -NAME to remove a stored key.";
+                ValidationText.Text = L("LocEnvironmentFormat", "Environment entries must use NAME=value, or -NAME to remove a stored key.");
                 changes = null;
                 return false;
             }

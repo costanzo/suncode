@@ -31,7 +31,7 @@
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     <Setter Property="FontSize" Value="11" />
-    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
   </Style>
   <Style Selector="controls|SCNumericInput NumericUpDown.sc-numeric-input-inner ButtonSpinner#PART_Spinner">
@@ -84,7 +84,7 @@
   </Style>
   <Style Selector="controls|SCNumericInput TextBlock.sc-numeric-unit">
     <Setter Property="Margin" Value="10,0,10,0" />
-    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
     <Setter Property="FontSize" Value="9" />
     <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
   </Style>

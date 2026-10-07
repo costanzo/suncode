@@ -24,7 +24,7 @@
     <Setter Property="VerticalAlignment" Value="Top" />
   </Style>
   <Style Selector="Border.settings-read-only-badge TextBlock">
-    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
     <Setter Property="FontSize" Value="10" />
     <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
   </Style>
@@ -125,10 +125,10 @@
     <Setter Property="PasswordChar" Value="•" />
   </Style>
   <Style Selector="TextBox.sc-secret-input, TextBox.sc-secret-input:focus">
-    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
   </Style>
   <Style Selector="TextBox.settings-proxy-bypass, TextBox.settings-proxy-bypass:focus">
-    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
     <Setter Property="FontSize" Value="11" />
     <Setter Property="VerticalContentAlignment" Value="Top" />
     <Setter Property="Padding" Value="9,8" />

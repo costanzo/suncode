@@ -8,10 +8,10 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "format": "prettier --write src --ignore-path .gitignore",
-    "format:check": "prettier --check src --ignore-path .gitignore"
+    "format:check": "prettier --check src --ignore-path .gitignore",
+    "typecheck": "tsc -b"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^5.0.4",
     "dompurify": "^3.4.16",
     "katex": "^0.19.0",
     "marked": "^18.0.14",
@@ -24,6 +24,7 @@
   "devDependencies": {
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.4",
     "prettier": "^3.9.9",
     "typescript": "^5.9.2",
     "vite": "^7.1.7"

@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
+using SunCode.Desktop.Infrastructure;
 
 namespace SunCode.Desktop.Views.ProjectHub;
 
@@ -16,7 +17,7 @@ public sealed partial class ProjectHubWindow : Window
     {
         InitializeComponent();
         WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
-        Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
+        Icon = AppIcon.Window;
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
         Opened += OnOpened;
     }

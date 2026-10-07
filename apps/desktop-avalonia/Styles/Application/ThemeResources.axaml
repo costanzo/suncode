@@ -1,5 +1,9 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Theme-independent font stacks resolved from the bundled font
+       collection. MonoFontFamily mirrors the design-system font-mono token. -->
+  <FontFamily x:Key="MonoFontFamily">fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace</FontFamily>
+  <FontFamily x:Key="SansFontFamily">fonts:SunCode#Noto Sans SC, Noto Sans CJK SC, Noto Sans, PingFang SC, Helvetica Neue, Arial, sans-serif</FontFamily>
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="FileIconDefaultBrush" Color="#d4d7d6" />
@@ -15,10 +19,6 @@
       <SolidColorBrush x:Key="FileIconTodoBrush" Color="#a7afb9" />
       <Color x:Key="BorderColor">#292f36</Color>
       <Color x:Key="ForegroundColor">#edf0f3</Color>
-      <Color x:Key="CardBackgroundColor">#121519</Color>
-      <Color x:Key="SecondaryCardBackgroundColor">#15191e</Color>
-      <Color x:Key="CodeInlineColor">#d9e0e6</Color>
-      <Color x:Key="QuoteBorderColor">#65717d</Color>
       <x:Double x:Key="FontSizeS">12</x:Double>
       <x:Double x:Key="FontSizeM">14</x:Double>
       <x:Double x:Key="FontSizeL">14</x:Double>
@@ -32,7 +32,6 @@
       <Color x:Key="SystemAccentColorLight1">#e5eaee</Color>
       <Color x:Key="SystemAccentColorLight2">#edf1f4</Color>
       <Color x:Key="SystemAccentColorLight3">#f3f6f8</Color>
-      <Color x:Key="IconColor">#a7afb9</Color>
       <Color x:Key="AccentColor">#d9e0e6</Color>
       <Color x:Key="AccentInkColor">#101317</Color>
       <Color x:Key="TextControlSelectionHighlightColor">#65717d</Color>
@@ -52,7 +51,6 @@
       <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #d9e0e6; } [fill='#000'] { fill: #d9e0e6; } [stroke='currentColor'] { stroke: #d9e0e6; }</x:String>
       <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #101317; } [fill='#000'] { fill: #101317; } [stroke='currentColor'] { stroke: #101317; }</x:String>
       <x:String x:Key="GitAccentSvgCss">[stroke='#000'] { stroke: #69c5b0; } [fill='#000'] { fill: #69c5b0; } [stroke='currentColor'] { stroke: #69c5b0; }</x:String>
-      <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #9fb3c3; } [fill='#000'] { fill: #9fb3c3; } [stroke='currentColor'] { stroke: #9fb3c3; }</x:String>
       <x:String x:Key="WarningSvgCss">[stroke='#000'] { stroke: #d5ad6f; } [fill='#000'] { fill: #d5ad6f; } [stroke='currentColor'] { stroke: #d5ad6f; }</x:String>
       <x:String x:Key="CopySuccessSvgCss">[stroke='#000'] { stroke: #78c99b; } [fill='#000'] { fill: #78c99b; } [stroke='currentColor'] { stroke: #78c99b; }</x:String>
       <x:String x:Key="ContentSessionSvgCss">[stroke='#000'] { stroke: #aeb4ed; } [fill='#000'] { fill: #aeb4ed; } [stroke='currentColor'] { stroke: #aeb4ed; }</x:String>
@@ -71,7 +69,6 @@
       <SolidColorBrush x:Key="GitWorkspaceBrush" Color="#13171c" />
       <SolidColorBrush x:Key="GitAccentSurfaceBrush" Color="#172824" />
       <SolidColorBrush x:Key="GitAccentBrush" Color="#69c5b0" />
-      <SolidColorBrush x:Key="GitAccentHoverBrush" Color="#7dd2be" />
       <SolidColorBrush x:Key="GitSuccessBrush" Color="#78c99b" />
       <SolidColorBrush x:Key="GitDangerBrush" Color="#e68a83" />
       <!-- Composer matches design-system surface-raised. -->
@@ -125,10 +122,6 @@
       <SolidColorBrush x:Key="FileIconTodoBrush" Color="#44515e" />
       <Color x:Key="BorderColor">#d5dde4</Color>
       <Color x:Key="ForegroundColor">#17202a</Color>
-      <Color x:Key="CardBackgroundColor">#ffffff</Color>
-      <Color x:Key="SecondaryCardBackgroundColor">#f4f7f9</Color>
-      <Color x:Key="CodeInlineColor">#2c3742</Color>
-      <Color x:Key="QuoteBorderColor">#aab8c4</Color>
       <x:Double x:Key="FontSizeS">12</x:Double>
       <x:Double x:Key="FontSizeM">14</x:Double>
       <x:Double x:Key="FontSizeL">14</x:Double>
@@ -142,7 +135,6 @@
       <Color x:Key="SystemAccentColorLight1">#3b4854</Color>
       <Color x:Key="SystemAccentColorLight2">#65717d</Color>
       <Color x:Key="SystemAccentColorLight3">#aab8c4</Color>
-      <Color x:Key="IconColor">#44515e</Color>
       <Color x:Key="AccentColor">#2c3742</Color>
       <Color x:Key="AccentInkColor">#ffffff</Color>
       <Color x:Key="TextControlSelectionHighlightColor">#aab8c4</Color>
@@ -162,7 +154,6 @@
       <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #2c3742; } [fill='#000'] { fill: #2c3742; } [stroke='currentColor'] { stroke: #2c3742; }</x:String>
       <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #ffffff; } [fill='#000'] { fill: #ffffff; } [stroke='currentColor'] { stroke: #ffffff; }</x:String>
       <x:String x:Key="GitAccentSvgCss">[stroke='#000'] { stroke: #2f8f7d; } [fill='#000'] { fill: #2f8f7d; } [stroke='currentColor'] { stroke: #2f8f7d; }</x:String>
-      <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #4f6d82; } [fill='#000'] { fill: #4f6d82; } [stroke='currentColor'] { stroke: #4f6d82; }</x:String>
       <x:String x:Key="WarningSvgCss">[stroke='#000'] { stroke: #9a6a28; } [fill='#000'] { fill: #9a6a28; } [stroke='currentColor'] { stroke: #9a6a28; }</x:String>
       <x:String x:Key="CopySuccessSvgCss">[stroke='#000'] { stroke: #27845b; } [fill='#000'] { fill: #27845b; } [stroke='currentColor'] { stroke: #27845b; }</x:String>
       <x:String x:Key="ContentSessionSvgCss">[stroke='#000'] { stroke: #6269a8; } [fill='#000'] { fill: #6269a8; } [stroke='currentColor'] { stroke: #6269a8; }</x:String>
@@ -181,7 +172,6 @@
       <SolidColorBrush x:Key="GitWorkspaceBrush" Color="#f8fafb" />
       <SolidColorBrush x:Key="GitAccentSurfaceBrush" Color="#e0f2ee" />
       <SolidColorBrush x:Key="GitAccentBrush" Color="#2f8f7d" />
-      <SolidColorBrush x:Key="GitAccentHoverBrush" Color="#277f6f" />
       <SolidColorBrush x:Key="GitSuccessBrush" Color="#27845b" />
       <SolidColorBrush x:Key="GitDangerBrush" Color="#b6463f" />
       <!-- Composer matches design-system surface-raised. -->

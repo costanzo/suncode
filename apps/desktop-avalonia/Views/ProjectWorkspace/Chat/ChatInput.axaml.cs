@@ -13,6 +13,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using SunCode.Desktop.Controls;
+using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
@@ -65,11 +66,11 @@ public sealed partial class ChatInput : UserControl
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Add images",
+            Title = LocalizationService.GetString("LocAddImages", "Add images"),
             AllowMultiple = true,
             FileTypeFilter =
             [
-                new FilePickerFileType("Images")
+                new FilePickerFileType(LocalizationService.GetString("LocImages", "Images"))
                 {
                     Patterns = ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.bmp", "*.avif"],
                     MimeTypes = ["image/*"]
@@ -79,25 +80,7 @@ public sealed partial class ChatInput : UserControl
 
         foreach (var file in files.Take(MaxAttachments - ViewModel.ComposerAttachments.Count))
         {
-            try
-            {
-                var localPath = file.TryGetLocalPath();
-                await using var stream = await file.OpenReadAsync();
-                var bytes = await ReadImageBytesAsync(stream);
-                var thumbnail = await Task.Run(() => CreateThumbnailBytes(bytes));
-                var extension = ExtensionFromName(file.Name);
-                await ViewModel.AddSessionImageAsync(
-                    file.Name,
-                    "file",
-                    localPath,
-                    extension,
-                    bytes,
-                    thumbnail);
-            }
-            catch (Exception exception)
-            {
-                ViewModel.ReportPresentationError($"Could not load image '{file.Name}': {exception.Message}");
-            }
+            await AddImageFromFileAsync(file);
         }
     }
 
@@ -237,14 +220,12 @@ public sealed partial class ChatInput : UserControl
                 var bytes = originalStream.ToArray();
                 if (bytes.Length > MaxImageBytes) throw new InvalidDataException("Image exceeds the 20 MB limit.");
                 ValidatePixelCount(bitmap);
-                var thumbnail = await Task.Run(() => CreateThumbnailBytes(bytes));
-                await ViewModel.AddSessionImageAsync(
+                await IngestImageBytesAsync(
                     $"clipboard-{DateTimeOffset.Now:yyyyMMdd-HHmmss}.png",
                     "clipboard",
                     null,
                     "png",
-                    bytes,
-                    thumbnail);
+                    bytes);
             }
             e.Handled = true;
         }
@@ -428,27 +409,12 @@ public sealed partial class ChatInput : UserControl
     private async Task AddImageFromFileAsync(IStorageFile file)
     {
         if (!ViewModel.CanAttachImages || ViewModel.ComposerAttachments.Count >= MaxAttachments) return;
-        try
-        {
-            var localPath = file.TryGetLocalPath();
-            await using var stream = await file.OpenReadAsync();
-            var bytes = await ReadImageBytesAsync(stream);
-            var thumbnail = await Task.Run(() => CreateThumbnailBytes(bytes));
-            var extension = ExtensionFromName(file.Name);
-            await ViewModel.AddSessionImageAsync(
-                file.Name,
-                "file",
-                localPath,
-                extension,
-                bytes,
-                thumbnail);
-        }
-        catch (Exception exception)
-        {
-            ViewModel.ReportPresentationError($"Could not load image '{file.Name}': {exception.Message}");
-        }
+        await IngestImageAsync(
+            file.Name,
+            file.TryGetLocalPath(),
+            file.OpenReadAsync);
     }
-    
+
     private async Task AddImageFromPathAsync(string name, string relativePath, string? dependencyId)
     {
         if (!ViewModel.CanAttachImages || ViewModel.ComposerAttachments.Count >= MaxAttachments) return;
@@ -457,26 +423,48 @@ public sealed partial class ChatInput : UserControl
         if (string.IsNullOrWhiteSpace(root)) return;
         var absolute = System.IO.Path.Combine(root, relativePath == "." ? string.Empty : relativePath);
         var absolutePath = System.IO.Path.GetFullPath(absolute);
+        // Explorer payloads are project-relative; reject anything that resolves
+        // outside the project root (absolute paths or ".." traversal).
+        if (!IsUnderRoot(root, absolutePath)) return;
         if (!System.IO.File.Exists(absolutePath)) return;
 
+        await IngestImageAsync(
+            name,
+            absolutePath,
+            () => Task.FromResult<Stream>(System.IO.File.OpenRead(absolutePath)));
+    }
+
+    private static bool IsUnderRoot(string root, string fullPath)
+    {
+        var comparison = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var normalizedRoot = System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(root));
+        if (string.Equals(fullPath, normalizedRoot, comparison)) return false;
+        return fullPath.StartsWith(normalizedRoot + System.IO.Path.DirectorySeparatorChar, comparison);
+    }
+
+    /// <summary>
+    /// Shared file/explorer ingest: open, read with the size limit, then hand
+    /// off to <see cref="IngestImageBytesAsync"/>. Failures are reported per image.
+    /// </summary>
+    private async Task IngestImageAsync(string name, string? localPath, Func<Task<Stream>> openStream)
+    {
         try
         {
-            await using var stream = System.IO.File.OpenRead(absolutePath);
+            await using var stream = await openStream();
             var bytes = await ReadImageBytesAsync(stream);
-            var thumbnail = await Task.Run(() => CreateThumbnailBytes(bytes));
-            var extension = ExtensionFromName(name);
-            await ViewModel.AddSessionImageAsync(
-                name,
-                "file",
-                absolutePath,
-                extension,
-                bytes,
-                thumbnail);
+            await IngestImageBytesAsync(name, "file", localPath, ExtensionFromName(name), bytes);
         }
         catch (Exception exception)
         {
             ViewModel.ReportPresentationError($"Could not load image '{name}': {exception.Message}");
         }
+    }
+
+    /// <summary>Builds the thumbnail off the UI thread and registers the session image.</summary>
+    private async Task IngestImageBytesAsync(string name, string source, string? localPath, string extension, byte[] bytes)
+    {
+        var thumbnail = await Task.Run(() => CreateThumbnailBytes(bytes));
+        await ViewModel.AddSessionImageAsync(name, source, localPath, extension, bytes, thumbnail);
     }
 
     private void RebindViewModelSubscriptions()

@@ -504,4 +504,32 @@
   <x:String x:Key="LocProjectBrowserStopped">项目浏览器已停止，配置文件已保留。</x:String>
   <x:String x:Key="LocBrowserDataCleared">已清除 {0} 的浏览器数据。</x:String>
   <x:String x:Key="LocOpenProjectToManageBrowser">打开项目后才能管理其浏览器运行时。</x:String>
+  <x:String x:Key="LocEditMcpServer">编辑 MCP 服务器</x:String>
+  <x:String x:Key="LocEditLanguageServer">编辑语言服务器</x:String>
+  <x:String x:Key="LocSaveChanges">保存更改</x:String>
+  <x:String x:Key="LocMcpTransportStdio">本地进程 (stdio)</x:String>
+  <x:String x:Key="LocMcpTransportHttp">远程 (Streamable HTTP)</x:String>
+  <x:String x:Key="LocProjectDirectory">项目目录</x:String>
+  <x:String x:Key="LocApplicationDataDirectory">应用数据目录</x:String>
+  <x:String x:Key="LocHttpHeaders">HTTP 请求头</x:String>
+  <x:String x:Key="LocNameValueEditHint">NAME=value 替换；-NAME 删除</x:String>
+  <x:String x:Key="LocStoredKeys">已存储的键：{0}</x:String>
+  <x:String x:Key="LocRemoteEndpointHint">保存后连接到远程端点。</x:String>
+  <x:String x:Key="LocServerNameRequired">必须填写服务器名称。</x:String>
+  <x:String x:Key="LocExecutableRequired">必须填写可执行文件。</x:String>
+  <x:String x:Key="LocServerUrlRequired">必须填写服务器地址。</x:String>
+  <x:String x:Key="LocTimeoutRangeInvalid">启动超时必须为 1-120 秒，请求超时必须为 1-600 秒。</x:String>
+  <x:String x:Key="LocSecretRemovalFormat">删除密钥必须使用 -NAME 格式。</x:String>
+  <x:String x:Key="LocSecretFormat">密钥必须使用 NAME=value 格式，或使用 -NAME 删除已存储的键。</x:String>
+  <x:String x:Key="LocEnvironmentRemovalFormat">删除环境变量必须使用 -NAME 格式。</x:String>
+  <x:String x:Key="LocEnvironmentFormat">环境变量必须使用 NAME=value 格式，或使用 -NAME 删除已存储的键。</x:String>
+  <x:String x:Key="LocInitializationOptionsNotObject">初始化选项必须是 JSON 对象。</x:String>
+  <x:String x:Key="LocInitializationOptionsInvalidJson">初始化选项包含无效的 JSON。</x:String>
+  <x:String x:Key="LocAddImages">添加图片</x:String>
+  <x:String x:Key="LocImages">图片</x:String>
+  <x:String x:Key="LocRestoreSessionTitle">恢复此会话？</x:String>
+  <x:String x:Key="LocRestoreSessionMessage">它将回到活动会话列表，并可再次编辑。</x:String>
+  <x:String x:Key="LocRestoreSession">恢复会话</x:String>
+  <x:String x:Key="LocDeleteSessionPermanentlyTitle">永久删除此会话？</x:String>
+  <x:String x:Key="LocDeleteSessionPermanentlyMessage">这将永久删除对话、子会话、委派的工作以及托管的图片。此操作无法撤销。</x:String>
 </ResourceDictionary>

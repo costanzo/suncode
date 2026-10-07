@@ -88,6 +88,20 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         StatusText = exception.Message;
     }
 
+    // Background refreshes must not surface as unobserved task exceptions.
+    // Failures are logged; the next event or explicit reload retries.
+    private static async void RunInBackground(Func<Task> operation, string operationName)
+    {
+        try
+        {
+            await operation();
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("viewmodel.background", exception, $"operation={operationName}");
+        }
+    }
+
     AgentSdk? IViewModelHost.Sdk => _sdk;
     bool IViewModelHost.EnsureSdk() => EnsureSdk();
     Task<bool> IViewModelHost.EnsureSdkReadyAsync() => EnsureSdkReadyAsync();
@@ -195,10 +209,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         return DiagnosticLogLevel.Info;
     }
 
-    private static string Pretty(JsonElement? node) =>
-        node is null || node.Value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
-            ? string.Empty
-            : node.Value.GetRawText();
+    private static string Pretty(JsonElement? node) => SessionSnapshotProjector.JsonText(node);
 
     private void ReplaceComposerAttachments(IEnumerable<ComposerAttachment> attachments)
     {

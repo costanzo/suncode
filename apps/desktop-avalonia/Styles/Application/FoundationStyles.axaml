@@ -6,7 +6,7 @@
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     <!-- Resolve the UI face from the bundled font collection so packaged
          builds use the same metrics as development builds. -->
-    <Setter Property="FontFamily" Value="fonts:SunCode#Noto Sans SC, Noto Sans CJK SC, Noto Sans, PingFang SC, Helvetica Neue, Arial, sans-serif" />
+    <Setter Property="FontFamily" Value="{DynamicResource SansFontFamily}" />
     <Setter Property="FontSize" Value="14" />
   </Style>
   <!-- scrollbar style -->
@@ -57,23 +57,23 @@
 
   <!-- TextBlock Style -->
   <Style Selector="TextBlock.section-label">
-    <Setter Property="FontFamily" Value="fonts:SunCode#Noto Sans SC, Noto Sans CJK SC, Noto Sans, PingFang SC, Helvetica Neue, Arial, sans-serif" />
+    <Setter Property="FontFamily" Value="{DynamicResource SansFontFamily}" />
     <Setter Property="FontSize" Value="12" />
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
   </Style>
   <Style Selector="TextBlock.eyebrow">
-    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
     <Setter Property="FontSize" Value="9" />
     <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="LetterSpacing" Value="0.6" />
     <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
   </Style>
   <Style Selector="TextBlock.mono">
-    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
   </Style>
   <Style Selector="SelectableTextBlock.mono">
-    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
   </Style>
   <!-- Keep selectable plain text aligned with the design-system selection
        treatment instead of Fluent's default system accent highlight. -->
@@ -86,7 +86,7 @@
     <Setter Property="Padding" Value="14,6" />
     <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-    <Setter Property="FontFamily" Value="fonts:SunCode#Noto Sans SC, Noto Sans CJK SC, Noto Sans, PingFang SC, Helvetica Neue, Arial, sans-serif" />
+    <Setter Property="FontFamily" Value="{DynamicResource SansFontFamily}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="FontSize" Value="12" />
@@ -240,7 +240,7 @@
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <Style Selector="TextBox.mono">
-    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
   </Style>
   <Style Selector="TextBox /template/ TextBlock#PART_Placeholder">
     <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />

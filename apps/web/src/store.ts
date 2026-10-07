@@ -4,7 +4,6 @@ import { importPairingKey, parsePairingUrl } from "./crypto";
 import type {
   CredentialState,
   Host,
-  PairingPayload,
   Project,
   SessionMessage,
   SessionSnapshot,
@@ -184,7 +183,6 @@ interface WebStore {
   selectedSessionId: string | null;
   snapshot: SessionSnapshot | null;
   credential: CredentialState | null;
-  pairing: PairingPayload | null;
   pairingError: string | null;
   error: string | null;
   loading: boolean;
@@ -236,6 +234,9 @@ export const useWebStore = create<WebStore>((set, get) => {
     try {
       const project = get().sessions.find((session) => session.id === sessionId)?.project;
       const snapshot = await api.getSession(endpoint, credential.host.id, sessionId, project);
+      // The REST snapshot exposes eventSequence but not an SSE event ID, and event IDs are opaque,
+      // so the stream opens without Last-Event-ID. The server then sends an atomic session.snapshot
+      // first, which closes any gap between this fetch and stream registration.
       set({ snapshot, loading: false, lastEventId: null });
     } catch (error) {
       set({ loading: false, streamState: "failed" });
@@ -251,7 +252,6 @@ export const useWebStore = create<WebStore>((set, get) => {
     selectedSessionId: null,
     snapshot: null,
     credential: null,
-    pairing: null,
     pairingError: null,
     error: null,
     loading: false,
@@ -320,7 +320,7 @@ export const useWebStore = create<WebStore>((set, get) => {
         };
         sessionStorage.setItem(`${STORAGE_KEY}.endpoint`, pairing.endpoint);
         updateCredential(credential);
-        set({ pairing, pairingError: null, error: null });
+        set({ pairingError: null, error: null });
         await get().loadRemote(pairing.endpoint, credential);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Pairing failed.";
@@ -469,7 +469,6 @@ export const useWebStore = create<WebStore>((set, get) => {
         selectedSessionId: null,
         snapshot: null,
         credential: null,
-        pairing: null,
         error: null,
         streamState: "idle",
       });
@@ -495,11 +494,14 @@ export const useWebStore = create<WebStore>((set, get) => {
         (event) => {
           if (generation !== streamGeneration) return;
           if (event.session_id && event.session_id !== get().selectedSessionId) return;
-          set((state) => ({
-            streamState: "live",
-            lastEventId: event.event_id,
-            snapshot: state.snapshot
-              ? applyEvent(state.snapshot, event)
+          set((state) => {
+            const current = state.snapshot;
+            // Drop replayed events already represented by the snapshot; snapshots always apply.
+            if (current && !event.snapshot && event.sequence <= current.eventSequence) {
+              return { lastEventId: event.event_id };
+            }
+            const next = current
+              ? applyEvent(current, event)
               : event.snapshot
                 ? {
                     ...event.snapshot,
@@ -507,18 +509,25 @@ export const useWebStore = create<WebStore>((set, get) => {
                       state.sessions.find((session) => session.id === selectedSessionId)?.project ??
                       event.snapshot.project,
                   }
-                : null,
-            sessions: state.sessions.map((session) =>
-              session.id === selectedSessionId && state.snapshot
-                ? {
-                    ...session,
-                    state: applyEvent(state.snapshot, event).state,
-                    updatedAt: applyEvent(state.snapshot, event).updatedAt,
-                    preview: applyEvent(state.snapshot, event).preview,
-                  }
-                : session,
-            ),
-          }));
+                : null;
+            return {
+              lastEventId: event.event_id,
+              snapshot: next,
+              sessions:
+                current && next
+                  ? state.sessions.map((session) =>
+                      session.id === selectedSessionId
+                        ? {
+                            ...session,
+                            state: next.state,
+                            updatedAt: next.updatedAt,
+                            preview: next.preview,
+                          }
+                        : session,
+                    )
+                  : state.sessions,
+            };
+          });
         },
         async (error) => {
           if (generation !== streamGeneration) return;
@@ -531,11 +540,13 @@ export const useWebStore = create<WebStore>((set, get) => {
               /* visible error already set */
             }
           }
-          set({
-            streamState:
-              error instanceof RemoteApiError && error.status === 401 ? "failed" : "reconnecting",
-          });
+          // streamSession retries transient failures itself; anything reaching here is terminal.
+          set({ streamState: "failed" });
           setError(error);
+        },
+        (connection) => {
+          if (generation !== streamGeneration) return;
+          set({ streamState: connection });
         },
       );
       let disposed = false;

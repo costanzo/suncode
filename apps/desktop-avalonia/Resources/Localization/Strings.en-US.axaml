@@ -504,4 +504,32 @@
   <x:String x:Key="LocProjectBrowserStopped">Project browser stopped. Its profile was preserved.</x:String>
   <x:String x:Key="LocBrowserDataCleared">Browser data cleared for {0}.</x:String>
   <x:String x:Key="LocOpenProjectToManageBrowser">Open a project to manage its browser runtime.</x:String>
+  <x:String x:Key="LocEditMcpServer">Edit MCP server</x:String>
+  <x:String x:Key="LocEditLanguageServer">Edit language server</x:String>
+  <x:String x:Key="LocSaveChanges">Save changes</x:String>
+  <x:String x:Key="LocMcpTransportStdio">Local process (stdio)</x:String>
+  <x:String x:Key="LocMcpTransportHttp">Remote (Streamable HTTP)</x:String>
+  <x:String x:Key="LocProjectDirectory">Project directory</x:String>
+  <x:String x:Key="LocApplicationDataDirectory">Application data directory</x:String>
+  <x:String x:Key="LocHttpHeaders">HTTP headers</x:String>
+  <x:String x:Key="LocNameValueEditHint">NAME=value replaces; -NAME removes</x:String>
+  <x:String x:Key="LocStoredKeys">Stored keys: {0}</x:String>
+  <x:String x:Key="LocRemoteEndpointHint">Connects to the remote endpoint after saving.</x:String>
+  <x:String x:Key="LocServerNameRequired">Server name is required.</x:String>
+  <x:String x:Key="LocExecutableRequired">Executable is required.</x:String>
+  <x:String x:Key="LocServerUrlRequired">Server URL is required.</x:String>
+  <x:String x:Key="LocTimeoutRangeInvalid">Startup timeout must be 1-120 seconds and request timeout must be 1-600 seconds.</x:String>
+  <x:String x:Key="LocSecretRemovalFormat">Secret removals must use -NAME.</x:String>
+  <x:String x:Key="LocSecretFormat">Secrets must use NAME=value, or -NAME to remove a stored key.</x:String>
+  <x:String x:Key="LocEnvironmentRemovalFormat">Environment removals must use -NAME.</x:String>
+  <x:String x:Key="LocEnvironmentFormat">Environment entries must use NAME=value, or -NAME to remove a stored key.</x:String>
+  <x:String x:Key="LocInitializationOptionsNotObject">Initialization options must be a JSON object.</x:String>
+  <x:String x:Key="LocInitializationOptionsInvalidJson">Initialization options contain invalid JSON.</x:String>
+  <x:String x:Key="LocAddImages">Add images</x:String>
+  <x:String x:Key="LocImages">Images</x:String>
+  <x:String x:Key="LocRestoreSessionTitle">Restore this session?</x:String>
+  <x:String x:Key="LocRestoreSessionMessage">It will return to the active session list and become editable again.</x:String>
+  <x:String x:Key="LocRestoreSession">Restore session</x:String>
+  <x:String x:Key="LocDeleteSessionPermanentlyTitle">Delete this session permanently?</x:String>
+  <x:String x:Key="LocDeleteSessionPermanentlyMessage">This permanently removes the conversation, child sessions, delegated work, and managed images. It cannot be undone.</x:String>
 </ResourceDictionary>

@@ -28,7 +28,7 @@ public sealed record ChildSessionItem(
     public bool IsRunning => State == "running";
     public bool IsApproval => State is "approval" or "awaiting_approval";
     public bool IsCompleted => State is "completed" or "idle";
-    public bool IsFailed => State is "failed" or "cancelled" or "interrupted";
+    public bool IsFailed => TurnStates.IsUnsuccessfulTerminal(State);
     public bool HasApproval => IsApproval && !string.IsNullOrWhiteSpace(ApprovalId);
     public string RelativeActivity => SessionItem.RelativeActivityFor(CreatedAt);
 }
@@ -40,7 +40,5 @@ public sealed record ChildSessionTimelineItem(
     string State,
     string CreatedAt)
 {
-    public bool IsTask => Kind == "task";
-    public bool IsMessage => Kind == "message";
     public bool IsTool => Kind == "tool";
 }

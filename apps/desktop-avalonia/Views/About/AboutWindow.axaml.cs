@@ -11,7 +11,7 @@ public sealed partial class AboutWindow : Window
     {
         InitializeComponent();
         WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
-        Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
+        Icon = AppIcon.Window;
         DesktopVersionText.Text = AppInfo.DisplayVersion;
         AgentSdkVersionText.Text = "Loading...";
         Opened += OnOpened;

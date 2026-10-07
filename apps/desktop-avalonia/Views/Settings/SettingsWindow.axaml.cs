@@ -139,7 +139,7 @@ public sealed partial class SettingsWindow : Window
         _computerPollTimer.Tick += ComputerPollTick;
         _browserPollTimer.Tick += BrowserPollTick;
         WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
-        Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
+        Icon = AppIcon.Window;
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
         DataContextChanged += (_, _) => RebindViewModelSubscriptions();
         Opened += async (_, _) =>

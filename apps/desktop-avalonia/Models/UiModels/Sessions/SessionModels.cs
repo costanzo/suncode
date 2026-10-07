@@ -85,7 +85,6 @@ public sealed record AgentItem(
     bool CanDelegate,
     uint ToolCallLimit)
 {
-    public string AllowedToolsText => string.Join("  ", AllowedTools);
     public string DelegateText => CanDelegate ? "Allowed" : "Not allowed";
     public string ToolLimitText => $"{ToolCallLimit} calls";
 }

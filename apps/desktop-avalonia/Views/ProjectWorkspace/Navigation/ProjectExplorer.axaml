@@ -135,7 +135,7 @@
       <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
     </Style>
     <Style Selector="TextBlock.explorer-path">
-      <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+      <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
       <Setter Property="FontSize" Value="9" />
       <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
     </Style>

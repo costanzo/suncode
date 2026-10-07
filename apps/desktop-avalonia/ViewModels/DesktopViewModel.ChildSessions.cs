@@ -9,10 +9,19 @@ public sealed partial class DesktopViewModel
 {
     public async Task LoadChildSessionsAsync()
     {
+        // Overlapping loads (several tool.result events) must not interleave
+        // their writes: only the latest request for the current session applies.
+        var requestVersion = Interlocked.Increment(ref _childSessionsLoadVersion);
+        if (_sdk is null || SelectedSession is null)
+        {
+            ChildSessions.Clear();
+            OnPropertyChanged(nameof(HasChildSessions));
+            return;
+        }
+        var sessionId = SelectedSession.SessionId;
+        var result = await _sdk.ListChildSessionsAsync(sessionId);
+        if (requestVersion != Interlocked.Read(ref _childSessionsLoadVersion) || !IsSessionContextCurrent(sessionId, null)) return;
         ChildSessions.Clear();
-        OnPropertyChanged(nameof(HasChildSessions));
-        if (_sdk is null || SelectedSession is null) return;
-        var result = await _sdk.ListChildSessionsAsync(SelectedSession.SessionId);
         foreach (var child in ProjectChildSessions(result)) ChildSessions.Add(child);
         foreach (var saved in SavedUiProjectState.RecentContent.Where(item => item.Kind == "child-session" && !string.IsNullOrWhiteSpace(item.SessionId)))
         {

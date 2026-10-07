@@ -28,7 +28,12 @@ function bytesFromBase64Url(value: string): Uint8Array {
 }
 
 function base64UrlFromBytes(bytes: ArrayBuffer): string {
-  const binary = String.fromCharCode(...new Uint8Array(bytes));
+  // Chunk to stay below the engine's maximum argument count for String.fromCharCode.
+  const view = new Uint8Array(bytes);
+  let binary = "";
+  for (let offset = 0; offset < view.length; offset += 0x8000) {
+    binary += String.fromCharCode(...view.subarray(offset, offset + 0x8000));
+  }
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
@@ -62,12 +67,4 @@ export async function decryptPayload(value: string, key: CryptoKey): Promise<unk
     bytes.slice(12),
   );
   return JSON.parse(decoder.decode(plaintext));
-}
-
-export async function fingerprintKey(key: CryptoKey): Promise<string> {
-  const raw = await crypto.subtle.exportKey("raw", key);
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", raw));
-  return `SHA256: ${Array.from(digest.slice(0, 4), (byte) => byte.toString(16).padStart(2, "0"))
-    .join(":")
-    .toUpperCase()}…`;
 }

@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using SunCode.Desktop.Infrastructure;
 
 namespace SunCode.Desktop.Views.DialogWindow;
 
@@ -35,7 +36,7 @@ public sealed partial class DialogWindow : Window
 
     private void SetIcon()
     {
-        Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SunCode/Assets/logo/suncode-logo-128.png")));
+        Icon = AppIcon.Window;
     }
 
     private void CancelClicked(object? sender, RoutedEventArgs e) => Close();

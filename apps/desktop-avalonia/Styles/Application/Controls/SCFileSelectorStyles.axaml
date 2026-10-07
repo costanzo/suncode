@@ -5,7 +5,7 @@
   <Style Selector="controls|SCFileSelector TextBox">
     <Setter Property="FontSize" Value="11" />
     <Setter Property="FontWeight" Value="Regular" />
-    <Setter Property="FontFamily" Value="fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace" />
+    <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />

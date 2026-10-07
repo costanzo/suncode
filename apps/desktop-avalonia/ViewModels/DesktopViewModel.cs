@@ -51,6 +51,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private string _sessionLoadError = string.Empty;
     private bool _fullControlEnabled;
     private long _sessionLoadVersion;
+    private long _childSessionsLoadVersion;
     private string? _loadedSessionId;
     private bool _navigationVisible = true;
     private bool _reviewVisible = true;
@@ -435,7 +436,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public string TurnChangeSummary => ChangedPaths.Count == 0
         ? "No files changed in this turn"
         : $"{ChangedPaths.Count} {(ChangedPaths.Count == 1 ? "file" : "files")} touched";
-    public string RuntimeHealthSummary => IsAgentHealthy ? "Agent and database ready" : "Runtime needs attention";
     public bool IsTurnActive => !string.IsNullOrWhiteSpace(ActiveTurnId);
     public bool IsTurnCompacting => ActiveTurnState == "compacting";
     public bool IsTurnThinking => ActiveTurnState == "calling_model" && !IsAssistantStreaming;

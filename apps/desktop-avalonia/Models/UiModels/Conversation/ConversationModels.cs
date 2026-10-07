@@ -59,11 +59,8 @@ public sealed class MessageItem : ObservableObject, IDisposable
     private bool _isVisible = true;
     private bool _isProcess;
     private bool _isFinalAssistant;
-    private bool _showProcessToggle;
-    private bool _processContentVisible = true;
     private bool _processExpanded;
     private int _processItemCount;
-    private bool _showTurnMarker;
     private string _durationText = string.Empty;
     private bool _isWorkingDuration;
     private string _completionTimeText = string.Empty;
@@ -85,15 +82,10 @@ public sealed class MessageItem : ObservableObject, IDisposable
     public string Kind { get; init; } = "message";
     public int TurnSequence { get; init; }
     public string TurnPreview { get; init; } = string.Empty;
-    public bool ShowTurnMarker { get => _showTurnMarker; set => SetProperty(ref _showTurnMarker, value); }
-    public string TurnTitle => TurnSequence > 0 ? $"Turn {TurnSequence}" : "Turn";
     public string ToolCallId { get; init; } = string.Empty;
     public string ToolName { get; init; } = string.Empty;
     public string ToolState { get; init; } = string.Empty;
-    public string ToolDetail { get; init; } = string.Empty;
     public string ToolRequest { get; init; } = string.Empty;
-    public string ToolResult { get; init; } = string.Empty;
-    public string ToolOutput { get; init; } = string.Empty;
     public string ToolError { get; init; } = string.Empty;
     public IReadOnlyList<ComposerAttachment> Attachments { get; init; } = [];
     public bool HasAttachments => Attachments.Count > 0;
@@ -130,7 +122,6 @@ public sealed class MessageItem : ObservableObject, IDisposable
     public bool IsConversationAssistant => IsAssistant && !IsTurnMarker && !IsCompaction;
     public bool IsIntermediateAssistant => IsConversationAssistant && !IsFinalAssistant;
     public bool IsCompaction => Kind == "context.compacted";
-    public string Author => IsUser ? "You" : "SunCode";
     // Keep the timeline compact for unusually large submitted prompts while
     // retaining the canonical text for the read-only detail dialog.
     public bool IsLongUserMessage => IsUser && (Text.Length > 340 || Text.Count(c => c == '\n') >= 5);
@@ -163,8 +154,6 @@ public sealed class MessageItem : ObservableObject, IDisposable
         }
     }
     public bool ShowCopy => IsFinalAssistant;
-    public bool ShowProcessToggle { get => _showProcessToggle; set => SetProperty(ref _showProcessToggle, value); }
-    public bool ProcessContentVisible { get => _processContentVisible; set => SetProperty(ref _processContentVisible, value); }
     public bool ProcessExpanded
     {
         get => _processExpanded;
@@ -192,58 +181,11 @@ public sealed class MessageItem : ObservableObject, IDisposable
     {
         foreach (var attachment in Attachments) attachment.Dispose();
     }
-    public string ToolSummaryText => ToolName switch
-    {
-        "bash" => "Run shell command",
-        "webfetch" => "Fetch web content",
-        "read" => "Read file",
-        "glob" => "Find files",
-        "grep" => "Search files",
-        "question" => "Ask a question",
-        "todowrite" => "Update turn todos",
-        "write" => "Write file",
-        "edit" => "Edit file",
-        _ => string.IsNullOrWhiteSpace(ToolName) ? "Run operation" : ToolName
-    };
-    public bool IsToolFailed => ToolState is "failed" or "denied" or "timed_out" or "unknown_completion";
-    public bool IsToolSucceeded => ToolState == "succeeded";
-    public bool IsToolActive => !IsToolFailed && !IsToolSucceeded;
-    public string ToolStateText => ToolState switch
-    {
-        "requested" or "validating" or "policy_check" or "authorized" => "Preparing",
-        "executing" => "Running",
-        "awaiting_approval" => "Waiting for approval",
-        "awaiting_question" => "Waiting for an answer",
-        "succeeded" => "Completed",
-        "denied" => "Denied",
-        "failed" => "Failed",
-        "timed_out" => "Timed out",
-        "unknown_completion" or "reconciling" => "Checking result",
-        _ => ToolState
-    };
-    public string ToolDetailText
-    {
-        get
-        {
-            var compact = string.Join(" ", ToolDetail.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-            return compact.Length <= 240 ? compact : $"{compact[..240]}…";
-        }
-    }
-    public bool HasToolDetail => !string.IsNullOrWhiteSpace(ToolDetail);
+    public string ToolSummaryText => ToolStates.Summary(ToolName);
+    public string ToolStateText => ToolStates.DisplayText(ToolState);
     public bool HasToolRequest => !string.IsNullOrWhiteSpace(ToolRequest);
-    public bool HasToolResult => !string.IsNullOrWhiteSpace(ToolResult);
-    public bool HasToolOutput => !string.IsNullOrWhiteSpace(ToolOutput);
     public bool HasToolError => !string.IsNullOrWhiteSpace(ToolError);
-    public string ToolErrorText => ToolError switch
-    {
-        "invalid_arguments" => "The operation arguments were invalid.",
-        "authorization_denied" => "The operation was not authorized.",
-        "scope_denied" => "The operation was outside the project scope.",
-        "process_executable_not_found" => "The executable could not be found.",
-        "process_start_failed" => "The process could not be started.",
-        "webfetch_failed" => "The web request could not be completed.",
-        _ => ToolError.Replace('_', ' ')
-    };
+    public string ToolErrorText => ToolStates.ErrorText(ToolError);
 }
 
 public sealed class ToolActivityTurnItem : ObservableObject
@@ -331,38 +273,17 @@ public sealed class ToolActivityItem : ObservableObject
     public string Result { get => _result; private set => SetProperty(ref _result, value); }
     public string Output { get => _output; private set => SetProperty(ref _output, value); }
     public string Error { get => _error; private set => SetProperty(ref _error, value); }
-    public string DisplayName => ToolSummary(Name);
-    public string StateText => State switch
-    {
-        "requested" or "validating" or "policy_check" or "authorized" => "Preparing",
-        "executing" => "Running",
-        "awaiting_approval" => "Waiting for approval",
-        "awaiting_question" => "Waiting for an answer",
-        "succeeded" => "Completed",
-        "denied" => "Denied",
-        "failed" => "Failed",
-        "timed_out" => "Timed out",
-        "unknown_completion" or "reconciling" => "Checking result",
-        _ => State
-    };
-    public bool IsSucceeded => State == "succeeded";
-    public bool IsFailed => State is "failed" or "denied" or "timed_out" or "unknown_completion";
-    public bool IsActive => !IsSucceeded && !IsFailed;
+    public string DisplayName => ToolStates.Summary(Name);
+    public string StateText => ToolStates.DisplayText(State);
+    public bool IsSucceeded => ToolStates.IsSucceeded(State);
+    public bool IsFailed => ToolStates.IsFailed(State);
+    public bool IsActive => ToolStates.IsActive(State);
     public bool HasRequest => !string.IsNullOrWhiteSpace(Request);
     public bool HasResult => !string.IsNullOrWhiteSpace(Result);
     public bool HasOutput => !string.IsNullOrWhiteSpace(Output);
     public bool ShowOutput => HasOutput || IsActive;
     public bool HasError => !string.IsNullOrWhiteSpace(Error);
-    public string ErrorText => Error switch
-    {
-        "invalid_arguments" => "The operation arguments were invalid.",
-        "authorization_denied" => "The operation was not authorized.",
-        "scope_denied" => "The operation was outside the project scope.",
-        "process_executable_not_found" => "The executable could not be found.",
-        "process_start_failed" => "The process could not be started.",
-        "webfetch_failed" => "The web request could not be completed.",
-        _ => Error.Replace('_', ' ')
-    };
+    public string ErrorText => ToolStates.ErrorText(Error);
 
     public void Update(string? name = null, string? state = null, string? request = null, string? result = null, string? output = null, string? error = null)
     {
@@ -384,20 +305,6 @@ public sealed class ToolActivityItem : ObservableObject
         OnPropertyChanged(nameof(HasError));
         OnPropertyChanged(nameof(ErrorText));
     }
-
-    private static string ToolSummary(string name) => name switch
-    {
-        "bash" => "Run shell command",
-        "webfetch" => "Fetch web content",
-        "read" => "Read file",
-        "glob" => "Find files",
-        "grep" => "Search files",
-        "question" => "Ask a question",
-        "todowrite" => "Update turn todos",
-        "write" => "Write file",
-        "edit" => "Edit file",
-        _ => string.IsNullOrWhiteSpace(name) ? "Run operation" : name
-    };
 }
 
 public sealed record ActivityItem(string EventType, string Text, long ContentSequence, string State, string Operation);
@@ -422,12 +329,6 @@ public sealed record TodoItem(string Content, string Status, string Priority)
         _ => "Pending"
     };
 
-    public string PriorityText => Priority switch
-    {
-        "high" => "High",
-        "low" => "Low",
-        _ => "Medium"
-    };
 
     public bool IsCompleted => Status is "completed" or "cancelled";
 

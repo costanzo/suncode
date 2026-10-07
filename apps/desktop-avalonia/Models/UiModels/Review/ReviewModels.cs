@@ -81,7 +81,6 @@ public sealed record ProviderTraceItem(
     public bool IsFailed => State == "failed";
     public bool IsCompaction => ModelId == "context-compaction" || FinishReason == "context_compacted";
     public bool HasOutput => !string.IsNullOrWhiteSpace(OutputText);
-    public bool HasToolCalls => !string.IsNullOrWhiteSpace(ToolCallsText) && ToolCallsText != "[]";
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorText);
     public bool HasMessages => Messages.Count > 0;
     public bool HasTools => Tools.Count > 0;
@@ -116,7 +115,6 @@ public sealed record ProviderTraceTurnItem(
     public string IdentifierText => TurnId.Length <= 8 ? TurnId : TurnId[..8];
     public string CallCountText => $"{Calls.Count} {(Calls.Count == 1 ? "call" : "calls")}";
     public string TokenText => TotalTokens > 0 ? $"{Compact(TotalTokens)} tokens" : "no usage";
-    public string MetricsText => $"{CallCountText}  ·  {TokenText}";
     public string DurationText
     {
         get
@@ -151,7 +149,7 @@ public sealed record ProviderTraceTurnItem(
         : CreatedAt;
     public bool IsRunning => State is "admitted" or "queued" or "preparing" or "calling_model" or "resolving_calls" or "compacting";
     public bool IsCompleted => State == "completed";
-    public bool IsFailed => State is "failed" or "cancelled" or "interrupted";
+    public bool IsFailed => TurnStates.IsUnsuccessfulTerminal(State);
 
     private static string Compact(long value) => value switch
     {
@@ -187,7 +185,7 @@ public sealed record ProviderTraceToolItem(
         ? timestamp.ToLocalTime().ToString("HH:mm:ss.fff")
         : CreatedAt;
     public bool IsSucceeded => State == "succeeded";
-    public bool IsFailed => State is "failed" or "denied" or "timed_out" or "unknown_completion";
+    public bool IsFailed => ToolStates.IsFailed(State);
     public bool IsActive => !IsSucceeded && !IsFailed;
     public bool HasRequest => !string.IsNullOrWhiteSpace(Request);
     public bool HasResult => !string.IsNullOrWhiteSpace(Result);

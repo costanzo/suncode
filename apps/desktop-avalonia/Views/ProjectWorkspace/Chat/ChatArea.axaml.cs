@@ -283,8 +283,7 @@ public sealed partial class ChatArea : UserControl
         }, DispatcherPriority.Background);
     }
 
-    private static bool IsTerminalTurnState(string state) =>
-        state is "completed" or "failed" or "cancelled" or "interrupted";
+    private static bool IsTerminalTurnState(string state) => TurnStates.IsTerminal(state);
 
     private async void RetrySession(object? sender, RoutedEventArgs e)
     {

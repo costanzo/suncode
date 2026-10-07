@@ -884,7 +884,6 @@ public sealed class SessionSnapshotProjectionTests
 
         Assert.All(viewModel.Messages, message => Assert.True(message.IsVisible));
         Assert.All(viewModel.Messages, message => Assert.False(message.IsFinalAssistant));
-        Assert.All(viewModel.Messages, message => Assert.False(message.ShowProcessToggle));
     }
 
     [Fact]

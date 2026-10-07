@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SvgControl = Avalonia.Svg.Skia.Svg;
+using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
@@ -135,17 +136,17 @@ public sealed partial class ProjectWorkspace : UserControl
     internal void ShowRestoreDialog(SessionItem session) =>
         Owner?.ShowSessionConfirmation(
             session,
-            "Restore this session?",
-            "It will return to the active session list and become editable again.",
-            "Restore session",
+            LocalizationService.GetString("LocRestoreSessionTitle", "Restore this session?"),
+            LocalizationService.GetString("LocRestoreSessionMessage", "It will return to the active session list and become editable again."),
+            LocalizationService.GetString("LocRestoreSession", "Restore session"),
             () => _ = ViewModel.RestoreSessionAsync(session));
 
     internal void ShowPermanentDeleteDialog(SessionItem session) =>
         Owner?.ShowSessionConfirmation(
             session,
-            "Delete this session permanently?",
-            "This permanently removes the conversation, child sessions, delegated work, and managed images. It cannot be undone.",
-            "Delete permanently",
+            LocalizationService.GetString("LocDeleteSessionPermanentlyTitle", "Delete this session permanently?"),
+            LocalizationService.GetString("LocDeleteSessionPermanentlyMessage", "This permanently removes the conversation, child sessions, delegated work, and managed images. It cannot be undone."),
+            LocalizationService.GetString("LocDeletePermanently", "Delete permanently"),
             () => _ = ViewModel.DeleteSessionPermanentlyAsync(session));
 
     internal void ShowDependencyDeleteDialog(ExplorerNode node)
