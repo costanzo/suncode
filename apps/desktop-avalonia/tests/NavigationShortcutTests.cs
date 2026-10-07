@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using SunCode.Desktop.Controls;
 using SunCode.Desktop.Views.ProjectWorkspace;
 
 namespace SunCode.Desktop.Tests;
@@ -58,21 +59,21 @@ public sealed class NavigationShortcutTests
     }
 
     [Theory]
-    [InlineData("close", "normal", "1-close-1-normal.svg")]
-    [InlineData("minimize", "hover", "2-minimize-2-hover.svg")]
-    [InlineData("maximize", "press", "3-maximize-3-press.svg")]
-    public void ActiveTrafficLightsKeepTheirInteractionAssets(string kind, string state, string expected)
+    [InlineData(TrafficLightKind.Close, TrafficLightState.Normal, "1-close-1-normal.svg")]
+    [InlineData(TrafficLightKind.Minimize, TrafficLightState.Hover, "2-minimize-2-hover.svg")]
+    [InlineData(TrafficLightKind.Maximize, TrafficLightState.Press, "3-maximize-3-press.svg")]
+    public void ActiveTrafficLightsKeepTheirInteractionAssets(TrafficLightKind kind, TrafficLightState state, string expected)
     {
-        Assert.Equal(expected, WorkspaceWindow.GetTrafficLightAsset(kind, state, isActive: true));
+        Assert.Equal(expected, TrafficLightButton.GetAsset(kind, state, isWindowActive: true));
     }
 
     [Theory]
-    [InlineData("close")]
-    [InlineData("minimize")]
-    [InlineData("maximize")]
-    public void InactiveTrafficLightsUseTheMutedAssetForEveryControl(string kind)
+    [InlineData(TrafficLightKind.Close)]
+    [InlineData(TrafficLightKind.Minimize)]
+    [InlineData(TrafficLightKind.Maximize)]
+    public void InactiveTrafficLightsUseTheMutedAssetForEveryControl(TrafficLightKind kind)
     {
-        Assert.Equal("0-all-three-nofocus.svg", WorkspaceWindow.GetTrafficLightAsset(kind, "normal", isActive: false));
-        Assert.Equal("0-all-three-nofocus.svg", WorkspaceWindow.GetTrafficLightAsset(kind, "hover", isActive: false));
+        foreach (var state in Enum.GetValues<TrafficLightState>())
+            Assert.Equal("0-all-three-nofocus.svg", TrafficLightButton.GetAsset(kind, state, isWindowActive: false));
     }
 }

@@ -25,28 +25,28 @@ public sealed class BrowserPreviewTests
     {
         using var viewModel = new DesktopViewModel
         {
-            PreviewVisible = true
+            Layout = { PreviewVisible = true }
         };
         viewModel.Projects.Add(new ProjectItem("project", "Project", "/tmp/project"));
         viewModel.SetSelectedProjectForTests(viewModel.Projects[0]);
-        viewModel.UpdateLayoutSize(1440, 900);
+        viewModel.Layout.UpdateLayoutSize(1440, 900);
 
-        Assert.True(viewModel.EffectivePreviewVisible);
-        Assert.True(viewModel.PreviewChatVisible);
-        Assert.False(viewModel.EffectiveNavigationVisible);
-        Assert.False(viewModel.EffectiveReviewVisible);
-        Assert.Equal(2, viewModel.ConversationWidth.Value);
-        Assert.Equal(3, viewModel.PreviewWidth.Value);
+        Assert.True(viewModel.Layout.EffectivePreviewVisible);
+        Assert.True(viewModel.Layout.PreviewChatVisible);
+        Assert.False(viewModel.Layout.EffectiveNavigationVisible);
+        Assert.False(viewModel.Layout.EffectiveReviewVisible);
+        Assert.Equal(2, viewModel.Layout.ConversationWidth.Value);
+        Assert.Equal(3, viewModel.Layout.PreviewWidth.Value);
     }
 
     [Fact]
     public void PreviewDropsChatAtNarrowWidth()
     {
-        using var viewModel = new DesktopViewModel { PreviewVisible = true };
-        viewModel.UpdateLayoutWidth(900);
+        using var viewModel = new DesktopViewModel { Layout = { PreviewVisible = true } };
+        viewModel.Layout.UpdateLayoutWidth(900);
 
-        Assert.False(viewModel.PreviewChatVisible);
-        Assert.Equal(0, viewModel.ConversationWidth.Value);
-        Assert.Equal(0, viewModel.PreviewGap.Value);
+        Assert.False(viewModel.Layout.PreviewChatVisible);
+        Assert.Equal(0, viewModel.Layout.ConversationWidth.Value);
+        Assert.Equal(0, viewModel.Layout.PreviewGap.Value);
     }
 }

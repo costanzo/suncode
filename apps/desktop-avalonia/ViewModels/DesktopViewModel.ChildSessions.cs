@@ -52,7 +52,7 @@ public sealed partial class DesktopViewModel
         SelectedChildSession = child;
         ChildPendingApproval = null;
         RememberRecentChildSession(child);
-        ChildSessionsVisible = true;
+        Layout.ChildSessionsVisible = true;
         ChildSessionTimeline.Clear();
         if (!string.IsNullOrWhiteSpace(child.Task))
             ChildSessionTimeline.Add(new ChildSessionTimelineItem("task", "Task from Main Agent", child.Task, child.StateText, child.CreatedAt));

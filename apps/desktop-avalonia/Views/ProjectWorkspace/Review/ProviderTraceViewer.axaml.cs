@@ -64,5 +64,5 @@ public sealed partial class ProviderTraceViewer : UserControl
         }));
     }
 
-    private void CloseTrace(object? sender, RoutedEventArgs e) => ViewModel.ProviderTraceVisible = false;
+    private void CloseTrace(object? sender, RoutedEventArgs e) => ViewModel.Layout.ProviderTraceVisible = false;
 }

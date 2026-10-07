@@ -109,5 +109,5 @@ public sealed partial class ToolActivityViewer : UserControl
         }));
     }
 
-    private void CloseToolActivity(object? sender, RoutedEventArgs e) => ViewModel.ToolActivityVisible = false;
+    private void CloseToolActivity(object? sender, RoutedEventArgs e) => ViewModel.Layout.ToolActivityVisible = false;
 }

@@ -43,5 +43,5 @@ public sealed partial class GitViewer : UserControl
     private void GitScopeAll(object? sender, RoutedEventArgs e) => ViewModel.Git.SetScope("all");
     private void GitScopeStaged(object? sender, RoutedEventArgs e) => ViewModel.Git.SetScope("staged");
     private void GitScopeUnstaged(object? sender, RoutedEventArgs e) => ViewModel.Git.SetScope("unstaged");
-    private void CloseGit(object? sender, RoutedEventArgs e) => ViewModel.GitVisible = false;
+    private void CloseGit(object? sender, RoutedEventArgs e) => ViewModel.Layout.GitVisible = false;
 }

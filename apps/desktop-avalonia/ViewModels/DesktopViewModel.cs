@@ -14,19 +14,6 @@ namespace SunCode.Desktop.ViewModels;
 public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IViewModelHost, IProviderTraceHost
 {
 
-    private const double ReviewPaneBreakpoint = 1100;
-    private const double NavigationPaneBreakpoint = 860;
-    private const double CompactWorkspaceBreakpoint = 620;
-    private const double MinimumWorkspaceHeight = 360;
-    // Keep supporting panes usable while allowing them to retreat before the
-    // conversation reaches its own minimum width/height.
-    internal const double DefaultNavigationPaneWidth = 272;
-    internal const double DefaultReviewPaneWidth = 312;
-    internal const double DefaultBottomDrawerHeight = 360;
-    internal const double MinimumNavigationPaneWidth = DefaultNavigationPaneWidth * 2d / 3d;
-    internal const double MinimumReviewPaneWidth = DefaultReviewPaneWidth * 2d / 3d;
-    internal const double MinimumBottomDrawerHeight = DefaultBottomDrawerHeight / 2d;
-
     private readonly object _initializationGate = new();
     private AgentSdk? _sdk;
     private Task? _initializationTask;
@@ -53,24 +40,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private long _sessionLoadVersion;
     private long _childSessionsLoadVersion;
     private string? _loadedSessionId;
-    private bool _navigationVisible = true;
-    private bool _reviewVisible = true;
-    private bool _previewVisible;
-    private bool _childSessionsVisible;
-    private bool _navigationPinned = true;
-    private bool _explorerVisible;
-    private bool _gitVisible;
-    private bool _providerTraceVisible;
-    private bool _toolActivityVisible;
     private ChildSessionItem? _selectedChildSession;
     private ApprovalItem? _childPendingApproval;
-    private double _layoutWidth = 1440;
-    private double _layoutHeight = 900;
-    private double _navigationPaneWidth = DefaultNavigationPaneWidth;
-    private double _reviewPaneWidth = DefaultReviewPaneWidth;
-    private double _bottomDrawerHeight = DefaultBottomDrawerHeight;
-    private double _archivedDrawerHeight = 300;
-    private bool _archivedDrawerOpen;
     private bool _isBusy;
     private bool _isSessionLoading;
     private bool _isSessionLoadingVisible;
@@ -90,6 +61,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public ProviderTraceViewModel ProviderTrace { get; }
     public BrowserRuntimeViewModel Browser { get; }
     public ComputerRuntimeViewModel Computer { get; }
+    public WorkspaceLayoutViewModel Layout { get; }
     public ProviderTrafficViewModel ProviderTraffic { get; } = new();
     public ContextUsageViewModel ContextUsage { get; }
     public bool IsProviderTrafficVisible => IsProjectOpen;
@@ -276,14 +248,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
         }
     }
-    public bool NavigationVisible { get => _navigationVisible; set { if (SetProperty(ref _navigationVisible, value)) { NotifyNavigationLayoutChanged(); SaveRegionState(); } } }
-    public bool ExplorerVisible { get => _explorerVisible; set { if (SetProperty(ref _explorerVisible, value)) { NotifyNavigationLayoutChanged(); SaveRegionState(); } } }
-    public bool ReviewVisible { get => _reviewVisible; set { if (SetProperty(ref _reviewVisible, value)) { if (value && _childSessionsVisible) { _childSessionsVisible = false; OnPropertyChanged(nameof(ChildSessionsVisible)); } NotifyReviewLayoutChanged(); OnPropertyChanged(nameof(ReviewGutterAttention));OnPropertyChanged(nameof(ChildSessionsGutterAttention)); SaveRegionState(); } } }
-    public bool ChildSessionsVisible { get => _childSessionsVisible; set { if (SetProperty(ref _childSessionsVisible, value)) { if (value && _reviewVisible) { _reviewVisible = false; OnPropertyChanged(nameof(ReviewVisible)); } NotifyReviewLayoutChanged(); OnPropertyChanged(nameof(ReviewGutterAttention));OnPropertyChanged(nameof(ChildSessionsGutterAttention)); SaveRegionState(); } } }
-    public bool NavigationPinned { get => _navigationPinned; set => SetProperty(ref _navigationPinned, value); }
-    public bool GitVisible { get => _gitVisible; set { if (SetProperty(ref _gitVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveGitVisible)); SaveRegionState(); } } }
-    public bool ProviderTraceVisible { get => _providerTraceVisible; set { if (SetProperty(ref _providerTraceVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveProviderTraceVisible)); SaveRegionState(); } } }
-    public bool ToolActivityVisible { get => _toolActivityVisible; set { if (SetProperty(ref _toolActivityVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveToolActivityVisible)); SaveRegionState(); } } }
+    // Drawer visibility lives in Layout; these keep the event-projection partials unchanged.
+    private bool GitVisible { get => Layout.GitVisible; set => Layout.GitVisible = value; }
+    private bool ProviderTraceVisible { get => Layout.ProviderTraceVisible; set => Layout.ProviderTraceVisible = value; }
+    private bool ToolActivityVisible { get => Layout.ToolActivityVisible; set => Layout.ToolActivityVisible = value; }
     public ChildSessionItem? SelectedChildSession
     {
         get => _selectedChildSession;
@@ -310,9 +278,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             }
         }
     }
-    public double NavigationPaneWidth { get => _navigationPaneWidth; set { if (SetProperty(ref _navigationPaneWidth, value)) { NotifyNavigationLayoutChanged(); SavePanelGeometry(); } } }
-    public double ReviewPaneWidth { get => _reviewPaneWidth; set { if (SetProperty(ref _reviewPaneWidth, value)) { NotifyReviewLayoutChanged(); SavePanelGeometry(); } } }
-    public double BottomDrawerHeight { get => _bottomDrawerHeight; set { if (SetProperty(ref _bottomDrawerHeight, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveGitVisible)); OnPropertyChanged(nameof(EffectiveProviderTraceVisible)); OnPropertyChanged(nameof(EffectiveToolActivityVisible)); SavePanelGeometry(); } } }
     public bool IsBusy { get => _isBusy; private set => SetProperty(ref _isBusy, value); }
     public bool IsSessionLoading
     {
@@ -331,90 +296,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool IsProjectOpen => SelectedProject is not null;
     public bool CanOpenProjects => ConnectionState == "connected";
     public bool HasProjects => Projects.Count > 0;
-    public bool SessionSidebarVisible => NavigationVisible && !ExplorerVisible;
-    public bool ExplorerSidebarVisible => NavigationVisible && ExplorerVisible;
-    public bool EffectiveNavigationVisible => !PreviewVisible && NavigationVisible && _layoutWidth > NavigationPaneBreakpoint && NavigationPaneWidth >= MinimumNavigationPaneWidth;
-    public bool EffectiveSessionSidebarVisible => EffectiveNavigationVisible && !ExplorerVisible;
-    public bool EffectiveExplorerSidebarVisible => EffectiveNavigationVisible && ExplorerVisible;
-    public bool EffectiveReviewVisible => !PreviewVisible && (ReviewVisible || ChildSessionsVisible) && _layoutWidth > ReviewPaneBreakpoint && ReviewPaneWidth >= MinimumReviewPaneWidth;
-    public bool EffectiveChildSessionsVisible => ChildSessionsVisible && EffectiveReviewVisible;
-    public bool EffectiveReviewInspectorVisible => ReviewVisible && EffectiveReviewVisible;
-    public bool EffectiveGitVisible => GitVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
-    public bool EffectiveProviderTraceVisible => ProviderTraceVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
-    public bool EffectiveToolActivityVisible => ToolActivityVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
-    private bool CanShowBottomDrawer => BottomDrawerHeight >= MinimumBottomDrawerHeight;
-    private double maxBottomDrawerHeight => Math.Max(
-        MinimumBottomDrawerHeight, _layoutHeight - 36d - 4d - MinimumWorkspaceHeight - 20d);
-    public double EffectiveBottomDrawerHeight => Math.Min(BottomDrawerHeight, maxBottomDrawerHeight);
-    public bool WorkspaceGuttersVisible => _layoutWidth > CompactWorkspaceBreakpoint;
-    public GridLength WorkspaceGutterWidth => WorkspaceGuttersVisible ? new GridLength(34) : new GridLength(0);
-    public GridLength WorkspaceGutterGap => WorkspaceGuttersVisible ? new GridLength(4) : new GridLength(0);
-    public GridLength NavigationGap => EffectiveNavigationVisible ? new GridLength(4) : new GridLength(0);
-    public GridLength ReviewGap => EffectiveReviewVisible ? new GridLength(4) : new GridLength(0);
-    public bool PreviewVisible
-    {
-        get => _previewVisible;
-        set
-        {
-            if (!SetProperty(ref _previewVisible, value)) return;
-            NotifyNavigationLayoutChanged();
-            NotifyReviewLayoutChanged();
-            OnPropertyChanged(nameof(EffectivePreviewVisible));
-            OnPropertyChanged(nameof(PreviewChatVisible));
-            OnPropertyChanged(nameof(ConversationWidth));
-            OnPropertyChanged(nameof(PreviewGap));
-            OnPropertyChanged(nameof(PreviewWidth));
-        }
-    }
-
-    /// <summary>
-    /// Activates the review destination from the right gutter. Returns true when
-    /// an open browser preview was closed as part of the switch.
-    /// </summary>
-    internal bool ToggleReviewDestination()
-    {
-        if (PreviewVisible)
-        {
-            PreviewVisible = false;
-            if (!ReviewVisible) ReviewVisible = true;
-            return true;
-        }
-
-        ReviewVisible = !ReviewVisible;
-        return false;
-    }
-
-    /// <summary>
-    /// Activates the child-sessions destination from the right gutter. Returns
-    /// true when an open browser preview was closed as part of the switch.
-    /// </summary>
-    internal bool ToggleChildSessionsDestination()
-    {
-        if (PreviewVisible)
-        {
-            PreviewVisible = false;
-            if (!ChildSessionsVisible) ChildSessionsVisible = true;
-            return true;
-        }
-
-        ChildSessionsVisible = !ChildSessionsVisible;
-        return false;
-    }
-
-    public bool EffectivePreviewVisible => PreviewVisible && IsProjectOpen;
-    public bool PreviewChatVisible => !PreviewVisible || _layoutWidth >= 1030;
-    public GridLength ConversationWidth => PreviewVisible
-        ? PreviewChatVisible ? new GridLength(2, GridUnitType.Star) : new GridLength(0)
-        : new GridLength(1, GridUnitType.Star);
-    public GridLength PreviewGap => EffectivePreviewVisible && PreviewChatVisible ? new GridLength(4) : new GridLength(0);
-    public GridLength PreviewWidth => EffectivePreviewVisible ? new GridLength(3, GridUnitType.Star) : new GridLength(0);
-    public GridLength BottomDrawerGap => EffectiveGitVisible || EffectiveProviderTraceVisible || EffectiveToolActivityVisible ? new GridLength(4) : new GridLength(0);
-    public bool WorkspaceStatusDetailsVisible => _layoutWidth > CompactWorkspaceBreakpoint;
     public bool HasSessions => Sessions.Count > 0;
     public bool HasArchivedSessions => ArchivedSessions.Count > 0;
-    public bool ArchivedDrawerOpen { get => _archivedDrawerOpen; set => SetProperty(ref _archivedDrawerOpen, value); }
-    public double ArchivedDrawerHeight { get => _archivedDrawerHeight; private set => SetProperty(ref _archivedDrawerHeight, value); }
-    internal void UpdateArchivedDrawerHeight(double sidebarHeight) => ArchivedDrawerHeight = Math.Max(180, sidebarHeight / 2d);
     public bool HasMessages => Messages.Count > 0;
     public bool HasActivities => Activities.Count > 0;
     public bool HasCurrentTodos => CurrentTodos.Count > 0;
@@ -423,8 +306,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool HasChildSessions => ChildSessions.Count > 0;
     public bool HasSelectedChildSession => SelectedChildSession is not null;
     public bool HasChildPendingApproval => ChildPendingApproval is not null;
-    public bool ReviewGutterAttention => (HasPendingApproval || HasPendingQuestion) && !ReviewVisible;
-    public bool ChildSessionsGutterAttention => HasChildPendingApproval && !ChildSessionsVisible;
+    public bool ReviewGutterAttention => (HasPendingApproval || HasPendingQuestion) && !Layout.ReviewVisible;
+    public bool ChildSessionsGutterAttention => HasChildPendingApproval && !Layout.ChildSessionsVisible;
     public bool IsChildSessionVisible => SelectedChildSession is not null;
     public string ChildSessionTitle => SelectedChildSession?.Title ?? string.Empty;
     public bool HasSessionLoadError => !string.IsNullOrWhiteSpace(SessionLoadError);
@@ -505,64 +388,4 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             ? "Choose a model first..."
             : SelectedModel.Configured ? "Ask SunCode to work on this project" : string.Empty;
     public bool IsModelUnavailable => SelectedSession is not null && SelectedModel is not null && !SelectedModel.Configured;
-    public GridLength NavigationWidth => EffectiveNavigationVisible ? new GridLength(NavigationPaneWidth) : new GridLength(0);
-    public GridLength ReviewWidth => EffectiveReviewVisible ? new GridLength(ReviewPaneWidth) : new GridLength(0);
-    public GridLength GitFileListWidth => new(Math.Min(260, Math.Max(230, (_layoutWidth - 80) * 0.24)));
-
-
-    public void UpdateLayoutSize(double width, double height)
-    {
-        _layoutWidth = width;
-        _layoutHeight = height;
-        NotifyResponsiveLayoutChanged();
-        OnPropertyChanged(nameof(GitFileListWidth));
-    }
-
-    public void UpdateLayoutWidth(double width) => UpdateLayoutSize(width, _layoutHeight);
-
-    private void NotifyNavigationLayoutChanged()
-    {
-        OnPropertyChanged(nameof(SessionSidebarVisible));
-        OnPropertyChanged(nameof(ExplorerSidebarVisible));
-        OnPropertyChanged(nameof(EffectiveNavigationVisible));
-        OnPropertyChanged(nameof(EffectiveSessionSidebarVisible));
-        OnPropertyChanged(nameof(EffectiveExplorerSidebarVisible));
-        OnPropertyChanged(nameof(NavigationWidth));
-        OnPropertyChanged(nameof(NavigationGap));
-    }
-
-    private void NotifyReviewLayoutChanged()
-    {
-        OnPropertyChanged(nameof(EffectiveReviewVisible));
-        OnPropertyChanged(nameof(EffectiveReviewInspectorVisible));
-        OnPropertyChanged(nameof(EffectiveChildSessionsVisible));
-        OnPropertyChanged(nameof(ReviewWidth));
-        OnPropertyChanged(nameof(ReviewGap));
-    }
-
-    private void NotifyResponsiveLayoutChanged()
-    {
-        NotifyNavigationLayoutChanged();
-        NotifyReviewLayoutChanged();
-        OnPropertyChanged(nameof(EffectiveGitVisible));
-        OnPropertyChanged(nameof(EffectiveProviderTraceVisible));
-        OnPropertyChanged(nameof(EffectiveToolActivityVisible));
-        OnPropertyChanged(nameof(EffectiveBottomDrawerHeight));
-        OnPropertyChanged(nameof(BottomDrawerGap));
-        OnPropertyChanged(nameof(WorkspaceGuttersVisible));
-        OnPropertyChanged(nameof(WorkspaceGutterWidth));
-        OnPropertyChanged(nameof(WorkspaceGutterGap));
-        OnPropertyChanged(nameof(WorkspaceStatusDetailsVisible));
-        OnPropertyChanged(nameof(PreviewChatVisible));
-        OnPropertyChanged(nameof(ConversationWidth));
-        OnPropertyChanged(nameof(PreviewGap));
-        OnPropertyChanged(nameof(PreviewWidth));
-    }
-
-    private void NotifyDrawerLayoutChanged(string effectivePropertyName)
-    {
-        OnPropertyChanged(effectivePropertyName);
-        OnPropertyChanged(nameof(EffectiveBottomDrawerHeight));
-        OnPropertyChanged(nameof(BottomDrawerGap));
-    }
 }

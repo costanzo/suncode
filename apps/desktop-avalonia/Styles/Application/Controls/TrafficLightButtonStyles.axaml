@@ -1,0 +1,27 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+        xmlns:controls="using:SunCode.Desktop.Controls">
+  <!-- Mirrors design-system/src/shared/TrafficLights.jsx and the .traffic-light
+       rules in projects/desktop/styles/shared.css: an 18 x 18 transparent target
+       with 2px padding around a 14px light. Normal, hover, pressed, and
+       window-inactive states only swap the light asset (see TrafficLightButton);
+       the target stays transparent in every state and in both themes because
+       the assets carry their own fixed macOS colors. -->
+  <Style Selector="controls|TrafficLightButton">
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Height" Value="18" />
+    <Setter Property="MinHeight" Value="18" />
+    <Setter Property="Padding" Value="2" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+          <svg:Svg x:Name="PART_Light" Stretch="Uniform" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+</Styles>
