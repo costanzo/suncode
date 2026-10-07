@@ -169,7 +169,10 @@ public sealed partial class BrowserPreviewPane : UserControl
     private void TryCreateBrowserUsePage()
     {
         if (_browserUseInitialization is null || _browserUseProjectId is null) return;
-        if (Bounds.Width <= 1 || Bounds.Height <= 1 || BrowserHost.Bounds.Width <= 1 || BrowserHost.Bounds.Height <= 1)
+        // BrowserHost has no measurable size while it is empty. Measure the
+        // pane first, then attach the browser; the child will receive the
+        // available host bounds during the following layout pass.
+        if (Bounds.Width <= 1 || Bounds.Height <= 1)
         {
             DiagnosticLog.Debug("browser.host", $"waiting_for_layout project={_browserUseProjectId} bounds={Bounds.Width:0.##}x{Bounds.Height:0.##} host_bounds={BrowserHost.Bounds.Width:0.##}x{BrowserHost.Bounds.Height:0.##}");
             HookBrowserUseLayout();
