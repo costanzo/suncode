@@ -1,7 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
-             x:Class="SunCode.Desktop.Views.Settings.Controls.BrowserUseSettingsControl">
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:infra="using:SunCode.Desktop.Infrastructure"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.BrowserUseSettingsControl"
+             x:DataType="vm:BrowserRuntimeViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
@@ -18,33 +21,33 @@
             <TextBlock Classes="settings-row-hint" TextWrapping="Wrap"
                        Text="{DynamicResource LocEnableBrowserUseHint}" />
           </StackPanel>
-          <ToggleSwitch x:Name="EnabledToggle" Grid.Column="1" Classes="sc-toggle-switch"
+          <ToggleSwitch Grid.Column="1" Classes="sc-toggle-switch" IsChecked="{Binding EnabledChecked}"
                         OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" HorizontalAlignment="Right"
-                        Click="OnEnabledChanged" />
+                        Command="{Binding SetEnabledCommand}" />
         </Grid>
         <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1" Padding="0,13" Margin="0,6,0,0">
           <Grid ColumnDefinitions="*,*" ColumnSpacing="24">
             <Grid ColumnDefinitions="10,*" ColumnSpacing="9">
-              <Ellipse x:Name="InstallationStatusDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" Margin="0,5,0,0" />
+              <Ellipse Width="7" Height="7" infra:StatusToneProperties.Tone="{Binding InstallationTone}" VerticalAlignment="Top" Margin="0,5,0,0" />
               <StackPanel Grid.Column="1" Spacing="3">
-                <TextBlock x:Name="InstallationStateText" Text="{DynamicResource LocDisabled}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding InstallationStateText}" FontSize="12" FontWeight="SemiBold" />
                 <TextBlock Text="{DynamicResource LocBundledInstallation}" Classes="settings-row-hint" />
               </StackPanel>
             </Grid>
             <Grid Grid.Column="1" ColumnDefinitions="10,*" ColumnSpacing="9">
-              <Ellipse x:Name="RuntimeStatusDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" Margin="0,5,0,0" />
+              <Ellipse Width="7" Height="7" infra:StatusToneProperties.Tone="{Binding RuntimeTone}" VerticalAlignment="Top" Margin="0,5,0,0" />
               <StackPanel Grid.Column="1" Spacing="3">
-                <TextBlock x:Name="RuntimeStateText" Text="{DynamicResource LocNotStarted}" FontSize="12" FontWeight="SemiBold" />
-                <TextBlock x:Name="RuntimeScopeText" Text="{DynamicResource LocNoProjectSelected}" Classes="settings-row-hint" />
+                <TextBlock Text="{Binding RuntimeStateText}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding RuntimeScopeText}" Classes="settings-row-hint" />
               </StackPanel>
             </Grid>
           </Grid>
         </Border>
-        <TextBlock x:Name="StatusText" Classes="sc-text-status" Margin="0,16,0,0" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding StatusText}" Classes="sc-text-status" Margin="0,16,0,0" TextWrapping="Wrap" />
       </StackPanel>
 
       <Border Classes="settings-divider" />
-      <Border x:Name="NoProjectSection">
+      <Border IsVisible="{Binding HasNoProject}">
         <StackPanel Classes="settings-panel-section">
           <TextBlock Classes="section-label" Text="{DynamicResource LocCurrentProjectBrowser}" />
           <Border Background="{DynamicResource SurfaceInsetBrush}" BorderBrush="{DynamicResource BorderBrush}"
@@ -54,7 +57,7 @@
           </Border>
         </StackPanel>
       </Border>
-      <Border x:Name="ProjectSection" IsVisible="False">
+      <Border IsVisible="{Binding HasProject}">
         <StackPanel Classes="settings-panel-section">
           <TextBlock Classes="section-label" Text="{DynamicResource LocCurrentProjectBrowser}" />
           <Border Background="{DynamicResource SurfaceInsetBrush}" BorderBrush="{DynamicResource BorderBrush}"
@@ -62,16 +65,16 @@
             <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
               <svg:Svg Width="15" Height="15" Path="/Assets/icons/lock.svg" Css="{DynamicResource IconSvgCss}" />
               <StackPanel Grid.Column="1" Spacing="3">
-                <TextBlock x:Name="ControlTitleText" Text="{DynamicResource LocAgentControlActive}" FontSize="11" FontWeight="SemiBold" />
-                <TextBlock x:Name="ControlHintText" Classes="settings-row-hint" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ControlTitleText}" FontSize="11" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding ControlHintText}" Classes="settings-row-hint" TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
           </Border>
           <WrapPanel Classes="settings-actions">
-            <Button x:Name="TakeControlButton" Classes="compact quiet sc-button" Content="{DynamicResource LocShowBrowserTakeControl}" Click="OnTakeControl" />
-            <Button x:Name="ReturnControlButton" Classes="compact primary sc-button" Content="{DynamicResource LocReturnControlToAgent}" Click="OnReturnControl" IsVisible="False" />
-            <Button x:Name="StopButton" Classes="compact quiet sc-button" Content="{DynamicResource LocStop}" Click="OnStop" />
-            <Button x:Name="ClearButton" Classes="compact danger sc-button" Content="{DynamicResource LocClearBrowserData}" Click="OnClear" />
+            <Button Classes="compact quiet sc-button" Content="{DynamicResource LocShowBrowserTakeControl}" Command="{Binding TakeControlCommand}" IsVisible="{Binding IsTakeControlVisible}" IsEnabled="{Binding CanTakeControl}" />
+            <Button Classes="compact primary sc-button" Content="{DynamicResource LocReturnControlToAgent}" Command="{Binding ReturnControlCommand}" IsVisible="{Binding IsReturnControlVisible}" />
+            <Button Classes="compact quiet sc-button" Content="{DynamicResource LocStop}" Command="{Binding StopCommand}" IsEnabled="{Binding CanStop}" />
+            <Button Classes="compact danger sc-button" Content="{DynamicResource LocClearBrowserData}" Command="{Binding ClearCommand}" IsEnabled="{Binding CanClear}" />
           </WrapPanel>
         </StackPanel>
       </Border>
@@ -79,42 +82,42 @@
       <Expander x:Name="AdvancedDiagnosticsExpander" Header="{DynamicResource LocAdvancedDiagnostics}" Margin="0,28,0,0">
         <StackPanel Classes="settings-panel-section" Margin="0,16,0,0">
           <StackPanel Classes="settings-actions" Margin="0">
-            <Button x:Name="VerifyButton" Classes="compact quiet sc-button" Content="{DynamicResource LocVerifyRuntime}" Click="OnVerify" />
-            <Button x:Name="StartButton" Classes="compact quiet sc-button" Content="{DynamicResource LocStartBrowserRecovery}" Click="OnStart" />
-            <Button x:Name="RestartButton" Classes="compact quiet sc-button" Content="{DynamicResource LocRestart}" Click="OnRestart" />
+            <Button Classes="compact quiet sc-button" Content="{DynamicResource LocVerifyRuntime}" Command="{Binding VerifyCommand}" IsEnabled="{Binding CanVerify}" />
+            <Button Classes="compact quiet sc-button" Content="{DynamicResource LocStartBrowserRecovery}" Command="{Binding StartCommand}" IsVisible="{Binding IsStartVisible}" IsEnabled="{Binding CanStart}" />
+            <Button Classes="compact quiet sc-button" Content="{DynamicResource LocRestart}" Command="{Binding RestartCommand}" IsVisible="{Binding IsRestartVisible}" IsEnabled="{Binding CanRestart}" />
           </StackPanel>
           <StackPanel Classes="settings-panel-section">
             <TextBlock Classes="section-label" Text="{DynamicResource LocBundledRuntime}" />
             <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="112,*,32">
               <TextBlock Text="{DynamicResource LocTarget}" Classes="settings-row-hint" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Spacing="3" Margin="0,9">
-                <TextBlock x:Name="TargetText" Classes="mono" FontSize="10" Text="—" />
+                <TextBlock Classes="mono" FontSize="10" Text="{Binding TargetText}" />
                 <TextBlock Text="{DynamicResource LocBundledForInstallation}" Classes="settings-row-hint" />
               </StackPanel>
               <TextBlock Grid.Row="3" Text="{DynamicResource LocChromium}" Classes="settings-row-hint" VerticalAlignment="Center" />
               <StackPanel Grid.Row="3" Grid.Column="1" Spacing="3" Margin="0,9">
-                <TextBlock x:Name="ChromiumVersionText" Classes="mono" FontSize="10" Text="—" />
-                <TextBlock x:Name="ChromiumPathText" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Classes="mono" FontSize="10" Text="{Binding ChromiumVersionText}" />
+                <TextBlock Text="{Binding ChromiumPathText}" ToolTip.Tip="{Binding ChromiumPathTip}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
               </StackPanel>
-              <Button x:Name="CopyChromiumPathButton" Grid.Row="3" Grid.Column="2" Classes="icon quiet sc-button" ToolTip.Tip="{DynamicResource LocCopyChromiumPath}"
-                      AutomationProperties.Name="{DynamicResource LocCopyChromiumPath}" Click="OnCopyChromiumPath">
+              <Button Grid.Row="3" Grid.Column="2" Classes="icon quiet sc-button" ToolTip.Tip="{DynamicResource LocCopyChromiumPath}"
+                      AutomationProperties.Name="{DynamicResource LocCopyChromiumPath}" Command="{Binding CopyChromiumPathCommand}" IsEnabled="{Binding CanCopyChromiumPath}">
                 <svg:Svg Width="14" Height="14" Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
               </Button>
               <TextBlock Grid.Row="4" Text="{DynamicResource LocWorkerProtocol}" Classes="settings-row-hint" VerticalAlignment="Center" />
-              <TextBlock x:Name="WorkerProtocolText" Grid.Row="4" Grid.Column="1" Classes="mono" FontSize="10" Margin="0,13" Text="—" />
+              <TextBlock Grid.Row="4" Grid.Column="1" Classes="mono" FontSize="10" Margin="0,13" Text="{Binding WorkerProtocolText}" />
             </Grid>
             <Border Background="{DynamicResource SurfaceInsetBrush}" BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,12,0,0">
               <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/lock.svg" Css="{DynamicResource IconSvgCss}" />
                 <StackPanel Grid.Column="1" Spacing="3">
-                  <TextBlock x:Name="IntegrityText" Text="{DynamicResource LocIntegrityUnavailable}" FontSize="11" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding IntegrityText}" FontSize="11" FontWeight="SemiBold" />
                   <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocIntegrityHint}" />
                 </StackPanel>
               </Grid>
             </Border>
           </StackPanel>
-          <StackPanel x:Name="ProjectDiagnosticsSection" Classes="settings-panel-section" IsVisible="False">
+          <StackPanel Classes="settings-panel-section" IsVisible="{Binding HasProject}">
             <TextBlock Classes="section-label" Text="{DynamicResource LocProjectBrowserDiagnostics}" />
             <Grid Classes="settings-row" ColumnDefinitions="*,220">
               <StackPanel Classes="settings-row-copy">
@@ -122,9 +125,9 @@
                 <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocProfilePathHint}" />
               </StackPanel>
               <Grid Grid.Column="1" ColumnDefinitions="*,32">
-                <TextBlock x:Name="ProfilePathText" Classes="mono" FontSize="9" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                <Button x:Name="CopyProfilePathButton" Grid.Column="1" Classes="icon quiet sc-button" ToolTip.Tip="{DynamicResource LocCopyProfilePath}"
-                        AutomationProperties.Name="{DynamicResource LocCopyProfilePath}" Click="OnCopyProfilePath">
+                <TextBlock Text="{Binding ProfilePathText}" ToolTip.Tip="{Binding ProfilePathTip}" Classes="mono" FontSize="9" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="icon quiet sc-button" ToolTip.Tip="{DynamicResource LocCopyProfilePath}"
+                        AutomationProperties.Name="{DynamicResource LocCopyProfilePath}" Command="{Binding CopyProfilePathCommand}" IsEnabled="{Binding CanCopyProfilePath}">
                   <svg:Svg Width="14" Height="14" Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
                 </Button>
               </Grid>
@@ -134,16 +137,16 @@
                 <TextBlock Classes="settings-row-title" Text="{DynamicResource LocProfileUsage}" />
                 <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocProfileUsageHint}" />
               </StackPanel>
-              <TextBlock x:Name="ProfileUsageText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" />
+              <TextBlock Text="{Binding ProfileUsageText}" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" />
             </Grid>
             <Grid Classes="settings-row" ColumnDefinitions="*,220">
               <StackPanel Classes="settings-row-copy">
                 <TextBlock Classes="settings-row-title" Text="{DynamicResource LocWindowControl}" />
                 <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource LocWindowControlHint}" />
               </StackPanel>
-              <TextBlock x:Name="VisibilityText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" />
+              <TextBlock Text="{Binding VisibilityText}" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" />
             </Grid>
-            <TextBlock x:Name="ErrorText" IsVisible="False" Foreground="{DynamicResource DangerBrush}"
+            <TextBlock Text="{Binding ErrorText}" IsVisible="{Binding HasError}" Foreground="{DynamicResource DangerBrush}"
                        FontSize="10" TextWrapping="Wrap" Margin="0,4,0,0" />
           </StackPanel>
         </StackPanel>

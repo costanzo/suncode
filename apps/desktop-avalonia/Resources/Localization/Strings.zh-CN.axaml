@@ -532,4 +532,7 @@
   <x:String x:Key="LocRestoreSession">恢复会话</x:String>
   <x:String x:Key="LocDeleteSessionPermanentlyTitle">永久删除此会话？</x:String>
   <x:String x:Key="LocDeleteSessionPermanentlyMessage">这将永久删除对话、子会话、委派的工作以及托管的图片。此操作无法撤销。</x:String>
+  <x:String x:Key="LocNoProxyMode">不使用代理</x:String>
+  <x:String x:Key="LocSystemProxyMode">系统代理</x:String>
+  <x:String x:Key="LocCustomProxyMode">自定义代理</x:String>
 </ResourceDictionary>

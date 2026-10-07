@@ -17,9 +17,10 @@ internal sealed class FakeViewModelHost : IProviderTraceHost
     public ProjectItem? SelectedProject { get; set; }
     public bool EnsureSdk() => false;
     public Task<bool> EnsureSdkReadyAsync() => Task.FromResult(false);
-    public void ReportError(Exception exception) => Errors.Add(exception);
-    public void ReportSuccess(string message) => Successes.Add(message);
-    public void ReportPresentationError(string message) => PresentationErrors.Add(message);
+    public string StatusText { get; set; } = string.Empty;
+    public void ReportError(Exception exception) { Errors.Add(exception); StatusText = exception.Message; }
+    public void ReportSuccess(string message) { Successes.Add(message); StatusText = message; }
+    public void ReportPresentationError(string message) { PresentationErrors.Add(message); StatusText = message; }
     public void SetBusy(bool busy) => BusyChanges.Add(busy);
     public string? SelectedSessionId { get; set; }
     public string? SelectedModelId { get; set; }

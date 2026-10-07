@@ -16,4 +16,7 @@ internal interface IViewModelHost
     void ReportSuccess(string message);
     void ReportPresentationError(string message);
     void SetBusy(bool busy);
+
+    // Latest status or error message reported through this host.
+    string StatusText { get; }
 }
