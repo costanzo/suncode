@@ -1,3 +1,5 @@
+using SunCode.Desktop.Infrastructure;
+
 namespace SunCode.Desktop.Tests;
 
 public sealed class ProjectWindowCoordinationTests
@@ -12,6 +14,6 @@ public sealed class ProjectWindowCoordinationTests
         bool isOpening,
         int expected)
     {
-        Assert.Equal((ProjectWindowDisposition)expected, App.ResolveProjectWindowDisposition(isOpen, isOpening));
+        Assert.Equal((ProjectWindowDisposition)expected, ProjectWindowRegistry<object>.ResolveDisposition(isOpen, isOpening));
     }
 }
