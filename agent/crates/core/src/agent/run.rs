@@ -17,11 +17,11 @@ fn delegate_agent_definition() -> suncode_llm::ToolDefinition {
     }
 }
 
-fn skill_guidance(project_root: &str) -> Option<String> {
+fn skill_guidance(project_root: &str, user_directory: Option<&std::path::Path>) -> Option<String> {
     let catalog = suncode_skills::SkillCatalog::discover(&suncode_skills::DiscoveryOptions {
         project_root: project_root.into(),
-        user_config_directory: None,
-        user_home_directory: None,
+        user_config_directory: user_directory.map(|path| path.join(".config/suncode")),
+        user_home_directory: user_directory.map(std::path::Path::to_path_buf),
         explicit_paths: Vec::new(),
     });
     Some(suncode_skills::render_available_skills(catalog.visible().cloned()))
@@ -55,13 +55,13 @@ impl Agent {
             allowed_tools: &context.allowed_tools,
             agent_id: context.agent_id.as_deref(),
             dependency_context: self.dependency_context_message(&context.project_id)?,
-            skill_guidance: if context.allowed_tools.is_empty() { skill_guidance(&context.project_root) } else { None },
+            skill_guidance: if context.allowed_tools.is_empty() { skill_guidance(&context.project_root, Some(&self.config.user_directory)) } else { None },
         })?;
         while context.iterations < 1024 {
             if token.is_cancelled() {
                 return self.fail_context(&context, "cancelled", "Turn was cancelled");
             }
-            if started.elapsed() > Duration::from_secs(600) {
+            if started.elapsed() > Duration::from_millis(context.turn_timeout_ms) {
                 return self.fail_context(
                     &context,
                     "turn_timeout",
@@ -103,6 +103,11 @@ impl Agent {
                     self.computer
                         .catalog(self.providers.supports_computer_use(&context.model)),
                 );
+            }
+            if !context.host_tool_allowlist.is_empty() {
+                tool_definitions.retain(|definition| {
+                    context.host_tool_allowlist.iter().any(|allowed| allowed == &definition.name)
+                });
             }
             let fixed_request_tokens = serde_json::to_string(&(&base_system_messages, &tool_definitions))
                 .map(|value| value.len().div_ceil(4))
@@ -180,9 +185,14 @@ impl Agent {
                     delta_sender,
                 );
                 tokio::pin!(provider_call);
+                let turn_remaining = Duration::from_millis(context.turn_timeout_ms)
+                    .saturating_sub(started.elapsed());
+                let turn_deadline = tokio::time::sleep(turn_remaining);
+                tokio::pin!(turn_deadline);
                 let result = loop {
                     tokio::select! {
                         value = &mut provider_call => break value,
+                        _ = &mut turn_deadline => break Err(BusinessError::new("turn_timeout", "Turn exceeded its wall-clock budget")),
                         Some(delta) = delta_receiver.recv() => {
                             self.emit_live(&context.session_id, EventPayload::AssistantDelta(AssistantDeltaPayload { turn_id: context.turn_id.clone(), text: delta }));
                         }

@@ -36,6 +36,7 @@ fn test_state(directory: &std::path::Path) -> AgentState {
             &store,
             Arc::new(SqliteApiKeyResolver {
                 store: store.clone(),
+                overrides: std::collections::BTreeMap::new(),
             }),
             verify_https_certificates.clone(),
             Arc::new(AtomicBool::new(true)),
@@ -65,6 +66,7 @@ fn test_state(directory: &std::path::Path) -> AgentState {
         proxy_configuration,
         agent,
         providers,
+        credential_overrides: std::collections::BTreeMap::new(),
         host_capabilities: SdkHostCapabilities::default(),
     }
 }
@@ -208,6 +210,7 @@ async fn host_capability_ceiling_disables_browser_and_computer_without_mutating_
                 computer_use: false,
                 remote_control: true,
             },
+            environment_source: suncode_config::EnvironmentSource::Process,
         },
     )
     .await

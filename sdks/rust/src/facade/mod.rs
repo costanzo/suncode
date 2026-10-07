@@ -16,6 +16,7 @@ use suncode_agent::{
 };
 use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
 use suncode_config::Config;
+use suncode_config::PersistedSettings;
 use suncode_data::{LlmModelProviderInput, LlmModelProviderRecord, Store};
 use suncode_llm::{
     AnthropicProvider, ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
@@ -67,6 +68,7 @@ pub(crate) struct AgentState {
     proxy_configuration: Arc<RwLock<HttpProxyConfiguration>>,
     agent: Agent,
     providers: Arc<ModelProviderRegistry>,
+    credential_overrides: std::collections::BTreeMap<String, String>,
     host_capabilities: SdkHostCapabilities,
 }
 
@@ -101,21 +103,26 @@ impl AsyncAgentSdk {
 #[derive(Clone)]
 struct SqliteApiKeyResolver {
     store: Store,
+    overrides: std::collections::BTreeMap<String, String>,
 }
 
 impl suncode_llm::ApiKeyResolver for SqliteApiKeyResolver {
     fn api_key(&self, provider_id: &str) -> Option<String> {
-        self.store.llm_provider_api_key(provider_id).ok().flatten()
+        self.overrides
+            .get(provider_id)
+            .cloned()
+            .or_else(|| self.store.llm_provider_api_key(provider_id).ok().flatten())
     }
 }
 
-fn credential_states(store: &Store) -> SdkResult<Vec<CredentialState>> {
+fn credential_states(store: &Store, overrides: &std::collections::BTreeMap<String, String>) -> SdkResult<Vec<CredentialState>> {
     store
         .llm_model_providers(false)?
         .into_iter()
         .map(|provider| {
             Ok(CredentialState {
-                configured: store.llm_provider_api_key(&provider.provider_id)?.is_some(),
+                configured: overrides.contains_key(&provider.provider_id)
+                    || store.llm_provider_api_key(&provider.provider_id)?.is_some(),
                 provider: provider.provider_id,
             })
         })
@@ -272,6 +279,8 @@ where
     F: FnOnce(&mut ModelProviderRegistry) -> Result<(), BusinessError>,
 {
     let store = Store::open(&config.database_path)?;
+    let persisted = persisted_settings(&store, None, None)?;
+    let runtime_config = config.runtime(&persisted).map_err(BusinessError::invalid)?;
     configure_logging(&store, &config.data_dir)?;
     let verify_https_certificates = Arc::new(AtomicBool::new(global_bool_setting(
         &store,
@@ -311,6 +320,7 @@ where
         &store,
         Arc::new(SqliteApiKeyResolver {
             store: store.clone(),
+            overrides: runtime_config.credentials.clone(),
         }),
         verify_https_certificates.clone(),
         use_system_certificates.clone(),
@@ -320,7 +330,7 @@ where
     configure_providers(&mut providers)
         .map_err(|error| BusinessError::new("provider_registration_failed", error.to_string()))?;
     let providers = Arc::new(providers);
-    let agent = Agent::new_with_user_id_and_capabilities(
+    let agent = Agent::new_with_user_id_and_capabilities_and_config(
         store.clone(),
         providers.clone(),
         operations.clone(),
@@ -332,6 +342,7 @@ where
             browser_use: options.host_capabilities.browser_use,
             computer_use: options.host_capabilities.computer_use,
         },
+        config.clone(),
     );
     logging::debug(
         "browser.host",
@@ -372,10 +383,24 @@ where
         proxy_configuration,
         agent,
         providers,
+        credential_overrides: runtime_config.credentials,
         host_capabilities: options.host_capabilities,
     };
     state.agent.recover().await?;
     Ok(state)
+}
+
+fn persisted_settings(
+    store: &Store,
+    project_id: Option<&str>,
+    session_id: Option<&str>,
+) -> SdkResult<PersistedSettings> {
+    let mut settings = PersistedSettings::default();
+    for record in store.settings(project_id, session_id)? {
+        settings.insert(&record.scope, record.key, record.value)
+            .map_err(BusinessError::invalid)?;
+    }
+    Ok(settings)
 }
 
 fn proxy_configuration_from_store(store: &Store) -> SdkResult<HttpProxyConfiguration> {

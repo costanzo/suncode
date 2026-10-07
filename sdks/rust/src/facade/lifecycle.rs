@@ -8,7 +8,14 @@ impl AsyncAgentSdk {
     }
 
     pub async fn open_default(user_id: &str) -> SdkResult<Self> {
-        Self::open_with_options(user_id, SdkOpenOptions::default()).await
+        Self::open_with_options(
+            user_id,
+            SdkOpenOptions {
+                environment_source: suncode_config::EnvironmentSource::Process,
+                ..SdkOpenOptions::default()
+            },
+        )
+        .await
     }
 
     pub async fn open_with_options(user_id: &str, options: SdkOpenOptions) -> SdkResult<Self> {
@@ -25,7 +32,10 @@ impl AsyncAgentSdk {
     {
         Self::open_with_options_and_providers(
             user_id,
-            SdkOpenOptions::default(),
+            SdkOpenOptions {
+                environment_source: suncode_config::EnvironmentSource::Process,
+                ..SdkOpenOptions::default()
+            },
             configure_providers,
         )
         .await
@@ -41,7 +51,8 @@ impl AsyncAgentSdk {
         F: FnOnce(&mut ModelProviderRegistry) -> Result<(), BusinessError>,
     {
         let user_id = validate_user_id(user_id)?;
-        let config = Config::load().map_err(BusinessError::invalid)?;
+        let config = Config::load_with_environment(options.environment_source)
+            .map_err(BusinessError::invalid)?;
         let lock = AgentLock::acquire(&config.data_dir).map_err(|error| {
             if error.kind() == std::io::ErrorKind::AlreadyExists {
                 BusinessError::new("agent_already_active", error.to_string())
@@ -104,7 +115,7 @@ impl AsyncAgentSdk {
                 status: "ready",
                 pending_operations: 0,
             },
-            credentials: credential_states(&self.state.store)?,
+            credentials: credential_states(&self.state.store, &self.state.credential_overrides)?,
             active_project_id: self
                 .state
                 .active_project
@@ -116,7 +127,7 @@ impl AsyncAgentSdk {
 
     pub fn list_models(&self) -> SdkResult<ModelsResult> {
         let mut models = self.state.providers.models();
-        let credentials = credential_states(&self.state.store)?;
+        let credentials = credential_states(&self.state.store, &self.state.credential_overrides)?;
         for model in &mut models {
             model.availability = if credentials
                 .iter()
@@ -132,7 +143,7 @@ impl AsyncAgentSdk {
 
     pub fn list_credentials(&self) -> SdkResult<CredentialsResult> {
         Ok(CredentialsResult {
-            credentials: credential_states(&self.state.store)?,
+            credentials: credential_states(&self.state.store, &self.state.credential_overrides)?,
         })
     }
 
@@ -192,6 +203,7 @@ impl AsyncAgentSdk {
             &provider,
             Arc::new(SqliteApiKeyResolver {
                 store: self.state.store.clone(),
+                overrides: self.state.credential_overrides.clone(),
             }),
             self.state.verify_https_certificates.clone(),
             self.state.use_system_certificates.clone(),

@@ -76,7 +76,13 @@ impl AgentSdk {
     }
 
     pub fn open_default(user_id: &str) -> SdkResult<Self> {
-        Self::open_with_options(user_id, SdkOpenOptions::default())
+        Self::open_with_options(
+            user_id,
+            SdkOpenOptions {
+                environment_source: suncode_config::EnvironmentSource::Disabled,
+                ..SdkOpenOptions::default()
+            },
+        )
     }
 
     pub fn open_with_options(user_id: &str, options: SdkOpenOptions) -> SdkResult<Self> {
@@ -89,7 +95,10 @@ impl AgentSdk {
     {
         Self::open_with_options_and_providers(
             user_id,
-            SdkOpenOptions::default(),
+            SdkOpenOptions {
+                environment_source: suncode_config::EnvironmentSource::Disabled,
+                ..SdkOpenOptions::default()
+            },
             configure_providers,
         )
     }

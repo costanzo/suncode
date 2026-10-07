@@ -56,6 +56,34 @@ impl Agent {
     where
         P: Into<Arc<ModelProviderRegistry>>,
     {
+        let config = Config::load_with_environment(suncode_config::EnvironmentSource::Disabled).unwrap_or_else(|_| Config {
+            data_dir: std::env::temp_dir().join("suncode"),
+            database_path: std::env::temp_dir().join("suncode.sqlite3"),
+            user_directory: std::env::temp_dir(),
+            non_interactive: false,
+            environment_source: suncode_config::EnvironmentSource::Disabled,
+        });
+        Self::new_with_user_id_and_capabilities_and_config(
+            store, providers, operations, events, non_interactive, application_data,
+            user_id, host_capabilities, config,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_user_id_and_capabilities_and_config<P>(
+        store: Store,
+        providers: P,
+        operations: Arc<suncode_tool::Operations>,
+        events: SessionEventHub,
+        non_interactive: bool,
+        application_data: PathBuf,
+        user_id: String,
+        host_capabilities: AgentHostCapabilities,
+        config: Config,
+    ) -> Self
+    where
+        P: Into<Arc<ModelProviderRegistry>>,
+    {
         let mcp = McpManager::new(store.clone(), application_data.clone());
         let lsp = LanguageServerManager::new(store.clone());
         let browser = BrowserManager::new(
@@ -87,6 +115,7 @@ impl Agent {
             preview,
             computer,
             host_capabilities,
+            config,
             shutting_down: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
@@ -260,9 +289,14 @@ impl Agent {
             .store
             .project_tool_call_limit(&project_id)?
             .unwrap_or(DEFAULT_TOOL_CALL_LIMIT);
+        let runtime = self.runtime_for(&project_id, session_id)?;
         let tool_call_limit = agent_definition
-            .map(|definition| project_tool_call_limit.min(definition.tool_call_limit))
-            .unwrap_or(project_tool_call_limit);
+            .map(|definition| {
+                project_tool_call_limit
+                    .min(runtime.tool_call_limit.unwrap_or(project_tool_call_limit))
+                    .min(definition.tool_call_limit)
+            })
+            .unwrap_or_else(|| project_tool_call_limit.min(runtime.tool_call_limit.unwrap_or(project_tool_call_limit)));
         let admission = self
             .store
             .begin_turn_with_images(
@@ -329,6 +363,14 @@ impl Agent {
             question_rejected: false,
             todos: Vec::new(),
             loaded_instruction_paths: Vec::new(),
+            turn_timeout_ms: runtime.turn_timeout_ms,
+            bash_timeout_ms: runtime.bash_timeout_ms,
+            full_control_override: runtime.full_control,
+            host_tool_allowlist: runtime
+                .tool_allowlist
+                .unwrap_or_default()
+                .into_iter()
+                .collect(),
         };
         let result = self
             .run(continuation.clone(), Some(user_message), token, provider)
@@ -554,5 +596,15 @@ impl Agent {
         self.active_turns.lock().ok().map(|mut values| values.remove(&details.session_id));
         self.cancellations.lock().ok().map(|mut values| values.remove(&details.turn_id));
         Ok(true)
+    }
+
+    fn runtime_for(&self, project_id: &str, session_id: &str) -> Result<suncode_config::RuntimeConfig, BusinessError> {
+        let mut persisted = suncode_config::PersistedSettings::default();
+        for setting in self.store.settings(Some(project_id), Some(session_id))? {
+            persisted
+                .insert(&setting.scope, setting.key, setting.value)
+                .map_err(BusinessError::invalid)?;
+        }
+        self.config.runtime(&persisted).map_err(BusinessError::invalid)
     }
 }

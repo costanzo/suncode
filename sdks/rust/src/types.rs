@@ -8,6 +8,7 @@ use suncode_agent::domain::{
 };
 use suncode_common::BusinessError;
 use suncode_llm::ModelDescriptor;
+use suncode_config::EnvironmentSource;
 
 pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 16;
 pub type SdkResult<T> = Result<T, BusinessError>;
@@ -29,9 +30,19 @@ impl Default for SdkHostCapabilities {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SdkOpenOptions {
     pub host_capabilities: SdkHostCapabilities,
+    pub environment_source: EnvironmentSource,
+}
+
+impl Default for SdkOpenOptions {
+    fn default() -> Self {
+        Self {
+            host_capabilities: SdkHostCapabilities::default(),
+            environment_source: EnvironmentSource::Disabled,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]

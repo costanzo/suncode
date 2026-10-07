@@ -64,6 +64,18 @@ impl Agent {
                 }
                 continue;
             }
+            if !context.host_tool_allowlist.is_empty()
+                && !context.host_tool_allowlist.iter().any(|allowed| allowed == &call.name)
+            {
+                let error = BusinessError::new(
+                    "agent_tool_denied",
+                    format!("Tool `{}` is not allowed by the host tool ceiling", call.name),
+                );
+                if !self.record_recoverable_call_error(context, call, &error)? {
+                    return Err(error);
+                }
+                continue;
+            }
             if !call.arguments.is_object() {
                 let error =
                     BusinessError::new("malformed_tool_call", "Tool arguments must be an object");
@@ -199,7 +211,9 @@ impl Agent {
                 evaluate(
                     risk,
                     self.non_interactive,
-                    self.store.session_full_control(&context.session_id)?,
+                    context
+                        .full_control_override
+                        .unwrap_or(self.store.session_full_control(&context.session_id)?),
                 )
             };
             match decision {
@@ -669,8 +683,8 @@ impl Agent {
             .ok_or_else(|| BusinessError::invalid("skill name is required"))?;
         let catalog = suncode_skills::SkillCatalog::discover(&suncode_skills::DiscoveryOptions {
             project_root: context.project_root.clone().into(),
-            user_config_directory: None,
-            user_home_directory: None,
+            user_config_directory: Some(self.config.user_directory.join(".config/suncode")),
+            user_home_directory: Some(self.config.user_directory.clone()),
             explicit_paths: Vec::new(),
         });
         let document = catalog.load_for_model(name).map_err(|diagnostic| {
@@ -1044,7 +1058,7 @@ impl Agent {
         let Some(path) = arguments.get("path").and_then(Value::as_str) else {
             return Ok((
                 context.project_root.clone(),
-                translate_arguments(&call.name, &arguments)?,
+                self.cap_bash_timeout(&call.name, translate_arguments(&call.name, &arguments)?, context.bash_timeout_ms),
             ));
         };
         if path.starts_with("dependency:") && dependency_path(path).is_none() {
@@ -1056,11 +1070,11 @@ impl Agent {
         let Some((dependency_id, relative_path)) = dependency_path(path) else {
             return Ok((
                 context.project_root.clone(),
-                translate_arguments_with_root(
+                self.cap_bash_timeout(&call.name, translate_arguments_with_root(
                     &call.name,
                     &arguments,
                     Some(Path::new(&context.project_root)),
-                )?,
+                )?, context.bash_timeout_ms),
             ));
         };
         if !dependency_tool_allowed(&call.name) {
@@ -1077,12 +1091,22 @@ impl Agent {
         let dependency_root = dependency.canonical_root.clone();
         Ok((
             dependency_root.clone(),
-            translate_arguments_with_root(
+            self.cap_bash_timeout(&call.name, translate_arguments_with_root(
                 &call.name,
                 &arguments,
                 Some(Path::new(&dependency_root)),
-            )?,
+            )?, context.bash_timeout_ms),
         ))
+    }
+
+    fn cap_bash_timeout(&self, name: &str, mut params: Value, limit: Option<u64>) -> Value {
+        if name == "bash" {
+            if let Some(limit) = limit {
+                let requested = params.get("timeout_ms").and_then(Value::as_u64).unwrap_or(120_000);
+                params["timeout_ms"] = json!(requested.min(limit));
+            }
+        }
+        params
     }
 
     fn validate_dependency_call(

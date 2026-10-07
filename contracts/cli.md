@@ -126,7 +126,9 @@ All SunCode-owned environment variables begin with `SUNCODE_`. The approved CLI 
 
 Precedence is explicit command-line option, then the corresponding `SUNCODE_` environment variable, then persisted project/session configuration where applicable, then the documented default. An invalid value fails with exit status 2 rather than silently falling back.
 
-Provider API keys are deliberately excluded from the environment registry. `suncode auth set` reads a secret from an interactive terminal without echo and persists it through the SDK credential method. Provider-specific variables such as `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and newly invented `SUNCODE_*_API_KEY` variables are ignored.
+CLI startup selects the process environment source for `suncode-config`. Avalonia and the blocking/native default host select the disabled source, so inherited `SUNCODE_*` variables do not change desktop behavior. Provider credentials may be supplied to a CLI process through `SUNCODE_OPENAI_API_KEY`, `SUNCODE_ANTHROPIC_API_KEY`, `SUNCODE_DEEPSEEK_API_KEY`, `SUNCODE_ZHIPU_API_KEY`, `SUNCODE_KIMI_API_KEY`, or `SUNCODE_GEMINI_API_KEY`; these values are an in-memory overlay, never persisted to SQLite, child processes, logs, traces, or JSON output. When absent, provider credentials continue to resolve from SQLite.
+
+Runtime CLI overrides include `SUNCODE_FULL_CONTROL`, `SUNCODE_TOOL_ALLOWLIST` (comma-separated tool names), `SUNCODE_TURN_TIMEOUT_MS`, `SUNCODE_BASH_TIMEOUT_MS`, and `SUNCODE_TOOL_CALL_LIMIT`. Runtime values resolve environment over session, project, and global SQLite settings. The effective tool ceiling is intersected with specialist and host capability ceilings, the bash timeout is capped rather than expanded by a turn request, and permanent hard-deny command rules remain unconditional. The effective runtime configuration is snapshotted when a turn is admitted.
 
 ## Packaging
 

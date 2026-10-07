@@ -23,6 +23,8 @@ Global options currently include `--output text|jsonl`, `--color auto|always|nev
 
 `run` opens the selected project and creates a primary session. `session resume` reopens an existing primary session and submits one new turn with its durable context. Both establish an atomic SDK watch, stream typed events, and print final assistant text to stdout. Text-mode progress stays on stderr; JSONL finishes with `run.result` or `session.resume.result`. The first interrupt requests SDK turn cancellation, while a second exits with status 130 after attempting explicit shutdown.
 
+The CLI opts into the `suncode-config` process environment source. In addition to the bootstrap variables, it accepts runtime policy and limit overrides such as `SUNCODE_FULL_CONTROL`, `SUNCODE_TOOL_ALLOWLIST`, `SUNCODE_TURN_TIMEOUT_MS`, `SUNCODE_BASH_TIMEOUT_MS`, and `SUNCODE_TOOL_CALL_LIMIT`. Provider-specific `SUNCODE_*_API_KEY` values are process-local credential overlays. The Avalonia/native blocking host uses the disabled environment source.
+
 `session list` returns active and archived primary sessions for the selected project. `session archive` performs the SDK-owned lifecycle transition. Resume fails with status 4 if the session already has a pending approval or structured question; it does not resolve interactive state.
 
 The CLI opens the SDK with Browser Use and Computer Use disabled at the host capability boundary. Provider credentials are entered with no terminal echo and stored through the SDK; provider API-key environment variables are unsupported.

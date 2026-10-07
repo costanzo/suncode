@@ -16,6 +16,7 @@ use std::{
     time::{Duration, Instant},
 };
 use suncode_common::BusinessError;
+use suncode_config::{Config, RuntimeConfig};
 use suncode_data::{ApprovalInput, Store};
 use suncode_llm::{CompletionRequest, ModelProviderRegistry, ModelRoute};
 use tokio::sync::{mpsc, Mutex as AsyncMutex};
@@ -154,6 +155,14 @@ struct Continuation {
     todos: Vec<TodoEntry>,
     #[serde(default)]
     loaded_instruction_paths: Vec<String>,
+    #[serde(default = "default_turn_timeout_ms")]
+    turn_timeout_ms: u64,
+    #[serde(default)]
+    bash_timeout_ms: Option<u64>,
+    #[serde(default)]
+    full_control_override: Option<bool>,
+    #[serde(default)]
+    host_tool_allowlist: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -183,8 +192,11 @@ pub struct Agent {
     preview: preview::PreviewManager,
     computer: ComputerManager,
     host_capabilities: AgentHostCapabilities,
+    config: Config,
     shutting_down: Arc<std::sync::atomic::AtomicBool>,
 }
+
+fn default_turn_timeout_ms() -> u64 { RuntimeConfig::DEFAULT_TURN_TIMEOUT_MS }
 
 include!("submission.rs");
 include!("continuations.rs");
