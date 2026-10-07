@@ -1,0 +1,12 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#0D0F12"/>
+  <path d="M0 84H1200M0 546H1200M96 0V630M1104 0V630" stroke="#292F36"/>
+  <rect x="96" y="84" width="1008" height="462" fill="#121519" stroke="#46505B"/>
+  <rect x="144" y="132" width="46" height="46" rx="12" fill="#1B2027" stroke="#292F36"/>
+  <path d="M157 146L148 155L157 164M177 146L186 155L177 164M172 143L162 167" stroke="#7DD2BE" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="214" y="164" fill="#EDF0F3" font-family="Arial, sans-serif" font-size="28" font-weight="700">SunCode</text>
+  <text x="144" y="304" fill="#EDF0F3" font-family="Arial, sans-serif" font-size="68" font-weight="700">A coding agent</text>
+  <text x="144" y="382" fill="#7DD2BE" font-family="Arial, sans-serif" font-size="68" font-weight="700">you can review.</text>
+  <text x="146" y="454" fill="#A7AFB9" font-family="Arial, sans-serif" font-size="22">Local-first software work with visible, scoped, reversible machine access.</text>
+  <circle cx="1020" cy="162" r="7" fill="#7DD2BE"/><text x="1040" y="170" fill="#7DD2BE" font-family="monospace" font-size="13">OPEN SOURCE</text>
+</svg>
