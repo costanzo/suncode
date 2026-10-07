@@ -23,6 +23,10 @@ impl DerefMut for AgentSdk {
 }
 
 impl AgentSdk {
+    pub fn set_browser_host_callback(&self, callback: Option<super::browser::BrowserHostCallback>) {
+        self.inner.set_browser_host_callback(callback);
+    }
+
     pub fn preview_state(&self, project_id: &str) -> SdkResult<suncode_agent::PreviewState> {
         self.inner.preview_state(project_id)
     }

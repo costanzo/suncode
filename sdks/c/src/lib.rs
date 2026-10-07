@@ -11,6 +11,7 @@ use std::{
     },
     thread::JoinHandle,
 };
+use std::sync::Arc;
 use suncode_sdk::logging_module::{self as logging};
 use suncode_sdk::{
     AgentAttentionEvent, AttentionEventStream, AttentionEventStreamControl,
@@ -20,6 +21,7 @@ use suncode_sdk::{
 };
 
 pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
+pub type SunCodeBrowserHostCallback = unsafe extern "C" fn(*const c_char) -> u8;
 
 pub struct SunCodeAgentHandle {
     sdk: AgentSdk,
@@ -252,6 +254,33 @@ ffi_no_args!(suncode_agent_sdk_list_models, list_models);
 ffi_no_args!(suncode_agent_sdk_list_credentials, list_credentials);
 ffi_no_args!(suncode_agent_sdk_list_projects, list_projects);
 ffi_no_args!(suncode_agent_sdk_list_agents, list_agents);
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_set_browser_host_callback(
+    handle: *mut SunCodeAgentHandle,
+    callback: Option<SunCodeBrowserHostCallback>,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let registered = callback.is_some();
+        let callback = callback.map(|callback| {
+            Arc::new(move |project_id: &str| {
+                let project_id = CString::new(project_id)
+                    .map_err(|_| BusinessError::invalid("project_id contains NUL"))?;
+                let result = unsafe { callback(project_id.as_ptr()) };
+                if result == 0 {
+                    Err(BusinessError::new(
+                        "browser_host_unavailable",
+                        "Desktop browser host could not create a Browser Use page",
+                    ))
+                } else {
+                    Ok(())
+                }
+            }) as suncode_sdk::BrowserHostCallback
+        });
+        sdk.set_browser_host_callback(callback);
+        Ok(json!({"registered": registered}))
+    })
+}
 
 ffi_no_args!(
     suncode_agent_sdk_computer_runtime_info,

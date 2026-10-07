@@ -32,7 +32,7 @@ internal static class Program
                 return;
             }
             InstanceCoordinator.StartServer();
-            BuildAvaloniaApp().AfterSetup(_ => CefPreviewRuntime.Initialize()).StartWithClassicDesktopLifetime(args);
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         catch (Exception exception)
         {

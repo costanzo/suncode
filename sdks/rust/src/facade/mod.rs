@@ -28,6 +28,7 @@ mod agents;
 mod attention;
 pub mod blocking;
 mod browser;
+pub use browser::BrowserHostCallback;
 mod checkpoints;
 mod computer;
 mod language_servers;
@@ -331,6 +332,14 @@ where
             browser_use: options.host_capabilities.browser_use,
             computer_use: options.host_capabilities.computer_use,
         },
+    );
+    logging::debug(
+        "browser.host",
+        format!(
+            "sdk_open host_capability={} persisted_enabled={}",
+            options.host_capabilities.browser_use,
+            global_bool_setting(&store, "browser_use_enabled", false)?
+        ),
     );
     let attention_events = agent.attention_event_hub();
     agent.set_browser_proxy_configuration(

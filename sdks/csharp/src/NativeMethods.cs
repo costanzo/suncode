@@ -8,6 +8,8 @@ internal static class NativeMethods
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     internal delegate void EventCallback(IntPtr eventJson, IntPtr userData);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate byte BrowserHostCallback(IntPtr projectId);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern uint suncode_agent_sdk_abi_version();
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_version();
@@ -31,6 +33,7 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_disconnect_remote_server(IntPtr handle);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_clear_remote_server_configuration(IntPtr handle);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_agents(IntPtr handle);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_set_browser_host_callback(IntPtr handle, BrowserHostCallback? callback);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_list_attention_candidates(IntPtr handle, IntPtr since, nuint limit);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_computer_runtime_info(IntPtr handle);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_request_computer_capture_permission(IntPtr handle);

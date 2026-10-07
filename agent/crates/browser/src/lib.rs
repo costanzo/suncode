@@ -23,6 +23,7 @@ pub const DEFAULT_CDP_PORT: u16 = 9222;
 #[derive(Debug, Clone)]
 pub struct CdpLaunch {
     pub port: u16,
+    pub target_url: Option<String>,
     pub startup_timeout: Duration,
     pub request_timeout: Duration,
 }
@@ -85,23 +86,81 @@ impl WorkerProcess {
                 }
             }
         });
-        let pages = tokio::time::timeout(launch.startup_timeout, browser.pages())
-            .await
-            .map_err(|_| {
-                browser_error(
-                    "browser_cdp_startup_timeout",
-                    "CEF page discovery timed out",
-                )
-            })?
-            .map_err(|error| {
-                browser_error(
-                    "browser_cdp_protocol_error",
-                    format!("CEF pages could not be discovered: {error}"),
-                )
-            })?;
-        let page = pages.into_iter().next().ok_or_else(|| {
-            browser_error("browser_cdp_no_page", "CEF did not expose a page target")
-        })?;
+        let deadline = tokio::time::Instant::now() + launch.startup_timeout;
+        let mut selected_page = None;
+        let mut last_page_count = 0usize;
+        while tokio::time::Instant::now() < deadline {
+            let pages = match browser.pages().await {
+                Ok(pages) => pages,
+                Err(error) => {
+                    handler_task.abort();
+                    return Err(browser_error(
+                        "browser_cdp_protocol_error",
+                        format!("CEF pages could not be discovered: {error}"),
+                    ));
+                }
+            };
+            last_page_count = pages.len();
+            let mut candidates = Vec::with_capacity(pages.len());
+            for page in pages {
+                let url = page.url().await.ok().flatten().unwrap_or_default();
+                let id = page.target_id().as_ref().to_owned();
+                candidates.push((page, id, url));
+            }
+            suncode_common::logging::debug(
+                "browser.cdp",
+                format!(
+                    "page_discovery count={} targets={:?}",
+                    candidates.len(),
+                    candidates
+                        .iter()
+                        .map(|(_, id, url)| {
+                            (
+                                id,
+                                url.len(),
+                                launch
+                                    .target_url
+                                    .as_ref()
+                                    .is_some_and(|target_url| target_url == url),
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                ),
+            );
+            selected_page = candidates
+                .iter()
+                .position(|(_, _, url)| {
+                    launch
+                        .target_url
+                        .as_ref()
+                        .is_some_and(|target_url| target_url == url)
+                })
+                .map(|index| candidates.swap_remove(index).0);
+            if selected_page.is_none() && launch.target_url.is_none() && !candidates.is_empty() {
+                selected_page = Some(candidates.swap_remove(0).0);
+            }
+            if selected_page.is_some() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        let page = match selected_page {
+            Some(page) => page,
+            None => {
+                handler_task.abort();
+                suncode_common::logging::warn(
+                    "browser.cdp",
+                    format!(
+                        "page_discovery_failed reason=target_not_found expected={:?} last_count={last_page_count}",
+                        launch.target_url
+                    ),
+                );
+                return Err(browser_error(
+                    "browser_cdp_no_page",
+                    "CEF did not expose the requested browser page target",
+                ));
+            }
+        };
         let target = CdpTarget {
             id: page.target_id().as_ref().to_owned(),
             title: String::new(),

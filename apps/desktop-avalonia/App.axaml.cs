@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.ViewModels;
@@ -11,6 +12,7 @@ using SunCode.Desktop.Views.ProjectHub;
 using SunCode.Desktop.Views.ProjectWorkspace;
 using SunCode.Desktop.Views.Settings;
 using SunCode.Desktop.Views.DialogWindow;
+using SunCode.Sdk;
 
 namespace SunCode.Desktop;
 
@@ -49,6 +51,7 @@ public sealed partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             DiagnosticLog.Info("app.lifecycle", "framework_initialization begin");
+            AgentSdk.BrowserHostRequested += EnsureBrowserHost;
             _uiStateStore = new UiStateStore();
             _appSettings = new AppSettingsViewModel();
             _viewModel = new DesktopViewModel(_uiStateStore, _appSettings);
@@ -77,6 +80,7 @@ public sealed partial class App : Application
                 if (Program.InstanceCoordinator is { } instance) instance.ActivationReceived -= OnActivationReceived;
                 _attentionCoordinator?.Dispose();
                 _attentionCoordinator = null;
+                AgentSdk.BrowserHostRequested -= EnsureBrowserHost;
                 _settingsWindow?.Close();
                 _aboutWindow?.Close();
                 foreach (var window in _projectWindows.Values.ToArray()) window.Close();
@@ -87,6 +91,57 @@ public sealed partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private bool EnsureBrowserHost(string projectId)
+    {
+        WorkspaceWindow? window = null;
+        var openRequested = 0;
+        for (var attempt = 0; attempt < 120 && window is null; attempt++)
+        {
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                _projectWindows.TryGetValue(projectId, out window);
+            }
+            else
+            {
+                window = Dispatcher.UIThread.InvokeAsync(
+                    () => _projectWindows.TryGetValue(projectId, out var found) ? found : null)
+                    .GetAwaiter()
+                    .GetResult();
+            }
+            if (window is null && Volatile.Read(ref openRequested) == 0)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (_viewModel?.Projects.FirstOrDefault(item => item.ProjectId == projectId) is not { } project)
+                        return;
+                    if (Interlocked.CompareExchange(ref openRequested, 1, 0) != 0) return;
+                    _ = OpenProjectWindowAsync(project).ContinueWith(task =>
+                    {
+                        if (task.IsFaulted && task.Exception is { } exception)
+                            DiagnosticLog.Error("browser.host", exception.GetBaseException(), $"project_open_failed project={projectId}");
+                    }, TaskScheduler.Default);
+                });
+            }
+            if (window is null) Thread.Sleep(125);
+        }
+        if (window is null)
+        {
+            DiagnosticLog.Warn("browser.host", $"project_window_missing=true project={projectId}");
+            return false;
+        }
+        try
+        {
+            var initialized = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Dispatcher.UIThread.Post(() => window.Workspace.EnsureBrowserUsePage(initialized));
+            return initialized.Task.Wait(TimeSpan.FromSeconds(15)) && initialized.Task.Result;
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("browser.host", exception, $"project={projectId}");
+            return false;
+        }
     }
 
     private void ApplyTheme(string mode)

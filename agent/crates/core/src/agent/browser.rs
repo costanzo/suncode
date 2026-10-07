@@ -3,7 +3,10 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::{
     fs,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
 use suncode_browser::{
     CdpLaunch as WorkerLaunch, WorkerProcess, DEFAULT_CDP_PORT, PROTOCOL_VERSION,
@@ -66,6 +69,8 @@ pub(super) struct BrowserManager {
     inner: Arc<Inner>,
 }
 
+pub type BrowserHostCallback = Arc<dyn Fn(&str) -> Result<(), BusinessError> + Send + Sync>;
+
 struct Inner {
     data_dir: PathBuf,
     cdp_port: u16,
@@ -77,6 +82,7 @@ struct Inner {
     verification_worker: AsyncMutex<Option<Arc<WorkerProcess>>>,
     closed: AtomicBool,
     host_available: bool,
+    host_callback: std::sync::RwLock<Option<BrowserHostCallback>>,
 }
 
 struct BrowserSlot {
@@ -108,6 +114,13 @@ impl BrowserManager {
                     .and_then(|setting| setting.value.as_bool())
             })
             .unwrap_or(false);
+        logging::debug(
+            "browser.lifecycle",
+            format!(
+                "manager_created host_available={} enabled={} cdp_port={}",
+                host_available, enabled, DEFAULT_CDP_PORT
+            ),
+        );
         Self::new_with_cdp_port(data_dir, DEFAULT_CDP_PORT, enabled, host_available)
     }
 
@@ -129,6 +142,7 @@ impl BrowserManager {
                 verification_worker: AsyncMutex::new(None),
                 closed: AtomicBool::new(false),
                 host_available,
+                host_callback: std::sync::RwLock::new(None),
             }),
         }
     }
@@ -200,35 +214,38 @@ impl BrowserManager {
 
     pub(super) async fn catalog(&self) -> Vec<suncode_llm::ToolDefinition> {
         if !self.inner.host_available {
+            logging::warn(
+                "browser.catalog",
+                "tools_not_advertised reason=host_unavailable",
+            );
             return Vec::new();
         }
         let enabled = self.inner.enabled.load(Ordering::SeqCst);
         if !enabled {
+            logging::info("browser.catalog", "tools_not_advertised reason=disabled");
             return Vec::new();
         }
-        let verification_failed = self
-            .inner
-            .verification_error
-            .read()
-            .map(|error| error.is_some())
-            .unwrap_or(true);
-        if !self.inner.verified.load(Ordering::SeqCst)
-            && !verification_failed
-            && self.verify().await.is_err()
-        {
-            return Vec::new();
-        }
-        if !self.inner.verified.load(Ordering::SeqCst) {
-            return Vec::new();
-        }
-        suncode_tool::definitions::browser()
+        let definitions = suncode_tool::definitions::browser()
             .into_iter()
             .map(|definition| suncode_llm::ToolDefinition {
                 name: definition.name.into(),
                 description: definition.description.into(),
                 parameters: definition.parameters,
             })
-            .collect()
+            .collect::<Vec<_>>();
+        logging::debug(
+            "browser.catalog",
+            format!("tools_advertised count={}", definitions.len()),
+        );
+        definitions
+    }
+
+    pub(super) fn set_host_callback(&self, callback: Option<BrowserHostCallback>) {
+        let registered = callback.is_some();
+        if let Ok(mut current) = self.inner.host_callback.write() {
+            *current = callback;
+        }
+        logging::debug("browser.host", format!("callback_registered={registered}"));
     }
 
     pub(super) async fn call(
@@ -238,6 +255,10 @@ impl BrowserManager {
         arguments: Value,
         cancellation: CancellationToken,
     ) -> Result<Value, BusinessError> {
+        logging::debug(
+            "browser.call",
+            format!("begin project={} tool={}", project_id, name),
+        );
         self.require_enabled()?;
         if cancellation.is_cancelled() {
             return Err(BusinessError::new(
@@ -276,6 +297,12 @@ impl BrowserManager {
             result = &mut request => match result {
                 Ok(result) => result,
                 Err(error) => {
+                    logging::write_business_error(
+                        "browser.call",
+                        "request",
+                        &error,
+                        format!("project={} tool={}", project_id, name),
+                    );
                     worker.force_close().await;
                     self.fail_slot(project_id, &error).await;
                     return Err(error);
@@ -288,6 +315,10 @@ impl BrowserManager {
                 slot.active_page_count = pages.len();
             }
         }
+        logging::debug(
+            "browser.call",
+            format!("complete project={} tool={}", project_id, name),
+        );
         if name == "browser_screenshot" {
             result = self.retain_screenshot(result)?;
         }
@@ -328,6 +359,15 @@ impl BrowserManager {
     }
 
     pub(super) async fn verify(&self) -> Result<(), BusinessError> {
+        logging::debug(
+            "browser.verify",
+            format!(
+                "begin host_available={} enabled={} cdp_port={}",
+                self.inner.host_available,
+                self.inner.enabled.load(Ordering::SeqCst),
+                self.inner.cdp_port
+            ),
+        );
         self.require_enabled()?;
         if !self.inner.enabled.load(Ordering::SeqCst) {
             return Err(BusinessError::new(
@@ -356,12 +396,14 @@ impl BrowserManager {
         }
         .await;
         if let Err(error) = verification {
+            logging::write_business_error("browser.verify", "runtime", &error, "runtime_check");
             self.inner.verified.store(false, Ordering::SeqCst);
             if let Ok(mut current) = self.inner.verification_error.write() {
                 *current = Some(error.message.clone());
             }
             return Err(error);
         }
+        logging::info("browser.verify", "runtime_verified=true");
         self.inner.verified.store(true, Ordering::SeqCst);
         if let Ok(mut error) = self.inner.verification_error.write() {
             *error = None;
@@ -600,14 +642,63 @@ impl BrowserManager {
             })
     }
 
-    async fn spawn_worker(&self, _scope: &str) -> Result<Arc<WorkerProcess>, BusinessError> {
-        WorkerProcess::spawn(WorkerLaunch {
-            port: self.inner.cdp_port,
-            startup_timeout: Duration::from_secs(15),
-            request_timeout: Duration::from_secs(60),
-        })
-        .await
-        .map(Arc::new)
+    async fn spawn_worker(&self, scope: &str) -> Result<Arc<WorkerProcess>, BusinessError> {
+        logging::debug(
+            "browser.cdp",
+            format!("connect_begin port={}", self.inner.cdp_port),
+        );
+        let target_url = (scope != "verify").then(|| browser_target_url(scope));
+        let launch = |startup_timeout| {
+            WorkerProcess::spawn(WorkerLaunch {
+                port: self.inner.cdp_port,
+                target_url: target_url.clone(),
+                startup_timeout,
+                request_timeout: Duration::from_secs(60),
+            })
+        };
+        match launch(Duration::from_secs(2)).await {
+            Ok(worker) => Ok(Arc::new(worker)),
+            Err(first_error) => {
+                logging::write_business_error(
+                    "browser.cdp",
+                    "connect",
+                    &first_error,
+                    format!("phase=initial project={scope}"),
+                );
+                let callback = self
+                    .inner
+                    .host_callback
+                    .read()
+                    .ok()
+                    .and_then(|value| value.clone());
+                let Some(callback) = callback else {
+                    return Err(first_error);
+                };
+                logging::info("browser.host", format!("start_requested project={scope}"));
+                let scope = scope.to_owned();
+                let callback_scope = scope.clone();
+                tokio::task::spawn_blocking(move || callback(&callback_scope))
+                    .await
+                    .map_err(|error| {
+                        BusinessError::unavailable(format!("browser host callback failed: {error}"))
+                    })??;
+                match launch(Duration::from_secs(15)).await {
+                    Ok(worker) => {
+                        logging::info("browser.cdp", "connected_after_host_start=true");
+                        Ok(Arc::new(worker))
+                    }
+                    Err(error) => {
+                        logging::write_business_error(
+                            "browser.cdp",
+                            "connect_after_host_start",
+                            &error,
+                            format!("project={scope}"),
+                        );
+                        Err(error)
+                    }
+                }
+            }
+        }
     }
 
     async fn fail_slot(&self, project_id: &str, error: &BusinessError) {
@@ -792,6 +883,10 @@ pub(super) fn validate_browser_arguments(
 }
 
 impl Agent {
+    pub fn set_browser_host_callback(&self, callback: Option<BrowserHostCallback>) {
+        self.browser.set_host_callback(callback);
+    }
+
     pub fn preview_state(&self, project_id: &str) -> crate::agent::PreviewState {
         self.preview.state(project_id)
     }
@@ -860,6 +955,13 @@ fn project_directory_name(project_id: &str) -> String {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
+}
+
+fn browser_target_url(project_id: &str) -> String {
+    format!(
+        "data:text/html,%3Ctitle%3Esuncode-browser-use-{}%3C%2Ftitle%3E",
+        project_directory_name(project_id)
+    )
 }
 
 fn prepare_managed_directory(path: &Path, root: &Path) -> Result<(), BusinessError> {
@@ -1013,6 +1115,27 @@ mod tests {
             manager.start_project("project-1").await.unwrap_err().code,
             "browser_host_unavailable"
         );
+    }
+
+    #[tokio::test]
+    async fn enabled_host_advertises_browser_tools_before_cef_starts() {
+        let store = Store::open_memory().unwrap();
+        store
+            .set_setting(
+                "global",
+                "global",
+                "browser_use_enabled",
+                &Value::Bool(true),
+            )
+            .unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let manager = BrowserManager::new(store, directory.path().to_path_buf(), true);
+
+        let definitions = manager.catalog().await;
+        assert_eq!(definitions.len(), 9);
+        assert!(definitions
+            .iter()
+            .any(|definition| definition.name == "browser_open"));
     }
 
     #[test]

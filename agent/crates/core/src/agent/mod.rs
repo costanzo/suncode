@@ -37,7 +37,8 @@ mod browser;
 mod preview;
 use browser::BrowserManager;
 pub use browser::{
-    BrowserInstallationState, BrowserRuntimeInfo, BrowserRuntimeState, BrowserVisibilityCapability,
+    BrowserHostCallback, BrowserInstallationState, BrowserRuntimeInfo, BrowserRuntimeState,
+    BrowserVisibilityCapability,
 };
 pub use preview::{PreviewState, PreviewStatus};
 mod computer;

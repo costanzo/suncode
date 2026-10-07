@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -13,6 +14,11 @@ namespace SunCode.Desktop.Views.ProjectWorkspace.Preview;
 public sealed partial class BrowserPreviewPane : UserControl
 {
     private AvaloniaCefBrowser? _browser;
+    private bool _browserUseMode;
+    private volatile bool _browserInitialized;
+    private TaskCompletionSource<bool>? _browserUseInitialization;
+    private string? _browserUseProjectId;
+    private bool _browserUseLayoutHooked;
     private ulong _reloadGeneration;
     private readonly DispatcherTimer _stateTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
 
@@ -23,12 +29,18 @@ public sealed partial class BrowserPreviewPane : UserControl
     public void CloseBrowser()
     {
         _stateTimer.Stop();
-        if (DataContext is DesktopViewModel viewModel) _ = viewModel.StopPreviewAsync();
+        if (!_browserUseMode && DataContext is DesktopViewModel viewModel) _ = viewModel.StopPreviewAsync();
         BrowserHost.Child = null;
         BrowserHost.IsVisible = false;
         EmptyState.IsVisible = true;
         _browser?.Dispose();
         _browser = null;
+        _browserUseMode = false;
+        _browserInitialized = false;
+        _browserUseProjectId = null;
+        _browserUseInitialization?.TrySetResult(false);
+        _browserUseInitialization = null;
+        UnhookBrowserUseLayout();
         StatusText.Text = "Stopped";
     }
 
@@ -53,6 +65,7 @@ public sealed partial class BrowserPreviewPane : UserControl
             StatusText.Text = "Enter a localhost HTTP URL";
             return;
         }
+        CefPreviewRuntime.Initialize();
         if (!CefPreviewRuntime.Available)
         {
             StatusText.Text = CefPreviewRuntime.Error ?? "Chromium unavailable";
@@ -61,31 +74,14 @@ public sealed partial class BrowserPreviewPane : UserControl
 
         try
         {
-            if (_browser is null)
-            {
-                _browser = new AvaloniaCefBrowser(() => CefPreviewRuntime.CreateProjectContext(project.ProjectId))
-                {
-                    RequestHandler = new PreviewRequestHandler(),
-                    LifeSpanHandler = new PreviewLifeSpanHandler()
-                };
-                // Windowless CEF defaults to 30 fps, which reads as dropped frames while
-                // scrolling. Must be set before the browser is created on first layout.
-                _browser.Settings.WindowlessFrameRate = 60;
-                _browser.LoadEnd += (_, args) =>
-                {
-                    if (args.Frame.IsMain) Dispatcher.UIThread.Post(() => StatusText.Text = "Live");
-                };
-                BrowserHost.Child = _browser;
-                BrowserHost.IsVisible = true;
-                EmptyState.IsVisible = false;
-            }
+            EnsureBrowser(project.ProjectId, false);
             if (DataContext is DesktopViewModel viewModel && !await viewModel.StartConfiguredPreviewAsync(AddressInput.Text!))
             {
                 StatusText.Text = "Server failed";
                 return;
             }
             StatusText.Text = "Loading";
-            _browser.Address = AddressInput.Text;
+            (_browser ?? throw new InvalidOperationException("Preview browser was not created.")).Address = AddressInput.Text;
             _stateTimer.Start();
         }
         catch (Exception exception)
@@ -95,6 +91,133 @@ public sealed partial class BrowserPreviewPane : UserControl
             StatusText.Text = "Preview unavailable";
         }
     }
+
+    internal void EnsureBrowserUsePage(TaskCompletionSource<bool> initialized)
+    {
+        if (DataContext is not DesktopViewModel { SelectedProject: { } project })
+        {
+            initialized.TrySetResult(false);
+            return;
+        }
+        try
+        {
+            CefPreviewRuntime.Initialize();
+            if (!CefPreviewRuntime.Available)
+            {
+                initialized.TrySetResult(false);
+                return;
+            }
+            DiagnosticLog.Info("browser.host", $"ensure_page project={project.ProjectId} bounds={Bounds.Width:0.##}x{Bounds.Height:0.##} attached={VisualRoot is not null}");
+            _browserUseInitialization?.TrySetResult(false);
+            _browserUseInitialization = initialized;
+            _browserUseProjectId = project.ProjectId;
+            TryCreateBrowserUsePage();
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("browser.host", exception, "page_create_failed=true");
+            CloseBrowser();
+            initialized.TrySetResult(false);
+        }
+    }
+
+    private void EnsureBrowser(string projectId, bool browserUse)
+    {
+        if (_browser is not null && _browserUseMode == browserUse) return;
+        if (_browser is not null)
+        {
+            BrowserHost.Child = null;
+            _browser.Dispose();
+            _browser = null;
+        }
+        _browserUseMode = browserUse;
+        _browserInitialized = false;
+        DiagnosticLog.Info("browser.host", $"create_begin project={projectId} mode={(browserUse ? "browser_use" : "preview")} bounds={Bounds.Width:0.##}x{Bounds.Height:0.##}");
+        _browser = new AvaloniaCefBrowser(() => CefPreviewRuntime.CreateProjectContext(projectId, browserUse));
+        _browser.BrowserInitialized += () =>
+        {
+            _browserInitialized = true;
+            DiagnosticLog.Info("browser.host", $"browser_initialized project={projectId} bounds={Bounds.Width:0.##}x{Bounds.Height:0.##}");
+            if (browserUse) _ = CompleteBrowserUseInitializationAsync();
+        };
+        _browser.LoadStart += (_, args) =>
+        {
+            if (args.Frame.IsMain) DiagnosticLog.Debug("browser.host", $"load_start project={projectId}");
+        };
+        _browser.LoadError += (_, args) =>
+        {
+            if (args.Frame.IsMain) DiagnosticLog.Warn("browser.host", $"load_error project={projectId} code={args.ErrorCode} url_length={args.FailedUrl.Length}");
+        };
+        _browser.UnhandledException += (_, args) => DiagnosticLog.Error("browser.host", args.Exception, $"unhandled=true project={projectId}");
+        if (!browserUse)
+        {
+            _browser.RequestHandler = new PreviewRequestHandler();
+            _browser.LifeSpanHandler = new PreviewLifeSpanHandler();
+        }
+        _browser.Settings.WindowlessFrameRate = 60;
+        _browser.LoadEnd += (_, args) =>
+        {
+            if (args.Frame.IsMain) Dispatcher.UIThread.Post(() => StatusText.Text = browserUse ? "Browser ready" : "Live");
+        };
+        BrowserHost.Child = _browser;
+        BrowserHost.IsVisible = true;
+        EmptyState.IsVisible = false;
+        if (browserUse) _browser.Address = CefPreviewRuntime.BrowserTargetUrl(projectId);
+        DiagnosticLog.Debug("browser.host", $"create_requested project={projectId} host_bounds={BrowserHost.Bounds.Width:0.##}x{BrowserHost.Bounds.Height:0.##}");
+    }
+
+    private void TryCreateBrowserUsePage()
+    {
+        if (_browserUseInitialization is null || _browserUseProjectId is null) return;
+        if (Bounds.Width <= 1 || Bounds.Height <= 1 || BrowserHost.Bounds.Width <= 1 || BrowserHost.Bounds.Height <= 1)
+        {
+            DiagnosticLog.Debug("browser.host", $"waiting_for_layout project={_browserUseProjectId} bounds={Bounds.Width:0.##}x{Bounds.Height:0.##} host_bounds={BrowserHost.Bounds.Width:0.##}x{BrowserHost.Bounds.Height:0.##}");
+            HookBrowserUseLayout();
+            return;
+        }
+        UnhookBrowserUseLayout();
+        try
+        {
+            EnsureBrowser(_browserUseProjectId, true);
+            StatusText.Text = "Browser ready";
+            if (_browserInitialized) _ = CompleteBrowserUseInitializationAsync();
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("browser.host", exception, "page_create_failed=true");
+            _browserUseInitialization?.TrySetResult(false);
+            _browserUseInitialization = null;
+            CloseBrowser();
+        }
+    }
+
+    private async Task CompleteBrowserUseInitializationAsync()
+    {
+        var initialized = _browserUseInitialization;
+        if (initialized is null) return;
+        await Task.Delay(500);
+        initialized.TrySetResult(_browserInitialized && _browser is not null);
+        if (ReferenceEquals(_browserUseInitialization, initialized)) _browserUseInitialization = null;
+    }
+
+    private void HookBrowserUseLayout()
+    {
+        if (_browserUseLayoutHooked) return;
+        _browserUseLayoutHooked = true;
+        LayoutUpdated += BrowserUseLayoutUpdated;
+        AttachedToVisualTree += BrowserUseAttached;
+    }
+
+    private void UnhookBrowserUseLayout()
+    {
+        if (!_browserUseLayoutHooked) return;
+        _browserUseLayoutHooked = false;
+        LayoutUpdated -= BrowserUseLayoutUpdated;
+        AttachedToVisualTree -= BrowserUseAttached;
+    }
+
+    private void BrowserUseLayoutUpdated(object? sender, EventArgs e) => TryCreateBrowserUsePage();
+    private void BrowserUseAttached(object? sender, VisualTreeAttachmentEventArgs e) => TryCreateBrowserUsePage();
 
     private async void PreviewStateTick(object? sender, EventArgs e)
     {

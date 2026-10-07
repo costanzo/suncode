@@ -197,6 +197,12 @@ public sealed partial class ProjectWorkspace : UserControl
         BrowserPreview.CloseBrowser();
     }
 
+    internal void EnsureBrowserUsePage(TaskCompletionSource<bool> initialized)
+    {
+        ViewModel.PreviewVisible = true;
+        BrowserPreview.EnsureBrowserUsePage(initialized);
+    }
+
     private void ToggleChildSessions(object? sender, RoutedEventArgs e)
     {
         if (ViewModel.ReviewPaneWidth < DesktopViewModel.MinimumReviewPaneWidth) ViewModel.ReviewPaneWidth = DesktopViewModel.DefaultReviewPaneWidth;

@@ -1,5 +1,13 @@
 use super::*;
 
+pub type BrowserHostCallback = std::sync::Arc<dyn Fn(&str) -> Result<(), BusinessError> + Send + Sync>;
+
+impl AsyncAgentSdk {
+    pub fn set_browser_host_callback(&self, callback: Option<BrowserHostCallback>) {
+        self.state.agent.set_browser_host_callback(callback);
+    }
+}
+
 impl AsyncAgentSdk {
     pub(super) fn ensure_browser_host_available(&self) -> SdkResult<()> {
         if self.state.host_capabilities.browser_use {
@@ -45,7 +53,11 @@ impl AsyncAgentSdk {
         if let Some(project_id) = project_id {
             self.project_for_user(project_id)?;
         }
-        self.state.agent.verify_browser_runtime().await?;
+        if let Some(project_id) = project_id {
+            self.state.agent.start_browser_project(project_id).await?;
+        } else {
+            self.state.agent.verify_browser_runtime().await?;
+        }
         self.browser_runtime_info(project_id).await
     }
 

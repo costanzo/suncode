@@ -7,6 +7,8 @@ namespace SunCode.Sdk;
 
 public sealed partial class AgentSdk : IDisposable
 {
+    public static event Func<string, bool>? BrowserHostRequested;
+    private static readonly NativeMethods.BrowserHostCallback BrowserHostCallbackBridge = OnBrowserHostRequested;
     private sealed record SettingEnvelope(JsonElement Value);
 
     private const uint AbiVersion = 16;
@@ -45,7 +47,8 @@ public sealed partial class AgentSdk : IDisposable
                     {
                         SdkDiagnosticLog.Error("sdk.open", "operation=open native_handle=null");
                         throw new SdkException("agent_unavailable", TakeString(error, true) ?? "SunCode agent could not be started");
-                    }
+                        }
+                    NativeMethods.suncode_agent_sdk_set_browser_host_callback(_sharedHandle, BrowserHostCallbackBridge);
                 }
 
                 _sharedUserId = userId;
@@ -365,6 +368,22 @@ public sealed partial class AgentSdk : IDisposable
         ThrowIfDisposed();
         SdkDiagnosticLog.Debug("sdk.subscribe", $"begin session={sessionId} after={after}");
         return new Subscription(_handle, sessionId, after, onEvent);
+    }
+
+    private static byte OnBrowserHostRequested(IntPtr projectId)
+    {
+        try
+        {
+            var value = Marshal.PtrToStringUTF8(projectId) ?? string.Empty;
+            return BrowserHostRequested?.GetInvocationList()
+                .OfType<Func<string, bool>>()
+                .Any(callback => callback(value)) == true ? (byte)1 : (byte)0;
+        }
+        catch (Exception exception)
+        {
+            SdkDiagnosticLog.Error("browser.host", exception, "callback=true");
+            return 0;
+        }
     }
 
     private Task<RawSessionWatch> RawWatchSessionAsync(string sessionId, Action<string> onEvent) => Task.Run(() =>
