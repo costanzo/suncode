@@ -3,15 +3,10 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
-using Avalonia.Threading;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.ViewModels;
-using SunCode.Desktop.Views.About;
 using SunCode.Desktop.Views.ProjectHub;
-using SunCode.Desktop.Views.ProjectWorkspace;
-using SunCode.Desktop.Views.Settings;
-using SunCode.Desktop.Views.DialogWindow;
 using SunCode.Sdk;
 
 namespace SunCode.Desktop;
@@ -23,17 +18,13 @@ public sealed partial class App : Application
     private AppSettingsViewModel? _appSettings;
     private UiStateStore? _uiStateStore;
     private ProjectHubWindow? _hubWindow;
-    private SettingsWindow? _settingsWindow;
-    private readonly Dictionary<Control, bool> _suspendedSettingsTooltips = [];
-    private AboutWindow? _aboutWindow;
+    private ProjectWindowManager? _windows;
+    private DialogService? _dialogs;
+    private BrowserHostBridge? _browserHost;
     private SessionAttentionCoordinator? _attentionCoordinator;
-    private MergedWorkspaceWindow? _mergedWindow;
-    private readonly Dictionary<string, WorkspaceWindow> _projectWindows = [];
-    private readonly HashSet<string> _openingProjects = [];
-    private readonly Dictionary<string, TaskCompletionSource<bool>> _openingProjectSignals = [];
     private readonly SemaphoreSlim _activationGate = new(1, 1);
     private LocalizationService? _localization;
-    internal bool CanMergeWindows => _projectWindows.Count >= 2;
+    internal bool CanMergeWindows => _windows?.CanMergeWindows == true;
 
     public override void Initialize()
     {
@@ -51,16 +42,21 @@ public sealed partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             DiagnosticLog.Info("app.lifecycle", "framework_initialization begin");
-            AgentSdk.BrowserHostRequested += EnsureBrowserHost;
             _uiStateStore = new UiStateStore();
             _appSettings = new AppSettingsViewModel();
             _viewModel = new DesktopViewModel(_uiStateStore, _appSettings);
             _hubViewModel = new ProjectHubViewModel(_viewModel);
+            _hubWindow = new ProjectHubWindow { DataContext = _hubViewModel };
+            _windows = new ProjectWindowManager(_hubWindow, () => desktop.Windows, _uiStateStore, _appSettings);
+            _dialogs = new DialogService(() => _viewModel, SetOtherWindowsEnabled);
+            _browserHost = new BrowserHostBridge(new ProjectWindowBrowserHost(
+                _windows,
+                projectId => _viewModel?.Projects.FirstOrDefault(item => item.ProjectId == projectId)));
+            AgentSdk.BrowserHostRequested += _browserHost.EnsureBrowserHost;
             _localization = new LocalizationService(this);
             _appSettings.LanguageChanged += ApplyLanguage;
             MacOSDockIcon.Apply();
             _appSettings.ThemeChanged += ApplyTheme;
-            _hubWindow = new ProjectHubWindow { DataContext = _hubViewModel };
             if (Program.InstanceCoordinator is { } instance)
             {
                 instance.ActivationReceived += OnActivationReceived;
@@ -80,10 +76,9 @@ public sealed partial class App : Application
                 if (Program.InstanceCoordinator is { } instance) instance.ActivationReceived -= OnActivationReceived;
                 _attentionCoordinator?.Dispose();
                 _attentionCoordinator = null;
-                AgentSdk.BrowserHostRequested -= EnsureBrowserHost;
-                _settingsWindow?.Close();
-                _aboutWindow?.Close();
-                foreach (var window in _projectWindows.Values.ToArray()) window.Close();
+                if (_browserHost is not null) AgentSdk.BrowserHostRequested -= _browserHost.EnsureBrowserHost;
+                _dialogs?.CloseAll();
+                _windows?.CloseAll();
                 _hubViewModel.Dispose();
                 _uiStateStore?.Dispose();
                 DiagnosticLog.Info("app.lifecycle", "exit end");
@@ -93,69 +88,13 @@ public sealed partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private bool EnsureBrowserHost(string projectId)
-    {
-        WorkspaceWindow? window = null;
-        var openRequested = 0;
-        for (var attempt = 0; attempt < 120 && window is null; attempt++)
-        {
-            if (Dispatcher.UIThread.CheckAccess())
-            {
-                _projectWindows.TryGetValue(projectId, out window);
-            }
-            else
-            {
-                window = Dispatcher.UIThread.InvokeAsync(
-                    () => _projectWindows.TryGetValue(projectId, out var found) ? found : null)
-                    .GetAwaiter()
-                    .GetResult();
-            }
-            if (window is null && Volatile.Read(ref openRequested) == 0)
-            {
-                Dispatcher.UIThread.Post(() =>
-                {
-                    if (_viewModel?.Projects.FirstOrDefault(item => item.ProjectId == projectId) is not { } project)
-                        return;
-                    if (Interlocked.CompareExchange(ref openRequested, 1, 0) != 0) return;
-                    _ = OpenProjectWindowAsync(project).ContinueWith(task =>
-                    {
-                        if (task.IsFaulted && task.Exception is { } exception)
-                            DiagnosticLog.Error("browser.host", exception.GetBaseException(), $"project_open_failed project={projectId}");
-                    }, TaskScheduler.Default);
-                });
-            }
-            if (window is null) Thread.Sleep(125);
-        }
-        if (window is null)
-        {
-            DiagnosticLog.Warn("browser.host", $"project_window_missing=true project={projectId}");
-            return false;
-        }
-        try
-        {
-            var initialized = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            Dispatcher.UIThread.Post(() => window.Workspace.EnsureBrowserUsePage(initialized));
-            return initialized.Task.Wait(TimeSpan.FromSeconds(15)) && initialized.Task.Result;
-        }
-        catch (Exception exception)
-        {
-            DiagnosticLog.Error("browser.host", exception, $"project={projectId}");
-            return false;
-        }
-    }
-
     private void ApplyTheme(string mode)
     {
         var variant = mode == "light" ? ThemeVariant.Light : ThemeVariant.Dark;
         RequestedThemeVariant = variant;
         if (_hubWindow is not null) _hubWindow.RequestedThemeVariant = variant;
-        if (_settingsWindow is not null) _settingsWindow.RequestedThemeVariant = variant;
-        if (_aboutWindow is not null) _aboutWindow.RequestedThemeVariant = variant;
-        foreach (var window in _projectWindows.Values)
-        {
-            window.RequestedThemeVariant = variant;
-        }
-        if (_mergedWindow is not null) _mergedWindow.RequestedThemeVariant = variant;
+        _dialogs?.ApplyTheme(variant);
+        _windows?.ApplyTheme(variant);
     }
 
     private void ApplyLanguage(string locale)
@@ -178,164 +117,31 @@ public sealed partial class App : Application
         }
     }
 
-    internal async Task OpenProjectWindowAsync(ProjectItem project)
-    {
-        var disposition = ResolveProjectWindowDisposition(
-            _projectWindows.ContainsKey(project.ProjectId),
-            _openingProjects.Contains(project.ProjectId));
-        if (disposition == ProjectWindowDisposition.ActivateExisting &&
-            _projectWindows.TryGetValue(project.ProjectId, out var existing))
-        {
-            if (_mergedWindow?.ContainsProject(project.ProjectId) == true)
-            {
-                _mergedWindow.SelectProject(project.ProjectId);
-                _mergedWindow.Show();
-                _mergedWindow.Activate();
-                return;
-            }
-            existing.Show();
-            existing.Activate();
-            return;
-        }
-        if (disposition == ProjectWindowDisposition.AwaitOpening)
-        {
-            if (_openingProjectSignals.TryGetValue(project.ProjectId, out var signal)) await signal.Task;
-            return;
-        }
-        if (!_openingProjects.Add(project.ProjectId)) return;
-        var openingSignal = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _openingProjectSignals[project.ProjectId] = openingSignal;
+    internal Task OpenProjectWindowAsync(ProjectItem project) =>
+        _windows?.OpenProjectWindowAsync(project) ?? Task.CompletedTask;
 
-        var viewModel = new DesktopViewModel(_uiStateStore, _appSettings);
-        try
-        {
-            DiagnosticLog.Info("project.window", $"open begin project={project.ProjectId}");
-            await viewModel.InitializeAsync();
-            await viewModel.SelectProjectAsync(project);
-            if (!viewModel.IsProjectOpen)
-            {
-                viewModel.Dispose();
-                return;
-            }
-
-            var window = new WorkspaceWindow { DataContext = viewModel, OriginWindow = ResolveOriginWindow() };
-            _projectWindows[project.ProjectId] = window;
-            window.Closed += (_, _) => ProjectWindowClosed(project.ProjectId, viewModel);
-            _hubWindow?.Hide();
-            window.Show();
-            window.Activate();
-            DiagnosticLog.Info("project.window", $"open end project={project.ProjectId}");
-        }
-        catch (Exception exception)
-        {
-            DiagnosticLog.Error("project.window", exception, $"project={project.ProjectId}");
-            viewModel.Dispose();
-            throw;
-        }
-        finally
-        {
-            _openingProjects.Remove(project.ProjectId);
-            _openingProjectSignals.Remove(project.ProjectId);
-            openingSignal.TrySetResult(_projectWindows.ContainsKey(project.ProjectId));
-        }
-    }
-
+    // Merging is synchronous. The Task shape is kept only for existing view callers.
     internal Task MergeAllProjectWindowsAsync()
     {
-        if (_mergedWindow is { } existingMerged)
-        {
-            foreach (var (projectId, source) in _projectWindows.ToArray())
-            {
-                if (existingMerged.ContainsProject(projectId)) continue;
-                existingMerged.AddProject(projectId, source);
-                source.Hide();
-            }
-            existingMerged.Activate();
-            return Task.CompletedTask;
-        }
-        if (_projectWindows.Count < 2) return Task.CompletedTask;
-        var sources = _projectWindows.ToArray();
-        var first = sources[0].Value;
-        if (first.DataContext is not DesktopViewModel firstViewModel) return Task.CompletedTask;
-
-        var merged = new MergedWorkspaceWindow(firstViewModel);
-        merged.ProjectTornOff += TearOffProject;
-        merged.ProjectCloseRequested += CloseMergedProject;
-        merged.HostClosed += MergedHostClosed;
-        _mergedWindow = merged;
-        foreach (var (projectId, source) in sources)
-        {
-            merged.AddProject(projectId, source);
-            source.Hide();
-        }
-        _hubWindow?.Hide();
-        merged.Show();
-        merged.Activate();
+        _windows?.MergeAllProjectWindows();
         return Task.CompletedTask;
     }
 
-    private void CloseMergedProject(string projectId)
-    {
-        if (_mergedWindow is not { } merged) return;
-        var source = merged.RemoveProject(projectId);
-        if (source is null) return;
-        source.Close();
+    internal void ShowSettings(Window owner, Control? source = null) => _dialogs?.ShowSettings(owner, source);
 
-        if (merged.ProjectIds.Count == 0)
-        {
-            _mergedWindow = null;
-            merged.CloseWithoutNotification();
-        }
-        else if (merged.ProjectIds.Count == 1)
-        {
-            UnmergeRemainingProject(merged);
-        }
-    }
+    internal void ShowAbout(Window owner) => _dialogs?.ShowAbout(owner);
 
-    private void TearOffProject(string projectId, PixelPoint pointer)
-    {
-        if (_mergedWindow is not { } merged) return;
-        var source = merged.RemoveProject(projectId);
-        if (source is null) return;
-        source.Content = source.Workspace;
-        source.OriginWindow = merged;
-        source.Position = new PixelPoint(pointer.X - 240, pointer.Y - 18);
-        source.RestoreAsProjectWindow();
+    internal void ShowArchiveConfirmation(Window owner, SessionItem session, Action confirm) =>
+        _dialogs?.ShowArchiveConfirmation(owner, session, confirm);
 
-        if (merged.ProjectIds.Count == 0)
-        {
-            _mergedWindow = null;
-            merged.CloseWithoutNotification();
-            return;
-        }
-        if (merged.ProjectIds.Count == 1) UnmergeRemainingProject(merged);
-    }
-
-    private void UnmergeRemainingProject(MergedWorkspaceWindow merged)
-    {
-        var remaining = merged.ProjectIds.ToArray();
-        _mergedWindow = null;
-        foreach (var projectId in remaining)
-        {
-            var source = merged.RemoveProject(projectId);
-            if (source is null) continue;
-            source.Content = source.Workspace;
-            source.OriginWindow = merged;
-            source.RestoreAsProjectWindow();
-        }
-        merged.CloseWithoutNotification();
-    }
-
-    private void MergedHostClosed(MergedWorkspaceWindow merged)
-    {
-        if (!ReferenceEquals(_mergedWindow, merged)) return;
-        _mergedWindow = null;
-        foreach (var projectId in merged.ProjectIds.ToArray())
-        {
-            merged.RemoveProject(projectId);
-            if (_projectWindows.TryGetValue(projectId, out var source)) source.Close();
-        }
-    }
+    internal void ShowSessionConfirmation(
+        Window owner,
+        string title,
+        string description,
+        string target,
+        Action confirm,
+        string confirmLabel) =>
+        _dialogs?.ShowSessionConfirmation(owner, title, description, target, confirm, confirmLabel);
 
     private bool IsApplicationForeground()
     {
@@ -364,7 +170,7 @@ public sealed partial class App : Application
                 ActivateFallbackWindow();
                 return;
             }
-            if (_viewModel is null || request.ProjectId is null || request.SessionId is null)
+            if (_viewModel is null || _windows is null || request.ProjectId is null || request.SessionId is null)
             {
                 ActivateFallbackWindow();
                 return;
@@ -377,7 +183,7 @@ public sealed partial class App : Application
                 return;
             }
             await OpenProjectWindowAsync(project);
-            if (!_projectWindows.TryGetValue(project.ProjectId, out var window)
+            if (!_windows.TryGetWindow(project.ProjectId, out var window)
                 || window.DataContext is not DesktopViewModel viewModel)
             {
                 ActivateFallbackWindow();
@@ -388,19 +194,7 @@ public sealed partial class App : Application
                 request.ParentSessionId,
                 request.ChildSessionId);
             if (!navigated) DiagnosticLog.Warn("notification.activation", "route_rejected=true reason=ownership_or_missing");
-            if (_mergedWindow?.ContainsProject(project.ProjectId) == true)
-            {
-                _mergedWindow.SelectProject(project.ProjectId);
-                _mergedWindow.Show();
-                if (_mergedWindow.WindowState == WindowState.Minimized) _mergedWindow.WindowState = WindowState.Normal;
-                _mergedWindow.Activate();
-            }
-            else
-            {
-                window.Show();
-                if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
-                window.Activate();
-            }
+            _windows.RevealProject(project.ProjectId, window);
         }
         catch (Exception exception)
         {
@@ -411,101 +205,11 @@ public sealed partial class App : Application
 
     private void ActivateFallbackWindow()
     {
-        var window = (Window?)(_mergedWindow?.IsVisible == true ? _mergedWindow : null)
-            ?? (Window?)_projectWindows.Values.FirstOrDefault(value => value.IsVisible)
-            ?? _hubWindow;
+        var window = _windows?.FirstVisibleWindow() ?? _hubWindow;
         if (window is null) return;
         window.Show();
         if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
         window.Activate();
-    }
-
-    internal void ShowSettings(Window owner, Control? source = null)
-    {
-        var viewModel = owner.DataContext switch
-        {
-            DesktopViewModel windowViewModel => windowViewModel,
-            ProjectHubViewModel hub => hub.Services,
-            _ => _viewModel
-        };
-        if (viewModel is null) return;
-        if (_settingsWindow is not null)
-        {
-            _settingsWindow.Activate();
-            return;
-        }
-        SuspendSettingsTooltip(source);
-
-        _settingsWindow = new SettingsWindow { DataContext = viewModel };
-        SetOtherWindowsEnabled(owner, false);
-        _settingsWindow.Closed += (_, _) =>
-        {
-            SetOtherWindowsEnabled(owner, true);
-            RestoreSettingsTooltips();
-            _settingsWindow = null;
-        };
-        _ = _settingsWindow.ShowDialog(owner);
-    }
-
-    private void SuspendSettingsTooltip(Control? source)
-    {
-        if (source is null) return;
-        if (!_suspendedSettingsTooltips.ContainsKey(source))
-            _suspendedSettingsTooltips[source] = ToolTip.GetServiceEnabled(source);
-
-        // The pointer is still over the button when ShowDialog disables its owner.
-        // Stop the tooltip service before the modal transition so it cannot reopen
-        // against a disabled owner and keep invalidating the UI layout.
-        ToolTip.SetIsOpen(source, false);
-        ToolTip.SetServiceEnabled(source, false);
-    }
-
-    private void RestoreSettingsTooltips()
-    {
-        foreach (var (control, wasEnabled) in _suspendedSettingsTooltips)
-            ToolTip.SetServiceEnabled(control, wasEnabled);
-        _suspendedSettingsTooltips.Clear();
-    }
-
-    internal void ShowAbout(Window owner)
-    {
-        if (_aboutWindow is not null)
-        {
-            _aboutWindow.Activate();
-            return;
-        }
-
-        _aboutWindow = new AboutWindow();
-        SetOtherWindowsEnabled(owner, false);
-        _aboutWindow.Closed += (_, _) =>
-        {
-            SetOtherWindowsEnabled(owner, true);
-            _aboutWindow = null;
-        };
-        _ = _aboutWindow.ShowDialog(owner);
-    }
-
-    internal void ShowArchiveConfirmation(Window owner, SessionItem session, Action confirm) =>
-        ShowSessionConfirmation(
-            owner,
-            "Archive this session?",
-            "It will leave the active session list, but can be reopened later.",
-            session.DisplayTitle,
-            confirm,
-            "Archive session");
-
-    internal void ShowSessionConfirmation(
-        Window owner,
-        string title,
-        string description,
-        string target,
-        Action confirm,
-        string confirmLabel)
-    {
-        var dialog = new DialogWindow(title, description, target, confirm, confirmLabel: confirmLabel);
-        SetOtherWindowsEnabled(owner, false);
-        dialog.Closed += (_, _) => SetOtherWindowsEnabled(owner, true);
-        _ = dialog.ShowDialog(owner);
     }
 
     private void ConfigureNativeApplicationMenu()
@@ -523,7 +227,7 @@ public sealed partial class App : Application
         menu.Items.Add(about);
         var windowActions = new NativeMenu();
         var mergeWindows = new NativeMenuItem { Header = "Merge All Windows", IsEnabled = CanMergeWindows };
-        mergeWindows.Click += (_, _) => _ = MergeAllProjectWindowsAsync();
+        mergeWindows.Click += (_, _) => _windows?.MergeAllProjectWindows();
         windowActions.Items.Add(mergeWindows);
         var windowMenu = new NativeMenuItem { Header = "Window", Menu = windowActions };
         windowMenu.Menu!.NeedsUpdate += (_, _) => mergeWindows.IsEnabled = CanMergeWindows;
@@ -531,47 +235,9 @@ public sealed partial class App : Application
         NativeMenu.SetMenu(this, menu);
     }
 
-    internal static ProjectWindowDisposition ResolveProjectWindowDisposition(bool isOpen, bool isOpening) =>
-        isOpen
-            ? ProjectWindowDisposition.ActivateExisting
-            : isOpening ? ProjectWindowDisposition.AwaitOpening : ProjectWindowDisposition.OpenNew;
-
     private void SetOtherWindowsEnabled(Window owner, bool enabled)
     {
         if (_hubWindow is not null && _hubWindow != owner) _hubWindow.IsEnabled = enabled;
-        foreach (var window in _projectWindows.Values)
-        {
-            if (window != owner) window.IsEnabled = enabled;
-        }
+        _windows?.SetEnabledExcept(owner, enabled);
     }
-
-    private void ProjectWindowClosed(string projectId, DesktopViewModel viewModel)
-    {
-        viewModel.Dispose();
-        _projectWindows.Remove(projectId);
-        if (_projectWindows.Count == 0 && _hubWindow is not null)
-        {
-            _hubWindow.Show();
-            _hubWindow.Activate();
-        }
-    }
-
-    private Window? ResolveOriginWindow()
-    {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            var active = desktop.Windows.FirstOrDefault(window => window is WorkspaceWindow && window.IsActive && window.IsVisible);
-            if (active is not null) return active;
-            var visibleWorkspace = desktop.Windows.FirstOrDefault(window => window is WorkspaceWindow && window.IsVisible);
-            if (visibleWorkspace is not null) return visibleWorkspace;
-        }
-        return _hubWindow;
-    }
-}
-
-internal enum ProjectWindowDisposition
-{
-    OpenNew,
-    ActivateExisting,
-    AwaitOpening
 }
