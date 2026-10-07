@@ -1,7 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:SunCode.Desktop.Controls"
-             x:Class="SunCode.Desktop.Views.Settings.Controls.DefaultsSettingsControl">
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:infra="using:SunCode.Desktop.Infrastructure"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.DefaultsSettingsControl"
+             x:DataType="vm:DefaultsSettingsViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
@@ -15,11 +18,11 @@
             <TextBlock Classes="settings-row-title" Text="{DynamicResource LocModel}" />
             <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocRegisteredModelsOnly}" />
           </StackPanel>
-          <controls:SCFlatComboBox x:Name="DefaultModelSelector"
-                                   Grid.Column="1"
+          <controls:SCFlatComboBox Grid.Column="1"
+                                   ItemsSource="{Binding ModelOptions}"
+                                   SelectedItem="{Binding SelectedModel}"
                                    HorizontalAlignment="Stretch"
-                                   PlaceholderText="{DynamicResource LocChooseModel}"
-                                   SelectionChanged="OnDefaultModelChanged" />
+                                   PlaceholderText="{DynamicResource LocChooseModel}" />
         </Grid>
       </StackPanel>
       <Border Classes="settings-divider" />
@@ -30,23 +33,23 @@
             <TextBlock Classes="settings-row-title" Text="{DynamicResource LocToolCallLimit}" />
             <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocMaxToolCalls}" />
           </StackPanel>
-          <controls:SCNumericInput x:Name="ToolCallLimitInput"
-                                   Grid.Column="1"
+          <controls:SCNumericInput Grid.Column="1"
+                                   Value="{Binding ToolCallLimit}"
+                                   IsEnabled="{Binding CanEditToolCallLimit}"
                                    HorizontalAlignment="Stretch"
                                    Minimum="1"
                                    Maximum="256"
                                    Increment="1"
-                                   FormatString="0" 
-                                   ValueChanged="OnToolCallLimitChanged"/>
+                                   FormatString="0" />
         </Grid>
       </StackPanel>
       <StackPanel Classes="settings-actions">
-        <Button x:Name="SaveToolCallLimitButton"
-                Classes="compact primary sc-button"
+        <Button Classes="compact primary sc-button"
                 Content="{DynamicResource LocSaveProjectLimit}"
-                Click="OnSaveToolCallLimit" />
-        <TextBlock x:Name="ToolCallLimitScope" Classes="sc-text-status" VerticalAlignment="Center" />
-        <TextBlock x:Name="ToolCallLimitStatus" Classes="sc-text-status" VerticalAlignment="Center" />
+                Command="{Binding SaveToolCallLimitCommand}" />
+        <TextBlock Text="{Binding ToolCallLimitScopeText}" Classes="sc-text-status" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding StatusText}" infra:StatusToneProperties.Tone="{Binding StatusTone}"
+                   Classes="sc-text-status" VerticalAlignment="Center" />
       </StackPanel>
     </StackPanel>
   </ScrollViewer>

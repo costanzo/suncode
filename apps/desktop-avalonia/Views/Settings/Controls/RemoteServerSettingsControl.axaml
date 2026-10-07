@@ -1,6 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
-             x:Class="SunCode.Desktop.Views.Settings.Controls.RemoteServerSettingsControl">
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:local="using:SunCode.Desktop.Views.Settings.Controls"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.RemoteServerSettingsControl"
+             x:DataType="vm:RemoteServerEditorViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
@@ -11,43 +14,43 @@
         <TextBlock Classes="section-label" Text="{DynamicResource LocConnection}" />
         <Grid Classes="settings-row" ColumnDefinitions="*,260">
           <StackPanel Classes="settings-row-copy"><TextBlock Classes="settings-row-title" Text="{DynamicResource LocServerUrl}" /><TextBlock Classes="settings-row-hint" Text="{DynamicResource LocServerUrlHint}" /></StackPanel>
-          <TextBox x:Name="ServerUrlInput" Grid.Column="1" PlaceholderText="{DynamicResource LocRemoteUrlPlaceholder}" />
+          <TextBox Grid.Column="1" Text="{Binding ServerUrl}" PlaceholderText="{DynamicResource LocRemoteUrlPlaceholder}" />
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,260">
           <StackPanel Classes="settings-row-copy"><TextBlock Classes="settings-row-title" Text="{DynamicResource LocPairingCode}" /><TextBlock Classes="settings-row-hint" Text="{DynamicResource LocPairingCodeHint}" /></StackPanel>
-          <TextBox x:Name="PairingCodeInput" Grid.Column="1" PasswordChar="•" PlaceholderText="{DynamicResource LocPairingCodePlaceholder}" />
+          <TextBox Grid.Column="1" Text="{Binding PairingCode}" PasswordChar="•" PlaceholderText="{DynamicResource LocPairingCodePlaceholder}" />
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,260">
           <StackPanel Classes="settings-row-copy"><TextBlock Classes="settings-row-title" Text="{DynamicResource LocRemoteE2e}" /><TextBlock Classes="settings-row-hint" Text="{DynamicResource LocRemoteE2eHint}" TextWrapping="Wrap" /></StackPanel>
-          <ToggleSwitch x:Name="E2eToggle" Grid.Column="1" Classes="sc-toggle-switch settings-switch" IsChecked="True" OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" />
+          <ToggleSwitch Grid.Column="1" Classes="sc-toggle-switch settings-switch" IsChecked="{Binding E2eEnabled}" OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" />
         </Grid>
       </StackPanel>
       <StackPanel Classes="settings-actions">
         <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button x:Name="SaveButton" Classes="compact primary sc-button" Content="{DynamicResource LocSaveAndConnect}" Click="OnSave" />
-          <Button x:Name="DisconnectButton" Classes="compact sc-button" Content="{DynamicResource LocDisconnect}" Click="OnDisconnect" IsVisible="False" />
-          <Button x:Name="ClearButton" Classes="compact sc-button" Content="{DynamicResource LocClear}" Click="OnClear" />
+          <Button Classes="compact primary sc-button" Content="{DynamicResource LocSaveAndConnect}" Command="{Binding SaveCommand}" IsVisible="{Binding IsSaveVisible}" />
+          <Button Classes="compact sc-button" Content="{DynamicResource LocDisconnect}" Command="{Binding DisconnectCommand}" IsVisible="{Binding IsDisconnectVisible}" />
+          <Button Classes="compact sc-button" Content="{DynamicResource LocClear}" Command="{Binding ClearCommand}" />
         </StackPanel>
-        <TextBlock x:Name="StatusText" Classes="sc-text-status" />
+        <TextBlock Text="{Binding StatusText}" Classes="sc-text-status" />
       </StackPanel>
       <Border Classes="settings-divider" />
-      <StackPanel Classes="settings-panel-section" IsVisible="False" x:Name="PairingSection">
+      <StackPanel Classes="settings-panel-section" IsVisible="{Binding HasPairing}">
         <TextBlock Classes="section-label" Text="{DynamicResource LocPhonePairing}" />
         <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocScanMobilePayload}" TextWrapping="Wrap" />
         <Grid RowDefinitions="Auto,Auto" Margin="0,12,0,0">
           <Border Width="160" Height="160" Background="White" Padding="8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-            <Image x:Name="PairingQrImage" Stretch="Uniform" />
+            <Image Source="{Binding PairingUrl, Converter={x:Static local:PairingQrConverter.Instance}}" Stretch="Uniform" />
           </Border>
           <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,12,0,0">
-            <TextBlock x:Name="PairingPayloadText" TextWrapping="Wrap" FontFamily="monospace" VerticalAlignment="Center" />
-            <Button x:Name="CopyPairingButton" Grid.Column="1" Classes="icon quiet sc-button"
+            <TextBlock Text="{Binding PairingUrl}" TextWrapping="Wrap" FontFamily="monospace" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="icon quiet sc-button" IsEnabled="{Binding HasPairing}"
                     ToolTip.Tip="{DynamicResource LocCopyPairingLink}"
-                    AutomationProperties.Name="{DynamicResource LocCopyPairingLink}" Click="OnCopyPairing">
+                    AutomationProperties.Name="{DynamicResource LocCopyPairingLink}" Command="{Binding CopyPairingCommand}">
               <svg:Svg Width="14" Height="14" Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
           </Grid>
         </Grid>
-        <TextBlock x:Name="PairingMetadataText" Margin="0,12,0,0" Classes="settings-hint" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding PairingMetadata}" Margin="0,12,0,0" Classes="settings-hint" TextWrapping="Wrap" />
       </StackPanel>
     </StackPanel>
   </ScrollViewer>

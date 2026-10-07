@@ -1,7 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:SunCode.Desktop.Controls"
-             x:Class="SunCode.Desktop.Views.Settings.Controls.AppearanceSettingsControl">
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.AppearanceSettingsControl"
+             x:DataType="vm:AppearanceSettingsViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
@@ -15,11 +17,11 @@
             <TextBlock Classes="settings-row-title" Text="{DynamicResource LocColorTheme}" />
             <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocChangesApplyImmediately}" />
           </StackPanel>
-          <controls:SCFlatComboBox x:Name="ThemeSelector"
-                                   Grid.Column="1"
+          <controls:SCFlatComboBox Grid.Column="1"
+                                   ItemsSource="{Binding ThemeOptions}"
+                                   SelectedItem="{Binding SelectedTheme}"
                                    HorizontalAlignment="Stretch"
-                                   PlaceholderText="{DynamicResource LocChooseTheme}"
-                                   SelectionChanged="OnThemeChanged" />
+                                   PlaceholderText="{DynamicResource LocChooseTheme}" />
         </Grid>
       </StackPanel>
       <Border Classes="settings-divider" />
@@ -30,11 +32,11 @@
             <TextBlock Classes="settings-row-title" Text="{DynamicResource LocInterfaceLanguage}" />
             <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocLanguageHint}" />
           </StackPanel>
-          <controls:SCFlatComboBox x:Name="LanguageSelector"
-                                   Grid.Column="1"
+          <controls:SCFlatComboBox Grid.Column="1"
+                                   ItemsSource="{x:Static vm:AppearanceSettingsViewModel.LanguageOptions}"
+                                   SelectedItem="{Binding SelectedLanguage}"
                                    HorizontalAlignment="Stretch"
-                                   PlaceholderText="{DynamicResource LocChooseLanguage}"
-                                   SelectionChanged="OnLanguageChanged" />
+                                   PlaceholderText="{DynamicResource LocChooseLanguage}" />
         </Grid>
       </StackPanel>
     </StackPanel>

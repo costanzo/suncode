@@ -532,4 +532,7 @@
   <x:String x:Key="LocRestoreSession">Restore session</x:String>
   <x:String x:Key="LocDeleteSessionPermanentlyTitle">Delete this session permanently?</x:String>
   <x:String x:Key="LocDeleteSessionPermanentlyMessage">This permanently removes the conversation, child sessions, delegated work, and managed images. It cannot be undone.</x:String>
+  <x:String x:Key="LocNoProxyMode">No proxy</x:String>
+  <x:String x:Key="LocSystemProxyMode">System proxy</x:String>
+  <x:String x:Key="LocCustomProxyMode">Custom proxy</x:String>
 </ResourceDictionary>

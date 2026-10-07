@@ -133,4 +133,23 @@
     <Setter Property="VerticalContentAlignment" Value="Top" />
     <Setter Property="Padding" Value="9,8" />
   </Style>
+  <!-- Status tones set by StatusToneProperties.Tone on settings status dots and text. -->
+  <Style Selector="Ellipse.tone-muted">
+    <Setter Property="Fill" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="Ellipse.tone-success">
+    <Setter Property="Fill" Value="{DynamicResource SuccessBrush}" />
+  </Style>
+  <Style Selector="Ellipse.tone-warning">
+    <Setter Property="Fill" Value="{DynamicResource WarningBrush}" />
+  </Style>
+  <Style Selector="Ellipse.tone-danger">
+    <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
+  </Style>
+  <Style Selector="TextBlock.tone-success">
+    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+  </Style>
+  <Style Selector="TextBlock.tone-danger">
+    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+  </Style>
 </Styles>

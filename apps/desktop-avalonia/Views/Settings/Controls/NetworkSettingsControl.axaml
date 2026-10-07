@@ -2,7 +2,8 @@
              xmlns:controls="using:SunCode.Desktop.Controls"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              xmlns:vm="using:SunCode.Desktop.ViewModels"
-             x:Class="SunCode.Desktop.Views.Settings.Controls.NetworkSettingsControl" x:DataType="vm:NetworkSettingsViewModel">
+             xmlns:infra="using:SunCode.Desktop.Infrastructure"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.NetworkSettingsControl" x:DataType="vm:NetworkSettingsEditorViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
@@ -17,10 +18,10 @@
             <TextBlock Classes="settings-row-hint"
                        Text="{DynamicResource LocProxyModeHint}" />
           </StackPanel>
-          <controls:SCFlatComboBox x:Name="ProxyModeSelector" Grid.Column="1" HorizontalAlignment="Stretch"
-                                   SelectionChanged="OnProxyModeChanged" />
+          <controls:SCFlatComboBox Grid.Column="1" HorizontalAlignment="Stretch"
+                                   ItemsSource="{Binding ProxyModeOptions}" SelectedItem="{Binding SelectedProxyMode}" />
         </Grid>
-        <Border x:Name="CustomProxySection" Classes="settings-subsection" IsVisible="False">
+        <Border Classes="settings-subsection" IsVisible="{Binding IsCustomProxy}">
           <StackPanel Spacing="14">
             <TextBlock Text="{DynamicResource LocCustomProxy}" Classes="section-label" />
             <Grid Classes="settings-row" ColumnDefinitions="*,220">
@@ -28,28 +29,26 @@
                 <TextBlock Classes="settings-row-title" Text="{DynamicResource LocProxyUrl}" />
                 <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocProxyUrlHint}" />
               </StackPanel>
-              <TextBox x:Name="ProxyUrlInput" Grid.Column="1" Classes="mono settings-provider-input"
-                       PlaceholderText="http://proxy.example.com:8080" TextChanged="OnProxyTextChanged" />
+              <TextBox Grid.Column="1" Classes="mono settings-provider-input" Text="{Binding ProxyUrl}"
+                       PlaceholderText="http://proxy.example.com:8080" />
             </Grid>
             <Grid Classes="settings-row" ColumnDefinitions="*,220">
               <StackPanel Classes="settings-row-copy">
                 <TextBlock Classes="settings-row-title" Text="{DynamicResource LocUsername}" />
                 <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocProxyUsernameHint}" />
               </StackPanel>
-              <TextBox x:Name="ProxyUsernameInput" Grid.Column="1" Classes="mono settings-provider-input"
-                       TextChanged="OnProxyTextChanged" />
+              <TextBox Grid.Column="1" Classes="mono settings-provider-input" Text="{Binding ProxyUsername}" />
             </Grid>
             <Grid Classes="settings-row" ColumnDefinitions="*,220">
               <StackPanel Classes="settings-row-copy">
                 <TextBlock Classes="settings-row-title" Text="{DynamicResource LocPassword}" />
-                <TextBlock x:Name="ProxyPasswordHint" Classes="settings-row-hint"
-                           Text="{DynamicResource LocProxyPasswordHint}" />
+                <TextBlock Classes="settings-row-hint" Text="{Binding ProxyPasswordHint}" />
               </StackPanel>
               <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <TextBox x:Name="ProxyPasswordInput" Classes="mono sc-secret-input settings-provider-input"
-                         PlaceholderText="{DynamicResource LocOptional}" TextChanged="OnProxyTextChanged" />
-                <Button x:Name="RemoveProxyPasswordButton" Grid.Column="1" Classes="compact quiet sc-button"
-                        Content="{DynamicResource LocRemove}" IsVisible="False" Click="OnRemoveProxyPassword" />
+                <TextBox Classes="mono sc-secret-input settings-provider-input" Text="{Binding ProxyPassword}"
+                         PlaceholderText="{Binding ProxyPasswordPlaceholder}" />
+                <Button Grid.Column="1" Classes="compact quiet sc-button" Content="{DynamicResource LocRemove}"
+                        IsVisible="{Binding IsProxyPasswordStored}" Command="{Binding RemoveProxyPasswordCommand}" />
               </Grid>
             </Grid>
             <Grid Classes="settings-row" ColumnDefinitions="*,220" VerticalAlignment="Top">
@@ -58,16 +57,17 @@
                 <TextBlock Classes="settings-row-hint"
                            Text="{DynamicResource LocBypassRulesHint}" />
               </StackPanel>
-              <TextBox x:Name="ProxyBypassInput" Grid.Column="1" Classes="mono settings-proxy-bypass"
+              <TextBox Grid.Column="1" Classes="mono settings-proxy-bypass" Text="{Binding ProxyBypass}"
                        AcceptsReturn="True" TextWrapping="NoWrap" Height="92"
-                       PlaceholderText=".internal.example.com&#10;10.0.0.0/8" TextChanged="OnProxyTextChanged" />
+                       PlaceholderText=".internal.example.com&#10;10.0.0.0/8" />
             </Grid>
           </StackPanel>
         </Border>
         <StackPanel Classes="settings-actions">
-          <Button x:Name="SaveProxyButton" Classes="compact primary sc-button" Content="{DynamicResource LocSaveProxySettings}"
-                  Click="OnSaveProxy" IsEnabled="False" />
-          <TextBlock x:Name="ProxyStatus" Classes="sc-text-status" VerticalAlignment="Center" />
+          <Button Classes="compact primary sc-button" Content="{DynamicResource LocSaveProxySettings}"
+                  Command="{Binding SaveProxyCommand}" />
+          <TextBlock Text="{Binding ProxyStatusText}" infra:StatusToneProperties.Tone="{Binding ProxyStatusTone}"
+                     Classes="sc-text-status" VerticalAlignment="Center" />
         </StackPanel>
       </StackPanel>
       <Border Classes="settings-divider" />
@@ -79,11 +79,11 @@
             <TextBlock Classes="settings-row-hint"
                        Text="{DynamicResource LocVerifyServerCertificatesHint}" />
           </StackPanel>
-          <ToggleSwitch x:Name="VerifyHttpsCertificatesToggle" Grid.Column="1" Classes="sc-toggle-switch" OnContent="{DynamicResource LocOn}"
+          <ToggleSwitch Grid.Column="1" Classes="sc-toggle-switch" OnContent="{DynamicResource LocOn}"
                         OffContent="{DynamicResource LocOff}" HorizontalAlignment="Right" VerticalAlignment="Center"
-                        Click="OnHttpsCertificateVerificationChanged" />
+                        IsChecked="{Binding VerifyHttpsCertificates}" />
         </Grid>
-        <Border x:Name="CertificateTrustSection" Classes="settings-subsection">
+        <Border Classes="settings-subsection" IsVisible="{Binding VerifyHttpsCertificates}">
           <StackPanel Spacing="14">
             <TextBlock Text="{DynamicResource LocCertificateTrustSource}" Classes="section-label" />
             <Grid Classes="settings-row" ColumnDefinitions="*,220">
@@ -92,18 +92,17 @@
                 <TextBlock Classes="settings-row-hint"
                            Text="{DynamicResource LocUseSystemCertificatesHint}" />
               </StackPanel>
-              <ToggleSwitch x:Name="UseSystemCertificatesToggle" Grid.Column="1" Classes="sc-toggle-switch"
-                            OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" IsChecked="True" HorizontalAlignment="Right"
-                            VerticalAlignment="Center" Click="OnSystemCertificatesChanged" />
+              <ToggleSwitch Grid.Column="1" Classes="sc-toggle-switch"
+                            OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" HorizontalAlignment="Right"
+                            VerticalAlignment="Center" IsChecked="{Binding UseSystemCertificates}" />
             </Grid>
             <Grid Classes="settings-row" ColumnDefinitions="*,220">
               <StackPanel Classes="settings-row-copy">
                 <TextBlock Classes="settings-row-title" Text="{DynamicResource LocCertificatePath}" />
-                <TextBlock x:Name="CertificatePathHint" Classes="settings-row-hint"
-                           Text="{DynamicResource LocCertificatePathHint}" />
+                <TextBlock Classes="settings-row-hint" Text="{Binding CertificatePathHint}" />
               </StackPanel>
-              <controls:SCFileSelector x:Name="CertificatePathInput" Grid.Column="1"
-                                       Text="{Binding CertificatePath, Mode=TwoWay}"
+              <controls:SCFileSelector Grid.Column="1"
+                                       Text="{Binding CertificatePath}"
                                        IsEnabled="{Binding !UseSystemCertificates}"
                                        PlaceholderText="{DynamicResource LocUsingSystemCertificates}"
                                        DialogTitle="Choose certificate file" FileTypeName="Certificates"
@@ -111,7 +110,7 @@
             </Grid>
           </StackPanel>
         </Border>
-        <Border x:Name="HttpsCertificateWarning" IsVisible="False" Background="{DynamicResource WarningSurfaceBrush}"
+        <Border IsVisible="{Binding IsCertificateVerificationOff}" Background="{DynamicResource WarningSurfaceBrush}"
                 BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" Classes="settings-warning">
           <Grid ColumnDefinitions="18,*" ColumnSpacing="9">
             <svg:Svg Width="16" Height="16" Path="/Assets/icons/platform.svg" Css="{DynamicResource IconSvgCss}"
@@ -125,10 +124,10 @@
         </Border>
       </StackPanel>
       <StackPanel Classes="settings-actions">
-        <Button x:Name="SaveHttpsCertificateButton" Classes="compact primary sc-button" Content="{DynamicResource LocSaveHttpsSetting}"
-                Click="OnSaveHttpsCertificateVerification" 
-                IsEnabled="False"/>
-        <TextBlock x:Name="HttpsCertificateStatus" Classes="sc-text-status" VerticalAlignment="Center" />
+        <Button Classes="compact primary sc-button" Content="{DynamicResource LocSaveHttpsSetting}"
+                Command="{Binding SaveHttpsCommand}" />
+        <TextBlock Text="{Binding HttpsStatusText}" infra:StatusToneProperties.Tone="{Binding HttpsStatusTone}"
+                   Classes="sc-text-status" VerticalAlignment="Center" />
       </StackPanel>
     </StackPanel>
   </ScrollViewer>

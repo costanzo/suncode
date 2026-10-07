@@ -1,62 +1,40 @@
+using System.Globalization;
+using System.IO;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
+using Avalonia.Data.Converters;
 using Avalonia.Media.Imaging;
 using QRCoder;
-using System.IO;
 
 namespace SunCode.Desktop.Views.Settings.Controls;
 
 public sealed partial class RemoteServerSettingsControl : UserControl
 {
-    public event EventHandler<RoutedEventArgs>? SaveRequested;
-    public event EventHandler<RoutedEventArgs>? DisconnectRequested;
-    public event EventHandler<RoutedEventArgs>? ClearRequested;
-    public event EventHandler<RoutedEventArgs>? CopyPairingRequested;
-    public TextBox ServerUrlInputControl => ServerUrlInput;
-    public TextBox PairingCodeInputControl => PairingCodeInput;
-    public ToggleSwitch E2eToggleControl => E2eToggle;
-    public TextBlock StatusTextControl => StatusText;
-    public Button DisconnectButtonControl => DisconnectButton;
-    public Button SaveButtonControl => SaveButton;
-    public Button CopyPairingButtonControl => CopyPairingButton;
-    public StackPanel PairingSectionControl => PairingSection;
-    public TextBlock PairingPayloadTextControl => PairingPayloadText;
-    public Image PairingQrImageControl => PairingQrImage;
-    public void SetPairingMetadata(string? hostId, string? accessTokenExpiresAt)
+    public RemoteServerSettingsControl() => InitializeComponent();
+}
+
+// Renders a pairing link as a QR bitmap. The Rust remote controller supplies
+// the complete application URL; both http:// and https:// links are valid
+// under the remote-control contract, but a link without a query is not.
+public sealed class PairingQrConverter : IValueConverter
+{
+    public static readonly PairingQrConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(hostId)) parts.Add($"Host ID: {hostId}");
-        if (!string.IsNullOrWhiteSpace(accessTokenExpiresAt)) parts.Add($"Access token expires: {accessTokenExpiresAt}");
-        PairingMetadataText.Text = string.Join(Environment.NewLine, parts);
-    }
-    public void SetPairingPayload(string? payload)
-    {
-        // The Rust remote controller supplies the complete application pairing URL.
-        // Keep the control transport-agnostic: both http:// and https:// QR links
-        // are valid according to the remote-control contract.
-        PairingPayloadText.Text = payload ?? string.Empty;
-        CopyPairingButton.IsEnabled = !string.IsNullOrWhiteSpace(payload);
-        if (string.IsNullOrWhiteSpace(payload))
-        {
-            PairingQrImage.Source = null;
-            return;
-        }
-        if (!Uri.TryCreate(payload, UriKind.Absolute, out var uri)
+        if (value is not string payload
+            || string.IsNullOrWhiteSpace(payload)
+            || !Uri.TryCreate(payload, UriKind.Absolute, out var uri)
             || uri.Scheme is not ("http" or "https")
             || string.IsNullOrWhiteSpace(uri.Query))
-        {
-            PairingQrImage.Source = null;
-            return;
-        }
+            return null;
+
         using var generator = new QRCodeGenerator();
         using var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.Q);
         using var qr = new PngByteQRCode(data);
         using var stream = new MemoryStream(qr.GetGraphic(8));
-        PairingQrImage.Source = new Bitmap(stream);
+        return new Bitmap(stream);
     }
-    public RemoteServerSettingsControl() => InitializeComponent();
-    private void OnSave(object? sender, RoutedEventArgs e) => SaveRequested?.Invoke(this, e);
-    private void OnDisconnect(object? sender, RoutedEventArgs e) => DisconnectRequested?.Invoke(this, e);
-    private void OnClear(object? sender, RoutedEventArgs e) => ClearRequested?.Invoke(this, e);
-    private void OnCopyPairing(object? sender, RoutedEventArgs e) => CopyPairingRequested?.Invoke(this, e);
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
 }

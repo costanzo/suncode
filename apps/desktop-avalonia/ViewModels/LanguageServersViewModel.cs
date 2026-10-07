@@ -5,8 +5,13 @@ using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
 
-public sealed class LanguageServersViewModel : ObservableObject
+public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
 {
+    // Activation starts the project runtimes and loads in parallel, as before.
+    Task IPolledPage.ActivateAsync() => Task.WhenAll(StartProjectAsync(), LoadServersAsync());
+    Task IPolledPage.PollAsync() => LoadServersAsync();
+    void IPolledPage.Deactivate() { }
+
     private readonly IViewModelHost _host;
     private bool _loading;
     private string _statusText = string.Empty;

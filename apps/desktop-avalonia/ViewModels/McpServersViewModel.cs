@@ -5,8 +5,12 @@ using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
 
-public sealed class McpServersViewModel : ObservableObject
+public sealed class McpServersViewModel : ObservableObject, IPolledPage
 {
+    Task IPolledPage.ActivateAsync() => LoadServersAsync();
+    Task IPolledPage.PollAsync() => LoadServersAsync();
+    void IPolledPage.Deactivate() { }
+
     private readonly IViewModelHost _host;
     private bool _loading;
     private string _statusText = string.Empty;

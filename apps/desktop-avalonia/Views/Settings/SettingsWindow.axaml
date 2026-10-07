@@ -3,6 +3,7 @@
         xmlns:models="using:SunCode.Desktop.Models"
         xmlns:settings="using:SunCode.Desktop.Views.Settings.Controls"
         xmlns:vm="using:SunCode.Desktop.ViewModels"
+        xmlns:local="using:SunCode.Desktop.Views.Settings"
         xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
         x:Class="SunCode.Desktop.Views.Settings.SettingsWindow"
         x:DataType="vm:DesktopViewModel"
@@ -69,7 +70,8 @@
     </Style>
   </Window.Styles>
 
-  <Grid RowDefinitions="58,*" Background="{DynamicResource SurfaceBrush}">
+  <Grid x:Name="SettingsRoot" x:DataType="vm:SettingsWindowViewModel"
+        RowDefinitions="58,*" Background="{DynamicResource SurfaceBrush}">
     <Border Grid.Row="0"
             Background="{DynamicResource SurfaceBrush}"
             BorderBrush="{DynamicResource BorderBrush}"
@@ -91,101 +93,150 @@
               BorderThickness="0,0,1,0">
         <ScrollViewer HorizontalScrollBarVisibility="Disabled">
           <StackPanel Margin="16,20" Spacing="4">
-            <Button x:Name="DefaultsNavigation" Classes="navigation selected" Click="ShowDefaults">
+            <Button Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Defaults}}"
+                    Command="{Binding Navigation.NavigateCommand}"
+                    CommandParameter="{x:Static vm:SettingsPage.Defaults}">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/foundation.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocDefaults}" VerticalAlignment="Center" />
               </Grid>
             </Button>
-            <Button x:Name="AppearanceNavigation" Classes="navigation" Click="ShowAppearance">
+            <Button Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Appearance}}"
+                    Command="{Binding Navigation.NavigateCommand}"
+                    CommandParameter="{x:Static vm:SettingsPage.Appearance}">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/sun.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocAppearance}" VerticalAlignment="Center" />
               </Grid>
             </Button>
-            <Button x:Name="ShortcutsNavigation" Classes="navigation" Click="ShowShortcuts">
+            <Button Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Shortcuts}}"
+                    Command="{Binding Navigation.NavigateCommand}"
+                    CommandParameter="{x:Static vm:SettingsPage.Shortcuts}">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/keyboard.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocKeyboardShortcuts}" VerticalAlignment="Center" />
               </Grid>
             </Button>
-            <Button x:Name="NetworkNavigation" Classes="navigation" Click="ShowNetwork">
+            <Button Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Network}}"
+                    Command="{Binding Navigation.NavigateCommand}"
+                    CommandParameter="{x:Static vm:SettingsPage.Network}">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/platform.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocNetwork}" VerticalAlignment="Center" />
               </Grid>
             </Button>
-            <Button x:Name="RemoteNavigation" Classes="navigation" Click="ShowRemote">
+            <Button Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Remote}}"
+                    Command="{Binding Navigation.NavigateCommand}"
+                    CommandParameter="{x:Static vm:SettingsPage.Remote}">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/server.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocRemoteServer}" VerticalAlignment="Center" />
               </Grid>
             </Button>
-            <Button x:Name="ComputerNavigation" Classes="navigation" Click="ShowComputer">
+            <Button Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Computer}}"
+                    Command="{Binding Navigation.NavigateCommand}"
+                    CommandParameter="{x:Static vm:SettingsPage.Computer}">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/computer.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocComputerUse}" VerticalAlignment="Center" />
               </Grid>
             </Button>
-            <Button x:Name="BrowserNavigation" Classes="navigation" Click="ShowBrowser">
+            <Button Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Browser}}"
+                    Command="{Binding Navigation.NavigateCommand}"
+                    CommandParameter="{x:Static vm:SettingsPage.Browser}">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/tool.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocBrowserUse}" VerticalAlignment="Center" />
               </Grid>
             </Button>
-            <Button x:Name="McpNavigation" Classes="navigation" Click="ShowMcp">
+            <Button x:Name="McpNavigation" Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Mcp}}"
+                    Command="{Binding Navigation.NavigateCommand}"
+                    CommandParameter="{x:Static vm:SettingsPage.Mcp}">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/server.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocMcpServers}" VerticalAlignment="Center" />
               </Grid>
             </Button>
-            <Button x:Name="LanguageServersNavigation" Classes="navigation" Click="ShowLanguageServers">
+            <Button x:Name="LanguageServersNavigation" Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.LanguageServers}}"
+                    Command="{Binding Navigation.NavigateCommand}"
+                    CommandParameter="{x:Static vm:SettingsPage.LanguageServers}">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/file-code.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocLanguageServers}" VerticalAlignment="Center" />
               </Grid>
             </Button>
-            <Button x:Name="AgentsNavigation" Classes="navigation" Click="ShowAgents">
+            <Button Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Agents}}"
+                    Command="{Binding Navigation.NavigateCommand}"
+                    CommandParameter="{x:Static vm:SettingsPage.Agents}">
               <Grid ColumnDefinitions="15,*,13" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/agent.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocAgents}" VerticalAlignment="Center" />
-                <svg:Svg x:Name="AgentsChevron" Grid.Column="2" Width="13" Height="13" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" RenderTransformOrigin="50%,50%" />
+                <svg:Svg Grid.Column="2" Width="13" Height="13" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" RenderTransformOrigin="50%,50%">
+                  <svg:Svg.RenderTransform>
+                    <RotateTransform Angle="{Binding Navigation.AgentsExpanded, Converter={x:Static local:SettingsConverters.ExpandedAngle}}" />
+                  </svg:Svg.RenderTransform>
+                </svg:Svg>
               </Grid>
             </Button>
-            <ItemsControl x:Name="AgentNavigation" Margin="30,0,0,0" ItemsSource="{Binding Agents}">
+            <ItemsControl Margin="30,0,0,0" ItemsSource="{Binding Desktop.Agents}" IsVisible="{Binding Navigation.AgentsExpanded}">
               <ItemsControl.Styles><Style Selector="ContentPresenter"><Setter Property="HorizontalContentAlignment" Value="Stretch" /></Style></ItemsControl.Styles>
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="models:AgentItem">
-                  <Button Classes="navigation provider" Tag="{Binding Id}" Click="ShowAgent" AutomationProperties.Name="{Binding DisplayName, StringFormat=Open {0} agent details}">
+                  <Button Classes="navigation provider"
+                          Command="{Binding $parent[ItemsControl].((vm:SettingsWindowViewModel)DataContext).Navigation.ShowAgentCommand}"
+                          CommandParameter="{Binding Id}"
+                          local:NavigationHighlight.Key="{Binding Id}"
+                          local:NavigationHighlight.Current="{Binding $parent[ItemsControl].((vm:SettingsWindowViewModel)DataContext).Navigation.HighlightedAgentId}"
+                          AutomationProperties.Name="{Binding DisplayName, StringFormat=Open {0} agent details}">
                     <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                   </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Button x:Name="LoggingNavigation" Classes="navigation" Click="ShowLogging">
+            <Button Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Logging}}"
+                    Command="{Binding Navigation.NavigateCommand}"
+                    CommandParameter="{x:Static vm:SettingsPage.Logging}">
               <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/assets.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocLogging}" VerticalAlignment="Center" />
               </Grid>
             </Button>
-            <Button x:Name="ProvidersNavigation" Classes="navigation" Click="ShowProviders">
+            <Button Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Providers}}"
+                    Command="{Binding Navigation.NavigateCommand}"
+                    CommandParameter="{x:Static vm:SettingsPage.Providers}">
               <Grid ColumnDefinitions="15,*,13" ColumnSpacing="9">
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/components.svg" Css="{DynamicResource IconSvgCss}" />
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocModelProviders}" VerticalAlignment="Center" />
-                <svg:Svg x:Name="ProvidersChevron"
+                <svg:Svg
                          Grid.Column="2"
                          Width="13"
                          Height="13"
                          Path="/Assets/icons/chevron-right.svg"
                          Css="{DynamicResource IconSvgCss}"
                          VerticalAlignment="Center"
-                         RenderTransformOrigin="50%,50%" />
+                         RenderTransformOrigin="50%,50%">
+                  <svg:Svg.RenderTransform>
+                    <RotateTransform Angle="{Binding Navigation.ProvidersExpanded, Converter={x:Static local:SettingsConverters.ExpandedAngle}}" />
+                  </svg:Svg.RenderTransform>
+                </svg:Svg>
               </Grid>
             </Button>
-            <ItemsControl x:Name="ProviderNavigation"
-                          Margin="30,0,0,0"
-                          ItemsSource="{Binding Providers}">
+            <ItemsControl Margin="30,0,0,0"
+                          ItemsSource="{Binding Desktop.Providers}"
+                          IsVisible="{Binding Navigation.ProvidersExpanded}">
               <ItemsControl.Styles>
                 <Style Selector="ContentPresenter">
                   <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -199,8 +250,10 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="models:ProviderItem">
                   <Button Classes="navigation provider"
-                          Tag="{Binding Id}"
-                          Click="ShowProvider"
+                          Command="{Binding $parent[ItemsControl].((vm:SettingsWindowViewModel)DataContext).Navigation.ShowProviderCommand}"
+                          CommandParameter="{Binding Id}"
+                          local:NavigationHighlight.Key="{Binding Id}"
+                          local:NavigationHighlight.Current="{Binding $parent[ItemsControl].((vm:SettingsWindowViewModel)DataContext).Navigation.HighlightedProviderId}"
                           AutomationProperties.Name="{Binding DisplayName, StringFormat=Open {0} provider settings}">
                     <Grid ColumnDefinitions="*,13" ColumnSpacing="9">
                       <Ellipse Grid.Column="1"
@@ -225,32 +278,46 @@
       </Border>
 
       <Grid Grid.Column="1" Background="{DynamicResource SurfaceBrush}">
-        <settings:DefaultsSettingsControl x:Name="DefaultsPage" />
+        <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Defaults}}">
+          <settings:DefaultsSettingsControl DataContext="{Binding Defaults}" />
+        </Panel>
 
-        <settings:AppearanceSettingsControl x:Name="AppearancePage" IsVisible="False" />
+        <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Appearance}}">
+          <settings:AppearanceSettingsControl DataContext="{Binding Appearance}" />
+        </Panel>
 
-        <settings:ShortcutsSettingsControl x:Name="ShortcutsPage" IsVisible="False" />
+        <settings:ShortcutsSettingsControl IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Shortcuts}}" />
 
-        <settings:ComputerUseSettingsControl x:Name="ComputerPage" IsVisible="False" />
+        <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Computer}}">
+          <settings:ComputerUseSettingsControl DataContext="{Binding Computer}" />
+        </Panel>
 
-        <settings:BrowserUseSettingsControl x:Name="BrowserPage" IsVisible="False" />
+        <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Browser}}">
+          <settings:BrowserUseSettingsControl DataContext="{Binding Browser}" />
+        </Panel>
 
-        <settings:LoggingSettingsControl x:Name="LoggingPage" IsVisible="False" />
+        <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Logging}}">
+          <settings:LoggingSettingsControl DataContext="{Binding Logging}" />
+        </Panel>
 
-        <settings:McpServersSettingsControl x:Name="McpPage" DataContext="{Binding Mcp}" IsVisible="False" />
+        <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Mcp}}">
+          <settings:McpServersSettingsControl x:Name="McpPage" DataContext="{Binding Mcp}" />
+        </Panel>
 
-        <settings:LanguageServersSettingsControl x:Name="LanguageServersPage" DataContext="{Binding LanguageServers}" IsVisible="False" />
+        <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.LanguageServers}}">
+          <settings:LanguageServersSettingsControl x:Name="LanguageServersPage" DataContext="{Binding LanguageServers}" />
+        </Panel>
 
-        <settings:AgentSettingsControl x:Name="AgentsPage"
-                                       IsVisible="False"
-                                       Agents="{Binding Agents}"
+        <settings:AgentSettingsControl IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Agents}}"
+                                       Agents="{Binding Desktop.Agents}"
+                                       SelectedAgentId="{Binding Navigation.SelectedAgentId}"
                                        AgentSelected="AgentSelected" />
 
-        <Grid x:Name="ProvidersPage" IsVisible="False">
+        <Grid IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Providers}}">
           <settings:ModelProviderSettingsControl x:Name="ProviderManager"
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Stretch"
-                                    Providers="{Binding Providers}"
+                                    Providers="{Binding Desktop.Providers}"
                                     ProviderSelected="ProviderSelected"
                                     EndpointTextChanged="ProviderEndpointChanged"
                                     ApiKeyTextChanged="ProviderApiKeyChanged"
@@ -260,8 +327,12 @@
                                     RemoveCredentialRequested="RemoveCredential" />
         </Grid>
 
-        <settings:NetworkSettingsControl x:Name="NetworkPage" DataContext="{Binding Network}" IsVisible="False" />
-        <settings:RemoteServerSettingsControl x:Name="RemotePage" IsVisible="False" />
+        <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Network}}">
+          <settings:NetworkSettingsControl DataContext="{Binding NetworkEditor}" />
+        </Panel>
+        <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Remote}}">
+          <settings:RemoteServerSettingsControl DataContext="{Binding RemoteEditor}" />
+        </Panel>
       </Grid>
     </Grid>
   </Grid>

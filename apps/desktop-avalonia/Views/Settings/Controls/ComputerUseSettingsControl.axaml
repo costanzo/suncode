@@ -1,7 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
-             x:Class="SunCode.Desktop.Views.Settings.Controls.ComputerUseSettingsControl">
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:infra="using:SunCode.Desktop.Infrastructure"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.ComputerUseSettingsControl"
+             x:DataType="vm:ComputerRuntimeViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Classes="settings-panel-content">
       <StackPanel Classes="settings-panel-heading">
@@ -18,29 +21,30 @@
             <TextBlock Classes="settings-row-hint" TextWrapping="Wrap"
                        Text="{DynamicResource LocEnableComputerUseHint}" />
           </StackPanel>
-          <ToggleSwitch x:Name="EnabledToggle" Grid.Column="1" Classes="sc-toggle-switch"
+          <ToggleSwitch Grid.Column="1" Classes="sc-toggle-switch"
+                        IsChecked="{Binding EnabledChecked}"
                         OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" HorizontalAlignment="Right"
-                        Click="OnEnabledChanged" />
+                        Command="{Binding SetEnabledCommand}" />
         </Grid>
         <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1" Padding="0,13" Margin="0,6,0,0">
           <Grid ColumnDefinitions="*,*" ColumnSpacing="24">
             <Grid ColumnDefinitions="10,*" ColumnSpacing="9">
-              <Ellipse x:Name="ModelStatusDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" Margin="0,5,0,0" />
+              <Ellipse Width="7" Height="7" infra:StatusToneProperties.Tone="{Binding ModelTone}" VerticalAlignment="Top" Margin="0,5,0,0" />
               <StackPanel Grid.Column="1" Spacing="3">
-                <TextBlock x:Name="ModelSupportText" Text="{DynamicResource LocUnknown}" FontSize="12" FontWeight="SemiBold" />
-                <TextBlock x:Name="ModelNameText" Text="{DynamicResource LocNoModelSelected}" Classes="settings-row-hint" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding ModelSupportText}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding ModelNameText}" Classes="settings-row-hint" TextTrimming="CharacterEllipsis" />
               </StackPanel>
             </Grid>
             <Grid Grid.Column="1" ColumnDefinitions="10,*" ColumnSpacing="9">
-              <Ellipse x:Name="BackendStatusDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" Margin="0,5,0,0" />
+              <Ellipse Width="7" Height="7" infra:StatusToneProperties.Tone="{Binding BackendTone}" VerticalAlignment="Top" Margin="0,5,0,0" />
               <StackPanel Grid.Column="1" Spacing="3">
-                <TextBlock x:Name="BackendStateText" Text="{DynamicResource LocUnavailable}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding BackendStateText}" FontSize="12" FontWeight="SemiBold" />
                 <TextBlock Text="{DynamicResource LocBuiltInDesktopBackend}" Classes="settings-row-hint" />
               </StackPanel>
             </Grid>
           </Grid>
         </Border>
-        <TextBlock x:Name="StatusText" Classes="sc-text-status" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding PageStatusText}" Classes="sc-text-status" TextWrapping="Wrap" />
       </StackPanel>
 
       <Border Classes="settings-divider" />
@@ -51,7 +55,7 @@
             <TextBlock Classes="settings-row-title" Text="{DynamicResource LocPrimaryDisplay}" />
             <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocPrimaryDisplayHint}" />
           </StackPanel>
-          <TextBlock x:Name="TargetDisplayText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="—" />
+          <TextBlock Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="{Binding TargetDisplayText}" />
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
@@ -59,8 +63,8 @@
             <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource LocScreenCaptureHint}" />
           </StackPanel>
           <Grid Grid.Column="1" ColumnDefinitions="10,Auto" ColumnSpacing="8" HorizontalAlignment="Right">
-            <Ellipse x:Name="CapturePermissionDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
-            <TextBlock x:Name="CapturePermissionText" Grid.Column="1" Text="{DynamicResource LocUnknown}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+            <Ellipse Width="7" Height="7" infra:StatusToneProperties.Tone="{Binding CapturePermissionTone}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding CapturePermissionText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
           </Grid>
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
@@ -69,8 +73,8 @@
             <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource LocInputControlHint}" />
           </StackPanel>
           <Grid Grid.Column="1" ColumnDefinitions="10,Auto" ColumnSpacing="8" HorizontalAlignment="Right">
-            <Ellipse x:Name="InputPermissionDot" Width="7" Height="7" Fill="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
-            <TextBlock x:Name="InputPermissionText" Grid.Column="1" Text="{DynamicResource LocUnknown}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+            <Ellipse Width="7" Height="7" infra:StatusToneProperties.Tone="{Binding InputPermissionTone}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding InputPermissionText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
           </Grid>
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
@@ -78,15 +82,19 @@
             <TextBlock Classes="settings-row-title" Text="{DynamicResource LocCurrentControlOwner}" />
             <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource LocControlOwnerHint}" />
           </StackPanel>
-          <TextBlock x:Name="ControlOwnerText" Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="{DynamicResource LocUser}" />
+          <TextBlock Grid.Column="1" Classes="mono" FontSize="10" HorizontalAlignment="Right" Text="{Binding ControlOwnerText}" />
         </Grid>
         <WrapPanel Classes="settings-actions">
-          <Button x:Name="TakeControlButton" Classes="compact quiet sc-button" Content="{DynamicResource LocTakeControl}" Click="OnTakeControl" />
-          <Button x:Name="ReturnControlButton" Classes="compact primary sc-button" Content="{DynamicResource LocReturnControlToAgent}" Click="OnReturnControl" />
+          <Button Classes="compact quiet sc-button" Content="{DynamicResource LocTakeControl}" Command="{Binding TakeControlCommand}"
+                  IsVisible="{Binding IsTakeControlVisible}" IsEnabled="{Binding CanTransferControl}" />
+          <Button Classes="compact primary sc-button" Content="{DynamicResource LocReturnControlToAgent}" Command="{Binding ReturnControlCommand}"
+                  IsVisible="{Binding IsReturnControlVisible}" IsEnabled="{Binding CanTransferControl}" />
         </WrapPanel>
         <WrapPanel Classes="settings-actions">
-          <Button x:Name="CapturePermissionButton" Classes="compact quiet sc-button" Content="{DynamicResource LocRequestScreenCapture}" Click="OnRequestCapturePermission" />
-          <Button x:Name="InputPermissionButton" Classes="compact quiet sc-button" Content="{DynamicResource LocRequestInputControl}" Click="OnRequestInputPermission" />
+          <Button Classes="compact quiet sc-button" Content="{Binding CapturePermissionButtonText}" Command="{Binding RequestCapturePermissionCommand}"
+                  IsEnabled="{Binding CanRequestCapturePermission}" />
+          <Button Classes="compact quiet sc-button" Content="{Binding InputPermissionButtonText}" Command="{Binding RequestInputPermissionCommand}"
+                  IsEnabled="{Binding CanRequestInputPermission}" />
         </WrapPanel>
       </StackPanel>
 
@@ -112,7 +120,8 @@
             <TextBlock Classes="settings-row-title" Text="{DynamicResource LocEmergencyStop}" />
             <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource LocEmergencyStopHint}" />
           </StackPanel>
-          <Button x:Name="EmergencyStopButton" Grid.Column="1" Classes="compact danger sc-button" HorizontalAlignment="Right" Content="{DynamicResource LocStopComputerUse}" Click="OnEmergencyStop" />
+          <Button Grid.Column="1" Classes="compact danger sc-button" HorizontalAlignment="Right" Content="{DynamicResource LocStopComputerUse}"
+                  Command="{Binding EmergencyStopCommand}" IsEnabled="{Binding CanEmergencyStop}" />
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
