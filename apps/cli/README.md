@@ -27,7 +27,7 @@ The CLI opts into the `suncode-config` process environment source. In addition t
 
 `session list` returns active and archived primary sessions for the selected project. `session archive` performs the SDK-owned lifecycle transition. Resume fails with status 4 if the session already has a pending approval or structured question; it does not resolve interactive state.
 
-The CLI opens the SDK with Browser Use and Computer Use disabled at the host capability boundary. Provider credentials are entered with no terminal echo and stored through the SDK; provider API-key environment variables are unsupported.
+The CLI opens the SDK with Browser Use and Computer Use disabled at the host capability boundary. Provider credentials can be entered interactively and stored through the SDK, or supplied as process-local `SUNCODE_*_API_KEY` overlays for benchmark/automation runs.
 
 Build and test:
 
