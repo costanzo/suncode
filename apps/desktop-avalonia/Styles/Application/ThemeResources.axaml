@@ -4,6 +4,9 @@
        collection. MonoFontFamily mirrors the design-system font-mono token. -->
   <FontFamily x:Key="MonoFontFamily">fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace</FontFamily>
   <FontFamily x:Key="SansFontFamily">fonts:SunCode#Noto Sans SC, Noto Sans CJK SC, Noto Sans, PingFang SC, Helvetica Neue, Arial, sans-serif</FontFamily>
+  <!-- Paints nothing visible but keeps a surface hit-testable, for drag
+       regions such as the title bar and pane resize handles. -->
+  <SolidColorBrush x:Key="HitTestTransparentBrush" Color="#01000000" />
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="FileIconDefaultBrush" Color="#d4d7d6" />

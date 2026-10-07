@@ -32,7 +32,7 @@ public sealed class ProjectHubViewModel : ObservableObject, IDisposable
     public string StatusText => Services.StatusText;
 
     public Task InitializeAsync() => Services.InitializeAsync();
-    public void UpdateLayoutWidth(double width) => Services.UpdateLayoutWidth(width);
+    public void UpdateLayoutWidth(double width) => Services.Layout.UpdateLayoutWidth(width);
 
     private void ServicesPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

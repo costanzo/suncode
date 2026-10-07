@@ -109,13 +109,13 @@ public sealed partial class ProjectSidebar : UserControl
 
     private void ToggleArchivedSessions(object? sender, RoutedEventArgs e)
     {
-        ViewModel.ArchivedDrawerOpen = !ViewModel.ArchivedDrawerOpen;
-        SetArchivedDrawerChevronAngle(ViewModel.ArchivedDrawerOpen ? 180 : 0);
+        ViewModel.Layout.ArchivedDrawerOpen = !ViewModel.Layout.ArchivedDrawerOpen;
+        SetArchivedDrawerChevronAngle(ViewModel.Layout.ArchivedDrawerOpen ? 180 : 0);
     }
 
     private void CloseArchivedSessions(object? sender, RoutedEventArgs e)
     {
-        ViewModel.ArchivedDrawerOpen = false;
+        ViewModel.Layout.ArchivedDrawerOpen = false;
         SetArchivedDrawerChevronAngle(0);
     }
 
@@ -128,7 +128,7 @@ public sealed partial class ProjectSidebar : UserControl
     }
 
     private void SidebarSizeChanged(object? sender, SizeChangedEventArgs e) =>
-        ViewModel.UpdateArchivedDrawerHeight(e.NewSize.Height);
+        ViewModel.Layout.UpdateArchivedDrawerHeight(e.NewSize.Height);
 
     private async void SelectArchivedSession(object? sender, RoutedEventArgs e)
     {
@@ -173,8 +173,8 @@ public sealed partial class ProjectSidebar : UserControl
 
     private async void NavigationPointerExited(object? sender, PointerEventArgs e)
     {
-        if (ViewModel.NavigationPinned) return;
+        if (ViewModel.Layout.NavigationPinned) return;
         await Task.Delay(420);
-        if (!ViewModel.NavigationPinned) ViewModel.NavigationVisible = false;
+        if (!ViewModel.Layout.NavigationPinned) ViewModel.Layout.NavigationVisible = false;
     }
 }

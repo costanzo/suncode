@@ -24,6 +24,10 @@ public sealed partial class DesktopViewModel
         Explorer = new ExplorerViewModel(this);
         Browser = new BrowserRuntimeViewModel(this);
         Computer = new ComputerRuntimeViewModel(this);
+        Layout = new WorkspaceLayoutViewModel(this);
+        Layout.RegionStateChanged += SaveRegionState;
+        Layout.PanelGeometryChanged += SavePanelGeometry;
+        Layout.PropertyChanged += OnLayoutPropertyChanged;
         ContextUsage = new ContextUsageViewModel(() => SelectedModel);
         _conversationDurationTimer.Tick += ConversationDurationTick;
         ComposerAttachments.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ComposerBottomClearance));
@@ -95,16 +99,16 @@ public sealed partial class DesktopViewModel
         _restoringUiState = true;
         try
         {
-            NavigationVisible = saved.LeftRegion != "closed";
-            ExplorerVisible = saved.LeftRegion == "explorer";
-            ReviewVisible = saved.RightRegion == "review";
-            ChildSessionsVisible = saved.RightRegion == "children";
-            GitVisible = saved.BottomDrawer == "git";
-            ProviderTraceVisible = saved.BottomDrawer == "providerTrace";
-            ToolActivityVisible = saved.BottomDrawer == "toolActivity";
-            if (saved.NavigationWidth is { } navigationWidth) NavigationPaneWidth = Math.Max(0, navigationWidth);
-            if (saved.ReviewWidth is { } reviewWidth) ReviewPaneWidth = Math.Max(0, reviewWidth);
-            if (saved.BottomDrawerHeight is { } drawerHeight) BottomDrawerHeight = Math.Max(0, drawerHeight);
+            Layout.NavigationVisible = saved.LeftRegion != "closed";
+            Layout.ExplorerVisible = saved.LeftRegion == "explorer";
+            Layout.ReviewVisible = saved.RightRegion == "review";
+            Layout.ChildSessionsVisible = saved.RightRegion == "children";
+            Layout.GitVisible = saved.BottomDrawer == "git";
+            Layout.ProviderTraceVisible = saved.BottomDrawer == "providerTrace";
+            Layout.ToolActivityVisible = saved.BottomDrawer == "toolActivity";
+            if (saved.NavigationWidth is { } navigationWidth) Layout.NavigationPaneWidth = Math.Max(0, navigationWidth);
+            if (saved.ReviewWidth is { } reviewWidth) Layout.ReviewPaneWidth = Math.Max(0, reviewWidth);
+            if (saved.BottomDrawerHeight is { } drawerHeight) Layout.BottomDrawerHeight = Math.Max(0, drawerHeight);
         }
         finally { _restoringUiState = false; }
     }
@@ -154,9 +158,9 @@ public sealed partial class DesktopViewModel
     {
         SaveProjectUiState(saved =>
         {
-            saved.NavigationWidth = NavigationPaneWidth;
-            saved.ReviewWidth = ReviewPaneWidth;
-            saved.BottomDrawerHeight = BottomDrawerHeight;
+            saved.NavigationWidth = Layout.NavigationPaneWidth;
+            saved.ReviewWidth = Layout.ReviewPaneWidth;
+            saved.BottomDrawerHeight = Layout.BottomDrawerHeight;
         });
     }
 
@@ -164,9 +168,18 @@ public sealed partial class DesktopViewModel
     {
         SaveProjectUiState(saved =>
         {
-            saved.LeftRegion = !NavigationVisible ? "closed" : ExplorerVisible ? "explorer" : "sessions";
-            saved.RightRegion = ReviewVisible ? "review" : ChildSessionsVisible ? "children" : "closed";
-            saved.BottomDrawer = GitVisible ? "git" : ProviderTraceVisible ? "providerTrace" : ToolActivityVisible ? "toolActivity" : "closed";
+            saved.LeftRegion = !Layout.NavigationVisible ? "closed" : Layout.ExplorerVisible ? "explorer" : "sessions";
+            saved.RightRegion = Layout.ReviewVisible ? "review" : Layout.ChildSessionsVisible ? "children" : "closed";
+            saved.BottomDrawer = Layout.GitVisible ? "git" : Layout.ProviderTraceVisible ? "providerTrace" : Layout.ToolActivityVisible ? "toolActivity" : "closed";
         });
+    }
+
+    // Gutter attention combines session state with the user's right-region
+    // choice, so it follows the layout's review and child-session toggles.
+    private void OnLayoutPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(WorkspaceLayoutViewModel.ReviewVisible) or nameof(WorkspaceLayoutViewModel.ChildSessionsVisible))) return;
+        OnPropertyChanged(nameof(ReviewGutterAttention));
+        OnPropertyChanged(nameof(ChildSessionsGutterAttention));
     }
 }

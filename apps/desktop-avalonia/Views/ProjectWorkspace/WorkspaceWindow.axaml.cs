@@ -5,7 +5,6 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using SvgControl = Avalonia.Svg.Skia.Svg;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
@@ -42,7 +41,7 @@ public partial class WorkspaceWindow : Window
         _mcpLoadTimer.Tick += McpLoadTick;
         SizeChanged += (_, _) =>
         {
-            ViewModel.UpdateLayoutSize(Bounds.Width, Bounds.Height);
+            ViewModel.Layout.UpdateLayoutSize(Bounds.Width, Bounds.Height);
             ProjectWorkspaceView.ClampGitViewerHeight();
             SaveWindowGeometry();
         };
@@ -208,7 +207,7 @@ public partial class WorkspaceWindow : Window
         });
 
         _toggleNavigationMenuItem = new NativeMenuItem { Header = "Hide Project Navigation" };
-        _toggleNavigationMenuItem.Click += (_, _) => ViewModel.NavigationVisible = !ViewModel.NavigationVisible;
+        _toggleNavigationMenuItem.Click += (_, _) => ViewModel.Layout.NavigationVisible = !ViewModel.Layout.NavigationVisible;
         projectActions.Items.Add(_toggleNavigationMenuItem);
         projectActions.Items.Add(new NativeMenuItemSeparator());
 
@@ -243,7 +242,7 @@ public partial class WorkspaceWindow : Window
         if (_mergeWindowsMenuItem is not null)
             _mergeWindowsMenuItem.IsEnabled = Application.Current is App app && app.CanMergeWindows;
         if (_toggleNavigationMenuItem is not null)
-            _toggleNavigationMenuItem.Header = ViewModel.NavigationVisible ? "Hide Project Navigation" : "Show Project Navigation";
+            _toggleNavigationMenuItem.Header = ViewModel.Layout.NavigationVisible ? "Hide Project Navigation" : "Show Project Navigation";
         if (_recentProjectsMenu is null) return;
 
         _recentProjectsMenu.Items.Clear();
@@ -283,7 +282,7 @@ public partial class WorkspaceWindow : Window
         if (IsToggleNavigationShortcut(e.Key, e.KeyModifiers))
         {
             e.Handled = true;
-            ViewModel.NavigationVisible = !ViewModel.NavigationVisible;
+            ViewModel.Layout.NavigationVisible = !ViewModel.Layout.NavigationVisible;
             return;
         }
 
@@ -348,24 +347,6 @@ public partial class WorkspaceWindow : Window
     internal static bool OriginatesFromButton(object? source) =>
         source is Button || source is Visual visual && visual.FindAncestorOfType<Button>() is not null;
 
-    internal static string GetTrafficLightAsset(string kind, string state, bool isActive = true)
-    {
-        if (!isActive) return "0-all-three-nofocus.svg";
-
-        return (kind, state) switch
-        {
-            ("close", "hover") => "2-close-2-hover.svg",
-            ("close", "press") => "2-close-3-press.svg",
-            ("close", _) => "1-close-1-normal.svg",
-            ("minimize", "hover") => "2-minimize-2-hover.svg",
-            ("minimize", "press") => "2-minimize-3-press.svg",
-            ("minimize", _) => "2-minimize-1-normal.svg",
-            ("maximize", "hover") => "3-maximize-2-hover.svg",
-            ("maximize", "press") => "3-maximize-3-press.svg",
-            _ => "3-maximize-1-normal.svg"
-        };
-    }
-
     protected virtual void UpdateTrafficLightFocus(bool isActive)
     {
         ProjectWorkspaceView.SetTrafficLightFocus(isActive);
@@ -414,24 +395,6 @@ public partial class WorkspaceWindow : Window
         _isFullScreenTransition = false;
     }
 
-    internal static void SetTrafficLightState(object? sender, string state)
-    {
-        if (sender is not Button button || button.GetVisualDescendants().OfType<SvgControl>().FirstOrDefault() is not { } icon) return;
-        var kind = button.Name?.Contains("Close", StringComparison.Ordinal) == true
-            ? "close"
-            : button.Name?.Contains("Minimize", StringComparison.Ordinal) == true ? "minimize" : "maximize";
-        icon.Path = $"/Assets/traffic-lights/{GetTrafficLightAsset(kind, state)}";
-    }
-
-    internal static void SetTrafficLightFocusState(object? sender, bool isActive)
-    {
-        if (sender is not Button button || button.GetVisualDescendants().OfType<SvgControl>().FirstOrDefault() is not { } icon) return;
-        var kind = button.Name?.Contains("Close", StringComparison.Ordinal) == true
-            ? "close"
-            : button.Name?.Contains("Minimize", StringComparison.Ordinal) == true ? "minimize" : "maximize";
-        icon.Path = $"/Assets/traffic-lights/{GetTrafficLightAsset(kind, "normal", isActive)}";
-    }
-
     private void ConfigureProjectWindow()
     {
         ExtendClientAreaToDecorationsHint = true;
@@ -439,7 +402,7 @@ public partial class WorkspaceWindow : Window
         MinWidth = 620;
         MinHeight = 620;
         ResizeAndCenter(1440, 900);
-        ViewModel.UpdateLayoutWidth(1440);
+        ViewModel.Layout.UpdateLayoutWidth(1440);
     }
 
     internal void RestoreAsProjectWindow()

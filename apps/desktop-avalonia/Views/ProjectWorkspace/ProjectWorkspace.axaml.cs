@@ -14,15 +14,12 @@ namespace SunCode.Desktop.Views.ProjectWorkspace;
 
 public sealed partial class ProjectWorkspace : UserControl
 {
-    private bool _trafficLightsActive = true;
     private SessionItem? _sessionDialogTarget;
     private CheckpointItem? _pendingCheckpoint;
     private ExplorerNode? _pendingDependencyDeletion;
-    private string _layoutResizeTarget = string.Empty;
+    private WorkspaceResizeTarget? _layoutResizeTarget;
     private Point _layoutResizeStart;
-    private double _layoutResizeStartNavigationWidth;
-    private double _layoutResizeStartReviewWidth;
-    private double _layoutResizeStartBottomHeight;
+    private double _layoutResizeStartSize;
     private string _expandedComposerDraft = string.Empty;
     private MessageItem? _longUserMessage;
 
@@ -46,10 +43,14 @@ public sealed partial class ProjectWorkspace : UserControl
         ProjectSwitcherControl.ProjectRequested += ProjectRequested;
         ContentSwitcherControl.ContentRequested += ContentRequested;
         BrowserPreview.CloseRequested += ClosePreview;
+        AddHandler(PointerPressedEvent, LayoutResizePressed);
+        AddHandler(PointerMovedEvent, LayoutResizeMoved);
+        AddHandler(PointerReleasedEvent, LayoutResizeReleased);
     }
 
     private WorkspaceWindow? Owner => TopLevel.GetTopLevel(this) as WorkspaceWindow;
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
+    private WorkspaceLayoutViewModel Layout => ViewModel.Layout;
 
     internal void ScrollConversationToEndForSessionEntry() =>
         ChatArea.ScrollConversationToEndForSessionEntry();
@@ -66,7 +67,7 @@ public sealed partial class ProjectWorkspace : UserControl
     internal void ClampGitViewerHeight()
     {
         if (TopLevel.GetTopLevel(this) is not Window window) return;
-        ViewModel.UpdateLayoutSize(window.Bounds.Width, window.Bounds.Height);
+        Layout.UpdateLayoutSize(window.Bounds.Width, window.Bounds.Height);
     }
 
     internal bool HandleEscape()
@@ -156,158 +157,87 @@ public sealed partial class ProjectWorkspace : UserControl
         DependencyDeleteDialogModal.IsOpen = true;
     }
 
-    private void ToggleNavigation(object? sender, RoutedEventArgs e)
-    {
-        if (ViewModel.NavigationPaneWidth < DesktopViewModel.MinimumNavigationPaneWidth) ViewModel.NavigationPaneWidth = DesktopViewModel.DefaultNavigationPaneWidth;
-        if (ViewModel.NavigationVisible && !ViewModel.ExplorerVisible)
-        {
-            ViewModel.NavigationVisible = false;
-            return;
-        }
-        ViewModel.ExplorerVisible = false;
-        ViewModel.NavigationVisible = true;
-    }
+    private void ToggleNavigation(object? sender, RoutedEventArgs e) => Layout.ToggleSessions();
 
     private async void ToggleExplorer(object? sender, RoutedEventArgs e)
     {
-        if (ViewModel.NavigationPaneWidth < DesktopViewModel.MinimumNavigationPaneWidth) ViewModel.NavigationPaneWidth = DesktopViewModel.DefaultNavigationPaneWidth;
-        if (ViewModel.NavigationVisible && ViewModel.ExplorerVisible)
-        {
-            ViewModel.NavigationVisible = false;
-            return;
-        }
-        ViewModel.ExplorerVisible = true;
-        ViewModel.NavigationVisible = true;
-        await ViewModel.Explorer.LoadRootsAsync();
+        if (Layout.ToggleExplorer()) await ViewModel.Explorer.LoadRootsAsync();
     }
 
     private void ToggleReview(object? sender, RoutedEventArgs e)
     {
-        if (ViewModel.ReviewPaneWidth < DesktopViewModel.MinimumReviewPaneWidth) ViewModel.ReviewPaneWidth = DesktopViewModel.DefaultReviewPaneWidth;
-        if (ViewModel.ToggleReviewDestination()) BrowserPreview.CloseBrowser();
+        if (Layout.ToggleReview()) BrowserPreview.CloseBrowser();
     }
 
     private void TogglePreview(object? sender, RoutedEventArgs e)
     {
-        ViewModel.PreviewVisible = !ViewModel.PreviewVisible;
-        if (!ViewModel.PreviewVisible) BrowserPreview.CloseBrowser();
+        Layout.PreviewVisible = !Layout.PreviewVisible;
+        if (!Layout.PreviewVisible) BrowserPreview.CloseBrowser();
     }
 
     internal void ClosePreview()
     {
-        ViewModel.PreviewVisible = false;
+        Layout.PreviewVisible = false;
         BrowserPreview.CloseBrowser();
     }
 
     internal void EnsureBrowserUsePage(TaskCompletionSource<bool> initialized)
     {
-        ViewModel.PreviewVisible = true;
+        Layout.PreviewVisible = true;
         BrowserPreview.EnsureBrowserUsePage(initialized);
     }
 
     private void ToggleChildSessions(object? sender, RoutedEventArgs e)
     {
-        if (ViewModel.ReviewPaneWidth < DesktopViewModel.MinimumReviewPaneWidth) ViewModel.ReviewPaneWidth = DesktopViewModel.DefaultReviewPaneWidth;
-        if (ViewModel.ToggleChildSessionsDestination()) BrowserPreview.CloseBrowser();
-        if (ViewModel.ChildSessionsVisible) _ = ViewModel.LoadChildSessionsAsync();
+        if (Layout.ToggleChildSessions()) BrowserPreview.CloseBrowser();
+        if (Layout.ChildSessionsVisible) _ = ViewModel.LoadChildSessionsAsync();
     }
 
     internal void ToggleGitViewer()
     {
-        ViewModel.GitVisible = !ViewModel.GitVisible;
-        if (ViewModel.GitVisible)
-        {
-            if (ViewModel.BottomDrawerHeight < DesktopViewModel.MinimumBottomDrawerHeight) ViewModel.BottomDrawerHeight = DesktopViewModel.DefaultBottomDrawerHeight;
-            ViewModel.ProviderTraceVisible = false;
-            ViewModel.ToolActivityVisible = false;
-            _ = ViewModel.Git.RefreshAsync();
-        }
+        if (Layout.ToggleBottomDrawer(WorkspaceBottomDrawer.Git)) _ = ViewModel.Git.RefreshAsync();
     }
 
     private void ToggleGit(object? sender, RoutedEventArgs e) => ToggleGitViewer();
 
     private void ToggleProviderTrace(object? sender, RoutedEventArgs e)
     {
-        ViewModel.ProviderTraceVisible = !ViewModel.ProviderTraceVisible;
-        if (ViewModel.ProviderTraceVisible)
-        {
-            if (ViewModel.BottomDrawerHeight < DesktopViewModel.MinimumBottomDrawerHeight) ViewModel.BottomDrawerHeight = DesktopViewModel.DefaultBottomDrawerHeight;
-            ViewModel.GitVisible = false;
-            ViewModel.ToolActivityVisible = false;
-            _ = ViewModel.ProviderTrace.RefreshAsync();
-        }
+        if (Layout.ToggleBottomDrawer(WorkspaceBottomDrawer.ProviderTrace)) _ = ViewModel.ProviderTrace.RefreshAsync();
     }
 
-    private void ToggleToolActivity(object? sender, RoutedEventArgs e)
-    {
-        ViewModel.ToolActivityVisible = !ViewModel.ToolActivityVisible;
-        if (!ViewModel.ToolActivityVisible) return;
-        if (ViewModel.BottomDrawerHeight < DesktopViewModel.MinimumBottomDrawerHeight) ViewModel.BottomDrawerHeight = DesktopViewModel.DefaultBottomDrawerHeight;
-        ViewModel.GitVisible = false;
-        ViewModel.ProviderTraceVisible = false;
-    }
+    private void ToggleToolActivity(object? sender, RoutedEventArgs e) =>
+        Layout.ToggleBottomDrawer(WorkspaceBottomDrawer.ToolActivity);
 
+    // Resize handles share the Border.resize-handle style; their Tag names
+    // the layout region they resize. Handlers are attached once at the
+    // workspace root rather than repeated on every handle.
     private void LayoutResizePressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not Control handle || handle.Tag is not string target ||
+        if (e.Source is not Border handle || !handle.Classes.Contains("resize-handle") ||
+            !Enum.TryParse<WorkspaceResizeTarget>(handle.Tag as string, out var target) ||
             !e.GetCurrentPoint(handle).Properties.IsLeftButtonPressed ||
             TopLevel.GetTopLevel(this) is not Window window) return;
+        ClampGitViewerHeight();
         _layoutResizeTarget = target;
         _layoutResizeStart = e.GetPosition(window);
-        _layoutResizeStartNavigationWidth = ViewModel.NavigationPaneWidth;
-        _layoutResizeStartReviewWidth = ViewModel.ReviewPaneWidth;
-        _layoutResizeStartBottomHeight = ViewModel.BottomDrawerHeight;
+        _layoutResizeStartSize = Layout.ResizeStartSize(target);
         e.Pointer.Capture(handle);
         e.Handled = true;
     }
 
     private void LayoutResizeMoved(object? sender, PointerEventArgs e)
     {
-        if (string.IsNullOrEmpty(_layoutResizeTarget) || TopLevel.GetTopLevel(this) is not Window window) return;
+        if (_layoutResizeTarget is not { } target || TopLevel.GetTopLevel(this) is not Window window) return;
         var point = e.GetPosition(window);
-        var deltaX = point.X - _layoutResizeStart.X;
-        var deltaY = point.Y - _layoutResizeStart.Y;
-        switch (_layoutResizeTarget)
-        {
-            case "Navigation":
-                ViewModel.NavigationPaneWidth = Math.Max(0, _layoutResizeStartNavigationWidth + deltaX);
-                break;
-            case "Review":
-                ViewModel.ReviewPaneWidth = Math.Max(0, _layoutResizeStartReviewWidth - deltaX);
-                break;
-            case "Preview":
-                ViewModel.ReviewPaneWidth = Math.Max(0, _layoutResizeStartReviewWidth - deltaX);
-                break;
-            case "BottomDrawer":
-                // Keep the central workspace usable while dragging upward. The
-                // drawer only retreats when it is deliberately pulled below
-                // its minimum height.
-                var maxDrawerHeight = Math.Max(
-                    DesktopViewModel.MinimumBottomDrawerHeight,
-                    window.Bounds.Height - 36 - 4 - 360 - 20);
-                ViewModel.BottomDrawerHeight = Math.Clamp(
-                    _layoutResizeStartBottomHeight - deltaY,
-                    0,
-                    maxDrawerHeight);
-                break;
-        }
+        Layout.ApplyResize(target, _layoutResizeStartSize, point.X - _layoutResizeStart.X, point.Y - _layoutResizeStart.Y);
         e.Handled = true;
     }
 
     private void LayoutResizeReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (string.IsNullOrEmpty(_layoutResizeTarget)) return;
-        if (_layoutResizeTarget == "Navigation" && ViewModel.NavigationPaneWidth < DesktopViewModel.MinimumNavigationPaneWidth)
-            ViewModel.NavigationVisible = false;
-        else if (_layoutResizeTarget == "Review" && ViewModel.ReviewPaneWidth < DesktopViewModel.MinimumReviewPaneWidth)
-            ViewModel.ReviewVisible = false;
-        else if (_layoutResizeTarget == "BottomDrawer" && ViewModel.BottomDrawerHeight < DesktopViewModel.MinimumBottomDrawerHeight)
-        {
-            ViewModel.GitVisible = false;
-            ViewModel.ProviderTraceVisible = false;
-            ViewModel.ToolActivityVisible = false;
-        }
-        _layoutResizeTarget = string.Empty;
+        if (_layoutResizeTarget is not { } target) return;
+        Layout.CompleteResize(target);
+        _layoutResizeTarget = null;
         e.Pointer.Capture(null);
         e.Handled = true;
     }
@@ -487,31 +417,11 @@ public sealed partial class ProjectWorkspace : UserControl
     private void TitleBarDoubleTapped(object? sender, TappedEventArgs e) => Owner?.TitleBarDoubleTapped(sender, e);
     internal void SetTrafficLightFocus(bool isActive)
     {
-        _trafficLightsActive = isActive;
-        WorkspaceWindow.SetTrafficLightFocusState(ProjectCloseLight, isActive);
-        WorkspaceWindow.SetTrafficLightFocusState(ProjectMinimizeLight, isActive);
-        WorkspaceWindow.SetTrafficLightFocusState(ProjectMaximizeLight, isActive);
+        ProjectCloseLight.IsWindowActive = isActive;
+        ProjectMinimizeLight.IsWindowActive = isActive;
+        ProjectMaximizeLight.IsWindowActive = isActive;
     }
 
-    private void TrafficLightEntered(object? sender, PointerEventArgs e)
-    {
-        if (_trafficLightsActive) WorkspaceWindow.SetTrafficLightState(sender, "hover");
-    }
-
-    private void TrafficLightExited(object? sender, PointerEventArgs e)
-    {
-        if (_trafficLightsActive) WorkspaceWindow.SetTrafficLightState(sender, "normal");
-    }
-
-    private void TrafficLightPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (_trafficLightsActive) WorkspaceWindow.SetTrafficLightState(sender, "press");
-    }
-
-    private void TrafficLightReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        if (_trafficLightsActive) WorkspaceWindow.SetTrafficLightState(sender, "hover");
-    }
     private void WindowsCloseEntered(object? sender, PointerEventArgs e) => SetWindowsCloseIconState(sender, "hover");
     private void WindowsCloseExited(object? sender, PointerEventArgs e) => SetWindowsCloseIconState(sender, "normal");
     private void WindowsClosePressed(object? sender, PointerPressedEventArgs e) => SetWindowsCloseIconState(sender, "press");
