@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "format": "prettier --write src --ignore-path .gitignore",
     "format:check": "prettier --check src --ignore-path .gitignore",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "test": "vitest run"
   },
   "dependencies": {
     "dompurify": "^3.4.16",
@@ -27,7 +28,8 @@
     "@vitejs/plugin-react": "^5.0.4",
     "prettier": "^3.9.9",
     "typescript": "^5.9.2",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "vitest": "5.0.3"
   },
   "packageManager": "pnpm@12.9.1"
 }

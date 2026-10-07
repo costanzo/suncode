@@ -22,6 +22,7 @@
 .web-connection i, .web-stream-banner i, .web-state-dot { display: inline-block; width: 6px; height: 6px; background: currentColor; border-radius: 50%; }
 .web-connection.is-degraded, .web-connection.is-reconnecting { color: var(--warning); }
 .web-connection.is-offline { color: var(--text-muted); }
+.web-connection.is-unauthorized { color: var(--danger); }
 .web-connection.is-reconnecting i { animation: web-pulse 1.2s ease-in-out infinite; }
 .web-protocol { color: var(--text-muted); font: 9px var(--font-mono); }
 .web-project-column, .web-session-column { padding: 17px 11px 13px; border-right: 1px solid var(--border); }

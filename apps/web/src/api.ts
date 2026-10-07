@@ -1,117 +1,21 @@
 import { decryptPayload, encryptPayload } from "./crypto";
+import {
+  normalizeSessionSnapshot,
+  parsePairingExchange,
+  parseSseFrame,
+  parseTokenData,
+  splitSseFrames,
+  type PairingExchangeData,
+} from "./protocol";
 import type {
   ApiError,
   CredentialState,
   Host,
   PairingPayload,
   Project,
-  Question,
-  SessionSnapshot,
   SessionSummary,
   SseEnvelope,
 } from "./types";
-
-type RawSessionSnapshot = {
-  session?: Record<string, unknown>;
-  messages?: unknown[];
-  pendingApproval?: Record<string, unknown> | null;
-  pendingQuestion?: Record<string, unknown> | null;
-};
-
-function messageText(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (!value || typeof value !== "object") return "";
-  const object = value as Record<string, unknown>;
-  if (typeof object.text === "string") return object.text;
-  if (Array.isArray(object.content)) return object.content.map(messageText).join("");
-  if (object.content) return messageText(object.content);
-  return "";
-}
-
-export function normalizePendingQuestion(value: unknown, revision = 0): Question | null {
-  if (!value || typeof value !== "object") return null;
-  const source = value as Record<string, unknown>;
-  const entries = Array.isArray(source.questions) ? source.questions : [source];
-  const first = (entries[0] ?? {}) as Record<string, unknown>;
-  const options = Array.isArray(first.options)
-    ? first.options.map((option) => {
-        if (option && typeof option === "object") {
-          const item = option as Record<string, unknown>;
-          return String(item.label ?? item.value ?? item.description ?? "");
-        }
-        return String(option);
-      })
-    : [];
-  return {
-    id: String(source.request_id ?? source.questionId ?? source.id ?? ""),
-    revision: Number(source.revision ?? revision),
-    prompt: String(
-      first.question ?? first.prompt ?? source.prompt ?? first.header ?? "SunCode needs an answer",
-    ),
-    options,
-  };
-}
-
-function nonNegativeInteger(value: unknown): number {
-  const number = Number(value);
-  return Number.isInteger(number) && number >= 0 ? number : 0;
-}
-
-export function normalizeSessionSnapshot(
-  value: unknown,
-  project?: { id: string; displayName: string },
-): SessionSnapshot {
-  const raw = (value ?? {}) as RawSessionSnapshot & Record<string, unknown>;
-  // The contract's SessionDetailData is flat; older payloads nest fields under `session`.
-  const session = raw.session ?? raw;
-  const rawProject = (session.project ?? null) as { id?: unknown; displayName?: unknown } | null;
-  const projectId = String(session.projectId ?? rawProject?.id ?? project?.id ?? "");
-  const sessionProject = project ?? {
-    id: projectId,
-    displayName: String(rawProject?.displayName ?? (projectId || "Project")),
-  };
-  const messages = Array.isArray(raw.messages)
-    ? raw.messages.map((item, index) => {
-        const message = (item ?? {}) as Record<string, unknown>;
-        const role =
-          message.role === "user" || message.role === "thinking" ? message.role : "assistant";
-        return {
-          id: String(message.messageId ?? message.id ?? `message-${index}`),
-          role,
-          text: messageText(message),
-          createdAt: String(message.createdAt ?? new Date(0).toISOString()),
-          turnId:
-            message.turnId == null && message.turn_id == null
-              ? undefined
-              : String(message.turnId ?? message.turn_id),
-        } as SessionSnapshot["messages"][number];
-      })
-    : [];
-  const approval = raw.pendingApproval;
-  const question = normalizePendingQuestion(raw.pendingQuestion);
-  return {
-    id: String(session.sessionId ?? session.id ?? ""),
-    title: String(session.title ?? "New session"),
-    kind: "primary",
-    project: sessionProject,
-    state: approval ? "waiting_for_approval" : question ? "waiting_for_answer" : "idle",
-    updatedAt: String(session.updatedAt ?? session.lastActivityAt ?? new Date(0).toISOString()),
-    preview: messages.at(-1)?.text ?? "",
-    revision: nonNegativeInteger(session.revision ?? raw.revision),
-    eventSequence: nonNegativeInteger(session.eventSequence ?? raw.eventSequence),
-    messages,
-    pendingApproval: approval
-      ? {
-          id: String(approval.approvalId ?? approval.id ?? "approval"),
-          revision: Number(approval.revision ?? 0),
-          summary: String(approval.summary ?? approval.operation ?? "Approval required"),
-          scope: String(approval.scope ?? ""),
-          detail: approval.detail == null ? null : String(approval.detail),
-        }
-      : null,
-    pendingQuestion: question,
-  };
-}
 
 export class RemoteApiError extends Error {
   constructor(
@@ -134,10 +38,11 @@ function apiError(status: number, body: unknown, fallback: string): RemoteApiErr
   });
 }
 
-/** Recovers the pairing endpoint (which may include a path prefix) from an API URL. */
-function endpointFromUrl(url: string): string {
-  const index = url.indexOf("/v1/mobile/");
-  return index >= 0 ? url.slice(0, index) : new URL(url).origin;
+/** Builds `/v1/mobile/hosts/{hostId}/...` with every segment URL-encoded. */
+export function hostPath(hostId: string, ...segments: string[]): string {
+  return ["/v1/mobile/hosts", hostId, ...segments]
+    .map((part, index) => (index === 0 ? part : encodeURIComponent(part)))
+    .join("/");
 }
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
@@ -158,6 +63,27 @@ const STREAM_RETRY_MAX_MS = 30_000;
 
 export type StreamConnectionState = "live" | "reconnecting";
 
+interface RequestOptions {
+  method?: "GET" | "POST";
+  /** JSON request body. Sent as an E2E `encPayload` when encryption is enabled. */
+  json?: unknown;
+  /** Whether a JSON body may be encrypted. Defaults to true. */
+  encrypted?: boolean;
+}
+
+export interface StreamHandlers {
+  onEvent: (event: SseEnvelope) => void;
+  /** Terminal failure; the stream has stopped and the caller owns recovery. */
+  onError: (error: unknown) => void;
+  onStateChange?: (state: StreamConnectionState) => void;
+  /** A single malformed or undecryptable frame was skipped. */
+  onFrameError?: (error: unknown) => void;
+}
+
+/**
+ * Client for the remote-control contract. The endpoint and host ID come from the current
+ * credential, so callers only pass resource identifiers.
+ */
 export class RemoteApi {
   constructor(
     private readonly credentials: CredentialReader,
@@ -198,15 +124,12 @@ export class RemoteApi {
    * rotating refresh token is only spent once. If the credential already changed since the
    * failed request was sent, the newer credential is returned without refreshing again.
    */
-  private refreshAfterUnauthorized(
-    endpoint: string,
-    failed: CredentialState,
-  ): Promise<CredentialState> {
+  private refreshAfterUnauthorized(failed: CredentialState): Promise<CredentialState> {
     if (this.refreshInFlight) return this.refreshInFlight;
     const current = this.credentials();
     if (!current) return Promise.reject(apiError(401, null, "Pairing is no longer available."));
     if (current.accessToken !== failed.accessToken) return Promise.resolve(current);
-    const pending = this.refresh(endpoint, current).finally(() => {
+    const pending = this.refresh(current).finally(() => {
       if (this.refreshInFlight === pending) this.refreshInFlight = null;
     });
     this.refreshInFlight = pending;
@@ -217,12 +140,9 @@ export class RemoteApi {
    * Refreshes after a 401 and unpairs only when the server rejected the refresh token.
    * Transport failures are rethrown unchanged so a network blip does not unpair the browser.
    */
-  private async refreshOrUnpair(
-    endpoint: string,
-    failed: CredentialState,
-  ): Promise<CredentialState> {
+  private async refreshOrUnpair(failed: CredentialState): Promise<CredentialState> {
     try {
-      return await this.refreshAfterUnauthorized(endpoint, failed);
+      return await this.refreshAfterUnauthorized(failed);
     } catch (error) {
       if (error instanceof RemoteApiError && [400, 401, 403].includes(error.status)) {
         this.updateCredentials(null);
@@ -232,8 +152,8 @@ export class RemoteApi {
     }
   }
 
-  private async refresh(endpoint: string, credential: CredentialState): Promise<CredentialState> {
-    const response = await fetch(`${endpoint}/v1/mobile/auth/refresh`, {
+  private async refresh(credential: CredentialState): Promise<CredentialState> {
+    const response = await fetch(`${credential.endpoint}/v1/mobile/auth/refresh`, {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -245,40 +165,34 @@ export class RemoteApi {
     });
     const body = await this.parseBody(response, null);
     if (!response.ok) throw apiError(response.status, body, "Refresh token rejected.");
-    const token = body as {
-      accessToken: string;
-      refreshToken: string;
-      accessTokenExpiresAt: string;
-    };
-    const next = { ...credential, ...token };
+    const next = { ...credential, ...parseTokenData(body) };
     this.updateCredentials(next);
     return next;
   }
 
   private async request<T>(
-    url: string,
-    init: RequestInit = {},
-    encrypted = true,
+    path: string,
+    { method = "GET", json, encrypted = true }: RequestOptions = {},
     retried = false,
   ): Promise<T> {
     const credential = this.credentials();
-    const headers = new Headers(init.headers);
-    headers.set("Accept", "application/json");
-    headers.set("X-Request-Id", crypto.randomUUID());
-    if (credential) {
-      headers.set("Authorization", `Bearer ${credential.accessToken}`);
-      headers.set("X-Host-Id", credential.host.id);
-    }
-    let body = init.body;
-    if (body && encrypted && credential?.e2eKey && credential.encryptionEnabled) {
-      const plain = typeof body === "string" ? JSON.parse(body) : body;
-      body = JSON.stringify({ encPayload: await encryptPayload(plain, credential.e2eKey) });
+    if (!credential) throw apiError(401, null, "This browser is not paired with a Desktop.");
+    const headers = new Headers({
+      Accept: "application/json",
+      "X-Request-Id": crypto.randomUUID(),
+      Authorization: `Bearer ${credential.accessToken}`,
+      "X-Host-Id": credential.host.id,
+    });
+    let body: string | undefined;
+    if (json !== undefined) {
       headers.set("Content-Type", "application/json");
+      const key = encrypted && credential.encryptionEnabled ? credential.e2eKey : undefined;
+      body = JSON.stringify(key ? { encPayload: await encryptPayload(json, key) } : json);
     }
-    const response = await fetch(url, { ...init, headers, body });
-    if (response.status === 401 && credential && !retried && !url.endsWith("/auth/refresh")) {
-      await this.refreshOrUnpair(endpointFromUrl(url), credential);
-      return this.request<T>(url, init, encrypted, true);
+    const response = await fetch(`${credential.endpoint}${path}`, { method, headers, body });
+    if (response.status === 401 && !retried) {
+      await this.refreshOrUnpair(credential);
+      return this.request<T>(path, { method, json, encrypted }, true);
     }
     const parsed = await this.parseBody(response, credential);
     if (!response.ok)
@@ -286,7 +200,11 @@ export class RemoteApi {
     return parsed as T;
   }
 
-  async exchangePairing(endpoint: string, payload: PairingPayload, deviceName: string) {
+  async exchangePairing(
+    endpoint: string,
+    payload: PairingPayload,
+    deviceName: string,
+  ): Promise<PairingExchangeData> {
     const response = await fetch(`${endpoint}/v1/mobile/pairings/exchange`, {
       method: "POST",
       headers: {
@@ -299,91 +217,69 @@ export class RemoteApi {
     });
     const body = await this.parseBody(response, null);
     if (!response.ok) throw apiError(response.status, body, "Pairing exchange failed.");
-    return body as {
-      accessToken: string;
-      refreshToken: string;
-      accessTokenExpiresAt: string;
-      host: Host;
-    };
+    return parsePairingExchange(body);
   }
 
-  getHost(endpoint: string, hostId: string) {
-    return this.request<Host>(`${endpoint}/v1/mobile/hosts/${encodeURIComponent(hostId)}`);
+  private hostId(): string {
+    return this.credentials()?.host.id ?? "";
   }
-  listProjects(endpoint: string, hostId: string) {
-    return this.request<{ items: Project[] }>(
-      `${endpoint}/v1/mobile/hosts/${encodeURIComponent(hostId)}/projects`,
-    );
+
+  getHost() {
+    return this.request<Host>(hostPath(this.hostId()));
   }
-  listSessions(endpoint: string, hostId: string, projectId?: string) {
+  listProjects() {
+    return this.request<{ items: Project[] }>(hostPath(this.hostId(), "projects"));
+  }
+  listSessions(projectId?: string) {
+    const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
     return this.request<{ items: SessionSummary[]; nextCursor?: string | null; hasMore?: boolean }>(
-      `${endpoint}/v1/mobile/hosts/${encodeURIComponent(hostId)}/sessions${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ""}`,
+      `${hostPath(this.hostId(), "sessions")}${query}`,
     );
   }
-  async getSession(endpoint: string, hostId: string, sessionId: string, project?: Project) {
-    const value = await this.request<unknown>(
-      `${endpoint}/v1/mobile/hosts/${encodeURIComponent(hostId)}/sessions/${encodeURIComponent(sessionId)}`,
-    );
+  async getSession(sessionId: string, project?: Project) {
+    const value = await this.request<unknown>(hostPath(this.hostId(), "sessions", sessionId));
     return normalizeSessionSnapshot(value, project);
   }
-  sendMessage(endpoint: string, hostId: string, sessionId: string, text: string) {
-    return this.request<void>(
-      `${endpoint}/v1/mobile/hosts/${encodeURIComponent(hostId)}/sessions/${encodeURIComponent(sessionId)}/messages`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      },
-    );
+  sendMessage(sessionId: string, text: string) {
+    return this.request<void>(hostPath(this.hostId(), "sessions", sessionId, "messages"), {
+      method: "POST",
+      json: { text },
+    });
   }
   resolveApproval(
-    endpoint: string,
-    hostId: string,
     sessionId: string,
     approvalId: string,
     action: "allow_once" | "allow_session" | "deny",
     expectedRevision: number,
   ) {
     return this.request<void>(
-      `${endpoint}/v1/mobile/hosts/${encodeURIComponent(hostId)}/sessions/${encodeURIComponent(sessionId)}/approvals/${encodeURIComponent(approvalId)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, expectedRevision }),
-      },
+      hostPath(this.hostId(), "sessions", sessionId, "approvals", approvalId),
+      { method: "POST", json: { action, expectedRevision } },
     );
   }
   replyQuestion(
-    endpoint: string,
-    hostId: string,
     sessionId: string,
     questionId: string,
     answers: string[],
     expectedRevision: number,
   ) {
     return this.request<void>(
-      `${endpoint}/v1/mobile/hosts/${encodeURIComponent(hostId)}/sessions/${encodeURIComponent(sessionId)}/questions/${encodeURIComponent(questionId)}/reply`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers, expectedRevision }),
-      },
+      hostPath(this.hostId(), "sessions", sessionId, "questions", questionId, "reply"),
+      { method: "POST", json: { answers, expectedRevision } },
     );
   }
-  cancel(endpoint: string, hostId: string, sessionId: string) {
-    return this.request<void>(
-      `${endpoint}/v1/mobile/hosts/${encodeURIComponent(hostId)}/sessions/${encodeURIComponent(sessionId)}/cancel`,
-      { method: "POST" },
-    );
+  cancel(sessionId: string) {
+    return this.request<void>(hostPath(this.hostId(), "sessions", sessionId, "cancel"), {
+      method: "POST",
+    });
   }
-  retry(endpoint: string, hostId: string, sessionId: string) {
-    return this.request<void>(
-      `${endpoint}/v1/mobile/hosts/${encodeURIComponent(hostId)}/sessions/${encodeURIComponent(sessionId)}/retry`,
-      { method: "POST" },
-    );
+  retry(sessionId: string) {
+    return this.request<void>(hostPath(this.hostId(), "sessions", sessionId, "retry"), {
+      method: "POST",
+    });
   }
-  logout(endpoint: string, hostId: string) {
-    return this.request<void>(`${endpoint}/v1/mobile/auth/logout`, { method: "POST" }, false);
+  logout() {
+    return this.request<void>("/v1/mobile/auth/logout", { method: "POST", encrypted: false });
   }
 
   /**
@@ -394,18 +290,20 @@ export class RemoteApi {
    * reported through `onFrameError` without closing the stream.
    */
   streamSession(
-    endpoint: string,
-    hostId: string,
     sessionId: string,
     lastEventId: string | undefined,
-    onEvent: (event: SseEnvelope) => void,
-    onError: (error: unknown) => void,
-    onStateChange: (state: StreamConnectionState) => void = () => undefined,
-    onFrameError: (error: unknown) => void = (error) =>
-      console.warn("Skipped an unreadable session stream frame.", error),
+    {
+      onEvent,
+      onError,
+      onStateChange = () => undefined,
+      onFrameError = (error) => console.warn("Skipped an unreadable session stream frame.", error),
+    }: StreamHandlers,
   ) {
     const controller = new AbortController();
     const signal = controller.signal;
+    const initial = this.credentials();
+    const endpoint = initial?.endpoint ?? "";
+    const hostId = initial?.host.id ?? "";
     let cursor = lastEventId;
     let wentLive = false;
     let retryAfterMs: number | undefined;
@@ -418,13 +316,7 @@ export class RemoteApi {
       error.status !== 429;
 
     const readFrame = async (frame: string, credential: CredentialState | null) => {
-      let frameId: string | undefined;
-      const dataLines: string[] = [];
-      for (const line of frame.split(/\r?\n/)) {
-        if (line.startsWith("data:")) dataLines.push(line.slice(5).replace(/^ /, ""));
-        else if (line.startsWith("id:")) frameId = line.slice(3).trim();
-      }
-      const data = dataLines.join("\n");
+      const { id: frameId, data } = parseSseFrame(frame);
       if (!data.trim()) return;
       try {
         const parsed = JSON.parse(data) as { encPayload?: string } | SseEnvelope;
@@ -461,8 +353,11 @@ export class RemoteApi {
       if (credential) headers.Authorization = `Bearer ${credential.accessToken}`;
       if (cursor) headers["Last-Event-ID"] = cursor;
       const response = await fetch(
-        `${endpoint}/v1/mobile/hosts/${encodeURIComponent(hostId)}/sessions/${encodeURIComponent(sessionId)}/events`,
-        { headers, signal },
+        `${endpoint}${hostPath(hostId, "sessions", sessionId, "events")}`,
+        {
+          headers,
+          signal,
+        },
       );
       if (!response.ok || !response.body) {
         const body = await response.text();
@@ -478,7 +373,7 @@ export class RemoteApi {
           "Session stream failed.",
         );
         if (error.status === 401 && credential && !refreshed) {
-          await this.refreshOrUnpair(endpoint, credential);
+          await this.refreshOrUnpair(credential);
           return connectOnce(true);
         }
         const retryAfter = Number(response.headers.get("Retry-After"));
@@ -495,8 +390,8 @@ export class RemoteApi {
           const { value, done } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
-          const frames = buffer.split(/\r?\n\r?\n/);
-          buffer = frames.pop() ?? "";
+          const { frames, rest } = splitSseFrames(buffer);
+          buffer = rest;
           for (const frame of frames) await readFrame(frame, credential);
         }
       } finally {
