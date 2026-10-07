@@ -100,15 +100,14 @@ pub(super) fn apply_computer_enablement(agent: &Agent, enabled: bool) -> SdkResu
             }
         }
         agent.install_computer_backend(Box::new(
-            suncode_computer::EnigoBackend::new()
-                .map_err(|error| {
-                    let message = error.to_string();
-                    if message.contains("permission to simulate input") {
-                        computer_input_permission_required()
-                    } else {
-                        BusinessError::unavailable(message)
-                    }
-                })?,
+            suncode_computer::EnigoBackend::new().map_err(|error| {
+                let message = error.to_string();
+                if message.contains("permission to simulate input") {
+                    computer_input_permission_required()
+                } else {
+                    BusinessError::unavailable(message)
+                }
+            })?,
         ))?;
     }
     agent.set_computer_use_enabled(enabled)

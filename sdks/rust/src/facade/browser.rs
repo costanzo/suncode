@@ -1,6 +1,7 @@
 use super::*;
 
-pub type BrowserHostCallback = std::sync::Arc<dyn Fn(&str) -> Result<(), BusinessError> + Send + Sync>;
+pub type BrowserHostCallback =
+    std::sync::Arc<dyn Fn(&str) -> Result<(), BusinessError> + Send + Sync>;
 
 impl AsyncAgentSdk {
     pub fn set_browser_host_callback(&self, callback: Option<BrowserHostCallback>) {

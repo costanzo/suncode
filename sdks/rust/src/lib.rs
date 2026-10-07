@@ -6,8 +6,8 @@ mod types;
 pub use facade::blocking;
 pub use facade::{
     AgentSdk, AsyncAgentSdk, AttentionEventStream, AttentionEventStreamControl,
-    BrowserHostCallback, RemoteServerConfiguration, RemoteServerStatus, SessionEventStream, SessionEventStreamControl,
-    SessionWatch, SubscriptionError,
+    BrowserHostCallback, RemoteServerConfiguration, RemoteServerStatus, SessionEventStream,
+    SessionEventStreamControl, SessionWatch, SubscriptionError,
 };
 pub use suncode_agent::logging as logging_module;
 pub use suncode_agent::{agent::TurnResponse, domain::ApprovalRecord};

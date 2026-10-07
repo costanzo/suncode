@@ -1,5 +1,6 @@
 use serde::Serialize;
 use serde_json::{json, Value};
+use std::sync::Arc;
 use std::{
     ffi::{CStr, CString},
     os::raw::{c_char, c_void},
@@ -11,12 +12,11 @@ use std::{
     },
     thread::JoinHandle,
 };
-use std::sync::Arc;
 use suncode_sdk::logging_module::{self as logging};
 use suncode_sdk::{
-    AgentAttentionEvent, AttentionEventStream, AttentionEventStreamControl,
-    AgentEvent, AgentSdk, BusinessError, LanguageServerWriteRequest, McpServerWriteRequest,
-    SdkResult, SessionEventStream, SessionEventStreamControl, SubscriptionError,
+    AgentAttentionEvent, AgentEvent, AgentSdk, AttentionEventStream, AttentionEventStreamControl,
+    BusinessError, LanguageServerWriteRequest, McpServerWriteRequest, SdkResult,
+    SessionEventStream, SessionEventStreamControl, SubscriptionError,
     SUNCODE_AGENT_SDK_ABI_VERSION,
 };
 
@@ -739,12 +739,16 @@ pub unsafe extern "C" fn suncode_agent_sdk_set_setting(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn suncode_agent_sdk_remote_server_configuration(handle: *mut SunCodeAgentHandle) -> *mut c_char {
+pub unsafe extern "C" fn suncode_agent_sdk_remote_server_configuration(
+    handle: *mut SunCodeAgentHandle,
+) -> *mut c_char {
     ffi_call(handle, |sdk| Ok(sdk.remote_server_configuration()))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn suncode_agent_sdk_remote_server_status(handle: *mut SunCodeAgentHandle) -> *mut c_char {
+pub unsafe extern "C" fn suncode_agent_sdk_remote_server_status(
+    handle: *mut SunCodeAgentHandle,
+) -> *mut c_char {
     ffi_call(handle, |sdk| Ok(sdk.remote_server_status()))
 }
 
@@ -765,17 +769,23 @@ pub unsafe extern "C" fn suncode_agent_sdk_save_remote_server_configuration(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn suncode_agent_sdk_connect_remote_server(handle: *mut SunCodeAgentHandle) -> *mut c_char {
+pub unsafe extern "C" fn suncode_agent_sdk_connect_remote_server(
+    handle: *mut SunCodeAgentHandle,
+) -> *mut c_char {
     ffi_call(handle, |sdk| sdk.connect_remote_server())
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn suncode_agent_sdk_disconnect_remote_server(handle: *mut SunCodeAgentHandle) -> *mut c_char {
+pub unsafe extern "C" fn suncode_agent_sdk_disconnect_remote_server(
+    handle: *mut SunCodeAgentHandle,
+) -> *mut c_char {
     ffi_call(handle, |sdk| Ok(sdk.disconnect_remote_server()?))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn suncode_agent_sdk_clear_remote_server_configuration(handle: *mut SunCodeAgentHandle) -> *mut c_char {
+pub unsafe extern "C" fn suncode_agent_sdk_clear_remote_server_configuration(
+    handle: *mut SunCodeAgentHandle,
+) -> *mut c_char {
     ffi_call(handle, |sdk| Ok(sdk.clear_remote_server_configuration()?))
 }
 
@@ -845,8 +855,13 @@ pub unsafe extern "C" fn suncode_agent_sdk_open_project(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn suncode_agent_sdk_preview_state(handle: *mut SunCodeAgentHandle, project_id: *const c_char) -> *mut c_char {
-    ffi_call(handle, |sdk| sdk.preview_state(&c_string(project_id, "project_id")?))
+pub unsafe extern "C" fn suncode_agent_sdk_preview_state(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.preview_state(&c_string(project_id, "project_id")?)
+    })
 }
 
 #[no_mangle]
@@ -872,8 +887,13 @@ pub unsafe extern "C" fn suncode_agent_sdk_start_preview(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn suncode_agent_sdk_stop_preview(handle: *mut SunCodeAgentHandle, project_id: *const c_char) -> *mut c_char {
-    ffi_call(handle, |sdk| sdk.stop_preview(&c_string(project_id, "project_id")?))
+pub unsafe extern "C" fn suncode_agent_sdk_stop_preview(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.stop_preview(&c_string(project_id, "project_id")?)
+    })
 }
 
 macro_rules! ffi_one_string {
@@ -1405,7 +1425,7 @@ fn run_attention_subscription(
             Err(SubscriptionError::Closed) => {
                 logging::debug("sdk.subscribe", "attention subscription closed");
                 break;
-            },
+            }
             Err(SubscriptionError::Empty) => continue,
         }
     }
