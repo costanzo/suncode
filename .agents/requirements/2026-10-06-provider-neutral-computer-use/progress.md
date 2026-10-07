@@ -1,6 +1,6 @@
 # Progress
 
-- Status: Complete with one pre-existing test baseline failure
+- Status: Complete
 - Last updated: 2026-10-06
 
 ## Completed
@@ -17,7 +17,7 @@
 
 ## Blocked
 
-- The pre-existing `suncode-data` seeded catalog test fails because the seed contains `deepseek-flash` while the test expects `deepseek-v4-flash-vision-exp`.
+- None.
 
 ## Log
 

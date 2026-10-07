@@ -1115,12 +1115,25 @@ mod tests {
             .unwrap());
         let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
         loop {
-            if std::fs::read_to_string(root.join("README.md")).unwrap() == "updated" {
+            let file_updated = std::fs::read_to_string(root.join("README.md")).unwrap() == "updated";
+            let checkpoint_ready = store
+                .manifests(&session_id)
+                .unwrap()
+                .first()
+                .map(|manifest| {
+                    store
+                        .checkpoint_items(&manifest.manifest_id)
+                        .unwrap()
+                        .len()
+                        == 1
+                })
+                .unwrap_or(false);
+            if file_updated && checkpoint_ready {
                 break;
             }
             assert!(
                 tokio::time::Instant::now() < deadline,
-                "approval continuation did not complete"
+                "approval continuation did not complete its file and checkpoint updates"
             );
             tokio::time::sleep(Duration::from_millis(20)).await;
         }

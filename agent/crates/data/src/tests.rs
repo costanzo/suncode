@@ -399,10 +399,11 @@ fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
             .unwrap_or_else(|| panic!("missing seeded model {id}"))
     };
     let deepseek_flash = model("deepseek-v4-flash");
-    assert_eq!(deepseek_flash.request_model, "deepseek-v4-flash-vision-exp");
+    assert_eq!(deepseek_flash.request_model, "deepseek-flash");
     assert_eq!(deepseek_flash.context_tokens, 1_000_000);
-    assert_eq!(deepseek_flash.max_output_tokens, Some(128_000));
+    assert_eq!(deepseek_flash.max_output_tokens, Some(384_000));
     assert!(deepseek_flash.supports_vision);
+    assert!(deepseek_flash.supports_reasoning_effort);
     let deepseek_pro = model("deepseek-v4-pro");
     assert_eq!(deepseek_pro.context_tokens, 1_000_000);
     assert!(!deepseek_pro.supports_vision);
@@ -412,7 +413,7 @@ fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
         assert_eq!(glm.max_output_tokens, Some(128_000));
         assert!(glm.supports_reasoning_effort);
     }
-    assert_eq!(model("glm-5.3").reasoning_efforts, ["low", "high"]);
+    assert_eq!(model("glm-5.3").reasoning_efforts, ["low", "high", "max"]);
     for id in ["gpt-5.6-sol", "gpt-5.5"] {
         let openai = model(id);
         assert_eq!(openai.context_tokens, 1_048_576);
@@ -424,7 +425,7 @@ fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
     assert_eq!(model("gpt-5.5").request_model, "gpt-5.6-terra");
     let kimi_k2 = model("kimi-k2.7-code");
     assert_eq!(kimi_k2.context_tokens, 262_144);
-    assert_eq!(kimi_k2.max_output_tokens, Some(262_144));
+    assert_eq!(kimi_k2.max_output_tokens, Some(32_768));
     assert!(kimi_k2.supports_vision);
     let kimi_k3 = model("kimi-k3");
     assert_eq!(kimi_k3.context_tokens, 1_000_000);

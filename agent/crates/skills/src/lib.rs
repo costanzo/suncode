@@ -400,8 +400,8 @@ mod tests {
         );
         let catalog = SkillCatalog::discover(&DiscoveryOptions {
             project_root: project.path().into(),
-            user_config_directory: None,
-            user_home_directory: None,
+            user_config_directory: Some(project.path().join("missing-user-config")),
+            user_home_directory: Some(project.path().join("missing-user-home")),
             explicit_paths: vec![],
         });
         assert_eq!(catalog.skills.len(), 1);
@@ -427,8 +427,8 @@ mod tests {
         .unwrap();
         let catalog = SkillCatalog::discover(&DiscoveryOptions {
             project_root: project.path().into(),
-            user_config_directory: None,
-            user_home_directory: None,
+            user_config_directory: Some(project.path().join("missing-user-config")),
+            user_home_directory: Some(project.path().join("missing-user-home")),
             explicit_paths: vec![],
         });
         let document = catalog.load("release").unwrap();
@@ -461,7 +461,7 @@ mod tests {
         );
         let catalog = SkillCatalog::discover(&DiscoveryOptions {
             project_root: project.path().into(),
-            user_config_directory: None,
+            user_config_directory: Some(project.path().join("missing-user-config")),
             user_home_directory: Some(user.path().into()),
             explicit_paths: vec![],
         });
