@@ -115,7 +115,10 @@ impl suncode_llm::ApiKeyResolver for SqliteApiKeyResolver {
     }
 }
 
-fn credential_states(store: &Store, overrides: &std::collections::BTreeMap<String, String>) -> SdkResult<Vec<CredentialState>> {
+fn credential_states(
+    store: &Store,
+    overrides: &std::collections::BTreeMap<String, String>,
+) -> SdkResult<Vec<CredentialState>> {
     store
         .llm_model_providers(false)?
         .into_iter()
@@ -397,7 +400,8 @@ fn persisted_settings(
 ) -> SdkResult<PersistedSettings> {
     let mut settings = PersistedSettings::default();
     for record in store.settings(project_id, session_id)? {
-        settings.insert(&record.scope, record.key, record.value)
+        settings
+            .insert(&record.scope, record.key, record.value)
             .map_err(BusinessError::invalid)?;
     }
     Ok(settings)

@@ -7,8 +7,8 @@ use suncode_agent::domain::{
     SessionTraceTurn, SettingRecord,
 };
 use suncode_common::BusinessError;
-use suncode_llm::ModelDescriptor;
 use suncode_config::EnvironmentSource;
+use suncode_llm::ModelDescriptor;
 
 pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 16;
 pub type SdkResult<T> = Result<T, BusinessError>;

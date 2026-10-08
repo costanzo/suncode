@@ -196,7 +196,9 @@ pub struct Agent {
     shutting_down: Arc<std::sync::atomic::AtomicBool>,
 }
 
-fn default_turn_timeout_ms() -> u64 { RuntimeConfig::DEFAULT_TURN_TIMEOUT_MS }
+fn default_turn_timeout_ms() -> u64 {
+    RuntimeConfig::DEFAULT_TURN_TIMEOUT_MS
+}
 
 include!("submission.rs");
 include!("continuations.rs");

@@ -9,8 +9,8 @@ use std::{panic::AssertUnwindSafe, process::ExitCode};
 use futures_util::FutureExt;
 
 use clap::Parser;
-use suncode_sdk::{AsyncAgentSdk, SdkHostCapabilities, SdkOpenOptions};
 use suncode_config::EnvironmentSource;
+use suncode_sdk::{AsyncAgentSdk, SdkHostCapabilities, SdkOpenOptions};
 
 use crate::{
     args::{Cli, OutputMode},
