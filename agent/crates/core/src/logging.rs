@@ -1,3 +1,3 @@
 pub use suncode_common::logging::{
-    configure, debug, error, info, trace, warn, write_business_error, Config, Level,
+    configure, debug, error, info, trace, warn, write_business_error, Config, ConsoleOutput, Level,
 };

@@ -24,6 +24,9 @@ internal static class DiagnosticLog
     private static int _retention = DefaultRetention;
     private static DiagnosticLogLevel _minimumLevel = DiagnosticLogLevel.Info;
     private static bool _initialized;
+    private static volatile bool _consoleOutput;
+
+    public static void ConfigureConsoleOutput(bool enabled) => _consoleOutput = enabled;
 
     public static void Initialize()
     {
@@ -107,8 +110,11 @@ internal static class DiagnosticLog
                 Console.Error.WriteLine($"[suncode][logger][ERROR] file_write_failed type={exception.GetType().Name} message={exception.Message}");
             }
 
-            Console.Error.WriteLine(line);
-            Console.Error.Flush();
+            if (_consoleOutput)
+            {
+                Console.Error.WriteLine(line);
+                Console.Error.Flush();
+            }
         }
     }
 

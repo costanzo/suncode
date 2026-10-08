@@ -20,6 +20,11 @@ pub struct Cli {
     #[arg(long, global = true, value_name = "USER_ID")]
     pub user_id: Option<String>,
 
+    /// Diagnostic log destination. Logs are always written to the configured file;
+    /// this controls the optional console mirror for this CLI process.
+    #[arg(long, global = true, value_enum, env = "SUNCODE_LOG_OUTPUT")]
+    pub log_output: Option<LogOutput>,
+
     #[command(subcommand)]
     pub command: Command,
 }
@@ -134,6 +139,14 @@ pub enum ColorMode {
     Auto,
     Always,
     Never,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum LogOutput {
+    None,
+    Stderr,
+    Stdout,
+    Both,
 }
 
 #[cfg(test)]

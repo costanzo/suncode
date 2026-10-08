@@ -7,6 +7,10 @@ namespace SunCode.Sdk;
 
 public sealed partial class AgentSdk : IDisposable
 {
+    /// <summary>Controls whether SDK diagnostics are mirrored to host stderr.</summary>
+    public static void ConfigureDiagnosticConsoleOutput(bool enabled) =>
+        SdkDiagnosticLog.ConfigureConsoleOutput(enabled);
+
     public static event Func<string, bool>? BrowserHostRequested;
     private static readonly NativeMethods.BrowserHostCallback BrowserHostCallbackBridge = OnBrowserHostRequested;
     private sealed record SettingEnvelope(JsonElement Value);

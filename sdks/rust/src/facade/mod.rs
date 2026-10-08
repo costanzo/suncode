@@ -70,6 +70,7 @@ pub(crate) struct AgentState {
     providers: Arc<ModelProviderRegistry>,
     credential_overrides: std::collections::BTreeMap<String, String>,
     host_capabilities: SdkHostCapabilities,
+    log_console_output: SdkLogConsoleOutput,
 }
 
 impl AsyncAgentSdk {
@@ -284,7 +285,7 @@ where
     let store = Store::open(&config.database_path)?;
     let persisted = persisted_settings(&store, None, None)?;
     let runtime_config = config.runtime(&persisted).map_err(BusinessError::invalid)?;
-    configure_logging(&store, &config.data_dir)?;
+    configure_logging(&store, &config.data_dir, options.log_console_output)?;
     let verify_https_certificates = Arc::new(AtomicBool::new(global_bool_setting(
         &store,
         "verify_https_certificates",
@@ -388,6 +389,7 @@ where
         providers,
         credential_overrides: runtime_config.credentials,
         host_capabilities: options.host_capabilities,
+        log_console_output: options.log_console_output,
     };
     state.agent.recover().await?;
     Ok(state)
@@ -486,7 +488,11 @@ fn normalize_provider_endpoint(value: &str) -> SdkResult<String> {
     Ok(value.trim_end_matches('/').to_string())
 }
 
-fn configure_logging(store: &Store, data_dir: &Path) -> SdkResult<()> {
+fn configure_logging(
+    store: &Store,
+    data_dir: &Path,
+    console_output: SdkLogConsoleOutput,
+) -> SdkResult<()> {
     let settings = store.settings(None, None)?;
     let value = |key: &str| {
         settings
@@ -510,6 +516,12 @@ fn configure_logging(store: &Store, data_dir: &Path) -> SdkResult<()> {
             directory,
             max_bytes,
             retention,
+            console: match console_output {
+                SdkLogConsoleOutput::None => logging::ConsoleOutput::None,
+                SdkLogConsoleOutput::Stderr => logging::ConsoleOutput::Stderr,
+                SdkLogConsoleOutput::Stdout => logging::ConsoleOutput::Stdout,
+                SdkLogConsoleOutput::Both => logging::ConsoleOutput::Both,
+            },
         },
     );
     Ok(())

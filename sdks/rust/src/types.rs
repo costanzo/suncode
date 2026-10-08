@@ -20,6 +20,17 @@ pub struct SdkHostCapabilities {
     pub remote_control: bool,
 }
 
+/// Runtime destination for diagnostic log lines in addition to the log file.
+/// This is deliberately host-owned: desktop and CLI have different terminal
+/// semantics and must not change each other's persisted logging policy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SdkLogConsoleOutput {
+    None,
+    Stderr,
+    Stdout,
+    Both,
+}
+
 impl Default for SdkHostCapabilities {
     fn default() -> Self {
         Self {
@@ -34,6 +45,7 @@ impl Default for SdkHostCapabilities {
 pub struct SdkOpenOptions {
     pub host_capabilities: SdkHostCapabilities,
     pub environment_source: EnvironmentSource,
+    pub log_console_output: SdkLogConsoleOutput,
 }
 
 impl Default for SdkOpenOptions {
@@ -41,6 +53,7 @@ impl Default for SdkOpenOptions {
         Self {
             host_capabilities: SdkHostCapabilities::default(),
             environment_source: EnvironmentSource::Disabled,
+            log_console_output: SdkLogConsoleOutput::None,
         }
     }
 }

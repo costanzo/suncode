@@ -10,7 +10,7 @@ use futures_util::FutureExt;
 
 use clap::Parser;
 use suncode_config::EnvironmentSource;
-use suncode_sdk::{AsyncAgentSdk, SdkHostCapabilities, SdkOpenOptions};
+use suncode_sdk::{AsyncAgentSdk, SdkHostCapabilities, SdkLogConsoleOutput, SdkOpenOptions};
 
 use crate::{
     args::{Cli, OutputMode},
@@ -47,6 +47,12 @@ async fn main() -> ExitCode {
                 remote_control: false,
             },
             environment_source: EnvironmentSource::Process,
+            log_console_output: match config.log_output {
+                args::LogOutput::None => SdkLogConsoleOutput::None,
+                args::LogOutput::Stderr => SdkLogConsoleOutput::Stderr,
+                args::LogOutput::Stdout => SdkLogConsoleOutput::Stdout,
+                args::LogOutput::Both => SdkLogConsoleOutput::Both,
+            },
         },
     )
     .await

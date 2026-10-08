@@ -19,7 +19,7 @@ suncode auth remove PROVIDER
 suncode config list
 ```
 
-Global options currently include `--output text|jsonl`, `--color auto|always|never`, and `--user-id`. Their corresponding environment variables are `SUNCODE_OUTPUT`, `SUNCODE_COLOR`, and `SUNCODE_USER_ID`. `run` and `session resume` also accept `SUNCODE_MODEL` and `SUNCODE_REASONING_EFFORT`. SDK bootstrap continues to consume `SUNCODE_DATA_DIRECTORY`, `SUNCODE_DATABASE_PATH`, and `SUNCODE_NON_INTERACTIVE`.
+Global options currently include `--output text|jsonl`, `--color auto|always|never`, `--log-output none|stderr|stdout|both`, and `--user-id`. Their corresponding environment variables are `SUNCODE_OUTPUT`, `SUNCODE_COLOR`, `SUNCODE_LOG_OUTPUT`, and `SUNCODE_USER_ID`. `--log-output` controls the Rust diagnostic logger's console mirror for the CLI process; logs still go to the configured `agent.log`. It defaults to `stderr`; use `--log-output none` when stdout and stderr must contain only CLI output and errors.
 
 `run` opens the selected project and creates a primary session. `session resume` reopens an existing primary session and submits one new turn with its durable context. Both establish an atomic SDK watch, stream typed events, and print final assistant text to stdout. Text-mode progress stays on stderr; JSONL finishes with `run.result` or `session.resume.result`. The first interrupt requests SDK turn cancellation, while a second exits with status 130 after attempting explicit shutdown.
 

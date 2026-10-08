@@ -12,6 +12,7 @@ The Rust agent writes `agent.log` and the Avalonia client writes a separate `des
 | `log_retention` | 5 | Rotated backups, 0-100 |
 
 - All four keys are global-only and validated on write. A successful SDK write reconfigures the Rust logger right away.
+- Console mirroring is host-owned rather than persisted: the CLI selects `none`, `stderr`, `stdout`, or `both` with `--log-output`/`SUNCODE_LOG_OUTPUT` and defaults to `stderr`; the Avalonia desktop disables normal SDK and desktop logger console mirroring.
 - Before SQLite is read, both loggers write to a default file. Every record is flushed. If logging itself fails, the logger falls back to stderr and the original failure is kept.
 - Rotation happens when the next line would exceed `log_max_bytes`. Backups are named `agent.log.1` through `agent.log.<retention>`. A retention of 0 deletes the active file instead.
 - Each line holds a timestamp, level, process and thread IDs, component, and a bounded single-line message.

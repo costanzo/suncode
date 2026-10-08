@@ -68,6 +68,7 @@ fn test_state(directory: &std::path::Path) -> AgentState {
         providers,
         credential_overrides: std::collections::BTreeMap::new(),
         host_capabilities: SdkHostCapabilities::default(),
+        log_console_output: SdkLogConsoleOutput::None,
     }
 }
 
@@ -211,6 +212,7 @@ async fn host_capability_ceiling_disables_browser_and_computer_without_mutating_
                 remote_control: true,
             },
             environment_source: suncode_config::EnvironmentSource::Process,
+            log_console_output: SdkLogConsoleOutput::None,
         },
     )
     .await

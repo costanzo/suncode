@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
+using SunCode.Sdk;
 using Xilium.CefGlue.BrowserProcess;
 
 namespace SunCode.Desktop;
@@ -16,6 +17,8 @@ internal static class Program
         // and utility processes on every platform. Divert them before any app
         // startup work (logging, single-instance IPC, Avalonia).
         CefSubProcess.Run(args, true);
+        AgentSdk.ConfigureDiagnosticConsoleOutput(false);
+        DiagnosticLog.ConfigureConsoleOutput(false);
         DiagnosticLog.Initialize();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;

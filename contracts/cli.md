@@ -121,10 +121,13 @@ All SunCode-owned environment variables begin with `SUNCODE_`. The approved CLI 
 | `SUNCODE_MODEL` | Select or override the model for a CLI turn |
 | `SUNCODE_REASONING_EFFORT` | Select the default reasoning effort when supported |
 | `SUNCODE_OUTPUT` | Select `text` or `jsonl` output |
+| `SUNCODE_LOG_OUTPUT` | Select diagnostic console mirror: `none`, `stderr`, `stdout`, or `both` |
 | `SUNCODE_POLICY_PROFILE` | Select a future Rust-owned non-interactive policy profile |
 | `SUNCODE_COLOR` | Select `auto`, `always`, or `never` |
 
 Precedence is explicit command-line option, then the corresponding `SUNCODE_` environment variable, then persisted project/session configuration where applicable, then the documented default. An invalid value fails with exit status 2 rather than silently falling back.
+
+The `--log-output` global option controls only the Rust diagnostic logger's console mirror for this CLI process. The configured `agent.log` file remains active. It defaults to `stderr`; use `--log-output none` when stdout and stderr must not contain diagnostic log lines.
 
 CLI startup selects the process environment source for `suncode-config`. Avalonia and the blocking/native default host select the disabled source, so inherited `SUNCODE_*` variables do not change desktop behavior. Provider credentials may be supplied to a CLI process through `SUNCODE_OPENAI_API_KEY`, `SUNCODE_ANTHROPIC_API_KEY`, `SUNCODE_DEEPSEEK_API_KEY`, `SUNCODE_ZHIPU_API_KEY`, `SUNCODE_KIMI_API_KEY`, or `SUNCODE_GEMINI_API_KEY`; these values are an in-memory overlay, never persisted to SQLite, child processes, logs, traces, or JSON output. When absent, provider credentials continue to resolve from SQLite.
 

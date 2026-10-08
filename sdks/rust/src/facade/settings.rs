@@ -110,7 +110,11 @@ impl AsyncAgentSdk {
                 "log_level" | "log_directory" | "log_max_bytes" | "log_retention"
             )
         {
-            configure_logging(&self.state.store, &self.data_dir)?;
+            configure_logging(
+                &self.state.store,
+                &self.data_dir,
+                self.state.log_console_output,
+            )?;
         }
         Ok(SettingUpdate {
             saved: true,

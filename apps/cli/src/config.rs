@@ -4,7 +4,7 @@ use std::sync::{Mutex, OnceLock};
 use clap::ValueEnum;
 
 use crate::{
-    args::{Cli, ColorMode, OutputMode},
+    args::{Cli, ColorMode, LogOutput, OutputMode},
     error::CliError,
 };
 
@@ -15,6 +15,7 @@ static ENVIRONMENT: OnceLock<Mutex<()>> = OnceLock::new();
 pub struct CliConfig {
     pub output: OutputMode,
     pub color: ColorMode,
+    pub log_output: LogOutput,
     pub user_id: String,
 }
 
@@ -22,6 +23,7 @@ impl CliConfig {
     pub fn resolve(cli: &Cli) -> Result<Self, CliError> {
         let output = resolve_enum(cli.output, "SUNCODE_OUTPUT", OutputMode::Text)?;
         let color = resolve_enum(cli.color, "SUNCODE_COLOR", ColorMode::Auto)?;
+        let log_output = resolve_enum(cli.log_output, "SUNCODE_LOG_OUTPUT", LogOutput::Stderr)?;
         let user_id = cli
             .user_id
             .clone()
@@ -31,6 +33,7 @@ impl CliConfig {
         Ok(Self {
             output,
             color,
+            log_output,
             user_id,
         })
     }
@@ -84,6 +87,7 @@ mod tests {
         let _guard = ENVIRONMENT.get_or_init(|| Mutex::new(())).lock().unwrap();
         std::env::set_var("SUNCODE_OUTPUT", "text");
         std::env::set_var("SUNCODE_COLOR", "always");
+        std::env::set_var("SUNCODE_LOG_OUTPUT", "none");
         std::env::set_var("SUNCODE_USER_ID", "environment-user");
         let cli = Cli::try_parse_from([
             "suncode",
@@ -100,10 +104,12 @@ mod tests {
         let resolved = CliConfig::resolve(&cli).unwrap();
         assert_eq!(resolved.output, OutputMode::Jsonl);
         assert_eq!(resolved.color, ColorMode::Never);
+        assert_eq!(resolved.log_output, LogOutput::None);
         assert_eq!(resolved.user_id, "explicit-user");
 
         std::env::remove_var("SUNCODE_OUTPUT");
         std::env::remove_var("SUNCODE_COLOR");
+        std::env::remove_var("SUNCODE_LOG_OUTPUT");
         std::env::remove_var("SUNCODE_USER_ID");
     }
 

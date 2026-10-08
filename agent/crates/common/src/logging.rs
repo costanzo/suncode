@@ -19,6 +19,14 @@ pub enum Level {
     Off = 5,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ConsoleOutput {
+    None,
+    Stderr,
+    Stdout,
+    Both,
+}
+
 impl Level {
     fn parse(value: Option<&str>) -> Self {
         match value.unwrap_or("INFO").trim().to_ascii_uppercase().as_str() {
@@ -45,6 +53,7 @@ impl Level {
 
 struct LoggerState {
     minimum_level: Level,
+    console: ConsoleOutput,
     file_path: PathBuf,
     max_bytes: u64,
     retention: usize,
@@ -62,6 +71,7 @@ pub struct Config<'a> {
     pub directory: Option<&'a str>,
     pub max_bytes: u64,
     pub retention: usize,
+    pub console: ConsoleOutput,
 }
 
 pub fn configure(data_dir: &Path, config: Config<'_>) {
@@ -73,6 +83,7 @@ pub fn configure(data_dir: &Path, config: Config<'_>) {
     let file_path = directory.join("agent.log");
     let state = LoggerState {
         minimum_level: Level::parse(Some(config.level)),
+        console: config.console,
         file: open_log_file(&file_path),
         file_path,
         max_bytes: config.max_bytes.max(1024),
@@ -147,7 +158,15 @@ fn write(level: Level, component: &str, message: impl Display) {
             eprintln!("[suncode][ERROR][logger] file_write_failed");
         }
     }
-    eprintln!("{line}");
+    match state.console {
+        ConsoleOutput::None => {}
+        ConsoleOutput::Stderr => eprintln!("{line}"),
+        ConsoleOutput::Stdout => println!("{line}"),
+        ConsoleOutput::Both => {
+            eprintln!("{line}");
+            println!("{line}");
+        }
+    }
 }
 
 pub fn write_business_error(
