@@ -21,6 +21,7 @@ Desktop.ini
 # Logs and diagnostics
 *.log
 logs/
+*.pid
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
@@ -41,6 +42,17 @@ node_modules/
 .pnpm-store/
 .yarn/
 
+# Python environments, caches, and test output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.venv/
+venv/
+
 # Build output and tool caches
 artifacts/
 # Reproducible font inputs are downloaded during the build and are never
@@ -59,6 +71,9 @@ dist-electron/
 .turbo/
 coverage/
 *.tsbuildinfo
+
+# Benchmark and local evaluation output
+jobs/
 
 # Rust build output
 target/

@@ -41,7 +41,7 @@ class SunCodeAgent(BaseInstalledAgent):
         output_path = self.logs_dir / "suncode.jsonl"
         command = (
             f"printf %s {shlex.quote(prompt)} | base64 -d | "
-            f"{shlex.quote(binary)} --output jsonl run . --stdin"
+            f"{shlex.quote(binary)} --output jsonl run \"$PWD\" --stdin"
         )
         if model:
             command += f" --model {shlex.quote(model)}"
