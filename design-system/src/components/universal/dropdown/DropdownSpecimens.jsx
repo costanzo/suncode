@@ -5,6 +5,7 @@ import { SingleDropdown } from "./SingleDropdown.jsx";
 const effortOptions = ["Low", "Medium", "High"];
 const modelGroups = [
   { id: "deepseek", label: "DeepSeek", models: ["DeepSeek V4 Flash", "DeepSeek V4 Pro"] },
+  { id: "qwen", label: "Qwen", models: ["Qwen3.8 Max", "Qwen3.8 Flash"] },
   { id: "claude", label: "Claude", models: ["Claude Sonnet 5", "Claude Opus 5"] },
   { id: "openai", label: "OpenAI", models: ["GPT-5.5", "GPT-5.6 Sol"] },
 ];

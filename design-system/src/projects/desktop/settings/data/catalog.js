@@ -6,6 +6,13 @@ export const providerCatalog = {
     keyPreview: "sk-d••••••••7K2m",
     models: ["deepseek-v4-flash", "deepseek-v4-pro"],
   },
+  qwen: {
+    label: "Qwen",
+    endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    placeholder: "Paste Qwen API key",
+    keyPreview: "sk-q••••••••8Wm3",
+    models: ["qwen3.8-max", "qwen3.8-flash"],
+  },
   zhipu: {
     label: "Zhipu GLM",
     endpoint: "https://open.bigmodel.cn/api/paas/v4",

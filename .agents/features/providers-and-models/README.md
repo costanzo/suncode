@@ -16,7 +16,7 @@ The Rust agent owns the model catalog, provider routes, and wire adapters. Clien
 
 ## OpenAI Responses wire format
 
-Every `adapter_type=openai` provider posts to `<endpoint>/responses`. This includes the seeded DeepSeek, Zhipu GLM, Kimi, Gemini, and OpenAI rows. Chat Completions is no longer used. Requests contain:
+Every `adapter_type=openai` provider posts to `<endpoint>/responses`. This includes the seeded DeepSeek, Qwen, Zhipu GLM, Kimi, Gemini, and OpenAI rows. Chat Completions is no longer used. Requests contain:
 
 - canonical messages encoded as Responses `input` items, with images as `input_image` data URLs;
 - function tools with `strict: false`;

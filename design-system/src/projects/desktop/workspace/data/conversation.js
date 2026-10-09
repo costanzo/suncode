@@ -4,6 +4,7 @@ export const workspaceModelGroups = [
   { id: "openai", label: "OpenAI", models: ["gpt-5.6-sol", "gpt-5.5"] },
   { id: "claude", label: "Claude", models: ["claude-sonnet-5", "claude-opus-5"] },
   { id: "deepseek", label: "DeepSeek", models: ["deepseek-v4-flash", "deepseek-v4-pro"] },
+  { id: "qwen", label: "Qwen", models: ["qwen3.8-max", "qwen3.8-flash"] },
 ];
 
 export const runningConversationToolCalls = [

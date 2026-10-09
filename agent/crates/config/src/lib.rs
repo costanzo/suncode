@@ -140,7 +140,7 @@ impl Config {
         .transpose()?;
         let mut credentials = BTreeMap::new();
         if self.environment_source == EnvironmentSource::Process {
-            for provider in ["openai", "anthropic", "deepseek", "zhipu", "kimi", "gemini"] {
+            for provider in ["openai", "anthropic", "deepseek", "qwen", "zhipu", "kimi", "gemini"] {
                 let name = format!("SUNCODE_{}_API_KEY", provider.to_ascii_uppercase());
                 if let Some(value) = std::env::var_os(&name)
                     .and_then(|v| v.into_string().ok())

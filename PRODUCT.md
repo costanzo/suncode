@@ -26,7 +26,7 @@ The user opens a project in the Avalonia desktop application, creates or resumes
 
 - Phase 1 ships the .NET 10 Avalonia desktop client as the only production client surface.
 - Rust owns the agent core, provider integration, agent loop, policy, approvals, persistence, credentials, native SDK API, recovery, and operations.
-- The built-in catalog has six providers with two stable model identities each.
+- The built-in catalog has seven providers with two stable model identities each, including Qwen3.8 Max and Qwen3.8 Flash.
 - The Avalonia client embeds the Rust SDK through its method-oriented C ABI and does not access SQLite, model providers, or project files directly.
 - Machine-affecting operations use an audited internal Rust dispatcher; this is an auditability boundary, not an OS sandbox.
 - Provider credentials are stored in Rust-owned plaintext SQLite secret records and must not enter SDK responses, events, audit rows, or logs.

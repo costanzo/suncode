@@ -104,7 +104,7 @@ fn initialize(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
         if !schema::llm_model_provider_includes_default_endpoint(connection)? {
             connection
                 .batch_execute(
-                    "ALTER TABLE llm_model_provider ADD COLUMN default_endpoint TEXT NOT NULL DEFAULT ''; UPDATE llm_model_provider SET default_endpoint=CASE provider_id WHEN 'deepseek' THEN 'https://api.deepseek.com' WHEN 'zhipu' THEN 'https://open.bigmodel.cn/api/paas/v4' WHEN 'openai' THEN 'https://api.openai.com/v1' WHEN 'kimi' THEN 'https://api.moonshot.ai/v1' WHEN 'claude' THEN 'https://api.anthropic.com/v1' WHEN 'gemini' THEN 'https://generativelanguage.googleapis.com/v1beta/openai' ELSE endpoint END WHERE default_endpoint='';",
+                    "ALTER TABLE llm_model_provider ADD COLUMN default_endpoint TEXT NOT NULL DEFAULT ''; UPDATE llm_model_provider SET default_endpoint=CASE provider_id WHEN 'deepseek' THEN 'https://api.deepseek.com' WHEN 'qwen' THEN 'https://dashscope.aliyuncs.com/compatible-mode/v1' WHEN 'zhipu' THEN 'https://open.bigmodel.cn/api/paas/v4' WHEN 'openai' THEN 'https://api.openai.com/v1' WHEN 'kimi' THEN 'https://api.moonshot.ai/v1' WHEN 'claude' THEN 'https://api.anthropic.com/v1' WHEN 'gemini' THEN 'https://generativelanguage.googleapis.com/v1beta/openai' ELSE endpoint END WHERE default_endpoint='';",
                 )
                 .map_err(crate::database_error)?;
         }

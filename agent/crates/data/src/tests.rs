@@ -391,7 +391,7 @@ fn child_sessions_are_linked_hidden_from_primary_lists_and_interrupted_on_recove
 fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
     let store = Store::open_memory().unwrap();
     let models = store.llm_models(false).unwrap();
-    assert_eq!(models.len(), 12);
+    assert_eq!(models.len(), 14);
     let model = |id: &str| {
         models
             .iter()
@@ -407,6 +407,16 @@ fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
     let deepseek_pro = model("deepseek-v4-pro");
     assert_eq!(deepseek_pro.context_tokens, 1_000_000);
     assert!(!deepseek_pro.supports_vision);
+    for id in ["qwen3.8-max", "qwen3.8-flash"] {
+        let qwen = model(id);
+        assert_eq!(qwen.request_model, id);
+        assert_eq!(qwen.context_tokens, 1_000_000);
+        assert_eq!(qwen.max_output_tokens, Some(131_072));
+        assert!(qwen.supports_vision);
+        assert!(qwen.supports_structured_output);
+        assert!(!qwen.supports_reasoning_effort);
+        assert!(!qwen.supports_computer_use);
+    }
     for id in ["glm-5.2", "glm-5.3"] {
         let glm = model(id);
         assert_eq!(glm.context_tokens, 1_000_000);

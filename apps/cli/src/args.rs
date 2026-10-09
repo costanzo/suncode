@@ -78,7 +78,7 @@ pub enum AuthCommand {
     List,
     /// Read and store a provider credential without terminal echo.
     Set {
-        /// Provider ID, for example `deepseek`, `openai`, or `claude`.
+        /// Provider ID, for example `deepseek`, `qwen`, `openai`, or `claude`.
         provider: String,
     },
     /// Remove a provider credential.
