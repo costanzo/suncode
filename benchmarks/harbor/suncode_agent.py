@@ -7,9 +7,7 @@ depend on Python or Harbor.
 from __future__ import annotations
 
 import base64
-import os
 import shlex
-from pathlib import Path
 
 from harbor.agents.capabilities import AgentCapabilities
 from harbor.agents.installed.base import BaseInstalledAgent, with_prompt_template
@@ -30,12 +28,12 @@ class SunCodeAgent(BaseInstalledAgent):
         return "0.1.0"
 
     async def install(self, environment: BaseEnvironment) -> None:
-        binary = os.environ.get("SUNCODE_AGENT_BINARY", "suncode")
+        binary = self._get_env("SUNCODE_AGENT_BINARY") or "suncode"
         await self.exec_as_agent(environment, command=f"command -v {shlex.quote(binary)}")
 
     @with_prompt_template
     async def run(self, instruction: str, environment: BaseEnvironment, context: AgentContext) -> None:
-        binary = os.environ.get("SUNCODE_AGENT_BINARY", "suncode")
+        binary = self._get_env("SUNCODE_AGENT_BINARY") or "suncode"
         model = self.model_name.rsplit("/", 1)[-1] if self.model_name else None
         prompt = base64.b64encode(instruction.encode("utf-8")).decode("ascii")
         output_path = self.logs_dir / "suncode.jsonl"
@@ -45,8 +43,11 @@ class SunCodeAgent(BaseInstalledAgent):
         )
         if model:
             command += f" --model {shlex.quote(model)}"
-        result = await self.exec_as_agent(environment, command=command)
+        # The installed-agent helper raises before returning failed output.
+        # Preserve the CLI's diagnostic events and trajectory before classifying it.
+        result = await environment.exec(command=f"set -o pipefail; {command}")
         output_path.write_text(result.stdout or "", encoding="utf-8")
+        (self.logs_dir / "suncode.stderr.txt").write_text(result.stderr or "", encoding="utf-8")
         write_trajectory(
             result.stdout or "",
             str(self.logs_dir / "trajectory.json"),
@@ -54,3 +55,5 @@ class SunCodeAgent(BaseInstalledAgent):
             agent_version=self.version() or "unknown",
             model_name=self.model_name,
         )
+        if result.return_code != 0:
+            raise self._classify_exec_error(command, result)

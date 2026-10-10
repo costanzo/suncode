@@ -39,6 +39,19 @@ def _event_lines(output: str) -> Iterable[dict[str, Any]]:
             yield value
 
 
+def _final_metrics(usage: dict[str, Any]) -> dict[str, Any]:
+    fields = {
+        "input_tokens": "total_prompt_tokens",
+        "output_tokens": "total_completion_tokens",
+        "cache_read_tokens": "total_cached_tokens",
+    }
+    metrics = {target: usage[key] for key, target in fields.items() if usage.get(key) is not None}
+    extra = {key: value for key, value in usage.items() if key not in fields and value is not None}
+    if extra:
+        metrics["extra"] = extra
+    return metrics
+
+
 def convert_jsonl(
     output: str,
     *,
@@ -55,9 +68,7 @@ def convert_jsonl(
     response_text = ""
 
     def add_step(source: str, message: str | None = None, **extra: Any) -> dict[str, Any]:
-        step: dict[str, Any] = {"step_id": len(steps) + 1, "source": source}
-        if message:
-            step["message"] = message
+        step: dict[str, Any] = {"step_id": len(steps) + 1, "source": source, "message": message or ""}
         step.update(extra)
         steps.append(step)
         return step
@@ -65,7 +76,7 @@ def convert_jsonl(
     for envelope in _event_lines(output):
         event_type = envelope.get("type")
         data = envelope["data"]
-        session_id = session_id or envelope.get("session_id")
+        session_id = session_id or envelope.get("session_id") or data.get("session_id")
 
         if event_type == "message.user":
             add_step("user", _text_from_message(data.get("message")))
@@ -77,8 +88,9 @@ def convert_jsonl(
                 pending_tool_steps[call["tool_call_id"]] = step
         elif event_type == "tool.requested":
             call = _tool_call(data)
-            step = add_step("agent", tool_calls=[call])
-            pending_tool_steps[call["tool_call_id"]] = step
+            if call["tool_call_id"] not in pending_tool_steps:
+                step = add_step("agent", tool_calls=[call])
+                pending_tool_steps[call["tool_call_id"]] = step
         elif event_type == "tool.result":
             call_id = data.get("tool_call_id") or data.get("call_id")
             step = pending_tool_steps.get(call_id)
@@ -86,18 +98,19 @@ def convert_jsonl(
                 step = add_step("agent")
             observation = step.setdefault("observation", {"results": []})
             observation["results"].append(
-                {"source_call_id": call_id or "unknown", "content": data.get("result", {})}
+                {"source_call_id": call_id or "unknown", "content": json.dumps(data.get("result", {}), ensure_ascii=False)}
             )
-        elif event_type == "run.result":
+        elif event_type in ("run.result", "session.resume.result"):
             response = data.get("response", {})
             message = response.get("message", {})
             response_text = _text_from_message(message) or response_text
             usage = response.get("usage")
             if isinstance(usage, dict):
-                final_metrics.update(usage)
-        elif event_type == "session.resume.result":
-            response = data.get("response", {})
-            response_text = _text_from_message(response.get("message", {})) or response_text
+                final_metrics.update(_final_metrics(usage))
+        elif event_type in ("turn.completed", "usage.updated"):
+            usage = data.get("usage")
+            if isinstance(usage, dict):
+                final_metrics.update(_final_metrics(usage))
 
     if response_text and not any(step.get("source") == "agent" and step.get("message") == response_text for step in steps):
         add_step("agent", response_text)
