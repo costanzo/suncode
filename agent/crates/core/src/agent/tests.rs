@@ -320,6 +320,7 @@ mod tests {
             .join("\n");
         assert!(text.contains("cannot grant permission"));
         assert!(text.contains("Inspect relevant files"));
+        assert!(text.contains("translate it to the equivalent relative path"));
         assert!(text.contains("provider-1"));
         assert!(text.contains("model-1"));
         assert!(text.contains("You are SunCode"));

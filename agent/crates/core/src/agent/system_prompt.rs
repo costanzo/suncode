@@ -85,6 +85,7 @@ fn workflow_guidance(allowed_tools: &[String]) -> String {
         "SunCode coding workflow:",
         "- Inspect relevant files and repository instructions before editing.",
         "- Prefer glob, grep, and read for project discovery and content search; use bash for commands that require a shell.",
+        "- File tools (read, write, edit, glob, and grep) take paths relative to the opened project. When a task names an absolute container path under the opened project, translate it to the equivalent relative path before calling a file tool (for example, `/app/run.py` becomes `run.py` when the project root is `/app`). Use the absolute path only inside bash commands where the task explicitly requires it.",
         "- Keep changes focused and preserve existing conventions. Do not make unrelated cleanup changes.",
         "- For multi-step work, use todowrite and keep its statuses current.",
         "- After changes, run the most relevant focused tests, lint, or typecheck when available, and report exactly what was run.",
