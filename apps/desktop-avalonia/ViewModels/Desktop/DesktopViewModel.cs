@@ -40,6 +40,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private long _sessionLoadVersion;
     private long _childSessionsLoadVersion;
     private string? _loadedSessionId;
+    private bool _hasMoreMessages;
+    private bool _isLoadingOlderMessages;
+    private string? _oldestMessageCreatedAt;
+    private string? _oldestMessageId;
+    private IReadOnlyDictionary<string, SunCode.Sdk.Models.SessionImage> _sessionImages = new Dictionary<string, SunCode.Sdk.Models.SessionImage>(StringComparer.Ordinal);
     private ChildSessionItem? _selectedChildSession;
     private ApprovalItem? _childPendingApproval;
     private bool _isBusy;
@@ -92,6 +97,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             NotifyAssistantStreamingChanged();
         }
     }
+    public bool HasMoreMessages => _hasMoreMessages;
+    public bool IsLoadingOlderMessages => _isLoadingOlderMessages;
     public BulkObservableCollection<ActivityItem> Activities { get; } = [];
     public BulkObservableCollection<TodoItem> CurrentTodos { get; } = [];
     public BulkObservableCollection<string> ChangedPaths { get; } = [];

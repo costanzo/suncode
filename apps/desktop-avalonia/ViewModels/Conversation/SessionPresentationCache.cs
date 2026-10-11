@@ -17,6 +17,10 @@ internal sealed class SessionPresentationState : IDisposable
     internal required string ActiveTurnState { get; init; }
     internal required string LastTurnId { get; init; }
     internal bool FullControlEnabled { get; init; }
+    internal bool HasMoreMessages { get; init; }
+    internal string? OldestMessageCreatedAt { get; init; }
+    internal string? OldestMessageId { get; init; }
+    internal IReadOnlyDictionary<string, SunCode.Sdk.Models.SessionImage> SessionImages { get; init; } = new Dictionary<string, SunCode.Sdk.Models.SessionImage>(StringComparer.Ordinal);
 
     public void Dispose()
     {

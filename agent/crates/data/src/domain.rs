@@ -319,6 +319,15 @@ pub struct SessionCallMessage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SessionMessagePage {
+    pub messages: Vec<SessionCallMessage>,
+    pub has_more: bool,
+    pub oldest_created_at: Option<String>,
+    pub oldest_message_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SessionCallToolUse {
     pub turn_id: String,
     pub tool_call_id: String,

@@ -1,4 +1,5 @@
 using SunCode.Desktop.Models;
+using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
 
@@ -11,4 +12,8 @@ internal sealed record SessionSnapshotProjection(
     ApprovalItem? PendingApproval,
     PendingQuestionItem? PendingQuestion,
     string ActiveTurnId,
-    string ActiveTurnState = "");
+    string ActiveTurnState = "",
+    bool HasMoreMessages = false,
+    string? OldestMessageCreatedAt = null,
+    string? OldestMessageId = null,
+    IReadOnlyDictionary<string, SessionImage>? Images = null);

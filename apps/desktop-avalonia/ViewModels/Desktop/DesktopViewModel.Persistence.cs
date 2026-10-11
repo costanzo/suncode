@@ -269,15 +269,43 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     private static string MessageText(AgentMessage message) => message.Text;
     private static bool IsTerminalTurnState(string state) => TurnStates.IsTerminal(state);
 
-    internal void ApplySnapshot(SessionSnapshotProjection projection)
+    internal void ApplySnapshot(SessionSnapshotProjection projection, bool preserveLoadedMessages = false)
     {
-        _appliedMessageIds.Clear();
-        foreach (var message in projection.Messages)
+        if (!preserveLoadedMessages || Messages.Count == 0)
         {
-            if (message.MessageId.Length > 0) _appliedMessageIds.Add(message.MessageId);
+            _appliedMessageIds.Clear();
+            foreach (var message in projection.Messages)
+            {
+                if (message.MessageId.Length > 0) _appliedMessageIds.Add(message.MessageId);
+            }
+            DisposeMessages();
+            Messages = new BulkObservableCollection<MessageItem>(projection.Messages);
+            _hasMoreMessages = projection.HasMoreMessages;
+            _oldestMessageCreatedAt = projection.OldestMessageCreatedAt;
+            _oldestMessageId = projection.OldestMessageId;
         }
-        DisposeMessages();
-        Messages = new BulkObservableCollection<MessageItem>(projection.Messages);
+        else
+        {
+            var existingById = Messages
+                .Where(message => message.MessageId.Length > 0)
+                .ToDictionary(message => message.MessageId, StringComparer.Ordinal);
+            var newMessages = projection.Messages
+                .Where(message =>
+                {
+                    if (message.MessageId.Length == 0 || !_appliedMessageIds.Contains(message.MessageId)) return true;
+                    if (!existingById.TryGetValue(message.MessageId, out var existing)) return false;
+                    existing.Text = message.Text;
+                    existing.CanBeFinalAssistant = message.CanBeFinalAssistant;
+                    existing.Streaming = false;
+                    return false;
+                })
+                .Where(message => message.MessageId.Length == 0 || _appliedMessageIds.Add(message.MessageId))
+                .ToArray();
+            foreach (var message in newMessages) Messages.Add(message);
+        }
+        _sessionImages = projection.Images ?? new Dictionary<string, SessionImage>(StringComparer.Ordinal);
+        if (!preserveLoadedMessages || Messages.Count == projection.Messages.Count)
+            OnPropertyChanged(nameof(HasMoreMessages));
         ToolActivity.ReplaceAll(projection.ToolActivityTurns);
         SyncActiveToolRow();
         Activities.ReplaceAll(projection.Activities);
@@ -298,6 +326,39 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasCurrentTodos));
         OnPropertyChanged(nameof(IsReviewTodosVisible));
         OnPropertyChanged(nameof(LatestActivityText));
+    }
+
+    public async Task<bool> LoadOlderMessagesAsync()
+    {
+        if (_sdk is null || SelectedSession is null || !_hasMoreMessages || _isLoadingOlderMessages) return false;
+        var sessionId = SelectedSession.SessionId;
+        var loadVersion = _sessionLoadVersion;
+        _isLoadingOlderMessages = true;
+        OnPropertyChanged(nameof(IsLoadingOlderMessages));
+        try
+        {
+            IReadOnlyList<MessageItem> unseen = [];
+            SessionMessagePage? page;
+            do
+            {
+                page = await _sdk.LoadSessionMessagePageAsync(sessionId, 10, _oldestMessageCreatedAt, _oldestMessageId);
+                if (!IsCurrentSessionLoad(sessionId, loadVersion)) return false;
+                var older = SessionSnapshotProjector.ProjectOlderMessages(page.Messages, Messages.Count, _sessionImages);
+                unseen = older.Where(item => item.MessageId.Length == 0 || _appliedMessageIds.Add(item.MessageId)).ToArray();
+                _oldestMessageCreatedAt = page.OldestCreatedAt;
+                _oldestMessageId = page.OldestMessageId;
+                _hasMoreMessages = page.HasMore;
+            } while (unseen.Count == 0 && _hasMoreMessages && _oldestMessageCreatedAt is not null && _oldestMessageId is not null);
+            Messages.InsertRangeAtStart(unseen);
+            OnPropertyChanged(nameof(HasMoreMessages));
+            OnPropertyChanged(nameof(HasMessages));
+            return unseen.Count > 0;
+        }
+        finally
+        {
+            _isLoadingOlderMessages = false;
+            OnPropertyChanged(nameof(IsLoadingOlderMessages));
+        }
     }
 
     public void ShowToolActivity(string turnId, string toolCallId)

@@ -134,6 +134,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         CloseEditor();
         Interlocked.Increment(ref _sessionLoadVersion);
         _loadedSessionId = null;
+        _hasMoreMessages = false;
+        _oldestMessageCreatedAt = null;
+        _oldestMessageId = null;
+        _sessionImages = new Dictionary<string, SunCode.Sdk.Models.SessionImage>(StringComparer.Ordinal);
+        OnPropertyChanged(nameof(HasMoreMessages));
         IsSessionLoading = false;
         SessionLoadError = string.Empty;
         DisposeMessages();

@@ -263,7 +263,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 LogSession(operationId, sessionId, $"projection.discard reason=stale current={DescribeSessionContext()}");
                 return;
             }
-            ApplySnapshot(projection);
+            ApplySnapshot(projection, restoredFromCache);
             await LoadSessionControlAsync(sessionId, loadVersion);
             if (!IsCurrentSessionLoad(sessionId, loadVersion))
             {

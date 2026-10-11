@@ -10,7 +10,7 @@ use suncode_common::BusinessError;
 use suncode_config::EnvironmentSource;
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 16;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 17;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -469,6 +469,7 @@ pub struct SessionImageRemoval {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SessionSnapshot {
     pub session: SessionRecord,
     pub messages: Vec<Message>,
@@ -479,6 +480,19 @@ pub struct SessionSnapshot {
     pub pending_question: Option<Value>,
     #[serde(rename = "pendingApproval", skip_serializing_if = "Option::is_none")]
     pub pending_approval: Option<Value>,
+    pub has_more_messages: bool,
+    pub oldest_message_created_at: Option<String>,
+    pub oldest_message_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionMessagePage {
+    pub session_id: String,
+    pub messages: Vec<suncode_agent::domain::SessionCallMessage>,
+    pub has_more: bool,
+    pub oldest_created_at: Option<String>,
+    pub oldest_message_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

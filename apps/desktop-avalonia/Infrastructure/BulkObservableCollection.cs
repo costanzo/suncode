@@ -26,4 +26,16 @@ public sealed class BulkObservableCollection<T> : ObservableCollection<T>
         OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
         OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
     }
+
+    public void InsertRangeAtStart(IEnumerable<T> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        CheckReentrancy();
+        var batch = items.ToArray();
+        for (var index = batch.Length - 1; index >= 0; index--) Items.Insert(0, batch[index]);
+        if (batch.Length == 0) return;
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+        OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+    }
 }

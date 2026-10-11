@@ -1512,6 +1512,47 @@ fn session_snapshot_serializes_normalized_conversation_turns() {
 }
 
 #[test]
+fn session_snapshot_limits_timeline_and_exposes_message_cursor() {
+    let directory = tempfile::tempdir().unwrap();
+    let state = test_state(directory.path());
+    let project = state
+        .store
+        .project(directory.path().to_str().unwrap(), "Test")
+        .unwrap();
+    let session = state
+        .store
+        .create_session(&project.project_id, Some("Paged"), Some("deepseek-v4-flash"))
+        .unwrap();
+    for index in 0..12 {
+        state
+            .store
+            .append_content(
+                &session.session_id,
+                "message.user",
+                &json!({"message_id": format!("message-{index:02}"), "turn_id": format!("turn-{index:02}"), "message": Message::text("user", format!("message {index}"))}),
+            )
+            .unwrap();
+    }
+    let sdk = AgentSdk::from_state_for_test(state);
+    let full_snapshot = sdk.session_snapshot(&session.session_id, 0).unwrap();
+    assert_eq!(full_snapshot.messages.len(), 12);
+    let watch = sdk.watch_session(&session.session_id).unwrap();
+    let snapshot = watch.snapshot;
+    assert_eq!(snapshot.messages.len(), 10);
+    assert!(snapshot.has_more_messages);
+    let page = sdk
+        .load_session_message_page(
+            &session.session_id,
+            10,
+            snapshot.oldest_message_created_at.as_deref(),
+            snapshot.oldest_message_id.as_deref(),
+        )
+        .unwrap();
+    assert_eq!(page.messages.len(), 2);
+    assert!(!page.has_more);
+}
+
+#[test]
 fn subscription_delivers_live_events_without_replay() {
     let directory = tempfile::tempdir().unwrap();
     let state = test_state(directory.path());

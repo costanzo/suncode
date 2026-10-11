@@ -42,6 +42,55 @@ fn session_call_schema_does_not_retain_model_request_messages() {
 }
 
 #[test]
+fn message_page_returns_latest_rows_and_walks_backward_without_duplicates() {
+    let store = Store::open_memory().unwrap();
+    let project = store.project("/tmp/page", "Page").unwrap();
+    let session = store
+        .create_session(&project.project_id, None, None)
+        .unwrap();
+    for index in 0..25 {
+        store.append_content(
+            &session.session_id,
+            "message.user",
+            &json!({"message_id": format!("message-{index:02}"), "turn_id": format!("turn-{index:02}"), "message": Message::text("user", format!("message {index}"))}),
+        ).unwrap();
+    }
+    let first = store
+        .message_page(&session.session_id, 10, None, None)
+        .unwrap();
+    assert_eq!(first.messages.first().unwrap().message_id, "message-15");
+    assert_eq!(first.messages.last().unwrap().message_id, "message-24");
+    assert!(first.has_more);
+    let second = store
+        .message_page(
+            &session.session_id,
+            10,
+            first.oldest_created_at.as_deref(),
+            first.oldest_message_id.as_deref(),
+        )
+        .unwrap();
+    assert_eq!(second.messages.first().unwrap().message_id, "message-05");
+    assert_eq!(second.messages.last().unwrap().message_id, "message-14");
+    assert!(second.messages.iter().all(|item| {
+        !first
+            .messages
+            .iter()
+            .any(|previous| previous.message_id == item.message_id)
+    }));
+    let third = store
+        .message_page(
+            &session.session_id,
+            10,
+            second.oldest_created_at.as_deref(),
+            second.oldest_message_id.as_deref(),
+        )
+        .unwrap();
+    assert!(!third.has_more);
+    assert_eq!(third.messages.len(), 5);
+    assert_eq!(third.messages.first().unwrap().message_id, "message-00");
+}
+
+#[test]
 fn previous_provider_constraint_is_rebuilt_for_anthropic_without_losing_configuration() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("agent.sqlite3");

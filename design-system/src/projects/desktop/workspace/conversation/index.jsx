@@ -213,7 +213,8 @@ const conversationGuides = {
         "The control appears only while the conversation is scrolled away from its latest message.",
       ],
       logic: [
-        "The first entry into a session positions the viewport at its latest message; a session restores its previous viewport only while it is among the project's 10 most recently viewed sessions and has activity within the past 24 hours.",
+        "The first entry into a session positions the viewport at its latest message and initially loads 10 timeline messages; reaching the top loads the preceding page of 10 with a stable cursor while preserving the viewport anchor.",
+        "A session restores its previous viewport and already loaded pages only while it is among the project's 10 most recently viewed sessions and has activity within the past 24 hours.",
         "Submitting a new turn re-enters follow mode so the sent user message and live output remain visible.",
         "If the user remains at the latest message, turn completion may follow the final response to the newest message.",
         "After the user scrolls away, later assistant, tool, and layout updates preserve the current viewport instead of following new content.",

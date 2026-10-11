@@ -2,13 +2,36 @@ use super::*;
 use suncode_agent::domain::{SessionImageRecord, SessionRecord};
 
 impl AsyncAgentSdk {
+    pub fn load_session_message_page(
+        &self,
+        session_id: &str,
+        limit: usize,
+        before_created_at: Option<&str>,
+        before_message_id: Option<&str>,
+    ) -> SdkResult<SessionMessagePage> {
+        self.session_for_user(session_id)?;
+        let page = self.state.store.message_page(
+            session_id,
+            limit,
+            before_created_at,
+            before_message_id,
+        )?;
+        Ok(SessionMessagePage {
+            session_id: session_id.to_string(),
+            messages: page.messages,
+            has_more: page.has_more,
+            oldest_created_at: page.oldest_created_at,
+            oldest_message_id: page.oldest_message_id,
+        })
+    }
+
     pub fn watch_session(&self, session_id: &str) -> SdkResult<SessionWatch> {
         self.session_for_user(session_id)?;
         let (snapshot, subscription) = self
             .state
             .events
             .subscribe_with_snapshot(session_id.to_string(), || {
-                self.session_snapshot(session_id, 0)
+                self.session_snapshot_page(session_id, 10)
             })?;
         Ok(SessionWatch {
             snapshot,
@@ -303,11 +326,41 @@ impl AsyncAgentSdk {
     }
 
     pub fn session_snapshot(&self, session_id: &str, _after: i64) -> SdkResult<SessionSnapshot> {
+        self.session_snapshot_page(session_id, usize::MAX)
+    }
+
+    fn session_snapshot_page(&self, session_id: &str, limit: usize) -> SdkResult<SessionSnapshot> {
         logging::debug("session_snapshot", format!("begin session={session_id}"));
         let session = self.session_for_user(session_id)?;
-        let messages = self.state.store.messages(session_id)?;
+        let (messages, conversation_turns, has_more_messages, oldest_message_created_at, oldest_message_id) =
+            if limit == usize::MAX {
+                (
+                    self.state.store.messages(session_id)?,
+                    self.state.store.session_conversation_turns(session_id)?,
+                    false,
+                    None,
+                    None,
+                )
+            } else {
+                let message_page = self.state.store.message_page(session_id, limit, None, None)?;
+                let messages = message_page
+                    .messages
+                    .iter()
+                    .map(|item| serde_json::from_value(item.message.clone()))
+                    .collect::<Result<Vec<suncode_agent::domain::Message>, _>>()?;
+                let conversation_turns = self
+                    .state
+                    .store
+                    .session_conversation_turns_with_messages(session_id, &message_page.messages)?;
+                (
+                    messages,
+                    conversation_turns,
+                    message_page.has_more,
+                    message_page.oldest_created_at,
+                    message_page.oldest_message_id,
+                )
+            };
         let images = self.state.store.session_images(session_id)?;
-        let conversation_turns = self.state.store.session_conversation_turns(session_id)?;
         let pending_question = self.state.store.pending_question(session_id)?;
         let pending_approval = self
             .state
@@ -325,6 +378,9 @@ impl AsyncAgentSdk {
             images,
             pending_question,
             pending_approval,
+            has_more_messages,
+            oldest_message_created_at,
+            oldest_message_id,
         })
     }
 

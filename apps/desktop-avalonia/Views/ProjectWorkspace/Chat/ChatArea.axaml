@@ -203,6 +203,11 @@
                     VerticalScrollBarVisibility="Auto"
                     IsVisible="{Binding HasSelectedSession}">
         <StackPanel>
+          <TextBlock Text="Loading earlier messages..."
+                     Classes="muted"
+                     HorizontalAlignment="Center"
+                     Margin="0,10,0,4"
+                     IsVisible="{Binding IsLoadingOlderMessages}" />
           <!--
             Conversation rows have intentionally variable heights (Markdown,
             long user messages, attachments and streaming updates). A

@@ -15,7 +15,7 @@ public sealed partial class AgentSdk : IDisposable
     private static readonly NativeMethods.BrowserHostCallback BrowserHostCallbackBridge = OnBrowserHostRequested;
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 16;
+    private const uint AbiVersion = 17;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -306,6 +306,12 @@ public sealed partial class AgentSdk : IDisposable
     private Task<JsonElement> RawSessionSnapshotAsync(string sessionId) => WithUtf8Async(
         [sessionId],
         values => NativeMethods.suncode_agent_sdk_session_snapshot(_handle, values[0], 0));
+
+    private Task<JsonElement> RawSessionMessagePageAsync(string sessionId, int limit, string? beforeCreatedAt, string? beforeMessageId) =>
+        WithNullableUtf8Async(
+            [sessionId, beforeCreatedAt, beforeMessageId],
+            values => NativeMethods.suncode_agent_sdk_load_session_message_page(
+                _handle, values[0], (uint)Math.Clamp(limit, 1, 100), values[1], values[2]));
 
     private Task<JsonElement> RawSessionUsageAsync(string sessionId) => WithUtf8Async(
         [sessionId], values => NativeMethods.suncode_agent_sdk_session_usage(_handle, values[0]));

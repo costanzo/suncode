@@ -27,7 +27,11 @@ public sealed partial class DesktopViewModel
             ActiveTurnId = ActiveTurnId,
             ActiveTurnState = ActiveTurnState,
             LastTurnId = LastTurnId,
-            FullControlEnabled = FullControlEnabled
+            FullControlEnabled = FullControlEnabled,
+            HasMoreMessages = HasMoreMessages,
+            OldestMessageCreatedAt = _oldestMessageCreatedAt,
+            OldestMessageId = _oldestMessageId,
+            SessionImages = _sessionImages
         };
         Messages = [];
         _sessionPresentationCache.Store(sessionId, state);
@@ -56,6 +60,11 @@ public sealed partial class DesktopViewModel
         LastTurnId = state.LastTurnId;
         ActiveTurnId = state.ActiveTurnId;
         ActiveTurnState = state.ActiveTurnState;
+        _hasMoreMessages = state.HasMoreMessages;
+        _oldestMessageCreatedAt = state.OldestMessageCreatedAt;
+        _oldestMessageId = state.OldestMessageId;
+        _sessionImages = state.SessionImages;
+        OnPropertyChanged(nameof(HasMoreMessages));
         var activeActivityTurn = ToolActivity.Turns.LastOrDefault(item => item.TurnId == state.ActiveTurnId);
         UpdateActiveTurnTiming(state.ActiveTurnId, activeActivityTurn?.StartedAt);
         NotifySessionPresentationChanged();

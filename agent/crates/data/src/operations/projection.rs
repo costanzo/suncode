@@ -7,13 +7,13 @@ use crate::operations::{
 use crate::{
     domain::{SessionConversationTurn, SessionEvent},
     rows::TurnRow,
-    store::{business_transaction, lock, now, Store},
+    store::{Store, business_transaction, lock, now},
 };
 use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::{Integer, Nullable, Text};
 use diesel::sqlite::SqliteConnection;
-use serde_json::{to_string, Value};
+use serde_json::{Value, to_string};
 use suncode_common::BusinessError;
 
 pub(crate) fn apply(
@@ -299,6 +299,43 @@ impl Store {
                 todos: load_todos(&mut c, &t.turn_id)?,
                 changed_paths: load_changed_paths(&mut c, &t.turn_id)?,
             })
+        }
+        Ok(out)
+    }
+
+    pub fn session_conversation_turns_with_messages(
+        &self,
+        session_id: &str,
+        messages: &[crate::domain::SessionCallMessage],
+    ) -> Result<Vec<SessionConversationTurn>, BusinessError> {
+        let mut c = lock(&self.connection)?;
+        let turns = sql_query("SELECT turn_id,session_id,state,model_id,created_at,updated_at,started_at,completed_at,error_code,input_tokens,output_tokens,total_tokens FROM session_turn WHERE session_id=? ORDER BY created_at,turn_id")
+            .bind::<Text, _>(session_id)
+            .load::<TurnRow>(&mut *c)
+            .map_err(crate::database_error)?;
+        let mut by_turn =
+            std::collections::HashMap::<String, Vec<crate::domain::SessionCallMessage>>::new();
+        for message in messages {
+            if let Some(turn_id) = message.turn_id.as_deref() {
+                by_turn
+                    .entry(turn_id.to_string())
+                    .or_default()
+                    .push(message.clone());
+            }
+        }
+        let mut out = Vec::with_capacity(turns.len());
+        for t in turns {
+            out.push(SessionConversationTurn {
+                turn_id: t.turn_id.clone(),
+                state: t.state,
+                created_at: t.created_at,
+                started_at: t.started_at,
+                completed_at: t.completed_at,
+                messages: by_turn.remove(&t.turn_id).unwrap_or_default(),
+                tool_uses: load_tool_uses(&mut c, &t.turn_id)?,
+                todos: load_todos(&mut c, &t.turn_id)?,
+                changed_paths: load_changed_paths(&mut c, &t.turn_id)?,
+            });
         }
         Ok(out)
     }

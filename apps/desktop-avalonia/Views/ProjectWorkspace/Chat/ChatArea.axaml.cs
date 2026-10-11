@@ -24,6 +24,7 @@ public sealed partial class ChatArea : UserControl
     private double _conversationScrollTarget;
     private DateTimeOffset _conversationScrollStartedAt;
     private double? _programmaticConversationOffset;
+    private bool _loadingOlderMessages;
     public event EventHandler? ExpandedComposerRequested;
     public event Action<MessageItem>? LongUserMessageRequested;
     public event Action<MessageItem>? ToolDetailRequested;
@@ -258,6 +259,47 @@ public sealed partial class ChatArea : UserControl
         }
 
         ScrollToBottomButton.IsVisible = !atBottom && distanceFromBottom > 1;
+
+        if (!_scrollingConversation
+            && !_loadingOlderMessages
+            && _conversationScroller.Offset.Y <= 24
+            && ViewModel.HasMoreMessages)
+        {
+            _ = LoadOlderMessagesAsync();
+        }
+    }
+
+    private async Task LoadOlderMessagesAsync()
+    {
+        if (_conversationScroller is null || _loadingOlderMessages) return;
+        _loadingOlderMessages = true;
+        var oldExtent = _conversationScroller.Extent.Height;
+        var oldOffset = _conversationScroller.Offset.Y;
+        try
+        {
+            await ViewModel.LoadOlderMessagesAsync();
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                AttachConversationScroller();
+                if (_conversationScroller is null) return;
+                var extentDelta = _conversationScroller.Extent.Height - oldExtent;
+                _scrollingConversation = true;
+                try
+                {
+                    var offset = Math.Max(0, oldOffset + extentDelta);
+                    _programmaticConversationOffset = offset;
+                    _conversationScroller.Offset = new Vector(_conversationScroller.Offset.X, offset);
+                }
+                finally
+                {
+                    _scrollingConversation = false;
+                }
+            }, DispatcherPriority.Background);
+        }
+        finally
+        {
+            _loadingOlderMessages = false;
+        }
     }
 
     private void ScrollToBottom(object? sender, RoutedEventArgs e)

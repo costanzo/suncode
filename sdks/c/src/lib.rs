@@ -1022,6 +1022,34 @@ pub unsafe extern "C" fn suncode_agent_sdk_session_snapshot(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_load_session_message_page(
+    handle: *mut SunCodeAgentHandle,
+    session_id: *const c_char,
+    limit: u32,
+    before_created_at: *const c_char,
+    before_message_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let before_created_at = if before_created_at.is_null() {
+            None
+        } else {
+            Some(c_string(before_created_at, "before_created_at")?)
+        };
+        let before_message_id = if before_message_id.is_null() {
+            None
+        } else {
+            Some(c_string(before_message_id, "before_message_id")?)
+        };
+        sdk.load_session_message_page(
+            &c_string(session_id, "session_id")?,
+            limit as usize,
+            before_created_at.as_deref(),
+            before_message_id.as_deref(),
+        )
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_list_session_images(
     handle: *mut SunCodeAgentHandle,
     session_id: *const c_char,

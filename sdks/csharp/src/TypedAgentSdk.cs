@@ -281,6 +281,13 @@ public sealed partial class AgentSdk
     public Task<SessionSnapshot> GetSessionSnapshotAsync(string sessionId) =>
         Typed<SessionSnapshot>(RawSessionSnapshotAsync(sessionId));
 
+    public Task<SessionMessagePage> LoadSessionMessagePageAsync(
+        string sessionId,
+        int limit = 10,
+        string? beforeCreatedAt = null,
+        string? beforeMessageId = null) =>
+        Typed<SessionMessagePage>(RawSessionMessagePageAsync(sessionId, limit, beforeCreatedAt, beforeMessageId));
+
     public async Task<SessionWatch> WatchSessionAsync(string sessionId, Action<AgentEvent> onEvent)
     {
         ArgumentNullException.ThrowIfNull(onEvent);

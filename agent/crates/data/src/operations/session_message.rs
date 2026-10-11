@@ -2,7 +2,7 @@
 
 use crate::{
     domain::*,
-    store::{lock, Store},
+    store::{Store, lock},
 };
 use diesel::prelude::*;
 use diesel::sql_query;
@@ -98,6 +98,80 @@ pub(crate) fn repair_incomplete_tool_exchanges(messages: Vec<Message>) -> Vec<Me
 }
 
 impl Store {
+    pub fn message_page(
+        &self,
+        session_id: &str,
+        limit: usize,
+        before_created_at: Option<&str>,
+        before_message_id: Option<&str>,
+    ) -> Result<SessionMessagePage, BusinessError> {
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type=Text)]
+            message_id: String,
+            #[diesel(sql_type=Text)]
+            session_id: String,
+            #[diesel(sql_type=Nullable<Text>)]
+            turn_id: Option<String>,
+            #[diesel(sql_type=Nullable<Text>)]
+            session_call_id: Option<String>,
+            #[diesel(sql_type=Text)]
+            role: String,
+            #[diesel(sql_type=Text)]
+            message_json: String,
+            #[diesel(sql_type=Text)]
+            created_at: String,
+        }
+        let page_size = limit.clamp(1, 100);
+        let mut c = lock(&self.connection)?;
+        let rows = if let (Some(created_at), Some(message_id)) =
+            (before_created_at, before_message_id)
+        {
+            sql_query("SELECT message_id,session_id,turn_id,session_call_id,role,message_json,created_at FROM session_message WHERE session_id=? AND role IN ('user','assistant','thinking') AND (created_at < ? OR (created_at = ? AND message_id < ?)) ORDER BY created_at DESC,message_id DESC LIMIT ?")
+                .bind::<Text, _>(session_id)
+                .bind::<Text, _>(created_at)
+                .bind::<Text, _>(created_at)
+                .bind::<Text, _>(message_id)
+                .bind::<diesel::sql_types::Integer, _>((page_size + 1) as i32)
+                .load::<Row>(&mut *c)
+                .map_err(crate::database_error)?
+        } else {
+            sql_query("SELECT message_id,session_id,turn_id,session_call_id,role,message_json,created_at FROM session_message WHERE session_id=? AND role IN ('user','assistant','thinking') ORDER BY created_at DESC,message_id DESC LIMIT ?")
+                .bind::<Text, _>(session_id)
+                .bind::<diesel::sql_types::Integer, _>((page_size + 1) as i32)
+                .load::<Row>(&mut *c)
+                .map_err(crate::database_error)?
+        };
+        let has_more = rows.len() > page_size;
+        let mut rows = rows;
+        if has_more {
+            rows.truncate(page_size);
+        }
+        rows.reverse();
+        let oldest_created_at = rows.first().map(|row| row.created_at.clone());
+        let oldest_message_id = rows.first().map(|row| row.message_id.clone());
+        let messages = rows
+            .into_iter()
+            .map(|row| {
+                Ok(SessionCallMessage {
+                    message_id: row.message_id,
+                    session_id: row.session_id,
+                    turn_id: row.turn_id,
+                    session_call_id: row.session_call_id,
+                    role: row.role,
+                    message: serde_json::from_str(&row.message_json)?,
+                    created_at: row.created_at,
+                })
+            })
+            .collect::<Result<Vec<_>, BusinessError>>()?;
+        Ok(SessionMessagePage {
+            messages,
+            has_more,
+            oldest_created_at,
+            oldest_message_id,
+        })
+    }
+
     pub fn messages(&self, session_id: &str) -> Result<Vec<Message>, BusinessError> {
         #[derive(QueryableByName)]
         struct Row {

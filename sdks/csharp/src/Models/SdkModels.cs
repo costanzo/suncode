@@ -550,7 +550,17 @@ public sealed record SessionSnapshot(
     [property: JsonPropertyName("conversationTurns")] IReadOnlyList<SessionConversationTurn> ConversationTurns,
     IReadOnlyList<SessionImage> Images,
     [property: JsonPropertyName("pendingQuestion")] PendingQuestion? PendingQuestion,
-    [property: JsonPropertyName("pendingApproval")] ApprovalRecord? PendingApproval = null);
+    [property: JsonPropertyName("pendingApproval")] ApprovalRecord? PendingApproval = null,
+    bool HasMoreMessages = false,
+    string? OldestMessageCreatedAt = null,
+    string? OldestMessageId = null);
+
+public sealed record SessionMessagePage(
+    string SessionId,
+    IReadOnlyList<SessionCallMessage> Messages,
+    bool HasMore,
+    string? OldestCreatedAt,
+    string? OldestMessageId);
 
 public sealed record SessionUsageResult(
     [property: JsonPropertyName("session_id")] string SessionId,

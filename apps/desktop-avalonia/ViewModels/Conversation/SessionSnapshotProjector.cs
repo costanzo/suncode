@@ -142,7 +142,30 @@ internal static class SessionSnapshotProjector
             }
         }
 
-        return new SessionSnapshotProjection(messages, toolActivityTurns, activities, changedPaths, currentTodos, pendingApproval, pendingQuestion, activeTurnId, activeTurnState);
+        return new SessionSnapshotProjection(messages, toolActivityTurns, activities, changedPaths, currentTodos, pendingApproval, pendingQuestion, activeTurnId, activeTurnState, snapshot.HasMoreMessages, snapshot.OldestMessageCreatedAt, snapshot.OldestMessageId, imagePayloads);
+    }
+
+    internal static IReadOnlyList<MessageItem> ProjectOlderMessages(
+        IReadOnlyList<SessionCallMessage> source,
+        int existingCount,
+        IReadOnlyDictionary<string, SessionImage>? images = null)
+    {
+        return source
+            .Where(item => item.Role is "user" or "assistant")
+            .Where(item => !string.IsNullOrWhiteSpace(item.Message.Text))
+            .Select((item, index) => new MessageItem
+            {
+                MessageId = item.MessageId,
+                Role = item.Role,
+                Text = item.Message.Text,
+                ContentSequence = existingCount + index + 1,
+                TurnId = item.TurnId ?? string.Empty,
+                IsVisible = true,
+                Attachments = item.Role == "user" && images is not null ? MessageAttachments(item.Message, images) : [],
+                CanBeFinalAssistant = item.Role == "assistant" && (item.Message.ToolCalls?.Count ?? 0) == 0,
+                IsFinalAssistant = item.Role == "assistant" && (item.Message.ToolCalls?.Count ?? 0) == 0
+            })
+            .ToArray();
     }
 
     internal static ToolActivityItem ToolActivityItemFromSdk(SessionCallToolUse item, string turnId) => new(
