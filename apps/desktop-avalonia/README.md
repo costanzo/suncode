@@ -23,6 +23,10 @@ dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj
 dotnet run --project apps/desktop-avalonia/SunCode.Desktop.csproj
 ```
 
+The managed SDK runs Cargo from the repository root, uses the shared root `target/`, and copies the native library from `target/debug` or `target/release`. This also works when `dotnet` is invoked from another directory. To override the output, use `CARGO_TARGET_DIR` or `-p:SunCodeCargoTargetDirectory=...`; relative overrides resolve from the repository root. Development builds retain line-table Rust debug information and incremental compilation.
+
+The referenced CefGlue fork's NuGet configuration must use `nuget.org` as both the package-source key and the package-source-mapping key for `https://api.nuget.org/v3/index.json`. Naming the same URL `Nuget` in that fork can conflict with the standard user-level `nuget.org` source and cause NU1100 during normal restore, especially after clearing package caches.
+
 Run the Avalonia test project from its colocated `tests/` directory:
 
 ```bash

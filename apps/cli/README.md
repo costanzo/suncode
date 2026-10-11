@@ -35,3 +35,5 @@ Build and test:
 cargo test --manifest-path apps/cli/Cargo.toml --all-targets
 cargo clippy --manifest-path apps/cli/Cargo.toml --all-targets -- -D warnings
 ```
+
+Run these commands from the repository root (or use `Cargo.toml` from this directory). Cargo shares the root `target/` with the agent and SDK builds. Host binaries are in `target/debug` or `target/release`; builds with `--target <triple>` are in `target/<triple>/<profile>`. Development/test profiles use line-table debug information and retain incremental compilation. Release profile behavior is unchanged.

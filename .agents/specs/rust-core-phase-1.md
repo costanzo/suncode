@@ -1,5 +1,13 @@
 # Rust Core Phase 1
 
+## Build output
+
+The agent, Rust facade, C binding, and CLI keep separate manifests and lockfiles but share the repository-root `target/` through `.cargo/config.toml`. Cargo must run from the repository root or a descendant to discover this configuration; callers outside the repository can pass its path with `--config`. Dev/test profiles retain line-table debug information (`debug = 1`) and Cargo's default incremental compilation. Release profiles remain unchanged. Rust CI disables incremental compilation and caches the shared output; CLI release packaging reads `target/<triple>/release`.
+
+The managed SDK invokes locked Cargo builds with the repository root as the working directory and an explicit shared target directory. Its native-library copy source uses the same directory. `SunCodeCargoTargetDirectory` overrides `CARGO_TARGET_DIR`, which overrides the root `target/` default; relative overrides resolve from the repository root. This changes build placement only, with no SDK or runtime contract change.
+
+## Operations
+
 The Rust operations module is provided by the `suncode-tool` package, linked into the runtime, and called in-process.
 
 It enforces canonical project paths, bounded reads and search, preconditioned file mutations, checkpoint capture and restore, bounded process execution with filtered environment handling, and bounded approval-gated HTTP(S) text retrieval with same-origin redirect enforcement.

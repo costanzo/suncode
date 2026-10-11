@@ -1,0 +1,12 @@
+# Cargo resolves this path relative to the repository root, including when
+# invoked from a member directory. Keep the separate manifests and lockfiles.
+[build]
+target-dir = "target"
+
+# Keep source locations and backtraces without full variable debug information.
+# Incremental compilation retains Cargo's default (enabled for dev and test).
+[profile.dev]
+debug = 1
+
+[profile.test]
+debug = 1

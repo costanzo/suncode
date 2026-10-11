@@ -6,9 +6,14 @@
     <RootNamespace>SunCode.Sdk</RootNamespace>
     <AssemblyName>SunCode.Sdk</AssemblyName>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <SunCodeRepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../..'))</SunCodeRepositoryRoot>
+    <SunCodeSdkCDirectory>$(SunCodeRepositoryRoot)/sdks/c</SunCodeSdkCDirectory>
+    <SunCodeCargoTargetDirectory Condition="'$(SunCodeCargoTargetDirectory)' == '' And '$(CARGO_TARGET_DIR)' != ''">$(CARGO_TARGET_DIR)</SunCodeCargoTargetDirectory>
+    <SunCodeCargoTargetDirectory Condition="'$(SunCodeCargoTargetDirectory)' == ''">$(SunCodeRepositoryRoot)/target</SunCodeCargoTargetDirectory>
+    <SunCodeResolvedCargoTargetDirectory>$([System.IO.Path]::GetFullPath('$(SunCodeCargoTargetDirectory)', '$(SunCodeRepositoryRoot)'))</SunCodeResolvedCargoTargetDirectory>
     <SunCodeNativeProfile Condition="'$(Configuration)' == 'Release'">release</SunCodeNativeProfile>
     <SunCodeNativeProfile Condition="'$(SunCodeNativeProfile)' == ''">debug</SunCodeNativeProfile>
-    <SunCodeNativeDirectory>$(MSBuildProjectDirectory)/../c/target/$(SunCodeNativeProfile)</SunCodeNativeDirectory>
+    <SunCodeNativeDirectory>$(SunCodeResolvedCargoTargetDirectory)/$(SunCodeNativeProfile)</SunCodeNativeDirectory>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,10 +36,9 @@
 
   <Target Name="BuildSunCodeNative" BeforeTargets="BeforeBuild" Condition="'$(DesignTimeBuild)' != 'true'">
     <PropertyGroup>
-      <SunCodeRepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../..'))</SunCodeRepositoryRoot>
-      <SunCodeSdkCDirectory>$(SunCodeRepositoryRoot)/sdks/c</SunCodeSdkCDirectory>
       <SunCodeCargoProfileArgument Condition="'$(Configuration)' == 'Release'">--release</SunCodeCargoProfileArgument>
     </PropertyGroup>
-    <Exec Command="cargo build --manifest-path &quot;$(SunCodeSdkCDirectory)/Cargo.toml&quot; $(SunCodeCargoProfileArgument)" />
+    <Exec WorkingDirectory="$(SunCodeRepositoryRoot)"
+          Command="cargo build --manifest-path &quot;$(SunCodeSdkCDirectory)/Cargo.toml&quot; --locked --target-dir &quot;$(SunCodeResolvedCargoTargetDirectory)&quot; $(SunCodeCargoProfileArgument)" />
   </Target>
 </Project>

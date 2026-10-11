@@ -59,6 +59,12 @@ CEF is initialized by the Avalonia client with a localhost CDP endpoint; the Rus
 
 The desktop build invokes Cargo for `sdks/c` (which links the typed `sdks/rust` facade and the `suncode-agent` harness) and copies the resulting native library beside the managed executable.
 
+Rust builds from the repository root or any member directory share the root `target/` through `.cargo/config.toml`. The four manifests retain their own lockfiles; compatible dependency artifacts can be reused, while different versions or feature sets still compile separately. Development and test builds use line-table debug information (`debug = 1`) with incremental compilation enabled; release settings are unchanged. CI disables incremental compilation and caches the shared directory.
+
+The desktop build runs Cargo from the repository root and copies the native library from the same shared output. `CARGO_TARGET_DIR` or the MSBuild property `SunCodeCargoTargetDirectory` can select a different directory; relative paths are resolved from the repository root. Run standalone Cargo commands from within the repository so Cargo discovers its configuration, or pass `--config /path/to/repository/.cargo/config.toml` when invoking from elsewhere.
+
+After switching from the previous output layout, the obsolete `agent/target`, `sdks/rust/target`, `sdks/c/target`, and `apps/cli/target` directories can be removed when no builds are running. Cleaning the root `target/` clears all shared Rust artifacts and requires recompilation.
+
 To run the desktop tests:
 
 ```sh

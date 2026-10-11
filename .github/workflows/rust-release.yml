@@ -10,6 +10,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: '0'
   RUST_BACKTRACE: 1
 
 jobs:
@@ -44,13 +45,21 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.target }}
 
-      - name: Cache Cargo artifacts
-        uses: Swatinem/rust-cache@v2
+      - name: Identify Rust compiler
+        id: rust
+        shell: bash
+        run: echo "version=$(rustc --version)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache shared Cargo artifacts
+        uses: actions/cache@v4
         with:
-          workspaces: |
-            apps/cli -> apps/cli/target
-            sdks/rust -> sdks/rust/target
-            agent -> agent/target
+          path: |
+            target
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/src
+            ~/.cargo/git/db
+          key: rust-release-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ steps.rust.outputs.version }}-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock', '.cargo/config.toml') }}
 
       - name: Build native CLI
         run: cargo build --manifest-path apps/cli/Cargo.toml --release --locked --target ${{ matrix.target }}
@@ -60,7 +69,7 @@ jobs:
         shell: bash
         run: |
           archive="suncode-${GITHUB_REF_NAME}-${{ matrix.target }}.tar.gz"
-          tar -C "apps/cli/target/${{ matrix.target }}/release" -czf "$archive" suncode
+          tar -C "target/${{ matrix.target }}/release" -czf "$archive" suncode
 
       - name: Package Windows binary
         if: runner.os == 'Windows'
@@ -68,7 +77,7 @@ jobs:
         run: |
           $archive = "suncode-$env:GITHUB_REF_NAME-${{ matrix.target }}.zip"
           Compress-Archive `
-            -Path "apps/cli/target/${{ matrix.target }}/release/suncode.exe" `
+            -Path "target/${{ matrix.target }}/release/suncode.exe" `
             -DestinationPath $archive
 
       - name: Upload release artifact
