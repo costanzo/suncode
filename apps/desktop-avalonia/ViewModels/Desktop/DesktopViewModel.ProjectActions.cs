@@ -73,6 +73,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     {
         if (SelectedProject?.ProjectId == project.ProjectId || !await EnsureSdkReadyAsync()) return;
         CloseSubscription();
+        _sessionPresentationCache.Clear();
         ClearSession();
         ClearRecentContents();
         ClearAllComposerDrafts();
@@ -219,6 +220,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             return;
         }
 
+        if (outgoingSessionId is { Length: > 0 })
+            CacheCurrentSessionPresentation(outgoingSessionId);
+
         LogSession(operationId, session.SessionId, "select.close_subscription.begin");
         var closeTimer = Stopwatch.StartNew();
         CloseSubscription();
@@ -229,6 +233,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         IsSessionLoading = true;
         SelectedSession = session;
         RestoreComposerDraft(session.SessionId);
+        var restoredFromCache = RestoreSessionPresentation(session.SessionId);
+        if (restoredFromCache) SessionEntered?.Invoke();
         // A session owns its model selection. Apply it immediately so the
         // composer cannot briefly display the previous session's model.
         RememberRecentSession(session);
@@ -503,7 +509,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     public async Task ResolveApprovalAsync(string decision)
     {
-        if (!EnsureSdk() || PendingApproval is null) return;
+        if (!EnsureSdk() || IsSessionLoading || PendingApproval is null) return;
         await RunAsync(async () =>
         {
             await _sdk!.ResolveApprovalAsync(new ApprovalDecisionRequest(
@@ -533,7 +539,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     public async Task ReplyQuestionAsync()
     {
-        if (!EnsureSdk() || PendingQuestion is null) return;
+        if (!EnsureSdk() || IsSessionLoading || PendingQuestion is null) return;
         var question = PendingQuestion;
         var answers = question.Questions
             .Select(item => (IReadOnlyList<string>)item.Answers)
@@ -547,7 +553,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     public async Task RejectQuestionAsync()
     {
-        if (!EnsureSdk() || PendingQuestion is null) return;
+        if (!EnsureSdk() || IsSessionLoading || PendingQuestion is null) return;
         var requestId = PendingQuestion.RequestId;
         await RunAsync(async () =>
         {

@@ -138,6 +138,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         SessionLoadError = string.Empty;
         DisposeMessages();
         Messages = [];
+        ToolActivity.ReplaceAll([]);
         _appliedMessageIds.Clear();
         Activities.Clear();
         ChangedPaths.Clear();
@@ -247,6 +248,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ProviderTraffic.Clear();
         Interlocked.Increment(ref _sessionLoadVersion);
         CloseSubscription();
+        _sessionPresentationCache.Dispose();
         DisposeMessages();
         DisposeSubmittedAttachments();
         ReplaceComposerAttachments([]);

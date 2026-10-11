@@ -53,6 +53,13 @@ public sealed partial class ChatArea : UserControl
 
     internal void ScrollConversationToEndForSessionEntry()
     {
+        if (ViewModel.SelectedSession is { } session
+            && ViewModel.TryGetSessionViewport(session.SessionId, out var savedOffset, out var wasFollowing))
+        {
+            RestoreConversationViewport(savedOffset, wasFollowing);
+            return;
+        }
+
         // A session entry is an explicit navigation action. Start that
         // conversation in follow mode even if the previous session was scrolled
         // away from its bottom.
@@ -75,6 +82,34 @@ public sealed partial class ChatArea : UserControl
                 Dispatcher.UIThread.Post(AnimateConversationToBottom, DispatcherPriority.Background);
             }, DispatcherPriority.Background);
         }, DispatcherPriority.Loaded);
+    }
+
+    private void RestoreConversationViewport(double savedOffset, bool following)
+    {
+        _followingConversation = following;
+        Dispatcher.UIThread.Post(() =>
+        {
+            AttachConversationScroller();
+            SetConversationOffset(savedOffset);
+            Dispatcher.UIThread.Post(() => SetConversationOffset(savedOffset), DispatcherPriority.Background);
+        }, DispatcherPriority.Loaded);
+    }
+
+    private void SetConversationOffset(double savedOffset)
+    {
+        if (_conversationScroller is null) return;
+        var maximumOffset = Math.Max(0, _conversationScroller.Extent.Height - _conversationScroller.Viewport.Height);
+        _scrollingConversation = true;
+        try
+        {
+            var offset = Math.Clamp(savedOffset, 0, maximumOffset);
+            _programmaticConversationOffset = offset;
+            _conversationScroller.Offset = new Vector(_conversationScroller.Offset.X, offset);
+        }
+        finally
+        {
+            _scrollingConversation = false;
+        }
     }
 
     private void SetConversationOffsetToBottom()
@@ -237,12 +272,25 @@ public sealed partial class ChatArea : UserControl
     private void ObserveViewModel()
     {
         if (_observedViewModel is not null)
+        {
             _observedViewModel.PropertyChanged -= ViewModelPropertyChanged;
+            _observedViewModel.SessionLeaving -= SessionLeaving;
+        }
 
         _observedViewModel = DataContext as DesktopViewModel;
         _lastTurnState = _observedViewModel?.ActiveTurnState ?? string.Empty;
         if (_observedViewModel is not null)
+        {
             _observedViewModel.PropertyChanged += ViewModelPropertyChanged;
+            _observedViewModel.SessionLeaving += SessionLeaving;
+        }
+    }
+
+    private void SessionLeaving(string sessionId)
+    {
+        AttachConversationScroller();
+        if (_conversationScroller is null) return;
+        ViewModel.StoreSessionViewport(sessionId, _conversationScroller.Offset.Y, _followingConversation);
     }
 
     private void ViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

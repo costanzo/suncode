@@ -69,6 +69,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             else Sessions.Add(projected);
         }
         RefreshRecentSessionReferences();
+        PruneSessionPresentationCache();
         OnPropertyChanged(nameof(HasSessions));
         OnPropertyChanged(nameof(HasArchivedSessions));
         NotifyRunningSessionsChanged();

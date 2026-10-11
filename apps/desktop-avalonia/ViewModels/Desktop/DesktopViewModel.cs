@@ -51,6 +51,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private string _activeTurnTimingTurnId = string.Empty;
 
     public event Action? SessionEntered;
+    public event Action<string>? SessionLeaving;
 
     public AppSettingsViewModel AppSettings { get; }
     public McpServersViewModel Mcp { get; }
