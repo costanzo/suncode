@@ -18,7 +18,7 @@
       <Style Selector="^ md|MarkdownTextBlock">
         <Setter Property="Margin" Value="0,10,0,10" />
         <Setter Property="FontSize" Value="19" />
-        <Setter Property="LineHeight" Value="24" />
+        <Setter Property="LineHeight" Value="26" />
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
       </Style>
@@ -30,6 +30,17 @@
         <Setter Property="LineHeight" Value="20" />
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+      </Style>
+      <Style Selector="^ md|CodeInline">
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="2,0" />
+        <Setter Property="Margin" Value="2,1,2,1" />
       </Style>
     </Style>
     <Style Selector="^ Border.Heading4Block">
