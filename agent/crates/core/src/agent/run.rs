@@ -27,22 +27,35 @@ fn skill_guidance(project_root: &str, user_directory: Option<&std::path::Path>) 
     Some(suncode_skills::render_available_skills(catalog.visible().cloned()))
 }
 
+enum TurnStart {
+    /// A new submission whose user message is appended to the session.
+    Submit(Message),
+    /// A new turn that continues from the persisted context of the failed turn.
+    Retry,
+    /// An already admitted turn resuming after approval or a question.
+    Resume,
+}
+
 impl Agent {
     async fn run(
         &self,
         mut context: Continuation,
-        user_input: Option<Message>,
+        start: TurnStart,
         token: CancellationToken,
         provider: ModelRoute,
     ) -> Result<TurnResponse, BusinessError> {
         let started = Instant::now();
-        if let Some(message) = user_input {
-            self.turn_state(&context, "admitted", None)?;
-            context.messages.push(message.clone());
-            self.emit(
-                &context.session_id,
-                EventPayload::MessageUser(MessageUserPayload { message_id: Uuid::new_v4().to_string(), turn_id: context.turn_id.clone(), queued_id: None, queued_idempotency_key: None, message }),
-            )?;
+        match start {
+            TurnStart::Submit(message) => {
+                self.turn_state(&context, "admitted", None)?;
+                context.messages.push(message.clone());
+                self.emit(
+                    &context.session_id,
+                    EventPayload::MessageUser(MessageUserPayload { message_id: Uuid::new_v4().to_string(), turn_id: context.turn_id.clone(), queued_id: None, queued_idempotency_key: None, message })
+                )?;
+            }
+            TurnStart::Retry => self.turn_state(&context, "admitted", None)?,
+            TurnStart::Resume => {}
         }
         self.turn_state(&context, "preparing", None)?;
         let base_system_messages = system_prompt::build_messages(system_prompt::PromptContext {

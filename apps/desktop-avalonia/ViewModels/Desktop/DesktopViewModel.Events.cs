@@ -88,6 +88,17 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         StatusText = exception.Message;
     }
 
+    private void ReportTurnError(Exception exception)
+    {
+        if (exception is not SdkException)
+        {
+            ReportError(exception);
+            return;
+        }
+        DiagnosticLog.Error("viewmodel.turn", exception, $"session={SelectedSession?.SessionId ?? "none"}");
+        StatusText = exception.Message;
+    }
+
     // Background refreshes must not surface as unobserved task exceptions.
     // Failures are logged; the next event or explicit reload retries.
     private static async void RunInBackground(Func<Task> operation, string operationName)

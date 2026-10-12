@@ -99,7 +99,7 @@ The Rust API uses typed inputs and outputs. Async Rust hosts use `AsyncAgentSdk`
 | `submit_turn` | Idempotently submit text-only input to a session and selected model, persist the selected model and effort on the session, and normalize an omitted effort to the selected model's first advertised effort |
 | `submit_turn_with_attachments` | Submit text plus up to three same-session image IDs to a model advertising image input, persisting the selected model and normalized effort on the session |
 | `cancel_turn` | Cooperatively cancel a running turn |
-| `retry_last_turn` | Re-submit the most recently failed turn in a session using its persisted input and model; creates a new turn with a fresh idempotency key |
+| `retry_last_turn` | Retry the session's latest turn when it failed, using its persisted model; creates a new turn with a fresh idempotency key that continues from the persisted context without appending another user message. Returns `conflict` when the latest turn did not fail or a turn is already running |
 | `get_approval` | Read one approval state |
 | `pending_approval` | Read the current pending approval for one validated session, if present (Rust facade) |
 | `resolve_approval` | Resolve one pending approval with `allow_once`, `allow_session`, or `deny` |

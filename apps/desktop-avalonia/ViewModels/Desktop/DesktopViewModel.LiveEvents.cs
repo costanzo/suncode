@@ -301,6 +301,8 @@ public sealed partial class DesktopViewModel
         var turnId = payload.TurnId ?? string.Empty;
         var terminal = IsTerminalTurnState(state);
         if (!string.IsNullOrWhiteSpace(turnId)) LastTurnId = turnId;
+        if (payload.SubmissionIdempotencyKey is { } submissionKey && _inFlightSubmissions.ContainsKey(submissionKey))
+            _inFlightSubmissions[submissionKey] = true;
         if (state == "admitted")
         {
             CurrentTodos.Clear();

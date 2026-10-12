@@ -354,7 +354,7 @@ impl Agent {
             .route(&continuation.model)
             .ok_or_else(|| BusinessError::new("model_unavailable", "model is not advertised"))?;
         let response = self
-            .run(continuation.clone(), None, token, provider)
+            .run(continuation.clone(), TurnStart::Resume, token, provider)
             .await?;
         self.store.complete_turn(
             &continuation.session_id,
@@ -392,7 +392,7 @@ impl Agent {
             .route(&continuation.model)
             .ok_or_else(|| BusinessError::new("model_unavailable", "model is not advertised"))?;
         let response = self
-            .run(continuation.clone(), None, token, provider)
+            .run(continuation.clone(), TurnStart::Resume, token, provider)
             .await?;
         self.store.complete_turn(
             &continuation.session_id,

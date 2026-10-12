@@ -175,6 +175,7 @@ impl Agent {
             image_ids,
             false,
             None,
+            false,
         )
         .await
     }
@@ -190,6 +191,7 @@ impl Agent {
         image_ids: &[String],
         allow_child: bool,
         inherited_token: Option<CancellationToken>,
+        retry: bool,
     ) -> Result<TurnResponse, BusinessError> {
         self.ensure_running()?;
         let session_lock = self.session_lock(session_id).await;
@@ -249,6 +251,12 @@ impl Agent {
                     .map_err(|_| BusinessError::new("agent_unavailable", "turn state unavailable"))?
                     .contains_key(session_id);
                 if has_active_turn {
+                    if retry {
+                        return Err(BusinessError::new(
+                            "conflict",
+                            "a turn is already running in this session",
+                        ));
+                    }
                     if !image_ids.is_empty() {
                         return Err(BusinessError::new(
                             "conflict",
@@ -372,8 +380,13 @@ impl Agent {
                 .into_iter()
                 .collect(),
         };
+        let start = if retry {
+            TurnStart::Retry
+        } else {
+            TurnStart::Submit(user_message)
+        };
         let result = self
-            .run(continuation.clone(), Some(user_message), token, provider)
+            .run(continuation.clone(), start, token, provider)
             .await;
         self.cancellations
             .lock()
@@ -434,12 +447,13 @@ impl Agent {
             &[],
             true,
             Some(parent_token),
+            false,
         )
         .await
     }
 
-    /// Retry the most recently failed turn in a session using its persisted input.
-    /// A new idempotency key is generated so the retry is admitted as a distinct turn.
+    /// Retry the session's latest turn when it failed. The retry is admitted as a new turn
+    /// /// that continues from the persisted context, so the original user message is not repeated.
     pub async fn retry_last_turn(&self, session_id: &str) -> Result<TurnResponse, BusinessError> {
         let Some((input, model, image_ids)) = self.store.latest_failed_turn_input(session_id)?
         else {
@@ -451,13 +465,16 @@ impl Agent {
                 "failed turn has no model",
             ));
         }
-        self.submit_with_attachments(
+        self.submit_session(
             session_id,
             &Uuid::new_v4().to_string(),
             &input,
             Some(&model),
             None,
             &image_ids,
+            false,
+            None,
+            true,
         )
         .await
     }

@@ -361,19 +361,22 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (!EnsureSdk() || SelectedSession is null || SelectedModel?.Configured != true || text.Length == 0 || IsTurnActive) return;
         var submittedModelId = SelectedModel.Id;
         var submittedReasoningEffort = SelectedReasoningEffort;
+        var submittedSessionId = SelectedSession.SessionId;
+        var idempotencyKey = Guid.NewGuid().ToString("N");
         var attachments = ComposerAttachments.ToArray();
         ComposerText = string.Empty;
         ResetCurrentComposerDraft();
         ComposerAttachments.Clear();
         DisposeSubmittedAttachments();
         _submittedAttachments = attachments;
+        _inFlightSubmissions[idempotencyKey] = false;
         IsBusy = true;
         try
         {
             var result = await _sdk!.SubmitTurnAsync(new SubmitTurnRequest(
-                SelectedSession.SessionId,
+                submittedSessionId,
                 text,
-                Guid.NewGuid().ToString("N"),
+                idempotencyKey,
                 submittedModelId,
                 submittedReasoningEffort,
                 attachments.Select(attachment => attachment.ImageId).ToArray()));
@@ -399,14 +402,19 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
         catch (Exception exception)
         {
-            ComposerText = text;
-            BindComposerDraftToCurrent(SelectedSession.SessionId);
-            foreach (var attachment in attachments) ComposerAttachments.Add(attachment);
+            var admitted = _inFlightSubmissions.GetValueOrDefault(idempotencyKey);
+            if (!admitted && SelectedSession?.SessionId == submittedModelId)
+            {
+                ComposerText = text;
+                BindComposerDraftToCurrent(SelectedSession.SessionId);
+                foreach (var attachment in attachments) ComposerAttachments.Add(attachment);                
+            }
             _submittedAttachments = [];
-            ReportError(exception);
+            ReportTurnError(exception);
         }
         finally
         {
+            _inFlightSubmissions.Remove(idempotencyKey);
             IsBusy = false;
         }
     }
@@ -429,7 +437,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         }
         catch (Exception exception)
         {
-            ReportError(exception);
+            ReportTurnError(exception);
         }
         finally
         {

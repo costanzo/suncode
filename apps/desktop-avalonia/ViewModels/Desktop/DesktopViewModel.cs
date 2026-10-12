@@ -25,6 +25,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private IReadOnlyList<ComposerAttachment> _submittedAttachments = [];
     private string? _selectedReasoningEffort;
     private readonly HashSet<string> _appliedMessageIds = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, bool> _inFlightSubmissions = new(StringComparer.Ordinal);
     private ApprovalItem? _pendingApproval;
     private PendingQuestionItem? _pendingQuestion;
     private string _connectionState = "disconnected";

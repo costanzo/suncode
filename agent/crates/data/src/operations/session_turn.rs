@@ -127,7 +127,7 @@ impl Store {
         })
     }
 
-    /// Return the most recently failed turn's original input and image attachments.
+    /// Return the session's latest turn input and image attachments when that turn failed.
     /// The caller is responsible for submitting it with a fresh idempotency key.
     pub fn latest_failed_turn_input(
         &self,
@@ -135,7 +135,7 @@ impl Store {
     ) -> Result<Option<(String, String, Vec<String>)>, BusinessError> {
         let mut c = lock(&self.connection)?;
         let Some(row) = sql_query(
-            "SELECT input_json, model_id FROM session_turn WHERE session_id=? AND state='failed' ORDER BY created_at DESC, turn_id DESC LIMIT 1",
+            "SELECT input_json, model_id FROM (SELECT input_json, model_id, state FROM session_turn WHERE session_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1) WHERE state='failed'",
         )
         .bind::<Text, _>(session_id)
         .get_result::<RetryInputRow>(&mut *c)
