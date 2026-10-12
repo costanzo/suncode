@@ -440,7 +440,7 @@ fn child_sessions_are_linked_hidden_from_primary_lists_and_interrupted_on_recove
 fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
     let store = Store::open_memory().unwrap();
     let models = store.llm_models(false).unwrap();
-    assert_eq!(models.len(), 14);
+    assert_eq!(models.len(), 19);
     let model = |id: &str| {
         models
             .iter()
@@ -497,7 +497,7 @@ fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
         assert!(claude.supports_structured_output);
         assert!(claude.supports_reasoning_effort);
     }
-    for id in ["gemini-3.6-flash", "gemini-3.5"] {
+    for id in ["gemini-3.6-flash", "gemini-3.8-flash"] {
         let gemini = model(id);
         assert_eq!(gemini.context_tokens, 1_048_576);
         assert_eq!(gemini.max_output_tokens, Some(65_536));
@@ -505,7 +505,167 @@ fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
         assert!(gemini.supports_structured_output);
         assert!(gemini.supports_reasoning_effort);
     }
-    assert_eq!(model("gemini-3.5").request_model, "gemini-3.5-flash");
+    assert_eq!(model("gemini-3.8-flash").request_model, "gemini-3.8-flash");
+    assert_eq!(
+        model("gemini-3.8-flash").reasoning_efforts,
+        ["low", "medium", "high"]
+    );
+    assert!(models.iter().all(|item| item.model_id != "gemini-3.5"));
+    let providers = store.llm_model_providers(true).unwrap();
+    assert_eq!(providers.len(), 8);
+    let xai = providers
+        .iter()
+        .find(|item| item.provider_id == "xai")
+        .unwrap();
+    assert_eq!(xai.display_name, "xAI");
+    assert_eq!(xai.endpoint, "https://api.x.ai/v1");
+    assert_eq!(xai.default_endpoint, xai.endpoint);
+    assert_eq!(xai.adapter_type, "openai");
+    assert!(!xai.api_key_configured);
+    for (id, context, efforts) in [
+        ("grok-4.7", 500_000, vec!["low", "medium", "high", "xhigh"]),
+        ("grok-4.6", 500_000, vec!["low", "medium", "high", "xhigh"]),
+        ("grok-4.5", 500_000, vec!["low", "medium", "high"]),
+        (
+            "grok-4.3",
+            1_000_000,
+            vec!["none", "low", "medium", "high", "xhigh"],
+        ),
+        ("grok-build-0.1", 256_000, vec![]),
+    ] {
+        let grok = model(id);
+        assert_eq!(grok.provider_id, "xai");
+        assert_eq!(grok.request_model, id);
+        assert_eq!(grok.context_tokens, context);
+        assert_eq!(grok.auto_compact_tokens, context - 16_384);
+        assert_eq!(grok.max_output_tokens, None);
+        assert!(grok.supports_streaming);
+        assert!(grok.supports_tool_use);
+        assert!(grok.supports_vision);
+        assert!(grok.supports_structured_output);
+        assert!(grok.supports_cancellation);
+        assert_eq!(grok.supports_reasoning_effort, !efforts.is_empty());
+        assert_eq!(grok.reasoning_efforts, efforts);
+        assert!(!grok.supports_computer_use);
+    }
+}
+
+#[test]
+fn reopening_existing_catalog_adds_grok_and_preserves_provider_settings() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("agent.sqlite3");
+    {
+        let store = Store::open(&path).unwrap();
+        let mut connection = store.connection.lock().unwrap();
+        connection.batch_execute(
+            "DELETE FROM llm_model WHERE provider_id='xai';
+             DELETE FROM llm_model_provider WHERE provider_id='xai';
+             UPDATE llm_model_provider SET endpoint='https://gateway.example.test/v1', api_key='test-existing-key' WHERE provider_id='openai';",
+        ).unwrap();
+    }
+    for _ in 0..2 {
+        let store = Store::open(&path).unwrap();
+        let providers = store.llm_model_providers(true).unwrap();
+        assert_eq!(providers.len(), 8);
+        let openai = providers
+            .iter()
+            .find(|item| item.provider_id == "openai")
+            .unwrap();
+        assert_eq!(openai.endpoint, "https://gateway.example.test/v1");
+        assert_eq!(
+            store.llm_provider_api_key("openai").unwrap().as_deref(),
+            Some("test-existing-key")
+        );
+        let grok_ids = store
+            .llm_models(true)
+            .unwrap()
+            .into_iter()
+            .filter(|item| item.provider_id == "xai")
+            .map(|item| item.model_id)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            grok_ids,
+            [
+                "grok-4.7",
+                "grok-4.6",
+                "grok-4.5",
+                "grok-4.3",
+                "grok-build-0.1"
+            ]
+        );
+    }
+}
+
+#[test]
+fn reopening_legacy_gemini_catalog_migrates_selections_and_preserves_history() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("agent.sqlite3");
+    let (project_id, session_id);
+    {
+        let store = Store::open(&path).unwrap();
+        let project = store
+            .project("/tmp/gemini-upgrade", "Gemini upgrade")
+            .unwrap();
+        let session = store
+            .create_session(&project.project_id, None, Some("gemini-3.5"))
+            .unwrap();
+        project_id = project.project_id;
+        session_id = session.session_id;
+        store
+            .set_setting(
+                "project",
+                &project_id,
+                "default_model",
+                &json!("gemini-3.5"),
+            )
+            .unwrap();
+        store
+            .set_setting("session", &session_id, "custom_note", &json!("gemini-3.5"))
+            .unwrap();
+        store
+            .begin_turn(&session_id, "legacy-turn", "Hello", "gemini-3.5")
+            .unwrap();
+        let mut connection = store.connection.lock().unwrap();
+        connection.batch_execute(
+            "UPDATE llm_model SET model_id='gemini-3.5', display_name='Gemini 3.5 Flash (legacy SunCode ID)', request_model='gemini-3.5-flash' WHERE model_id='gemini-3.8-flash';
+             UPDATE session SET reasoning_effort='minimal' WHERE model_id='gemini-3.5';",
+        ).unwrap();
+    }
+    for _ in 0..2 {
+        let store = Store::open(&path).unwrap();
+        let session = store.session_by_id(&session_id).unwrap().unwrap();
+        assert_eq!(session.model_id.as_deref(), Some("gemini-3.8-flash"));
+        assert_eq!(session.reasoning_effort.as_deref(), Some("low"));
+        assert_eq!(
+            store.project_default_model(&project_id).unwrap().as_deref(),
+            Some("gemini-3.8-flash")
+        );
+        assert_eq!(
+            store
+                .settings(Some(&project_id), Some(&session_id))
+                .unwrap()
+                .into_iter()
+                .find(|item| item.key == "custom_note")
+                .unwrap()
+                .value,
+            json!("gemini-3.5")
+        );
+        let models = store.llm_models(true).unwrap();
+        assert!(models.iter().all(|model| model.model_id != "gemini-3.5"));
+        assert_eq!(
+            models
+                .iter()
+                .filter(|model| model.provider_id == "gemini")
+                .count(),
+            2
+        );
+        assert_eq!(
+            store.session_trace_turns(&session_id).unwrap()[0]
+                .model_id
+                .as_deref(),
+            Some("gemini-3.5")
+        );
+    }
 }
 
 #[test]

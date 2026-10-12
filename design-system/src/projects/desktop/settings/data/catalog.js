@@ -46,7 +46,14 @@ export const providerCatalog = {
     endpoint: "https://generativelanguage.googleapis.com/v1beta/openai",
     placeholder: "Paste Gemini API key",
     keyPreview: "AIza••••••••2Lm8",
-    models: ["gemini-3.5", "gemini-3.6-flash"],
+    models: ["gemini-3.8-flash", "gemini-3.6-flash"],
+  },
+  xai: {
+    label: "xAI",
+    endpoint: "https://api.x.ai/v1",
+    placeholder: "Paste xAI API key",
+    keyPreview: "",
+    models: ["grok-4.7", "grok-4.6", "grok-4.5", "grok-4.3", "grok-build-0.1"],
   },
 };
 

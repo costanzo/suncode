@@ -370,8 +370,19 @@ fn named_sdk_methods_serve_project_session_and_model_dtos() {
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
     assert_eq!(AgentSdk::version().version, suncode_agent::version());
     assert!(sdk.health().unwrap().ok);
-    assert_eq!(sdk.list_credentials().unwrap().credentials.len(), 7);
-    assert_eq!(sdk.list_models().unwrap().models.len(), 14);
+    assert_eq!(sdk.list_credentials().unwrap().credentials.len(), 8);
+    assert_eq!(sdk.list_models().unwrap().models.len(), 19);
+    for id in [
+        "grok-4.7",
+        "grok-4.6",
+        "grok-4.5",
+        "grok-4.3",
+        "grok-build-0.1",
+    ] {
+        let route = sdk.state.providers.route(id).expect("seeded Grok route");
+        assert_eq!(route.provider_id, "xai");
+        assert_eq!(route.wire_model, id);
+    }
     let project = sdk
         .open_project(directory.path().to_str().unwrap(), None)
         .unwrap();

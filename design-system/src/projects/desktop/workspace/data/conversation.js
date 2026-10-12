@@ -5,6 +5,11 @@ export const workspaceModelGroups = [
   { id: "claude", label: "Claude", models: ["claude-sonnet-5", "claude-opus-5"] },
   { id: "deepseek", label: "DeepSeek", models: ["deepseek-v4-flash", "deepseek-v4-pro"] },
   { id: "qwen", label: "Qwen", models: ["qwen3.8-max", "qwen3.8-flash"] },
+  {
+    id: "xai",
+    label: "xAI",
+    models: ["grok-4.7", "grok-4.6", "grok-4.5", "grok-4.3", "grok-build-0.1"],
+  },
 ];
 
 export const runningConversationToolCalls = [

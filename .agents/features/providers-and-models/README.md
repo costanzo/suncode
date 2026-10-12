@@ -10,13 +10,35 @@ The Rust agent owns the model catalog, provider routes, and wire adapters. Clien
 - Model rows carry request identifiers, context and auto-compaction limits, an optional output limit, capability flags (streaming, tool use, vision, structured output, cancellation, reasoning effort, Computer Use), and the advertised `reasoning_efforts` list.
 - Custom providers come from two sources: persisted OpenAI-compatible rows, or trusted `Arc<dyn LlmProvider>` implementations registered in-process by a Rust host. The registry registers a provider and its models atomically and rejects duplicate model identifiers. Dynamic plugins and third-party adapter loading are not supported. There is no SDK method to add, remove, enable, or reorder providers or models.
 
+## Gemini Flash catalog
+
+The latest stable Flash entry is `gemini-3.8-flash`, verified against Google's [model page](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash) on 2026-10-12. It accepts up to 1,048,576 input tokens and 65,536 output tokens, supports vision, function calling, structured output, and reasoning levels `low`, `medium`, and `high`. `minimal` is unsupported. The previous-generation `gemini-3.6-flash` remains selectable.
+
+The former `gemini-3.5` row used a legacy SunCode ID for wire model `gemini-3.5-flash`; the label referred to that identifier mismatch. Google's [deprecation page](https://ai.google.dev/gemini-api/docs/deprecations) currently routes `gemini-3.5-flash` to `gemini-3.6-flash` without an announced shutdown date. Startup replaces the legacy catalog row with the canonical `gemini-3.8-flash` row and updates saved session selections and scoped `default_model` settings. Migrated sessions use `low` in place of unsupported `minimal`; historical turn/call records retain their original model identifiers.
+
+## xAI Grok catalog
+
+The xAI provider uses `https://api.x.ai/v1` through the existing Responses adapter. Its credential and endpoint follow the same SQLite and Settings paths as other providers. Startup seeding adds it to existing databases without overwriting provider credentials or endpoint settings.
+
+The catalog was checked against the [official xAI model list](https://docs.x.ai/developers/models) and individual model pages on 2026-10-12:
+
+| Model / request ID | Context tokens | Selectable reasoning efforts |
+| --- | --- | --- |
+| `grok-4.7` | 500,000 | low, medium, high, xhigh |
+| `grok-4.6` | 500,000 | low, medium, high, xhigh |
+| `grok-4.5` | 500,000 | low, medium, high |
+| `grok-4.3` | 1,000,000 | none, low, medium, high, xhigh |
+| `grok-build-0.1` | 256,000 | none advertised |
+
+All five accept text/image input, stream text, and support function calling and structured output. Auto-compaction reserves the existing 16,384-token margin. Output limits remain unset: the [Grok 4.7 guide](https://docs.x.ai/developers/grok-4-7) explicitly specifies no text output limit, and the other model pages do not publish separate output caps. Computer Use remains unadvertised pending verification of screenshot-bearing function results. Grok Build reasons internally but does not advertise configurable effort. The Grok 4.5 model page lists `xhigh`, but the [reasoning guide](https://docs.x.ai/developers/model-capabilities/text/reasoning) says it is treated as `high`; SunCode exposes the three distinct levels. Grok 4.7 Fast is excluded because it is unavailable on the public API. Image, video, voice, and multi-agent endpoints are outside this coding-model catalog addition.
+
 ## Endpoint settings
 
 `set_provider_endpoint(provider, endpoint)` changes the base URL of one existing provider. Rust trims whitespace and trailing slashes, accepts only absolute HTTP or HTTPS URLs with a host and no embedded credentials, query, or fragment, and rejects unknown providers. A successful update persists the URL and atomically replaces that provider's live route. Provider identity, adapter, credential, models, enabled state, and ordering stay the same. Requests already in flight finish on the route they started with. A rejected URL leaves the stored endpoint unchanged. The C ABI returns only the provider ID and the normalized endpoint. Desktop Settings edits the endpoint on each provider detail page.
 
 ## OpenAI Responses wire format
 
-Every `adapter_type=openai` provider posts to `<endpoint>/responses`. This includes the seeded DeepSeek, Qwen, Zhipu GLM, Kimi, Gemini, and OpenAI rows. Chat Completions is no longer used. Requests contain:
+Every `adapter_type=openai` provider posts to `<endpoint>/responses`. This includes the seeded DeepSeek, Qwen, Zhipu GLM, Kimi, Gemini, OpenAI, and xAI rows. Chat Completions is no longer used. Requests contain:
 
 - canonical messages encoded as Responses `input` items, with images as `input_image` data URLs;
 - function tools with `strict: false`;

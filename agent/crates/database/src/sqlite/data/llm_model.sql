@@ -18,7 +18,12 @@ INSERT INTO llm_model (
     ('claude-opus-5', 'claude', 'Claude Opus 5', 'claude-opus-5', 1000000, 983616, 128000, 1, 1, 1, 1, 1, 1, 1, 1, 90, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high,xhigh,max'),
     ('claude-sonnet-5', 'claude', 'Claude Sonnet 5', 'claude-sonnet-5', 1000000, 983616, 128000, 1, 1, 1, 1, 1, 1, 1, 1, 100, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'low,medium,high,xhigh,max'),
     ('gemini-3.6-flash', 'gemini', 'Gemini 3.6 Flash', 'gemini-3.6-flash', 1048576, 1032192, 65536, 1, 1, 1, 1, 1, 1, 1, 1, 110, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'minimal,low,medium,high'),
-    ('gemini-3.5', 'gemini', 'Gemini 3.5 Flash (legacy SunCode ID)', 'gemini-3.5-flash', 1048576, 1032192, 65536, 1, 1, 1, 1, 1, 1, 1, 1, 120, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z', 'minimal,low,medium,high')
+    ('gemini-3.8-flash', 'gemini', 'Gemini 3.8 Flash', 'gemini-3.8-flash', 1048576, 1032192, 65536, 1, 1, 1, 1, 1, 1, 1, 1, 109, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z', 'low,medium,high'),
+    ('grok-4.7', 'xai', 'Grok 4.7', 'grok-4.7', 500000, 483616, NULL, 1, 1, 1, 1, 1, 1, 0, 1, 130, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z', 'low,medium,high,xhigh'),
+    ('grok-4.6', 'xai', 'Grok 4.6', 'grok-4.6', 500000, 483616, NULL, 1, 1, 1, 1, 1, 1, 0, 1, 140, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z', 'low,medium,high,xhigh'),
+    ('grok-4.5', 'xai', 'Grok 4.5', 'grok-4.5', 500000, 483616, NULL, 1, 1, 1, 1, 1, 1, 0, 1, 150, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z', 'low,medium,high'),
+    ('grok-4.3', 'xai', 'Grok 4.3', 'grok-4.3', 1000000, 983616, NULL, 1, 1, 1, 1, 1, 1, 0, 1, 160, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z', 'none,low,medium,high,xhigh'),
+    ('grok-build-0.1', 'xai', 'Grok Build 0.1', 'grok-build-0.1', 256000, 239616, NULL, 1, 1, 1, 1, 1, 0, 0, 1, 170, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z', '')
 ON CONFLICT(model_id) DO UPDATE SET
     display_name = excluded.display_name,
     request_model = excluded.request_model,
@@ -36,3 +41,16 @@ ON CONFLICT(model_id) DO UPDATE SET
     enabled = excluded.enabled,
     sort_order = excluded.sort_order,
     updated_at = excluded.updated_at;
+
+-- Replace the retired SunCode ID while retaining historical turn/call identities.
+UPDATE session
+SET model_id = 'gemini-3.8-flash',
+    reasoning_effort = CASE WHEN reasoning_effort = 'minimal' THEN 'low' ELSE reasoning_effort END,
+    updated_at = '2026-10-12T00:00:00.000Z'
+WHERE model_id = 'gemini-3.5';
+
+UPDATE configuration
+SET value_json = '"gemini-3.8-flash"', updated_at = '2026-10-12T00:00:00.000Z'
+WHERE key = 'default_model' AND json_extract(value_json, '$') = 'gemini-3.5';
+
+DELETE FROM llm_model WHERE model_id = 'gemini-3.5' AND provider_id = 'gemini';

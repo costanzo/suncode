@@ -7,5 +7,6 @@ INSERT INTO llm_model_provider (
     ('openai', 'OpenAI', 'https://api.openai.com/v1', 'https://api.openai.com/v1', 'openai', NULL, 1, 30, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z'),
     ('kimi', 'Kimi', 'https://api.moonshot.ai/v1', 'https://api.moonshot.ai/v1', 'openai', NULL, 1, 40, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z'),
     ('claude', 'Claude', 'https://api.anthropic.com/v1', 'https://api.anthropic.com/v1', 'anthropic', NULL, 1, 50, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z'),
-    ('gemini', 'Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'https://generativelanguage.googleapis.com/v1beta/openai', 'openai', NULL, 1, 60, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z')
+    ('gemini', 'Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'https://generativelanguage.googleapis.com/v1beta/openai', 'openai', NULL, 1, 60, '2026-08-19T00:00:00.000Z', '2026-08-19T00:00:00.000Z'),
+    ('xai', 'xAI', 'https://api.x.ai/v1', 'https://api.x.ai/v1', 'openai', NULL, 1, 70, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z')
 ON CONFLICT(provider_id) DO NOTHING;
