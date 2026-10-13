@@ -39,7 +39,9 @@ struct FunctionCallState {
 
 pub struct ResponsesSseParser {
     provider_label: String,
-    buffer: String,
+    // Raw bytes are buffered so multi-byte UTF-8 sequences split across
+    // network chunks are decoded only once a full line has arrived.
+    buffer: Vec<u8>,
     pending_event: String,
     text: String,
     calls: BTreeMap<u64, FunctionCallState>,
@@ -53,7 +55,7 @@ impl ResponsesSseParser {
     pub fn new(provider_label: impl Into<String>) -> Self {
         Self {
             provider_label: provider_label.into(),
-            buffer: String::new(),
+            buffer: Vec::new(),
             pending_event: String::new(),
             text: String::new(),
             calls: BTreeMap::new(),
@@ -69,20 +71,23 @@ impl ResponsesSseParser {
     }
 
     pub fn push(&mut self, bytes: &[u8]) -> Result<Vec<String>, BusinessError> {
-        self.buffer.push_str(&String::from_utf8_lossy(bytes));
+        self.buffer.extend_from_slice(bytes);
         let mut deltas = Vec::new();
-        while let Some(index) = self.buffer.find('\n') {
-            let line = self.buffer[..index].trim_end_matches('\r').to_string();
-            self.buffer.drain(..=index);
-            if let Some(delta) = self.line(&line)? {
+        let mut consumed = 0;
+        while let Some(offset) = self.buffer[consumed..].iter().position(|&b| b == b'\n') {
+            let end = consumed + offset;
+            let line = String::from_utf8_lossy(&self.buffer[consumed..end]).into_owned();
+            consumed = end + 1;
+            if let Some(delta) = self.line(line.trim_end_matches('\r'))? {
                 deltas.push(delta);
             }
         }
+        self.buffer.drain(..consumed);
         Ok(deltas)
     }
 
     pub fn flush(&mut self) -> Result<Vec<String>, BusinessError> {
-        let final_line = std::mem::take(&mut self.buffer);
+        let final_line = String::from_utf8_lossy(&std::mem::take(&mut self.buffer)).into_owned();
         if final_line.trim().is_empty() {
             return Ok(Vec::new());
         }
@@ -414,6 +419,18 @@ mod tests {
             .push(b"event: response.completed\ndata: {\"response\":{}}\n\n")
             .unwrap();
         assert_eq!(parser.finish().unwrap().text, "hello");
+    }
+
+    #[test]
+    fn decodes_utf8_split_across_chunks() {
+        let mut parser = ResponsesSseParser::new("Test provider");
+        let frame = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"你好🙂\"}\n\n";
+        let bytes = frame.as_bytes();
+        // Split inside the first multi-byte character.
+        let split = frame.find('你').unwrap() + 1;
+        assert!(parser.push(&bytes[..split]).unwrap().is_empty());
+        let deltas = parser.push(&bytes[split..]).unwrap();
+        assert_eq!(deltas, vec!["你好🙂"]);
     }
 
     #[test]

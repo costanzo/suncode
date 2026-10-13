@@ -79,6 +79,9 @@ struct Inner {
     verification_error: std::sync::RwLock<Option<String>>,
     proxy: std::sync::RwLock<HttpProxyConfiguration>,
     projects: AsyncMutex<HashMap<String, BrowserSlot>>,
+    /// Per-project start locks so concurrent starts share one CDP worker instead of
+    /// spawning a second one and orphaning the first.
+    start_locks: std::sync::Mutex<HashMap<String, Arc<AsyncMutex<()>>>>,
     verification_worker: AsyncMutex<Option<Arc<WorkerProcess>>>,
     closed: AtomicBool,
     host_available: bool,
@@ -139,6 +142,7 @@ impl BrowserManager {
                 verification_error: std::sync::RwLock::new(None),
                 proxy: std::sync::RwLock::new(HttpProxyConfiguration::default()),
                 projects: AsyncMutex::new(HashMap::new()),
+                start_locks: std::sync::Mutex::new(HashMap::new()),
                 verification_worker: AsyncMutex::new(None),
                 closed: AtomicBool::new(false),
                 host_available,
@@ -412,6 +416,19 @@ impl BrowserManager {
     }
 
     pub(super) async fn start_project(&self, project_id: &str) -> Result<(), BusinessError> {
+        let lock = self
+            .inner
+            .start_locks
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .entry(project_id.to_string())
+            .or_default()
+            .clone();
+        let _guard = lock.lock().await;
+        self.start_project_locked(project_id).await
+    }
+
+    async fn start_project_locked(&self, project_id: &str) -> Result<(), BusinessError> {
         self.require_enabled()?;
         if !self.inner.verified.load(Ordering::SeqCst) {
             self.verify_integrity()?;

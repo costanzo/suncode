@@ -801,7 +801,7 @@ async fn remote_worker(
                                         logging::debug("remote", "SSE comment received (heartbeat)");
                                         continue;
                                     }
-                                    if let Some(request) = parse_sse_request(&frame, &persisted.pairing.aes_key) {
+                                    if let Some(request) = parse_sse_request(&frame, &persisted.pairing.aes_key, persisted.config.e2e_enabled) {
                                         logging::debug(
                                             "remote",
                                             format!(
@@ -1246,7 +1246,12 @@ fn is_sse_comment(frame: &[u8]) -> bool {
         .all(|line| line.starts_with(b":"))
 }
 
-fn parse_sse_request(frame: &[u8], aes_key: &str) -> Option<RemoteRequest> {
+/// Parses one relay SSE frame into a request.
+///
+/// With `e2e_required`, request bodies must arrive as `encPayload`; plaintext
+/// bodies and the legacy `desktop.*` envelope are rejected so the relay cannot
+/// inject arguments. Path and query values stay visible to the relay by design.
+fn parse_sse_request(frame: &[u8], aes_key: &str, e2e_required: bool) -> Option<RemoteRequest> {
     let text = std::str::from_utf8(frame).ok()?;
     let mut event = String::new();
     let mut id = String::new();
@@ -1277,6 +1282,12 @@ fn parse_sse_request(frame: &[u8], aes_key: &str) -> Option<RemoteRequest> {
             .filter(|payload| !payload.trim().is_empty());
         let mut arguments = if let Some(enc_payload) = encrypted_payload {
             decrypt_remote_payload(enc_payload, aes_key).ok()?
+        } else if e2e_required && !is_empty_body(&body) {
+            logging::debug(
+                "remote",
+                "rejected plaintext request body while E2E is enabled",
+            );
+            return None;
         } else {
             body
         };
@@ -1299,7 +1310,7 @@ fn parse_sse_request(frame: &[u8], aes_key: &str) -> Option<RemoteRequest> {
             arguments,
         });
     }
-    if event != "desktop.request" && event != "desktop.command" {
+    if e2e_required || (event != "desktop.request" && event != "desktop.command") {
         return None;
     }
     let mut value: Value = serde_json::from_str(&data_lines.join("\n")).ok()?;
@@ -1309,6 +1320,10 @@ fn parse_sse_request(frame: &[u8], aes_key: &str) -> Option<RemoteRequest> {
     serde_json::from_value(value)
         .ok()
         .filter(|request: &RemoteRequest| !request.request_id.trim().is_empty())
+}
+
+fn is_empty_body(body: &Value) -> bool {
+    body.is_null() || body.as_object().is_some_and(serde_json::Map::is_empty)
 }
 
 fn decrypt_remote_payload(payload: &str, key_text: &str) -> RemoteResult<Value> {
@@ -1698,17 +1713,19 @@ mod tests {
 
     #[test]
     fn parses_only_sse_request_frames_with_request_ids() {
-        let request = parse_sse_request(b"event: desktop.request\ndata: {\"request_id\":\"req-1\",\"operation\":\"projects.list\"}\n\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
+        let request = parse_sse_request(b"event: desktop.request\ndata: {\"request_id\":\"req-1\",\"operation\":\"projects.list\"}\n\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", false).unwrap();
         assert_eq!(request.request_id, "req-1");
-        assert!(parse_sse_request(b"event: desktop.request\r\ndata: {\"request_id\":\"req-2\",\"operation\":\"projects.list\"}\r\n\r\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").is_some());
+        assert!(parse_sse_request(b"event: desktop.request\r\ndata: {\"request_id\":\"req-2\",\"operation\":\"projects.list\"}\r\n\r\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", false).is_some());
         assert!(parse_sse_request(
             b"event: heartbeat\ndata: {}\n\n",
-            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            false
         )
         .is_none());
         assert!(parse_sse_request(
             b"event: desktop.request\ndata: {\"operation\":\"projects.list\"}\n\n",
-            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            false
         )
         .is_none());
     }
@@ -1717,6 +1734,7 @@ mod tests {
     fn accepts_java_desktop_command_envelope_and_camel_case_payload() {
         let request = parse_sse_request(
             b"event: desktop.command\ndata: {\"requestId\":\"req-1\",\"hostId\":\"host-1\",\"sessionId\":\"session-1\",\"command\":\"session.message\",\"payload\":{\"text\":\"hello\"}}\n\n", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            false,
         )
         .unwrap();
         assert_eq!(request.request_id, "req-1");
@@ -1729,6 +1747,7 @@ mod tests {
         let request = parse_sse_request(
             b"event: mobile.sessions.approvals.resolve\nid: req-1\ndata: {\"pathParam\":{\"sessionId\":\"session-1\",\"approvalId\":\"approval-1\"},\"queryParam\":{\"revision\":7}}\ndata: {\"action\":\"allow_once\"}\n\n",
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            false,
         ).unwrap();
         assert_eq!(request.operation, "approval.resolve");
         assert_eq!(request.arguments["sessionId"], "session-1");
@@ -1742,6 +1761,7 @@ mod tests {
         assert!(parse_sse_request(
             b"event: mobile.sessions.messages.send\nid: req-1\ndata: {\"pathParam\":{},\"queryParam\":{}}\n\n",
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            false,
         )
         .is_none());
     }
@@ -1759,7 +1779,7 @@ mod tests {
             "event: mobile.sessions.messages.send\nid: req-1\ndata: {}\ndata: {}\n\n",
             routing, body
         );
-        let request = parse_sse_request(frame.as_bytes(), &key).unwrap();
+        let request = parse_sse_request(frame.as_bytes(), &key, true).unwrap();
         assert_eq!(request.operation, "session.message");
         assert_eq!(request.arguments["text"], "hello");
         assert_eq!(request.arguments["sessionId"], "session-1");
@@ -1767,10 +1787,35 @@ mod tests {
     }
 
     #[test]
+    fn rejects_plaintext_bodies_and_legacy_envelopes_when_e2e_is_required() {
+        let key = generate_aes_key();
+        assert!(parse_sse_request(
+            b"event: mobile.sessions.approvals.resolve\nid: req-1\ndata: {\"pathParam\":{\"sessionId\":\"s\",\"approvalId\":\"a\"},\"queryParam\":{}}\ndata: {\"action\":\"allow_once\"}\n\n",
+            &key,
+            true,
+        )
+        .is_none());
+        assert!(parse_sse_request(
+            b"event: desktop.command\ndata: {\"requestId\":\"req-1\",\"command\":\"session.message\",\"payload\":{\"text\":\"hi\"}}\n\n",
+            &key,
+            true,
+        )
+        .is_none());
+        // Bodyless requests carry no arguments and remain routable.
+        assert!(parse_sse_request(
+            b"event: mobile.projects.list\nid: req-2\ndata: {\"pathParam\":{},\"queryParam\":{}}\ndata: {}\n\n",
+            &key,
+            true,
+        )
+        .is_some());
+    }
+
+    #[test]
     fn parses_mobile_projects_list_event() {
         let request = parse_sse_request(
             b"event: mobile.projects.list\nid: 1791094808946\ndata: {\"pathParam\":{\"hostId\":\"BwyviZPiGD\"},\"queryParam\":{}}\ndata: {}\n\n",
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            false,
         )
         .expect("mobile projects list event should be accepted");
         assert_eq!(request.request_id, "1791094808946");

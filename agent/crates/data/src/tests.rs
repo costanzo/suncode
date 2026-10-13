@@ -434,6 +434,23 @@ fn child_sessions_are_linked_hidden_from_primary_lists_and_interrupted_on_recove
     assert_eq!(invocation.state, "interrupted");
     assert_eq!(invocation.error_code.as_deref(), Some("runtime_restarted"));
     assert_eq!(store.session_ui_state(&child.session_id).unwrap(), "failed");
+    #[derive(QueryableByName)]
+    struct TurnError {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        state: String,
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+        error_json: Option<String>,
+    }
+    let turn = {
+        let mut connection = store.connection.lock().unwrap();
+        sql_query("SELECT state,error_json FROM session_turn WHERE session_id=?")
+            .bind::<diesel::sql_types::Text, _>(&child.session_id)
+            .get_result::<TurnError>(&mut *connection)
+            .unwrap()
+    };
+    assert_eq!(turn.state, "interrupted");
+    let error: serde_json::Value = serde_json::from_str(&turn.error_json.unwrap()).unwrap();
+    assert_eq!(error["code"], "runtime_restarted");
 }
 
 #[test]

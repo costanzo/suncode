@@ -72,6 +72,8 @@ fn configure_command(mut command: Command, args: &ProcessArguments) -> Command {
     command.creation_flags(CREATE_NO_WINDOW);
     #[cfg(unix)]
     command.process_group(0);
+    // Tool commands must never read or steal the host's terminal input.
+    command.stdin(Stdio::null());
     command.env_clear();
     for key in [
         "PATH",
@@ -124,6 +126,41 @@ fn terminate_process_tree(child: &mut Child) {
         }
     }
     let _ = child.kill();
+}
+
+/// Kills processes left in the leader's process group after the leader exited,
+/// such as `cmd &`, so they cannot keep the output pipes open.
+fn reap_process_group(child: &Child) {
+    #[cfg(unix)]
+    {
+        // The group id stays reserved while any member is alive, so this cannot
+        // reach an unrelated group.
+        unsafe {
+            let _ = libc::kill(-(child.id() as i32), libc::SIGKILL);
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = child;
+}
+
+/// How long output readers may keep draining after the process has exited.
+const OUTPUT_DRAIN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
+
+/// Joins an output reader, giving up once `deadline` passes so a descendant
+/// that still holds the pipe cannot block the tool call forever.
+fn join_output(
+    reader: Option<std::thread::JoinHandle<std::io::Result<CapturedOutput>>>,
+    deadline: std::time::Instant,
+) -> Option<std::thread::Result<std::io::Result<CapturedOutput>>> {
+    let reader = reader?;
+    while !reader.is_finished() {
+        if std::time::Instant::now() >= deadline {
+            // The detached thread ends when the remaining writer closes the pipe.
+            return None;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    Some(reader.join())
 }
 
 /// A project-scoped process that remains alive until the host explicitly stops it.
@@ -471,8 +508,10 @@ pub(super) fn run(
         }
         std::thread::sleep(std::time::Duration::from_millis(10));
     };
-    let out = stdout
-        .and_then(|thread| thread.join().ok())
+    reap_process_group(&child);
+    let drain_deadline = std::time::Instant::now() + OUTPUT_DRAIN_TIMEOUT;
+    let out = join_output(stdout, drain_deadline)
+        .and_then(Result::ok)
         .transpose()
         .map_err(|_| {
             BusinessError::new("process_output_failed", "stdout could not be collected")
@@ -483,8 +522,8 @@ pub(super) fn run(
             total_bytes: 0,
             path: None,
         });
-    let err = stderr
-        .and_then(|thread| thread.join().ok())
+    let err = join_output(stderr, drain_deadline)
+        .and_then(Result::ok)
         .transpose()
         .map_err(|_| {
             BusinessError::new("process_output_failed", "stderr could not be collected")
@@ -663,6 +702,65 @@ mod tests {
             .decode(result["stdout_base64"].as_str().unwrap())
             .unwrap();
         assert!(String::from_utf8(output).unwrap().contains("suncode-ready"));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    fn shell_test_root(label: &str) -> std::path::PathBuf {
+        let root = std::env::temp_dir().join(format!(
+            "suncode-process-{label}-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        root.canonicalize().unwrap()
+    }
+
+    #[cfg(unix)]
+    fn shell(script: &str) -> ProcessArguments {
+        ProcessArguments {
+            program: "/bin/sh".into(),
+            args: vec!["-c".into(), script.into()],
+            cwd: None,
+            env: Default::default(),
+            timeout_ms: Some(20_000),
+            sandbox_profile: None,
+            idempotency_key: None,
+            operation_id: None,
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn background_descendant_does_not_hold_the_call_open() {
+        let root = shell_test_root("background");
+        let started = std::time::Instant::now();
+        let result = run(
+            Some(&root),
+            None,
+            &shell("sleep 30 & printf done"),
+            None,
+            None,
+        )
+        .unwrap();
+        assert!(started.elapsed() < std::time::Duration::from_secs(10));
+        assert_eq!(result["status"], "completed");
+        let output = STANDARD
+            .decode(result["stdout_base64"].as_str().unwrap())
+            .unwrap();
+        assert_eq!(output, b"done");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stdin_is_not_inherited() {
+        let root = shell_test_root("stdin");
+        // `cat` exits immediately on a null stdin instead of waiting for input.
+        let result = run(Some(&root), None, &shell("cat; printf eof"), None, None).unwrap();
+        assert_eq!(result["status"], "completed");
         std::fs::remove_dir_all(root).unwrap();
     }
 

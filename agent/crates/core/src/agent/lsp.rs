@@ -10,6 +10,9 @@ use url::Url;
 
 const MAX_NORMALIZED_ITEMS: usize = 500;
 
+/// Start locks keyed by (project id, language server id).
+type StartLocks = std::sync::Mutex<HashMap<(String, String), Arc<AsyncMutex<()>>>>;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum LanguageServerRuntimeState {
@@ -37,6 +40,10 @@ pub(super) struct LanguageServerManager {
 struct Inner {
     store: Store,
     projects: AsyncMutex<HashMap<String, ProjectRuntime>>,
+    /// One lock per (project, server) so concurrent callers wait for an in-flight
+    /// start instead of launching a second server process. Entries are bounded by
+    /// projects × configured servers and are kept for the manager's lifetime.
+    start_locks: StartLocks,
     closed: AtomicBool,
 }
 
@@ -81,6 +88,7 @@ impl LanguageServerManager {
             inner: Arc::new(Inner {
                 store,
                 projects: AsyncMutex::new(HashMap::new()),
+                start_locks: std::sync::Mutex::new(HashMap::new()),
                 closed: AtomicBool::new(false),
             }),
         }
@@ -121,7 +129,7 @@ impl LanguageServerManager {
             let manager = self.clone();
             let project_id = project_id.to_string();
             tokio::spawn(async move {
-                let _ = manager.start_server(&project_id, server).await;
+                let _ = manager.ensure_server(&project_id, server).await;
             });
         }
         Ok(())
@@ -217,7 +225,56 @@ impl LanguageServerManager {
         }
     }
 
+    fn start_lock(&self, project_id: &str, language_server_id: &str) -> Arc<AsyncMutex<()>> {
+        let mut locks = self
+            .inner
+            .start_locks
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        locks
+            .entry((project_id.to_string(), language_server_id.to_string()))
+            .or_default()
+            .clone()
+    }
+
+    async fn needs_start(&self, project_id: &str, server: &LanguageServerRecord) -> bool {
+        let projects = self.inner.projects.lock().await;
+        projects
+            .get(project_id)
+            .and_then(|runtime| runtime.slots.get(&server.language_server_id))
+            .is_none_or(|slot| {
+                slot.client.as_ref().is_none_or(Client::is_closed)
+                    || slot.revision != server.revision
+            })
+    }
+
+    /// Starts the server only if no usable client exists, waiting for any start
+    /// already in flight for the same project and server.
+    async fn ensure_server(
+        &self,
+        project_id: &str,
+        server: LanguageServerRecord,
+    ) -> Result<(), BusinessError> {
+        let lock = self.start_lock(project_id, &server.language_server_id);
+        let _guard = lock.lock().await;
+        if !self.needs_start(project_id, &server).await {
+            return Ok(());
+        }
+        self.start_server_locked(project_id, server).await
+    }
+
+    /// Unconditionally (re)starts the server, used for retry and reconciliation.
     async fn start_server(
+        &self,
+        project_id: &str,
+        server: LanguageServerRecord,
+    ) -> Result<(), BusinessError> {
+        let lock = self.start_lock(project_id, &server.language_server_id);
+        let _guard = lock.lock().await;
+        self.start_server_locked(project_id, server).await
+    }
+
+    async fn start_server_locked(
         &self,
         project_id: &str,
         server: LanguageServerRecord,
@@ -380,20 +437,8 @@ impl LanguageServerManager {
                     ),
                 )
             })?;
-        let needs_start = {
-            let projects = self.inner.projects.lock().await;
-            projects
-                .get(request.project_id)
-                .and_then(|runtime| runtime.slots.get(&server.language_server_id))
-                .is_none_or(|slot| {
-                    slot.client.as_ref().is_none_or(Client::is_closed)
-                        || slot.revision != server.revision
-                })
-        };
-        if needs_start {
-            self.start_server(request.project_id, server.clone())
-                .await?;
-        }
+        self.ensure_server(request.project_id, server.clone())
+            .await?;
         let client = {
             let projects = self.inner.projects.lock().await;
             projects
@@ -736,6 +781,59 @@ impl Agent {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn concurrent_starts_launch_one_server_process() {
+        let root = tempfile::tempdir().unwrap();
+        let log = root.path().join("launches.log");
+        let script = root.path().join("fake-lsp.sh");
+        // Records each launch, answers `initialize` (request id 1), then idles.
+        std::fs::write(
+            &script,
+            "echo started >> \"$1\"\nsleep 0.3\nbody='{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"capabilities\":{}}}'\nprintf 'Content-Length: %d\\r\\n\\r\\n%s' \"${#body}\" \"$body\"\ncat > /dev/null\n",
+        )
+        .unwrap();
+        let store = Store::open_memory().unwrap();
+        let server = store
+            .create_language_server(
+                "fake",
+                &suncode_data::LanguageServerInput {
+                    display_name: "Fake".into(),
+                    config: suncode_data::LanguageServerConfig {
+                        version: 1,
+                        command: "/bin/sh".into(),
+                        arguments: vec![script.display().to_string(), log.display().to_string()],
+                        language_ids: vec!["fake".into()],
+                        root_markers: Vec::new(),
+                        initialization_options: json!({}),
+                        environment: Default::default(),
+                        startup_timeout_seconds: 5,
+                        request_timeout_seconds: 1,
+                    },
+                    enabled: true,
+                    sort_order: 0,
+                },
+            )
+            .unwrap();
+        let manager = LanguageServerManager::new(store);
+        manager
+            .activate_project("project", root.path())
+            .await
+            .unwrap();
+        let starts = (0..3).map(|_| manager.ensure_server("project", server.clone()));
+        for result in futures_util::future::join_all(starts).await {
+            result.unwrap();
+        }
+        // Let the background start from activation finish too.
+        manager
+            .ensure_server("project", server.clone())
+            .await
+            .unwrap();
+        let launches = std::fs::read_to_string(&log).unwrap();
+        assert_eq!(launches.lines().count(), 1, "launches: {launches:?}");
+        manager.shutdown().await;
+    }
 
     #[test]
     fn converts_one_based_unicode_positions() {

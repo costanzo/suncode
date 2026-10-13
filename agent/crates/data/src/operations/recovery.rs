@@ -4,7 +4,7 @@ use crate::operations::projection;
 use crate::{
     domain::*,
     rows::RecoveryRow,
-    store::{lock, now, Store},
+    store::{business_transaction, lock, now, Store},
 };
 use diesel::prelude::*;
 use diesel::sql_query;
@@ -25,28 +25,43 @@ impl Store {
             #[diesel(sql_type=Nullable<Text>)]
             model_id: Option<String>,
         }
+        let error =
+            json!({"code":"runtime_restarted","message":"Runtime restarted during the turn"});
+        let error_json = serde_json::to_string(&error)?;
         let mut c = lock(&self.connection)?;
-        let rows=sql_query("SELECT turn_id,session_id,submission_idempotency_key AS key,model_id FROM session_turn WHERE state NOT IN ('completed','failed','cancelled','interrupted') AND (recovery_status IS NULL OR recovery_status NOT IN ('pending','resuming'))").load::<Row>(&mut *c).map_err(crate::database_error)?;
-        let timestamp = now();
-        sql_query("UPDATE session_subagent_invocation SET state='interrupted',error_code='runtime_restarted',completed_at=COALESCE(completed_at,?) WHERE state IN ('created','running')")
-            .bind::<Text,_>(&timestamp)
-            .execute(&mut *c)
-            .map_err(crate::database_error)?;
-        drop(c);
-        let mut events = Vec::new();
-        for r in rows {
-            let event = projection::append_content(
-                self,
-                &r.session_id,
-                "turn.state",
-                &json!({"turn_id":r.turn_id,"state":"interrupted","reason":"runtime_restarted","submission_idempotency_key":r.key,"model_id":r.model_id}),
-            )?;
-            if let Some(key) = r.key {
-                self.fail_turn(&r.session_id,&key,&json!({"code":"runtime_restarted","message":"Runtime restarted during the turn"}))?
+        // One transaction so a crash during recovery cannot leave turns half-recovered.
+        business_transaction(&mut c, |c| {
+            let rows=sql_query("SELECT turn_id,session_id,submission_idempotency_key AS key,model_id FROM session_turn WHERE state NOT IN ('completed','failed','cancelled','interrupted') AND (recovery_status IS NULL OR recovery_status NOT IN ('pending','resuming'))").load::<Row>(c).map_err(crate::database_error)?;
+            let timestamp = now();
+            sql_query("UPDATE session_subagent_invocation SET state='interrupted',error_code='runtime_restarted',completed_at=COALESCE(completed_at,?) WHERE state IN ('created','running')")
+                .bind::<Text,_>(&timestamp)
+                .execute(c)
+                .map_err(crate::database_error)?;
+            let mut events = Vec::new();
+            for r in rows {
+                let payload = json!({"turn_id":r.turn_id,"state":"interrupted","reason":"runtime_restarted","submission_idempotency_key":r.key,"model_id":r.model_id});
+                projection::apply(c, &r.session_id, &timestamp, "turn.state", &payload)?;
+                sql_query("UPDATE session SET updated_at=?,last_activity_at=? WHERE session_id=?")
+                    .bind::<Text, _>(&timestamp)
+                    .bind::<Text, _>(&timestamp)
+                    .bind::<Text, _>(&r.session_id)
+                    .execute(c)
+                    .map_err(crate::database_error)?;
+                // The projection above already marked the turn interrupted; record why.
+                sql_query("UPDATE session_turn SET error_json=? WHERE turn_id=?")
+                    .bind::<Text, _>(&error_json)
+                    .bind::<Text, _>(&r.turn_id)
+                    .execute(c)
+                    .map_err(crate::database_error)?;
+                events.push(SessionEvent {
+                    session_id: r.session_id,
+                    occurred_at: timestamp.clone(),
+                    event_type: "turn.state".into(),
+                    payload,
+                });
             }
-            events.push(event)
-        }
-        Ok(events)
+            Ok(events)
+        })
     }
     pub fn resuming_turns(&self) -> Result<Vec<SuspendedTurn>, BusinessError> {
         let mut c = lock(&self.connection)?;

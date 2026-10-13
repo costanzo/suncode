@@ -17,7 +17,7 @@ A paired phone can browse a Desktop's Projects and active primary Sessions, open
 - The worker opens `GET /v1/desktop/events` (SSE). It reconnects with exponential backoff from 1 s up to 30 s, posts a Desktop snapshot at connect time and every 30 s, and subscribes to existing Sessions.
 - Each forwarded `mobile.*` request maps to a fixed operation allowlist: list projects or sessions, create or get a Session, send a message, cancel, retry, resolve an approval, or reply to a question. Unknown operations are rejected. Every operation goes through the normal `AsyncAgentSdk` methods, so local Rust policy, approvals, and state stay authoritative. Results are posted to `/v1/desktop/responses` and correlated by `X-Request-Id`.
 - Only an explicit allowlist of Session events is uploaded: turn, tool, message, usage, compaction, approval, question, todo, and checkpoint events. Remote `assistant.delta` events are coalesced by turn and uploaded at paragraph boundaries or 160 Unicode characters, with a 120 ms maximum buffering interval. The final `message.assistant` remains the authoritative complete payload and replaces its streamed draft in Web.
-- When end-to-end encryption is on, request bodies, results, snapshots, and events are AES-256-GCM `encPayload` values (`e2e-v1:` prefix). Path, query, and routing headers remain visible to the server.
+- When end-to-end encryption is on, request bodies, results, snapshots, and events are AES-256-GCM `encPayload` values (`e2e-v1:` prefix). Path, query, and routing headers remain visible to the server. Desktop rejects any forwarded request whose body is non-empty plaintext, and the legacy `desktop.request`/`desktop.command` envelopes, so the relay cannot inject request arguments.
 
 ## Security posture
 
