@@ -242,7 +242,7 @@ impl Agent {
         let started = Instant::now();
         match start {
             TurnStart::Submit(message) => {
-                self.turn_state(&context, "admitted", None)?;
+                self.turn_state(&context, TurnState::Admitted, None)?;
                 context.messages.push(message.clone());
                 self.emit(
                     &context.session_id,
@@ -255,10 +255,10 @@ impl Agent {
                     }),
                 )?;
             }
-            TurnStart::Retry => self.turn_state(&context, "admitted", None)?,
+            TurnStart::Retry => self.turn_state(&context, TurnState::Admitted, None)?,
             TurnStart::Resume => {}
         }
-        self.turn_state(&context, "preparing", None)?;
+        self.turn_state(&context, TurnState::Preparing, None)?;
         let base_system_messages = system_prompt::build_messages(system_prompt::PromptContext {
             model_id: &context.model,
             provider_id: &provider.provider_id,
@@ -288,7 +288,7 @@ impl Agent {
             }
             self.drain_queued_messages(&mut context)?;
             context.iterations += 1;
-            self.turn_state(&context, "calling_model", None)?;
+            self.turn_state(&context, TurnState::CallingModel, None)?;
             let mut tool_definitions = suncode_tool::definitions::all()
                 .into_iter()
                 .map(|definition| suncode_llm::ToolDefinition {
@@ -518,10 +518,10 @@ impl Agent {
             )?;
             if tool_calls.is_empty() {
                 if self.drain_queued_messages(&mut context)? {
-                    self.turn_state(&context, "preparing", None)?;
+                    self.turn_state(&context, TurnState::Preparing, None)?;
                     continue;
                 }
-                self.turn_state(&context, "completed", None)?;
+                self.turn_state(&context, TurnState::Completed, None)?;
                 self.emit(
                     &context.session_id,
                     EventPayload::TurnCompleted(TurnCompletedPayload {
@@ -538,21 +538,26 @@ impl Agent {
                     iterations: context.iterations,
                     tool_calls: context.tool_calls,
                 };
-                self.store.complete_turn(
-                    &context.session_id,
-                    &context.submission_key,
-                    &serde_json::to_value(&response).map_err(|_| {
-                        BusinessError::new("agent_unavailable", "turn response could not be stored")
-                    })?,
-                )?;
+                db_blocking(|| {
+                    self.store.complete_turn(
+                        &context.session_id,
+                        &context.submission_key,
+                        &serde_json::to_value(&response).map_err(|_| {
+                            BusinessError::new(
+                                "agent_unavailable",
+                                "turn response could not be stored",
+                            )
+                        })?,
+                    )
+                })?;
                 return Ok(response);
             }
-            self.turn_state(&context, "resolving_calls", None)?;
+            self.turn_state(&context, TurnState::ResolvingCalls, None)?;
             context.computer_batch_failed = false;
             self.resolve_calls(&mut context, tool_calls, token.clone())
                 .await?;
             self.drain_queued_messages(&mut context)?;
-            self.turn_state(&context, "preparing", None)?;
+            self.turn_state(&context, TurnState::Preparing, None)?;
         }
         self.fail_context(
             &context,

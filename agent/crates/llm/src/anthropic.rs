@@ -1,3 +1,5 @@
+use crate::http::{read_error_response, request_id, HttpClientFactory};
+use crate::normalize::cancelled;
 use crate::stream::tracked_json_body;
 use crate::{
     ApiKeyResolver, BusinessError, Completion, CompletionFuture, CompletionRequest, ContentPart,
@@ -9,16 +11,12 @@ use futures_util::StreamExt;
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, RwLock,
-};
-use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
+use std::sync::{atomic::AtomicBool, Arc, RwLock};
+use suncode_common::HttpProxyConfiguration;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 const ANTHROPIC_VERSION: &str = "2023-06-01";
-const REQUEST_ID_HEADERS: &[&str] = &["request-id", "x-request-id"];
 const DEFAULT_MAX_TOKENS: u64 = 4096;
 
 #[derive(Clone)]
@@ -27,10 +25,7 @@ pub struct AnthropicProvider {
     provider_label: String,
     endpoint: String,
     keys: Arc<dyn ApiKeyResolver>,
-    verify_https_certificates: Arc<AtomicBool>,
-    use_system_certificates: Arc<AtomicBool>,
-    certificate_path: Arc<RwLock<Option<PathBuf>>>,
-    proxy_configuration: Arc<RwLock<HttpProxyConfiguration>>,
+    http: HttpClientFactory,
 }
 
 impl AnthropicProvider {
@@ -50,66 +45,17 @@ impl AnthropicProvider {
             provider_label: provider_label.into(),
             endpoint: endpoint.into().trim_end_matches('/').to_string(),
             keys,
-            verify_https_certificates,
-            use_system_certificates,
-            certificate_path,
-            proxy_configuration,
+            http: HttpClientFactory::new(
+                verify_https_certificates,
+                use_system_certificates,
+                certificate_path,
+                proxy_configuration,
+            ),
         }
     }
 
     fn client(&self) -> Result<reqwest::Client, BusinessError> {
-        let verify_certificates = self.verify_https_certificates.load(Ordering::SeqCst);
-        let mut builder = reqwest::Client::builder()
-            .retry(reqwest::retry::never())
-            .connect_timeout(crate::CONNECT_TIMEOUT)
-            .read_timeout(crate::READ_TIMEOUT)
-            .danger_accept_invalid_certs(!verify_certificates)
-            .danger_accept_invalid_hostnames(!verify_certificates);
-        if verify_certificates && !self.use_system_certificates.load(Ordering::SeqCst) {
-            builder = builder.tls_built_in_root_certs(false);
-            if let Some(path) = self
-                .certificate_path
-                .read()
-                .ok()
-                .and_then(|path| path.clone())
-            {
-                let bytes = std::fs::read(&path).map_err(|error| {
-                    BusinessError::provider(
-                        "certificate_unavailable",
-                        format!("could not read certificate file: {error}"),
-                        false,
-                        None,
-                    )
-                })?;
-                let certificate = reqwest::Certificate::from_pem(&bytes)
-                    .or_else(|_| reqwest::Certificate::from_der(&bytes))
-                    .map_err(|error| {
-                        BusinessError::provider(
-                            "certificate_invalid",
-                            format!("invalid certificate file: {error}"),
-                            false,
-                            None,
-                        )
-                    })?;
-                builder = builder.add_root_certificate(certificate);
-            }
-        }
-        let proxy = self
-            .proxy_configuration
-            .read()
-            .map(|configuration| configuration.clone())
-            .unwrap_or_default();
-        builder = apply_proxy(builder, &proxy).map_err(|message| {
-            BusinessError::provider("provider_client_unavailable", message, false, None)
-        })?;
-        builder.build().map_err(|error| {
-            BusinessError::provider(
-                "provider_client_unavailable",
-                error.to_string(),
-                false,
-                None,
-            )
-        })
+        self.http.client()
     }
 
     async fn complete_inner(
@@ -152,67 +98,17 @@ impl AnthropicProvider {
                 .body(request_body)
                 .send() => value.map_err(|error| crate::errors::transport_error(error, &self.provider_label, None, false))?,
         };
-        let provider_request_id = REQUEST_ID_HEADERS.iter().find_map(|name| {
-            response
-                .headers()
-                .get(*name)
-                .and_then(|value| value.to_str().ok())
-                .filter(|value| !value.is_empty())
-                .map(str::to_owned)
-        });
+        let provider_request_id = request_id(response.headers());
         if !response.status().is_success() {
-            let status = response.status();
-            let retry_after_ms = crate::errors::retry_after_ms(
-                response
-                    .headers()
-                    .get(reqwest::header::RETRY_AFTER)
-                    .and_then(|value| value.to_str().ok()),
-                std::time::SystemTime::now(),
-            );
-            let mut stream = response.bytes_stream();
-            let mut response_body = BytesMut::new();
-            while let Some(chunk) = tokio::select! {
-                _ = cancellation.cancelled() => return Err(cancelled()),
-                chunk = stream.next() => chunk,
-            } {
-                let Ok(chunk) = chunk else { break };
-                let _ = transfer_progress.send(crate::TransferProgressDelta {
-                    uploaded_bytes: 0,
-                    downloaded_bytes: chunk.len() as u64,
-                });
-                response_body.extend_from_slice(&chunk);
-            }
-            let message = serde_json::from_slice::<Value>(&response_body)
-                .ok()
-                .and_then(|value| {
-                    value
-                        .pointer("/error/message")
-                        .and_then(Value::as_str)
-                        .map(str::to_owned)
-                })
-                .unwrap_or_else(|| {
-                    format!(
-                        "{} request failed with status {status}",
-                        self.provider_label
-                    )
-                });
-            let code = if crate::normalize::is_context_overflow(status.as_u16(), &message) {
-                "context_overflow"
-            } else if status.as_u16() == 401 {
-                "authentication"
-            } else if crate::errors::retryable_status(status.as_u16()) {
-                "transient"
-            } else {
-                "invalid_request"
-            };
-            let mut error = BusinessError::provider(
-                code,
-                message,
-                crate::errors::retryable_status(status.as_u16()),
+            return Err(read_error_response(
+                response,
+                &self.provider_label,
+                request.wire_model,
                 provider_request_id,
-            );
-            error.details["retry_after_ms"] = serde_json::json!(retry_after_ms);
-            return Err(error);
+                &transfer_progress,
+                cancellation,
+            )
+            .await);
         }
         let mut stream = response.bytes_stream();
         let mut response_body = BytesMut::new();
@@ -484,33 +380,8 @@ fn required_string(value: &Value, key: &str) -> Result<String, BusinessError> {
         .ok_or_else(|| provider_protocol("Anthropic tool use block is invalid"))
 }
 
-fn apply_proxy(
-    builder: reqwest::ClientBuilder,
-    configuration: &HttpProxyConfiguration,
-) -> Result<reqwest::ClientBuilder, String> {
-    match configuration.mode {
-        HttpProxyMode::NoProxy => Ok(builder.no_proxy()),
-        HttpProxyMode::System => Ok(builder),
-        HttpProxyMode::Custom => {
-            let mut proxy = reqwest::Proxy::all(&configuration.url)
-                .map_err(|error| format!("proxy configuration is invalid: {error}"))?;
-            if !configuration.username.is_empty() {
-                proxy = proxy.basic_auth(&configuration.username, &configuration.password);
-            }
-            proxy = proxy.no_proxy(reqwest::NoProxy::from_string(
-                &configuration.no_proxy_value(),
-            ));
-            Ok(builder.no_proxy().proxy(proxy))
-        }
-    }
-}
-
 fn provider_protocol(message: &'static str) -> BusinessError {
     BusinessError::provider("provider_protocol", message, false, None)
-}
-
-fn cancelled() -> BusinessError {
-    BusinessError::new("cancelled", "Turn was cancelled")
 }
 
 #[cfg(test)]

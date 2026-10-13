@@ -94,48 +94,32 @@ fn configure(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
     Ok(())
 }
 
+/// Schema version recorded in `PRAGMA user_version`. Bump it and append a step
+/// to [`MIGRATIONS`] for every schema change; never edit an existing step.
+pub(crate) const SCHEMA_VERSION: i32 = MIGRATIONS.len() as i32;
+
+type Migration = fn(&mut SqliteConnection) -> Result<(), BusinessError>;
+
+/// Ordered schema migrations. Step `n` upgrades a database from version `n` to `n + 1`.
+const MIGRATIONS: &[Migration] = &[migrate_legacy_columns, migrate_claude_adapter];
+
 fn initialize(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
     business_transaction(connection, |connection| {
+        let version = user_version(connection)?;
+        if version > SCHEMA_VERSION {
+            return Err(BusinessError::invalid(format!(
+                "database schema version {version} is newer than this build supports ({SCHEMA_VERSION})"
+            )));
+        }
+        // Table scripts use IF NOT EXISTS, so they create a fresh database and are
+        // no-ops for existing ones; migrations then bring older layouts forward.
         for script in sqlite::schema_scripts() {
             connection
                 .batch_execute(script)
                 .map_err(crate::database_error)?;
         }
-        if !schema::llm_model_provider_includes_default_endpoint(connection)? {
-            connection
-                .batch_execute(
-                    "ALTER TABLE llm_model_provider ADD COLUMN default_endpoint TEXT NOT NULL DEFAULT ''; UPDATE llm_model_provider SET default_endpoint=CASE provider_id WHEN 'deepseek' THEN 'https://api.deepseek.com' WHEN 'qwen' THEN 'https://dashscope.aliyuncs.com/compatible-mode/v1' WHEN 'zhipu' THEN 'https://open.bigmodel.cn/api/paas/v4' WHEN 'openai' THEN 'https://api.openai.com/v1' WHEN 'kimi' THEN 'https://api.moonshot.ai/v1' WHEN 'claude' THEN 'https://api.anthropic.com/v1' WHEN 'gemini' THEN 'https://generativelanguage.googleapis.com/v1beta/openai' ELSE endpoint END WHERE default_endpoint='';",
-                )
-                .map_err(crate::database_error)?;
-        }
-        if !schema::llm_model_provider_supports_anthropic(connection)? {
-            connection
-                .batch_execute(
-                    "DROP INDEX IF EXISTS llm_model_provider_enabled_order_idx; ALTER TABLE llm_model_provider RENAME TO llm_model_provider_legacy;",
-                )
-                .map_err(crate::database_error)?;
-            connection
-                .batch_execute(sqlite::llm_model_provider_schema())
-                .map_err(crate::database_error)?;
-            connection
-                .batch_execute(
-                    "INSERT INTO llm_model_provider(provider_id,display_name,endpoint,default_endpoint,adapter_type,api_key,enabled,sort_order,created_at,updated_at) SELECT provider_id,display_name,endpoint,default_endpoint,adapter_type,api_key,enabled,sort_order,created_at,updated_at FROM llm_model_provider_legacy; DROP TABLE llm_model_provider_legacy;",
-                )
-                .map_err(crate::database_error)?;
-        }
-        if !schema::llm_model_includes_computer_use(connection)? {
-            connection
-                .batch_execute(
-                    "ALTER TABLE llm_model ADD COLUMN supports_computer_use INTEGER NOT NULL DEFAULT 0 CHECK(supports_computer_use IN (0,1));",
-                )
-                .map_err(crate::database_error)?;
-        }
-        if !schema::session_includes_subagent_columns(connection)? {
-            connection
-                .batch_execute(
-                    "ALTER TABLE session ADD COLUMN kind TEXT NOT NULL DEFAULT 'primary'; ALTER TABLE session ADD COLUMN parent_session_id TEXT; ALTER TABLE session ADD COLUMN agent_id TEXT; ALTER TABLE session ADD COLUMN agent_version INTEGER;",
-                )
-                .map_err(crate::database_error)?;
+        for migration in &MIGRATIONS[usize::try_from(version).unwrap_or(0)..] {
+            migration(connection)?;
         }
         connection
             .batch_execute(
@@ -169,12 +153,74 @@ fn initialize(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
                 .map_err(crate::database_error)?;
         }
         connection
-            .batch_execute(
-                "UPDATE llm_model_provider SET adapter_type='anthropic',updated_at='2026-09-19T00:00:00.000Z' WHERE provider_id='claude' AND adapter_type='openai' AND endpoint=default_endpoint AND default_endpoint='https://api.anthropic.com/v1';",
-            )
+            .batch_execute(&format!("PRAGMA user_version={SCHEMA_VERSION}"))
             .map_err(crate::database_error)?;
         Ok(())
     })?;
+    Ok(())
+}
+
+pub(crate) fn user_version(connection: &mut SqliteConnection) -> Result<i32, BusinessError> {
+    #[derive(QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = diesel::sql_types::Integer)]
+        user_version: i32,
+    }
+    sql_query("PRAGMA user_version")
+        .get_result::<Row>(connection)
+        .map(|row| row.user_version)
+        .map_err(crate::database_error)
+}
+
+/// Version 0 -> 1: column additions and table rebuilds made before versioning,
+/// detected by inspecting the existing layout.
+fn migrate_legacy_columns(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
+    if !schema::llm_model_provider_includes_default_endpoint(connection)? {
+        connection
+            .batch_execute(
+                "ALTER TABLE llm_model_provider ADD COLUMN default_endpoint TEXT NOT NULL DEFAULT ''; UPDATE llm_model_provider SET default_endpoint=CASE provider_id WHEN 'deepseek' THEN 'https://api.deepseek.com' WHEN 'qwen' THEN 'https://dashscope.aliyuncs.com/compatible-mode/v1' WHEN 'zhipu' THEN 'https://open.bigmodel.cn/api/paas/v4' WHEN 'openai' THEN 'https://api.openai.com/v1' WHEN 'kimi' THEN 'https://api.moonshot.ai/v1' WHEN 'claude' THEN 'https://api.anthropic.com/v1' WHEN 'gemini' THEN 'https://generativelanguage.googleapis.com/v1beta/openai' ELSE endpoint END WHERE default_endpoint='';",
+            )
+            .map_err(crate::database_error)?;
+    }
+    if !schema::llm_model_provider_supports_anthropic(connection)? {
+        connection
+            .batch_execute(
+                "DROP INDEX IF EXISTS llm_model_provider_enabled_order_idx; ALTER TABLE llm_model_provider RENAME TO llm_model_provider_legacy;",
+            )
+            .map_err(crate::database_error)?;
+        connection
+            .batch_execute(sqlite::llm_model_provider_schema())
+            .map_err(crate::database_error)?;
+        connection
+            .batch_execute(
+                "INSERT INTO llm_model_provider(provider_id,display_name,endpoint,default_endpoint,adapter_type,api_key,enabled,sort_order,created_at,updated_at) SELECT provider_id,display_name,endpoint,default_endpoint,adapter_type,api_key,enabled,sort_order,created_at,updated_at FROM llm_model_provider_legacy; DROP TABLE llm_model_provider_legacy;",
+            )
+            .map_err(crate::database_error)?;
+    }
+    if !schema::llm_model_includes_computer_use(connection)? {
+        connection
+            .batch_execute(
+                "ALTER TABLE llm_model ADD COLUMN supports_computer_use INTEGER NOT NULL DEFAULT 0 CHECK(supports_computer_use IN (0,1));",
+            )
+            .map_err(crate::database_error)?;
+    }
+    if !schema::session_includes_subagent_columns(connection)? {
+        connection
+            .batch_execute(
+                "ALTER TABLE session ADD COLUMN kind TEXT NOT NULL DEFAULT 'primary'; ALTER TABLE session ADD COLUMN parent_session_id TEXT; ALTER TABLE session ADD COLUMN agent_id TEXT; ALTER TABLE session ADD COLUMN agent_version INTEGER;",
+            )
+            .map_err(crate::database_error)?;
+    }
+    Ok(())
+}
+
+/// Version 1 -> 2: switches the seeded Claude provider to the native Anthropic adapter.
+fn migrate_claude_adapter(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
+    connection
+        .batch_execute(
+            "UPDATE llm_model_provider SET adapter_type='anthropic',updated_at='2026-09-19T00:00:00.000Z' WHERE provider_id='claude' AND adapter_type='openai' AND endpoint=default_endpoint AND default_endpoint='https://api.anthropic.com/v1';",
+        )
+        .map_err(crate::database_error)?;
     Ok(())
 }
 

@@ -2,6 +2,7 @@
 
 mod anthropic;
 mod errors;
+mod http;
 mod normalize;
 mod openai_compatible;
 mod registry;

@@ -26,9 +26,14 @@ impl Agent {
                         ordinal: index,
                     }),
                 )?;
-                self.tool_state(context, call, "failed", Some("tool_budget_exceeded"))?;
+                self.tool_state(
+                    context,
+                    call,
+                    ToolState::Failed,
+                    Some("tool_budget_exceeded"),
+                )?;
             }
-            self.turn_state(context, "failed", Some("tool_budget_exceeded"))?;
+            self.turn_state(context, TurnState::Failed, Some("tool_budget_exceeded"))?;
             return Err(BusinessError::new(
                 "tool_budget_exceeded",
                 "Turn exceeded its tool-call budget",
@@ -61,15 +66,20 @@ impl Agent {
                 context.repeated_tool_stalls = 1;
             }
             if context.repeated_tool_stalls >= 4 {
-                self.tool_state(context, call, "failed", Some("repeated_equivalent_call"))?;
+                self.tool_state(
+                    context,
+                    call,
+                    ToolState::Failed,
+                    Some("repeated_equivalent_call"),
+                )?;
                 return self.fail_context(
                     context,
                     "tool_stall_detected",
                     "Repeated equivalent tool calls indicate a stalled turn",
                 );
             }
-            self.tool_state(context, call, "requested", None)?;
-            self.tool_state(context, call, "validating", None)?;
+            self.tool_state(context, call, ToolState::Requested, None)?;
+            self.tool_state(context, call, ToolState::Validating, None)?;
             if computer::is_computer_call(call) && context.computer_batch_failed {
                 self.record_computer_skipped(context, call)?;
                 continue;
@@ -202,7 +212,7 @@ impl Agent {
                 self.tool_state(
                     context,
                     call,
-                    "awaiting_question",
+                    ToolState::AwaitingQuestion,
                     Some("user_input_required"),
                 )?;
                 let request_id = format!("que_{}", Uuid::new_v4());
@@ -234,7 +244,7 @@ impl Agent {
                 self.execute_todowrite(context, call)?;
                 continue;
             }
-            self.tool_state(context, call, "policy_check", None)?;
+            self.tool_state(context, call, ToolState::PolicyCheck, None)?;
             let risk = if computer::is_computer_call(call) {
                 computer::risk(&call.name)
             } else {
@@ -264,7 +274,12 @@ impl Agent {
                         token.clone(),
                     )
                     .await?;
-                    self.tool_state(context, call, "denied", Some("authorization_denied"))?;
+                    self.tool_state(
+                        context,
+                        call,
+                        ToolState::Denied,
+                        Some("authorization_denied"),
+                    )?;
                     return Err(BusinessError::new(
                         "authorization_denied",
                         format!("Tool call denied: {}", call.name),
@@ -280,7 +295,7 @@ impl Agent {
                     self.tool_state(
                         context,
                         call,
-                        "awaiting_approval",
+                        ToolState::AwaitingApproval,
                         Some("risk_requires_approval"),
                     )?;
                     if computer::is_computer_call(call) {
@@ -312,14 +327,16 @@ impl Agent {
                             "turn continuation could not be stored",
                         )
                     })?;
-                    let approval = self.store.create_approval(ApprovalInput {
-                        project_id: Some(&context.project_id),
-                        session_id: &context.session_id,
-                        turn_id: &context.turn_id,
-                        tool_call_id: &call.call_id,
-                        operation: &approval_operation,
-                        arguments: &approval_arguments,
-                        snapshot: &snapshot,
+                    let approval = db_blocking(|| {
+                        self.store.create_approval(ApprovalInput {
+                            project_id: Some(&context.project_id),
+                            session_id: &context.session_id,
+                            turn_id: &context.turn_id,
+                            tool_call_id: &call.call_id,
+                            operation: &approval_operation,
+                            arguments: &approval_arguments,
+                            snapshot: &snapshot,
+                        })
                     })?;
                     self.emit(
                         &context.session_id,
@@ -388,34 +405,38 @@ impl Agent {
             })?;
         let definition = builtin_agents::by_name(agent_name)
             .ok_or_else(|| BusinessError::new("unknown_agent", "built-in agent was not found"))?;
-        self.tool_state(context, call, "policy_check", None)?;
-        self.tool_state(context, call, "authorized", None)?;
-        self.tool_state(context, call, "executing", None)?;
+        self.tool_state(context, call, ToolState::PolicyCheck, None)?;
+        self.tool_state(context, call, ToolState::Authorized, None)?;
+        self.tool_state(context, call, ToolState::Executing, None)?;
         if token.is_cancelled() {
             return Err(BusinessError::new("cancelled", "Turn was cancelled"));
         }
         let title = task.chars().take(80).collect::<String>();
-        let child = self.store.create_child_session(
-            &context.project_id,
-            &context.session_id,
-            definition.id,
-            definition.version,
-            &title,
-            &context.model,
-        )?;
+        let child = db_blocking(|| {
+            self.store.create_child_session(
+                &context.project_id,
+                &context.session_id,
+                definition.id,
+                definition.version,
+                &title,
+                &context.model,
+            )
+        })?;
         let invocation_id = Uuid::new_v4().to_string();
-        self.store.create_subagent_invocation(
-            &invocation_id,
-            &context.session_id,
-            &context.turn_id,
-            &call.call_id,
-            &child.session_id,
-            definition.id,
-            definition.version,
-            &json!({"text":task}),
-            &json!(definition.allowed_tools),
-            &context.model,
-        )?;
+        db_blocking(|| {
+            self.store.create_subagent_invocation(
+                &invocation_id,
+                &context.session_id,
+                &context.turn_id,
+                &call.call_id,
+                &child.session_id,
+                definition.id,
+                definition.version,
+                &json!({"text":task}),
+                &json!(definition.allowed_tools),
+                &context.model,
+            )
+        })?;
         self.store
             .update_subagent_invocation(&child.session_id, "running", None, None)?;
         let outcome = Box::pin(self.submit_child(
@@ -445,45 +466,53 @@ impl Agent {
                     "iterations":iterations,
                     "toolCalls":tool_calls
                 });
-                self.store.update_subagent_invocation(
-                    &child.session_id,
-                    "completed",
-                    Some(&result),
-                    None,
-                )?;
+                db_blocking(|| {
+                    self.store.update_subagent_invocation(
+                        &child.session_id,
+                        "completed",
+                        Some(&result),
+                        None,
+                    )
+                })?;
                 result
             }
             Ok(TurnResponse::AwaitingApproval { approval_id, .. }) => {
                 let result = json!({"status":"awaiting_approval","agentId":definition.id,"childSessionId":child.session_id,"approvalId":approval_id});
-                self.store.update_subagent_invocation(
-                    &child.session_id,
-                    "awaiting_approval",
-                    Some(&result),
-                    None,
-                )?;
+                db_blocking(|| {
+                    self.store.update_subagent_invocation(
+                        &child.session_id,
+                        "awaiting_approval",
+                        Some(&result),
+                        None,
+                    )
+                })?;
                 result
             }
             Ok(TurnResponse::AwaitingQuestion { .. }) => {
                 let result = json!({"status":"failed","agentId":definition.id,"childSessionId":child.session_id,"error":{"code":"agent_question_denied","message":"child agents cannot ask the user questions"}});
-                self.store.update_subagent_invocation(
-                    &child.session_id,
-                    "failed",
-                    Some(&result),
-                    Some("agent_question_denied"),
-                )?;
+                db_blocking(|| {
+                    self.store.update_subagent_invocation(
+                        &child.session_id,
+                        "failed",
+                        Some(&result),
+                        Some("agent_question_denied"),
+                    )
+                })?;
                 result
             }
             Ok(TurnResponse::Queued { .. }) => {
                 let result = json!({"status":"failed","agentId":definition.id,"childSessionId":child.session_id,"error":{"code":"agent_busy","message":"child agent unexpectedly queued its initial task"}});
-                self.store.update_subagent_invocation(
-                    &child.session_id,
-                    "failed",
-                    Some(&result),
-                    Some("agent_busy"),
-                )?;
+                db_blocking(|| {
+                    self.store.update_subagent_invocation(
+                        &child.session_id,
+                        "failed",
+                        Some(&result),
+                        Some("agent_busy"),
+                    )
+                })?;
                 result
             }
-            Err(error) if error.code == "approval_required" => {
+            Err(error) if error.code == states::error_codes::APPROVAL_REQUIRED => {
                 let approval_id = error
                     .details
                     .get("approval_id")
@@ -492,28 +521,32 @@ impl Agent {
                         BusinessError::unavailable("child approval outcome is missing approval_id")
                     })?;
                 let result = json!({"status":"awaiting_approval","agentId":definition.id,"childSessionId":child.session_id,"approvalId":approval_id});
-                self.store.update_subagent_invocation(
-                    &child.session_id,
-                    "awaiting_approval",
-                    Some(&result),
-                    None,
-                )?;
+                db_blocking(|| {
+                    self.store.update_subagent_invocation(
+                        &child.session_id,
+                        "awaiting_approval",
+                        Some(&result),
+                        None,
+                    )
+                })?;
                 result
             }
             Err(error) => {
-                let state = if error.code == "cancelled" {
+                let state = if error.code == states::error_codes::CANCELLED {
                     "cancelled"
                 } else {
                     "failed"
                 };
                 let error_code = error.code.clone();
                 let result = json!({"status":state,"agentId":definition.id,"childSessionId":child.session_id,"error":{"code":error.code,"message":error.message,"details":error.details}});
-                self.store.update_subagent_invocation(
-                    &child.session_id,
-                    state,
-                    Some(&result),
-                    Some(&error_code),
-                )?;
+                db_blocking(|| {
+                    self.store.update_subagent_invocation(
+                        &child.session_id,
+                        state,
+                        Some(&result),
+                        Some(&error_code),
+                    )
+                })?;
                 result
             }
         };
@@ -544,8 +577,8 @@ impl Agent {
 
         let mut futures = Vec::with_capacity(calls.len());
         for call in calls {
-            self.tool_state(context, &call, "authorized", None)?;
-            self.tool_state(context, &call, "executing", None)?;
+            self.tool_state(context, &call, ToolState::Authorized, None)?;
+            self.tool_state(context, &call, ToolState::Executing, None)?;
             let (project_root, mut params) = match self.prepare_call(context, &call) {
                 Ok(prepared) => prepared,
                 Err(error) => {
@@ -560,7 +593,7 @@ impl Agent {
                 Some(method) => method.to_string(),
                 None => {
                     let error = BusinessError::new("authorization_denied", "Unknown tool");
-                    self.tool_state(context, &call, "failed", Some(&error.code))?;
+                    self.tool_state(context, &call, ToolState::Failed, Some(&error.code))?;
                     return Err(error);
                 }
             };
@@ -614,9 +647,9 @@ impl Agent {
         call: &ToolCall,
     ) -> Result<(), BusinessError> {
         let todos = parse_todos(&call.arguments)?;
-        self.tool_state(context, call, "policy_check", None)?;
-        self.tool_state(context, call, "authorized", None)?;
-        self.tool_state(context, call, "executing", None)?;
+        self.tool_state(context, call, ToolState::PolicyCheck, None)?;
+        self.tool_state(context, call, ToolState::Authorized, None)?;
+        self.tool_state(context, call, ToolState::Executing, None)?;
         context.todos = todos.clone();
         self.emit(
             &context.session_id,
@@ -634,7 +667,7 @@ impl Agent {
                     .collect(),
             }),
         )?;
-        self.tool_state(context, call, "succeeded", None)?;
+        self.tool_state(context, call, ToolState::Succeeded, None)?;
         let result = json!({"todos": context.todos});
         self.emit(
             &context.session_id,
@@ -670,8 +703,8 @@ impl Agent {
         token: CancellationToken,
         expected_mcp_generation: Option<u64>,
     ) -> Result<(), BusinessError> {
-        self.tool_state(context, call, "authorized", None)?;
-        self.tool_state(context, call, "executing", None)?;
+        self.tool_state(context, call, ToolState::Authorized, None)?;
+        self.tool_state(context, call, ToolState::Executing, None)?;
         if mcp::is_mcp_tool(&call.name) {
             let result = match self
                 .mcp
@@ -767,7 +800,7 @@ impl Agent {
             Some(method) => method,
             None => {
                 let error = BusinessError::new("authorization_denied", "Unknown tool");
-                self.tool_state(context, call, "failed", Some(&error.code))?;
+                self.tool_state(context, call, ToolState::Failed, Some(&error.code))?;
                 return Err(error);
             }
         };
@@ -840,7 +873,7 @@ impl Agent {
         call: &ToolCall,
         error: &BusinessError,
     ) -> Result<bool, BusinessError> {
-        self.tool_state(context, call, "failed", Some(&error.code))?;
+        self.tool_state(context, call, ToolState::Failed, Some(&error.code))?;
         if !is_recoverable_tool_error(&error.code) {
             return Ok(false);
         }
@@ -900,9 +933,9 @@ impl Agent {
             context,
             call,
             if process_failed {
-                "failed"
+                ToolState::Failed
             } else {
-                "succeeded"
+                ToolState::Succeeded
             },
             if process_failed {
                 if mcp::is_mcp_tool(&call.name) {
@@ -938,7 +971,8 @@ impl Agent {
             let manifest = self
                 .store
                 .ensure_manifest(&context.session_id, &context.turn_id)?;
-            let existing = self.store.checkpoint_items(&manifest.manifest_id)?.len() as i64;
+            let existing =
+                db_blocking(|| self.store.checkpoint_items(&manifest.manifest_id))?.len() as i64;
             for (index, id) in checkpoint_ids.iter().enumerate() {
                 let path = if index == 0 {
                     result.get("path").or_else(|| result.get("from"))
@@ -1024,7 +1058,7 @@ impl Agent {
                 (metadata, message)
             }
         };
-        self.tool_state(context, call, "succeeded", None)?;
+        self.tool_state(context, call, ToolState::Succeeded, None)?;
         self.emit(
             &context.session_id,
             EventPayload::ToolResult(ToolResultPayload {
@@ -1060,7 +1094,12 @@ impl Agent {
         context: &mut Continuation,
         call: &ToolCall,
     ) -> Result<(), BusinessError> {
-        self.tool_state(context, call, "failed", Some("computer_batch_halted"))?;
+        self.tool_state(
+            context,
+            call,
+            ToolState::Failed,
+            Some("computer_batch_halted"),
+        )?;
         let result = json!({
             "error": {
                 "code": "computer_batch_halted",

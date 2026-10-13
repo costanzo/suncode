@@ -1539,3 +1539,20 @@ async fn allow_session_skips_later_approvals_for_the_same_session() {
     );
     server.abort();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn db_blocking_runs_store_work_on_multi_thread_runtime() {
+    let store = Store::open_memory().unwrap();
+    let health = db_blocking(|| store.health()).unwrap();
+    assert_eq!(health["ok"], true);
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn db_blocking_runs_inline_on_current_thread_runtime() {
+    assert_eq!(db_blocking(|| 7), 7);
+}
+
+#[test]
+fn db_blocking_runs_inline_outside_a_runtime() {
+    assert_eq!(db_blocking(|| 7), 7);
+}

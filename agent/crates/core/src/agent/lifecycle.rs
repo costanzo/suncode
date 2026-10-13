@@ -82,9 +82,10 @@ impl Agent {
         let occurred_at = self.events.publish_projected(session_id, event, |event| {
             let event_type = event.event_type();
             let payload = event.clone().into_value();
-            let projected = self
-                .store
-                .append_content(session_id, event_type.as_str(), &payload)?;
+            let projected = db_blocking(|| {
+                self.store
+                    .append_content(session_id, event_type.as_str(), &payload)
+            })?;
             Ok::<String, BusinessError>(projected.occurred_at)
         })?;
         self.publish_attention(session_id, &occurred_at, &attention_payload);
@@ -235,14 +236,14 @@ impl Agent {
     pub(super) fn turn_state(
         &self,
         context: &Continuation,
-        state: &str,
+        state: TurnState,
         reason: Option<&str>,
     ) -> Result<(), BusinessError> {
         self.emit(
             &context.session_id,
             EventPayload::TurnState(TurnStatePayload {
                 turn_id: context.turn_id.clone(),
-                state: state.to_owned(),
+                state: state.as_str().to_owned(),
                 model_id: Some(context.model.clone()),
                 submission_idempotency_key: Some(context.submission_key.clone()),
                 reason: reason.map(str::to_owned),
@@ -253,7 +254,7 @@ impl Agent {
         &self,
         context: &Continuation,
         call: &ToolCall,
-        state: &str,
+        state: ToolState,
         reason: Option<&str>,
     ) -> Result<(), BusinessError> {
         self.emit(
@@ -263,7 +264,7 @@ impl Agent {
                 call_id: context.active_call_id.clone(),
                 tool_call_id: call.call_id.clone(),
                 name: call.name.clone(),
-                state: state.to_owned(),
+                state: state.as_str().to_owned(),
                 reason: reason.map(str::to_owned),
             }),
         )
@@ -274,15 +275,7 @@ impl Agent {
         code: &str,
         message: &str,
     ) -> Result<T, BusinessError> {
-        self.turn_state(
-            context,
-            if code == "cancelled" {
-                "cancelled"
-            } else {
-                "failed"
-            },
-            Some(code),
-        )?;
+        self.turn_state(context, states::failed_turn_state(code), Some(code))?;
         Err(BusinessError::new(code, message))
     }
 
@@ -295,7 +288,7 @@ impl Agent {
     }
 
     pub async fn recover(&self) -> Result<(), BusinessError> {
-        for event in self.store.recover_startup()? {
+        for event in db_blocking(|| self.store.recover_startup())? {
             let payload = EventPayload::TurnState(TurnStatePayload {
                 turn_id: event.payload["turn_id"]
                     .as_str()
@@ -317,7 +310,7 @@ impl Agent {
                 payload,
             });
         }
-        for suspended in self.store.resuming_turns()? {
+        for suspended in db_blocking(|| self.store.resuming_turns())? {
             let mut continuation: Continuation = serde_json::from_value(suspended.snapshot)
                 .map_err(|_| {
                     BusinessError::new("agent_unavailable", "approval continuation is invalid")
@@ -350,12 +343,10 @@ impl Agent {
                 } else {
                     agent.continue_approved(&mut continuation, token).await
                 };
-                let suspended_again = result.as_ref().err().is_some_and(|error| {
-                    matches!(
-                        error.code.as_str(),
-                        "approval_required" | "question_required"
-                    )
-                });
+                let suspended_again = result
+                    .as_ref()
+                    .err()
+                    .is_some_and(|error| states::suspends_turn(&error.code));
                 if let Err(error) = agent.persist_child_invocation_outcome(&continuation, &result) {
                     logging::write_business_error(
                         "subagent",
@@ -367,14 +358,16 @@ impl Agent {
                         ),
                     );
                 }
-                let _ = agent.store.finish_suspended(
-                    &approval_id,
-                    if result.is_ok() || suspended_again {
-                        "completed"
-                    } else {
-                        "failed"
-                    },
-                );
+                let _ = db_blocking(|| {
+                    agent.store.finish_suspended(
+                        &approval_id,
+                        if result.is_ok() || suspended_again {
+                            "completed"
+                        } else {
+                            "failed"
+                        },
+                    )
+                });
                 agent
                     .active_turns
                     .lock()

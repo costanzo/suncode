@@ -320,7 +320,7 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20260819-current-schema-bootstrap
 
 - Date: 2026-08-19
-- Status: Accepted
+- Status: Accepted; schema versioning superseded by ADR-20261013-sqlite-user-version-migrations
 - Supersedes: ADR-20260819-sqlite-schema-v14 and the durable client-synchronization cursor portion of ADR-20260807-durable-stream-separation
 - Context: SunCode is a new system, but its database implementation mixed current storage behavior with historical schema versions, upgrade functions, and a monolithic SQL file.
 - Decision: Keep one current SQLite schema with no version or migration metadata. The `suncode-database` package at `agent/crates/database` owns backend resources and SQLite schema/data manifests; the `suncode-data` package at `agent/crates/data` owns Diesel connections, persistence DTOs, and store operations; the runtime core consumes the latter as a library dependency. An ordered schema manifest applies one table-named SQL file per table and a separate ordered data manifest in one transaction. File names do not encode execution order. Reopening the current schema is idempotent, while an unexpected application table causes open to fail without conversion. Live session subscriptions recover through normalized snapshots rather than a persisted cursor table.
@@ -583,3 +583,13 @@ Newest first. Historical context is retained only when it still explains a curre
 - Decision: Core retries one immutable agent-loop provider request at most twice, with bounded exponential backoff, jitter, and `Retry-After` minimums. LLM adapters classify temporary HTTP/transport failures and disable implicit HTTP-client retries. Only failures before text/tool output qualify. Cancellation and the original turn deadline apply across requests and waits. Each attempt has an independent durable exchange trace; a live-only event drives the Conversation wait status. Context overflow remains separate forced-compaction recovery, and summary generation retains its local fallback.
 - Consequences: Recovery does not replay tools or consume another agent iteration. Partial output and permanent/configuration failures remain terminal; snapshot resync shows ordinary turn state rather than reconstructing a transient scheduled wait. The SDK event addition requires no ABI change.
 - Details: `specs/agent-phase-1.md`, `contracts/agent-sdk/README.md`, `agent/crates/core/src/agent/run.rs`, `agent/crates/llm/src/errors.rs`
+
+## ADR-20261013-sqlite-user-version-migrations
+
+- Date: 2026-10-13
+- Status: Accepted
+- Supersedes: The "no version or migration metadata" portion of ADR-20260819-current-schema-bootstrap
+- Context: Initialization detected older layouts by inspecting columns and table SQL, and re-ran a dated data patch on every open. Nothing stopped an older build from opening a database written by a newer one.
+- Decision: Record the schema version in SQLite `PRAGMA user_version`. `suncode-data` keeps an ordered list of migration steps; step `n` upgrades version `n` to `n + 1`, and `SCHEMA_VERSION` equals the step count. Opening runs the table scripts (`IF NOT EXISTS`), the steps above the stored version, structural validation, and the idempotent seed scripts in one transaction, then writes the version. Version 1 holds the pre-versioning column additions; version 2 holds the Claude adapter patch. Existing steps are never edited. Foreign-key constraints are intentionally not used; referential cleanup stays in explicit cascades.
+- Consequences: Schema changes become reviewable numbered steps. A database whose version is newer than the build is rejected without mutation. Unversioned databases run every step once; the steps stay guarded by layout checks, so already-upgraded databases are unaffected.
+- Details: `agent/crates/data/src/store.rs`

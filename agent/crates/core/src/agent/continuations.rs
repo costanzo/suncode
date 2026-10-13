@@ -67,7 +67,7 @@ impl Agent {
                 }),
                 Some("agent_busy"),
             ),
-            Err(error) if error.code == "approval_required" => {
+            Err(error) if error.code == states::error_codes::APPROVAL_REQUIRED => {
                 let approval_id = error
                     .details
                     .get("approval_id")
@@ -87,7 +87,7 @@ impl Agent {
                 )
             }
             Err(error) => {
-                let state = if error.code == "cancelled" {
+                let state = if error.code == states::error_codes::CANCELLED {
                     "cancelled"
                 } else {
                     "failed"
@@ -104,12 +104,14 @@ impl Agent {
                 )
             }
         };
-        self.store.update_subagent_invocation(
-            &continuation.session_id,
-            state,
-            Some(&result),
-            error_code,
-        )
+        db_blocking(|| {
+            self.store.update_subagent_invocation(
+                &continuation.session_id,
+                state,
+                Some(&result),
+                error_code,
+            )
+        })
     }
 
     pub async fn resolve_approval(
@@ -118,7 +120,8 @@ impl Agent {
         decision: &str,
     ) -> Result<bool, BusinessError> {
         self.ensure_running()?;
-        let Some(suspended) = self.store.resolve_approval(approval_id, decision)? else {
+        let Some(suspended) = db_blocking(|| self.store.resolve_approval(approval_id, decision))?
+        else {
             return Ok(false);
         };
         let mut continuation: Continuation =
@@ -136,14 +139,20 @@ impl Agent {
         if decision == "deny" {
             self.clear_queued_messages(&continuation.session_id);
             if let Some(call) = continuation.pending_call.take() {
-                self.tool_state(&continuation, &call, "denied", Some("user_denied"))?;
+                self.tool_state(&continuation, &call, ToolState::Denied, Some("user_denied"))?;
             }
-            self.turn_state(&continuation, "failed", Some("authorization_denied"))?;
-            self.store.fail_turn(
-                &continuation.session_id,
-                &continuation.submission_key,
-                &json!({"code":"authorization_denied","message":"Approval was denied"}),
+            self.turn_state(
+                &continuation,
+                TurnState::Failed,
+                Some("authorization_denied"),
             )?;
+            db_blocking(|| {
+                self.store.fail_turn(
+                    &continuation.session_id,
+                    &continuation.submission_key,
+                    &json!({"code":"authorization_denied","message":"Approval was denied"}),
+                )
+            })?;
             self.persist_child_invocation_outcome(
                 &continuation,
                 &Err(BusinessError::new(
@@ -151,16 +160,18 @@ impl Agent {
                     "Approval was denied",
                 )),
             )?;
-            self.store.finish_suspended(approval_id, "denied")?;
+            db_blocking(|| self.store.finish_suspended(approval_id, "denied"))?;
             return Ok(true);
         }
         if continuation.agent_id.is_some() {
-            self.store.update_subagent_invocation(
-                &continuation.session_id,
-                "running",
-                None,
-                None,
-            )?;
+            db_blocking(|| {
+                self.store.update_subagent_invocation(
+                    &continuation.session_id,
+                    "running",
+                    None,
+                    None,
+                )
+            })?;
         }
         let token = CancellationToken::new();
         self.cancellations
@@ -180,12 +191,10 @@ impl Agent {
             let session_lock = agent.session_lock(&continuation.session_id).await;
             let _guard = session_lock.lock().await;
             let result = agent.continue_approved(&mut continuation, token).await;
-            let suspended_again = result.as_ref().err().is_some_and(|error| {
-                matches!(
-                    error.code.as_str(),
-                    "approval_required" | "question_required"
-                )
-            });
+            let suspended_again = result
+                .as_ref()
+                .err()
+                .is_some_and(|error| states::suspends_turn(&error.code));
             if let Err(error) = agent.persist_child_invocation_outcome(&continuation, &result) {
                 logging::write_business_error(
                     "subagent",
@@ -202,7 +211,7 @@ impl Agent {
             } else {
                 "failed"
             };
-            let _ = agent.store.finish_suspended(&approval_id, status);
+            let _ = db_blocking(|| agent.store.finish_suspended(&approval_id, status));
             if let Err(error) = &result {
                 logging::write_business_error(
                     "turn",
@@ -217,18 +226,16 @@ impl Agent {
                     agent.clear_queued_messages(&continuation.session_id);
                     let _ = agent.turn_state(
                         &continuation,
-                        if error.code == "cancelled" {
-                            "cancelled"
-                        } else {
-                            "failed"
-                        },
+                        states::failed_turn_state(&error.code),
                         Some(&error.code),
                     );
-                    let _ = agent.store.fail_turn(
+                    let _ = db_blocking(|| {
+                        agent.store.fail_turn(
                         &continuation.session_id,
                         &continuation.submission_key,
                         &json!({"code":error.code,"message":error.message,"details":error.details}),
-                    );
+                    )
+                    });
                 }
             }
             agent
@@ -312,18 +319,16 @@ impl Agent {
             let session_lock = agent.session_lock(&continuation.session_id).await;
             let _guard = session_lock.lock().await;
             let result = agent.continue_question(&mut continuation, token).await;
-            let suspended_again = result.as_ref().err().is_some_and(|error| {
-                matches!(
-                    error.code.as_str(),
-                    "approval_required" | "question_required"
-                )
-            });
+            let suspended_again = result
+                .as_ref()
+                .err()
+                .is_some_and(|error| states::suspends_turn(&error.code));
             let status = if result.is_ok() || suspended_again {
                 "completed"
             } else {
                 "failed"
             };
-            let _ = agent.store.finish_suspended(&request_id, status);
+            let _ = db_blocking(|| agent.store.finish_suspended(&request_id, status));
             if let Err(error) = &result {
                 logging::write_business_error(
                     "turn",
@@ -338,18 +343,16 @@ impl Agent {
                     agent.clear_queued_messages(&continuation.session_id);
                     let _ = agent.turn_state(
                         &continuation,
-                        if error.code == "cancelled" {
-                            "cancelled"
-                        } else {
-                            "failed"
-                        },
+                        states::failed_turn_state(&error.code),
                         Some(&error.code),
                     );
-                    let _ = agent.store.fail_turn(
+                    let _ = db_blocking(|| {
+                        agent.store.fail_turn(
                         &continuation.session_id,
                         &continuation.submission_key,
                         &json!({"code":error.code,"message":error.message,"details":error.details}),
-                    );
+                    )
+                    });
                 }
             }
             agent
@@ -374,7 +377,7 @@ impl Agent {
         if let Some(call) = continuation.pending_call.take() {
             let answers = continuation.question_answers.take().unwrap_or_default();
             let result = json!({"answers": answers, "rejected": continuation.question_rejected});
-            self.tool_state(continuation, &call, "succeeded", None)?;
+            self.tool_state(continuation, &call, ToolState::Succeeded, None)?;
             self.emit(
                 &continuation.session_id,
                 EventPayload::ToolResult(ToolResultPayload {
@@ -410,13 +413,15 @@ impl Agent {
         let response = self
             .run(continuation.clone(), TurnStart::Resume, token, provider)
             .await?;
-        self.store.complete_turn(
-            &continuation.session_id,
-            &continuation.submission_key,
-            &serde_json::to_value(&response).map_err(|_| {
-                BusinessError::new("agent_unavailable", "turn response could not be stored")
-            })?,
-        )?;
+        db_blocking(|| {
+            self.store.complete_turn(
+                &continuation.session_id,
+                &continuation.submission_key,
+                &serde_json::to_value(&response).map_err(|_| {
+                    BusinessError::new("agent_unavailable", "turn response could not be stored")
+                })?,
+            )
+        })?;
         Ok(response)
     }
 
@@ -443,13 +448,15 @@ impl Agent {
         let response = self
             .run(continuation.clone(), TurnStart::Resume, token, provider)
             .await?;
-        self.store.complete_turn(
-            &continuation.session_id,
-            &continuation.submission_key,
-            &serde_json::to_value(&response).map_err(|_| {
-                BusinessError::new("agent_unavailable", "turn response could not be stored")
-            })?,
-        )?;
+        db_blocking(|| {
+            self.store.complete_turn(
+                &continuation.session_id,
+                &continuation.submission_key,
+                &serde_json::to_value(&response).map_err(|_| {
+                    BusinessError::new("agent_unavailable", "turn response could not be stored")
+                })?,
+            )
+        })?;
         Ok(response)
     }
 }

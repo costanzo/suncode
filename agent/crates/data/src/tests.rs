@@ -1297,3 +1297,35 @@ fn language_server_validation_rejects_unsafe_configuration() {
         "invalid_arguments"
     );
 }
+
+#[test]
+fn new_database_records_schema_version_and_reopens() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("agent.sqlite3");
+    for _ in 0..2 {
+        let store = Store::open(&path).unwrap();
+        let mut connection = store.connection.lock().unwrap();
+        assert_eq!(
+            crate::store::user_version(&mut connection).unwrap(),
+            crate::store::SCHEMA_VERSION
+        );
+    }
+}
+
+#[test]
+fn newer_schema_version_is_rejected() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("agent.sqlite3");
+    {
+        let store = Store::open(&path).unwrap();
+        let mut connection = store.connection.lock().unwrap();
+        connection
+            .batch_execute(&format!(
+                "PRAGMA user_version={}",
+                crate::store::SCHEMA_VERSION + 1
+            ))
+            .unwrap();
+    }
+    let error = Store::open(&path).err().unwrap();
+    assert!(error.message.contains("newer than this build supports"));
+}

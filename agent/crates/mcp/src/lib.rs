@@ -700,8 +700,14 @@ mod tests {
         );
         #[cfg(not(windows))]
         {
-            assert_eq!(values.get("LANG").map(String::as_str), Some("C.UTF-8"));
-            assert_eq!(values.get("LC_ALL").map(String::as_str), Some("C.UTF-8"));
+            // Locale is inherited from the host when set, otherwise defaults to C.UTF-8.
+            for key in ["LANG", "LC_ALL"] {
+                let expected = std::env::var(key)
+                    .ok()
+                    .filter(|value| !value.is_empty())
+                    .unwrap_or_else(|| "C.UTF-8".into());
+                assert_eq!(values.get(key), Some(&expected), "{key}");
+            }
             assert_eq!(
                 values.get("PWD").map(String::as_str),
                 Some("/tmp/suncode-mcp-project")

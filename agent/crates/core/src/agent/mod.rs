@@ -196,6 +196,20 @@ pub struct Agent {
     shutting_down: Arc<std::sync::atomic::AtomicBool>,
 }
 
+/// Runs synchronous SQLite work from async code without stalling other tasks.
+///
+/// On a multi-threaded runtime the worker hands its queued tasks to another
+/// thread first. Elsewhere (current-thread runtimes, plain threads) the work runs
+/// inline, which is no worse than calling the store directly.
+pub(super) fn db_blocking<T>(work: impl FnOnce() -> T) -> T {
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) if handle.runtime_flavor() == tokio::runtime::RuntimeFlavor::MultiThread => {
+            tokio::task::block_in_place(work)
+        }
+        _ => work(),
+    }
+}
+
 fn default_turn_timeout_ms() -> u64 {
     RuntimeConfig::DEFAULT_TURN_TIMEOUT_MS
 }
@@ -204,9 +218,11 @@ mod continuations;
 mod lifecycle;
 mod remote;
 mod run;
+mod states;
 mod submission;
 mod support;
 mod tools;
+use states::{ToolState, TurnState};
 use support::*;
 #[cfg(test)]
 mod tests;

@@ -325,14 +325,16 @@ impl Agent {
                 project_tool_call_limit
                     .min(runtime.tool_call_limit.unwrap_or(project_tool_call_limit))
             });
-        let admission = self.store.begin_turn_with_images(
-            session_id,
-            key,
-            input,
-            &model,
-            reasoning_effort.as_deref(),
-            image_ids,
-        )?;
+        let admission = db_blocking(|| {
+            self.store.begin_turn_with_images(
+                session_id,
+                key,
+                input,
+                &model,
+                reasoning_effort.as_deref(),
+                image_ids,
+            )
+        })?;
         if !admission.created {
             if admission.status == "completed" {
                 let response = admission.response.ok_or_else(|| {
@@ -347,7 +349,7 @@ impl Agent {
                 format!("turn submission is {}", admission.status),
             ));
         }
-        self.store.mark_turn_started(session_id, key)?;
+        db_blocking(|| self.store.mark_turn_started(session_id, key))?;
         let token = inherited_token.unwrap_or_default();
         self.cancellations
             .lock()
@@ -377,7 +379,7 @@ impl Agent {
             submission_key: key.into(),
             model,
             reasoning_effort,
-            messages: self.store.context_messages(session_id)?,
+            messages: db_blocking(|| self.store.context_messages(session_id))?,
             iterations: 0,
             tool_calls: 0,
             tool_call_limit,
@@ -428,25 +430,20 @@ impl Agent {
                     continuation.session_id, continuation.turn_id
                 ),
             );
-            if !matches!(
-                error.code.as_str(),
-                "approval_required" | "question_required"
-            ) {
+            if !states::suspends_turn(&error.code) {
                 self.clear_queued_messages(session_id);
                 let _ = self.turn_state(
                     &continuation,
-                    if error.code == "cancelled" {
-                        "cancelled"
-                    } else {
-                        "failed"
-                    },
+                    states::failed_turn_state(&error.code),
                     Some(&error.code),
                 );
-                self.store.fail_turn(
-                    session_id,
-                    key,
-                    &json!({"code":error.code,"message":error.message,"details":error.details}),
-                )?;
+                db_blocking(|| {
+                    self.store.fail_turn(
+                        session_id,
+                        key,
+                        &json!({"code":error.code,"message":error.message,"details":error.details}),
+                    )
+                })?;
             }
         }
         result
@@ -580,7 +577,8 @@ impl Agent {
         session_id: &str,
         turn_id: &str,
     ) -> Result<bool, BusinessError> {
-        let Some(details) = self.store.cancel_dormant_turn(session_id, turn_id)? else {
+        let Some(details) = db_blocking(|| self.store.cancel_dormant_turn(session_id, turn_id))?
+        else {
             return Ok(false);
         };
         let tool_call_id = details.pending_tool_call_id.clone();
