@@ -32,13 +32,30 @@ The catalog was checked against the [official xAI model list](https://docs.x.ai/
 
 All five accept text/image input, stream text, and support function calling and structured output. Auto-compaction reserves the existing 16,384-token margin. Output limits remain unset: the [Grok 4.7 guide](https://docs.x.ai/developers/grok-4-7) explicitly specifies no text output limit, and the other model pages do not publish separate output caps. Computer Use remains unadvertised pending verification of screenshot-bearing function results. Grok Build reasons internally but does not advertise configurable effort. The Grok 4.5 model page lists `xhigh`, but the [reasoning guide](https://docs.x.ai/developers/model-capabilities/text/reasoning) says it is treated as `high`; SunCode exposes the three distinct levels. Grok 4.7 Fast is excluded because it is unavailable on the public API. Image, video, voice, and multi-agent endpoints are outside this coding-model catalog addition.
 
+## MiniMax and Meta catalogs
+
+The [MiniMax model list](https://platform.minimax.io/docs/guides/models-intro) and [Meta model list](https://dev.meta.ai/docs/models) were checked on 2026-10-12. Both providers use the existing Responses adapter: MiniMax at `https://api.minimax.io/v1` and Meta at `https://api.meta.ai/v1`. Startup inserts missing providers and models without overwriting saved credentials or endpoints.
+
+| Provider | Model / request ID | Context tokens | Output limit | Selectable reasoning efforts |
+| --- | --- | --- | --- | --- |
+| MiniMax | `MiniMax-M3.1-Flash-Preview` | 1,000,000 | not published | low, medium, high, xhigh, max |
+| MiniMax | `MiniMax-M3` | 1,000,000 | not published | none advertised |
+| Meta | `muse-wonder-1.0` | 1,048,576 | not published | minimal, low, medium, high, xhigh, max |
+| Meta | `muse-spark-1.3` | 1,048,576 | 131,072 | minimal, low, medium, high, xhigh, max |
+
+MiniMax M3.1 Flash Preview requires an [M Plan subscription key](https://platform.minimax.io/docs/m-plan/quickstart); a pay-as-you-go key does not grant access. Its display label includes this requirement. M3 remains the pay-as-you-go choice. The [MiniMax Responses reference](https://platform.minimax.io/docs/api-reference/responses-create) supports streaming, images, and function tools, but advertises only text output format, so structured output remains false. M3.1 always reasons and defaults to `max`; `none` is rejected. M3 defaults to reasoning off on Responses and accepts a non-`none` effort to enable it without tuning depth; SunCode does not expose configurable effort for that model. M2.7 and earlier generations are excluded because MiniMax has announced their retirement.
+
+Muse Spark 1.3 is Meta's recommended latest Spark version. Muse Wonder 1.0 is a preview available through the public Model API in Standard mode; Wonder Full is subscription-only in Muse Code and is excluded. Both support images, function tools, structured output, streaming, and the [reasoning levels](https://dev.meta.ai/docs/reasoning) above; `none` is rejected. Spark's output limit comes from the [official quickstart](https://dev.meta.ai/docs/quickstart). Contributor variants and the self-hosted Muse Glimmer are excluded. SunCode replays local messages and tool outputs but does not preserve Meta's encrypted reasoning items across calls; each request reasons from the supplied transcript.
+
+All four use the existing 16,384-token auto-compaction margin and client-side cancellation. Undocumented output limits remain unset. Computer Use remains unadvertised pending verification of screenshot-bearing function results. This catalog update verifies persistence and SDK routing, not live provider calls.
+
 ## Endpoint settings
 
 `set_provider_endpoint(provider, endpoint)` changes the base URL of one existing provider. Rust trims whitespace and trailing slashes, accepts only absolute HTTP or HTTPS URLs with a host and no embedded credentials, query, or fragment, and rejects unknown providers. A successful update persists the URL and atomically replaces that provider's live route. Provider identity, adapter, credential, models, enabled state, and ordering stay the same. Requests already in flight finish on the route they started with. A rejected URL leaves the stored endpoint unchanged. The C ABI returns only the provider ID and the normalized endpoint. Desktop Settings edits the endpoint on each provider detail page.
 
 ## OpenAI Responses wire format
 
-Every `adapter_type=openai` provider posts to `<endpoint>/responses`. This includes the seeded DeepSeek, Qwen, Zhipu GLM, Kimi, Gemini, OpenAI, and xAI rows. Chat Completions is no longer used. Requests contain:
+Every `adapter_type=openai` provider posts to `<endpoint>/responses`. This includes the seeded DeepSeek, Qwen, Zhipu GLM, Kimi, Gemini, OpenAI, xAI, MiniMax, and Meta rows. Chat Completions is no longer used. Requests contain:
 
 - canonical messages encoded as Responses `input` items, with images as `input_image` data URLs;
 - function tools with `strict: false`;

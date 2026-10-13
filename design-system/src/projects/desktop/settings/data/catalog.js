@@ -55,6 +55,20 @@ export const providerCatalog = {
     keyPreview: "",
     models: ["grok-4.7", "grok-4.6", "grok-4.5", "grok-4.3", "grok-build-0.1"],
   },
+  minimax: {
+    label: "MiniMax",
+    endpoint: "https://api.minimax.io/v1",
+    placeholder: "Paste MiniMax API key",
+    keyPreview: "",
+    models: ["MiniMax-M3.1-Flash-Preview", "MiniMax-M3"],
+  },
+  meta: {
+    label: "Meta",
+    endpoint: "https://api.meta.ai/v1",
+    placeholder: "Paste Meta API key",
+    keyPreview: "",
+    models: ["muse-wonder-1.0", "muse-spark-1.3"],
+  },
 };
 
 export const navItems = [

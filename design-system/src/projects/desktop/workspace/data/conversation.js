@@ -10,6 +10,12 @@ export const workspaceModelGroups = [
     label: "xAI",
     models: ["grok-4.7", "grok-4.6", "grok-4.5", "grok-4.3", "grok-build-0.1"],
   },
+  {
+    id: "minimax",
+    label: "MiniMax",
+    models: ["MiniMax-M3.1-Flash-Preview", "MiniMax-M3"],
+  },
+  { id: "meta", label: "Meta", models: ["muse-wonder-1.0", "muse-spark-1.3"] },
 ];
 
 export const runningConversationToolCalls = [
