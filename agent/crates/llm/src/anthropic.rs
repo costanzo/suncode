@@ -60,6 +60,7 @@ impl AnthropicProvider {
     fn client(&self) -> Result<reqwest::Client, BusinessError> {
         let verify_certificates = self.verify_https_certificates.load(Ordering::SeqCst);
         let mut builder = reqwest::Client::builder()
+            .retry(reqwest::retry::never())
             .danger_accept_invalid_certs(!verify_certificates)
             .danger_accept_invalid_hostnames(!verify_certificates);
         if verify_certificates && !self.use_system_certificates.load(Ordering::SeqCst) {
@@ -147,12 +148,7 @@ impl AnthropicProvider {
                 .header("anthropic-version", ANTHROPIC_VERSION)
                 .header(reqwest::header::CONTENT_TYPE, "application/json")
                 .body(request_body)
-                .send() => value.map_err(|error| BusinessError::provider(
-                    "transient",
-                    format!("{} request failed: {error}", self.provider_label),
-                    true,
-                    None,
-                ))?,
+                .send() => value.map_err(|error| crate::errors::transport_error(error, &self.provider_label, None, false))?,
         };
         let provider_request_id = REQUEST_ID_HEADERS.iter().find_map(|name| {
             response
@@ -164,9 +160,19 @@ impl AnthropicProvider {
         });
         if !response.status().is_success() {
             let status = response.status();
+            let retry_after_ms = crate::errors::retry_after_ms(
+                response
+                    .headers()
+                    .get(reqwest::header::RETRY_AFTER)
+                    .and_then(|value| value.to_str().ok()),
+                std::time::SystemTime::now(),
+            );
             let mut stream = response.bytes_stream();
             let mut response_body = BytesMut::new();
-            while let Some(chunk) = stream.next().await {
+            while let Some(chunk) = tokio::select! {
+                _ = cancellation.cancelled() => return Err(cancelled()),
+                chunk = stream.next() => chunk,
+            } {
                 let Ok(chunk) = chunk else { break };
                 let _ = transfer_progress.send(crate::TransferProgressDelta {
                     uploaded_bytes: 0,
@@ -192,17 +198,19 @@ impl AnthropicProvider {
                 "context_overflow"
             } else if status.as_u16() == 401 {
                 "authentication"
-            } else if status.as_u16() == 408 || status.as_u16() == 429 || status.is_server_error() {
+            } else if crate::errors::retryable_status(status.as_u16()) {
                 "transient"
             } else {
                 "invalid_request"
             };
-            return Err(BusinessError::provider(
+            let mut error = BusinessError::provider(
                 code,
                 message,
-                status.as_u16() == 408 || status.as_u16() == 429 || status.is_server_error(),
+                crate::errors::retryable_status(status.as_u16()),
                 provider_request_id,
-            ));
+            );
+            error.details["retry_after_ms"] = serde_json::json!(retry_after_ms);
+            return Err(error);
         }
         let mut stream = response.bytes_stream();
         let mut response_body = BytesMut::new();
@@ -212,12 +220,14 @@ impl AnthropicProvider {
                 value = stream.next() => value,
             };
             let Some(chunk) = chunk else { break };
+            // This adapter buffers the response; any received body may contain
+            // generated text or tool calls, so recovery is conservative.
             let chunk = chunk.map_err(|error| {
-                BusinessError::provider(
-                    "provider_protocol",
-                    format!("{} response stream failed: {error}", self.provider_label),
-                    true,
+                crate::errors::transport_error(
+                    error,
+                    &self.provider_label,
                     provider_request_id.clone(),
+                    !response_body.is_empty(),
                 )
             })?;
             let _ = transfer_progress.send(crate::TransferProgressDelta {

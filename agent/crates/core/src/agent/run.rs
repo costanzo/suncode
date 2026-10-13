@@ -1,3 +1,10 @@
+fn provider_retry_allowed(error: &BusinessError) -> bool {
+    error.retryable
+        && matches!(error.code.as_str(), "transient" | "provider_protocol")
+        && !is_context_overflow_error(error)
+        && error.details["response_started"].as_bool() != Some(true)
+}
+
 fn delegate_agent_definition() -> suncode_llm::ToolDefinition {
     suncode_llm::ToolDefinition {
         name: "delegate_agent".into(),
@@ -24,7 +31,9 @@ fn skill_guidance(project_root: &str, user_directory: Option<&std::path::Path>) 
         user_home_directory: user_directory.map(std::path::Path::to_path_buf),
         explicit_paths: Vec::new(),
     });
-    Some(suncode_skills::render_available_skills(catalog.visible().cloned()))
+    Some(suncode_skills::render_available_skills(
+        catalog.visible().cloned(),
+    ))
 }
 
 enum TurnStart {
@@ -37,6 +46,184 @@ enum TurnStart {
 }
 
 impl Agent {
+    /// Retries one immutable provider request, never the tools that produced it.
+    async fn complete_with_retries(
+        &self,
+        context: &mut Continuation,
+        provider: &ModelRoute,
+        token: &CancellationToken,
+        started: Instant,
+        llm_messages: &[suncode_llm::Message],
+        tool_definitions: &[suncode_llm::ToolDefinition],
+    ) -> Result<suncode_llm::Completion, BusinessError> {
+        for attempt in 0..=2_u32 {
+            if token.is_cancelled() {
+                return Err(BusinessError::new("cancelled", "Turn was cancelled"));
+            }
+            if started.elapsed() >= Duration::from_millis(context.turn_timeout_ms) {
+                return Err(BusinessError::new(
+                    "turn_timeout",
+                    "Turn exceeded its wall-clock budget",
+                ));
+            }
+            let exchange_id = Uuid::new_v4().to_string();
+            context.active_call_id = Some(exchange_id.clone());
+            self.emit(
+                &context.session_id,
+                EventPayload::ProviderExchangeStarted(ProviderExchangeStartedPayload {
+                    exchange_id: exchange_id.clone(),
+                    turn_id: context.turn_id.clone(),
+                    provider: provider.provider_id.clone(),
+                    model_id: context.model.clone(),
+                    wire_model: provider.wire_model.clone(),
+                    iteration: context.iterations,
+                }),
+            )?;
+            let result = {
+                let mut response_started = false;
+                let (delta_sender, mut delta_receiver) = mpsc::unbounded_channel();
+                let (transfer_sender, mut transfer_receiver) = mpsc::unbounded_channel();
+                let mut uploaded_bytes = 0_u64;
+                let mut downloaded_bytes = 0_u64;
+                let mut published_transfer = (0_u64, 0_u64);
+                let mut transfer_tick = tokio::time::interval(Duration::from_millis(100));
+                transfer_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+                let provider_call = provider.provider.complete(
+                    CompletionRequest {
+                        messages: llm_messages,
+                        wire_model: &provider.wire_model,
+                        tools: tool_definitions,
+                        client_toolsets: &[],
+                        reasoning_effort: context.reasoning_effort.as_deref(),
+                        max_output_tokens: self
+                            .providers
+                            .limits(&context.model)
+                            .and_then(|limits| limits.max_output_tokens),
+                        transfer_progress: transfer_sender,
+                    },
+                    token,
+                    delta_sender,
+                );
+                tokio::pin!(provider_call);
+                let turn_remaining = Duration::from_millis(context.turn_timeout_ms)
+                    .saturating_sub(started.elapsed());
+                let turn_deadline = tokio::time::sleep(turn_remaining);
+                tokio::pin!(turn_deadline);
+                let result = loop {
+                    tokio::select! {
+                        _ = token.cancelled() => break Err(BusinessError::new("cancelled", "Turn was cancelled")),
+                        value = &mut provider_call => break value,
+                        _ = &mut turn_deadline => break Err(BusinessError::new("turn_timeout", "Turn exceeded its wall-clock budget")),
+                        Some(delta) = delta_receiver.recv() => {
+                            response_started |= !delta.is_empty();
+                            self.emit_live(&context.session_id, EventPayload::AssistantDelta(AssistantDeltaPayload { turn_id: context.turn_id.clone(), text: delta }));
+                        }
+                        Some(progress) = transfer_receiver.recv() => {
+                            uploaded_bytes = uploaded_bytes.saturating_add(progress.uploaded_bytes);
+                            downloaded_bytes = downloaded_bytes.saturating_add(progress.downloaded_bytes);
+                        }
+                        _ = transfer_tick.tick() => {
+                            if published_transfer != (uploaded_bytes, downloaded_bytes) {
+                                self.emit_live(&context.session_id, EventPayload::ProviderExchangeProgress(ProviderExchangeProgressPayload {
+                                    exchange_id: exchange_id.clone(),
+                                    turn_id: context.turn_id.clone(),
+                                    provider: provider.provider_id.clone(),
+                                    model_id: context.model.clone(),
+                                    uploaded_bytes,
+                                    downloaded_bytes,
+                                }));
+                                published_transfer = (uploaded_bytes, downloaded_bytes);
+                            }
+                        }
+                    }
+                };
+                while let Ok(delta) = delta_receiver.try_recv() {
+                    response_started |= !delta.is_empty();
+                    self.emit_live(
+                        &context.session_id,
+                        EventPayload::AssistantDelta(AssistantDeltaPayload {
+                            turn_id: context.turn_id.clone(),
+                            text: delta,
+                        }),
+                    );
+                }
+                while let Ok(progress) = transfer_receiver.try_recv() {
+                    uploaded_bytes = uploaded_bytes.saturating_add(progress.uploaded_bytes);
+                    downloaded_bytes = downloaded_bytes.saturating_add(progress.downloaded_bytes);
+                }
+                if published_transfer != (uploaded_bytes, downloaded_bytes) {
+                    self.emit_live(
+                        &context.session_id,
+                        EventPayload::ProviderExchangeProgress(ProviderExchangeProgressPayload {
+                            exchange_id: exchange_id.clone(),
+                            turn_id: context.turn_id.clone(),
+                            provider: provider.provider_id.clone(),
+                            model_id: context.model.clone(),
+                            uploaded_bytes,
+                            downloaded_bytes,
+                        }),
+                    );
+                }
+                result.map_err(|mut error| {
+                    if response_started {
+                        error.details["response_started"] = json!(true);
+                    }
+                    error
+                })
+            };
+            let error = match result {
+                Ok(completion) => return Ok(completion),
+                Err(error) => error,
+            };
+            self.emit(
+                &context.session_id,
+                EventPayload::ProviderExchangeFailed(ProviderExchangeFailedPayload {
+                    exchange_id: exchange_id.clone(),
+                    turn_id: context.turn_id.clone(),
+                    error: ProviderErrorPayload {
+                        code: error.code.clone(),
+                        message: error.message.clone(),
+                        retryable: error.retryable,
+                    },
+                    provider_request_id: error.provider_request_id.clone(),
+                }),
+            )?;
+            if attempt == 2 || !provider_retry_allowed(&error) {
+                return Err(error);
+            }
+            let jitter = u64::from(Uuid::new_v4().as_bytes()[0]) % 251;
+            let delay_ms = (1000_u64 << attempt)
+                .saturating_add(jitter)
+                .max(error.details["retry_after_ms"].as_u64().unwrap_or(0));
+            let remaining =
+                Duration::from_millis(context.turn_timeout_ms).saturating_sub(started.elapsed());
+            if Duration::from_millis(delay_ms) >= remaining {
+                return Err(BusinessError::new(
+                    "turn_timeout",
+                    "Provider retry cannot fit within the turn's remaining budget",
+                ));
+            }
+            self.emit_live(
+                &context.session_id,
+                EventPayload::ProviderRetryScheduled(ProviderRetryScheduledPayload {
+                    exchange_id,
+                    turn_id: context.turn_id.clone(),
+                    retry_attempt: attempt + 1,
+                    max_retries: 2,
+                    delay_ms,
+                    error_code: error.code.clone(),
+                }),
+            );
+            tokio::select! {
+                biased;
+                _ = token.cancelled() => return Err(BusinessError::new("cancelled", "Turn was cancelled")),
+                _ = tokio::time::sleep(remaining) => return Err(BusinessError::new("turn_timeout", "Turn exceeded its wall-clock budget")),
+                _ = tokio::time::sleep(Duration::from_millis(delay_ms)) => {}
+            }
+        }
+        unreachable!("provider attempts are bounded")
+    }
+
     async fn run(
         &self,
         mut context: Continuation,
@@ -159,8 +346,6 @@ impl Agent {
             if prompt.compacted {
                 context.messages = prompt.messages;
             }
-            let exchange_id = Uuid::new_v4().to_string();
-            context.active_call_id = Some(exchange_id.clone());
             let mut llm_messages = base_system_messages.clone();
             llm_messages.extend(
                 context
@@ -169,96 +354,22 @@ impl Agent {
                     .map(|message| self.to_llm_message_with_images(&context.session_id, message))
                     .collect::<Result<Vec<_>, _>>()?,
             );
-            self.emit(
-                &context.session_id,
-                EventPayload::ProviderExchangeStarted(ProviderExchangeStartedPayload { exchange_id: exchange_id.clone(), turn_id: context.turn_id.clone(), provider: provider.provider_id.clone(), model_id: context.model.clone(), wire_model: provider.wire_model.clone(), iteration: context.iterations }),
-            )?;
-            let result = {
-                let (delta_sender, mut delta_receiver) = mpsc::unbounded_channel();
-                let (transfer_sender, mut transfer_receiver) = mpsc::unbounded_channel();
-                let mut uploaded_bytes = 0_u64;
-                let mut downloaded_bytes = 0_u64;
-                let mut published_transfer = (0_u64, 0_u64);
-                let mut transfer_tick = tokio::time::interval(Duration::from_millis(100));
-                transfer_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-                let provider_call = provider.provider.complete(
-                    CompletionRequest {
-                        messages: &llm_messages,
-                        wire_model: &provider.wire_model,
-                        tools: &tool_definitions,
-                        client_toolsets: &[],
-                        reasoning_effort: context.reasoning_effort.as_deref(),
-                        max_output_tokens: self
-                            .providers
-                            .limits(&context.model)
-                            .and_then(|limits| limits.max_output_tokens),
-                        transfer_progress: transfer_sender,
-                    },
+            let result = self
+                .complete_with_retries(
+                    &mut context,
+                    &provider,
                     &token,
-                    delta_sender,
-                );
-                tokio::pin!(provider_call);
-                let turn_remaining = Duration::from_millis(context.turn_timeout_ms)
-                    .saturating_sub(started.elapsed());
-                let turn_deadline = tokio::time::sleep(turn_remaining);
-                tokio::pin!(turn_deadline);
-                let result = loop {
-                    tokio::select! {
-                        value = &mut provider_call => break value,
-                        _ = &mut turn_deadline => break Err(BusinessError::new("turn_timeout", "Turn exceeded its wall-clock budget")),
-                        Some(delta) = delta_receiver.recv() => {
-                            self.emit_live(&context.session_id, EventPayload::AssistantDelta(AssistantDeltaPayload { turn_id: context.turn_id.clone(), text: delta }));
-                        }
-                        Some(progress) = transfer_receiver.recv() => {
-                            uploaded_bytes = uploaded_bytes.saturating_add(progress.uploaded_bytes);
-                            downloaded_bytes = downloaded_bytes.saturating_add(progress.downloaded_bytes);
-                        }
-                        _ = transfer_tick.tick() => {
-                            if published_transfer != (uploaded_bytes, downloaded_bytes) {
-                                self.emit_live(&context.session_id, EventPayload::ProviderExchangeProgress(ProviderExchangeProgressPayload {
-                                    exchange_id: exchange_id.clone(),
-                                    turn_id: context.turn_id.clone(),
-                                    provider: provider.provider_id.clone(),
-                                    model_id: context.model.clone(),
-                                    uploaded_bytes,
-                                    downloaded_bytes,
-                                }));
-                                published_transfer = (uploaded_bytes, downloaded_bytes);
-                            }
-                        }
-                    }
-                };
-                while let Ok(delta) = delta_receiver.try_recv() {
-                    self.emit_live(
-                        &context.session_id,
-                        EventPayload::AssistantDelta(AssistantDeltaPayload { turn_id: context.turn_id.clone(), text: delta }),
-                    );
-                }
-                while let Ok(progress) = transfer_receiver.try_recv() {
-                    uploaded_bytes = uploaded_bytes.saturating_add(progress.uploaded_bytes);
-                    downloaded_bytes = downloaded_bytes.saturating_add(progress.downloaded_bytes);
-                }
-                if published_transfer != (uploaded_bytes, downloaded_bytes) {
-                    self.emit_live(&context.session_id, EventPayload::ProviderExchangeProgress(ProviderExchangeProgressPayload {
-                        exchange_id: exchange_id.clone(),
-                        turn_id: context.turn_id.clone(),
-                        provider: provider.provider_id.clone(),
-                        model_id: context.model.clone(),
-                        uploaded_bytes,
-                        downloaded_bytes,
-                    }));
-                }
-                result
-            };
+                    started,
+                    &llm_messages,
+                    &tool_definitions,
+                )
+                .await;
             let result = match result {
                 Ok(result) => result,
                 Err(error) => {
-                    self.emit(
-                        &context.session_id,
-                        EventPayload::ProviderExchangeFailed(ProviderExchangeFailedPayload { exchange_id: exchange_id.clone(), turn_id: context.turn_id.clone(), error: ProviderErrorPayload { code: error.code.clone(), message: error.message.clone(), retryable: error.retryable }, provider_request_id: error.provider_request_id.clone() }),
-                    )?;
                     if !context.overflow_recovery_attempted
                         && is_context_overflow_error(&error)
+                        && error.details["response_started"].as_bool() != Some(true)
                     {
                         context.overflow_recovery_attempted = true;
                         let mut forced = context::force_compact(
@@ -280,6 +391,10 @@ impl Agent {
                     return Err(error);
                 }
             };
+            let exchange_id = context
+                .active_call_id
+                .clone()
+                .expect("successful provider attempt has an exchange ID");
             if result.text.len() > 8 * 1024 * 1024 {
                 return self.fail_context(
                     &context,

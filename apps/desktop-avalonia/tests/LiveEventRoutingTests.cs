@@ -9,6 +9,28 @@ namespace SunCode.Desktop.Tests;
 public sealed class LiveEventRoutingTests
 {
     [Fact]
+    public void ProviderRetryStatusClearsOnNextAttemptAndTerminalState()
+    {
+        using var viewModel = new DesktopViewModel();
+        viewModel.ApplyEvent(Event(AgentEventTypes.TurnState, """{"turn_id":"turn-1","state":"calling_model"}"""), live: false);
+        var retry = Event(AgentEventTypes.ProviderRetryScheduled,
+            """{"turn_id":"turn-1","exchange_id":"ex-1","retry_attempt":1,"max_retries":2,"delay_ms":1250,"error_code":"transient"}""");
+        Assert.Equal((uint)1, retry.Payload.RetryAttempt);
+        Assert.Equal((ulong)1250, retry.Payload.DelayMs);
+        viewModel.ApplyEvent(retry, live: false);
+        Assert.True(viewModel.IsProviderRetrying);
+        Assert.False(viewModel.IsTurnThinking);
+        Assert.False(viewModel.IsTurnIndicatorDots);
+        Assert.Contains("2", viewModel.ProviderRetryText);
+        viewModel.ApplyEvent(Event(AgentEventTypes.ProviderExchangeStarted, """{"turn_id":"turn-1","exchange_id":"ex-2"}"""), live: false);
+        Assert.False(viewModel.IsProviderRetrying);
+        Assert.True(viewModel.IsTurnThinking);
+        viewModel.ApplyEvent(retry, live: false);
+        viewModel.ApplyEvent(Event(AgentEventTypes.TurnState, """{"turn_id":"turn-1","state":"cancelled"}"""), live: false);
+        Assert.False(viewModel.IsProviderRetrying);
+    }
+
+    [Fact]
     public void ApprovalEventsSetAndClearPendingApproval()
     {
         using var viewModel = new DesktopViewModel();

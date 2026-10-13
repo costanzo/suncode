@@ -57,6 +57,7 @@
   <x:String x:Key="LocUnpin">取消固定</x:String>
   <x:String x:Key="LocArchive">归档</x:String>
   <x:String x:Key="LocNewSession">新建会话</x:String>
+  <x:String x:Key="LocProviderRetryScheduled">将在 {0} 秒后重试请求 · 第 {1}/{2} 次重试</x:String>
   <x:String x:Key="LocThinking">思考中</x:String>
   <x:String x:Key="LocCompactingContext">正在压缩上下文</x:String>
   <x:String x:Key="LocLoadingConversation">正在加载对话…</x:String>

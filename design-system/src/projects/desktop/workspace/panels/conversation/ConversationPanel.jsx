@@ -60,8 +60,10 @@ export function ConversationPanel({
   const archived = state === "archived";
   const updating = state === "content-updating" || state === "live-tool-stream";
   const thinking = state === "content-thinking";
+  const [retryStopped, setRetryStopped] = useState(false);
+  const retrying = state === "content-retrying" && !retryStopped;
   const modelUnavailable = state === "model-unavailable";
-  const turnActive = updating || thinking;
+  const turnActive = updating || thinking || retrying;
   const scrollToBottom = () => {
     conversationScrollRef.current?.scrollTo({
       top: conversationScrollRef.current.scrollHeight,
@@ -240,6 +242,11 @@ export function ConversationPanel({
                 </p>
               </div>
             )}
+            {retrying && (
+              <div className="workspace-retry-indicator" role="status">
+                Retrying request after 2s · retry 1 of 2
+              </div>
+            )}
             {thinking && (
               <div
                 className="workspace-thinking-indicator"
@@ -379,10 +386,10 @@ export function ConversationPanel({
               <Button
                 variant="primary"
                 className="workspace-send"
-                icon="arrow-up"
-                aria-label="Send message"
-                disabled={modelUnavailable || (!message.trim() && !attachments.length)}
-                onClick={sendMessage}
+                icon={retrying ? "pause" : "arrow-up"}
+                aria-label={retrying ? "Stop turn" : "Send message"}
+                disabled={!retrying && (modelUnavailable || (!message.trim() && !attachments.length))}
+                onClick={retrying ? () => setRetryStopped(true) : sendMessage}
               />
             </div>
           </div>

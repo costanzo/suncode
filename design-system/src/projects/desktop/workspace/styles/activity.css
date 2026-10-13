@@ -75,3 +75,9 @@
   white-space: nowrap;
   animation: workspace-thinking-reveal 1.75s ease-in-out infinite;
 }
+
+.workspace-retry-indicator {
+  color: var(--text-secondary);
+  font: 11px/1.5 var(--font-ui);
+  overflow-wrap: anywhere;
+}

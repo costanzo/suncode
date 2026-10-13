@@ -64,6 +64,10 @@ impl ResponsesSseParser {
         }
     }
 
+    pub fn response_started(&self) -> bool {
+        !self.text.is_empty() || !self.calls.is_empty()
+    }
+
     pub fn push(&mut self, bytes: &[u8]) -> Result<Vec<String>, BusinessError> {
         self.buffer.push_str(&String::from_utf8_lossy(bytes));
         let mut deltas = Vec::new();
@@ -278,7 +282,19 @@ impl ResponsesSseParser {
     }
 
     pub fn finish(self) -> Result<Completion, BusinessError> {
-        if let Some(error) = self.terminal_error {
+        let response_started = self.response_started();
+        if let Some(mut error) = self.terminal_error {
+            error.details["response_started"] = response_started.into();
+            return Err(error);
+        }
+        if self.finish_reason.is_empty() {
+            let mut error = BusinessError::provider(
+                "provider_protocol",
+                "Provider stream ended before a terminal response event",
+                !response_started,
+                None,
+            );
+            error.details["response_started"] = response_started.into();
             return Err(error);
         }
         let tool_calls = self
@@ -394,7 +410,27 @@ mod tests {
             .push(b"event: response.output_text.delta\ndata: {\"delta\":\"hello\"}\n\n")
             .unwrap();
         assert_eq!(deltas, vec!["hello"]);
+        parser
+            .push(b"event: response.completed\ndata: {\"response\":{}}\n\n")
+            .unwrap();
         assert_eq!(parser.finish().unwrap().text, "hello");
+    }
+
+    #[test]
+    fn incomplete_stream_retries_only_before_text_or_tool_output() {
+        let error = ResponsesSseParser::new("Test").finish().unwrap_err();
+        assert!(error.retryable);
+        for data in [
+            b"data: {\"type\":\"response.output_text.delta\",\"delta\":\"hello\"}\n\n".as_slice(),
+            b"data: {\"type\":\"response.function_call_arguments.delta\",\"delta\":\"{\"}\n\n"
+                .as_slice(),
+        ] {
+            let mut parser = ResponsesSseParser::new("Test");
+            parser.push(data).unwrap();
+            let error = parser.finish().unwrap_err();
+            assert!(!error.retryable);
+            assert_eq!(error.details["response_started"], true);
+        }
     }
 
     #[test]

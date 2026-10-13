@@ -38,7 +38,17 @@ public sealed partial class DesktopViewModel
     {
         var type = value.EventType;
         var payload = value.Payload;
-        var text = EventText(type, payload);
+        if (type == AgentEventTypes.ProviderRetryScheduled && payload.TurnId == ActiveTurnId)
+        {
+            ProviderRetryText = string.Format(
+                LocalizationService.GetString("LocProviderRetryScheduled", "Retrying request after {0}s · retry {1} of {2}"),
+                Math.Ceiling((payload.DelayMs ?? 0) / 1000.0), payload.RetryAttempt ?? 0, payload.MaxRetries ?? 2);
+        }
+        else if (payload.TurnId == ActiveTurnId && (type is AgentEventTypes.ProviderExchangeStarted or AgentEventTypes.TurnState))
+        {
+            ProviderRetryText = string.Empty;
+        }
+        var text = type == AgentEventTypes.ProviderRetryScheduled ? ProviderRetryText : EventText(type, payload);
         var providerExchange = AgentEventTypes.IsProviderExchange(type);
         if (providerExchange)
         {

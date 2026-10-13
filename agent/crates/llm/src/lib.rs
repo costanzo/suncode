@@ -1,6 +1,7 @@
 //! Provider-neutral LLM contracts, model routing, and built-in HTTP adapters.
 
 mod anthropic;
+mod errors;
 mod normalize;
 mod openai_compatible;
 mod registry;

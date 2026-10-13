@@ -405,3 +405,7 @@ for system, repository, runtime, tool, question, and context-compaction prompts.
 their stable identity, role responsibilities, exact tool allowlist, inherited model policy, and boundaries.
 Prompt entries identify their scope, owner, and implementation status, and long prompt content uses
 bounded monospace reading surfaces.
+
+### Provider retry status
+
+While a provider retry is waiting, Conversation replaces Thinking and running dots with a static 11px secondary-text status giving the scheduled delay and retry number out of two. The text wraps at constrained widths, has no new animation or alert surface, and clears when the next provider request starts or the turn ends. The delay describes the scheduled wait, not a live countdown. The active composer keeps its existing stop action available. Review this state at Desktop Workspace → Conversation.

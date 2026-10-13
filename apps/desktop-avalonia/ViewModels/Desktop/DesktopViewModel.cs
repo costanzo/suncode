@@ -32,6 +32,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private string _statusText = "Starting local agent...";
     private string _composerText = string.Empty;
     private string _activeTurnId = string.Empty;
+    private string _providerRetryText = string.Empty;
     private string _activeTurnState = string.Empty;
     private string _lastTurnId = string.Empty;
     private int _toolCallLimit = 64;
@@ -236,7 +237,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public string StatusText { get => _statusText; private set => SetProperty(ref _statusText, value); }
     public void ReportPresentationError(string message) => StatusText = message;
     public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) OnPropertyChanged(nameof(CanSubmit)); } }
-    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); OnPropertyChanged(nameof(CanAttachImages)); NotifyReviewPresentationChanged(); } } }
+    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { ProviderRetryText = string.Empty; OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); OnPropertyChanged(nameof(CanAttachImages)); NotifyReviewPresentationChanged(); } } }
     public string ActiveTurnState { get => _activeTurnState; private set { if (SetProperty(ref _activeTurnState, value)) { OnPropertyChanged(nameof(IsTurnCompacting)); OnPropertyChanged(nameof(IsTurnThinking)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(HasFailedTurn)); NotifyReviewPresentationChanged(); } } }
     public string ActiveTurnDurationText => _activeTurnStartedAt is { } started
         ? FormatDuration(started.ToString("O"), string.Empty, ActiveTurnState)
@@ -331,9 +332,20 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
         : $"{ChangedPaths.Count} {(ChangedPaths.Count == 1 ? "file" : "files")} touched";
     public bool IsTurnActive => !string.IsNullOrWhiteSpace(ActiveTurnId);
     public bool IsTurnCompacting => ActiveTurnState == "compacting";
-    public bool IsTurnThinking => ActiveTurnState == "calling_model" && !IsAssistantStreaming;
+    public bool IsTurnThinking => ActiveTurnState == "calling_model" && !IsAssistantStreaming && !IsProviderRetrying;
     public bool IsAssistantStreaming => Messages.Any(message => message.Streaming);
-    public bool IsTurnIndicatorDots => IsTurnActive && !IsTurnThinking && !IsTurnCompacting && !IsAssistantStreaming;
+    public bool IsTurnIndicatorDots => IsTurnActive && !IsTurnThinking && !IsTurnCompacting && !IsAssistantStreaming && !IsProviderRetrying;
+    public bool IsProviderRetrying => IsTurnActive && !string.IsNullOrEmpty(ProviderRetryText);
+    public string ProviderRetryText
+    {
+        get => _providerRetryText;
+        private set
+        {
+            if (!SetProperty(ref _providerRetryText, value)) return;
+            OnPropertyChanged(nameof(IsProviderRetrying));
+            NotifyAssistantStreamingChanged();
+        }
+    }
     public bool HasFailedTurn => ActiveTurnState == "failed";
     public string ReviewHeadingText => HasFailedTurn ? "Turn stopped" : IsTurnCompacting ? "Compacting context" : IsTurnActive ? "1 active process" : HasPendingApproval || HasPendingQuestion ? "Awaiting input" : "No active process";
     public string ReviewStatusText => HasFailedTurn

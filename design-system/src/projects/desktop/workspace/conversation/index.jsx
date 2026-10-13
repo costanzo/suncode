@@ -142,6 +142,13 @@ const conversationGuides = {
       ],
     },
   },
+  retrying: {
+    tabs: {
+      actions: ["Wait for the scheduled request retry or use the composer stop action."],
+      style: ["A static 11px secondary-text status replaces Thinking and running dots; it wraps at narrow widths."],
+      logic: ["Show the scheduled delay and retry number while waiting. Clear it when the next request starts or the turn ends. The delay is a schedule, not a live countdown."],
+    },
+  },
   attachments: {
     tabs: {
       actions: [
@@ -283,6 +290,13 @@ export function WorkspaceConversationPage() {
       description: "A dedicated thinking phase replaces the generic three-dot running marker.",
       side: "right",
       content: <ConversationPanel standalone state="content-thinking" />,
+    },
+    {
+      id: "retrying",
+      title: "Request retry scheduled",
+      description: "A temporary provider failure pauses the active turn before another request.",
+      side: "left",
+      content: <ConversationPanel standalone state="content-retrying" />,
     },
     {
       id: "attachments",

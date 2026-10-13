@@ -809,7 +809,11 @@ public sealed record AgentEventPayload(
     IReadOnlyList<AgentTodoEventItem>? Todos = null,
     [property: JsonPropertyName("manifest_id")] string? ManifestId = null,
     [property: JsonPropertyName("checkpoint_id")] string? CheckpointId = null,
-    string? Path = null);
+    string? Path = null,
+    [property: JsonPropertyName("retry_attempt")] uint? RetryAttempt = null,
+    [property: JsonPropertyName("max_retries")] uint? MaxRetries = null,
+    [property: JsonPropertyName("delay_ms")] ulong? DelayMs = null,
+    [property: JsonPropertyName("error_code")] string? ErrorCode = null);
 
 public sealed record AgentTodoEventItem(
     string Content,

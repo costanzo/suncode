@@ -593,12 +593,18 @@ mod tests {
         tokio::task::JoinHandle<()>,
         String,
     ) {
+        fixture_with_router(auto_compact_tokens, Router::new().route("/responses", post(mock_deepseek))).await
+    }
+
+    async fn fixture_with_router(auto_compact_tokens: u64, router: Router) -> (
+        Agent, Store, std::path::PathBuf, tokio::task::JoinHandle<()>, String,
+    ) {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
         let server = tokio::spawn(async move {
             axum::serve(
                 listener,
-                Router::new().route("/responses", post(mock_deepseek)),
+                router,
             )
             .await
             .unwrap();
@@ -719,6 +725,202 @@ mod tests {
         server.abort();
     }
 
+    async fn retry_fixture(
+        status: u16,
+        failures: usize,
+        retry_after: &'static str,
+        partial: bool,
+    ) -> (
+        Agent,
+        Store,
+        tokio::task::JoinHandle<()>,
+        String,
+        Arc<std::sync::atomic::AtomicUsize>,
+    ) {
+        let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let count = calls.clone();
+        let router = Router::new().route("/responses", post(move |Json(_): Json<Value>| {
+            let count = count.clone();
+            async move {
+                let attempt = count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                if attempt < failures {
+                    if partial {
+                        return ([(header::CONTENT_TYPE, "text/event-stream")],
+                            "data: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\"}\n\n").into_response();
+                    }
+                    return (StatusCode::from_u16(status).unwrap(), [(header::RETRY_AFTER, retry_after)],
+                        Json(json!({"error":{"message":"temporarily unavailable"}}))).into_response();
+                }
+                ([(header::CONTENT_TYPE, "text/event-stream")],
+                    "data: {\"type\":\"response.output_text.delta\",\"delta\":\"success\"}\n\ndata: {\"type\":\"response.completed\",\"response\":{}}\n\n").into_response()
+            }
+        }));
+        let (agent, store, _root, server, session) = fixture_with_router(47_616, router).await;
+        (agent, store, server, session, calls)
+    }
+
+    #[tokio::test]
+    async fn provider_retry_recovers_and_records_independent_attempts() {
+        let (agent, store, server, session, calls) = retry_fixture(503, 1, "0", false).await;
+        let response = agent
+            .submit(&session, "retry-success", "hello", None, None)
+            .await
+            .unwrap();
+        assert!(matches!(
+            response,
+            TurnResponse::Completed {
+                iterations: 1,
+                tool_calls: 0,
+                ..
+            }
+        ));
+        assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 2);
+        let exchanges = store.provider_exchanges(&session).unwrap();
+        assert_eq!(exchanges.len(), 2);
+        assert_eq!(
+            exchanges
+                .iter()
+                .filter(|item| item.state == "failed")
+                .count(),
+            1
+        );
+        assert_ne!(exchanges[0].exchange_id, exchanges[1].exchange_id);
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn provider_retry_preserves_tool_result_without_reexecution() {
+        let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let count = calls.clone();
+        let inputs = Arc::new(Mutex::new(Vec::<Value>::new()));
+        let captured = inputs.clone();
+        let router = Router::new().route("/responses", post(move |Json(body): Json<Value>| {
+            let count = count.clone();
+            let captured = captured.clone();
+            async move {
+                captured.lock().unwrap().push(body);
+                match count.fetch_add(1, std::sync::atomic::Ordering::SeqCst) {
+                    0 => ([(header::CONTENT_TYPE, "text/event-stream")], concat!(
+                        "data: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"call_id\":\"read-once\",\"name\":\"read\",\"arguments\":\"{\\\"path\\\":\\\"README.md\\\"}\"}}\n\n",
+                        "data: {\"type\":\"response.completed\",\"response\":{}}\n\n"
+                    )).into_response(),
+                    1 => (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error":{"message":"busy"}}))).into_response(),
+                    2 => ([(header::CONTENT_TYPE, "text/event-stream")],
+                        "data: {\"type\":\"response.output_text.delta\",\"delta\":\"done\"}\n\ndata: {\"type\":\"response.completed\",\"response\":{}}\n\n").into_response(),
+                    _ => panic!("unexpected request"),
+                }
+            }
+        }));
+        let (agent, store, _root, server, session) = fixture_with_router(47_616, router).await;
+        let response = agent
+            .submit(&session, "retry-after-tool", "read the file", None, None)
+            .await
+            .unwrap();
+        assert!(matches!(
+            response,
+            TurnResponse::Completed {
+                iterations: 2,
+                tool_calls: 1,
+                ..
+            }
+        ));
+        let inputs = inputs.lock().unwrap();
+        assert_eq!(inputs.len(), 3);
+        assert_eq!(
+            inputs[1], inputs[2],
+            "retry must reuse the same tool-result context"
+        );
+        let turns = store.session_conversation_turns(&session).unwrap();
+        assert_eq!(turns.last().unwrap().tool_uses.len(), 1);
+        assert_eq!(turns.last().unwrap().tool_uses[0].state, "succeeded");
+        assert_eq!(store.provider_exchanges(&session).unwrap().len(), 3);
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn provider_retry_exhaustion_is_bounded() {
+        let (agent, store, server, session, calls) = retry_fixture(429, 10, "0", false).await;
+        let error = agent
+            .submit(&session, "retry-exhausted", "hello", None, None)
+            .await
+            .unwrap_err();
+        assert_eq!(error.code, "transient");
+        assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 3);
+        assert_eq!(store.provider_exchanges(&session).unwrap().len(), 3);
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn provider_retry_rejects_authentication_and_partial_output() {
+        for (status, partial, expected) in [
+            (401, false, "authentication"),
+            (200, true, "provider_protocol"),
+        ] {
+            let (agent, store, server, session, calls) =
+                retry_fixture(status, 10, "0", partial).await;
+            let error = agent
+                .submit(&session, "retry-denied", "hello", None, None)
+                .await
+                .unwrap_err();
+            assert_eq!(error.code, expected);
+            assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
+            assert_eq!(store.provider_exchanges(&session).unwrap().len(), 1);
+            server.abort();
+        }
+    }
+
+    #[tokio::test]
+    async fn provider_retry_wait_honors_retry_after_and_cancellation() {
+        let (agent, store, server, session, calls) = retry_fixture(503, 10, "30", false).await;
+        let submit = agent.submit(&session, "retry-cancel", "hello", None, None);
+        let cancel = async {
+            let deadline = Instant::now() + Duration::from_secs(2);
+            loop {
+                if store
+                    .provider_exchanges(&session)
+                    .unwrap()
+                    .iter()
+                    .any(|item| item.state == "failed")
+                {
+                    break;
+                }
+                assert!(Instant::now() < deadline);
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            // The server's 30-second minimum must prevent a second attempt.
+            tokio::time::sleep(Duration::from_millis(1_500)).await;
+            assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
+            let turn_id = agent
+                .active_turns
+                .lock()
+                .unwrap()
+                .get(&session)
+                .unwrap()
+                .clone();
+            assert!(agent.cancel(&turn_id));
+        };
+        let (result, _) = tokio::time::timeout(Duration::from_secs(4), async {
+            tokio::join!(submit, cancel)
+        })
+        .await
+        .unwrap();
+        assert_eq!(result.unwrap_err().code, "cancelled");
+        assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn provider_retry_cannot_outlive_turn_budget() {
+        let (agent, _store, server, session, calls) =
+            retry_fixture(503, 10, "99999999", false).await;
+        let error = agent
+            .submit(&session, "retry-budget", "hello", None, None)
+            .await
+            .unwrap_err();
+        assert_eq!(error.code, "turn_timeout");
+        assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
+        server.abort();
+    }
     #[tokio::test]
     async fn provider_overflow_forces_one_compaction_and_retries() {
         let (agent, store, _root, server, session_id) = fixture().await;

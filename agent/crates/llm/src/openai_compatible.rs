@@ -114,6 +114,7 @@ impl OpenAiCompatibleProvider {
     fn client(&self) -> Result<reqwest::Client, BusinessError> {
         let verify_certificates = self.verify_https_certificates.load(Ordering::SeqCst);
         let mut builder = reqwest::Client::builder()
+            .retry(reqwest::retry::never())
             .danger_accept_invalid_certs(!verify_certificates)
             .danger_accept_invalid_hostnames(!verify_certificates);
         if verify_certificates && !self.use_system_certificates.load(Ordering::SeqCst) {
@@ -222,12 +223,7 @@ impl OpenAiCompatibleProvider {
         let client = self.client()?;
         let response = tokio::select! {
             _ = cancellation.cancelled() => return Err(cancelled()),
-            value = client.post(format!("{}/responses", self.endpoint)).bearer_auth(key).header(reqwest::header::CONTENT_TYPE, "application/json").body(request_body).send() => value.map_err(|error| BusinessError::provider(
-                "transient",
-                format!("{} request failed: {error}", self.provider_label),
-                true,
-                None,
-            ))?,
+            value = client.post(format!("{}/responses", self.endpoint)).bearer_auth(key).header(reqwest::header::CONTENT_TYPE, "application/json").body(request_body).send() => value.map_err(|error| crate::errors::transport_error(error, &self.provider_label, None, false))?,
         };
         let provider_request_id = REQUEST_ID_HEADERS.iter().find_map(|name| {
             response
@@ -239,9 +235,19 @@ impl OpenAiCompatibleProvider {
         });
         if !response.status().is_success() {
             let status = response.status();
+            let retry_after_ms = crate::errors::retry_after_ms(
+                response
+                    .headers()
+                    .get(reqwest::header::RETRY_AFTER)
+                    .and_then(|value| value.to_str().ok()),
+                std::time::SystemTime::now(),
+            );
             let mut response_body = Vec::new();
             let mut response_stream = response.bytes_stream();
-            while let Some(chunk) = response_stream.next().await {
+            while let Some(chunk) = tokio::select! {
+                _ = cancellation.cancelled() => return Err(cancelled()),
+                chunk = response_stream.next() => chunk,
+            } {
                 let Ok(chunk) = chunk else { break };
                 let _ = transfer_progress.send(crate::TransferProgressDelta {
                     uploaded_bytes: 0,
@@ -275,17 +281,19 @@ impl OpenAiCompatibleProvider {
                 "context_overflow"
             } else if status.as_u16() == 401 {
                 "authentication"
-            } else if status.as_u16() == 408 || status.as_u16() == 429 || status.is_server_error() {
+            } else if crate::errors::retryable_status(status.as_u16()) {
                 "transient"
             } else {
                 "invalid_request"
             };
-            return Err(BusinessError::provider(
+            let mut error = BusinessError::provider(
                 code,
                 message,
-                status.as_u16() == 408 || status.as_u16() == 429 || status.is_server_error(),
+                crate::errors::retryable_status(status.as_u16()),
                 provider_request_id,
-            ));
+            );
+            error.details["retry_after_ms"] = serde_json::json!(retry_after_ms);
+            return Err(error);
         }
         let mut parser = ResponsesSseParser::new(self.provider_label.clone());
         let mut stream = response.bytes_stream();
@@ -299,11 +307,11 @@ impl OpenAiCompatibleProvider {
             value = stream.next() => value
         } {
             let chunk = chunk.map_err(|error| {
-                BusinessError::provider(
-                    "provider_protocol",
-                    format!("{} stream failed: {error}", self.provider_label),
-                    true,
+                crate::errors::transport_error(
+                    error,
+                    &self.provider_label,
                     provider_request_id.clone(),
+                    parser.response_started(),
                 )
             })?;
             let _ = transfer_progress.send(crate::TransferProgressDelta {
@@ -312,6 +320,7 @@ impl OpenAiCompatibleProvider {
             });
             let parsed = parser.push(&chunk).map_err(|mut error| {
                 error.provider_request_id = provider_request_id.clone();
+                error.details["response_started"] = parser.response_started().into();
                 error
             })?;
             for delta in parsed {
@@ -428,6 +437,39 @@ mod tests {
         )
     }
 
+    #[tokio::test]
+    async fn connection_refusal_is_retryable_before_output() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        drop(listener);
+        let provider = OpenAiCompatibleProvider::new(
+            "enterprise",
+            "Enterprise Gateway",
+            format!("http://{address}"),
+            Arc::new(TestKeys),
+        );
+        let (sender, _receiver) = mpsc::unbounded_channel();
+        let (progress, _progress_receiver) = mpsc::unbounded_channel();
+        let error = provider
+            .complete(
+                CompletionRequest {
+                    messages: &[Message::text("user", "hello")],
+                    wire_model: "company-model-v1",
+                    tools: &[],
+                    client_toolsets: &[],
+                    reasoning_effort: None,
+                    max_output_tokens: None,
+                    transfer_progress: progress,
+                },
+                &CancellationToken::new(),
+                sender,
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(error.code, "transient");
+        assert!(error.retryable);
+        assert_eq!(error.details["response_started"], false);
+    }
     #[tokio::test]
     async fn supports_a_custom_openai_compatible_endpoint() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

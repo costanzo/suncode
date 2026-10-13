@@ -574,3 +574,12 @@ Newest first. Historical context is retained only when it still explains a curre
 - Decision: Avalonia owns a narrow C# system Git service and desktop DTOs for bounded read-only status and structured diffs. Discovery validates executable candidates, never installs Git, and hides all opening controls/footer/drawer when unavailable. This explicitly supersedes the previous client Git prohibition. Preserve project boundaries, literal/NUL-safe paths, read limits, cancellation, and distinct repository failures. Disable optional index writes and repository-configured helper processes. Remove dedicated Git agent operations and SDK bindings; bump the native ABI to 18.
 - Consequences: Git 2.11+ is an optional desktop dependency. Installed Git differences are covered by command-level integration tests. Generic agent bash retains its policy, and touched files/checkpoints/undo do not depend on Git. Clients still cannot access SQLite/providers or bypass Rust agent authority. There are no new Git mutation, remote, or credential features.
 - Details: `features/avalonia-desktop-phase-1/`, `contracts/agent-sdk/README.md`, `apps/desktop-avalonia/Infrastructure/Git/`
+
+## ADR-20261013-provider-request-retries
+
+- Date: 2026-10-13
+- Status: Accepted
+- Context: A temporary provider failure ended an otherwise valid turn. Retrying a whole turn could repeat completed tools, while independent adapter retries would hide attempts and multiply the retry budget.
+- Decision: Core retries one immutable agent-loop provider request at most twice, with bounded exponential backoff, jitter, and `Retry-After` minimums. LLM adapters classify temporary HTTP/transport failures and disable implicit HTTP-client retries. Only failures before text/tool output qualify. Cancellation and the original turn deadline apply across requests and waits. Each attempt has an independent durable exchange trace; a live-only event drives the Conversation wait status. Context overflow remains separate forced-compaction recovery, and summary generation retains its local fallback.
+- Consequences: Recovery does not replay tools or consume another agent iteration. Partial output and permanent/configuration failures remain terminal; snapshot resync shows ordinary turn state rather than reconstructing a transient scheduled wait. The SDK event addition requires no ABI change.
+- Details: `specs/agent-phase-1.md`, `contracts/agent-sdk/README.md`, `agent/crates/core/src/agent/run.rs`, `agent/crates/llm/src/errors.rs`

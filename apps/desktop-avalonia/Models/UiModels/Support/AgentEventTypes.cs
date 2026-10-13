@@ -35,6 +35,8 @@ public static class AgentEventTypes
     public const string ProviderExchangeCompleted = "provider.exchange.completed";
     public const string ProviderExchangeFailed = "provider.exchange.failed";
 
+    public const string ProviderRetryScheduled = "provider.retry.scheduled";
+
     public const string ResyncRequired = "resync.required";
 
     public static bool IsMessage(string type) => type is MessageUser or MessageAssistant;

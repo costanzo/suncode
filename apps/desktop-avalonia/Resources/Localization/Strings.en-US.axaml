@@ -57,6 +57,7 @@
   <x:String x:Key="LocUnpin">Unpin</x:String>
   <x:String x:Key="LocArchive">Archive</x:String>
   <x:String x:Key="LocNewSession">New session</x:String>
+  <x:String x:Key="LocProviderRetryScheduled">Retrying request after {0}s · retry {1} of {2}</x:String>
   <x:String x:Key="LocThinking">Thinking</x:String>
   <x:String x:Key="LocCompactingContext">Compacting context</x:String>
   <x:String x:Key="LocLoadingConversation">Loading conversation...</x:String>

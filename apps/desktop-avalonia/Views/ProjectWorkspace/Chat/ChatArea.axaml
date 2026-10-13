@@ -324,11 +324,10 @@
           </ItemsControl>
           
           <StackPanel Margin="12,12,0,0"
-                      HorizontalAlignment="Left"
-                      Orientation="Horizontal"
+                      HorizontalAlignment="Stretch"
                       Spacing="4"
                       IsVisible="{Binding IsTurnActive}">
-            <Panel IsVisible="{Binding IsTurnThinking}">
+            <Panel HorizontalAlignment="Left" IsVisible="{Binding IsTurnThinking}">
               <TextBlock Text="{DynamicResource LocThinking}"
                          FontSize="11"
                          Foreground="{DynamicResource TextSecondaryBrush}"
@@ -342,9 +341,16 @@
                        FontSize="11"
                        Foreground="{DynamicResource TextSecondaryBrush}"
                        IsVisible="{Binding IsTurnCompacting}" />
-            <Ellipse Classes="running-dot dot-1" IsVisible="{Binding IsTurnIndicatorDots}" />
-            <Ellipse Classes="running-dot dot-2" IsVisible="{Binding IsTurnIndicatorDots}" />
-            <Ellipse Classes="running-dot dot-3" IsVisible="{Binding IsTurnIndicatorDots}" />
+            <TextBlock Text="{Binding ProviderRetryText}"
+                       FontSize="11"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding IsProviderRetrying}" />
+            <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsTurnIndicatorDots}">
+              <Ellipse Classes="running-dot dot-1" />
+              <Ellipse Classes="running-dot dot-2" />
+              <Ellipse Classes="running-dot dot-3" />
+            </StackPanel>
           </StackPanel>
 
           <!-- Keep the timeline's final rows above the overlaid composer. An
