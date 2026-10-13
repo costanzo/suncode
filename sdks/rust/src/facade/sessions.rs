@@ -332,34 +332,42 @@ impl AsyncAgentSdk {
     fn session_snapshot_page(&self, session_id: &str, limit: usize) -> SdkResult<SessionSnapshot> {
         logging::debug("session_snapshot", format!("begin session={session_id}"));
         let session = self.session_for_user(session_id)?;
-        let (messages, conversation_turns, has_more_messages, oldest_message_created_at, oldest_message_id) =
-            if limit == usize::MAX {
-                (
-                    self.state.store.messages(session_id)?,
-                    self.state.store.session_conversation_turns(session_id)?,
-                    false,
-                    None,
-                    None,
-                )
-            } else {
-                let message_page = self.state.store.message_page(session_id, limit, None, None)?;
-                let messages = message_page
-                    .messages
-                    .iter()
-                    .map(|item| serde_json::from_value(item.message.clone()))
-                    .collect::<Result<Vec<suncode_agent::domain::Message>, _>>()?;
-                let conversation_turns = self
-                    .state
-                    .store
-                    .session_conversation_turns_with_messages(session_id, &message_page.messages)?;
-                (
-                    messages,
-                    conversation_turns,
-                    message_page.has_more,
-                    message_page.oldest_created_at,
-                    message_page.oldest_message_id,
-                )
-            };
+        let (
+            messages,
+            conversation_turns,
+            has_more_messages,
+            oldest_message_created_at,
+            oldest_message_id,
+        ) = if limit == usize::MAX {
+            (
+                self.state.store.messages(session_id)?,
+                self.state.store.session_conversation_turns(session_id)?,
+                false,
+                None,
+                None,
+            )
+        } else {
+            let message_page = self
+                .state
+                .store
+                .message_page(session_id, limit, None, None)?;
+            let messages = message_page
+                .messages
+                .iter()
+                .map(|item| serde_json::from_value(item.message.clone()))
+                .collect::<Result<Vec<suncode_agent::domain::Message>, _>>()?;
+            let conversation_turns = self
+                .state
+                .store
+                .session_conversation_turns_with_messages(session_id, &message_page.messages)?;
+            (
+                messages,
+                conversation_turns,
+                message_page.has_more,
+                message_page.oldest_created_at,
+                message_page.oldest_message_id,
+            )
+        };
         let images = self.state.store.session_images(session_id)?;
         let pending_question = self.state.store.pending_question(session_id)?;
         let pending_approval = self

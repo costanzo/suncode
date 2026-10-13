@@ -1520,7 +1520,11 @@ fn session_snapshot_limits_timeline_and_exposes_message_cursor() {
         .unwrap();
     let session = state
         .store
-        .create_session(&project.project_id, Some("Paged"), Some("deepseek-v4-flash"))
+        .create_session(
+            &project.project_id,
+            Some("Paged"),
+            Some("deepseek-v4-flash"),
+        )
         .unwrap();
     for index in 0..12 {
         state

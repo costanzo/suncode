@@ -7,13 +7,13 @@ use crate::operations::{
 use crate::{
     domain::{SessionConversationTurn, SessionEvent},
     rows::TurnRow,
-    store::{Store, business_transaction, lock, now},
+    store::{business_transaction, lock, now, Store},
 };
 use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::{Integer, Nullable, Text};
 use diesel::sqlite::SqliteConnection;
-use serde_json::{Value, to_string};
+use serde_json::{to_string, Value};
 use suncode_common::BusinessError;
 
 pub(crate) fn apply(

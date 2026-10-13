@@ -2,7 +2,7 @@
 
 use crate::{
     domain::*,
-    store::{Store, lock},
+    store::{lock, Store},
 };
 use diesel::prelude::*;
 use diesel::sql_query;
