@@ -10,8 +10,8 @@ mod webfetch;
 mod write;
 
 use super::arguments::{
-    CheckpointRestoreArguments, EditArguments, GitDiffArguments, GlobArguments, GrepArguments,
-    ProcessArguments, ReadArguments, WebfetchArguments, WriteArguments,
+    CheckpointRestoreArguments, EditArguments, GlobArguments, GrepArguments, ProcessArguments,
+    ReadArguments, WebfetchArguments, WriteArguments,
 };
 use super::{BusinessError, ProcessOutputCallback};
 use serde::de::DeserializeOwned;
@@ -68,10 +68,6 @@ pub(super) fn dispatch_with_output(
         }),
         "checkpoint/restore" => run_typed(params, |args: CheckpointRestoreArguments| {
             checkpoint_restore::execute(project_root, checkpoint_root, args)
-        }),
-        "git/status" => super::git::status(project_root),
-        "git/diff-file" => run_typed(params, |args: GitDiffArguments| {
-            super::git::diff_file(project_root, &args)
         }),
         _ => return None,
     })

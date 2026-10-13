@@ -1,5 +1,4 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 use std::{
     path::{Path, PathBuf},
@@ -725,12 +724,6 @@ fn operation_error(error: Value) -> BusinessError {
             .and_then(Value::as_str)
             .unwrap_or("operation failed"),
     )
-}
-
-fn decode_operation<T: DeserializeOwned>(value: Value, operation: &str) -> SdkResult<T> {
-    serde_json::from_value(value).map_err(|error| {
-        BusinessError::unavailable(format!("{operation} returned an invalid result: {error}"))
-    })
 }
 
 fn detail_string(error: &BusinessError, name: &str) -> SdkResult<String> {

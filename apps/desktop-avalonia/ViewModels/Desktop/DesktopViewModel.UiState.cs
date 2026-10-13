@@ -1,4 +1,5 @@
 using SunCode.Desktop.Infrastructure;
+using SunCode.Desktop.Infrastructure.Git;
 using SunCode.Desktop.Models;
 
 namespace SunCode.Desktop.ViewModels;
@@ -9,7 +10,7 @@ public sealed partial class DesktopViewModel
     private bool _restoringUiState;
     internal bool RestoringSavedFile { get; set; }
 
-    internal DesktopViewModel(UiStateStore? uiStateStore = null, AppSettingsViewModel? appSettings = null)
+    internal DesktopViewModel(UiStateStore? uiStateStore = null, AppSettingsViewModel? appSettings = null, IGitService? gitService = null)
     {
         _uiStateStore = uiStateStore;
         AppSettings = appSettings ?? new AppSettingsViewModel();
@@ -18,13 +19,19 @@ public sealed partial class DesktopViewModel
         LanguageServers = new LanguageServersViewModel(this);
         Network = new NetworkSettingsViewModel(this);
         Remote = new RemoteServerViewModel(this);
-        Git = new GitReviewViewModel(this);
+        Git = new GitReviewViewModel(this, gitService);
         ProviderTrace = new ProviderTraceViewModel(this);
         Editor = new EditorViewModel(this);
         Explorer = new ExplorerViewModel(this);
         Browser = new BrowserRuntimeViewModel(this);
         Computer = new ComputerRuntimeViewModel(this);
         Layout = new WorkspaceLayoutViewModel(this);
+        Git.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName != nameof(Git.IsAvailable)) return;
+            if (!Git.IsAvailable) Layout.GitVisible = false;
+            OnPropertyChanged(nameof(CanViewReviewChanges));
+        };
         Layout.RegionStateChanged += SaveRegionState;
         Layout.PanelGeometryChanged += SavePanelGeometry;
         Layout.PropertyChanged += OnLayoutPropertyChanged;
@@ -103,7 +110,7 @@ public sealed partial class DesktopViewModel
             Layout.ExplorerVisible = saved.LeftRegion == "explorer";
             Layout.ReviewVisible = saved.RightRegion == "review";
             Layout.ChildSessionsVisible = saved.RightRegion == "children";
-            Layout.GitVisible = saved.BottomDrawer == "git";
+            Layout.GitVisible = Git.IsAvailable && saved.BottomDrawer == "git";
             Layout.ProviderTraceVisible = saved.BottomDrawer == "providerTrace";
             Layout.ToolActivityVisible = saved.BottomDrawer == "toolActivity";
             if (saved.NavigationWidth is { } navigationWidth) Layout.NavigationPaneWidth = Math.Max(0, navigationWidth);

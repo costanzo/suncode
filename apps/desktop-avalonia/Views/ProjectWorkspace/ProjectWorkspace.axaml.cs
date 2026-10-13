@@ -195,6 +195,7 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal void ToggleGitViewer()
     {
+        if (!ViewModel.Git.IsAvailable) return;
         if (Layout.ToggleBottomDrawer(WorkspaceBottomDrawer.Git)) _ = ViewModel.Git.RefreshAsync();
     }
 

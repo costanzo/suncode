@@ -551,7 +551,7 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20260815-embedded-git2-review
 
 - Date: 2026-08-15
-- Status: Accepted
+- Status: Superseded by ADR-20261012-desktop-system-git (Git implementation and SDK ownership only).
 - Context: The Qt project window needs the actual Git working-tree and index state, but invoking a Git executable would add an installation, PATH, and child-process dependency and allowing Qt to inspect `.git` would violate the SDK ownership boundary.
 - Decision: Embed `git2` with vendored libgit2 in the audited Rust operations crate. Expose bounded read-only status and per-file diff methods through the typed Rust SDK and C ABI. Repository discovery may locate a root above the opened project, but every result and requested path remains filtered to the opened project. Qt owns only transient drawer presentation state.
 - Consequences: The desktop can review all, staged, unstaged, untracked, renamed, deleted, binary, and conflicted local changes without an installed Git executable or system libgit2. Vendoring increases build time and binary size, and the Qt static-library link must include libgit2's native compression and character-conversion dependencies. Stage, discard, commit, refs, remotes, and credentials require separate policy and recovery designs.
@@ -565,3 +565,12 @@ Newest first. Historical context is retained only when it still explains a curre
 - Decision: Remove the bundled Node.js, Playwright, worker, and Chromium packaging path. Avalonia-owned CefGlue initializes CEF with a localhost remote debugging port (9222); the Rust `suncode-browser` crate uses `chromiumoxide` to attach to a page target through CDP. Rust retains Browser Use policy, approvals, lifecycle, artifacts, cancellation, and audit ownership.
 - Consequences: CEF resources and profile/window lifecycle remain desktop-owned. `chromiumoxide` owns CDP transport, target attachment, event handling, and command correlation; the agent applies request bounds and stable errors. The initial semantic action subset is intentionally smaller than Playwright and must grow through explicit CDP contracts.
 - Details: `contracts/browser-cdp.md`, `agent/crates/browser/`, `apps/desktop-avalonia/Infrastructure/CefPreviewRuntime.cs`
+
+## ADR-20261012-desktop-system-git
+
+- Date: 2026-10-12
+- Status: Accepted
+- Context: Embedded libgit2 duplicates an installed developer tool and makes desktop-only repository review an agent/SDK concern. The user approved removing it and hiding Source Control without executable Git.
+- Decision: Avalonia owns a narrow C# system Git service and desktop DTOs for bounded read-only status and structured diffs. Discovery validates executable candidates, never installs Git, and hides all opening controls/footer/drawer when unavailable. This explicitly supersedes the previous client Git prohibition. Preserve project boundaries, literal/NUL-safe paths, read limits, cancellation, and distinct repository failures. Disable optional index writes and repository-configured helper processes. Remove dedicated Git agent operations and SDK bindings; bump the native ABI to 18.
+- Consequences: Git 2.11+ is an optional desktop dependency. Installed Git differences are covered by command-level integration tests. Generic agent bash retains its policy, and touched files/checkpoints/undo do not depend on Git. Clients still cannot access SQLite/providers or bypass Rust agent authority. There are no new Git mutation, remote, or credential features.
+- Details: `features/avalonia-desktop-phase-1/`, `contracts/agent-sdk/README.md`, `apps/desktop-avalonia/Infrastructure/Git/`

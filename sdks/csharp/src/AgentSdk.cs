@@ -15,7 +15,7 @@ public sealed partial class AgentSdk : IDisposable
     private static readonly NativeMethods.BrowserHostCallback BrowserHostCallbackBridge = OnBrowserHostRequested;
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 17;
+    private const uint AbiVersion = 18;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -255,12 +255,6 @@ public sealed partial class AgentSdk : IDisposable
         [projectId, dependencyId, path],
         values => NativeMethods.suncode_agent_sdk_read_project_file(_handle, values[0], values[1], values[2]));
 
-    private Task<JsonElement> RawGitStatusAsync(string projectId) => WithUtf8Async(
-        [projectId], values => NativeMethods.suncode_agent_sdk_git_status(_handle, values[0]));
-
-    private Task<JsonElement> RawGitDiffAsync(string projectId, string scope, string path) => WithUtf8Async(
-        [projectId, scope, path],
-        values => NativeMethods.suncode_agent_sdk_git_diff_file(_handle, values[0], values[1], values[2]));
 
     private Task<JsonElement> RawListSessionsAsync(string projectId) => WithUtf8Async(
         [projectId], values => NativeMethods.suncode_agent_sdk_list_sessions(_handle, values[0]));

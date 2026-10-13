@@ -11,14 +11,23 @@ export function SourceControlPanel({
   onClose,
   standalone = false,
   clean = false,
+  state = "changed",
   changeSet = changes,
 }) {
+  const unavailable = ["loading", "not-repository", "error"].includes(state);
+  const message = {
+    loading: "Reading repository changes...",
+    "not-repository": "This project is not inside a Git repository.",
+    error: "Git could not read this repository. Refresh to retry.",
+    binary: "Binary files cannot be displayed as text.",
+    limited: "This diff exceeds the reading limit.",
+  }[state];
   const [scope, setScope] = useState("all");
   const [selectedPath, setSelectedPath] = useState(
     () => changeSet[1]?.path ?? changeSet[0]?.path ?? "",
   );
   const [filter, setFilter] = useState("");
-  const filtered = (clean ? [] : changeSet).filter((change) => {
+  const filtered = (clean || unavailable ? [] : changeSet).filter((change) => {
     const matchesScope = scope === "all" || (scope === "staged" ? change.staged : change.unstaged);
     return matchesScope && change.path.toLowerCase().includes(filter.toLowerCase());
   });
@@ -27,7 +36,7 @@ export function SourceControlPanel({
     <section className={`workspace-drawer workspace-git ${standalone ? "is-standalone" : ""}`}>
       <header>
         <Icon className="workspace-git-icon" name="git" size={16} />
-        <strong>main</strong>
+        <strong>{unavailable ? "Source control" : "main"}</strong>
         <span className="workspace-git-divider" aria-hidden="true" />
         <div className="workspace-scope">
           {[
@@ -38,6 +47,7 @@ export function SourceControlPanel({
             <button
               key={value}
               type="button"
+              disabled={unavailable}
               className={scope === value ? "is-selected" : ""}
               onClick={() => setScope(value)}
             >
@@ -50,11 +60,13 @@ export function SourceControlPanel({
           onChange={(event) => setFilter(event.target.value)}
           placeholder="Filter changed files"
           aria-label="Filter changed files"
+          disabled={unavailable}
         />
         <IconButton icon="refresh" label="Refresh Git status" onClick={() => setFilter("")} />
         <IconButton
           icon="copy"
           label="Copy patch"
+          disabled={unavailable || clean || state === "binary" || state === "limited"}
           onClick={() =>
             navigator.clipboard?.writeText(
               diffLines
@@ -95,12 +107,12 @@ export function SourceControlPanel({
               </small>
             </button>
           ))}
-          {!filtered.length && !clean && (
+          {!filtered.length && !clean && !unavailable && (
             <div className="workspace-change-empty">No changed files match this filter.</div>
           )}
         </div>
         <div className="workspace-diff">
-          {selected ? (
+          {selected && state !== "binary" && state !== "limited" ? (
             <>
               <div className="workspace-diff-heading">
                 <code>{selected.path}</code>
@@ -132,9 +144,9 @@ export function SourceControlPanel({
               </pre>
             </>
           ) : (
-            !clean && (
-              <div className="workspace-diff-empty">No changed files match this filter.</div>
-            )
+            <div className="workspace-diff-empty" role="status">
+              {message || (clean ? "Working tree clean." : "No changed files match this filter.")}
+            </div>
           )}
         </div>
       </div>

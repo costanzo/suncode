@@ -118,6 +118,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
                 OnPropertyChanged(nameof(IsProviderTrafficVisible));
                 OnPropertyChanged(nameof(ProjectTitle));
                 Mcp.OnProjectChanged();
+                Git.OnProjectChanged();
             }
         }
     }
@@ -354,6 +355,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool IsReviewQuestion => !HasPendingApproval && HasPendingQuestion;
     public bool IsReviewWaiting => HasPendingApproval || HasPendingQuestion;
     public bool IsReviewFailed => HasFailedTurn;
+    public bool CanViewReviewChanges => IsReviewChangesVisible && Git.IsAvailable;
     public bool IsReviewChangesVisible => !IsReviewIdle && !IsReviewCompacting && !IsReviewFailed && HasChangedPaths;
     public bool IsReviewCheckpointVisible => IsReviewRunning && HasCheckpoints;
     public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !SelectedSession.IsArchived && SelectedModel?.Configured == true && !HasSessionLoadError;
@@ -384,6 +386,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
         OnPropertyChanged(nameof(IsReviewWaiting));
         OnPropertyChanged(nameof(IsReviewFailed));
         OnPropertyChanged(nameof(IsReviewChangesVisible));
+        OnPropertyChanged(nameof(CanViewReviewChanges));
         OnPropertyChanged(nameof(IsReviewCheckpointVisible));
         OnPropertyChanged(nameof(IsReviewTodosVisible));
     }

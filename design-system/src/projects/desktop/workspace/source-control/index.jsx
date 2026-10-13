@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
+import { WorkspaceWindow } from "../shell/WorkspaceShell.jsx";
 import { SourceControlPanel } from "../panels/source-control/index.js";
 
 const sourceControlGuides = {
@@ -38,7 +39,7 @@ const sourceControlGuides = {
       logic: [
         "The list is derived from the current repository snapshot.",
         "Filtering changes the selected file and diff without changing the repository.",
-        "Turn summaries can open this view with the turn's complete change set selected.",
+        "Turn review opens the current repository snapshot; it is not a historical per-turn diff.",
       ],
     },
   },
@@ -61,6 +62,19 @@ export function WorkspaceSourceControlPage() {
       side: "left",
       content: <SourceControlPanel standalone />,
     },
+    ...[
+      ["loading", "Loading"],
+      ["not-repository", "Not a repository"],
+      ["error", "Repository error"],
+      ["binary", "Binary file"],
+      ["limited", "Reading limit"],
+    ].map(([id, title]) => ({
+      id,
+      title,
+      description: "Git is available; repository and diff state remains explicit.",
+      side: "right",
+      content: <SourceControlPanel standalone state={id} />,
+    })),
   ];
   return (
     <>
@@ -68,6 +82,14 @@ export function WorkspaceSourceControlPage() {
         title="Source control"
         description="Read-only repository status and patch review for the open project."
       />
+      <Section id="git-unavailable" title="Git unavailable">
+        <p>
+          When an installed Git executable cannot be verified, hide Source Control, its footer data,
+          and its opening actions. Ignore a saved Git drawer. Touched files, checkpoints, undo, and
+          other panels stay available.
+        </p>
+        <WorkspaceWindow gitAvailable={false} initialDrawer="git" />
+      </Section>
       <Section id="source-control-panel" title="Changed files and diff">
         <div className="workspace-state-grid workspace-drawer-state-grid">
           {states.map((state) => (
@@ -75,7 +97,17 @@ export function WorkspaceSourceControlPage() {
               key={state.id}
               title={state.title}
               description={state.description}
-              guide={sourceControlGuides[state.id]}
+              guide={
+                sourceControlGuides[state.id] || {
+                  tabs: {
+                    actions: ["Refresh to retry a repository error."],
+                    style: ["Keep the toolbar and diff region stable in both themes."],
+                    logic: [
+                      "Only missing or non-executable Git hides the feature; repository failures remain visible.",
+                    ],
+                  },
+                }
+              }
               side={state.side}
               open={openGuide === state.id}
               onToggle={() => setOpenGuide(openGuide === state.id ? null : state.id)}

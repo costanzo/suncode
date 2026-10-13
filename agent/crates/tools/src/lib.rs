@@ -24,7 +24,6 @@ mod arguments;
 mod artifacts;
 mod checkpoint;
 mod filesystem;
-mod git;
 mod mutations;
 mod process;
 mod search;
@@ -771,6 +770,15 @@ mod tests {
             "scope_denied"
         );
         cleanup(&root, &checkpoints);
+    }
+
+    #[test]
+    fn retired_git_operations_are_unavailable() {
+        for method in ["git/status", "git/diff-file"] {
+            let error =
+                execute_operation(method, &json!({"path": "file.txt"}), None, None).unwrap_err();
+            assert_eq!(error.code, "method_unavailable");
+        }
     }
 
     #[test]

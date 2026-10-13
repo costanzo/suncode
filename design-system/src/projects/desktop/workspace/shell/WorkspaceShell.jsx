@@ -190,7 +190,11 @@ export function ContentSwitcher({
   );
 }
 
-export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProjects }) {
+export function WorkspaceWindow({
+  projectSwitcherProjects = workspaceRecentProjects,
+  gitAvailable = true,
+  initialDrawer = "tools",
+}) {
   const [navigation, setNavigation] = useState("sessions");
   const [activeFile, setActiveFile] = useState(null);
   const [activeChild, setActiveChild] = useState(null);
@@ -198,7 +202,9 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
   const [currentContent, setCurrentContent] = useState(() => contentItemForSession(sessions[0]));
   const [recentContent, setRecentContent] = useState(initialRecentContent);
   const [rightRegion, setRightRegion] = useState("review");
-  const [drawer, setDrawer] = useState("tools");
+  const [drawer, setDrawer] = useState(
+    initialDrawer === "git" && !gitAvailable ? null : initialDrawer,
+  );
   const [archiveRequest, setArchiveRequest] = useState(null);
   const activePrimarySession =
     sessions.find((session) => session.id === activeSessionId) ?? sessions[0];
@@ -258,12 +264,14 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
             />
           </div>
           <div>
-            <IconButton
-              icon="git"
-              label="Show source control"
-              active={drawer === "git"}
-              onClick={() => toggleDrawer("git")}
-            />
+            {gitAvailable && (
+              <IconButton
+                icon="git"
+                label="Show source control"
+                active={drawer === "git"}
+                onClick={() => toggleDrawer("git")}
+              />
+            )}
             <IconButton
               icon="activity"
               label="Show provider trace"
@@ -306,7 +314,7 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
               <ConversationPanel
                 compact
                 state={activeSessionArchived ? "archived" : "content-updating"}
-                onViewChanges={() => setDrawer("git")}
+                onViewChanges={gitAvailable ? () => setDrawer("git") : undefined}
                 onOpenToolActivity={() => setDrawer("tools")}
               />
             )}
@@ -322,7 +330,7 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
             )}
             {rightRegion === "preview" && <BrowserPreviewPanel />}
           </div>
-          {drawer === "git" && (
+          {gitAvailable && drawer === "git" && (
             <SourceControlPanel
               onClose={() => setDrawer(null)}
               changeSet={completedTurnChangeSet}
@@ -359,10 +367,14 @@ export function WorkspaceWindow({ projectSwitcherProjects = workspaceRecentProje
       </div>
       <footer className="workspace-statusbar">
         <div>
-          <code>codex/workspace-design</code>
-          <b>3 changes</b>
-          <span>+308</span>
-          <i>−8</i>
+          {gitAvailable && (
+            <>
+              <code>codex/workspace-design</code>
+              <b>3 changes</b>
+              <span>+308</span>
+              <i>−8</i>
+            </>
+          )}
         </div>
         <div>
           <McpLoadingStatus settled={3} total={5} connected={2} failed={1} />

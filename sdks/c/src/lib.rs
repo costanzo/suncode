@@ -914,7 +914,6 @@ ffi_one_string!(
     "project_id"
 );
 
-ffi_one_string!(suncode_agent_sdk_git_status, git_status, "project_id");
 ffi_one_string!(suncode_agent_sdk_list_sessions, list_sessions, "project_id");
 ffi_one_string!(
     suncode_agent_sdk_list_child_sessions,
@@ -977,22 +976,6 @@ pub unsafe extern "C" fn suncode_agent_sdk_create_session(
         let title = optional_c_string(title, "title")?;
         let model = optional_c_string(model, "model")?;
         sdk.create_session(&project_id, title.as_deref(), model.as_deref())
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn suncode_agent_sdk_git_diff_file(
-    handle: *mut SunCodeAgentHandle,
-    project_id: *const c_char,
-    scope: *const c_char,
-    path: *const c_char,
-) -> *mut c_char {
-    ffi_call(handle, |sdk| {
-        sdk.git_diff_file(
-            &c_string(project_id, "project_id")?,
-            &c_string(scope, "scope")?,
-            &c_string(path, "path")?,
-        )
     })
 }
 

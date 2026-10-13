@@ -53,7 +53,7 @@ There is no agent-to-core process boundary and no client-facing server. Operatio
 
 ### 3.1 Product clients
 
-Avalonia XAML and C# view models own presentation, navigation, and transient interaction state. They consume agent DTOs and live events through the SDK facade. They never open SQLite, contact model providers, read project files directly, or invoke operation modules.
+Avalonia XAML and C# view models own presentation, navigation, and transient interaction state. They consume agent DTOs and live events through the SDK facade. They never open SQLite, contact model providers, or invoke operation modules. Project file browsing remains SDK-owned. The explicit exception is desktop Source Control: a narrow C# service invokes installed system Git for bounded read-only repository status/diffs and handles untracked-file metadata inside the opened project. Git availability and UI state are client-owned; missing Git hides this feature. The agent and SDK expose no dedicated Git methods, and checkpoints/undo remain Rust-owned.
 
 The CLI is a line-oriented native Rust client under `apps/cli`. It owns administrative, session-administration, and one-shot-turn argument parsing, text/JSONL adaptation, typed event rendering, credential terminal input, interrupt handling, exit status, and explicit SDK lifecycle. `run` opens a project and creates a primary session; `session resume` reopens an existing primary session and adds one turn using durable history. Both establish atomic watch before submission, consume the typed event stream, drain queued terminal events, and request SDK cancellation on interrupt. Resume queries typed pending approval/question state and fails closed rather than bypassing it. Session list/archive call the typed SDK facade and do not interpret or mutate persistence directly. The CLI calls `AsyncAgentSdk` with a typed host capability ceiling that disables Browser and Computer Use without changing shared settings. It never calls the C ABI, opens SQLite, contacts providers, invokes operation modules, or implements policy. Interactive chat and interactive approval/question prompts remain unimplemented. Its normative design is `contracts/cli.md`.
 
@@ -86,7 +86,7 @@ The registry accepts trusted in-process Rust implementations of `LlmProvider` wi
 
 ### 3.4 Tools
 
-Tools are narrow Rust modules in the `suncode-tool` package inside the agent. The package owns the built-in model-facing tool catalog and canonical path validation, bounded reads/searches, read-only Git repository inspection, mutations, process execution, checkpoint payloads, artifacts, and operation journal records. It does not own provider semantics, conversation state, UI DTOs, or policy grants. Agent core converts the package's neutral tool definitions to provider request DTOs and remains responsible for policy, approval, orchestration, and conversation-only tool handling.
+Tools are narrow Rust modules in the `suncode-tool` package inside the agent. The package owns the built-in model-facing tool catalog and canonical path validation, bounded reads/searches, mutations, process execution, checkpoint payloads, artifacts, and operation journal records. It does not own provider semantics, conversation state, UI DTOs, or policy grants. Agent core converts the package's neutral tool definitions to provider request DTOs and remains responsible for policy, approval, orchestration, and conversation-only tool handling.
 
 This internal boundary is for auditability and testing. It is not a child-process security boundary.
 
@@ -192,7 +192,7 @@ The old `typescript/` packages and retired `rust/` workspace were migration sour
 - Native binding functions call typed agent services, never SQLite or provider wire types directly.
 - Agent and provider modules call operations through the authorized dispatcher.
 - The database crate does not depend on the agent core, Avalonia, native bindings, operations, or provider wire types.
-- Cross-crate business failures use `suncode-common::BusinessError`; lower-level Diesel, HTTP, Git, and OS errors are converted before crossing their owning crate boundary.
+- Cross-crate business failures use `suncode-common::BusinessError`; lower-level Diesel, HTTP, and OS errors are converted before crossing their owning crate boundary.
 - The agent core depends on the database crate for durable state and persistence DTOs.
 - The LLM crate does not depend on the database, agent core, SDK, desktop, or tools crates.
 - The Rust SDK composition supplies credentials to the LLM crate through its provider-neutral resolver interface; the agent core supplies tool schemas through provider-neutral request DTOs.

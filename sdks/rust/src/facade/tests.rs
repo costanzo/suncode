@@ -1365,34 +1365,6 @@ fn session_image_upload_enforces_payload_bounds() {
 }
 
 #[test]
-fn named_git_methods_return_project_scoped_status_and_diff() {
-    let directory = tempfile::tempdir().unwrap();
-    let project_root = directory.path().join("project");
-    git2::Repository::init(&project_root).unwrap();
-    std::fs::write(project_root.join("new.txt"), "first\nsecond\n").unwrap();
-    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
-    let project = sdk
-        .open_project(project_root.to_str().unwrap(), None)
-        .unwrap();
-    let status = sdk.git_status(&project.project_id).unwrap();
-    assert_eq!(status.changed_files, 1);
-    assert_eq!(status.files[0].path, "new.txt");
-    assert_eq!(status.files[0].status, "untracked");
-    let diff = sdk
-        .git_diff_file(&project.project_id, "all", "new.txt")
-        .unwrap();
-    assert_eq!(diff.path, "new.txt");
-    assert_eq!(diff.additions, 2);
-    assert!(!diff.hunks.is_empty());
-    assert_eq!(
-        sdk.git_diff_file(&project.project_id, "invalid", "new.txt")
-            .unwrap_err()
-            .code,
-        "invalid_arguments"
-    );
-}
-
-#[test]
 fn named_credential_methods_update_model_availability() {
     let directory = tempfile::tempdir().unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));

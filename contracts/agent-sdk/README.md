@@ -12,7 +12,7 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 The async Rust facade owns agent services but no executor; `AsyncAgentSdk::open_default(...).await` and all runtime-dependent methods execute on the host's Tokio runtime. `AsyncAgentSdk::shutdown(self).await` consumes the handle, rejects new agent work, cancels turns, clears queued input, releases Computer Use state, drains Browser/MCP/LSP processes, waits a bounded five seconds for active turns, closes event streams, and releases the data-directory lock. Pure local persistence and DTO operations remain synchronous and explicit. The root compatibility `AgentSdk` is the blocking wrapper: it owns one Tokio runtime, dereferences to the async facade for synchronous methods, adapts awaited operations with `block_on`, and keeps that runtime alive through its consuming `shutdown(self)`. C embeds that blocking wrapper. Host wrappers may share one handle inside a process. The Rust facade exposes a typed `SessionEventStream` implementing standard `Stream` and `FusedStream` contracts plus direct receive methods; native bindings adapt that stream to their host runtime. C subscriptions must be closed before the final agent handle is released. Closing a C subscription signals its stream and stops callback delivery before returning. Final native handle release invokes blocking shutdown; its unchanged `void` close function logs cleanup errors.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 17. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 18. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly.
 
 ## Methods
 
@@ -74,8 +74,6 @@ The Rust API uses typed inputs and outputs. Async Rust hosts use `AsyncAgentSdk`
 | `read_project_file` | Read one bounded UTF-8 project or dependency file for the desktop viewer |
 | `list_skills` | Discover validated local project and user Skills with diagnostics for one project |
 | `load_skill` | Load one bounded local Skill document and its relative resource listing |
-| `git_status` | Read the bounded Git index/worktree status and aggregate change counts for a project |
-| `git_diff_file` | Read one bounded structured file diff for the all, staged, or unstaged scope |
 | `list_sessions` | List primary sessions in a project, including archived status and the persisted model and reasoning-effort preference |
 | `list_child_sessions` | List delegated child sessions and invocation state for one primary session |
 | `create_session` | Create a session with an optional title and selected model |
@@ -166,9 +164,9 @@ Project dependency DTOs contain `dependencyId`, `projectId`, `displayName`, and 
 
 `list_skills` and `load_skill` are Rust facade methods backed by the independent `suncode-skills` crate. Discovery scans project `.suncode/skills` and `.agents/skills`, user `~/.config/suncode/skills` and `~/.agents/skills`, and keeps the first deterministic name winner while returning collision and validation diagnostics. `load_skill` returns bounded Markdown content and at most ten relative resource names. Skill files are untrusted guidance and do not grant authority or change policy; interactive client selectors and slash commands are deferred.
 
-The model addresses dependency content as `dependency:<dependencyId>/<relativePath>`. Only `read`, `glob`, and `grep` accept this alias; their results preserve the same prefix so later calls cannot accidentally resolve against the main project. Writes, edits, deletion, moves, processes, Git operations, checkpoints, and other authority remain scoped to the opened project and reject dependency aliases with `scope_denied`.
+The model addresses dependency content as `dependency:<dependencyId>/<relativePath>`. Only `read`, `glob`, and `grep` accept this alias; their results preserve the same prefix so later calls cannot accidentally resolve against the main project. Writes, edits, deletion, moves, processes, checkpoints, and other authority remain scoped to the opened project and reject dependency aliases with `scope_denied`.
 
-Git DTOs contain only opened-project-relative paths. `git_status` returns branch and detached-head information, aggregate file/addition/deletion/conflict counts, and per-file index/worktree status. `git_diff_file` returns structured hunks and lines with old/new line numbers plus a bounded plain-text patch. The agent embeds vendored libgit2 and does not require a Git executable or a system libgit2 installation. The current Git SDK surface is read-only.
+Source Control is owned by the Avalonia desktop and invokes installed system Git directly for bounded read-only inspection. ABI 18 removes the former Git symbols and DTOs. The Rust SDK and agent expose no dedicated Git methods. Generic agent process policy, changed-path projections, checkpoints, and undo remain independent of Git availability.
 
 `session_usage` returns `input_tokens`, `output_tokens`, and `total_tokens` summed from the latest cumulative usage projection for every turn in the session. Providers that omit usage metadata contribute zero; the agent does not estimate missing usage.
 
@@ -207,7 +205,7 @@ An SDK error contains:
 }
 ```
 
-Messages and details are bounded and redacted. Important codes include `invalid_arguments`, `unsafe_command_blocked`, `agent_already_active`, `agent_unavailable`, `project_not_found`, `session_not_found`, `model_unavailable`, `provider_unconfigured`, `approval_required`, `authorization_denied`, `archived_session_read_only`, `child_session_read_only`, `checkpoint_unavailable`, `restore_conflict`, `conflict`, `scope_denied`, `mcp_server_conflict`, `mcp_server_revision_conflict`, `mcp_tool_unavailable`, `not_git_repository`, `unsupported_git_repository`, `git_read_failed`, `git_diff_not_found`, `iteration_budget_exceeded`, `tool_budget_exceeded`, `cancelled`, and `resync_required`.
+Messages and details are bounded and redacted. Important codes include `invalid_arguments`, `unsafe_command_blocked`, `agent_already_active`, `agent_unavailable`, `project_not_found`, `session_not_found`, `model_unavailable`, `provider_unconfigured`, `approval_required`, `authorization_denied`, `archived_session_read_only`, `child_session_read_only`, `checkpoint_unavailable`, `restore_conflict`, `conflict`, `scope_denied`, `mcp_server_conflict`, `mcp_server_revision_conflict`, `mcp_tool_unavailable`, `iteration_budget_exceeded`, `tool_budget_exceeded`, `cancelled`, and `resync_required`.
 
 Panics are contained at native binding boundaries and converted to `agent_unavailable`; they never unwind into a host language.
 

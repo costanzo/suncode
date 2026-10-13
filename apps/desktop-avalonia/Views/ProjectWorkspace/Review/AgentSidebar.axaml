@@ -188,7 +188,7 @@
             </Grid>
           </StackPanel>
         </Border>
-        <Button Classes="raised" Padding="11" HorizontalContentAlignment="Stretch" Click="ViewTurnChanges" AutomationProperties.Name="{DynamicResource LocViewTurnChanges}" IsVisible="{Binding IsReviewChangesVisible}">
+        <Button Classes="raised" Padding="11" HorizontalContentAlignment="Stretch" Click="ViewTurnChanges" AutomationProperties.Name="{DynamicResource LocViewTurnChanges}" IsVisible="{Binding CanViewReviewChanges}">
           <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
             <svg:Svg Width="14" Height="14" Path="/Assets/icons/git-branch.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
             <StackPanel Grid.Column="1" Spacing="2">

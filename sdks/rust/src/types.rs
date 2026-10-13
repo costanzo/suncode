@@ -10,7 +10,7 @@ use suncode_common::BusinessError;
 use suncode_config::EnvironmentSource;
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 17;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 18;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -529,68 +529,6 @@ pub struct CheckpointsResult {
 pub struct CheckpointDetails {
     pub manifest: CheckpointManifest,
     pub items: Vec<CheckpointItem>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct GitFileStatus {
-    pub path: String,
-    pub old_path: Option<String>,
-    pub status: String,
-    pub index_status: Option<String>,
-    pub worktree_status: Option<String>,
-    pub staged: bool,
-    pub unstaged: bool,
-    pub conflicted: bool,
-    pub binary: bool,
-    pub additions: u64,
-    pub deletions: u64,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct GitStatusResult {
-    pub repository: bool,
-    pub branch: Option<String>,
-    pub detached: bool,
-    pub head_oid: Option<String>,
-    pub changed_files: usize,
-    pub additions: u64,
-    pub deletions: u64,
-    pub conflicts: usize,
-    pub files: Vec<GitFileStatus>,
-    pub truncated: bool,
-    pub unsupported_paths: usize,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct GitDiffLine {
-    pub kind: String,
-    pub old_line: Option<u32>,
-    pub new_line: Option<u32>,
-    pub text: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct GitDiffHunk {
-    pub header: String,
-    pub old_start: u32,
-    pub old_lines: u32,
-    pub new_start: u32,
-    pub new_lines: u32,
-    pub lines: Vec<GitDiffLine>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct GitDiffFileResult {
-    pub scope: String,
-    pub path: String,
-    pub old_path: Option<String>,
-    pub status: String,
-    pub binary: bool,
-    pub additions: usize,
-    pub deletions: usize,
-    pub hunks: Vec<GitDiffHunk>,
-    pub patch: String,
-    pub truncated: bool,
 }
 
 #[derive(Debug, Serialize)]

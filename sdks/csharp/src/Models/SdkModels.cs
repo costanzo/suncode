@@ -668,58 +668,6 @@ public sealed record RestoreOutcome(
     string Status,
     [property: JsonPropertyName("restored_items")] int RestoredItems);
 
-public sealed record GitFileStatus(
-    string Path,
-    [property: JsonPropertyName("old_path")] string? OldPath,
-    string Status,
-    [property: JsonPropertyName("index_status")] string? IndexStatus,
-    [property: JsonPropertyName("worktree_status")] string? WorktreeStatus,
-    bool Staged,
-    bool Unstaged,
-    bool Conflicted,
-    bool Binary,
-    ulong Additions,
-    ulong Deletions);
-
-public sealed record GitStatusResult(
-    bool Repository,
-    string? Branch,
-    bool Detached,
-    [property: JsonPropertyName("head_oid")] string? HeadOid,
-    [property: JsonPropertyName("changed_files")] int ChangedFiles,
-    ulong Additions,
-    ulong Deletions,
-    int Conflicts,
-    IReadOnlyList<GitFileStatus> Files,
-    bool Truncated,
-    [property: JsonPropertyName("unsupported_paths")] int UnsupportedPaths);
-
-public sealed record GitDiffLine(
-    string Kind,
-    [property: JsonPropertyName("old_line")] uint? OldLine,
-    [property: JsonPropertyName("new_line")] uint? NewLine,
-    string Text);
-
-public sealed record GitDiffHunk(
-    string Header,
-    [property: JsonPropertyName("old_start")] uint OldStart,
-    [property: JsonPropertyName("old_lines")] uint OldLines,
-    [property: JsonPropertyName("new_start")] uint NewStart,
-    [property: JsonPropertyName("new_lines")] uint NewLines,
-    IReadOnlyList<GitDiffLine> Lines);
-
-public sealed record GitDiffFileResult(
-    string Scope,
-    string Path,
-    [property: JsonPropertyName("old_path")] string? OldPath,
-    string Status,
-    bool Binary,
-    int Additions,
-    int Deletions,
-    IReadOnlyList<GitDiffHunk> Hunks,
-    string Patch,
-    bool Truncated);
-
 public sealed record TurnResponse(
     string Status,
     [property: JsonPropertyName("turn_id")] string? TurnId,

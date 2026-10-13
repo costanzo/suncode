@@ -270,6 +270,7 @@ public sealed partial class DesktopViewModel
         ChangedPaths.Add(path);
         OnPropertyChanged(nameof(HasChangedPaths));
         OnPropertyChanged(nameof(TurnChangeSummary));
+        OnPropertyChanged(nameof(CanViewReviewChanges));
         NotifyReviewPresentationChanged();
         return true;
     }
@@ -344,7 +345,8 @@ public sealed partial class DesktopViewModel
         if (type == AgentEventTypes.ToolResult
             || (type == AgentEventTypes.TurnState && IsTerminalTurnState(payload.State ?? string.Empty)))
             RunInBackground(LoadChildSessionsAsync, "child_sessions.load");
-        if (checkpoint || pathAdded) RunInBackground(Git.RefreshAsync, "git.refresh");
+        if (Git.IsAvailable && (checkpoint || pathAdded || type == AgentEventTypes.TurnState && IsTerminalTurnState(payload.State ?? string.Empty)))
+            RunInBackground(Git.RefreshAsync, "git.refresh");
     }
 
     private static string EventText(string type, AgentEventPayload payload)

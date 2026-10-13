@@ -36,7 +36,15 @@ public partial class WorkspaceWindow : Window
         Icon = AppIcon.Window;
         Opened += OnOpened;
         Closing += OnClosing;
-        Activated += (_, _) => UpdateTrafficLightFocus(true);
+        Activated += async (_, _) =>
+        {
+            UpdateTrafficLightFocus(true);
+            if (DataContext is DesktopViewModel model)
+            {
+                await model.Git.CheckAvailabilityAsync();
+                await model.Git.RefreshAsync();
+            }
+        };
         Deactivated += (_, _) => UpdateTrafficLightFocus(false);
         _mcpLoadTimer.Tick += McpLoadTick;
         SizeChanged += (_, _) =>
@@ -286,7 +294,7 @@ public partial class WorkspaceWindow : Window
             return;
         }
 
-        if (IsToggleGitViewerShortcut(e.Key, e.KeyModifiers))
+        if (ViewModel.Git.IsAvailable && IsToggleGitViewerShortcut(e.Key, e.KeyModifiers))
         {
             e.Handled = true;
             ProjectWorkspaceView.ToggleGitViewer();

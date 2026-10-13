@@ -179,6 +179,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasCheckpoints));
         OnPropertyChanged(nameof(HasChangedPaths));
         OnPropertyChanged(nameof(TurnChangeSummary));
+        OnPropertyChanged(nameof(CanViewReviewChanges));
         OnPropertyChanged(nameof(HasCurrentTodos));
         OnPropertyChanged(nameof(HasChildSessions));
         NotifyReviewPresentationChanged();
@@ -259,6 +260,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         _disposed = true;
         _conversationDurationTimer.Stop();
         Remote.Dispose();
+        Git.Dispose();
         AppSettings.LanguageChanged -= OnAppLanguageChanged;
         _conversationDurationTimer.Tick -= ConversationDurationTick;
         ProviderTraffic.Clear();

@@ -6,6 +6,10 @@ The agent, Rust facade, C binding, and CLI keep separate manifests and lockfiles
 
 The managed SDK invokes locked Cargo builds with the repository root as the working directory and an explicit shared target directory. Its native-library copy source uses the same directory. `SunCodeCargoTargetDirectory` overrides `CARGO_TARGET_DIR`, which overrides the root `target/` default; relative overrides resolve from the repository root. This changes build placement only, with no SDK or runtime contract change.
 
+## Source Control ownership
+
+The Rust operations package has no Git implementation or libgit2 dependency. Former `git/status` and `git/diff-file` names fail with `method_unavailable`. Avalonia owns optional read-only system Git inspection; agent process policy, repository ignore rules, checkpoints, and undo remain in Rust.
+
 ## Operations
 
 The Rust operations module is provided by the `suncode-tool` package, linked into the runtime, and called in-process.

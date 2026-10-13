@@ -16,7 +16,7 @@ Agent and SDK:
 
 - [`agent-phase-1/`](agent-phase-1/README.md): embedded Rust agent loop, providers, policy, approvals, recovery, and SDK behavior.
 - [`rust-sdk/`](rust-sdk/README.md): async-first Rust facade, blocking adapter, typed event streams, atomic session watch, explicit shutdown, and host capability ceilings.
-- [`rust-core-phase-1/`](rust-core-phase-1/README.md): audited filesystem, search, Git, process, artifact, checkpoint, and WebFetch operations.
+- [`rust-core-phase-1/`](rust-core-phase-1/README.md): audited filesystem, search, process, artifact, checkpoint, and WebFetch operations.
 - [`persistence-phase-1/`](persistence-phase-1/README.md): current SQLite ownership, normalized storage model, and native SDK boundary.
 - [`providers-and-models/`](providers-and-models/README.md): provider catalog, custom models, endpoint settings, and the OpenAI Responses wire format.
 - [`context-compaction/`](context-compaction/README.md): automatic and manual context compaction.

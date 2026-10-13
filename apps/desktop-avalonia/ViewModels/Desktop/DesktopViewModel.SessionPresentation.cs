@@ -84,6 +84,7 @@ public sealed partial class DesktopViewModel
         OnPropertyChanged(nameof(HasActivities));
         OnPropertyChanged(nameof(HasChangedPaths));
         OnPropertyChanged(nameof(TurnChangeSummary));
+        OnPropertyChanged(nameof(CanViewReviewChanges));
         OnPropertyChanged(nameof(HasCurrentTodos));
         OnPropertyChanged(nameof(IsReviewTodosVisible));
         OnPropertyChanged(nameof(LatestActivityText));

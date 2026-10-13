@@ -95,14 +95,3 @@ pub(crate) struct WebfetchArguments {
 pub(crate) struct CheckpointRestoreArguments {
     pub(crate) checkpoint_id: String,
 }
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct GitDiffArguments {
-    pub(crate) path: String,
-    #[serde(default = "default_git_scope")]
-    pub(crate) scope: String,
-}
-
-fn default_git_scope() -> String {
-    "all".into()
-}

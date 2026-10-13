@@ -1,15 +1,22 @@
 using System.Collections.ObjectModel;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
-using SunCode.Sdk;
+using SunCode.Desktop.Infrastructure.Git;
 
 namespace SunCode.Desktop.ViewModels;
 
 // Git status, file filtering, and per-file diff state for one project window.
 // Drawer visibility and list sizing stay with the window layout.
-public sealed class GitReviewViewModel : ObservableObject
+public sealed class GitReviewViewModel : ObservableObject, IDisposable
 {
     private readonly IViewModelHost _host;
+    private readonly IGitService _service;
+    private readonly CancellationTokenSource _lifetime = new();
+    private CancellationTokenSource? _refresh;
+    private CancellationTokenSource? _diff;
+    private bool _availabilityChecked;
+    private bool _available;
+    private bool _disposed;
     private GitFileItem? _selectedFile;
     private string _state = "idle";
     private string _error = string.Empty;
@@ -28,7 +35,38 @@ public sealed class GitReviewViewModel : ObservableObject
     private int _additions;
     private int _deletions;
 
-    internal GitReviewViewModel(IViewModelHost host) => _host = host;
+    internal GitReviewViewModel(IViewModelHost host, IGitService? service = null)
+    {
+        _host = host;
+        _service = service ?? new GitService();
+    }
+
+    public bool IsAvailable { get => _available; private set => SetProperty(ref _available, value); }
+
+    public async Task CheckAvailabilityAsync()
+    {
+        if (_disposed) return;
+        try
+        {
+            var available = await _service.CheckAvailabilityAsync(_lifetime.Token);
+            if (_disposed) return;
+            IsAvailable = available;
+            _availabilityChecked = true;
+            if (!IsAvailable) Clear();
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    internal void OnProjectChanged() => Clear();
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _lifetime.Cancel();
+        Clear();
+        _lifetime.Dispose();
+    }
 
     public ObservableCollection<GitFileItem> Files { get; } = [];
     public ObservableCollection<GitFileItem> FilteredFiles { get; } = [];
@@ -39,7 +77,9 @@ public sealed class GitReviewViewModel : ObservableObject
         get => _selectedFile;
         set
         {
-            if (SetProperty(ref _selectedFile, value)) OnPropertyChanged(nameof(SelectedPath));
+            if (!SetProperty(ref _selectedFile, value)) return;
+            ClearDiffLines();
+            OnPropertyChanged(nameof(SelectedPath));
         }
     }
 
@@ -54,10 +94,11 @@ public sealed class GitReviewViewModel : ObservableObject
             OnPropertyChanged(nameof(IsDirty));
             OnPropertyChanged(nameof(IsLoading));
             OnPropertyChanged(nameof(FooterBranchText));
+            OnPropertyChanged(nameof(HeaderBranchText));
             OnPropertyChanged(nameof(EmptyMessage));
         }
     }
-    public string Error { get => _error; private set => SetProperty(ref _error, value); }
+    public string Error { get => _error; private set { if (SetProperty(ref _error, value)) OnPropertyChanged(nameof(EmptyMessage)); } }
     public string DiffState
     {
         get => _diffState;
@@ -67,17 +108,17 @@ public sealed class GitReviewViewModel : ObservableObject
             NotifyDiffPresentationChanged();
         }
     }
-    public string DiffError { get => _diffError; private set => SetProperty(ref _diffError, value); }
-    public string Patch { get => _patch; private set => SetProperty(ref _patch, value); }
+    public string DiffError { get => _diffError; private set { if (SetProperty(ref _diffError, value)) OnPropertyChanged(nameof(EmptyMessage)); } }
+    public string Patch { get => _patch; private set { if (SetProperty(ref _patch, value)) OnPropertyChanged(nameof(CanCopyPatch)); } }
     public string Scope { get => _scope; private set => SetProperty(ref _scope, value); }
     public string Filter { get => _filter; private set { if (SetProperty(ref _filter, value)) OnPropertyChanged(nameof(EmptyMessage)); } }
-    public string Branch { get => _branch; private set { if (SetProperty(ref _branch, value)) { OnPropertyChanged(nameof(FooterBranchText)); } } }
+    public string Branch { get => _branch; private set { if (SetProperty(ref _branch, value)) { OnPropertyChanged(nameof(FooterBranchText)); OnPropertyChanged(nameof(HeaderBranchText)); } } }
     public int ChangedFiles { get => _changedFiles; private set { if (SetProperty(ref _changedFiles, value)) { OnPropertyChanged(nameof(ChangeSummary)); OnPropertyChanged(nameof(IsClean)); OnPropertyChanged(nameof(IsDirty)); } } }
     public int Additions { get => _additions; private set => SetProperty(ref _additions, value); }
     public int Deletions { get => _deletions; private set => SetProperty(ref _deletions, value); }
     public bool StatusTruncated { get => _statusTruncated; private set => SetProperty(ref _statusTruncated, value); }
     public bool DiffBinary { get => _diffBinary; private set { if (SetProperty(ref _diffBinary, value)) NotifyDiffPresentationChanged(); } }
-    public bool DiffTruncated { get => _diffTruncated; private set => SetProperty(ref _diffTruncated, value); }
+    public bool DiffTruncated { get => _diffTruncated; private set { if (SetProperty(ref _diffTruncated, value)) OnPropertyChanged(nameof(CanCopyPatch)); } }
     public int DiffAdditions { get => _diffAdditions; private set => SetProperty(ref _diffAdditions, value); }
     public int DiffDeletions { get => _diffDeletions; private set => SetProperty(ref _diffDeletions, value); }
 
@@ -90,12 +131,14 @@ public sealed class GitReviewViewModel : ObservableObject
     public bool HasDiffLines => DiffState == "ready" && !DiffBinary && DiffLines.Count > 0;
     public bool ShowDiffEmpty => !HasDiffLines;
     public bool ShowDiffStats => DiffState == "ready" && !DiffBinary;
+    public bool CanCopyPatch => DiffState == "ready" && !DiffBinary && !DiffTruncated && Patch.Length > 0;
+    public string HeaderBranchText => IsReady ? string.IsNullOrWhiteSpace(Branch) ? "Detached HEAD" : Branch : "Source control";
     public string SelectedPath => SelectedFile?.Path ?? "No file selected";
     public string FooterBranchText => State switch
     {
         "loading" => "Reading Git...",
         "not_repository" => "Not a Git repository",
-        "error" => "Git unavailable",
+        "error" => "Git error",
         _ => string.IsNullOrWhiteSpace(Branch) ? "Detached HEAD" : Branch
     };
     public string ChangeSummary => ChangedFiles == 0 ? "Clean" : $"{ChangedFiles} changed";
@@ -111,6 +154,7 @@ public sealed class GitReviewViewModel : ObservableObject
             if (DiffState == "loading") return "Loading diff...";
             if (DiffState == "error") return string.IsNullOrWhiteSpace(DiffError) ? "This diff is unavailable." : DiffError;
             if (DiffBinary) return "Binary files cannot be displayed as text.";
+            if (DiffTruncated && !HasDiffLines) return "This diff exceeds the reading limit.";
             return "Select a changed file to inspect its diff.";
         }
     }
@@ -138,60 +182,72 @@ public sealed class GitReviewViewModel : ObservableObject
 
     public async Task RefreshAsync()
     {
-        if (!_host.EnsureSdk() || _host.SelectedProject is null)
+        if (_disposed) return;
+        if (!_availabilityChecked) await CheckAvailabilityAsync();
+        if (!IsAvailable || _host.SelectedProject is not { } project)
         {
             Clear();
             return;
         }
+        _refresh?.Cancel();
+        _refresh?.Dispose();
+        var refresh = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        _refresh = refresh;
+        var cancellation = refresh.Token;
         State = "loading";
         Error = string.Empty;
         try
         {
-            var status = await _host.Sdk!.GitStatusAsync(_host.SelectedProject.ProjectId);
+            // Coalesce bursts of checkpoint/file events and discard superseded responses.
+            await Task.Delay(120, cancellation);
+            var status = await _service.StatusAsync(project.CanonicalRoot, cancellation);
+            if (cancellation.IsCancellationRequested || _host.SelectedProject != project) return;
             Branch = status.Branch ?? string.Empty;
             ChangedFiles = status.ChangedFiles;
-            Additions = (int)status.Additions;
-            Deletions = (int)status.Deletions;
+            Additions = status.Additions;
+            Deletions = status.Deletions;
             StatusTruncated = status.Truncated;
             Files.Clear();
             foreach (var node in status.Files)
-            {
-                Files.Add(new GitFileItem(
-                    node.Path, node.Status, node.Staged, node.Unstaged,
-                    node.Conflicted, (int)node.Additions, (int)node.Deletions,
-                    node.OldPath ?? string.Empty, node.Binary));
-            }
+                Files.Add(new GitFileItem(node.Path, node.Status, node.Staged, node.Unstaged,
+                    node.Conflicted, node.Additions, node.Deletions, node.OldPath ?? string.Empty, node.Binary));
             ApplyFilter();
             State = "ready";
+            if (SelectedFile is { } file) await LoadDiffAsync(file, Scope);
         }
-        catch (SdkException exception) when (exception.Code == "not_git_repository")
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        catch (Exception exception) when (!cancellation.IsCancellationRequested && _host.SelectedProject == project)
         {
-            Clear();
-            State = "not_repository";
-            Error = exception.Message;
+            ClearDiffLines();
+            if (exception is GitException { Code: "git_missing" })
+            {
+                IsAvailable = false;
+                Clear();
+            }
+            else
+            {
+                Files.Clear();
+                ApplyFilter();
+                State = exception is GitException { Code: "not_repository" } ? "not_repository" : "error";
+                Error = exception is OperationCanceledException ? "Git did not respond in time. Refresh to retry." : exception.Message;
+            }
         }
-        catch (Exception exception)
-        {
-            State = "error";
-            Error = exception.Message;
-        }
+        catch (Exception) when (cancellation.IsCancellationRequested || _host.SelectedProject != project) { }
     }
 
     public async Task LoadDiffAsync(GitFileItem file, string scope = "all")
     {
-        if (!_host.EnsureSdk() || _host.SelectedProject is null) return;
+        if (_disposed || !IsAvailable || _host.SelectedProject is not { } project) return;
         SelectedFile = file;
-        DiffLines.Clear();
-        Patch = string.Empty;
-        DiffError = string.Empty;
-        DiffBinary = false;
-        DiffTruncated = false;
-        DiffAdditions = 0;
-        DiffDeletions = 0;
+        ClearDiffLines();
+        var request = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        _diff = request;
+        var cancellation = request.Token;
         DiffState = "loading";
         try
         {
-            var diff = await _host.Sdk!.GitDiffAsync(_host.SelectedProject.ProjectId, scope, file.Path);
+            var diff = await _service.DiffAsync(project.CanonicalRoot, scope, file.Path, cancellation);
+            if (cancellation.IsCancellationRequested || _host.SelectedProject != project || SelectedFile != file || Scope != scope) return;
             Patch = diff.Patch;
             DiffBinary = diff.Binary;
             DiffTruncated = diff.Truncated;
@@ -201,26 +257,27 @@ public sealed class GitReviewViewModel : ObservableObject
             {
                 DiffLines.Add(new DiffLineItem("hunk", hunk.Header, string.Empty, string.Empty));
                 foreach (var line in hunk.Lines)
-                {
-                    DiffLines.Add(new DiffLineItem(
-                        line.Kind, line.Text,
-                        line.OldLine?.ToString() ?? string.Empty,
-                        line.NewLine?.ToString() ?? string.Empty));
-                }
+                    DiffLines.Add(new DiffLineItem(line.Kind, line.Text,
+                        line.OldLine?.ToString() ?? string.Empty, line.NewLine?.ToString() ?? string.Empty));
             }
-            OnPropertyChanged(nameof(HasDiffLines));
-            OnPropertyChanged(nameof(ShowDiffEmpty));
             DiffState = "ready";
         }
-        catch (Exception exception)
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        catch (Exception exception) when (!cancellation.IsCancellationRequested && _host.SelectedProject == project)
         {
             DiffState = "error";
             DiffError = exception.Message;
+            if (exception is GitException { Code: "git_missing" }) { IsAvailable = false; Clear(); }
         }
+        catch (Exception) when (cancellation.IsCancellationRequested || _host.SelectedProject != project) { }
     }
 
     internal void Clear()
     {
+        _refresh?.Cancel();
+        _refresh?.Dispose();
+        _refresh = null;
+        ClearDiffLines();
         Files.Clear();
         FilteredFiles.Clear();
         DiffLines.Clear();
@@ -242,7 +299,20 @@ public sealed class GitReviewViewModel : ObservableObject
     }
 
     // Session changes drop the rendered diff without resetting repository status.
-    internal void ClearDiffLines() => DiffLines.Clear();
+    internal void ClearDiffLines()
+    {
+        _diff?.Cancel();
+        _diff?.Dispose();
+        _diff = null;
+        DiffLines.Clear();
+        Patch = string.Empty;
+        DiffError = string.Empty;
+        DiffBinary = false;
+        DiffTruncated = false;
+        DiffAdditions = 0;
+        DiffDeletions = 0;
+        DiffState = "idle";
+    }
 
     // Applies the current scope and filter; exposed for tests that seed Files directly.
     internal void ApplyFilter()
@@ -266,6 +336,7 @@ public sealed class GitReviewViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(HasDiffLines));
         OnPropertyChanged(nameof(ShowDiffEmpty));
+        OnPropertyChanged(nameof(CanCopyPatch));
         OnPropertyChanged(nameof(ShowDiffStats));
         OnPropertyChanged(nameof(EmptyMessage));
     }

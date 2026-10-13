@@ -82,6 +82,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             await _sdk!.SelectProjectAsync(project.ProjectId);
             SelectedProject = project;
             await Explorer.ReloadAsync();
+            await Git.CheckAvailabilityAsync();
             RestoreProjectPresentationState();
             await LoadSessionsAsync();
             await Git.RefreshAsync();

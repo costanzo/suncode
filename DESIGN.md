@@ -335,6 +335,10 @@ Reusable top-level desktop window templates live under `design-system/src/platfo
 
 The About window presents the installed `Desktop` and `Agent SDK` product versions as two labeled rows beneath the SunCode identity. Version values use the code/data font and `vX.Y.Z` display format. Desktop reads the Avalonia application assembly metadata, while Agent SDK asynchronously queries the embedded Rust agent core through the SDK bindings and shows an explicit loading or unavailable value when needed. The C ABI compatibility number is an internal binding contract and is not presented as the Agent SDK product version.
 
+### Source Control availability
+
+Source Control is a desktop-owned read-only system Git feature. Verify an installed executable before showing its gutter control, opening actions, drawer, or branch/change footer data. When unavailable, collapse those controls without leaving empty button gaps, ignore a saved Git drawer, and retain touched files, checkpoints, undo, and other panels. Recheck availability when the project window becomes active. An available Git with no repository shows a not-repository state; loading, repository errors with refresh, binary content, and bounded/truncated diffs remain explicit visible states. All compares HEAD with the working tree, Staged compares HEAD with index, and Unstaged compares index with working tree; untracked content appears in All and Unstaged. The drawer shows the current repository, not a historical turn snapshot. Appearance and geometry reuse the existing drawer tokens. Review these states at Desktop Workspace → Source control.
+
 ### Review Inspector
 
 The right bay contains approval, turn changes, touched files, and runtime health in that order. Approval is the only state allowed to interrupt the visual hierarchy; its amber surface and explicit “Approve once” / “Deny” actions keep authority decisions legible.

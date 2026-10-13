@@ -137,7 +137,7 @@
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="{Binding Layout.WorkspaceGutterWidth}" />
           </Grid.ColumnDefinitions>
-          <Grid Grid.Column="0" RowDefinitions="Auto,6,Auto,*,Auto,6,Auto,6,Auto" Margin="4,7" IsVisible="{Binding Layout.WorkspaceGuttersVisible}">
+          <Grid Grid.Column="0" RowDefinitions="Auto,6,Auto,*,Auto" Margin="4,7" IsVisible="{Binding Layout.WorkspaceGuttersVisible}">
             <Button Grid.Row="0" Classes="icon gutter" Classes.active="{Binding Layout.SessionSidebarVisible}" Click="ToggleNavigation" ToolTip.Tip="{DynamicResource LocShowSessions}" AutomationProperties.Name="Show or hide sessions">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/panel-left.svg" IsVisible="{Binding !Layout.SessionSidebarVisible}" />
@@ -151,24 +151,26 @@
               </Grid>
             </Button>
             <Border Grid.Row="3" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" Background="Transparent"/>
-            <Button Grid.Row="4" Classes="icon gutter" Classes.active="{Binding Layout.GitVisible}" Click="ToggleGit" ToolTip.Tip="{DynamicResource LocShowSourceControl}" AutomationProperties.Name="{DynamicResource LocShowSourceControl}">
-              <Grid>
-                <svg:Svg Width="15" Height="15" Path="/Assets/icons/git-branch.svg" IsVisible="{Binding !Layout.GitVisible}" />
-                <svg:Svg Width="15" Height="15" Path="/Assets/icons/git-branch.svg" IsVisible="{Binding Layout.GitVisible}" />
-              </Grid>
-            </Button>
-            <Button Grid.Row="6" Classes="icon gutter" Classes.active="{Binding Layout.ToolActivityVisible}" Click="ToggleToolActivity" ToolTip.Tip="{DynamicResource LocShowToolActivity}" AutomationProperties.Name="{DynamicResource LocShowToolActivity}">
-              <Grid>
-                <svg:Svg Width="15" Height="15" Path="/Assets/icons/tool.svg" IsVisible="{Binding !Layout.ToolActivityVisible}" />
-                <svg:Svg Width="15" Height="15" Path="/Assets/icons/tool.svg" IsVisible="{Binding Layout.ToolActivityVisible}" />
-              </Grid>
-            </Button>
-            <Button Grid.Row="8" Classes="icon gutter" Classes.active="{Binding Layout.ProviderTraceVisible}" Click="ToggleProviderTrace" ToolTip.Tip="{DynamicResource LocShowProviderTrace}" AutomationProperties.Name="{DynamicResource LocShowProviderTrace}">
-              <Grid>
-                <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding !Layout.ProviderTraceVisible}" />
-                <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding Layout.ProviderTraceVisible}" />
-              </Grid>
-            </Button>
+            <StackPanel Grid.Row="4" Spacing="6">
+              <Button IsVisible="{Binding Git.IsAvailable}" Classes="icon gutter" Classes.active="{Binding Layout.GitVisible}" Click="ToggleGit" ToolTip.Tip="{DynamicResource LocShowSourceControl}" AutomationProperties.Name="{DynamicResource LocShowSourceControl}">
+                <Grid>
+                  <svg:Svg Width="15" Height="15" Path="/Assets/icons/git-branch.svg" IsVisible="{Binding !Layout.GitVisible}" />
+                  <svg:Svg Width="15" Height="15" Path="/Assets/icons/git-branch.svg" IsVisible="{Binding Layout.GitVisible}" />
+                </Grid>
+              </Button>
+              <Button Classes="icon gutter" Classes.active="{Binding Layout.ToolActivityVisible}" Click="ToggleToolActivity" ToolTip.Tip="{DynamicResource LocShowToolActivity}" AutomationProperties.Name="{DynamicResource LocShowToolActivity}">
+                <Grid>
+                  <svg:Svg Width="15" Height="15" Path="/Assets/icons/tool.svg" IsVisible="{Binding !Layout.ToolActivityVisible}" />
+                  <svg:Svg Width="15" Height="15" Path="/Assets/icons/tool.svg" IsVisible="{Binding Layout.ToolActivityVisible}" />
+                </Grid>
+              </Button>
+              <Button Classes="icon gutter" Classes.active="{Binding Layout.ProviderTraceVisible}" Click="ToggleProviderTrace" ToolTip.Tip="{DynamicResource LocShowProviderTrace}" AutomationProperties.Name="{DynamicResource LocShowProviderTrace}">
+                <Grid>
+                  <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding !Layout.ProviderTraceVisible}" />
+                  <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding Layout.ProviderTraceVisible}" />
+                </Grid>
+              </Button>
+            </StackPanel>
           </Grid>
 
           <Grid Grid.Column="1">
@@ -251,7 +253,7 @@
         </Grid>
 
         <Grid Grid.Row="3" Height="20" MinHeight="20" ColumnDefinitions="*,Auto" Margin="12,0,12,0" VerticalAlignment="Center">
-          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding IsProjectOpen}" Height="20">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding Git.IsAvailable}" Height="20">
             <TextBlock Text="{Binding Git.FooterBranchText}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" MaxWidth="180" TextTrimming="CharacterEllipsis" />
             <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding Layout.WorkspaceStatusDetailsVisible}" Height="20" VerticalAlignment="Center">
               <TextBlock Text="{Binding Git.ChangeSummary}" Classes="mono footer-status" FontSize="9" Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding Git.IsClean}" />

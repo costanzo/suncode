@@ -312,6 +312,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ChangedPaths.ReplaceAll(projection.ChangedPaths);
         OnPropertyChanged(nameof(HasChangedPaths));
         OnPropertyChanged(nameof(TurnChangeSummary));
+        OnPropertyChanged(nameof(CanViewReviewChanges));
         NotifyReviewPresentationChanged();
         CurrentTodos.ReplaceAll(projection.CurrentTodos);
         PendingApproval = projection.PendingApproval;

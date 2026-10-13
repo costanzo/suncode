@@ -234,11 +234,6 @@ public sealed partial class AgentSdk
         string path) =>
         Typed<ProjectFileResult>(RawReadProjectFileAsync(projectId, dependencyId, path));
 
-    public Task<GitStatusResult> GitStatusAsync(string projectId) =>
-        Typed<GitStatusResult>(RawGitStatusAsync(projectId));
-
-    public Task<GitDiffFileResult> GitDiffAsync(string projectId, string scope, string path) =>
-        Typed<GitDiffFileResult>(RawGitDiffAsync(projectId, scope, path));
 
     public Task<SessionsResult> ListSessionsAsync(string projectId) =>
         Typed<SessionsResult>(RawListSessionsAsync(projectId));
