@@ -61,6 +61,8 @@ impl AnthropicProvider {
         let verify_certificates = self.verify_https_certificates.load(Ordering::SeqCst);
         let mut builder = reqwest::Client::builder()
             .retry(reqwest::retry::never())
+            .connect_timeout(crate::CONNECT_TIMEOUT)
+            .read_timeout(crate::READ_TIMEOUT)
             .danger_accept_invalid_certs(!verify_certificates)
             .danger_accept_invalid_hostnames(!verify_certificates);
         if verify_certificates && !self.use_system_certificates.load(Ordering::SeqCst) {

@@ -1,3 +1,9 @@
+//! Part of the `Agent` implementation; see `agent/mod.rs`.
+
+use super::run::*;
+use super::support::*;
+use super::*;
+
 impl Agent {
     pub fn new<P>(
         store: Store,
@@ -56,16 +62,24 @@ impl Agent {
     where
         P: Into<Arc<ModelProviderRegistry>>,
     {
-        let config = Config::load_with_environment(suncode_config::EnvironmentSource::Disabled).unwrap_or_else(|_| Config {
-            data_dir: std::env::temp_dir().join("suncode"),
-            database_path: std::env::temp_dir().join("suncode.sqlite3"),
-            user_directory: std::env::temp_dir(),
-            non_interactive: false,
-            environment_source: suncode_config::EnvironmentSource::Disabled,
-        });
+        let config = Config::load_with_environment(suncode_config::EnvironmentSource::Disabled)
+            .unwrap_or_else(|_| Config {
+                data_dir: std::env::temp_dir().join("suncode"),
+                database_path: std::env::temp_dir().join("suncode.sqlite3"),
+                user_directory: std::env::temp_dir(),
+                non_interactive: false,
+                environment_source: suncode_config::EnvironmentSource::Disabled,
+            });
         Self::new_with_user_id_and_capabilities_and_config(
-            store, providers, operations, events, non_interactive, application_data,
-            user_id, host_capabilities, config,
+            store,
+            providers,
+            operations,
+            events,
+            non_interactive,
+            application_data,
+            user_id,
+            host_capabilities,
+            config,
         )
     }
 
@@ -181,7 +195,7 @@ impl Agent {
     }
 
     #[allow(clippy::too_many_arguments)]
-    async fn submit_session(
+    pub(super) async fn submit_session(
         &self,
         session_id: &str,
         key: &str,
@@ -283,7 +297,10 @@ impl Agent {
             .as_deref()
             .and_then(crate::agent::builtin_agents::by_id);
         if session.kind == "child" && agent_definition.is_none() {
-            return Err(BusinessError::new("agent_unavailable", "child session agent is not available"));
+            return Err(BusinessError::new(
+                "agent_unavailable",
+                "child session agent is not available",
+            ));
         }
         let session_started_at = session.created_at.clone();
         let project_id = session
@@ -304,17 +321,18 @@ impl Agent {
                     .min(runtime.tool_call_limit.unwrap_or(project_tool_call_limit))
                     .min(definition.tool_call_limit)
             })
-            .unwrap_or_else(|| project_tool_call_limit.min(runtime.tool_call_limit.unwrap_or(project_tool_call_limit)));
-        let admission = self
-            .store
-            .begin_turn_with_images(
-                session_id,
-                key,
-                input,
-                &model,
-                reasoning_effort.as_deref(),
-                image_ids,
-            )?;
+            .unwrap_or_else(|| {
+                project_tool_call_limit
+                    .min(runtime.tool_call_limit.unwrap_or(project_tool_call_limit))
+            });
+        let admission = self.store.begin_turn_with_images(
+            session_id,
+            key,
+            input,
+            &model,
+            reasoning_effort.as_deref(),
+            image_ids,
+        )?;
         if !admission.created {
             if admission.status == "completed" {
                 let response = admission.response.ok_or_else(|| {
@@ -347,7 +365,13 @@ impl Agent {
             agent_id: session.agent_id.clone(),
             agent_version: session.agent_version,
             allowed_tools: agent_definition
-                .map(|definition| definition.allowed_tools.iter().map(|tool| (*tool).to_string()).collect())
+                .map(|definition| {
+                    definition
+                        .allowed_tools
+                        .iter()
+                        .map(|tool| (*tool).to_string())
+                        .collect()
+                })
                 .unwrap_or_default(),
             turn_id: admission.turn_id.clone(),
             submission_key: key.into(),
@@ -385,9 +409,7 @@ impl Agent {
         } else {
             TurnStart::Submit(user_message)
         };
-        let result = self
-            .run(continuation.clone(), start, token, provider)
-            .await;
+        let result = self.run(continuation.clone(), start, token, provider).await;
         self.cancellations
             .lock()
             .ok()
@@ -430,7 +452,7 @@ impl Agent {
         result
     }
 
-    async fn submit_child(
+    pub(super) async fn submit_child(
         &self,
         session_id: &str,
         input: &str,
@@ -479,14 +501,14 @@ impl Agent {
         .await
     }
 
-    fn clear_queued_messages(&self, session_id: &str) {
+    pub(super) fn clear_queued_messages(&self, session_id: &str) {
         self.queued_messages
             .lock()
             .ok()
             .map(|mut values| values.remove(session_id));
     }
 
-    fn queue_message(
+    pub(super) fn queue_message(
         &self,
         session_id: &str,
         key: &str,
@@ -527,7 +549,11 @@ impl Agent {
         drop(queues);
         self.emit(
             session_id,
-            EventPayload::TurnQueued(TurnQueuedPayload { queued_id: queued_id.clone(), active_turn_id: active_turn_id.clone(), position }),
+            EventPayload::TurnQueued(TurnQueuedPayload {
+                queued_id: queued_id.clone(),
+                active_turn_id: active_turn_id.clone(),
+                position,
+            }),
         )?;
         Ok(TurnResponse::Queued {
             queued_id,
@@ -549,7 +575,11 @@ impl Agent {
         true
     }
 
-    pub fn cancel_dormant_turn(&self, session_id: &str, turn_id: &str) -> Result<bool, BusinessError> {
+    pub fn cancel_dormant_turn(
+        &self,
+        session_id: &str,
+        turn_id: &str,
+    ) -> Result<bool, BusinessError> {
         let Some(details) = self.store.cancel_dormant_turn(session_id, turn_id)? else {
             return Ok(false);
         };
@@ -595,7 +625,10 @@ impl Agent {
                 }
             }
             Some("question") => {
-                if let (Some(request_id), Some(tool_call_id)) = (details.pending_request_id.as_deref(), tool_call_id.as_deref()) {
+                if let (Some(request_id), Some(tool_call_id)) = (
+                    details.pending_request_id.as_deref(),
+                    tool_call_id.as_deref(),
+                ) {
                     self.emit(
                         &details.session_id,
                         EventPayload::QuestionRejected(QuestionAnsweredPayload {
@@ -610,18 +643,30 @@ impl Agent {
             _ => {}
         }
         self.clear_queued_messages(&details.session_id);
-        self.active_turns.lock().ok().map(|mut values| values.remove(&details.session_id));
-        self.cancellations.lock().ok().map(|mut values| values.remove(&details.turn_id));
+        self.active_turns
+            .lock()
+            .ok()
+            .map(|mut values| values.remove(&details.session_id));
+        self.cancellations
+            .lock()
+            .ok()
+            .map(|mut values| values.remove(&details.turn_id));
         Ok(true)
     }
 
-    fn runtime_for(&self, project_id: &str, session_id: &str) -> Result<suncode_config::RuntimeConfig, BusinessError> {
+    pub(super) fn runtime_for(
+        &self,
+        project_id: &str,
+        session_id: &str,
+    ) -> Result<suncode_config::RuntimeConfig, BusinessError> {
         let mut persisted = suncode_config::PersistedSettings::default();
         for setting in self.store.settings(Some(project_id), Some(session_id))? {
             persisted
                 .insert(&setting.scope, setting.key, setting.value)
                 .map_err(BusinessError::invalid)?;
         }
-        self.config.runtime(&persisted).map_err(BusinessError::invalid)
+        self.config
+            .runtime(&persisted)
+            .map_err(BusinessError::invalid)
     }
 }

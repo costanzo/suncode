@@ -250,6 +250,19 @@ const fn key_direction(state: KeyState) -> Direction {
     }
 }
 
+fn backend_error(error: impl std::fmt::Display) -> ComputerError {
+    ComputerError::Backend(error.to_string())
+}
+
+const fn permission_state(status: PermissionStatus) -> PermissionState {
+    match status {
+        PermissionStatus::Allowed => PermissionState::Allowed,
+        PermissionStatus::Denied => PermissionState::Denied,
+        PermissionStatus::Unknown => PermissionState::Unknown,
+        PermissionStatus::Unsupported => PermissionState::Unsupported,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::normalize_capture_rgba;
@@ -271,18 +284,5 @@ mod tests {
             normalized,
             vec![1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 255,]
         );
-    }
-}
-
-fn backend_error(error: impl std::fmt::Display) -> ComputerError {
-    ComputerError::Backend(error.to_string())
-}
-
-const fn permission_state(status: PermissionStatus) -> PermissionState {
-    match status {
-        PermissionStatus::Allowed => PermissionState::Allowed,
-        PermissionStatus::Denied => PermissionState::Denied,
-        PermissionStatus::Unknown => PermissionState::Unknown,
-        PermissionStatus::Unsupported => PermissionState::Unsupported,
     }
 }

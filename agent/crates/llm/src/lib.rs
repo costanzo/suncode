@@ -8,6 +8,12 @@ mod registry;
 mod stream;
 mod types;
 
+/// Upper bound for establishing a provider connection.
+pub(crate) const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+/// Maximum silence between response bytes. Generous because non-streaming
+/// responses arrive only after the model finishes generating.
+pub(crate) const READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
+
 pub use anthropic::AnthropicProvider;
 pub use openai_compatible::OpenAiCompatibleProvider;
 pub use registry::{ModelProviderRegistry, ModelRoute};

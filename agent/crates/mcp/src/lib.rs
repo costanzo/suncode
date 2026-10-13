@@ -570,7 +570,7 @@ fn http_client(config: &TlsConfig) -> Result<reqwest::Client, BusinessError> {
             builder = builder.tls_certs_merge([certificate]);
         }
     } else {
-        builder = builder.tls_certs_only(custom_certificate.into_iter());
+        builder = builder.tls_certs_only(custom_certificate);
     }
     builder = match config.proxy.mode {
         HttpProxyMode::NoProxy => builder.no_proxy(),

@@ -236,7 +236,7 @@ impl Store {
             tool_boundary,
             &mut c,
         )?);
-        return Ok(repair_incomplete_tool_exchanges(out));
+        Ok(repair_incomplete_tool_exchanges(out))
     }
 
     fn load_live_context_messages(

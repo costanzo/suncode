@@ -29,7 +29,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          components: rustfmt
+          components: rustfmt, clippy
 
       - name: Identify Rust compiler
         id: rust
@@ -60,6 +60,9 @@ jobs:
           cargo metadata --manifest-path sdks/rust/Cargo.toml --locked --no-deps --format-version 1 >/dev/null
           cargo metadata --manifest-path sdks/c/Cargo.toml --locked --no-deps --format-version 1 >/dev/null
           cargo metadata --manifest-path apps/cli/Cargo.toml --locked --no-deps --format-version 1 >/dev/null
+
+      - name: Lint agent workspace
+        run: cargo clippy --manifest-path agent/Cargo.toml --workspace --all-targets --locked -- -D warnings
 
       - name: Test agent workspace
         run: cargo test --manifest-path agent/Cargo.toml --workspace --all-targets --locked

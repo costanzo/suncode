@@ -1,5 +1,9 @@
+//! Part of the `Agent` implementation; see `agent/mod.rs`.
+
+use super::*;
+
 impl Agent {
-    fn ensure_running(&self) -> Result<(), BusinessError> {
+    pub(super) fn ensure_running(&self) -> Result<(), BusinessError> {
         if self
             .shutting_down
             .load(std::sync::atomic::Ordering::Acquire)
@@ -22,10 +26,7 @@ impl Agent {
         }
 
         let (tokens, cancellation_state_available) = match self.cancellations.lock() {
-            Ok(cancellations) => (
-                cancellations.values().cloned().collect::<Vec<_>>(),
-                true,
-            ),
+            Ok(cancellations) => (cancellations.values().cloned().collect::<Vec<_>>(), true),
             Err(_) => (Vec::new(), false),
         };
         for token in tokens {
@@ -76,25 +77,21 @@ impl Agent {
         Ok(())
     }
 
-    fn emit(
-        &self,
-        session_id: &str,
-        event: EventPayload,
-    ) -> Result<(), BusinessError> {
+    pub(super) fn emit(&self, session_id: &str, event: EventPayload) -> Result<(), BusinessError> {
         let attention_payload = event.clone();
         let occurred_at = self.events.publish_projected(session_id, event, |event| {
             let event_type = event.event_type();
             let payload = event.clone().into_value();
-            let projected =
-                self.store
-                    .append_content(session_id, event_type.as_str(), &payload)?;
+            let projected = self
+                .store
+                .append_content(session_id, event_type.as_str(), &payload)?;
             Ok::<String, BusinessError>(projected.occurred_at)
         })?;
         self.publish_attention(session_id, &occurred_at, &attention_payload);
         Ok(())
     }
 
-    fn emit_context_compacted(
+    pub(super) fn emit_context_compacted(
         &self,
         context: &Continuation,
         result: &context::ContextBuildResult,
@@ -112,21 +109,30 @@ impl Agent {
             original_tokens: result.original_tokens,
             retained_tokens: result.retained_tokens,
             dropped_messages: result.dropped_messages,
-            summary: result.summary.as_ref().map(|summary| ContextSummaryPayload {
-                objective: summary.objective.clone(),
-                important_constraints: summary.important_constraints.clone(),
-                completed_work: summary.completed_work.clone(),
-                active_work: summary.active_work.clone(),
-                blockers: summary.blockers.clone(),
-                next_action: summary.next_action.clone(),
-            }),
+            summary: result
+                .summary
+                .as_ref()
+                .map(|summary| ContextSummaryPayload {
+                    objective: summary.objective.clone(),
+                    important_constraints: summary.important_constraints.clone(),
+                    completed_work: summary.completed_work.clone(),
+                    active_work: summary.active_work.clone(),
+                    blockers: summary.blockers.clone(),
+                    next_action: summary.next_action.clone(),
+                }),
         });
-        self.events.publish_projected(&context.session_id, event, |event| {
-            let mut payload = event.clone().into_value();
-            payload["retained_messages"] = serde_json::to_value(context::persistable_messages(&result.messages))?;
-            let projected = self.store.append_content(&context.session_id, "context.compacted", &payload)?;
-            Ok::<String, BusinessError>(projected.occurred_at)
-        })?;
+        self.events
+            .publish_projected(&context.session_id, event, |event| {
+                let mut payload = event.clone().into_value();
+                payload["retained_messages"] =
+                    serde_json::to_value(context::persistable_messages(&result.messages))?;
+                let projected = self.store.append_content(
+                    &context.session_id,
+                    "context.compacted",
+                    &payload,
+                )?;
+                Ok::<String, BusinessError>(projected.occurred_at)
+            })?;
         Ok(())
     }
 
@@ -134,7 +140,12 @@ impl Agent {
         self.attention_events.clone()
     }
 
-    fn publish_attention(&self, session_id: &str, occurred_at: &str, event: &EventPayload) {
+    pub(super) fn publish_attention(
+        &self,
+        session_id: &str,
+        occurred_at: &str,
+        event: &EventPayload,
+    ) {
         let (kind, turn_id, correlation_id) = match event {
             EventPayload::TurnCompleted(payload) => (
                 AttentionKind::PrimaryTurnCompleted,
@@ -213,7 +224,7 @@ impl Agent {
         });
     }
 
-    fn emit_live(&self, session_id: &str, event: EventPayload) {
+    pub(super) fn emit_live(&self, session_id: &str, event: EventPayload) {
         let event = AgentEvent {
             session_id: session_id.to_string(),
             occurred_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
@@ -221,24 +232,43 @@ impl Agent {
         };
         self.events.publish(event);
     }
-    fn turn_state(
+    pub(super) fn turn_state(
         &self,
         context: &Continuation,
         state: &str,
         reason: Option<&str>,
     ) -> Result<(), BusinessError> {
-        self.emit(&context.session_id, EventPayload::TurnState(TurnStatePayload { turn_id: context.turn_id.clone(), state: state.to_owned(), model_id: Some(context.model.clone()), submission_idempotency_key: Some(context.submission_key.clone()), reason: reason.map(str::to_owned) }))
+        self.emit(
+            &context.session_id,
+            EventPayload::TurnState(TurnStatePayload {
+                turn_id: context.turn_id.clone(),
+                state: state.to_owned(),
+                model_id: Some(context.model.clone()),
+                submission_idempotency_key: Some(context.submission_key.clone()),
+                reason: reason.map(str::to_owned),
+            }),
+        )
     }
-    fn tool_state(
+    pub(super) fn tool_state(
         &self,
         context: &Continuation,
         call: &ToolCall,
         state: &str,
         reason: Option<&str>,
     ) -> Result<(), BusinessError> {
-        self.emit(&context.session_id, EventPayload::ToolState(ToolStatePayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), name: call.name.clone(), state: state.to_owned(), reason: reason.map(str::to_owned) }))
+        self.emit(
+            &context.session_id,
+            EventPayload::ToolState(ToolStatePayload {
+                turn_id: context.turn_id.clone(),
+                call_id: context.active_call_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                name: call.name.clone(),
+                state: state.to_owned(),
+                reason: reason.map(str::to_owned),
+            }),
+        )
     }
-    fn fail_context<T>(
+    pub(super) fn fail_context<T>(
         &self,
         context: &Continuation,
         code: &str,
@@ -256,7 +286,7 @@ impl Agent {
         Err(BusinessError::new(code, message))
     }
 
-    async fn session_lock(&self, session_id: &str) -> Arc<AsyncMutex<()>> {
+    pub(super) async fn session_lock(&self, session_id: &str) -> Arc<AsyncMutex<()>> {
         let mut locks = self.session_locks.lock().await;
         locks
             .entry(session_id.to_string())
@@ -267,8 +297,14 @@ impl Agent {
     pub async fn recover(&self) -> Result<(), BusinessError> {
         for event in self.store.recover_startup()? {
             let payload = EventPayload::TurnState(TurnStatePayload {
-                turn_id: event.payload["turn_id"].as_str().unwrap_or_default().to_string(),
-                state: event.payload["state"].as_str().unwrap_or_default().to_string(),
+                turn_id: event.payload["turn_id"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string(),
+                state: event.payload["state"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string(),
                 model_id: event.payload["model_id"].as_str().map(str::to_string),
                 submission_idempotency_key: event.payload["submission_idempotency_key"]
                     .as_str()
@@ -325,7 +361,10 @@ impl Agent {
                         "subagent",
                         "persist_recovery_outcome",
                         &error,
-                        format!("session={} turn={}", continuation.session_id, continuation.turn_id),
+                        format!(
+                            "session={} turn={}",
+                            continuation.session_id, continuation.turn_id
+                        ),
                     );
                 }
                 let _ = agent.store.finish_suspended(

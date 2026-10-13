@@ -53,6 +53,7 @@ fn execute_operation(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn execute_operation_with_cancellation(
     method: &str,
     params: &Value,

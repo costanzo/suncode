@@ -20,6 +20,7 @@ use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use suncode_common::HttpProxyConfiguration;
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn dispatch_with_output(
     method: &str,
     params: &Value,

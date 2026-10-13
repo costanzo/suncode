@@ -292,11 +292,7 @@ impl McpManager {
                 slot.tools.clear();
                 slot.connection.take()
             });
-            if desired.is_none() {
-                project.slots.remove(&server_id);
-                (None, retired)
-            } else {
-                let desired = desired.as_ref().expect("checked above");
+            if let Some(desired) = desired.as_ref() {
                 let generation = previous_generation.saturating_add(1);
                 let cancellation = CancellationToken::new();
                 project.slots.insert(
@@ -316,18 +312,25 @@ impl McpManager {
                     },
                 );
                 (
-                    Some((generation, cancellation, project.root.clone())),
+                    Some((
+                        generation,
+                        cancellation,
+                        project.root.clone(),
+                        desired.clone(),
+                    )),
                     retired,
                 )
+            } else {
+                project.slots.remove(&server_id);
+                (None, retired)
             }
         };
         if let Some(retired) = retired {
             retired.close().await;
         }
-        let Some((generation, cancellation, root)) = prepared else {
+        let Some((generation, cancellation, root, desired)) = prepared else {
             return Ok(());
         };
-        let desired = desired.expect("checked above");
         if !desired.enabled {
             return Ok(());
         }

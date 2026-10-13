@@ -1,4 +1,8 @@
-fn method_name(name: &str) -> Option<&'static str> {
+//! Part of the `Agent` implementation; see `agent/mod.rs`.
+
+use super::*;
+
+pub(super) fn method_name(name: &str) -> Option<&'static str> {
     match name {
         "read" => Some("tool/read"),
         "glob" => Some("tool/glob"),
@@ -11,7 +15,7 @@ fn method_name(name: &str) -> Option<&'static str> {
     }
 }
 
-fn tool_signature(call: &ToolCall) -> String {
+pub(super) fn tool_signature(call: &ToolCall) -> String {
     format!(
         "{}:{}",
         call.name,
@@ -19,11 +23,11 @@ fn tool_signature(call: &ToolCall) -> String {
     )
 }
 
-fn translate_arguments(name: &str, value: &Value) -> Result<Value, BusinessError> {
+pub(super) fn translate_arguments(name: &str, value: &Value) -> Result<Value, BusinessError> {
     translate_arguments_with_root(name, value, None)
 }
 
-fn translate_arguments_with_root(
+pub(super) fn translate_arguments_with_root(
     name: &str,
     value: &Value,
     scope_root: Option<&Path>,
@@ -171,7 +175,7 @@ fn translate_arguments_with_root(
     Ok(result)
 }
 
-fn validate_before_policy(name: &str, value: &Value) -> Result<(), BusinessError> {
+pub(super) fn validate_before_policy(name: &str, value: &Value) -> Result<(), BusinessError> {
     if name == "bash" {
         return validate_bash_arguments(value);
     }
@@ -193,17 +197,25 @@ fn validate_before_policy(name: &str, value: &Value) -> Result<(), BusinessError
     Ok(())
 }
 
-fn validate_bash_arguments(value: &Value) -> Result<(), BusinessError> {
+pub(super) fn validate_bash_arguments(value: &Value) -> Result<(), BusinessError> {
     let command = value
         .get("command")
         .and_then(Value::as_str)
         .filter(|command| !command.trim().is_empty())
-        .ok_or_else(|| BusinessError::new("invalid_arguments", "bash command must be a non-empty string"))?;
+        .ok_or_else(|| {
+            BusinessError::new(
+                "invalid_arguments",
+                "bash command must be a non-empty string",
+            )
+        })?;
     let normalized = normalize_shell_command(command);
 
     let blocked = if contains_root_delete(&normalized) {
         Some("root_or_home_recursive_delete")
-    } else if contains_any(&normalized, &["find / -delete", "find / -exec rm", "find / -exec shred"]) {
+    } else if contains_any(
+        &normalized,
+        &["find / -delete", "find / -exec rm", "find / -exec shred"],
+    ) {
         Some("root_filesystem_delete")
     } else if contains_any(
         &normalized,
@@ -230,9 +242,18 @@ fn validate_bash_arguments(value: &Value) -> Result<(), BusinessError> {
             "irm ",
             "invoke-webrequest",
             "invoke-restmethod",
-        ]) && contains_any(
+        ],
+    ) && contains_any(
         &normalized,
-        &["| sh", "| bash", "| zsh", "| iex", "| invoke-expression", "eval ", "source <"],
+        &[
+            "| sh",
+            "| bash",
+            "| zsh",
+            "| iex",
+            "| invoke-expression",
+            "eval ",
+            "source <",
+        ],
     ) {
         Some("download_and_execute")
     } else if contains_any(
@@ -268,12 +289,7 @@ fn validate_bash_arguments(value: &Value) -> Result<(), BusinessError> {
         Some("system_wide_process_or_power_control")
     } else if contains_any(
         &normalized,
-        &[
-            ":(){ :|:& };:",
-            ":(){:|:&};:",
-            "yes >",
-            "yes /dev/null",
-        ],
+        &[":(){ :|:& };:", ":(){:|:&};:", "yes >", "yes /dev/null"],
     ) {
         Some("resource_exhaustion")
     } else if contains_any(
@@ -303,8 +319,10 @@ fn validate_bash_arguments(value: &Value) -> Result<(), BusinessError> {
         ],
     ) {
         Some("credential_or_file_exfiltration")
-    } else if contains_any(&normalized, &["sudo ", "su -", "doas ", "pkexec ", "runas "])
-        || (normalized.contains("start-process ") && normalized.contains("-verb runas"))
+    } else if contains_any(
+        &normalized,
+        &["sudo ", "su -", "doas ", "pkexec ", "runas "],
+    ) || (normalized.contains("start-process ") && normalized.contains("-verb runas"))
     {
         Some("privilege_escalation")
     } else if contains_any(
@@ -343,18 +361,16 @@ fn validate_bash_arguments(value: &Value) -> Result<(), BusinessError> {
     };
 
     if let Some(rule) = blocked {
-        return Err(
-            BusinessError::new(
-                "unsafe_command_blocked",
-                "The shell command matches a permanently blocked safety rule",
-            )
-            .details(json!({"rule": rule})),
-        );
+        return Err(BusinessError::new(
+            "unsafe_command_blocked",
+            "The shell command matches a permanently blocked safety rule",
+        )
+        .details(json!({"rule": rule})));
     }
     Ok(())
 }
 
-fn normalize_shell_command(command: &str) -> String {
+pub(super) fn normalize_shell_command(command: &str) -> String {
     let mut normalized = String::with_capacity(command.len());
     let mut quote = None;
     let mut escaped = false;
@@ -398,7 +414,7 @@ fn normalize_shell_command(command: &str) -> String {
         .replace("$ifs", " ")
 }
 
-fn contains_root_delete(command: &str) -> bool {
+pub(super) fn contains_root_delete(command: &str) -> bool {
     [
         "rm -rf /",
         "rm -fr /",
@@ -423,7 +439,7 @@ fn contains_root_delete(command: &str) -> bool {
             .any(|prefix| command.contains(prefix))
 }
 
-fn command_boundary_after(command: &str, prefix: &str) -> bool {
+pub(super) fn command_boundary_after(command: &str, prefix: &str) -> bool {
     command.match_indices(prefix).any(|(index, _)| {
         command[index + prefix.len()..]
             .chars()
@@ -433,16 +449,18 @@ fn command_boundary_after(command: &str, prefix: &str) -> bool {
     })
 }
 
-fn contains_any(command: &str, needles: &[&str]) -> bool {
+pub(super) fn contains_any(command: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| command.contains(needle))
 }
 
-fn validate_lsp_arguments(name: &str, value: &Value) -> Result<(), BusinessError> {
+pub(super) fn validate_lsp_arguments(name: &str, value: &Value) -> Result<(), BusinessError> {
     let path = value
         .get("path")
         .and_then(Value::as_str)
         .filter(|path| !path.trim().is_empty() && path.chars().count() <= 4_096)
-        .ok_or_else(|| BusinessError::invalid("path is required and must be at most 4096 characters"))?;
+        .ok_or_else(|| {
+            BusinessError::invalid("path is required and must be at most 4096 characters")
+        })?;
     if path.contains('\0') {
         return Err(BusinessError::invalid("path contains an invalid character"));
     }
@@ -458,7 +476,11 @@ fn validate_lsp_arguments(name: &str, value: &Value) -> Result<(), BusinessError
     }
     if matches!(name, "lsp_definition" | "lsp_references" | "lsp_hover") {
         for key in ["line", "column"] {
-            if value.get(key).and_then(Value::as_u64).is_none_or(|value| value == 0) {
+            if value
+                .get(key)
+                .and_then(Value::as_u64)
+                .is_none_or(|value| value == 0)
+            {
                 return Err(BusinessError::invalid(format!(
                     "{key} must be a one-based positive integer"
                 )));
@@ -468,7 +490,7 @@ fn validate_lsp_arguments(name: &str, value: &Value) -> Result<(), BusinessError
     Ok(())
 }
 
-fn validate_todowrite_arguments(value: &Value) -> Result<(), BusinessError> {
+pub(super) fn validate_todowrite_arguments(value: &Value) -> Result<(), BusinessError> {
     let todos = value
         .get("todos")
         .and_then(Value::as_array)
@@ -524,7 +546,7 @@ fn validate_todowrite_arguments(value: &Value) -> Result<(), BusinessError> {
     Ok(())
 }
 
-fn parse_todos(value: &Value) -> Result<Vec<TodoEntry>, BusinessError> {
+pub(super) fn parse_todos(value: &Value) -> Result<Vec<TodoEntry>, BusinessError> {
     validate_todowrite_arguments(value)?;
     serde_json::from_value(
         value
@@ -535,7 +557,7 @@ fn parse_todos(value: &Value) -> Result<Vec<TodoEntry>, BusinessError> {
     .map_err(|_| BusinessError::new("invalid_arguments", "todos contain invalid values"))
 }
 
-fn validate_question_arguments(value: &Value) -> Result<(), BusinessError> {
+pub(super) fn validate_question_arguments(value: &Value) -> Result<(), BusinessError> {
     let questions = value
         .get("questions")
         .and_then(Value::as_array)
@@ -609,7 +631,7 @@ fn validate_question_arguments(value: &Value) -> Result<(), BusinessError> {
     Ok(())
 }
 
-fn validate_question_answers(
+pub(super) fn validate_question_answers(
     arguments: &Value,
     answers: &[Vec<String>],
 ) -> Result<(), BusinessError> {
@@ -656,7 +678,7 @@ fn validate_question_answers(
     Ok(())
 }
 
-fn validate_webfetch_arguments(value: &Value) -> Result<(), BusinessError> {
+pub(super) fn validate_webfetch_arguments(value: &Value) -> Result<(), BusinessError> {
     let raw_url = value
         .get("url")
         .and_then(Value::as_str)
@@ -702,7 +724,7 @@ fn validate_webfetch_arguments(value: &Value) -> Result<(), BusinessError> {
     Ok(())
 }
 
-fn timeout_millis(value: &Value) -> Result<u64, BusinessError> {
+pub(super) fn timeout_millis(value: &Value) -> Result<u64, BusinessError> {
     let milliseconds = value.as_u64().ok_or_else(|| {
         BusinessError::new(
             "invalid_arguments",
@@ -719,7 +741,7 @@ fn timeout_millis(value: &Value) -> Result<u64, BusinessError> {
 }
 
 #[cfg(target_os = "windows")]
-fn shell_command(script: &str) -> Result<(String, Vec<String>), BusinessError> {
+pub(super) fn shell_command(script: &str) -> Result<(String, Vec<String>), BusinessError> {
     let program = powershell_executable().ok_or_else(|| {
         BusinessError::new(
             "process_executable_not_found",
@@ -739,15 +761,18 @@ fn shell_command(script: &str) -> Result<(String, Vec<String>), BusinessError> {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn shell_command(script: &str) -> Result<(String, Vec<String>), BusinessError> {
+pub(super) fn shell_command(script: &str) -> Result<(String, Vec<String>), BusinessError> {
     Ok(("/bin/sh".into(), vec!["-lc".into(), script.into()]))
 }
 
 #[cfg(target_os = "windows")]
-fn powershell_executable() -> Option<String> {
+pub(super) fn powershell_executable() -> Option<String> {
     let bundled = std::env::current_exe()
         .ok()
-        .and_then(|path| path.parent().map(|parent| parent.join("runtimes").join("powershell").join("pwsh.exe")))
+        .and_then(|path| {
+            path.parent()
+                .map(|parent| parent.join("runtimes").join("powershell").join("pwsh.exe"))
+        })
         .filter(|path| path.is_file());
     if let Some(path) = bundled {
         return Some(path.to_string_lossy().into_owned());
@@ -769,18 +794,20 @@ fn powershell_executable() -> Option<String> {
 }
 
 #[derive(Debug, Serialize)]
-struct LoadedInstruction {
-    path: String,
-    scope: String,
-    precedence: String,
-    content: String,
+pub(super) struct LoadedInstruction {
+    pub(super) path: String,
+    pub(super) scope: String,
+    pub(super) precedence: String,
+    pub(super) content: String,
 }
 
-fn project_instruction_message(project_root: &str) -> Option<suncode_llm::Message> {
+pub(super) fn project_instruction_message(project_root: &str) -> Option<suncode_llm::Message> {
     let root = Path::new(project_root).canonicalize().ok()?;
     let (name, content) = ["AGENTS.override.md", "AGENTS.md", "CLAUDE.md"]
         .iter()
-        .find_map(|name| read_instruction_file(&root, &root.join(name)).map(|content| (*name, content)))?;
+        .find_map(|name| {
+            read_instruction_file(&root, &root.join(name)).map(|content| (*name, content))
+        })?;
     Some(suncode_llm::Message::text(
         "system",
         format!(
@@ -789,7 +816,11 @@ fn project_instruction_message(project_root: &str) -> Option<suncode_llm::Messag
     ))
 }
 
-fn attach_nearby_instructions(context: &mut Continuation, call: &ToolCall, result: &mut Value) {
+pub(super) fn attach_nearby_instructions(
+    context: &mut Continuation,
+    call: &ToolCall,
+    result: &mut Value,
+) {
     if call.name != "read" {
         return;
     }
@@ -818,7 +849,7 @@ fn attach_nearby_instructions(context: &mut Continuation, call: &ToolCall, resul
     object.insert("repository_instructions".into(), json!(instructions));
 }
 
-fn nearby_instruction_files(
+pub(super) fn nearby_instruction_files(
     project_root: &str,
     read_path: &str,
     loaded_paths: &[String],
@@ -883,7 +914,7 @@ fn nearby_instruction_files(
     instructions
 }
 
-fn read_instruction_file(root: &Path, candidate: &Path) -> Option<String> {
+pub(super) fn read_instruction_file(root: &Path, candidate: &Path) -> Option<String> {
     let canonical = candidate.canonicalize().ok()?;
     if !canonical.starts_with(root) {
         return None;
@@ -896,7 +927,7 @@ fn read_instruction_file(root: &Path, candidate: &Path) -> Option<String> {
     (!content.trim().is_empty()).then_some(content)
 }
 
-fn is_safe_relative_path(value: &str) -> bool {
+pub(super) fn is_safe_relative_path(value: &str) -> bool {
     let path = PathBuf::from(value);
     !path.as_os_str().is_empty()
         && path
@@ -904,7 +935,7 @@ fn is_safe_relative_path(value: &str) -> bool {
             .all(|component| matches!(component, Component::Normal(_) | Component::CurDir))
 }
 
-fn slash_path(path: &Path) -> String {
+pub(super) fn slash_path(path: &Path) -> String {
     path.components()
         .filter_map(|component| match component {
             Component::Normal(value) => value.to_str(),
@@ -915,7 +946,7 @@ fn slash_path(path: &Path) -> String {
 }
 
 #[cfg(test)]
-fn host_environment_message(session_started_at: &str) -> suncode_llm::Message {
+pub(super) fn host_environment_message(session_started_at: &str) -> suncode_llm::Message {
     host_environment_message_with_context(
         session_started_at,
         "unknown",
@@ -925,7 +956,7 @@ fn host_environment_message(session_started_at: &str) -> suncode_llm::Message {
     )
 }
 
-fn host_environment_message_with_context(
+pub(super) fn host_environment_message_with_context(
     session_started_at: &str,
     model_id: &str,
     provider_id: &str,
@@ -970,7 +1001,7 @@ fn host_environment_message_with_context(
     }
 }
 
-fn scoped_glob(scope_root: Option<&Path>, path: &str, pattern: &str) -> String {
+pub(super) fn scoped_glob(scope_root: Option<&Path>, path: &str, pattern: &str) -> String {
     let base = path.trim_matches('/');
     if base.is_empty() || base == "." {
         return pattern.to_string();
@@ -989,7 +1020,7 @@ fn scoped_glob(scope_root: Option<&Path>, path: &str, pattern: &str) -> String {
     }
 }
 
-fn dependency_path(path: &str) -> Option<(&str, &str)> {
+pub(super) fn dependency_path(path: &str) -> Option<(&str, &str)> {
     let value = path.strip_prefix("dependency:")?;
     let (dependency_id, relative_path) = value.split_once('/').unwrap_or((value, "."));
     if dependency_id.is_empty() {
@@ -998,11 +1029,11 @@ fn dependency_path(path: &str) -> Option<(&str, &str)> {
     Some((dependency_id, relative_path))
 }
 
-fn dependency_tool_allowed(name: &str) -> bool {
+pub(super) fn dependency_tool_allowed(name: &str) -> bool {
     matches!(name, "read" | "glob" | "grep") || lsp::is_lsp_tool(name)
 }
 
-fn is_context_overflow_error(error: &BusinessError) -> bool {
+pub(super) fn is_context_overflow_error(error: &BusinessError) -> bool {
     if error.code == "context_overflow" {
         return true;
     }
@@ -1014,7 +1045,7 @@ fn is_context_overflow_error(error: &BusinessError) -> bool {
             || text.contains("maximum"))
 }
 
-fn to_llm_message(message: &Message) -> suncode_llm::Message {
+pub(super) fn to_llm_message(message: &Message) -> suncode_llm::Message {
     suncode_llm::Message {
         role: message.role.clone(),
         content: message
@@ -1039,7 +1070,10 @@ fn to_llm_message(message: &Message) -> suncode_llm::Message {
     }
 }
 
-fn message_with_image_refs(input: &str, images: &[suncode_data::SessionImageRecord]) -> Message {
+pub(super) fn message_with_image_refs(
+    input: &str,
+    images: &[suncode_data::SessionImageRecord],
+) -> Message {
     let mut message = Message::text("user", input);
     message
         .content
@@ -1050,7 +1084,7 @@ fn message_with_image_refs(input: &str, images: &[suncode_data::SessionImageReco
     message
 }
 
-fn image_mime_type(storage_path: &str) -> Result<&'static str, BusinessError> {
+pub(super) fn image_mime_type(storage_path: &str) -> Result<&'static str, BusinessError> {
     let extension = Path::new(storage_path)
         .extension()
         .and_then(|value| value.to_str())
@@ -1069,7 +1103,7 @@ fn image_mime_type(storage_path: &str) -> Result<&'static str, BusinessError> {
     }
 }
 
-fn continuation_snapshot(context: &Continuation) -> Result<Value, serde_json::Error> {
+pub(super) fn continuation_snapshot(context: &Continuation) -> Result<Value, serde_json::Error> {
     let mut redacted = context.clone();
     for message in &mut redacted.messages {
         if message.role != "tool" {
@@ -1085,7 +1119,7 @@ fn continuation_snapshot(context: &Continuation) -> Result<Value, serde_json::Er
     serde_json::to_value(redacted)
 }
 
-fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -> Value {
+pub(super) fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -> Value {
     if name == "read" {
         if let Some(encoded) = value
             .get("data_base64")
@@ -1156,14 +1190,14 @@ fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -
     value
 }
 
-fn prefix_result_path(value: &mut Value, key: &str, dependency_id: &str) {
+pub(super) fn prefix_result_path(value: &mut Value, key: &str, dependency_id: &str) {
     let Some(relative) = value.get(key).and_then(Value::as_str) else {
         return;
     };
     value[key] = json!(dependency_alias(dependency_id, relative));
 }
 
-fn dependency_alias(dependency_id: &str, relative: &str) -> String {
+pub(super) fn dependency_alias(dependency_id: &str, relative: &str) -> String {
     let relative = relative.trim_start_matches('/');
     if relative.is_empty() || relative == "." {
         format!("dependency:{dependency_id}")

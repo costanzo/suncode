@@ -6,16 +6,11 @@ use std::{
     path::PathBuf,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EnvironmentSource {
+    #[default]
     Disabled,
     Process,
-}
-
-impl Default for EnvironmentSource {
-    fn default() -> Self {
-        Self::Disabled
-    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -43,7 +38,7 @@ impl PersistedSettings {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct RuntimeConfig {
     pub full_control: Option<bool>,
     pub tool_allowlist: Option<BTreeSet<String>>,
@@ -55,6 +50,20 @@ pub struct RuntimeConfig {
 
 impl RuntimeConfig {
     pub const DEFAULT_TURN_TIMEOUT_MS: u64 = 600_000;
+}
+
+// Credentials are secrets, so Debug lists only their names.
+impl std::fmt::Debug for RuntimeConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RuntimeConfig")
+            .field("full_control", &self.full_control)
+            .field("tool_allowlist", &self.tool_allowlist)
+            .field("turn_timeout_ms", &self.turn_timeout_ms)
+            .field("bash_timeout_ms", &self.bash_timeout_ms)
+            .field("tool_call_limit", &self.tool_call_limit)
+            .field("credentials", &self.credentials.keys().collect::<Vec<_>>())
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -293,6 +302,22 @@ fn default_user_directory() -> PathBuf {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn debug_output_hides_credential_values() {
+        let config = RuntimeConfig {
+            full_control: None,
+            tool_allowlist: None,
+            turn_timeout_ms: RuntimeConfig::DEFAULT_TURN_TIMEOUT_MS,
+            bash_timeout_ms: None,
+            tool_call_limit: None,
+            credentials: BTreeMap::from([("openai".to_string(), "sk-secret-value".to_string())]),
+        };
+        let rendered = format!("{config:?}");
+        assert!(rendered.contains("openai"));
+        assert!(!rendered.contains("sk-secret-value"));
+    }
+
     use super::*;
     use std::sync::{Mutex, OnceLock};
 

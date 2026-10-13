@@ -1,5 +1,11 @@
+//! Part of the `Agent` implementation; see `agent/mod.rs`.
+
+use super::run::*;
+use super::support::*;
+use super::*;
+
 impl Agent {
-    fn persist_child_invocation_outcome(
+    pub(super) fn persist_child_invocation_outcome(
         &self,
         continuation: &Continuation,
         outcome: &Result<TurnResponse, BusinessError>,
@@ -10,7 +16,13 @@ impl Agent {
         let definition = builtin_agents::by_id(agent_id)
             .ok_or_else(|| BusinessError::unavailable("child session agent is not available"))?;
         let (state, result, error_code) = match outcome {
-            Ok(TurnResponse::Completed { message, usage, iterations, tool_calls, .. }) => (
+            Ok(TurnResponse::Completed {
+                message,
+                usage,
+                iterations,
+                tool_calls,
+                ..
+            }) => (
                 "completed",
                 json!({
                     "status":"completed",
@@ -60,7 +72,9 @@ impl Agent {
                     .details
                     .get("approval_id")
                     .and_then(Value::as_str)
-                    .ok_or_else(|| BusinessError::unavailable("child approval outcome is missing approval_id"))?;
+                    .ok_or_else(|| {
+                        BusinessError::unavailable("child approval outcome is missing approval_id")
+                    })?;
                 (
                     "awaiting_approval",
                     json!({
@@ -73,7 +87,11 @@ impl Agent {
                 )
             }
             Err(error) => {
-                let state = if error.code == "cancelled" { "cancelled" } else { "failed" };
+                let state = if error.code == "cancelled" {
+                    "cancelled"
+                } else {
+                    "failed"
+                };
                 (
                     state,
                     json!({
@@ -109,7 +127,11 @@ impl Agent {
             })?;
         self.emit(
             &continuation.session_id,
-            EventPayload::ApprovalResolved(ApprovalResolvedPayload { approval_id: approval_id.to_owned(), turn_id: continuation.turn_id.clone(), decision: decision.to_owned() }),
+            EventPayload::ApprovalResolved(ApprovalResolvedPayload {
+                approval_id: approval_id.to_owned(),
+                turn_id: continuation.turn_id.clone(),
+                decision: decision.to_owned(),
+            }),
         )?;
         if decision == "deny" {
             self.clear_queued_messages(&continuation.session_id);
@@ -159,14 +181,20 @@ impl Agent {
             let _guard = session_lock.lock().await;
             let result = agent.continue_approved(&mut continuation, token).await;
             let suspended_again = result.as_ref().err().is_some_and(|error| {
-                matches!(error.code.as_str(), "approval_required" | "question_required")
+                matches!(
+                    error.code.as_str(),
+                    "approval_required" | "question_required"
+                )
             });
             if let Err(error) = agent.persist_child_invocation_outcome(&continuation, &result) {
                 logging::write_business_error(
                     "subagent",
                     "persist_approval_outcome",
                     &error,
-                    format!("session={} turn={}", continuation.session_id, continuation.turn_id),
+                    format!(
+                        "session={} turn={}",
+                        continuation.session_id, continuation.turn_id
+                    ),
                 );
             }
             let status = if result.is_ok() || suspended_again {
@@ -251,9 +279,19 @@ impl Agent {
             .as_ref()
             .ok_or_else(|| BusinessError::new("agent_unavailable", "question call is missing"))?;
         let event = if rejected {
-            EventPayload::QuestionRejected(QuestionAnsweredPayload { request_id: request_id.to_owned(), turn_id: continuation.turn_id.clone(), tool_call_id: call.call_id.clone(), answers })
+            EventPayload::QuestionRejected(QuestionAnsweredPayload {
+                request_id: request_id.to_owned(),
+                turn_id: continuation.turn_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                answers,
+            })
         } else {
-            EventPayload::QuestionReplied(QuestionAnsweredPayload { request_id: request_id.to_owned(), turn_id: continuation.turn_id.clone(), tool_call_id: call.call_id.clone(), answers })
+            EventPayload::QuestionReplied(QuestionAnsweredPayload {
+                request_id: request_id.to_owned(),
+                turn_id: continuation.turn_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                answers,
+            })
         };
         self.emit(&continuation.session_id, event)?;
         let token = CancellationToken::new();
@@ -328,7 +366,7 @@ impl Agent {
         Ok(true)
     }
 
-    async fn continue_question(
+    pub(super) async fn continue_question(
         &self,
         continuation: &mut Continuation,
         token: CancellationToken,
@@ -337,14 +375,30 @@ impl Agent {
             let answers = continuation.question_answers.take().unwrap_or_default();
             let result = json!({"answers": answers, "rejected": continuation.question_rejected});
             self.tool_state(continuation, &call, "succeeded", None)?;
-            self.emit(&continuation.session_id, EventPayload::ToolResult(ToolResultPayload { turn_id: continuation.turn_id.clone(), call_id: continuation.active_call_id.clone(), tool_call_id: call.call_id.clone(), result: result.clone() }))?;
+            self.emit(
+                &continuation.session_id,
+                EventPayload::ToolResult(ToolResultPayload {
+                    turn_id: continuation.turn_id.clone(),
+                    call_id: continuation.active_call_id.clone(),
+                    tool_call_id: call.call_id.clone(),
+                    result: result.clone(),
+                }),
+            )?;
             let mut tool = Message::text(
                 "tool",
                 serde_json::to_string(&result).unwrap_or_else(|_| "{}".into()),
             );
             tool.tool_call_id = Some(call.call_id.clone());
             continuation.messages.push(tool.clone());
-            self.emit(&continuation.session_id, EventPayload::MessageTool(MessageToolPayload { turn_id: continuation.turn_id.clone(), call_id: continuation.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: tool }))?;
+            self.emit(
+                &continuation.session_id,
+                EventPayload::MessageTool(MessageToolPayload {
+                    turn_id: continuation.turn_id.clone(),
+                    call_id: continuation.active_call_id.clone(),
+                    tool_call_id: call.call_id.clone(),
+                    message: tool,
+                }),
+            )?;
         }
         let siblings = std::mem::take(&mut continuation.remaining_calls);
         self.resolve_calls(continuation, siblings, token.clone())
@@ -366,19 +420,14 @@ impl Agent {
         Ok(response)
     }
 
-    async fn continue_approved(
+    pub(super) async fn continue_approved(
         &self,
         continuation: &mut Continuation,
         token: CancellationToken,
     ) -> Result<TurnResponse, BusinessError> {
         if let Some(call) = continuation.pending_call.take() {
             let expected_mcp_generation = continuation.pending_mcp_generation.take();
-            self.execute_call(
-                continuation,
-                &call,
-                token.clone(),
-                expected_mcp_generation,
-            )
+            self.execute_call(continuation, &call, token.clone(), expected_mcp_generation)
                 .await?;
             continuation
                 .approved_computer_call_ids
@@ -403,5 +452,4 @@ impl Agent {
         )?;
         Ok(response)
     }
-
 }

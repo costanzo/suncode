@@ -1,5 +1,10 @@
+//! Part of the `Agent` implementation; see `agent/mod.rs`.
+
+use super::support::*;
+use super::*;
+
 impl Agent {
-    async fn resolve_calls(
+    pub(super) async fn resolve_calls(
         &self,
         context: &mut Continuation,
         calls: Vec<ToolCall>,
@@ -12,7 +17,14 @@ impl Agent {
             for (index, call) in calls.iter().enumerate() {
                 self.emit(
                     &context.session_id,
-                    EventPayload::ToolRequested(ToolRequestedPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), name: call.name.clone(), arguments: call.arguments.clone(), ordinal: index }),
+                    EventPayload::ToolRequested(ToolRequestedPayload {
+                        turn_id: context.turn_id.clone(),
+                        call_id: context.active_call_id.clone(),
+                        tool_call_id: call.call_id.clone(),
+                        name: call.name.clone(),
+                        arguments: call.arguments.clone(),
+                        ordinal: index,
+                    }),
                 )?;
                 self.tool_state(context, call, "failed", Some("tool_budget_exceeded"))?;
             }
@@ -30,7 +42,17 @@ impl Agent {
         context.tool_calls = next_tool_calls;
         let mut allowed_calls = Vec::new();
         for (index, call) in calls.iter().enumerate() {
-            self.emit(&context.session_id, EventPayload::ToolRequested(ToolRequestedPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), name: call.name.clone(), arguments: call.arguments.clone(), ordinal: index }))?;
+            self.emit(
+                &context.session_id,
+                EventPayload::ToolRequested(ToolRequestedPayload {
+                    turn_id: context.turn_id.clone(),
+                    call_id: context.active_call_id.clone(),
+                    tool_call_id: call.call_id.clone(),
+                    name: call.name.clone(),
+                    arguments: call.arguments.clone(),
+                    ordinal: index,
+                }),
+            )?;
             let signature = tool_signature(call);
             if context.last_tool_signature.as_deref() == Some(signature.as_str()) {
                 context.repeated_tool_stalls += 1;
@@ -53,7 +75,10 @@ impl Agent {
                 continue;
             }
             if !context.allowed_tools.is_empty()
-                && !context.allowed_tools.iter().any(|allowed| allowed == &call.name)
+                && !context
+                    .allowed_tools
+                    .iter()
+                    .any(|allowed| allowed == &call.name)
             {
                 let error = BusinessError::new(
                     "agent_tool_denied",
@@ -65,11 +90,17 @@ impl Agent {
                 continue;
             }
             if !context.host_tool_allowlist.is_empty()
-                && !context.host_tool_allowlist.iter().any(|allowed| allowed == &call.name)
+                && !context
+                    .host_tool_allowlist
+                    .iter()
+                    .any(|allowed| allowed == &call.name)
             {
                 let error = BusinessError::new(
                     "agent_tool_denied",
-                    format!("Tool `{}` is not allowed by the host tool ceiling", call.name),
+                    format!(
+                        "Tool `{}` is not allowed by the host tool ceiling",
+                        call.name
+                    ),
                 );
                 if !self.record_recoverable_call_error(context, call, &error)? {
                     return Err(error);
@@ -91,7 +122,8 @@ impl Agent {
                     token.clone(),
                 )
                 .await?;
-                self.execute_delegate_agent(context, call, token.clone()).await?;
+                self.execute_delegate_agent(context, call, token.clone())
+                    .await?;
                 continue;
             }
             if !mcp::is_mcp_tool(&call.name) && !computer::is_computer_call(call) {
@@ -113,11 +145,11 @@ impl Agent {
                         mcp_generation = Some(target.generation);
                         (
                             target.label,
-                        json!({
-                            "serverId": target.server_id,
-                            "toolName": target.remote_name,
-                            "arguments": call.arguments,
-                        }),
+                            json!({
+                                "serverId": target.server_id,
+                                "toolName": target.remote_name,
+                                "arguments": call.arguments,
+                            }),
                         )
                     }
                     Ok(None) => {
@@ -181,7 +213,15 @@ impl Agent {
                 })?;
                 self.store
                     .create_question(&request_id, &context.turn_id, &snapshot)?;
-                self.emit(&context.session_id, EventPayload::QuestionAsked(QuestionAskedPayload { request_id: request_id.clone(), turn_id: context.turn_id.clone(), tool_call_id: call.call_id.clone(), questions: call.arguments["questions"].clone() }))?;
+                self.emit(
+                    &context.session_id,
+                    EventPayload::QuestionAsked(QuestionAskedPayload {
+                        request_id: request_id.clone(),
+                        turn_id: context.turn_id.clone(),
+                        tool_call_id: call.call_id.clone(),
+                        questions: call.arguments["questions"].clone(),
+                    }),
+                )?;
                 return Err(BusinessError::new("question_required", "The user must answer the question tool").details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"request_id":request_id})));
             }
             if call.name == "todowrite" {
@@ -249,8 +289,10 @@ impl Agent {
                             .take_while(|candidate| computer::is_computer_call(candidate))
                             .cloned()
                             .collect::<Vec<_>>();
-                        context.approved_computer_call_ids =
-                            batch.iter().map(|candidate| candidate.call_id.clone()).collect();
+                        context.approved_computer_call_ids = batch
+                            .iter()
+                            .map(|candidate| candidate.call_id.clone())
+                            .collect();
                         approval_operation = "computer.batch".into();
                         approval_arguments = json!({
                             "toolsetName":"computer",
@@ -279,7 +321,16 @@ impl Agent {
                         arguments: &approval_arguments,
                         snapshot: &snapshot,
                     })?;
-                    self.emit(&context.session_id, EventPayload::ApprovalRequested(ApprovalRequestedPayload { turn_id: context.turn_id.clone(), tool_call_id: call.call_id.clone(), approval_id: approval.approval_id.clone(), operation: approval_operation, arguments: approval_arguments }))?;
+                    self.emit(
+                        &context.session_id,
+                        EventPayload::ApprovalRequested(ApprovalRequestedPayload {
+                            turn_id: context.turn_id.clone(),
+                            tool_call_id: call.call_id.clone(),
+                            approval_id: approval.approval_id.clone(),
+                            operation: approval_operation,
+                            arguments: approval_arguments,
+                        }),
+                    )?;
                     return Err(BusinessError::new("approval_required",format!("Tool call requires approval: {}",call.name)).details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id})));
                 }
                 Decision::Allow => {
@@ -293,7 +344,8 @@ impl Agent {
                             token.clone(),
                         )
                         .await?;
-                        self.execute_call(context, call, token.clone(), None).await?;
+                        self.execute_call(context, call, token.clone(), None)
+                            .await?;
                     } else {
                         allowed_calls.push(call.clone());
                     }
@@ -306,7 +358,7 @@ impl Agent {
         Ok(())
     }
 
-    async fn execute_delegate_agent(
+    pub(super) async fn execute_delegate_agent(
         &self,
         context: &mut Continuation,
         call: &ToolCall,
@@ -331,7 +383,9 @@ impl Agent {
             .and_then(Value::as_str)
             .map(str::trim)
             .filter(|task| !task.is_empty() && task.chars().count() <= 16_000)
-            .ok_or_else(|| BusinessError::invalid("task must contain 1 through 16000 characters"))?;
+            .ok_or_else(|| {
+                BusinessError::invalid("task must contain 1 through 16000 characters")
+            })?;
         let definition = builtin_agents::by_name(agent_name)
             .ok_or_else(|| BusinessError::new("unknown_agent", "built-in agent was not found"))?;
         self.tool_state(context, call, "policy_check", None)?;
@@ -362,7 +416,8 @@ impl Agent {
             &json!(definition.allowed_tools),
             &context.model,
         )?;
-        self.store.update_subagent_invocation(&child.session_id, "running", None, None)?;
+        self.store
+            .update_subagent_invocation(&child.session_id, "running", None, None)?;
         let outcome = Box::pin(self.submit_child(
             &child.session_id,
             task,
@@ -372,7 +427,13 @@ impl Agent {
         ))
         .await;
         let result = match outcome {
-            Ok(TurnResponse::Completed { message, usage, iterations, tool_calls, .. }) => {
+            Ok(TurnResponse::Completed {
+                message,
+                usage,
+                iterations,
+                tool_calls,
+                ..
+            }) => {
                 let result = json!({
                     "status":"completed",
                     "agentId":definition.id,
@@ -384,22 +445,42 @@ impl Agent {
                     "iterations":iterations,
                     "toolCalls":tool_calls
                 });
-                self.store.update_subagent_invocation(&child.session_id, "completed", Some(&result), None)?;
+                self.store.update_subagent_invocation(
+                    &child.session_id,
+                    "completed",
+                    Some(&result),
+                    None,
+                )?;
                 result
             }
             Ok(TurnResponse::AwaitingApproval { approval_id, .. }) => {
                 let result = json!({"status":"awaiting_approval","agentId":definition.id,"childSessionId":child.session_id,"approvalId":approval_id});
-                self.store.update_subagent_invocation(&child.session_id, "awaiting_approval", Some(&result), None)?;
+                self.store.update_subagent_invocation(
+                    &child.session_id,
+                    "awaiting_approval",
+                    Some(&result),
+                    None,
+                )?;
                 result
             }
             Ok(TurnResponse::AwaitingQuestion { .. }) => {
                 let result = json!({"status":"failed","agentId":definition.id,"childSessionId":child.session_id,"error":{"code":"agent_question_denied","message":"child agents cannot ask the user questions"}});
-                self.store.update_subagent_invocation(&child.session_id, "failed", Some(&result), Some("agent_question_denied"))?;
+                self.store.update_subagent_invocation(
+                    &child.session_id,
+                    "failed",
+                    Some(&result),
+                    Some("agent_question_denied"),
+                )?;
                 result
             }
             Ok(TurnResponse::Queued { .. }) => {
                 let result = json!({"status":"failed","agentId":definition.id,"childSessionId":child.session_id,"error":{"code":"agent_busy","message":"child agent unexpectedly queued its initial task"}});
-                self.store.update_subagent_invocation(&child.session_id, "failed", Some(&result), Some("agent_busy"))?;
+                self.store.update_subagent_invocation(
+                    &child.session_id,
+                    "failed",
+                    Some(&result),
+                    Some("agent_busy"),
+                )?;
                 result
             }
             Err(error) if error.code == "approval_required" => {
@@ -407,23 +488,39 @@ impl Agent {
                     .details
                     .get("approval_id")
                     .and_then(Value::as_str)
-                    .ok_or_else(|| BusinessError::unavailable("child approval outcome is missing approval_id"))?;
+                    .ok_or_else(|| {
+                        BusinessError::unavailable("child approval outcome is missing approval_id")
+                    })?;
                 let result = json!({"status":"awaiting_approval","agentId":definition.id,"childSessionId":child.session_id,"approvalId":approval_id});
-                self.store.update_subagent_invocation(&child.session_id, "awaiting_approval", Some(&result), None)?;
+                self.store.update_subagent_invocation(
+                    &child.session_id,
+                    "awaiting_approval",
+                    Some(&result),
+                    None,
+                )?;
                 result
             }
             Err(error) => {
-                let state = if error.code == "cancelled" { "cancelled" } else { "failed" };
+                let state = if error.code == "cancelled" {
+                    "cancelled"
+                } else {
+                    "failed"
+                };
                 let error_code = error.code.clone();
                 let result = json!({"status":state,"agentId":definition.id,"childSessionId":child.session_id,"error":{"code":error.code,"message":error.message,"details":error.details}});
-                self.store.update_subagent_invocation(&child.session_id, state, Some(&result), Some(&error_code))?;
+                self.store.update_subagent_invocation(
+                    &child.session_id,
+                    state,
+                    Some(&result),
+                    Some(&error_code),
+                )?;
                 result
             }
         };
         self.record_call_success(context, call, result)
     }
 
-    async fn execute_allowed_calls(
+    pub(super) async fn execute_allowed_calls(
         &self,
         context: &mut Continuation,
         calls: Vec<ToolCall>,
@@ -467,20 +564,29 @@ impl Agent {
                     return Err(error);
                 }
             };
-                let agent = self.clone();
-                let token = token.clone();
-                let output_callback = {
-                    let agent = agent.clone();
-                    let session_id = context.session_id.clone();
-                    let turn_id = context.turn_id.clone();
-                    let call_id = context.active_call_id.clone();
-                    let tool_call_id = call.call_id.clone();
-                    Some(std::sync::Arc::new(move |stream: &str, chunk: &[u8]| {
-                        agent.emit_live(&session_id, EventPayload::ToolOutput(ToolOutputPayload { turn_id: turn_id.clone(), call_id: call_id.clone(), tool_call_id: tool_call_id.clone(), stream: stream.to_owned(), chunk_base64: STANDARD.encode(chunk) }));
-                    }) as suncode_tool::ProcessOutputCallback)
-                };
-                futures.push(async move {
-                    let result = agent
+            let agent = self.clone();
+            let token = token.clone();
+            let output_callback = {
+                let agent = agent.clone();
+                let session_id = context.session_id.clone();
+                let turn_id = context.turn_id.clone();
+                let call_id = context.active_call_id.clone();
+                let tool_call_id = call.call_id.clone();
+                Some(std::sync::Arc::new(move |stream: &str, chunk: &[u8]| {
+                    agent.emit_live(
+                        &session_id,
+                        EventPayload::ToolOutput(ToolOutputPayload {
+                            turn_id: turn_id.clone(),
+                            call_id: call_id.clone(),
+                            tool_call_id: tool_call_id.clone(),
+                            stream: stream.to_owned(),
+                            chunk_base64: STANDARD.encode(chunk),
+                        }),
+                    );
+                }) as suncode_tool::ProcessOutputCallback)
+            };
+            futures.push(async move {
+                let result = agent
                     .operation_in_project(&project_root, &method, params, token, output_callback)
                     .await;
                 (call, result)
@@ -502,7 +608,7 @@ impl Agent {
         Ok(())
     }
 
-    fn execute_todowrite(
+    pub(super) fn execute_todowrite(
         &self,
         context: &mut Continuation,
         call: &ToolCall,
@@ -514,13 +620,30 @@ impl Agent {
         context.todos = todos.clone();
         self.emit(
             &context.session_id,
-            EventPayload::TodoUpdated(TodoUpdatedPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), todos: todos.into_iter().map(|todo| TodoEventItem { content: todo.content, status: todo.status, priority: todo.priority }).collect() }),
+            EventPayload::TodoUpdated(TodoUpdatedPayload {
+                turn_id: context.turn_id.clone(),
+                call_id: context.active_call_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                todos: todos
+                    .into_iter()
+                    .map(|todo| TodoEventItem {
+                        content: todo.content,
+                        status: todo.status,
+                        priority: todo.priority,
+                    })
+                    .collect(),
+            }),
         )?;
         self.tool_state(context, call, "succeeded", None)?;
         let result = json!({"todos": context.todos});
         self.emit(
             &context.session_id,
-            EventPayload::ToolResult(ToolResultPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), result: result.clone() }),
+            EventPayload::ToolResult(ToolResultPayload {
+                turn_id: context.turn_id.clone(),
+                call_id: context.active_call_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                result: result.clone(),
+            }),
         )?;
         let mut tool = Message::text(
             "tool",
@@ -530,12 +653,17 @@ impl Agent {
         context.messages.push(tool.clone());
         self.emit(
             &context.session_id,
-            EventPayload::MessageTool(MessageToolPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: tool }),
+            EventPayload::MessageTool(MessageToolPayload {
+                turn_id: context.turn_id.clone(),
+                call_id: context.active_call_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                message: tool,
+            }),
         )?;
         Ok(())
     }
 
-    async fn execute_call(
+    pub(super) async fn execute_call(
         &self,
         context: &mut Continuation,
         call: &ToolCall,
@@ -567,10 +695,7 @@ impl Agent {
             return self.record_call_success(context, call, result);
         }
         if lsp::is_lsp_tool(&call.name) {
-            let result = match self
-                .execute_lsp_call(context, call, token)
-                .await
-            {
+            let result = match self.execute_lsp_call(context, call, token).await {
                 Ok(result) => result,
                 Err(error) => {
                     if !self.record_recoverable_call_error(context, call, &error)? {
@@ -604,11 +729,7 @@ impl Agent {
         }
         if computer::is_computer_call(call) {
             let member = computer::member_name(call).unwrap_or(&call.name);
-            let result = match self
-                .computer
-                .execute(member, &call.arguments, token)
-                .await
-            {
+            let result = match self.computer.execute(member, &call.arguments, token).await {
                 Ok(result) => result,
                 Err(error) => {
                     if !self.record_recoverable_call_error(context, call, &error)? {
@@ -658,7 +779,16 @@ impl Agent {
                 let call_id = context.active_call_id.clone();
                 let tool_call_id = call.call_id.clone();
                 Some(std::sync::Arc::new(move |stream: &str, chunk: &[u8]| {
-                    agent.emit_live(&session_id, EventPayload::ToolOutput(ToolOutputPayload { turn_id: turn_id.clone(), call_id: call_id.clone(), tool_call_id: tool_call_id.clone(), stream: stream.to_owned(), chunk_base64: STANDARD.encode(chunk) }));
+                    agent.emit_live(
+                        &session_id,
+                        EventPayload::ToolOutput(ToolOutputPayload {
+                            turn_id: turn_id.clone(),
+                            call_id: call_id.clone(),
+                            tool_call_id: tool_call_id.clone(),
+                            stream: stream.to_owned(),
+                            chunk_base64: STANDARD.encode(chunk),
+                        }),
+                    );
                 }) as suncode_tool::ProcessOutputCallback)
             })
             .await
@@ -674,7 +804,11 @@ impl Agent {
         self.record_call_success(context, call, result)
     }
 
-    fn execute_skill_call(&self, context: &Continuation, call: &ToolCall) -> Result<Value, BusinessError> {
+    pub(super) fn execute_skill_call(
+        &self,
+        context: &Continuation,
+        call: &ToolCall,
+    ) -> Result<Value, BusinessError> {
         let name = call
             .arguments
             .get("name")
@@ -700,7 +834,7 @@ impl Agent {
         }))
     }
 
-    fn record_recoverable_call_error(
+    pub(super) fn record_recoverable_call_error(
         &self,
         context: &mut Continuation,
         call: &ToolCall,
@@ -719,7 +853,12 @@ impl Agent {
         });
         self.emit(
             &context.session_id,
-            EventPayload::ToolResult(ToolResultPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), result: result.clone() }),
+            EventPayload::ToolResult(ToolResultPayload {
+                turn_id: context.turn_id.clone(),
+                call_id: context.active_call_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                result: result.clone(),
+            }),
         )?;
         let mut tool = Message::text(
             "tool",
@@ -729,12 +868,17 @@ impl Agent {
         context.messages.push(tool.clone());
         self.emit(
             &context.session_id,
-            EventPayload::MessageTool(MessageToolPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: tool }),
+            EventPayload::MessageTool(MessageToolPayload {
+                turn_id: context.turn_id.clone(),
+                call_id: context.active_call_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                message: tool,
+            }),
         )?;
         Ok(true)
     }
 
-    fn record_call_success(
+    pub(super) fn record_call_success(
         &self,
         context: &mut Continuation,
         call: &ToolCall,
@@ -772,7 +916,12 @@ impl Agent {
         )?;
         self.emit(
             &context.session_id,
-            EventPayload::ToolResult(ToolResultPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), result: normalized_result.clone() }),
+            EventPayload::ToolResult(ToolResultPayload {
+                turn_id: context.turn_id.clone(),
+                call_id: context.active_call_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                result: normalized_result.clone(),
+            }),
         )?;
         let checkpoint_ids = result
             .get("checkpoint_ids")
@@ -797,7 +946,17 @@ impl Agent {
                     result.get("to")
                 }
                 .and_then(Value::as_str);
-                self.emit(&context.session_id, EventPayload::CheckpointCaptured(CheckpointCapturedPayload { turn_id: context.turn_id.clone(), tool_call_id: call.call_id.clone(), manifest_id: manifest.manifest_id.clone(), checkpoint_id: (*id).to_owned(), path: path.map(str::to_owned), ordinal: existing + index as i64 }))?;
+                self.emit(
+                    &context.session_id,
+                    EventPayload::CheckpointCaptured(CheckpointCapturedPayload {
+                        turn_id: context.turn_id.clone(),
+                        tool_call_id: call.call_id.clone(),
+                        manifest_id: manifest.manifest_id.clone(),
+                        checkpoint_id: (*id).to_owned(),
+                        path: path.map(str::to_owned),
+                        ordinal: existing + index as i64,
+                    }),
+                )?;
             }
         }
         let mut tool = Message::text(
@@ -808,12 +967,17 @@ impl Agent {
         context.messages.push(tool.clone());
         self.emit(
             &context.session_id,
-            EventPayload::MessageTool(MessageToolPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: tool }),
+            EventPayload::MessageTool(MessageToolPayload {
+                turn_id: context.turn_id.clone(),
+                call_id: context.active_call_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                message: tool,
+            }),
         )?;
         Ok(())
     }
 
-    fn record_computer_success(
+    pub(super) fn record_computer_success(
         &self,
         context: &mut Continuation,
         call: &ToolCall,
@@ -828,12 +992,12 @@ impl Agent {
                 frame,
                 source_frame,
             } => {
-                let source_png = source_frame
-                    .png()
-                    .map_err(|error| BusinessError::new("computer_capture_failed", error.to_string()))?;
-                let provider_png = frame
-                    .png()
-                    .map_err(|error| BusinessError::new("computer_capture_failed", error.to_string()))?;
+                let source_png = source_frame.png().map_err(|error| {
+                    BusinessError::new("computer_capture_failed", error.to_string())
+                })?;
+                let provider_png = frame.png().map_err(|error| {
+                    BusinessError::new("computer_capture_failed", error.to_string())
+                })?;
                 let artifact_id = self.computer.persist_screenshot(&source_png)?;
                 let metadata = json!({
                     "type":"computer_image",
@@ -863,7 +1027,12 @@ impl Agent {
         self.tool_state(context, call, "succeeded", None)?;
         self.emit(
             &context.session_id,
-            EventPayload::ToolResult(ToolResultPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), result: metadata.clone() }),
+            EventPayload::ToolResult(ToolResultPayload {
+                turn_id: context.turn_id.clone(),
+                call_id: context.active_call_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                result: metadata.clone(),
+            }),
         )?;
         let mut provider_message = message;
         provider_message.tool_call_id = Some(call.call_id.clone());
@@ -876,22 +1045,22 @@ impl Agent {
         redacted.tool_call_id = Some(call.call_id.clone());
         self.emit(
             &context.session_id,
-            EventPayload::MessageTool(MessageToolPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: redacted }),
+            EventPayload::MessageTool(MessageToolPayload {
+                turn_id: context.turn_id.clone(),
+                call_id: context.active_call_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                message: redacted,
+            }),
         )?;
         Ok(())
     }
 
-    fn record_computer_skipped(
+    pub(super) fn record_computer_skipped(
         &self,
         context: &mut Continuation,
         call: &ToolCall,
     ) -> Result<(), BusinessError> {
-        self.tool_state(
-            context,
-            call,
-            "failed",
-            Some("computer_batch_halted"),
-        )?;
+        self.tool_state(context, call, "failed", Some("computer_batch_halted"))?;
         let result = json!({
             "error": {
                 "code": "computer_batch_halted",
@@ -900,19 +1069,29 @@ impl Agent {
         });
         self.emit(
             &context.session_id,
-            EventPayload::ToolResult(ToolResultPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), result: result.clone() }),
+            EventPayload::ToolResult(ToolResultPayload {
+                turn_id: context.turn_id.clone(),
+                call_id: context.active_call_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                result: result.clone(),
+            }),
         )?;
         let mut tool = Message::text("tool", suncode_computer::HALT_MESSAGE);
         tool.tool_call_id = Some(call.call_id.clone());
         context.messages.push(tool.clone());
         self.emit(
             &context.session_id,
-            EventPayload::MessageTool(MessageToolPayload { turn_id: context.turn_id.clone(), call_id: context.active_call_id.clone(), tool_call_id: call.call_id.clone(), message: tool }),
+            EventPayload::MessageTool(MessageToolPayload {
+                turn_id: context.turn_id.clone(),
+                call_id: context.active_call_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                message: tool,
+            }),
         )?;
         Ok(())
     }
 
-    async fn execute_lsp_call(
+    pub(super) async fn execute_lsp_call(
         &self,
         context: &Continuation,
         call: &ToolCall,
@@ -1000,7 +1179,7 @@ impl Agent {
             .await
     }
 
-    async fn operation_in_project(
+    pub(super) async fn operation_in_project(
         &self,
         project_root: &str,
         method: &str,
@@ -1049,7 +1228,7 @@ impl Agent {
             })
     }
 
-    fn prepare_call(
+    pub(super) fn prepare_call(
         &self,
         context: &Continuation,
         call: &ToolCall,
@@ -1058,7 +1237,11 @@ impl Agent {
         let Some(path) = arguments.get("path").and_then(Value::as_str) else {
             return Ok((
                 context.project_root.clone(),
-                self.cap_bash_timeout(&call.name, translate_arguments(&call.name, &arguments)?, context.bash_timeout_ms),
+                self.cap_bash_timeout(
+                    &call.name,
+                    translate_arguments(&call.name, &arguments)?,
+                    context.bash_timeout_ms,
+                ),
             ));
         };
         if path.starts_with("dependency:") && dependency_path(path).is_none() {
@@ -1070,11 +1253,15 @@ impl Agent {
         let Some((dependency_id, relative_path)) = dependency_path(path) else {
             return Ok((
                 context.project_root.clone(),
-                self.cap_bash_timeout(&call.name, translate_arguments_with_root(
+                self.cap_bash_timeout(
                     &call.name,
-                    &arguments,
-                    Some(Path::new(&context.project_root)),
-                )?, context.bash_timeout_ms),
+                    translate_arguments_with_root(
+                        &call.name,
+                        &arguments,
+                        Some(Path::new(&context.project_root)),
+                    )?,
+                    context.bash_timeout_ms,
+                ),
             ));
         };
         if !dependency_tool_allowed(&call.name) {
@@ -1091,25 +1278,37 @@ impl Agent {
         let dependency_root = dependency.canonical_root.clone();
         Ok((
             dependency_root.clone(),
-            self.cap_bash_timeout(&call.name, translate_arguments_with_root(
+            self.cap_bash_timeout(
                 &call.name,
-                &arguments,
-                Some(Path::new(&dependency_root)),
-            )?, context.bash_timeout_ms),
+                translate_arguments_with_root(
+                    &call.name,
+                    &arguments,
+                    Some(Path::new(&dependency_root)),
+                )?,
+                context.bash_timeout_ms,
+            ),
         ))
     }
 
-    fn cap_bash_timeout(&self, name: &str, mut params: Value, limit: Option<u64>) -> Value {
+    pub(super) fn cap_bash_timeout(
+        &self,
+        name: &str,
+        mut params: Value,
+        limit: Option<u64>,
+    ) -> Value {
         if name == "bash" {
             if let Some(limit) = limit {
-                let requested = params.get("timeout_ms").and_then(Value::as_u64).unwrap_or(120_000);
+                let requested = params
+                    .get("timeout_ms")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(120_000);
                 params["timeout_ms"] = json!(requested.min(limit));
             }
         }
         params
     }
 
-    fn validate_dependency_call(
+    pub(super) fn validate_dependency_call(
         &self,
         context: &Continuation,
         call: &ToolCall,
@@ -1145,7 +1344,7 @@ impl Agent {
         Ok(())
     }
 
-    fn dependency_context_message(
+    pub(super) fn dependency_context_message(
         &self,
         project_id: &str,
     ) -> Result<Option<suncode_llm::Message>, BusinessError> {
@@ -1177,7 +1376,7 @@ impl Agent {
     }
 }
 
-fn is_recoverable_tool_error(code: &str) -> bool {
+pub(super) fn is_recoverable_tool_error(code: &str) -> bool {
     !matches!(
         code,
         "agent_tool_denied"
@@ -1194,16 +1393,13 @@ fn is_recoverable_tool_error(code: &str) -> bool {
     )
 }
 
-fn prune_computer_screenshot_images(messages: &mut [Message], keep_latest: usize) {
+pub(super) fn prune_computer_screenshot_images(messages: &mut [Message], keep_latest: usize) {
     let mut retained = 0usize;
     for message in messages.iter_mut().rev() {
         let computer_screenshot = message.role == "tool"
-            && message
-                .content
-                .iter()
-                .any(|part| {
-                    part.kind == "text" && part.text.starts_with("Computer screenshot captured")
-                })
+            && message.content.iter().any(|part| {
+                part.kind == "text" && part.text.starts_with("Computer screenshot captured")
+            })
             && message.content.iter().any(|part| part.kind == "image_url");
         if !computer_screenshot {
             continue;
@@ -1246,9 +1442,8 @@ mod computer_context_tests {
             .content
             .iter()
             .any(|part| part.kind == "image_url"));
-        assert!(messages[1..].iter().all(|message| message
-            .content
+        assert!(messages[1..]
             .iter()
-            .any(|part| part.kind == "image_url")));
+            .all(|message| message.content.iter().any(|part| part.kind == "image_url")));
     }
 }

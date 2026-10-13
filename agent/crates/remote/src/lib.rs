@@ -369,8 +369,10 @@ impl RemoteController {
             mobile_pairing_url: None,
             error: None,
         });
-        let client =
-            remote_http_client(&self.host.network_configuration(), Duration::from_secs(15))?;
+        let client = remote_http_client(
+            &self.host.network_configuration(),
+            RemoteTimeout::Total(Duration::from_secs(15)),
+        )?;
         let endpoint = resolve_endpoint(url.as_str(), "/v1/desktop/pairings");
         let pair_body = PairRequest {
             pairing_code: config.pairing_code.clone(),
@@ -519,7 +521,7 @@ impl RemoteController {
                         runtime.block_on(remote_worker(host, config, thread_stop, status))
                     }
                     Err(error) => {
-                        logging::error("remote", &format!("worker runtime failed: {error}"))
+                        logging::error("remote", format!("worker runtime failed: {error}"))
                     }
                 }
             })
@@ -679,14 +681,33 @@ fn remote_http_error(error: reqwest::Error) -> BusinessError {
     ))
 }
 
+/// How long a request may take.
+#[derive(Clone, Copy)]
+enum RemoteTimeout {
+    /// Bounds the whole request, including the response body.
+    Total(Duration),
+    /// For long-lived streams: bounds only connecting and the gap between bytes.
+    Idle(Duration),
+}
+
+/// The relay sends an SSE heartbeat every 15 s; three missed beats mean the stream is dead.
+const EVENT_STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(45);
+/// Largest SSE frame accepted from the relay before the stream is dropped.
+const MAX_SSE_FRAME_BYTES: usize = 2 * 1024 * 1024;
+
 fn remote_http_client(
     configuration: &RemoteNetworkConfiguration,
-    timeout: Duration,
+    timeout: RemoteTimeout,
 ) -> RemoteResult<Client> {
     let verify_certificates = configuration.verify_https_certificates;
     let use_system_certificates = configuration.use_system_certificates;
-    let mut builder = Client::builder()
-        .timeout(timeout)
+    let builder = match timeout {
+        RemoteTimeout::Total(timeout) => Client::builder().timeout(timeout),
+        RemoteTimeout::Idle(timeout) => Client::builder()
+            .connect_timeout(timeout)
+            .read_timeout(timeout),
+    };
+    let mut builder = builder
         .danger_accept_invalid_certs(!verify_certificates)
         .danger_accept_invalid_hostnames(!verify_certificates);
     if verify_certificates {
@@ -735,8 +756,14 @@ async fn remote_worker(
     stop: CancellationToken,
     status: Arc<Mutex<RemoteServerStatus>>,
 ) {
-    let client = match remote_http_client(&host.network_configuration(), Duration::from_secs(45)) {
-        Ok(client) => client,
+    let network = host.network_configuration();
+    let clients = remote_http_client(&network, RemoteTimeout::Total(Duration::from_secs(45)))
+        .and_then(|client| {
+            remote_http_client(&network, RemoteTimeout::Idle(EVENT_STREAM_IDLE_TIMEOUT))
+                .map(|events| (client, events))
+        });
+    let (client, event_client) = match clients {
+        Ok(clients) => clients,
         Err(error) => {
             set_worker_status(&status, false, Some(error.message));
             return;
@@ -754,7 +781,7 @@ async fn remote_worker(
         set_worker_status(&status, false, None);
         let request_url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/events");
         log_http_request("GET", &request_url, &json!({"accept": "text/event-stream"}));
-        let response = request_headers(client.get(request_url), &persisted, &host_id)
+        let response = request_headers(event_client.get(request_url), &persisted, &host_id)
             .header("Accept", "text/event-stream")
             .send()
             .await;
@@ -794,6 +821,10 @@ async fn remote_worker(
                         item = stream.next() => match item {
                             Some(Ok(bytes)) => {
                                 buffer.extend_from_slice(&bytes);
+                                if buffer.len() > MAX_SSE_FRAME_BYTES && sse_frame_boundary(&buffer).is_none() {
+                                    set_worker_status(&status, false, Some("Remote event frame exceeded the size limit".into()));
+                                    break;
+                                }
                                 while let Some((boundary, delimiter_len)) = sse_frame_boundary(&buffer) {
                                     let frame = buffer.drain(..boundary + delimiter_len).collect::<Vec<_>>();
                                     log_sse_frame(&frame);
@@ -967,7 +998,7 @@ fn subscribe_existing_sessions(
                                 &host_id,
                                 &session_id,
                             ).await;
-                            logging::warn("remote", &format!("session event stream ended: {error}"));
+                            logging::warn("remote", format!("session event stream ended: {error}"));
                             break;
                         }
                         None => {
@@ -1116,7 +1147,7 @@ async fn upload_remote_session_event(
         Err(error) => {
             logging::warn(
                 "remote",
-                &format!("event encryption failed: {}", error.message),
+                format!("event encryption failed: {}", error.message),
             );
             return;
         }
@@ -1441,7 +1472,7 @@ async fn handle_remote_request(
         Err(error) => {
             logging::warn(
                 "remote",
-                &format!("response encryption failed: {}", error.message),
+                format!("response encryption failed: {}", error.message),
             );
             return;
         }

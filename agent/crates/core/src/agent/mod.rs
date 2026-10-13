@@ -200,12 +200,13 @@ fn default_turn_timeout_ms() -> u64 {
     RuntimeConfig::DEFAULT_TURN_TIMEOUT_MS
 }
 
-include!("submission.rs");
-include!("continuations.rs");
-include!("run.rs");
-include!("tools.rs");
-include!("lifecycle.rs");
-include!("support.rs");
-include!("remote.rs");
+mod continuations;
+mod lifecycle;
+mod remote;
+mod run;
+mod submission;
+mod support;
+mod tools;
+use support::*;
 #[cfg(test)]
-include!("tests.rs");
+mod tests;
