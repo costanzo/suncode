@@ -16,6 +16,7 @@ export const workspaceModelGroups = [
     models: ["MiniMax-M3.1-Flash-Preview", "MiniMax-M3"],
   },
   { id: "meta", label: "Meta", models: ["muse-wonder-1.0", "muse-spark-1.3"] },
+  { id: "mimo", label: "Xiaomi MiMo", models: ["mimo-v2.6-pro", "mimo-v2.6-flash"] },
 ];
 
 export const runningConversationToolCalls = [

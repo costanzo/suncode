@@ -69,6 +69,13 @@ export const providerCatalog = {
     keyPreview: "",
     models: ["muse-wonder-1.0", "muse-spark-1.3"],
   },
+  mimo: {
+    label: "Xiaomi MiMo",
+    endpoint: "https://api.xiaomimimo.com/v1",
+    placeholder: "Paste Xiaomi MiMo API key",
+    keyPreview: "",
+    models: ["mimo-v2.6-pro", "mimo-v2.6-flash"],
+  },
 };
 
 export const navItems = [

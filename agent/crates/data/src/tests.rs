@@ -440,7 +440,7 @@ fn child_sessions_are_linked_hidden_from_primary_lists_and_interrupted_on_recove
 fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
     let store = Store::open_memory().unwrap();
     let models = store.llm_models(false).unwrap();
-    assert_eq!(models.len(), 23);
+    assert_eq!(models.len(), 25);
     let model = |id: &str| {
         models
             .iter()
@@ -512,10 +512,11 @@ fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
     );
     assert!(models.iter().all(|item| item.model_id != "gemini-3.5"));
     let providers = store.llm_model_providers(true).unwrap();
-    assert_eq!(providers.len(), 10);
+    assert_eq!(providers.len(), 11);
     for (id, endpoint) in [
         ("minimax", "https://api.minimax.io/v1"),
         ("meta", "https://api.meta.ai/v1"),
+        ("mimo", "https://api.xiaomimimo.com/v1"),
     ] {
         let provider = providers
             .iter()
@@ -551,6 +552,22 @@ fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
             Some(131_072),
             true,
             vec!["minimal", "low", "medium", "high", "xhigh", "max"],
+        ),
+        (
+            "mimo-v2.6-pro",
+            "mimo",
+            1_048_576,
+            Some(131_072),
+            true,
+            vec!["none", "high"],
+        ),
+        (
+            "mimo-v2.6-flash",
+            "mimo",
+            1_048_576,
+            Some(131_072),
+            true,
+            vec!["none", "high"],
         ),
     ] {
         let entry = model(id);
@@ -613,15 +630,15 @@ fn reopening_existing_catalog_adds_new_providers_and_preserves_provider_settings
         let store = Store::open(&path).unwrap();
         let mut connection = store.connection.lock().unwrap();
         connection.batch_execute(
-            "DELETE FROM llm_model WHERE provider_id IN ('xai', 'minimax', 'meta');
-             DELETE FROM llm_model_provider WHERE provider_id IN ('xai', 'minimax', 'meta');
+            "DELETE FROM llm_model WHERE provider_id IN ('xai', 'minimax', 'meta', 'mimo');
+             DELETE FROM llm_model_provider WHERE provider_id IN ('xai', 'minimax', 'meta', 'mimo');
              UPDATE llm_model_provider SET endpoint='https://gateway.example.test/v1', api_key='test-existing-key' WHERE provider_id='openai';",
         ).unwrap();
     }
     for _ in 0..2 {
         let store = Store::open(&path).unwrap();
         let providers = store.llm_model_providers(true).unwrap();
-        assert_eq!(providers.len(), 10);
+        assert_eq!(providers.len(), 11);
         let openai = providers
             .iter()
             .find(|item| item.provider_id == "openai")
@@ -632,10 +649,11 @@ fn reopening_existing_catalog_adds_new_providers_and_preserves_provider_settings
             Some("test-existing-key")
         );
         let models = store.llm_models(true).unwrap();
-        assert_eq!(models.len(), 23);
+        assert_eq!(models.len(), 25);
         for (provider, ids) in [
             ("minimax", ["MiniMax-M3.1-Flash-Preview", "MiniMax-M3"]),
             ("meta", ["muse-wonder-1.0", "muse-spark-1.3"]),
+            ("mimo", ["mimo-v2.6-pro", "mimo-v2.6-flash"]),
         ] {
             assert_eq!(
                 models

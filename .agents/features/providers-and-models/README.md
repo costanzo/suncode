@@ -49,13 +49,21 @@ Muse Spark 1.3 is Meta's recommended latest Spark version. Muse Wonder 1.0 is a 
 
 All four use the existing 16,384-token auto-compaction margin and client-side cancellation. Undocumented output limits remain unset. Computer Use remains unadvertised pending verification of screenshot-bearing function results. This catalog update verifies persistence and SDK routing, not live provider calls.
 
+## Xiaomi MiMo catalog
+
+The [official model catalog](https://mimo.mi.com/docs/en-US/quick-start/summary/model) and [Responses reference](https://mimo.mi.com/docs/en-US/api/chat/responses) were checked on 2026-10-12. Xiaomi MiMo uses `https://api.xiaomimimo.com/v1` through the existing Responses adapter with Bearer authentication. Startup adds its provider and model rows without changing existing credentials or endpoints. Token Plan subscribers must set the provider URL and key to the matching regional endpoint shown in their Xiaomi console; pay-as-you-go and subscription credentials use different base URLs.
+
+The seeded models are `mimo-v2.6-pro` and `mimo-v2.6-flash`. Both support image input, streaming, function calls, and JSON object output. The [official OpenCode configuration](https://mimo.mi.com/docs/en-US/tokenplan/integration/opencode) specifies 1,048,576 context tokens and 131,072 output tokens; SunCode reserves the existing 16,384-token compaction margin. Computer Use remains unadvertised pending verification of screenshot-bearing function results. UltraSpeed requires customized service access and is excluded, as are the V2.5 models scheduled for retirement on 2026-10-21 and speech-only endpoints.
+
+Responses reasoning is enabled by default. `none` disables it; every other accepted effort enables the same reasoning behavior. SunCode exposes `none` and `high` as the two distinct states rather than advertising multiple depths. Xiaomi recommends replaying reasoning items during Responses tool loops; SunCode currently replays local messages and tool outputs without reasoning items. Live provider calls remain unverified.
+
 ## Endpoint settings
 
 `set_provider_endpoint(provider, endpoint)` changes the base URL of one existing provider. Rust trims whitespace and trailing slashes, accepts only absolute HTTP or HTTPS URLs with a host and no embedded credentials, query, or fragment, and rejects unknown providers. A successful update persists the URL and atomically replaces that provider's live route. Provider identity, adapter, credential, models, enabled state, and ordering stay the same. Requests already in flight finish on the route they started with. A rejected URL leaves the stored endpoint unchanged. The C ABI returns only the provider ID and the normalized endpoint. Desktop Settings edits the endpoint on each provider detail page.
 
 ## OpenAI Responses wire format
 
-Every `adapter_type=openai` provider posts to `<endpoint>/responses`. This includes the seeded DeepSeek, Qwen, Zhipu GLM, Kimi, Gemini, OpenAI, xAI, MiniMax, and Meta rows. Chat Completions is no longer used. Requests contain:
+Every `adapter_type=openai` provider posts to `<endpoint>/responses`. This includes the seeded DeepSeek, Qwen, Zhipu GLM, Kimi, Gemini, OpenAI, xAI, MiniMax, Meta, and Xiaomi MiMo rows. Chat Completions is no longer used. Requests contain:
 
 - canonical messages encoded as Responses `input` items, with images as `input_image` data URLs;
 - function tools with `strict: false`;
