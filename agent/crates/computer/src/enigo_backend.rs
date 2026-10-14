@@ -168,7 +168,7 @@ impl ComputerBackend for EnigoBackend {
     }
 }
 
-fn normalize_capture_rgba(width: u32, height: u32, mut rgba: Vec<u8>) -> ComputerResult<Vec<u8>> {
+fn normalize_capture_rgba(width: u32, height: u32, rgba: Vec<u8>) -> ComputerResult<Vec<u8>> {
     let row_bytes = usize::try_from(width)
         .ok()
         .and_then(|width| width.checked_mul(4))
@@ -186,6 +186,8 @@ fn normalize_capture_rgba(width: u32, height: u32, mut rgba: Vec<u8>) -> Compute
             "capture payload length does not match its dimensions",
         ));
     }
+    #[cfg(target_os = "macos")]
+    let mut rgba = rgba;
     #[cfg(target_os = "macos")]
     for row in 0..(height as usize / 2) {
         let opposite = height as usize - row - 1;

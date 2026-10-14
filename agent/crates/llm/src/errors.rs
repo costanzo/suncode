@@ -73,12 +73,7 @@ pub(crate) fn transport_error(
         message.push_str(&format!(": {cause}"));
         source = cause.source();
     }
-    let mut result = BusinessError::provider(
-        "transient",
-        message,
-        retryable,
-        request_id,
-    );
+    let mut result = BusinessError::provider("transient", message, retryable, request_id);
     result.details["response_started"] = response_started.into();
     result
 }
