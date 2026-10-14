@@ -67,9 +67,15 @@ pub(crate) fn transport_error(
     response_started: bool,
 ) -> BusinessError {
     let retryable = !response_started && is_transient_transport(&error);
+    let mut message = format!("{label} request transport failed: {error}");
+    let mut source = error.source();
+    while let Some(cause) = source {
+        message.push_str(&format!(": {cause}"));
+        source = cause.source();
+    }
     let mut result = BusinessError::provider(
         "transient",
-        format!("{label} request transport failed: {error}"),
+        message,
         retryable,
         request_id,
     );

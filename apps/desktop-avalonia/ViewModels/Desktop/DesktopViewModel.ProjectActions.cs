@@ -404,7 +404,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         catch (Exception exception)
         {
             var admitted = _inFlightSubmissions.GetValueOrDefault(idempotencyKey);
-            if (!admitted && SelectedSession?.SessionId == submittedModelId)
+            if (!admitted && SelectedSession?.SessionId == submittedSessionId)
             {
                 ComposerText = text;
                 BindComposerDraftToCurrent(SelectedSession.SessionId);

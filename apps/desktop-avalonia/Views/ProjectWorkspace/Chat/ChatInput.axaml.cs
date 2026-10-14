@@ -330,7 +330,7 @@ public sealed partial class ChatInput : UserControl
         // OS file drop
         foreach (var file in files)
         {
-            if (!IsImageName(file.Name))
+            if (IsImageName(file.Name))
             {
                 await AddImageFromFileAsync(file);
             }
