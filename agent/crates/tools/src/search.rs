@@ -1,7 +1,7 @@
 use crate::arguments::{GlobArguments, GrepArguments};
 use crate::error::fatal;
 use crate::scope::require_project;
-use globset::GlobBuilder;
+use globset::{GlobBuilder, GlobMatcher};
 use grep_matcher::Matcher;
 use grep_regex::{RegexMatcher, RegexMatcherBuilder};
 use grep_searcher::{BinaryDetection, SearcherBuilder, Sink, SinkMatch};
@@ -27,28 +27,11 @@ pub(crate) fn glob(
             "pattern must remain inside the project",
         ));
     }
+    let matcher = compile_glob(pattern, "pattern is invalid")?;
     let max_results = args.max_results.unwrap_or(100).clamp(1, 1000);
     let mut paths = Vec::new();
-    let walker = WalkBuilder::new(root)
-        .standard_filters(true)
-        .follow_links(false)
-        .build();
-    for entry in walker {
-        let Ok(entry) = entry else { continue };
-        let Some(file_type) = entry.file_type() else {
-            continue;
-        };
-        if !file_type.is_file() {
-            continue;
-        }
-        let absolute = entry.into_path();
-        let Ok(relative_path) = absolute.strip_prefix(root) else {
-            continue;
-        };
-        let relative = relative_path
-            .to_string_lossy()
-            .replace(std::path::MAIN_SEPARATOR, "/");
-        if glob_matches(pattern, &relative) {
+    for (relative, _) in project_walk(root) {
+        if matcher.is_match(&relative) {
             paths.push(relative);
             if paths.len() > max_results {
                 break;
@@ -115,37 +98,44 @@ impl Sink for MatchSink<'_> {
 }
 
 fn project_files(root: &Path, pattern: &str) -> Result<Vec<(String, PathBuf)>, BusinessError> {
-    let glob = GlobBuilder::new(pattern)
-        .literal_separator(true)
-        .build()
-        .map_err(|_| fatal("invalid_arguments", "include pattern is invalid"))?
-        .compile_matcher();
-    let mut files = Vec::new();
-    let mut walker = WalkBuilder::new(root);
-    walker.standard_filters(true).follow_links(false);
-    for entry in walker.build() {
-        let Ok(entry) = entry else {
-            continue;
-        };
-        let Some(file_type) = entry.file_type() else {
-            continue;
-        };
-        if !file_type.is_file() {
-            continue;
-        }
-        let absolute = entry.into_path();
-        let Ok(relative_path) = absolute.strip_prefix(root) else {
-            continue;
-        };
-        let relative = relative_path
-            .to_string_lossy()
-            .replace(std::path::MAIN_SEPARATOR, "/");
-        if glob.is_match(&relative) {
-            files.push((relative, absolute));
-        }
-    }
+    let matcher = compile_glob(pattern, "include pattern is invalid")?;
+    let mut files = project_walk(root)
+        .filter(|(relative, _)| matcher.is_match(relative))
+        .collect::<Vec<_>>();
     files.sort_by(|left, right| left.0.cmp(&right.0));
     Ok(files)
+}
+
+/// Compiles a project-relative glob where `*` does not cross `/`.
+fn compile_glob(
+    pattern: &str,
+    invalid_message: &'static str,
+) -> Result<GlobMatcher, BusinessError> {
+    GlobBuilder::new(pattern)
+        .literal_separator(true)
+        .build()
+        .map(|glob| glob.compile_matcher())
+        .map_err(|_| fatal("invalid_arguments", invalid_message))
+}
+
+/// Regular files under `root` honoring ignore files, without following links,
+/// as `(forward-slash relative path, absolute path)` pairs in walk order.
+fn project_walk(root: &Path) -> impl Iterator<Item = (String, PathBuf)> + '_ {
+    WalkBuilder::new(root)
+        .standard_filters(true)
+        .follow_links(false)
+        .build()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_some_and(|kind| kind.is_file()))
+        .filter_map(move |entry| {
+            let absolute = entry.into_path();
+            let relative = absolute
+                .strip_prefix(root)
+                .ok()?
+                .to_string_lossy()
+                .replace(std::path::MAIN_SEPARATOR, "/");
+            Some((relative, absolute))
+        })
 }
 
 pub(crate) fn find(
@@ -214,52 +204,4 @@ pub(crate) fn find(
         }
     }
     Ok(json!({"query": query, "matches": matches, "truncated": truncated}))
-}
-
-fn glob_matches(pattern: &str, value: &str) -> bool {
-    let pattern_parts = pattern.split('/').collect::<Vec<_>>();
-    let value_parts = value.split('/').collect::<Vec<_>>();
-    glob_segments(&pattern_parts, &value_parts)
-}
-
-fn glob_segments(pattern: &[&str], value: &[&str]) -> bool {
-    if pattern.is_empty() {
-        return value.is_empty();
-    }
-    if pattern[0] == "**" {
-        return glob_segments(&pattern[1..], value)
-            || (!value.is_empty() && glob_segments(pattern, &value[1..]));
-    }
-    !value.is_empty()
-        && segment_matches(pattern[0], value[0])
-        && glob_segments(&pattern[1..], &value[1..])
-}
-
-fn segment_matches(pattern: &str, value: &str) -> bool {
-    let pattern = pattern.as_bytes();
-    let value = value.as_bytes();
-    let mut p = 0;
-    let mut v = 0;
-    let mut star = None;
-    let mut mark = 0;
-    while v < value.len() {
-        if p < pattern.len() && (pattern[p] == value[v] || pattern[p] == b'?') {
-            p += 1;
-            v += 1;
-        } else if p < pattern.len() && pattern[p] == b'*' {
-            star = Some(p);
-            p += 1;
-            mark = v;
-        } else if let Some(star_at) = star {
-            p = star_at + 1;
-            mark += 1;
-            v = mark;
-        } else {
-            return false;
-        }
-    }
-    while p < pattern.len() && pattern[p] == b'*' {
-        p += 1;
-    }
-    p == pattern.len()
 }

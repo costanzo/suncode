@@ -539,3 +539,57 @@ fn truncated_read_stores_full_artifact_and_keeps_utf8_boundary() {
     fs::remove_file(artifact).ok();
     cleanup(&root, &checkpoints);
 }
+
+#[test]
+fn glob_and_grep_share_globset_syntax() {
+    let (root, checkpoints) = temporary_roots("glob-syntax");
+    fs::create_dir_all(root.join("src/ui")).unwrap();
+    fs::write(root.join("main.ts"), b"needle").unwrap();
+    fs::write(root.join("src/ui/view.tsx"), b"needle").unwrap();
+    fs::write(root.join("src/ui/style.css"), b"needle").unwrap();
+    let glob = dispatch(
+        request("tool/glob", json!({"pattern":"**/*.{ts,tsx}"})),
+        Some(&root),
+        Some(&checkpoints),
+    )
+    .unwrap();
+    assert_eq!(
+        glob["result"]["paths"],
+        json!(["main.ts", "src/ui/view.tsx"])
+    );
+    let grep = dispatch(
+        request(
+            "tool/grep",
+            json!({"query":"needle","pattern":"**/*.{ts,tsx}"}),
+        ),
+        Some(&root),
+        Some(&checkpoints),
+    )
+    .unwrap();
+    assert_eq!(grep["result"]["matches"].as_array().unwrap().len(), 2);
+    let invalid = dispatch(
+        request("tool/glob", json!({"pattern":"src/[ui"})),
+        Some(&root),
+        Some(&checkpoints),
+    )
+    .unwrap();
+    assert_eq!(invalid["error"]["code"], "invalid_arguments");
+    cleanup(&root, &checkpoints);
+}
+
+#[test]
+fn bracket_escaped_directory_matches_literally() {
+    let (root, checkpoints) = temporary_roots("glob-literal-directory");
+    fs::create_dir_all(root.join("app/[id]")).unwrap();
+    fs::create_dir_all(root.join("app/i")).unwrap();
+    fs::write(root.join("app/[id]/page.tsx"), b"x").unwrap();
+    fs::write(root.join("app/i/page.tsx"), b"x").unwrap();
+    let glob = dispatch(
+        request("tool/glob", json!({"pattern":"app/[[]id[]]/**/*.tsx"})),
+        Some(&root),
+        Some(&checkpoints),
+    )
+    .unwrap();
+    assert_eq!(glob["result"]["paths"], json!(["app/[id]/page.tsx"]));
+    cleanup(&root, &checkpoints);
+}

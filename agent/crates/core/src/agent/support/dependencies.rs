@@ -18,11 +18,29 @@ pub(in crate::agent) fn scoped_glob(
         return base.to_string();
     }
     let pattern = pattern.trim_start_matches('/');
+    // The base is a literal directory; brackets in names such as `app/[id]`
+    // must not become glob character classes.
+    let base = escape_glob(base);
     if pattern == "**/*" || pattern.starts_with("**/") {
         format!("{base}/{pattern}")
     } else {
         format!("{base}/**/{pattern}")
     }
+}
+
+/// Escapes globset metacharacters so `value` matches only itself.
+fn escape_glob(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len());
+    for character in value.chars() {
+        if matches!(character, '*' | '?' | '[' | ']' | '{' | '}') {
+            escaped.push('[');
+            escaped.push(character);
+            escaped.push(']');
+        } else {
+            escaped.push(character);
+        }
+    }
+    escaped
 }
 
 pub(in crate::agent) fn dependency_path(path: &str) -> Option<(&str, &str)> {
@@ -44,5 +62,19 @@ pub(in crate::agent) fn dependency_alias(dependency_id: &str, relative: &str) ->
         format!("dependency:{dependency_id}")
     } else {
         format!("dependency:{dependency_id}/{relative}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::scoped_glob;
+
+    #[test]
+    fn scoped_glob_escapes_literal_directory_names() {
+        assert_eq!(
+            scoped_glob(None, "app/[id]", "*.tsx"),
+            "app/[[]id[]]/**/*.tsx"
+        );
+        assert_eq!(scoped_glob(None, "src", "**/*.rs"), "src/**/*.rs");
     }
 }
