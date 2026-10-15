@@ -65,24 +65,23 @@ pub(crate) fn read_body(path: &Path) -> Result<String, String> {
     Ok(content.trim().to_string())
 }
 
+/// Splits `raw` into frontmatter and body. Delimiters are lines containing
+/// exactly `---`, ignoring trailing whitespace.
 fn split_frontmatter(raw: &str) -> Result<(&str, &str), String> {
     let mut lines = raw.split_inclusive('\n');
-    if lines.next().map(str::trim) != Some("---") {
+    let opening = lines.next().unwrap_or_default();
+    if opening.trim_end() != "---" {
         return Err("SKILL.md must start with YAML frontmatter".into());
     }
-    let start = raw.find('\n').ok_or("frontmatter is incomplete")? + 1;
-    let rest = &raw[start..];
-    let end_offset = rest
-        .find("\n---")
-        .ok_or("frontmatter closing delimiter is missing")?;
-    let end = start + end_offset;
-    let content_start = end + "\n---".len();
-    let content_start = if raw.as_bytes().get(content_start) == Some(&b'\n') {
-        content_start + 1
-    } else {
-        content_start
-    };
-    Ok((&raw[start..end], &raw[content_start..]))
+    let start = opening.len();
+    let mut offset = start;
+    for line in lines {
+        if line.trim_end() == "---" {
+            return Ok((&raw[start..offset], &raw[offset + line.len()..]));
+        }
+        offset += line.len();
+    }
+    Err("frontmatter closing delimiter is missing".into())
 }
 
 fn validate_name(name: &str) -> Result<(), String> {
@@ -99,4 +98,32 @@ fn validate_name(name: &str) -> Result<(), String> {
             "skill name must match ^[a-z0-9]+(-[a-z0-9]+)*$ and be at most {MAX_NAME_CHARS} characters"
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn splits_frontmatter_on_exact_delimiter_lines() {
+        let raw = "---\nname: a\ndescription: ---- not a delimiter\n---\nbody\n---- rule\n";
+        let (frontmatter, body) = split_frontmatter(raw).unwrap();
+        assert_eq!(frontmatter, "name: a\ndescription: ---- not a delimiter\n");
+        assert_eq!(body, "body\n---- rule\n");
+    }
+
+    #[test]
+    fn splits_empty_and_crlf_frontmatter() {
+        assert_eq!(split_frontmatter("---\n---\nbody").unwrap(), ("", "body"));
+        assert_eq!(
+            split_frontmatter("---\r\nname: a\r\n---\r\nbody").unwrap(),
+            ("name: a\r\n", "body")
+        );
+    }
+
+    #[test]
+    fn rejects_missing_frontmatter_delimiters() {
+        assert!(split_frontmatter("body").is_err());
+        assert!(split_frontmatter("---\nname: a\n----\nbody").is_err());
+    }
 }

@@ -149,9 +149,7 @@ impl SkillCatalog {
 fn load_document(info: &SkillInfo) -> Result<SkillDocument, SkillDiagnostic> {
     let content = manifest::read_body(&info.location)
         .map_err(|message| SkillDiagnostic::warning(message, Some(info.location.clone())))?;
-    let mut resource_files = scan::resource_files(&info.base_directory);
-    resource_files.sort();
-    resource_files.truncate(MAX_RESOURCE_FILES);
+    let resource_files = scan::resource_files(&info.base_directory, MAX_RESOURCE_FILES);
     Ok(SkillDocument {
         info: info.clone(),
         content,

@@ -18,7 +18,7 @@ At turn preparation, core discovers Skills and adds escaped name/description/loc
 
 ## Security and failure handling
 
-Project discovery is canonicalized and restricted to the project root. File size and resource count are bounded. Skill text is untrusted and carries an explicit warning in tool output. Skill loading has read-only risk and never bypasses ordinary tool policy. Child agents retain their existing immutable allowlists and never receive `skill`.
+Project discovery is canonicalized and restricted to the project root. File size and resource count are bounded. Directory traversal follows symlinks but visits each canonical directory once, stops at depth 8, and stops resource collection once the resource limit is reached. Frontmatter delimiters are lines containing exactly `---`. Skill text is untrusted and carries an explicit warning in tool output. Skill loading has read-only risk and never bypasses ordinary tool policy. Child agents retain their existing immutable allowlists and never receive `skill`.
 
 ## Compatibility and migration
 
