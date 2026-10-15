@@ -259,7 +259,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The model-facing `bash` tool converted every script to `/bin/sh -lc`, so approved process calls could not start on Windows. The same tool also obscured the important distinction between portable argv execution and platform-specific shell syntax.
 - Decision: Advertise separate `process` and `shell` tools. `process` passes a program and explicit argv without implicit shell parsing. `shell` selects Windows PowerShell on Windows and POSIX `/bin/sh` on macOS/Linux. Inject ephemeral host OS, architecture, shell dialect, path style, and local date/time into provider requests. Keep `bash` only as a persisted-call compatibility alias and preserve stable process-start failures through the tool and turn projections.
 - Consequences: Coding commands can use portable argv where possible, scripts use an explicit host dialect, and Windows no longer depends on `/bin/sh`, Git Bash, Cygwin, or WSL. Shell scripts are not portable unless authored for the reported dialect. Process execution remains approval-gated and does not gain OS or network isolation.
-- Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/definitions/shell.rs`, `agent/crates/tools/src/process.rs`
+- Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/definitions/shell.rs`, `agent/crates/tools/src/process/mod.rs`
 
 ## ADR-20260820-configuration-and-provider-adapters
 
