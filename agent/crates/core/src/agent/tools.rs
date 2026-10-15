@@ -848,12 +848,11 @@ impl Agent {
             .and_then(Value::as_str)
             .filter(|value| !value.trim().is_empty())
             .ok_or_else(|| BusinessError::invalid("skill name is required"))?;
-        let catalog = suncode_skills::SkillCatalog::discover(&suncode_skills::DiscoveryOptions {
-            project_root: context.project_root.clone().into(),
-            user_config_directory: Some(self.config.user_directory.join(".config/suncode")),
-            user_home_directory: Some(self.config.user_directory.clone()),
-            explicit_paths: Vec::new(),
-        });
+        let catalog =
+            suncode_skills::SkillCatalog::discover(&suncode_skills::DiscoveryOptions::for_user(
+                context.project_root.clone(),
+                Some(&self.config.user_directory),
+            ));
         let document = catalog.load_for_model(name).map_err(|diagnostic| {
             BusinessError::new("skill_load_failed", diagnostic.message.clone())
                 .details(serde_json::to_value(diagnostic).unwrap_or_else(|_| json!({})))

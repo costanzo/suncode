@@ -33,12 +33,9 @@ pub(super) fn skill_guidance(
     project_root: &str,
     user_directory: Option<&std::path::Path>,
 ) -> Option<String> {
-    let catalog = suncode_skills::SkillCatalog::discover(&suncode_skills::DiscoveryOptions {
-        project_root: project_root.into(),
-        user_config_directory: user_directory.map(|path| path.join(".config/suncode")),
-        user_home_directory: user_directory.map(std::path::Path::to_path_buf),
-        explicit_paths: Vec::new(),
-    });
+    let catalog = suncode_skills::SkillCatalog::discover(
+        &suncode_skills::DiscoveryOptions::for_user(project_root, user_directory),
+    );
     Some(suncode_skills::render_available_skills(
         catalog.visible().cloned(),
     ))
