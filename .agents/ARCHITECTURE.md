@@ -118,7 +118,7 @@ The API key is read exclusively from the plaintext `llm_model_provider.api_key` 
 
 Global proxy configuration is stored in the unified `configuration` table and applies to every SunCode-owned HTTP client: built-in and persisted OpenAI-compatible providers, WebFetch, and remote Streamable HTTP MCP connections. Modes are no proxy, supported system proxy discovery, and custom HTTP/HTTPS proxy with Basic credentials and bypass rules. PAC, SOCKS, local MCP child-process traffic, and trusted third-party provider internals are outside this guarantee. `proxy_password` follows the current plaintext SQLite policy but is removed from settings read projections, which expose only `proxy_password_configured`.
 
-Bundled Chromium receives the effective no-proxy, system-proxy, or custom-proxy configuration through the Rust-owned Browser Use launch boundary. Chromium retains its normal certificate verification and never inherits `verify_https_certificates=false`; SunCode does not bypass browser HTTPS interstitials. Custom trust-file support for Chromium is outside the first Browser Use delivery.
+Browser Use is outside this guarantee: CEF is host-owned and uses its default network configuration, not SunCode proxy settings. Chromium retains its normal certificate verification and never inherits `verify_https_certificates=false`; SunCode does not bypass browser HTTPS interstitials. Custom trust-file support for Chromium is outside the first Browser Use delivery.
 
 ## 7. Persistence
 

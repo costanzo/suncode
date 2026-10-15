@@ -356,12 +356,6 @@ where
         ),
     );
     let attention_events = agent.attention_event_hub();
-    agent.set_browser_proxy_configuration(
-        proxy_configuration
-            .read()
-            .map(|configuration| configuration.clone())
-            .unwrap_or_default(),
-    );
     if options.host_capabilities.computer_use
         && global_bool_setting(&store, "computer_use_enabled", false)?
     {

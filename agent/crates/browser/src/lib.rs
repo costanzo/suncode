@@ -1,20 +1,21 @@
-//! Rust-owned Chromium DevTools Protocol client for the CEF browser instance.
+//! Rust-owned Browser Use for the CEF browser instance.
 //!
 //! Avalonia owns CEF and exposes a localhost remote debugging endpoint. This crate
 //! connects to that already-running endpoint through `chromiumoxide`; it never
 //! launches Chromium or owns browser UI state.
 //!
-//! Layering: [`CdpSession`] owns the connection and parses each wire request into
-//! a typed command; `actions` executes commands against the page; `locator`
-//! turns semantic element targets into DOM lookups.
+//! - `tools`: the model-facing `browser_*` tool contract.
+//! - `runtime`: per-project lifecycle, status, and managed browser data.
+//! - `cdp`: the CDP transport used by the runtime.
+//!
+//! The agent embeds [`BrowserRuntime`] and routes `browser_*` tool calls to it.
 
-mod actions;
-mod command;
-mod discovery;
-pub mod error;
-mod launch;
-mod locator;
-mod session;
+mod cdp;
+mod runtime;
+pub mod tools;
 
-pub use launch::{CdpLaunch, DEFAULT_CDP_PORT, PROTOCOL_VERSION};
-pub use session::CdpSession;
+pub use cdp::error;
+pub use runtime::{
+    BrowserHostCallback, BrowserInstallationState, BrowserRuntime, BrowserRuntimeInfo,
+    BrowserRuntimeState, BrowserVisibilityCapability,
+};

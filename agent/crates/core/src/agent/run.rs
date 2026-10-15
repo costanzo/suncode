@@ -307,7 +307,7 @@ impl Agent {
             } else {
                 tool_definitions.push(delegate_agent_definition());
                 tool_definitions.extend(self.mcp.catalog(&context.project_id).await);
-                let browser_tools = self.browser.catalog().await;
+                let browser_tools = browser::catalog(&self.browser).await;
                 logging::debug(
                     "agent.tools",
                     format!(

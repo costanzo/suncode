@@ -64,7 +64,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Persisted Browser and Computer enablement represented user preference but not whether a particular SDK host had packaging or interaction UX for those capabilities. The approved CLI must not initialize or advertise them, even when it shares settings previously enabled by the desktop.
 - Decision: Add typed `SdkOpenOptions` and `SdkHostCapabilities` to async and blocking Rust startup. Defaults enable both capabilities for compatibility. Map options to immutable core `AgentHostCapabilities`; enforce them in Browser/Computer runtime information, catalogs, backend initialization, execution, permission/control calls, and SDK mutations. Reject unavailable mutations before persistence.
 - Consequences: The future CLI can safely share a data directory without changing desktop preferences or exposing unsupported model tools. Capability ceilings remain distinct from policy and cannot grant authority. C ABI 13 and managed startup remain unchanged on default capabilities. Additional ceilings require a concrete host need.
-- Details: `features/rust-sdk/`, `sdks/rust/src/types.rs`, `sdks/rust/src/facade/lifecycle.rs`, `agent/crates/core/src/agent/browser.rs`, `agent/crates/core/src/agent/computer.rs`
+- Details: `features/rust-sdk/`, `sdks/rust/src/types.rs`, `sdks/rust/src/facade/lifecycle.rs`, `agent/crates/browser/src/runtime/`, `agent/crates/core/src/agent/computer.rs`
 
 ## ADR-20260920-rust-cli-production-surface
 

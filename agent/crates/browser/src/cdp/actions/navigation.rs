@@ -1,5 +1,5 @@
-use crate::error::{with_timeout, CDP_COMMAND_FAILED, CDP_PROTOCOL_ERROR};
-use crate::session::CdpSession;
+use crate::cdp::error::{with_timeout, CDP_COMMAND_FAILED, CDP_PROTOCOL_ERROR};
+use crate::cdp::session::CdpSession;
 use serde_json::{json, Value};
 use suncode_common::BusinessError;
 

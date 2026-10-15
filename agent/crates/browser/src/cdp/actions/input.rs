@@ -1,6 +1,6 @@
-use crate::error::{with_timeout, CDP_COMMAND_FAILED};
-use crate::locator::{js_string, Locator};
-use crate::session::CdpSession;
+use crate::cdp::error::{with_timeout, CDP_COMMAND_FAILED};
+use crate::cdp::locator::{js_string, Locator};
+use crate::cdp::session::CdpSession;
 use chromiumoxide::cdp::browser_protocol::input::{DispatchKeyEventParams, DispatchKeyEventType};
 use serde_json::Value;
 use suncode_common::BusinessError;

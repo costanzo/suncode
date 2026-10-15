@@ -36,7 +36,6 @@ use lsp::LanguageServerManager;
 pub use lsp::{LanguageServerRuntimeState, LanguageServerRuntimeStatus};
 mod browser;
 mod preview;
-use browser::BrowserManager;
 pub use browser::{
     BrowserHostCallback, BrowserInstallationState, BrowserRuntimeInfo, BrowserRuntimeState,
     BrowserVisibilityCapability,
@@ -188,7 +187,7 @@ pub struct Agent {
     session_locks: Arc<AsyncMutex<HashMap<String, Arc<AsyncMutex<()>>>>>,
     mcp: McpManager,
     lsp: LanguageServerManager,
-    browser: BrowserManager,
+    browser: suncode_browser::BrowserRuntime,
     preview: preview::PreviewManager,
     computer: ComputerManager,
     host_capabilities: AgentHostCapabilities,

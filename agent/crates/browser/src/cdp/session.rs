@@ -1,9 +1,9 @@
 //! CDP session lifecycle: connect to CEF, attach to a page, dispatch requests.
 
-use crate::command::BrowserCommand;
-use crate::discovery::discover_page;
-use crate::error::{browser_error, CDP_PROTOCOL_ERROR, CDP_STARTUP_TIMEOUT, CDP_UNAVAILABLE};
-use crate::launch::CdpLaunch;
+use crate::cdp::command::BrowserCommand;
+use crate::cdp::discovery::discover_page;
+use crate::cdp::error::{browser_error, CDP_PROTOCOL_ERROR, CDP_STARTUP_TIMEOUT, CDP_UNAVAILABLE};
+use crate::cdp::launch::CdpLaunch;
 use chromiumoxide::handler::{Handler, HandlerConfig};
 use chromiumoxide::{Browser, Page};
 use futures_util::StreamExt;

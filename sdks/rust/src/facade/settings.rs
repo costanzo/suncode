@@ -171,9 +171,6 @@ impl AsyncAgentSdk {
             .agent
             .reconcile_mcp_network_configuration()
             .await?;
-        self.state
-            .agent
-            .set_browser_proxy_configuration(configuration.clone());
         Ok(proxy_configuration_result(&configuration))
     }
 }

@@ -3,7 +3,7 @@
 //! Locators are deliberately semantic (label, placeholder, test id, text, role).
 //! Arbitrary CSS selectors are rejected so the agent targets what users see.
 
-use crate::error::REFERENCE_STALE;
+use crate::cdp::error::REFERENCE_STALE;
 use serde_json::Value;
 use suncode_common::BusinessError;
 

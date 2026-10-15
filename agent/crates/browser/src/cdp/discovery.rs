@@ -1,7 +1,7 @@
 //! Discovery of the CEF page target that a session attaches to.
 
-use crate::error::{browser_error, CDP_NO_PAGE, CDP_PROTOCOL_ERROR};
-use crate::launch::CdpLaunch;
+use crate::cdp::error::{browser_error, CDP_NO_PAGE, CDP_PROTOCOL_ERROR};
+use crate::cdp::launch::CdpLaunch;
 use chromiumoxide::{Browser, Page};
 use std::time::Duration;
 use suncode_common::BusinessError;

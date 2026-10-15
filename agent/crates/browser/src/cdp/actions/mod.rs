@@ -4,10 +4,10 @@ mod capture;
 mod input;
 mod navigation;
 
-use crate::command::BrowserCommand;
-use crate::error::{browser_error, with_timeout, CDP_EVALUATION_FAILED, CDP_PROTOCOL_ERROR};
-use crate::launch::PROTOCOL_VERSION;
-use crate::session::CdpSession;
+use crate::cdp::command::BrowserCommand;
+use crate::cdp::error::{browser_error, with_timeout, CDP_EVALUATION_FAILED, CDP_PROTOCOL_ERROR};
+use crate::cdp::launch::PROTOCOL_VERSION;
+use crate::cdp::session::CdpSession;
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 use suncode_common::BusinessError;

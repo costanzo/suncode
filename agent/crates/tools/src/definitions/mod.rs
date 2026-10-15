@@ -1,6 +1,5 @@
 //! Model-facing declarations for the built-in tools.
 
-mod browser;
 mod edit;
 mod glob;
 mod grep;
@@ -49,20 +48,9 @@ pub fn all() -> Vec<ToolDefinition> {
     .collect()
 }
 
-pub fn browser() -> Vec<ToolDefinition> {
-    browser::definitions()
-        .into_iter()
-        .map(|(name, description, parameters)| ToolDefinition {
-            name,
-            description,
-            parameters,
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{all, browser};
+    use super::all;
     use std::collections::BTreeSet;
 
     #[test]
@@ -146,30 +134,5 @@ mod tests {
             webfetch.parameters["properties"]["format"]["enum"],
             serde_json::json!(["text", "markdown", "html"])
         );
-    }
-
-    #[test]
-    fn browser_tool_names_are_separate_from_the_default_catalog() {
-        let names = browser()
-            .into_iter()
-            .map(|definition| definition.name)
-            .collect::<BTreeSet<_>>();
-        assert_eq!(
-            names,
-            BTreeSet::from([
-                "browser_click",
-                "browser_close_page",
-                "browser_fill",
-                "browser_navigate",
-                "browser_open",
-                "browser_press",
-                "browser_screenshot",
-                "browser_snapshot",
-                "browser_tabs",
-            ])
-        );
-        assert!(all()
-            .iter()
-            .all(|definition| !definition.name.starts_with("browser_")));
     }
 }

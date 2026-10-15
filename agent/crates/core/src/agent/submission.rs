@@ -100,8 +100,8 @@ impl Agent {
     {
         let mcp = McpManager::new(store.clone(), application_data.clone());
         let lsp = LanguageServerManager::new(store.clone());
-        let browser = BrowserManager::new(
-            store.clone(),
+        let browser = browser::new_runtime(
+            &store,
             application_data.clone(),
             host_capabilities.browser_use,
         );

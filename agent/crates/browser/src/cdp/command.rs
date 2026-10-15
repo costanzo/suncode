@@ -1,7 +1,7 @@
 //! Typed browser commands parsed from the `(method, params)` wire request.
 
-use crate::error::TOOL_UNKNOWN;
-use crate::locator::Locator;
+use crate::cdp::error::TOOL_UNKNOWN;
+use crate::cdp::locator::Locator;
 use serde_json::Value;
 use suncode_common::BusinessError;
 

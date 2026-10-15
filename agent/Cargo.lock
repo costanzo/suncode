@@ -2865,8 +2865,13 @@ dependencies = [
  "futures-util",
  "serde",
  "serde_json",
+ "sha2",
  "suncode-common",
+ "tempfile",
  "tokio",
+ "tokio-util",
+ "url",
+ "uuid",
 ]
 
 [[package]]

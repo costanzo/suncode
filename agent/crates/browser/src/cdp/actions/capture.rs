@@ -1,5 +1,5 @@
-use crate::error::{with_timeout, CDP_COMMAND_FAILED};
-use crate::session::CdpSession;
+use crate::cdp::error::{with_timeout, CDP_COMMAND_FAILED};
+use crate::cdp::session::CdpSession;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use chromiumoxide::page::ScreenshotParams;
 use serde_json::{json, Value};
