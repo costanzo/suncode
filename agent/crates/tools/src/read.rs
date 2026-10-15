@@ -1,47 +1,42 @@
-use super::arguments::ReadArguments;
-use super::artifacts::{checkpoint_root_from_env, write_artifact};
-use super::{safe_relative_path, BusinessError};
+use crate::arguments::ReadArguments;
+use crate::artifacts::{checkpoint_root_from_env, write_artifact};
+use crate::error::{fatal, retryable};
+use crate::scope::safe_relative_path;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use suncode_common::BusinessError;
 
-pub(super) fn read(
+pub(crate) fn read(
     project_root: Option<&Path>,
     args: &ReadArguments,
 ) -> Result<Value, BusinessError> {
-    let root = project_root.ok_or(
-        BusinessError::new("project_unconfigured", "project root is not configured")
-            .with_retryable(false),
-    )?;
+    let root = project_root.ok_or(fatal(
+        "project_unconfigured",
+        "project root is not configured",
+    ))?;
     let path = args.path.as_str();
     let relative = safe_relative_path(path)?;
     let candidate = root.join(relative);
-    let canonical = candidate.canonicalize().map_err(|_| {
-        BusinessError::new("path_unavailable", "path is unavailable").with_retryable(false)
-    })?;
+    let canonical = candidate
+        .canonicalize()
+        .map_err(|_| fatal("path_unavailable", "path is unavailable"))?;
     if !canonical.starts_with(root) {
-        return Err(
-            BusinessError::new("scope_denied", "path is outside the project").with_retryable(false),
-        );
+        return Err(fatal("scope_denied", "path is outside the project"));
     }
-    let metadata = fs::metadata(&canonical).map_err(|_| {
-        BusinessError::new("path_unavailable", "path is unavailable").with_retryable(false)
-    })?;
+    let metadata =
+        fs::metadata(&canonical).map_err(|_| fatal("path_unavailable", "path is unavailable"))?;
     if !metadata.is_file() {
-        return Err(
-            BusinessError::new("not_a_file", "path is not a regular file").with_retryable(false),
-        );
+        return Err(fatal("not_a_file", "path is not a regular file"));
     }
     let offset = positive_integer(args.offset, 1, "offset must be at least 1")?;
     let limit = optional_positive_integer(args.limit, "limit must be at least 1")?;
     let max_bytes = positive_integer(args.max_bytes, 64 * 1024, "max_bytes must be at least 1")?
         .clamp(1, 1024 * 1024) as usize;
     let original = if offset == 1 && limit.is_none() {
-        Some(fs::read(&canonical).map_err(|_| {
-            BusinessError::new("read_failed", "file could not be read").with_retryable(true)
-        })?)
+        Some(fs::read(&canonical).map_err(|_| retryable("read_failed", "file could not be read"))?)
     } else {
         None
     };
@@ -67,9 +62,8 @@ pub(super) fn read(
 }
 
 fn read_line_range(path: &Path, offset: u64, limit: Option<u64>) -> Result<Vec<u8>, BusinessError> {
-    let file = fs::File::open(path).map_err(|_| {
-        BusinessError::new("read_failed", "file could not be read").with_retryable(true)
-    })?;
+    let file =
+        fs::File::open(path).map_err(|_| retryable("read_failed", "file could not be read"))?;
     let mut reader = BufReader::new(file);
     let mut line = Vec::new();
     let mut line_number = 1_u64;
@@ -77,18 +71,17 @@ fn read_line_range(path: &Path, offset: u64, limit: Option<u64>) -> Result<Vec<u
     let mut selected_lines = 0_u64;
     loop {
         line.clear();
-        let count = reader.read_until(b'\n', &mut line).map_err(|_| {
-            BusinessError::new("read_failed", "file could not be read").with_retryable(true)
-        })?;
+        let count = reader
+            .read_until(b'\n', &mut line)
+            .map_err(|_| retryable("read_failed", "file could not be read"))?;
         if count == 0 {
             break;
         }
         if std::str::from_utf8(&line).is_err() {
-            return Err(BusinessError::new(
+            return Err(fatal(
                 "encoding_unsupported",
                 "offset and limit require UTF-8 text",
-            )
-            .with_retryable(false));
+            ));
         }
         if line_number >= offset {
             if limit.is_none_or(|value| selected_lines < value) {
@@ -102,11 +95,10 @@ fn read_line_range(path: &Path, offset: u64, limit: Option<u64>) -> Result<Vec<u
         line_number += 1;
     }
     if line_number < offset && selected_lines == 0 {
-        return Err(BusinessError::new(
+        return Err(fatal(
             "invalid_arguments",
             "offset is beyond the end of the file",
-        )
-        .with_retryable(false));
+        ));
     }
     Ok(selected)
 }

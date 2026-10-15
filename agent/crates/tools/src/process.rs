@@ -1,8 +1,10 @@
-use super::arguments::ProcessArguments;
-use super::{
-    artifacts, journal_id, now_string, require_project, safe_relative_path, BusinessError,
-    ProcessOutputCallback,
-};
+use crate::arguments::ProcessArguments;
+use crate::artifacts;
+use crate::context::ProcessOutputCallback;
+use crate::error::{fatal, retryable};
+use crate::journal::journal_id;
+use crate::scope::{require_project, safe_relative_path};
+use crate::support::{now_string, sha256_hex};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -20,6 +22,7 @@ use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},
     Mutex,
 };
+use suncode_common::BusinessError;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -30,15 +33,10 @@ static OUTPUT_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 fn command_arguments(args: &ProcessArguments) -> Result<(String, Vec<String>), BusinessError> {
     let program = args.program.as_str();
     if program.is_empty() || program.len() > 4096 {
-        return Err(
-            BusinessError::new("invalid_arguments", "program is invalid").with_retryable(false),
-        );
+        return Err(fatal("invalid_arguments", "program is invalid"));
     }
     if args.args.len() > 256 {
-        return Err(
-            BusinessError::new("resource_limit", "too many process arguments")
-                .with_retryable(false),
-        );
+        return Err(fatal("resource_limit", "too many process arguments"));
     }
     Ok((program.to_string(), args.args.clone()))
 }
@@ -52,17 +50,16 @@ fn process_cwd(root: &Path, args: &ProcessArguments) -> Result<std::path::PathBu
         root.join(safe_relative_path(requested)?)
     };
     let path = candidate.canonicalize().map_err(|_| {
-        BusinessError::new(
+        fatal(
             "process_working_directory_unavailable",
             "working directory is unavailable",
         )
-        .with_retryable(false)
     })?;
     if !path.starts_with(root) || !path.is_dir() {
-        return Err(
-            BusinessError::new("scope_denied", "working directory is outside the project")
-                .with_retryable(false),
-        );
+        return Err(fatal(
+            "scope_denied",
+            "working directory is outside the project",
+        ));
     }
     Ok(path)
 }
@@ -211,18 +208,15 @@ pub fn start_background(
 
 fn process_start_failure(error: std::io::Error) -> BusinessError {
     match error.kind() {
-        std::io::ErrorKind::NotFound => BusinessError::new(
+        std::io::ErrorKind::NotFound => fatal(
             "process_executable_not_found",
             "process executable could not be found",
-        )
-        .with_retryable(false),
-        std::io::ErrorKind::PermissionDenied => BusinessError::new(
+        ),
+        std::io::ErrorKind::PermissionDenied => fatal(
             "process_permission_denied",
             "process executable could not be started because permission was denied",
-        )
-        .with_retryable(false),
-        _ => BusinessError::new("process_start_failed", "process could not be started")
-            .with_retryable(false),
+        ),
+        _ => fatal("process_start_failed", "process could not be started"),
     }
 }
 
@@ -355,10 +349,8 @@ fn write_process_artifact(
     stderr: &CapturedOutput,
 ) -> Result<String, BusinessError> {
     let directory = artifacts::artifact_directory(root);
-    fs::create_dir_all(&directory).map_err(|_| {
-        BusinessError::new("artifact_failed", "artifact directory could not be created")
-            .with_retryable(true)
-    })?;
+    fs::create_dir_all(&directory)
+        .map_err(|_| retryable("artifact_failed", "artifact directory could not be created"))?;
     let temporary = directory.join(format!(
         ".process-{}-{}.tmp",
         std::process::id(),
@@ -369,39 +361,32 @@ fn write_process_artifact(
         .create_new(true)
         .write(true)
         .open(&temporary)
-        .map_err(|_| {
-            BusinessError::new("artifact_failed", "artifact could not be created")
-                .with_retryable(true)
-        })?;
+        .map_err(|_| retryable("artifact_failed", "artifact could not be created"))?;
     let mut hasher = Sha256::new();
     copy_capture(&mut file, &mut hasher, stdout).map_err(|_| {
-        BusinessError::new(
+        retryable(
             "artifact_failed",
             "process output artifact could not be written",
         )
-        .with_retryable(true)
     })?;
     file.write_all(b"\n--- stderr ---\n").map_err(|_| {
-        BusinessError::new(
+        retryable(
             "artifact_failed",
             "process output artifact could not be written",
         )
-        .with_retryable(true)
     })?;
     hasher.update(b"\n--- stderr ---\n");
     copy_capture(&mut file, &mut hasher, stderr).map_err(|_| {
-        BusinessError::new(
+        retryable(
             "artifact_failed",
             "process output artifact could not be written",
         )
-        .with_retryable(true)
     })?;
     file.flush().map_err(|_| {
-        BusinessError::new(
+        retryable(
             "artifact_failed",
             "process output artifact could not be flushed",
         )
-        .with_retryable(true)
     })?;
     drop(file);
     let id = format!("{:x}", hasher.finalize());
@@ -410,15 +395,14 @@ fn write_process_artifact(
         let _ = fs::remove_file(&temporary);
         temporary_guard.committed = true;
     } else if let Err(error) = fs::rename(&temporary, &destination) {
-        return Err(BusinessError::new(
+        return Err(retryable(
             "artifact_failed",
             if error.kind() == std::io::ErrorKind::AlreadyExists {
                 "artifact already exists"
             } else {
                 "artifact could not be finalized"
             },
-        )
-        .with_retryable(true));
+        ));
     } else {
         temporary_guard.committed = true;
     }
@@ -447,7 +431,7 @@ impl Drop for TemporaryArtifact {
     }
 }
 
-pub(super) fn run(
+pub(crate) fn run(
     project_root: Option<&Path>,
     checkpoint_root: Option<&Path>,
     args: &ProcessArguments,
@@ -462,7 +446,7 @@ pub(super) fn run(
         args.idempotency_key.as_deref(),
         args.operation_id.as_deref(),
     )
-    .unwrap_or_else(|| super::sha256_hex(format!("{}:{}", command, now_string()).as_bytes()));
+    .unwrap_or_else(|| sha256_hex(format!("{}:{}", command, now_string()).as_bytes()));
     let mut child = configure_command(Command::new(&command), args)
         .args(&command_args)
         .current_dir(cwd)
@@ -484,26 +468,24 @@ pub(super) fn run(
     let mut timed_out = false;
     let mut cancelled = false;
     let status = loop {
-        if let Some(status) = child.try_wait().map_err(|_| {
-            BusinessError::new("process_status_failed", "process status could not be read")
-                .with_retryable(true)
-        })? {
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|_| retryable("process_status_failed", "process status could not be read"))?
+        {
             break status;
         }
         if cancellation.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
             cancelled = true;
             terminate_process_tree(&mut child);
             break child.wait().map_err(|_| {
-                BusinessError::new("process_status_failed", "process status could not be read")
-                    .with_retryable(true)
+                retryable("process_status_failed", "process status could not be read")
             })?;
         }
         if started.elapsed().as_millis() >= u128::from(timeout_ms) {
             timed_out = true;
             terminate_process_tree(&mut child);
             break child.wait().map_err(|_| {
-                BusinessError::new("process_status_failed", "process status could not be read")
-                    .with_retryable(true)
+                retryable("process_status_failed", "process status could not be read")
             })?;
         }
         std::thread::sleep(std::time::Duration::from_millis(10));
@@ -513,10 +495,7 @@ pub(super) fn run(
     let out = join_output(stdout, drain_deadline)
         .and_then(Result::ok)
         .transpose()
-        .map_err(|_| {
-            BusinessError::new("process_output_failed", "stdout could not be collected")
-                .with_retryable(true)
-        })?
+        .map_err(|_| retryable("process_output_failed", "stdout could not be collected"))?
         .unwrap_or(CapturedOutput {
             preview: Vec::new(),
             total_bytes: 0,
@@ -525,10 +504,7 @@ pub(super) fn run(
     let err = join_output(stderr, drain_deadline)
         .and_then(Result::ok)
         .transpose()
-        .map_err(|_| {
-            BusinessError::new("process_output_failed", "stderr could not be collected")
-                .with_retryable(true)
-        })?
+        .map_err(|_| retryable("process_output_failed", "stderr could not be collected"))?
         .unwrap_or(CapturedOutput {
             preview: Vec::new(),
             total_bytes: 0,

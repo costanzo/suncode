@@ -1,5 +1,6 @@
-use super::arguments::{GlobArguments, GrepArguments};
-use super::{glob_matches, require_project, BusinessError};
+use crate::arguments::{GlobArguments, GrepArguments};
+use crate::error::fatal;
+use crate::scope::require_project;
 use globset::GlobBuilder;
 use grep_matcher::Matcher;
 use grep_regex::{RegexMatcher, RegexMatcherBuilder};
@@ -9,8 +10,9 @@ use serde_json::{json, Value};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use suncode_common::BusinessError;
 
-pub(super) fn glob(
+pub(crate) fn glob(
     project_root: Option<&Path>,
     args: &GlobArguments,
 ) -> Result<Value, BusinessError> {
@@ -20,10 +22,10 @@ pub(super) fn glob(
         || Path::new(pattern).is_absolute()
         || pattern.split('/').any(|part| part == "..")
     {
-        return Err(
-            BusinessError::new("scope_denied", "pattern must remain inside the project")
-                .with_retryable(false),
-        );
+        return Err(fatal(
+            "scope_denied",
+            "pattern must remain inside the project",
+        ));
     }
     let max_results = args.max_results.unwrap_or(100).clamp(1, 1000);
     let mut paths = Vec::new();
@@ -116,10 +118,7 @@ fn project_files(root: &Path, pattern: &str) -> Result<Vec<(String, PathBuf)>, B
     let glob = GlobBuilder::new(pattern)
         .literal_separator(true)
         .build()
-        .map_err(|_| {
-            BusinessError::new("invalid_arguments", "include pattern is invalid")
-                .with_retryable(false)
-        })?
+        .map_err(|_| fatal("invalid_arguments", "include pattern is invalid"))?
         .compile_matcher();
     let mut files = Vec::new();
     let mut walker = WalkBuilder::new(root);
@@ -149,35 +148,31 @@ fn project_files(root: &Path, pattern: &str) -> Result<Vec<(String, PathBuf)>, B
     Ok(files)
 }
 
-pub(super) fn find(
+pub(crate) fn find(
     project_root: Option<&Path>,
     args: &GrepArguments,
 ) -> Result<Value, BusinessError> {
     let root = require_project(project_root)?;
     let query = args.query.as_str();
     if query.is_empty() || query.len() > 256 {
-        return Err(
-            BusinessError::new("invalid_arguments", "query must contain 1-256 bytes")
-                .with_retryable(false),
-        );
+        return Err(fatal("invalid_arguments", "query must contain 1-256 bytes"));
     }
     let pattern = args.pattern.as_str();
     if pattern.is_empty()
         || Path::new(pattern).is_absolute()
         || pattern.split('/').any(|part| part == "..")
     {
-        return Err(
-            BusinessError::new("scope_denied", "pattern must remain inside the project")
-                .with_retryable(false),
-        );
+        return Err(fatal(
+            "scope_denied",
+            "pattern must remain inside the project",
+        ));
     }
     let max_results = args.max_results.unwrap_or(100).clamp(1, 500);
     let matcher = RegexMatcherBuilder::new().build(query).map_err(|_| {
-        BusinessError::new(
+        fatal(
             "invalid_arguments",
             "query is not a valid regular expression",
         )
-        .with_retryable(false)
     })?;
     let files = project_files(root, pattern)?;
     let mut matches = Vec::new();
@@ -219,4 +214,52 @@ pub(super) fn find(
         }
     }
     Ok(json!({"query": query, "matches": matches, "truncated": truncated}))
+}
+
+fn glob_matches(pattern: &str, value: &str) -> bool {
+    let pattern_parts = pattern.split('/').collect::<Vec<_>>();
+    let value_parts = value.split('/').collect::<Vec<_>>();
+    glob_segments(&pattern_parts, &value_parts)
+}
+
+fn glob_segments(pattern: &[&str], value: &[&str]) -> bool {
+    if pattern.is_empty() {
+        return value.is_empty();
+    }
+    if pattern[0] == "**" {
+        return glob_segments(&pattern[1..], value)
+            || (!value.is_empty() && glob_segments(pattern, &value[1..]));
+    }
+    !value.is_empty()
+        && segment_matches(pattern[0], value[0])
+        && glob_segments(&pattern[1..], &value[1..])
+}
+
+fn segment_matches(pattern: &str, value: &str) -> bool {
+    let pattern = pattern.as_bytes();
+    let value = value.as_bytes();
+    let mut p = 0;
+    let mut v = 0;
+    let mut star = None;
+    let mut mark = 0;
+    while v < value.len() {
+        if p < pattern.len() && (pattern[p] == value[v] || pattern[p] == b'?') {
+            p += 1;
+            v += 1;
+        } else if p < pattern.len() && pattern[p] == b'*' {
+            star = Some(p);
+            p += 1;
+            mark = v;
+        } else if let Some(star_at) = star {
+            p = star_at + 1;
+            mark += 1;
+            v = mark;
+        } else {
+            return false;
+        }
+    }
+    while p < pattern.len() && pattern[p] == b'*' {
+        p += 1;
+    }
+    p == pattern.len()
 }

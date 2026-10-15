@@ -1,5 +1,7 @@
-use super::super::arguments::WebfetchArguments;
-use super::super::{artifacts, BusinessError};
+use crate::arguments::WebfetchArguments;
+use crate::artifacts;
+use crate::context::NetworkSettings;
+use crate::error::fatal;
 use encoding_rs::{Encoding, UTF_8};
 use html2md_rs::{
     parser::safe_parse_html,
@@ -19,6 +21,7 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
     time::{Duration, Instant},
 };
+use suncode_common::BusinessError;
 use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
 
 const MAX_RESPONSE_BYTES: usize = 5 * 1024 * 1024;
@@ -67,15 +70,16 @@ impl OutputFormat {
     }
 }
 
-pub(super) fn execute(
+pub(crate) fn execute(
     checkpoint_root: Option<&Path>,
     args: WebfetchArguments,
     cancellation: Option<&AtomicBool>,
-    verify_https_certificates: bool,
-    use_system_certificates: bool,
-    certificate_path: Option<&Path>,
-    proxy_configuration: &HttpProxyConfiguration,
+    network: &NetworkSettings,
 ) -> Result<Value, BusinessError> {
+    let verify_https_certificates = network.verify_https_certificates;
+    let use_system_certificates = network.use_system_certificates;
+    let certificate_path = network.certificate_path.as_deref();
+    let proxy_configuration = &network.proxy;
     let url = args.url.trim();
     if url.is_empty() {
         return Err(invalid("url is required"));
@@ -119,18 +123,15 @@ pub(super) fn execute(
         }));
     if verify_https_certificates && !use_system_certificates {
         if let Some(path) = certificate_path {
-            let bytes = std::fs::read(path).map_err(|_| {
-                BusinessError::new("certificate_unavailable", "certificate file is unavailable")
-                    .with_retryable(false)
-            })?;
+            let bytes = std::fs::read(path)
+                .map_err(|_| fatal("certificate_unavailable", "certificate file is unavailable"))?;
             let certificate = reqwest::Certificate::from_pem(&bytes)
                 .or_else(|_| reqwest::Certificate::from_der(&bytes))
                 .map_err(|_| {
-                    BusinessError::new(
+                    fatal(
                         "certificate_invalid",
                         "certificate file is not a valid PEM or DER certificate",
                     )
-                    .with_retryable(false)
                 })?;
             client_builder = client_builder.add_root_certificate(certificate);
         }
@@ -212,10 +213,10 @@ pub(super) fn execute(
         "truncated": truncated
     });
     if truncated {
-        let root = checkpoint_root.ok_or(
-            BusinessError::new("artifact_unavailable", "artifact storage is not configured")
-                .with_retryable(false),
-        )?;
+        let root = checkpoint_root.ok_or(fatal(
+            "artifact_unavailable",
+            "artifact storage is not configured",
+        ))?;
         result["artifact_id"] = json!(artifacts::write_artifact(root, output.as_bytes())?);
     }
     Ok(result)
@@ -452,9 +453,7 @@ fn utf8_prefix(value: &str, max_bytes: usize) -> (&str, bool) {
 
 fn check_cancelled(cancellation: Option<&AtomicBool>) -> Result<(), BusinessError> {
     if cancellation.is_some_and(|value| value.load(Ordering::Relaxed)) {
-        return Err(
-            BusinessError::new("cancelled", "web fetch was cancelled").with_retryable(false)
-        );
+        return Err(fatal("cancelled", "web fetch was cancelled"));
     }
     Ok(())
 }
@@ -477,8 +476,8 @@ fn fetch_failure(message: &'static str, retryable: bool) -> BusinessError {
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::arguments::WebfetchArguments;
     use super::*;
+    use crate::arguments::WebfetchArguments;
     use std::{
         fs,
         io::{Read, Write},
@@ -555,10 +554,7 @@ mod tests {
                 timeout: None,
             },
             None,
-            true,
-            true,
-            None,
-            &HttpProxyConfiguration::default(),
+            &NetworkSettings::default(),
         )
         .unwrap();
         server.join().unwrap();
@@ -612,10 +608,7 @@ mod tests {
                 timeout: None,
             },
             None,
-            true,
-            true,
-            None,
-            &HttpProxyConfiguration::default(),
+            &NetworkSettings::default(),
         )
         .unwrap_err();
         server.join().unwrap();
@@ -636,10 +629,7 @@ mod tests {
                 timeout: None,
             },
             None,
-            true,
-            true,
-            None,
-            &HttpProxyConfiguration::default(),
+            &NetworkSettings::default(),
         )
         .unwrap_err();
         redirect_server.join().unwrap();
@@ -660,10 +650,7 @@ mod tests {
                 timeout: None,
             },
             None,
-            true,
-            true,
-            None,
-            &HttpProxyConfiguration::default(),
+            &NetworkSettings::default(),
         )
         .unwrap();
         server.join().unwrap();
@@ -703,15 +690,15 @@ mod tests {
                 timeout: None,
             },
             None,
-            true,
-            true,
-            None,
-            &HttpProxyConfiguration {
-                mode: HttpProxyMode::Custom,
-                url: format!("http://{address}"),
-                username: String::new(),
-                password: String::new(),
-                bypass: Vec::new(),
+            &NetworkSettings {
+                proxy: HttpProxyConfiguration {
+                    mode: HttpProxyMode::Custom,
+                    url: format!("http://{address}"),
+                    username: String::new(),
+                    password: String::new(),
+                    bypass: Vec::new(),
+                },
+                ..NetworkSettings::default()
             },
         )
         .unwrap();

@@ -221,7 +221,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The model registry had seven current tools, but retired patch, process, shell, filesystem, capability, and recovery aliases remained executable in the agent and operations dispatcher without production callers.
 - Decision: Accept only the seven canonical model names (`read`, `glob`, `grep`, `write`, `edit`, `bash`, `webfetch`) at the agent boundary. Remove the patch implementation, retired filesystem and capability wrappers, asynchronous process/recovery dispatcher entries, and desktop aliases. Keep the private synchronous process runner required by `bash`, including bounded output, cancellation, checkpoints for writes, and managed artifacts.
 - Consequences: Unknown and retired operation names fail closed. Persisted historical rows remain inspectable as data but are not replayable. The typed SDK keeps Git and checkpoint restore methods.
-- Details: `features/agent-phase-1/`, `agent/crates/core/src/agent.rs`, `agent/crates/tools/src/tools/mod.rs`
+- Details: `features/agent-phase-1/`, `agent/crates/core/src/agent.rs`, `agent/crates/tools/src/dispatch.rs`
 
 ## ADR-20260823-audited-webfetch-tool
 
@@ -231,7 +231,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: SunCode could inspect local project sources and use an approved shell, but it had no narrow model tool for retrieving public reference pages without delegating the request to a general process. OpenCode exposes a bounded `webfetch` contract with text, Markdown, and HTML output.
 - Decision: Advertise `webfetch(url, format?, timeout?)` and execute it only through the audited Rust operations dispatcher after network approval. Validate arguments before approval and again at execution. Limit redirects to the approved host/port or a standard HTTP-to-HTTPS upgrade, reject embedded credentials and non-text content, bound raw responses to 5 MiB, expose a 64 KiB model preview, and retain larger converted text in managed artifact storage. Use parser-backed HTML conversion and rustls-based HTTP.
 - Consequences: The model-facing registry has seven built-in tools. Web retrieval has visible authority and bounded context impact; invalid calls can be repaired in the same turn without presenting approval. Images and other binary responses remain unsupported until the provider-neutral tool-result contract gains attachments. Full Control can pre-authorize this known network risk but does not bypass URL, redirect, response, audit, or cancellation checks.
-- Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/definitions/webfetch.rs`, `agent/crates/tools/src/tools/webfetch.rs`
+- Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/definitions/webfetch.rs`, `agent/crates/tools/src/webfetch/mod.rs`
 
 ## ADR-20260822-read-only-project-dependencies
 
