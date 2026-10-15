@@ -1,16 +1,23 @@
 use crate::arguments::ReadArguments;
-use crate::artifacts::{checkpoint_root_from_env, write_artifact};
+use crate::artifacts::write_artifact;
 use crate::error::{fatal, retryable};
 use crate::scope::safe_relative_path;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
 use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 use suncode_common::BusinessError;
 
+/// Bytes returned inline when `max_bytes` is not given.
+const DEFAULT_PREVIEW_BYTES: u64 = 64 * 1024;
+const MAX_PREVIEW_BYTES: u64 = 1024 * 1024;
+/// Upper bound on bytes read into memory; larger files are previewed only.
+const MAX_SOURCE_BYTES: u64 = 16 * 1024 * 1024;
+
 pub(crate) fn read(
     project_root: Option<&Path>,
+    checkpoint_root: Option<&Path>,
     args: &ReadArguments,
 ) -> Result<Value, BusinessError> {
     let root = project_root.ok_or(fatal(
@@ -33,32 +40,58 @@ pub(crate) fn read(
     }
     let offset = positive_integer(args.offset, 1, "offset must be at least 1")?;
     let limit = optional_positive_integer(args.limit, "limit must be at least 1")?;
-    let max_bytes = positive_integer(args.max_bytes, 64 * 1024, "max_bytes must be at least 1")?
-        .clamp(1, 1024 * 1024) as usize;
-    let original = if offset == 1 && limit.is_none() {
-        Some(fs::read(&canonical).map_err(|_| retryable("read_failed", "file could not be read"))?)
+    let max_bytes = positive_integer(
+        args.max_bytes,
+        DEFAULT_PREVIEW_BYTES,
+        "max_bytes must be at least 1",
+    )?
+    .clamp(1, MAX_PREVIEW_BYTES) as usize;
+    let (bytes, source_complete) = if offset == 1 && limit.is_none() {
+        let mut bytes = Vec::new();
+        fs::File::open(&canonical)
+            .and_then(|file| file.take(MAX_SOURCE_BYTES).read_to_end(&mut bytes))
+            .map_err(|_| retryable("read_failed", "file could not be read"))?;
+        let complete = metadata.len() <= MAX_SOURCE_BYTES;
+        (bytes, complete)
     } else {
-        None
+        (read_line_range(&canonical, offset, limit)?, true)
     };
-    let mut bytes = match original {
-        Some(bytes) => bytes,
-        None => read_line_range(&canonical, offset, limit)?,
+    let total_bytes = if source_complete {
+        bytes.len() as u64
+    } else {
+        metadata.len()
     };
-    let total_bytes = bytes.len();
-    let truncated = total_bytes > max_bytes;
-    let full_bytes = bytes.clone();
-    bytes.truncate(max_bytes);
-    if truncated {
-        if let Some(root) = checkpoint_root_from_env() {
-            let artifact_id = write_artifact(&root, &full_bytes)?;
-            return Ok(
-                json!({"path": path, "bytes": total_bytes, "total_bytes": total_bytes, "data_base64": STANDARD.encode(bytes), "truncated": true, "offset": offset, "limit": limit, "artifact_id": artifact_id}),
-            );
+    let preview_len = utf8_preview_len(&bytes, max_bytes);
+    let truncated = preview_len < bytes.len() || !source_complete;
+    let mut result = json!({
+        "path": path,
+        "bytes": preview_len,
+        "total_bytes": total_bytes,
+        "data_base64": STANDARD.encode(&bytes[..preview_len]),
+        "truncated": truncated,
+        "offset": offset,
+        "limit": limit,
+    });
+    if truncated && source_complete {
+        if let Some(checkpoint_root) = checkpoint_root {
+            result["artifact_id"] = json!(write_artifact(checkpoint_root, &bytes)?);
         }
     }
-    Ok(
-        json!({"path": path, "bytes": bytes.len(), "total_bytes": total_bytes, "data_base64": STANDARD.encode(bytes), "truncated": truncated, "offset": offset, "limit": limit}),
-    )
+    Ok(result)
+}
+
+/// The longest prefix of at most `max_bytes` that does not split a UTF-8
+/// sequence. Non-UTF-8 content is cut at `max_bytes` unchanged.
+fn utf8_preview_len(bytes: &[u8], max_bytes: usize) -> usize {
+    if bytes.len() <= max_bytes {
+        return bytes.len();
+    }
+    match std::str::from_utf8(&bytes[..max_bytes]) {
+        Ok(_) => max_bytes,
+        // An incomplete trailing sequence has no `error_len`; trim back to it.
+        Err(error) if error.error_len().is_none() => error.valid_up_to(),
+        Err(_) => max_bytes,
+    }
 }
 
 fn read_line_range(path: &Path, offset: u64, limit: Option<u64>) -> Result<Vec<u8>, BusinessError> {

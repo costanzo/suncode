@@ -4,11 +4,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use suncode_common::BusinessError;
 
-pub(crate) fn checkpoint_root_from_env() -> Option<PathBuf> {
-    std::env::var_os("SUNCODE_CORE_DATA_DIR")
-        .map(PathBuf::from)
-        .map(|path| path.join("checkpoints"))
-}
 pub(crate) fn artifact_directory(root: &Path) -> PathBuf {
     root.parent().unwrap_or(root).join("artifacts")
 }

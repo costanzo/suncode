@@ -511,3 +511,31 @@ fn cleanup(root: &Path, checkpoints: &Path) {
     fs::remove_dir_all(root).unwrap();
     fs::remove_dir_all(checkpoints).unwrap();
 }
+
+#[test]
+fn truncated_read_stores_full_artifact_and_keeps_utf8_boundary() {
+    let (root, checkpoints) = temporary_roots("read-artifact");
+    // "é" is two bytes, so a 3-byte preview must stop after "aé" without
+    // splitting the second "é".
+    fs::write(root.join("file.txt"), "aéé".as_bytes()).unwrap();
+    let response = dispatch(
+        request("tool/read", json!({"path":"file.txt","max_bytes":4})),
+        Some(&root),
+        Some(&checkpoints),
+    )
+    .unwrap();
+    let result = &response["result"];
+    let preview = STANDARD
+        .decode(result["data_base64"].as_str().unwrap())
+        .unwrap();
+    assert_eq!(String::from_utf8(preview).unwrap(), "aé");
+    assert_eq!(result["bytes"], 3);
+    assert_eq!(result["total_bytes"], 5);
+    assert_eq!(result["truncated"], true);
+    let artifact_id = result["artifact_id"].as_str().unwrap();
+    let artifact =
+        crate::artifacts::artifact_directory(&checkpoints).join(format!("{artifact_id}.bin"));
+    assert_eq!(fs::read(&artifact).unwrap(), "aéé".as_bytes());
+    fs::remove_file(artifact).ok();
+    cleanup(&root, &checkpoints);
+}

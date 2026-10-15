@@ -30,7 +30,7 @@ pub(crate) fn dispatch(
                 return Err(fatal("invalid_arguments", "path is required"));
             }
             run_typed(params, |args: ReadArguments| {
-                read::read(project_root, &args)
+                read::read(project_root, checkpoint_root, &args)
             })
         }
         "tool/glob" => run_typed(params, |args: GlobArguments| {
