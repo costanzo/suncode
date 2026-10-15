@@ -50,7 +50,15 @@ pub(crate) fn run(
         args.idempotency_key.as_deref(),
         args.operation_id.as_deref(),
     )
-    .unwrap_or_else(|| sha256_hex(format!("{}:{}", command, now_string()).as_bytes()));
+    .unwrap_or_else(|| {
+        let sequence = OUTPUT_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let seed = format!(
+            "{command}:{}:{}:{sequence}",
+            now_string(),
+            std::process::id()
+        );
+        sha256_hex(seed.as_bytes())
+    });
     let mut child = configure_command(Command::new(&command), args)
         .args(&command_args)
         .current_dir(cwd)
@@ -96,24 +104,9 @@ pub(crate) fn run(
     };
     reap_process_group(&child);
     let drain_deadline = std::time::Instant::now() + OUTPUT_DRAIN_TIMEOUT;
-    let out = join_output(stdout, drain_deadline)
-        .and_then(Result::ok)
-        .transpose()
-        .map_err(|_| retryable("process_output_failed", "stdout could not be collected"))?
-        .unwrap_or(CapturedOutput {
-            preview: Vec::new(),
-            total_bytes: 0,
-            path: None,
-        });
-    let err = join_output(stderr, drain_deadline)
-        .and_then(Result::ok)
-        .transpose()
-        .map_err(|_| retryable("process_output_failed", "stderr could not be collected"))?
-        .unwrap_or(CapturedOutput {
-            preview: Vec::new(),
-            total_bytes: 0,
-            path: None,
-        });
+    let (out, out_complete) = joined_output(join_output(stdout, drain_deadline), "stdout")?;
+    let (err, err_complete) = joined_output(join_output(stderr, drain_deadline), "stderr")?;
+    let output_complete = out_complete && err_complete && out.spill_complete && err.spill_complete;
     let artifact_id = if out.total_bytes + err.total_bytes > PREVIEW_BYTES {
         checkpoint_root
             .map(|root| write_process_artifact(root, &out, &err))
@@ -131,11 +124,28 @@ pub(crate) fn run(
     } else {
         "failed"
     };
-    let mut result = json!({"operation_id": operation_id, "status": status_name, "exit_code": status.code(), "success": success, "stdout_base64": STANDARD.encode(&out.preview), "stderr_base64": STANDARD.encode(&err.preview), "truncated": out.total_bytes + err.total_bytes > PREVIEW_BYTES, "sandbox": {"profile": args.sandbox_profile.as_deref().unwrap_or("project-default"), "network": "not_enforced", "environment": "filtered", "os_isolation": false}});
+    let mut result = json!({"operation_id": operation_id, "status": status_name, "exit_code": status.code(), "success": success, "stdout_base64": STANDARD.encode(&out.preview), "stderr_base64": STANDARD.encode(&err.preview), "truncated": out.total_bytes + err.total_bytes > PREVIEW_BYTES || !output_complete, "output_complete": output_complete, "sandbox": {"profile": args.sandbox_profile.as_deref().unwrap_or("project-default"), "network": "not_enforced", "environment": "filtered", "os_isolation": false}});
     if let Some(id) = artifact_id {
         result["artifact_id"] = json!(id);
     }
     Ok(result)
+}
+
+/// Resolves a joined reader. A reader still running at the drain deadline
+/// (a descendant holds the pipe) yields empty, incomplete output; a reader
+/// panic is an internal failure.
+fn joined_output(
+    joined: Option<std::thread::Result<CapturedOutput>>,
+    label: &str,
+) -> Result<(CapturedOutput, bool), BusinessError> {
+    match joined {
+        Some(Ok(output)) => Ok((output, true)),
+        Some(Err(_)) => Err(retryable(
+            "process_output_failed",
+            format!("{label} could not be collected"),
+        )),
+        None => Ok((CapturedOutput::default(), false)),
+    }
 }
 
 #[cfg(test)]

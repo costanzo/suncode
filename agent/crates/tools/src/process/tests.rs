@@ -357,3 +357,15 @@ fn cancellation_terminates_a_running_process() {
 fn windows_processes_use_the_no_window_creation_flag() {
     assert_eq!(super::spawn::CREATE_NO_WINDOW, 0x0800_0000);
 }
+
+#[cfg(unix)]
+#[test]
+fn generated_operation_ids_are_unique_and_output_is_marked_complete() {
+    let root = shell_test_root("operation-id");
+    let first = run(Some(&root), None, &shell("echo same"), None, None).unwrap();
+    let second = run(Some(&root), None, &shell("echo same"), None, None).unwrap();
+    assert_ne!(first["operation_id"], second["operation_id"]);
+    assert_eq!(first["output_complete"], true);
+    assert_eq!(first["truncated"], false);
+    let _ = std::fs::remove_dir_all(root);
+}
