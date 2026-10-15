@@ -484,7 +484,6 @@
   <x:String x:Key="LocInvalid">无效</x:String>
   <x:String x:Key="LocFailed">失败</x:String>
   <x:String x:Key="LocProfileUsageValue">{0} · {1} 个活动页面</x:String>
-  <x:String x:Key="LocRevision">修订版 {0}</x:String>
   <x:String x:Key="LocComputerUseEnabledStatus">计算机操作已启用。桌面输入仍需要批准。</x:String>
   <x:String x:Key="LocComputerUseDisabledStatus">计算机操作已禁用，已释放按住的输入。</x:String>
   <x:String x:Key="LocScreenCapturePermissionAvailable">屏幕捕获权限可用。</x:String>

@@ -1,7 +1,8 @@
 //! Execution of `browser_*` tool calls against a project session.
 
 use super::BrowserRuntime;
-use crate::tools::{session_method, session_params};
+use crate::action::BrowserAction;
+use crate::tools::parse_call;
 use serde_json::Value;
 use suncode_common::{logging, BusinessError};
 use tokio_util::sync::CancellationToken;
@@ -21,6 +22,7 @@ impl BrowserRuntime {
             format!("begin project={} tool={}", project_id, name),
         );
         self.require_enabled()?;
+        let action = parse_call(name, &arguments)?;
         if cancellation.is_cancelled() {
             return Err(BusinessError::new(
                 "cancelled",
@@ -29,9 +31,8 @@ impl BrowserRuntime {
         }
         self.start_project(project_id).await?;
         let session = self.session(project_id).await?;
-        let method = session_method(name)?;
-        let params = session_params(name, &arguments)?;
-        let request = session.request::<Value>(method, params);
+        let is_screenshot = matches!(action, BrowserAction::Screenshot { .. });
+        let request = session.execute(action);
         tokio::pin!(request);
         let mut result = tokio::select! {
             _ = cancellation.cancelled() => {
@@ -54,17 +55,11 @@ impl BrowserRuntime {
                 }
             }
         };
-        if let Some(pages) = result.get("pages").and_then(Value::as_array) {
-            let mut projects = self.inner.projects.lock().await;
-            if let Some(slot) = projects.get_mut(project_id) {
-                slot.active_page_count = pages.len();
-            }
-        }
         logging::debug(
             "browser.call",
             format!("complete project={} tool={}", project_id, name),
         );
-        if name == "browser_screenshot" {
+        if is_screenshot {
             result = self.retain_screenshot(result)?;
         }
         Ok(result)

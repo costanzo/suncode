@@ -1,5 +1,6 @@
+use crate::action::Locator;
 use crate::cdp::error::{with_timeout, CDP_COMMAND_FAILED};
-use crate::cdp::locator::{js_string, Locator};
+use crate::cdp::locator::js_string;
 use crate::cdp::session::CdpSession;
 use chromiumoxide::cdp::browser_protocol::input::{DispatchKeyEventParams, DispatchKeyEventType};
 use serde_json::Value;

@@ -89,9 +89,7 @@ public sealed class BrowserRuntimeViewModel : ObservableObject, IPolledPage
         : L("LocNoProjectSelected", "No project selected");
 
     public string TargetText => EmptyAsDash(Runtime?.Target);
-    public string ChromiumVersionText => string.IsNullOrWhiteSpace(Runtime?.ChromiumRevision)
-        ? EmptyAsDash(Runtime?.ChromiumVersion)
-        : LF("LocRevision", "revision {0}", Runtime.ChromiumRevision);
+    public string ChromiumVersionText => EmptyAsDash(Runtime?.ChromiumVersion);
     public string ChromiumPathText => Loaded ? EmptyAsDash(Runtime!.ChromiumPath) : string.Empty;
     public string? ChromiumPathTip => Runtime?.ChromiumPath;
     public bool CanCopyChromiumPath => !Loaded || !string.IsNullOrWhiteSpace(Runtime!.ChromiumPath);

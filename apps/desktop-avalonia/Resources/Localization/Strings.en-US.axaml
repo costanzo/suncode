@@ -484,7 +484,6 @@
   <x:String x:Key="LocInvalid">Invalid</x:String>
   <x:String x:Key="LocFailed">Failed</x:String>
   <x:String x:Key="LocProfileUsageValue">{0} · {1} active pages</x:String>
-  <x:String x:Key="LocRevision">revision {0}</x:String>
   <x:String x:Key="LocComputerUseEnabledStatus">Computer Use enabled. Desktop input still requires approval.</x:String>
   <x:String x:Key="LocComputerUseDisabledStatus">Computer Use disabled and held input was released.</x:String>
   <x:String x:Key="LocScreenCapturePermissionAvailable">Screen capture permission is available.</x:String>

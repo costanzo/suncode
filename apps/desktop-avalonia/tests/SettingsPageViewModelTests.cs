@@ -204,7 +204,7 @@ public sealed class SettingsPageViewModelTests
         Assert.True(browser.HasNoProject);
         Assert.Equal("Not started", browser.RuntimeStateText);
 
-        browser.Runtime = new BrowserRuntimeInfo(true, "ready", "not_started", "", "/opt/chromium", "140", "",
+        browser.Runtime = new BrowserRuntimeInfo(true, "ready", "not_started", "", "/opt/chromium", "140",
             2, "verified", null, "/tmp/profile", 2048, 1, "headless", null);
         Assert.True(browser.HasNoProject);
         Assert.Equal("No project selected", browser.RuntimeScopeText);
@@ -225,14 +225,14 @@ public sealed class SettingsPageViewModelTests
         Assert.False(browser.CanRestart);
         Assert.False(browser.HasError);
 
-        browser.Runtime = new BrowserRuntimeInfo(true, "ready", "user_controlled", "", "", "140", "77",
+        browser.Runtime = new BrowserRuntimeInfo(true, "ready", "user_controlled", "", "", "140",
             2, "unverified", null, null, null, 0, "visible", "lost focus");
         Assert.Equal("You control Chromium", browser.ControlTitleText);
         Assert.True(browser.IsReturnControlVisible);
         Assert.False(browser.IsStartVisible);
         Assert.False(browser.CanRestart);
         Assert.True(browser.CanStop);
-        Assert.Equal("revision 77", browser.ChromiumVersionText);
+        Assert.Equal("140", browser.ChromiumVersionText);
         Assert.False(browser.CanCopyChromiumPath);
         Assert.Equal("—", browser.ProfileUsageText);
         Assert.True(browser.HasError);

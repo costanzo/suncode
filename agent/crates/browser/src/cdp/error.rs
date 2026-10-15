@@ -12,7 +12,6 @@ pub const CDP_REQUEST_TIMEOUT: &str = "browser_cdp_request_timeout";
 pub const CDP_PROTOCOL_ERROR: &str = "browser_cdp_protocol_error";
 pub const CDP_COMMAND_FAILED: &str = "browser_cdp_command_failed";
 pub const CDP_EVALUATION_FAILED: &str = "browser_cdp_evaluation_failed";
-pub const REFERENCE_STALE: &str = "browser_reference_stale";
 pub const TOOL_UNKNOWN: &str = "browser_tool_unknown";
 
 /// CDP transport failures are retryable: the manager reconnects to CEF.

@@ -1,14 +1,11 @@
-//! CDP session lifecycle: connect to CEF, attach to a page, dispatch requests.
+//! CDP session lifecycle: connect to CEF, attach to a page, disconnect.
 
-use crate::cdp::command::BrowserCommand;
 use crate::cdp::discovery::discover_page;
-use crate::cdp::error::{browser_error, CDP_PROTOCOL_ERROR, CDP_STARTUP_TIMEOUT, CDP_UNAVAILABLE};
+use crate::cdp::error::{browser_error, CDP_STARTUP_TIMEOUT, CDP_UNAVAILABLE};
 use crate::cdp::launch::CdpLaunch;
 use chromiumoxide::handler::{Handler, HandlerConfig};
 use chromiumoxide::{Browser, Page};
 use futures_util::StreamExt;
-use serde::de::DeserializeOwned;
-use serde_json::Value;
 use std::time::Duration;
 use suncode_common::BusinessError;
 use tokio::sync::Mutex;
@@ -60,20 +57,8 @@ impl CdpSession {
         })
     }
 
-    /// Executes a wire request and deserializes its JSON result.
-    pub async fn request<T: DeserializeOwned>(
-        &self,
-        method: &str,
-        params: Value,
-    ) -> Result<T, BusinessError> {
-        let command = BrowserCommand::parse(method, &params)?;
-        let value = self.execute(command).await?;
-        serde_json::from_value(value).map_err(|error| {
-            browser_error(
-                CDP_PROTOCOL_ERROR,
-                format!("CDP result for {method} is invalid: {error}"),
-            )
-        })
+    pub fn target_id(&self) -> &str {
+        &self.target_id
     }
 
     /// Disconnects the CDP handler. Idempotent; never closes CEF itself.

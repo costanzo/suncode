@@ -10,6 +10,7 @@
 //!
 //! The agent embeds [`BrowserRuntime`] and routes `browser_*` tool calls to it.
 
+mod action;
 mod cdp;
 mod runtime;
 pub mod tools;

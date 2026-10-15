@@ -8,6 +8,8 @@ mod connection;
 mod lifecycle;
 mod status;
 mod storage;
+#[cfg(test)]
+mod tests;
 mod tool_call;
 
 use crate::cdp::{CdpSession, DEFAULT_CDP_PORT};
@@ -24,10 +26,8 @@ use tokio::sync::Mutex as AsyncMutex;
 pub enum BrowserInstallationState {
     Disabled,
     Ready,
-    Missing,
-    Invalid,
+    /// The host cannot provide CEF, for example the CLI.
     Unsupported,
-    Verifying,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -35,9 +35,8 @@ pub enum BrowserInstallationState {
 pub enum BrowserRuntimeState {
     NotStarted,
     Starting,
+    /// Attached and available to the agent.
     Background,
-    UserControlled,
-    Stopping,
     Failed,
 }
 
@@ -56,10 +55,8 @@ pub struct BrowserRuntimeInfo {
     pub installation_state: BrowserInstallationState,
     pub runtime_state: BrowserRuntimeState,
     pub target: String,
-    pub node_path: String,
     pub chromium_path: String,
     pub chromium_version: String,
-    pub chromium_revision: String,
     pub worker_protocol_version: u32,
     pub integrity_state: String,
     pub control_owner: Option<String>,
@@ -90,17 +87,19 @@ struct Inner {
     /// spawning a second one and orphaning the first.
     start_locks: Mutex<HashMap<String, Arc<AsyncMutex<()>>>>,
     verification_session: AsyncMutex<Option<Arc<CdpSession>>>,
+    /// Last attached CEF target per project; outlives sessions so a reconnect
+    /// finds the page after it has navigated.
+    page_targets: Mutex<HashMap<String, String>>,
     closed: AtomicBool,
     host_available: bool,
     host_callback: RwLock<Option<BrowserHostCallback>>,
 }
 
+/// Runtime state of one project browser. A project has at most one CEF page.
 struct BrowserSlot {
     state: BrowserRuntimeState,
     error: Option<String>,
     session: Option<Arc<CdpSession>>,
-    active_page_count: usize,
-    control_owner: String,
 }
 
 impl BrowserSlot {
@@ -112,13 +111,19 @@ impl BrowserSlot {
         Self::idle(BrowserRuntimeState::Failed, Some(error.message.clone()))
     }
 
+    fn running(session: Arc<CdpSession>) -> Self {
+        Self {
+            state: BrowserRuntimeState::Background,
+            error: None,
+            session: Some(session),
+        }
+    }
+
     fn idle(state: BrowserRuntimeState, error: Option<String>) -> Self {
         Self {
             state,
             error,
             session: None,
-            active_page_count: 0,
-            control_owner: "agent".into(),
         }
     }
 }
@@ -152,6 +157,7 @@ impl BrowserRuntime {
                 projects: AsyncMutex::new(HashMap::new()),
                 start_locks: Mutex::new(HashMap::new()),
                 verification_session: AsyncMutex::new(None),
+                page_targets: Mutex::new(HashMap::new()),
                 closed: AtomicBool::new(false),
                 host_available,
                 host_callback: RwLock::new(None),

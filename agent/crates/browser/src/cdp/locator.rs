@@ -1,66 +1,14 @@
-//! Element locators and their DOM lookup expressions.
-//!
-//! Locators are deliberately semantic (label, placeholder, test id, text, role).
-//! Arbitrary CSS selectors are rejected so the agent targets what users see.
+//! DOM lookup expressions for semantic [`Locator`]s.
 
-use crate::cdp::error::REFERENCE_STALE;
-use serde_json::Value;
-use suncode_common::BusinessError;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum Locator {
-    Label(String),
-    Placeholder(String),
-    TestId(String),
-    Text(String),
-    Role { role: String, name: String },
-}
+use crate::action::Locator;
 
 impl Locator {
-    /// Parses the `target` tool parameter: `{"kind": ..., "value"|"name": ...}`.
-    pub(crate) fn parse(target: Option<&Value>) -> Result<Self, BusinessError> {
-        let target = target
-            .and_then(Value::as_object)
-            .ok_or_else(|| BusinessError::invalid("target is required"))?;
-        let kind = target
-            .get("kind")
-            .and_then(Value::as_str)
-            .ok_or_else(|| BusinessError::invalid("target kind is required"))?;
-        if kind == "ref" {
-            return Err(BusinessError::new(
-                REFERENCE_STALE,
-                "CDP element references must be refreshed from the current snapshot",
-            ));
-        }
-        let value = target
-            .get("value")
-            .and_then(Value::as_str)
-            .or_else(|| target.get("name").and_then(Value::as_str))
-            .ok_or_else(|| BusinessError::invalid("target value is required"))?
-            .to_owned();
-        match kind {
-            "label" => Ok(Self::Label(value)),
-            "placeholder" => Ok(Self::Placeholder(value)),
-            "test_id" => Ok(Self::TestId(value)),
-            "text" => Ok(Self::Text(value)),
-            "role" => Ok(Self::Role {
-                role: target
-                    .get("role")
-                    .and_then(Value::as_str)
-                    .unwrap_or("button")
-                    .to_owned(),
-                name: value,
-            }),
-            _ => Err(BusinessError::invalid("unsupported target kind")),
-        }
-    }
-
     /// JavaScript expression evaluating to the matched element or a nullish value.
     pub(crate) fn expression(&self) -> String {
         match self {
             Self::Label(value) => format!(
-                "document.querySelector({})?.control || document.querySelector({})",
-                attribute_selector("label", "for", value),
+                "[...document.querySelectorAll('label')].find(e=>e.innerText.trim()==={})?.control || document.querySelector({})",
+                js_string(value),
                 attribute_selector("", "aria-label", value),
             ),
             Self::Placeholder(value) => format!(
@@ -116,30 +64,12 @@ fn css_string(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
     #[test]
-    fn rejects_unbounded_selectors() {
-        assert!(Locator::parse(Some(&json!({"css": "body"}))).is_err());
-        assert!(Locator::parse(Some(&json!({"kind": "css", "value": "body"}))).is_err());
-    }
-
-    #[test]
-    fn rejects_stale_references() {
-        let error = Locator::parse(Some(&json!({"kind": "ref", "value": "e1"}))).unwrap_err();
-        assert_eq!(error.code, REFERENCE_STALE);
-    }
-
-    #[test]
-    fn role_defaults_to_button_and_accepts_name() {
-        let locator = Locator::parse(Some(&json!({"kind": "role", "name": "Save"}))).unwrap();
-        assert_eq!(
-            locator,
-            Locator::Role {
-                role: "button".into(),
-                name: "Save".into()
-            }
-        );
+    fn label_matches_label_text_then_aria_label() {
+        let expression = Locator::Label("Email".into()).expression();
+        assert!(expression.contains(r#"e.innerText.trim()==="Email")?.control"#));
+        assert!(expression.contains(r#"[aria-label=\"Email\"]"#));
     }
 
     #[test]

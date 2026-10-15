@@ -140,7 +140,6 @@ public sealed record BrowserRuntimeInfo(
     string Target,
     string ChromiumPath,
     string ChromiumVersion,
-    string ChromiumRevision,
     uint WorkerProtocolVersion,
     string IntegrityState,
     string? ControlOwner,

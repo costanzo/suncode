@@ -153,7 +153,7 @@ public sealed class SdkTypedModelTests
     public void Deserializes_browser_runtime_contract()
     {
         const string json = """
-            {"enabled":true,"installationState":"ready","runtimeState":"background","target":"darwin-arm64","chromiumPath":"CEF (embedded)","chromiumVersion":"CEF","chromiumRevision":"","workerProtocolVersion":1,"integrityState":"verified","controlOwner":"agent","profilePath":"/data/browser/profiles/abc","profileSizeBytes":1024,"activePageCount":2,"visibilityCapability":"full","error":null}
+            {"enabled":true,"installationState":"ready","runtimeState":"background","target":"darwin-arm64","chromiumPath":"CEF (embedded)","chromiumVersion":"CEF","workerProtocolVersion":1,"integrityState":"verified","controlOwner":"agent","profilePath":"/data/browser/profiles/abc","profileSizeBytes":1024,"activePageCount":2,"visibilityCapability":"full","error":null}
             """;
         var runtime = JsonSerializer.Deserialize<BrowserRuntimeInfo>(json, Options);
 

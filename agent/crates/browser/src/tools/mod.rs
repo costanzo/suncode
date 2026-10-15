@@ -1,10 +1,14 @@
-//! The model-facing `browser_*` tool contract: definitions, argument
-//! validation, and mapping to CDP session requests.
+//! The model-facing `browser_*` tool contract: definitions and parsing of tool
+//! arguments into typed [`BrowserAction`]s.
 
 mod definitions;
 
-use serde_json::Value;
+use crate::action::{BrowserAction, Locator};
+use crate::cdp::error::TOOL_UNKNOWN;
+use serde_json::{Map, Value};
 use suncode_common::BusinessError;
+
+const MAX_KEY_CHARS: usize = 100;
 
 #[derive(Debug, Clone)]
 pub struct ToolDefinition {
@@ -24,86 +28,105 @@ pub fn definitions() -> Vec<ToolDefinition> {
         .collect()
 }
 
-/// CDP session method implementing a `browser_*` tool.
-pub(crate) fn session_method(name: &str) -> Result<&'static str, BusinessError> {
-    match name {
-        "browser_open" => Ok("open"),
-        "browser_snapshot" => Ok("snapshot"),
-        "browser_navigate" => Ok("navigate"),
-        "browser_click" => Ok("click"),
-        "browser_fill" => Ok("fill"),
-        "browser_press" => Ok("press"),
-        "browser_tabs" => Ok("state"),
-        "browser_screenshot" => Ok("screenshot"),
-        "browser_close_page" => Ok("close_page"),
-        _ => Err(BusinessError::new(
-            "browser_tool_unknown",
-            "Browser tool is not supported",
-        )),
-    }
-}
-
 pub fn is_browser_tool(name: &str) -> bool {
     name.starts_with("browser_")
 }
 
 /// Validates model-supplied arguments before approval and execution.
 pub fn validate_browser_arguments(name: &str, arguments: &Value) -> Result<(), BusinessError> {
-    let object = arguments
-        .as_object()
-        .ok_or_else(|| BusinessError::invalid("Browser tool arguments must be an object"))?;
-    if matches!(name, "browser_click" | "browser_fill" | "browser_press")
-        && !object.get("target").is_some_and(Value::is_object)
-    {
-        return Err(BusinessError::invalid("target is required"));
-    }
-    if name == "browser_fill" && !object.get("value").is_some_and(Value::is_string) {
-        return Err(BusinessError::invalid("value is required"));
-    }
-    if name == "browser_press"
-        && object
-            .get("key")
-            .and_then(Value::as_str)
-            .is_none_or(|value| value.is_empty() || value.chars().count() > 100)
-    {
-        return Err(BusinessError::invalid(
-            "key is required and must be at most 100 characters",
-        ));
-    }
-    session_params(name, arguments).map(|_| ())
+    parse_call(name, arguments).map(|_| ())
 }
 
-/// Maps tool arguments to CDP session request parameters.
-pub(crate) fn session_params(name: &str, arguments: &Value) -> Result<Value, BusinessError> {
-    let object = arguments
+/// Parses one tool call into the action it performs.
+pub(crate) fn parse_call(name: &str, arguments: &Value) -> Result<BrowserAction, BusinessError> {
+    let arguments = arguments
         .as_object()
         .ok_or_else(|| BusinessError::invalid("Browser tool arguments must be an object"))?;
-    let mut params = serde_json::Map::new();
-    if let Some(page_id) = object.get("page_id") {
-        params.insert("pageId".into(), page_id.clone());
+    match name {
+        "browser_open" => match optional_str(arguments, "url")? {
+            Some(url) => navigate(url),
+            None => Ok(BrowserAction::State),
+        },
+        "browser_navigate" => navigate(
+            optional_str(arguments, "url")?
+                .ok_or_else(|| BusinessError::invalid("url is required"))?,
+        ),
+        "browser_snapshot" => Ok(BrowserAction::Snapshot),
+        "browser_tabs" => Ok(BrowserAction::State),
+        "browser_screenshot" => Ok(BrowserAction::Screenshot {
+            full_page: arguments
+                .get("full_page")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        }),
+        "browser_close_page" => Ok(BrowserAction::ClosePage),
+        "browser_click" => Ok(BrowserAction::Click {
+            target: parse_locator(arguments.get("target"))?,
+        }),
+        "browser_fill" => Ok(BrowserAction::Fill {
+            target: parse_locator(arguments.get("target"))?,
+            value: optional_str(arguments, "value")?
+                .ok_or_else(|| BusinessError::invalid("value is required"))?
+                .to_owned(),
+        }),
+        "browser_press" => {
+            let key = optional_str(arguments, "key")?.unwrap_or_default();
+            if key.is_empty() || key.chars().count() > MAX_KEY_CHARS {
+                return Err(BusinessError::invalid(format!(
+                    "key is required and must be at most {MAX_KEY_CHARS} characters"
+                )));
+            }
+            Ok(BrowserAction::Press {
+                key: key.to_owned(),
+            })
+        }
+        _ => Err(BusinessError::new(
+            TOOL_UNKNOWN,
+            "Browser tool is not supported",
+        )),
     }
-    if let Some(target) = object.get("target") {
-        params.insert("target".into(), target.clone());
+}
+
+fn navigate(url: &str) -> Result<BrowserAction, BusinessError> {
+    validate_browser_url(url)?;
+    Ok(BrowserAction::Navigate {
+        url: url.to_owned(),
+    })
+}
+
+fn optional_str<'a>(
+    arguments: &'a Map<String, Value>,
+    key: &str,
+) -> Result<Option<&'a str>, BusinessError> {
+    match arguments.get(key) {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::String(value)) => Ok(Some(value)),
+        Some(_) => Err(BusinessError::invalid(format!("{key} must be a string"))),
     }
-    if let Some(value) = object.get("value") {
-        params.insert("value".into(), value.clone());
+}
+
+fn parse_locator(target: Option<&Value>) -> Result<Locator, BusinessError> {
+    let target = target
+        .and_then(Value::as_object)
+        .ok_or_else(|| BusinessError::invalid("target is required"))?;
+    let text = |key: &str| {
+        optional_str(target, key)?
+            .filter(|value| !value.is_empty())
+            .map(str::to_owned)
+            .ok_or_else(|| BusinessError::invalid(format!("target {key} is required")))
+    };
+    match optional_str(target, "kind")? {
+        Some("label") => Ok(Locator::Label(text("value")?)),
+        Some("placeholder") => Ok(Locator::Placeholder(text("value")?)),
+        Some("test_id") => Ok(Locator::TestId(text("value")?)),
+        Some("text") => Ok(Locator::Text(text("value")?)),
+        Some("role") => Ok(Locator::Role {
+            role: text("role")?,
+            name: text("name")?,
+        }),
+        Some(_) => Err(BusinessError::invalid("unsupported target kind")),
+        None => Err(BusinessError::invalid("target kind is required")),
     }
-    if let Some(key) = object.get("key") {
-        params.insert("key".into(), key.clone());
-    }
-    if let Some(timeout) = object.get("timeout_ms") {
-        params.insert("timeoutMs".into(), timeout.clone());
-    }
-    if let Some(full_page) = object.get("full_page") {
-        params.insert("fullPage".into(), full_page.clone());
-    }
-    if let Some(url) = object.get("url").and_then(Value::as_str) {
-        validate_browser_url(url)?;
-        params.insert("url".into(), Value::String(url.into()));
-    } else if name == "browser_navigate" {
-        return Err(BusinessError::invalid("url is required"));
-    }
-    Ok(Value::Object(params))
 }
 
 fn validate_browser_url(value: &str) -> Result<(), BusinessError> {
@@ -123,38 +146,4 @@ fn validate_browser_url(value: &str) -> Result<(), BusinessError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::collections::BTreeSet;
-
-    #[test]
-    fn definitions_cover_every_session_method() {
-        let names = definitions()
-            .into_iter()
-            .map(|definition| definition.name)
-            .collect::<BTreeSet<_>>();
-        assert_eq!(
-            names,
-            BTreeSet::from([
-                "browser_click",
-                "browser_close_page",
-                "browser_fill",
-                "browser_navigate",
-                "browser_open",
-                "browser_press",
-                "browser_screenshot",
-                "browser_snapshot",
-                "browser_tabs",
-            ])
-        );
-        assert!(names.iter().all(|name| session_method(name).is_ok()));
-    }
-
-    #[test]
-    fn browser_urls_reject_credentials_and_non_http_schemes() {
-        assert!(validate_browser_url("https://example.test/path").is_ok());
-        assert!(validate_browser_url("http://127.0.0.1:5173").is_ok());
-        assert!(validate_browser_url("file:///etc/passwd").is_err());
-        assert!(validate_browser_url("https://user:secret@example.test").is_err());
-    }
-}
+mod tests;

@@ -19,33 +19,23 @@ impl BrowserRuntime {
         let (installation_state, error) = self.installation_state(enabled);
         let integrity_verified = self.inner.verified.load(Ordering::SeqCst);
         let installation_ready = matches!(installation_state, BrowserInstallationState::Ready);
-        let (runtime_state, control_owner, active_page_count, runtime_error) =
-            if let Some(project_id) = project_id {
-                let projects = self.inner.projects.lock().await;
-                projects
-                    .get(project_id)
-                    .map(|slot| {
-                        (
-                            slot.state.clone(),
-                            Some(slot.control_owner.clone()),
-                            slot.active_page_count,
-                            slot.error.clone(),
-                        )
-                    })
-                    .unwrap_or((BrowserRuntimeState::NotStarted, None, 0, None))
-            } else {
-                (BrowserRuntimeState::NotStarted, None, 0, None)
-            };
+        let projects = self.inner.projects.lock().await;
+        let slot = project_id.and_then(|project_id| projects.get(project_id));
+        let runtime_state = slot.map_or(BrowserRuntimeState::NotStarted, |slot| slot.state.clone());
+        let runtime_error = slot.and_then(|slot| slot.error.clone());
+        // A started project owns exactly one CEF page, and the agent always holds control.
+        let attached = slot.is_some_and(|slot| slot.session.is_some());
+        let control_owner = slot.map(|_| "agent".to_owned());
+        let active_page_count = usize::from(attached);
+        drop(projects);
         let profile = project_id.map(|id| self.profile_path(id));
         Ok(BrowserRuntimeInfo {
             enabled,
             installation_state,
             runtime_state,
             target: format!("cef-cdp:{}", self.inner.cdp_port),
-            node_path: String::new(),
             chromium_path: "CEF (embedded)".into(),
             chromium_version: "CEF".into(),
-            chromium_revision: String::new(),
             worker_protocol_version: PROTOCOL_VERSION,
             integrity_state: if integrity_verified {
                 "verified"

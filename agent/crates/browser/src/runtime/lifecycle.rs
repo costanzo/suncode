@@ -3,20 +3,9 @@
 use super::storage::prepare_managed_directory;
 use super::{BrowserRuntime, BrowserRuntimeState, BrowserSlot};
 use crate::cdp::CdpSession;
-use serde::Deserialize;
-use serde_json::{json, Value};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use suncode_common::{logging, BusinessError};
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SessionState {
-    started: bool,
-    control_owner: String,
-    #[serde(default)]
-    pages: Vec<Value>,
-}
 
 impl BrowserRuntime {
     pub async fn verify(&self) -> Result<(), BusinessError> {
@@ -31,7 +20,7 @@ impl BrowserRuntime {
         );
         self.require_enabled()?;
         let verification = async {
-            let session = self.connect_session("verify").await?;
+            let session = self.connect_for_verification().await?;
             {
                 let mut current = self.inner.verification_session.lock().await;
                 if self.inner.closed.load(Ordering::Acquire) {
@@ -105,7 +94,7 @@ impl BrowserRuntime {
             self.fail_slot(project_id, &error).await;
             return Err(error);
         }
-        let session = match self.connect_session(project_id).await {
+        let session = match self.connect_project(project_id).await {
             Ok(session) => session,
             Err(error) => {
                 self.fail_slot(project_id, &error).await;
@@ -127,15 +116,12 @@ impl BrowserRuntime {
             session.close().await;
             return Err(shutting_down());
         }
-        let state = session.request::<SessionState>("start", json!({})).await;
-        let state = match state {
-            Ok(state) => state,
-            Err(error) => {
-                session.close().await;
-                self.fail_slot(project_id, &error).await;
-                return Err(error);
-            }
-        };
+        // Reading the page proves the CDP connection is usable.
+        if let Err(error) = session.state().await {
+            session.close().await;
+            self.fail_slot(project_id, &error).await;
+            return Err(error);
+        }
         if self.inner.closed.load(Ordering::Acquire) {
             session.close().await;
             return Err(shutting_down());
@@ -146,25 +132,18 @@ impl BrowserRuntime {
             session.close().await;
             return Err(shutting_down());
         }
-        projects.insert(
-            project_id.into(),
-            BrowserSlot {
-                state: BrowserRuntimeState::Background,
-                error: None,
-                session: Some(session),
-                active_page_count: state.pages.len(),
-                control_owner: state.control_owner,
-            },
-        );
+        projects.insert(project_id.into(), BrowserSlot::running(session));
         Ok(())
     }
 
+    /// Refreshes the project page state. The agent always holds control: there
+    /// is no user lease yet, so taking and returning control are equivalent.
     pub async fn take_control(&self, project_id: &str) -> Result<(), BusinessError> {
-        self.session_request(project_id, "take_control").await
+        self.refresh(project_id).await
     }
 
     pub async fn return_control(&self, project_id: &str) -> Result<(), BusinessError> {
-        self.session_request(project_id, "return_control").await
+        self.refresh(project_id).await
     }
 
     pub async fn restart(&self, project_id: &str) -> Result<(), BusinessError> {
@@ -202,24 +181,11 @@ impl BrowserRuntime {
         }
     }
 
-    pub(super) async fn session_request(
-        &self,
-        project_id: &str,
-        method: &str,
-    ) -> Result<(), BusinessError> {
+    async fn refresh(&self, project_id: &str) -> Result<(), BusinessError> {
         let session = self.session(project_id).await?;
-        let state = session.request::<SessionState>(method, json!({})).await?;
-        let mut projects = self.inner.projects.lock().await;
-        if let Some(slot) = projects.get_mut(project_id) {
-            slot.state = if state.control_owner == "user" {
-                BrowserRuntimeState::UserControlled
-            } else if state.started {
-                BrowserRuntimeState::Background
-            } else {
-                BrowserRuntimeState::NotStarted
-            };
-            slot.control_owner = state.control_owner;
-            slot.active_page_count = state.pages.len();
+        session.state().await?;
+        if let Some(slot) = self.inner.projects.lock().await.get_mut(project_id) {
+            slot.state = BrowserRuntimeState::Background;
             slot.error = None;
         }
         Ok(())
