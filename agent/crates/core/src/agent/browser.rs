@@ -8,9 +8,7 @@ use std::{
         Arc,
     },
 };
-use suncode_browser::{
-    CdpLaunch as WorkerLaunch, WorkerProcess, DEFAULT_CDP_PORT, PROTOCOL_VERSION,
-};
+use suncode_browser::{CdpLaunch, CdpSession, DEFAULT_CDP_PORT, PROTOCOL_VERSION};
 use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -82,7 +80,7 @@ struct Inner {
     /// Per-project start locks so concurrent starts share one CDP worker instead of
     /// spawning a second one and orphaning the first.
     start_locks: std::sync::Mutex<HashMap<String, Arc<AsyncMutex<()>>>>,
-    verification_worker: AsyncMutex<Option<Arc<WorkerProcess>>>,
+    verification_worker: AsyncMutex<Option<Arc<CdpSession>>>,
     closed: AtomicBool,
     host_available: bool,
     host_callback: std::sync::RwLock<Option<BrowserHostCallback>>,
@@ -91,7 +89,7 @@ struct Inner {
 struct BrowserSlot {
     state: BrowserRuntimeState,
     error: Option<String>,
-    worker: Option<Arc<WorkerProcess>>,
+    worker: Option<Arc<CdpSession>>,
     active_page_count: usize,
     control_owner: String,
 }
@@ -294,7 +292,7 @@ impl BrowserManager {
         tokio::pin!(request);
         let mut result = tokio::select! {
             _ = cancellation.cancelled() => {
-                worker.force_close().await;
+                worker.close().await;
                 self.inner.projects.lock().await.remove(project_id);
                 return Err(BusinessError::new("cancelled", "Browser operation was cancelled"));
             }
@@ -307,7 +305,7 @@ impl BrowserManager {
                         &error,
                         format!("project={} tool={}", project_id, name),
                     );
-                    worker.force_close().await;
+                    worker.close().await;
                     self.fail_slot(project_id, &error).await;
                     return Err(error);
                 }
@@ -644,7 +642,7 @@ impl BrowserManager {
         Ok(())
     }
 
-    async fn worker(&self, project_id: &str) -> Result<Arc<WorkerProcess>, BusinessError> {
+    async fn worker(&self, project_id: &str) -> Result<Arc<CdpSession>, BusinessError> {
         self.inner
             .projects
             .lock()
@@ -659,14 +657,14 @@ impl BrowserManager {
             })
     }
 
-    async fn spawn_worker(&self, scope: &str) -> Result<Arc<WorkerProcess>, BusinessError> {
+    async fn spawn_worker(&self, scope: &str) -> Result<Arc<CdpSession>, BusinessError> {
         logging::debug(
             "browser.cdp",
             format!("connect_begin port={}", self.inner.cdp_port),
         );
         let target_url = (scope != "verify").then(|| browser_target_url(scope));
         let launch = |startup_timeout| {
-            WorkerProcess::spawn(WorkerLaunch {
+            CdpSession::connect(CdpLaunch {
                 port: self.inner.cdp_port,
                 target_url: target_url.clone(),
                 startup_timeout,
