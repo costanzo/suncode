@@ -225,3 +225,97 @@ fn routes_webfetch_through_the_custom_proxy() {
     server.join().unwrap();
     assert_eq!(result["content"], "proxied");
 }
+
+fn fetch(url: String, format: Option<&str>) -> Result<serde_json::Value, BusinessError> {
+    execute(
+        None,
+        WebfetchArguments {
+            url,
+            format: format.map(str::to_string),
+            timeout: None,
+        },
+        None,
+        &NetworkSettings::default(),
+    )
+}
+
+#[test]
+fn rejects_svg_images_and_untyped_binary_bodies() {
+    let (url, server) = serve_once(
+        "image/svg+xml",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\"/>",
+    );
+    let failure = fetch(url, None).unwrap_err();
+    server.join().unwrap();
+    assert_eq!(failure.code, "webfetch_failed");
+
+    let (url, server) = serve_once("", vec![b'P', b'K', 0, 0, 1, 2]);
+    let failure = fetch(url, None).unwrap_err();
+    server.join().unwrap();
+    assert_eq!(failure.code, "webfetch_failed");
+
+    let (url, server) = serve_once("", "plain words");
+    let result = fetch(url, None).unwrap();
+    server.join().unwrap();
+    assert_eq!(result["content"], "plain words");
+}
+
+#[test]
+fn converts_xhtml_like_html() {
+    let (url, server) = serve_once(
+        "application/xhtml+xml",
+        "<html><body><h1>Title</h1><p>Body</p></body></html>",
+    );
+    let result = fetch(url, Some("text")).unwrap();
+    server.join().unwrap();
+    let content = result["content"].as_str().unwrap();
+    assert!(!content.contains("<h1>"), "{content}");
+    assert!(content.contains("Title"));
+}
+
+#[test]
+fn unknown_arguments_are_rejected_at_the_boundary() {
+    let error = crate::dispatch::dispatch(
+        "tool/webfetch",
+        &serde_json::json!({"url":"https://example.test","method":"POST"}),
+        crate::context::ExecutionContext {
+            project_root: None,
+            checkpoint_root: None,
+            cancellation: None,
+            output_callback: None,
+            network: NetworkSettings::default(),
+        },
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "invalid_arguments");
+}
+
+#[test]
+fn custom_certificate_is_loaded_alongside_system_roots() {
+    let directory = temporary_checkpoints("webfetch-certificate");
+    let certificate = directory.join("invalid.pem");
+    let network = NetworkSettings {
+        use_system_certificates: true,
+        certificate_path: Some(certificate.clone()),
+        ..NetworkSettings::default()
+    };
+    for contents in [
+        b"not a certificate".as_slice(),
+        b"-----BEGIN CERTIFICATE-----\n@@@\n-----END CERTIFICATE-----\n",
+    ] {
+        std::fs::write(&certificate, contents).unwrap();
+        let error = execute(
+            None,
+            WebfetchArguments {
+                url: "https://example.test/".into(),
+                format: None,
+                timeout: None,
+            },
+            None,
+            &network,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "certificate_invalid", "{}", error.message);
+    }
+    let _ = std::fs::remove_dir_all(directory);
+}

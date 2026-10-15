@@ -83,6 +83,7 @@ pub(crate) struct ProcessArguments {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct WebfetchArguments {
     pub(crate) url: String,
     #[serde(default)]

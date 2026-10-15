@@ -18,6 +18,8 @@ use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
 const MAX_REDIRECTS: usize = 10;
 const READ_CHUNK_BYTES: usize = 16 * 1024;
 const ACCEPT_LANGUAGE_VALUE: &str = "en-US,en;q=0.9";
+const PEM_MARKER: &[u8] = b"-----BEGIN CERTIFICATE-----";
+const DER_SEQUENCE_TAG: u8 = 0x30;
 
 /// Builds a client whose redirects stay on the approved origin of `url`.
 pub(super) fn build(url: &Url, network: &NetworkSettings) -> Result<Client, BusinessError> {
@@ -37,24 +39,48 @@ pub(super) fn build(url: &Url, network: &NetworkSettings) -> Result<Client, Busi
                 attempt.error("redirect target is outside the approved web origin")
             }
         }));
-    if verify && !network.use_system_certificates {
+    // A custom certificate adds to the trusted roots whether or not the
+    // built-in roots are enabled, matching the MCP HTTP client.
+    if verify {
         if let Some(path) = network.certificate_path.as_deref() {
             let bytes = std::fs::read(path)
                 .map_err(|_| fatal("certificate_unavailable", "certificate file is unavailable"))?;
-            let certificate = reqwest::Certificate::from_pem(&bytes)
-                .or_else(|_| reqwest::Certificate::from_der(&bytes))
-                .map_err(|_| {
-                    fatal(
-                        "certificate_invalid",
-                        "certificate file is not a valid PEM or DER certificate",
-                    )
-                })?;
-            builder = builder.add_root_certificate(certificate);
+            for certificate in load_certificates(&bytes)? {
+                builder = builder.add_root_certificate(certificate);
+            }
         }
     }
     apply_proxy_configuration(builder, &network.proxy)?
         .build()
         .map_err(|_| fetch_failure("web client could not be created", false))
+}
+
+/// Parses a PEM bundle or a single DER certificate. With rustls, reqwest
+/// defers parsing to the handshake, so validate here to fail early.
+fn load_certificates(bytes: &[u8]) -> Result<Vec<reqwest::Certificate>, BusinessError> {
+    let invalid = || {
+        fatal(
+            "certificate_invalid",
+            "certificate file is not a valid PEM or DER certificate",
+        )
+    };
+    if bytes
+        .windows(PEM_MARKER.len())
+        .any(|window| window == PEM_MARKER)
+    {
+        let certificates = reqwest::Certificate::from_pem_bundle(bytes).map_err(|_| invalid())?;
+        if certificates.is_empty() {
+            return Err(invalid());
+        }
+        return Ok(certificates);
+    }
+    // A DER certificate is an ASN.1 SEQUENCE.
+    if bytes.first() != Some(&DER_SEQUENCE_TAG) {
+        return Err(invalid());
+    }
+    reqwest::Certificate::from_der(bytes)
+        .map(|certificate| vec![certificate])
+        .map_err(|_| invalid())
 }
 
 /// Same host and endpoint, or the standard `http:80` to `https:443` upgrade,
@@ -137,7 +163,7 @@ pub(super) fn read_bounded(
 
 #[cfg(test)]
 mod tests {
-    use super::redirect_allowed;
+    use super::{load_certificates, redirect_allowed};
     use reqwest::Url;
 
     fn allowed(origin: &str, target: &str) -> bool {
@@ -162,5 +188,17 @@ mod tests {
             "https://example.test/",
             "https://user:pw@example.test/"
         ));
+    }
+
+    #[test]
+    fn loads_a_system_pem_bundle() {
+        // Present on macOS and most Linux distributions; skip where absent.
+        let Some(bundle) = ["/etc/ssl/cert.pem", "/etc/ssl/certs/ca-certificates.crt"]
+            .iter()
+            .find_map(|path| std::fs::read(path).ok())
+        else {
+            return;
+        };
+        assert!(!load_certificates(&bundle).unwrap().is_empty());
     }
 }

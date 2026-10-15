@@ -25,6 +25,7 @@ use suncode_common::BusinessError;
 
 /// Fallback user agent for a retry after a Cloudflare browser challenge.
 const FALLBACK_USER_AGENT: &str = "suncode";
+const BINARY_SNIFF_BYTES: usize = 4096;
 const MAX_RESPONSE_BYTES: usize = 5 * 1024 * 1024;
 const MAX_MODEL_BYTES: usize = 64 * 1024;
 const DEFAULT_TIMEOUT_SECONDS: f64 = 30.0;
@@ -145,8 +146,11 @@ pub(crate) fn execute(
     }
 
     let body = client::read_bounded(&mut response, cancellation)?;
+    if mime.is_empty() && looks_binary(&body) {
+        return Err(fetch_failure("response content type is not textual", false));
+    }
     let text = decode_body(&body, &content_type);
-    let output = if content_type.to_ascii_lowercase().contains("text/html") {
+    let output = if is_html_mime(&mime) {
         convert::convert_html(&text, format)?
     } else {
         text
@@ -218,7 +222,12 @@ fn remaining(deadline: Instant) -> Result<Duration, BusinessError> {
     Ok(timeout)
 }
 
+/// Textual media types. An empty type is accepted only when the body is
+/// checked with `looks_binary`; images, including SVG, are always rejected.
 fn is_textual_mime(mime: &str) -> bool {
+    if mime.starts_with("image/") {
+        return false;
+    }
     mime.is_empty()
         || mime.starts_with("text/")
         || mime == "application/json"
@@ -227,6 +236,16 @@ fn is_textual_mime(mime: &str) -> bool {
         || mime.ends_with("+xml")
         || mime == "application/javascript"
         || mime == "application/x-javascript"
+}
+
+fn is_html_mime(mime: &str) -> bool {
+    mime == "text/html" || mime == "application/xhtml+xml"
+}
+
+/// A NUL byte in the first block marks content as binary, matching the
+/// heuristic used for grep.
+fn looks_binary(bytes: &[u8]) -> bool {
+    bytes.iter().take(BINARY_SNIFF_BYTES).any(|byte| *byte == 0)
 }
 
 fn utf8_prefix(value: &str, max_bytes: usize) -> (&str, bool) {
