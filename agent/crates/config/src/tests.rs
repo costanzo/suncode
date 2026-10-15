@@ -64,3 +64,17 @@ fn disabled_environment_ignores_process_overrides_and_credentials() {
     std::env::remove_var("SUNCODE_FULL_CONTROL");
     std::env::remove_var("SUNCODE_OPENAI_API_KEY");
 }
+
+#[test]
+fn disabled_config_matches_disabled_load() {
+    let _guard = environment_lock();
+    std::env::set_var("SUNCODE_NON_INTERACTIVE", "not-a-bool");
+    let loaded = Config::load_with_environment(EnvironmentSource::Disabled).unwrap();
+    let disabled = Config::disabled();
+    std::env::remove_var("SUNCODE_NON_INTERACTIVE");
+    assert_eq!(disabled.data_dir, loaded.data_dir);
+    assert_eq!(disabled.database_path, loaded.database_path);
+    assert_eq!(disabled.user_directory, loaded.user_directory);
+    assert!(!disabled.non_interactive);
+    assert_eq!(disabled.environment_source, EnvironmentSource::Disabled);
+}

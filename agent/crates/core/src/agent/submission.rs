@@ -62,14 +62,7 @@ impl Agent {
     where
         P: Into<Arc<ModelProviderRegistry>>,
     {
-        let config = Config::load_with_environment(suncode_config::EnvironmentSource::Disabled)
-            .unwrap_or_else(|_| Config {
-                data_dir: std::env::temp_dir().join("suncode"),
-                database_path: std::env::temp_dir().join("suncode.sqlite3"),
-                user_directory: std::env::temp_dir(),
-                non_interactive: false,
-                environment_source: suncode_config::EnvironmentSource::Disabled,
-            });
+        let config = Config::disabled();
         Self::new_with_user_id_and_capabilities_and_config(
             store,
             providers,
