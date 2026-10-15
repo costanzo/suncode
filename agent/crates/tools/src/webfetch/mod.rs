@@ -1,29 +1,30 @@
+//! The `webfetch` tool: bounded, origin-limited HTTP(S) text retrieval.
+//!
+//! - `client`: client construction, redirect origin policy, bounded reads.
+//! - `convert`: HTML to Markdown or plain text.
+
+mod client;
+mod convert;
+
 use crate::arguments::WebfetchArguments;
 use crate::artifacts;
 use crate::context::NetworkSettings;
 use crate::error::fatal;
 use encoding_rs::{Encoding, UTF_8};
-use html2md_rs::{
-    parser::safe_parse_html,
-    structs::{Node, NodeType, ToMdConfig},
-    to_md::to_md_with_config,
-};
 use reqwest::{
-    blocking::{Client, Response},
-    header::{ACCEPT, ACCEPT_LANGUAGE, CONTENT_LENGTH, CONTENT_TYPE, USER_AGENT},
-    redirect::Policy,
+    header::{CONTENT_LENGTH, CONTENT_TYPE},
     Url,
 };
 use serde_json::{json, Value};
 use std::{
-    io::Read,
     path::Path,
     sync::atomic::{AtomicBool, Ordering},
     time::{Duration, Instant},
 };
 use suncode_common::BusinessError;
-use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
 
+/// Fallback user agent for a retry after a Cloudflare browser challenge.
+const FALLBACK_USER_AGENT: &str = "suncode";
 const MAX_RESPONSE_BYTES: usize = 5 * 1024 * 1024;
 const MAX_MODEL_BYTES: usize = 64 * 1024;
 const DEFAULT_TIMEOUT_SECONDS: f64 = 30.0;
@@ -76,10 +77,6 @@ pub(crate) fn execute(
     cancellation: Option<&AtomicBool>,
     network: &NetworkSettings,
 ) -> Result<Value, BusinessError> {
-    let verify_https_certificates = network.verify_https_certificates;
-    let use_system_certificates = network.use_system_certificates;
-    let certificate_path = network.certificate_path.as_deref();
-    let proxy_configuration = &network.proxy;
     let url = args.url.trim();
     if url.is_empty() {
         return Err(invalid("url is required"));
@@ -90,58 +87,9 @@ pub(crate) fn execute(
     let deadline = Instant::now() + timeout;
     check_cancelled(cancellation)?;
 
-    let allowed_host = url.host_str().unwrap().to_string();
-    let allowed_scheme = url.scheme().to_string();
-    let allowed_port = url.port_or_known_default().unwrap();
-    let mut client_builder = Client::builder()
-        .danger_accept_invalid_certs(!verify_https_certificates)
-        .danger_accept_invalid_hostnames(!verify_https_certificates)
-        .tls_built_in_root_certs(use_system_certificates)
-        .redirect(Policy::custom(move |attempt| {
-            if attempt.previous().len() >= 10 {
-                return attempt.error("too many redirects");
-            }
-            let target = attempt.url();
-            let same_host = target.host_str() == Some(allowed_host.as_str());
-            let target_port = target.port_or_known_default();
-            let same_endpoint =
-                target.scheme() == allowed_scheme && target_port == Some(allowed_port);
-            let standard_https_upgrade = allowed_scheme == "http"
-                && allowed_port == 80
-                && target.scheme() == "https"
-                && target_port == Some(443);
-            let has_credentials = !target.username().is_empty() || target.password().is_some();
-            if same_host
-                && (same_endpoint || standard_https_upgrade)
-                && matches!(target.scheme(), "http" | "https")
-                && !has_credentials
-            {
-                attempt.follow()
-            } else {
-                attempt.error("redirect target is outside the approved web origin")
-            }
-        }));
-    if verify_https_certificates && !use_system_certificates {
-        if let Some(path) = certificate_path {
-            let bytes = std::fs::read(path)
-                .map_err(|_| fatal("certificate_unavailable", "certificate file is unavailable"))?;
-            let certificate = reqwest::Certificate::from_pem(&bytes)
-                .or_else(|_| reqwest::Certificate::from_der(&bytes))
-                .map_err(|_| {
-                    fatal(
-                        "certificate_invalid",
-                        "certificate file is not a valid PEM or DER certificate",
-                    )
-                })?;
-            client_builder = client_builder.add_root_certificate(certificate);
-        }
-    }
-    client_builder = apply_proxy_configuration(client_builder, proxy_configuration)?;
-    let client = client_builder
-        .build()
-        .map_err(|_| fetch_failure("web client could not be created", false))?;
+    let client = client::build(&url, network)?;
 
-    let mut response = send(
+    let mut response = client::send(
         &client,
         url.clone(),
         format,
@@ -155,11 +103,11 @@ pub(crate) fn execute(
             .and_then(|value| value.to_str().ok())
             == Some("challenge")
     {
-        response = send(
+        response = client::send(
             &client,
             url.clone(),
             format,
-            "suncode",
+            FALLBACK_USER_AGENT,
             remaining(deadline)?,
         )?;
     }
@@ -196,10 +144,10 @@ pub(crate) fn execute(
         return Err(fetch_failure("response content type is not textual", false));
     }
 
-    let body = read_bounded(&mut response, cancellation)?;
+    let body = client::read_bounded(&mut response, cancellation)?;
     let text = decode_body(&body, &content_type);
     let output = if content_type.to_ascii_lowercase().contains("text/html") {
-        convert_html(&text, format)?
+        convert::convert_html(&text, format)?
     } else {
         text
     };
@@ -220,165 +168,6 @@ pub(crate) fn execute(
         result["artifact_id"] = json!(artifacts::write_artifact(root, output.as_bytes())?);
     }
     Ok(result)
-}
-
-fn apply_proxy_configuration(
-    builder: reqwest::blocking::ClientBuilder,
-    configuration: &HttpProxyConfiguration,
-) -> Result<reqwest::blocking::ClientBuilder, BusinessError> {
-    match configuration.mode {
-        HttpProxyMode::NoProxy => Ok(builder.no_proxy()),
-        HttpProxyMode::System => Ok(builder),
-        HttpProxyMode::Custom => {
-            let mut proxy = reqwest::Proxy::all(&configuration.url)
-                .map_err(|_| invalid("custom proxy URL is invalid"))?;
-            if !configuration.username.is_empty() {
-                proxy = proxy.basic_auth(&configuration.username, &configuration.password);
-            }
-            proxy = proxy.no_proxy(reqwest::NoProxy::from_string(
-                &configuration.no_proxy_value(),
-            ));
-            Ok(builder.no_proxy().proxy(proxy))
-        }
-    }
-}
-
-fn send(
-    client: &Client,
-    url: Url,
-    format: OutputFormat,
-    user_agent: &str,
-    timeout: Duration,
-) -> Result<Response, BusinessError> {
-    client
-        .get(url)
-        .header(USER_AGENT, user_agent)
-        .header(ACCEPT, format.accept())
-        .header(ACCEPT_LANGUAGE, "en-US,en;q=0.9")
-        .timeout(timeout)
-        .send()
-        .map_err(map_request_error)
-}
-
-fn read_bounded(
-    response: &mut Response,
-    cancellation: Option<&AtomicBool>,
-) -> Result<Vec<u8>, BusinessError> {
-    let mut output = Vec::new();
-    let mut chunk = [0_u8; 16 * 1024];
-    loop {
-        check_cancelled(cancellation)?;
-        let count = response
-            .read(&mut chunk)
-            .map_err(|_| fetch_failure("response body could not be read", true))?;
-        if count == 0 {
-            break;
-        }
-        if output.len() + count > MAX_RESPONSE_BYTES {
-            return Err(fetch_failure("response exceeds the 5 MiB limit", false));
-        }
-        output.extend_from_slice(&chunk[..count]);
-    }
-    Ok(output)
-}
-
-fn convert_html(input: &str, format: OutputFormat) -> Result<String, BusinessError> {
-    if format == OutputFormat::Html {
-        return Ok(input.to_string());
-    }
-    let root = safe_parse_html(input.to_string())
-        .map_err(|_| fetch_failure("HTML response could not be parsed", false))?;
-    if format == OutputFormat::Markdown {
-        let config = ToMdConfig {
-            ignore_rendering: ignored_nodes(),
-        };
-        return Ok(to_md_with_config(root, &config).trim().to_string());
-    }
-    Ok(extract_text(&root))
-}
-
-fn ignored_nodes() -> Vec<NodeType> {
-    vec![
-        NodeType::Head,
-        NodeType::Style,
-        NodeType::Link,
-        NodeType::Script,
-        NodeType::Meta,
-        NodeType::Title,
-        NodeType::Unknown("noscript".into()),
-        NodeType::Unknown("iframe".into()),
-        NodeType::Unknown("object".into()),
-        NodeType::Unknown("embed".into()),
-    ]
-}
-
-fn extract_text(root: &Node) -> String {
-    fn walk(node: &Node, output: &mut String) {
-        let ignored = node
-            .tag_name
-            .as_ref()
-            .is_some_and(|tag| ignored_nodes().contains(tag));
-        if ignored {
-            return;
-        }
-        if node.tag_name == Some(NodeType::Text) {
-            if let Some(value) = node.value.as_deref() {
-                let decoded = html_escape::decode_html_entities(value);
-                append_words(output, &decoded);
-            }
-            return;
-        }
-        let block = node.tag_name.as_ref().is_some_and(|tag| {
-            matches!(
-                tag,
-                NodeType::Body
-                    | NodeType::Div
-                    | NodeType::P
-                    | NodeType::H1
-                    | NodeType::H2
-                    | NodeType::H3
-                    | NodeType::H4
-                    | NodeType::H5
-                    | NodeType::H6
-                    | NodeType::Li
-                    | NodeType::Pre
-                    | NodeType::Blockquote
-                    | NodeType::Br
-                    | NodeType::Hr
-            )
-        });
-        if block {
-            append_break(output);
-        }
-        for child in &node.children {
-            walk(child, output);
-        }
-        if block {
-            append_break(output);
-        }
-    }
-
-    let mut output = String::new();
-    walk(root, &mut output);
-    output.trim().to_string()
-}
-
-fn append_words(output: &mut String, value: &str) {
-    for word in value.split_whitespace() {
-        if !output.is_empty() && !output.ends_with([' ', '\n']) {
-            output.push(' ');
-        }
-        output.push_str(word);
-    }
-}
-
-fn append_break(output: &mut String) {
-    while output.ends_with(' ') {
-        output.pop();
-    }
-    if !output.is_empty() && !output.ends_with('\n') {
-        output.push('\n');
-    }
 }
 
 fn parse_http_url(value: &str) -> Result<Url, BusinessError> {
@@ -475,234 +264,4 @@ fn fetch_failure(message: &'static str, retryable: bool) -> BusinessError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::arguments::WebfetchArguments;
-    use std::{
-        fs,
-        io::{Read, Write},
-        net::TcpListener,
-        path::PathBuf,
-        thread,
-        time::{SystemTime, UNIX_EPOCH},
-    };
-
-    fn serve_once(
-        content_type: &str,
-        body: impl Into<Vec<u8>>,
-    ) -> (String, thread::JoinHandle<()>) {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let address = listener.local_addr().unwrap();
-        let content_type = content_type.to_string();
-        let body = body.into();
-        let handle = thread::spawn(move || {
-            let (mut stream, _) = listener.accept().unwrap();
-            let mut request = [0_u8; 4096];
-            let _ = stream.read(&mut request);
-            write!(
-                stream,
-                "HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-                body.len()
-            )
-            .unwrap();
-            stream.write_all(&body).unwrap();
-        });
-        (format!("http://{address}/page"), handle)
-    }
-
-    fn temporary_checkpoints(name: &str) -> PathBuf {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let root = std::env::temp_dir().join(format!(
-            "suncode-webfetch-{name}-{}-{unique}",
-            std::process::id()
-        ));
-        let checkpoints = root.join("checkpoints");
-        fs::create_dir_all(&checkpoints).unwrap();
-        checkpoints
-    }
-
-    fn redirect_once(location: String) -> (String, thread::JoinHandle<()>) {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let address = listener.local_addr().unwrap();
-        let handle = thread::spawn(move || {
-            let (mut stream, _) = listener.accept().unwrap();
-            let mut request = [0_u8; 4096];
-            let _ = stream.read(&mut request);
-            write!(
-                stream,
-                "HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-            )
-            .unwrap();
-        });
-        (format!("http://{address}/redirect"), handle)
-    }
-
-    #[test]
-    fn fetches_html_as_markdown_and_omits_script_content() {
-        let (url, server) = serve_once(
-            "text/html; charset=utf-8",
-            "<html><body><h1>Hello</h1><script>secret()</script><p>World</p></body></html>",
-        );
-        let result = execute(
-            None,
-            WebfetchArguments {
-                url,
-                format: None,
-                timeout: None,
-            },
-            None,
-            &NetworkSettings::default(),
-        )
-        .unwrap();
-        server.join().unwrap();
-        assert_eq!(result["format"], "markdown");
-        assert!(result["content"].as_str().unwrap().contains("# Hello"));
-        assert!(result["content"].as_str().unwrap().contains("World"));
-        assert!(!result["content"].as_str().unwrap().contains("secret"));
-        assert_eq!(result["truncated"], false);
-    }
-
-    #[test]
-    fn converts_html_to_plain_text() {
-        let output = convert_html(
-            "<main><h1>Hello &amp; goodbye</h1><p>Second line</p></main>",
-            OutputFormat::Text,
-        )
-        .unwrap();
-        assert!(output.contains("Hello & goodbye"));
-        assert!(output.contains("Second line"));
-        assert!(!output.contains('<'));
-    }
-
-    #[test]
-    fn rejects_unsupported_urls_formats_and_timeouts() {
-        assert!(parse_http_url("file:///tmp/example").is_err());
-        assert!(parse_http_url("https://user:secret@example.com").is_err());
-        assert!(OutputFormat::parse(Some("pdf")).is_err());
-        assert!(timeout(Some(0.0)).is_err());
-        assert!(timeout(Some(121.0)).is_err());
-    }
-
-    #[test]
-    fn decodes_declared_response_charset() {
-        assert_eq!(
-            decode_body(
-                &[0x63, 0x61, 0x66, 0xe9],
-                "text/plain; charset=windows-1252"
-            ),
-            "café"
-        );
-    }
-
-    #[test]
-    fn rejects_non_text_responses() {
-        let (url, server) = serve_once("image/png", vec![0_u8, 1, 2, 3]);
-        let failure = execute(
-            None,
-            WebfetchArguments {
-                url,
-                format: None,
-                timeout: None,
-            },
-            None,
-            &NetworkSettings::default(),
-        )
-        .unwrap_err();
-        server.join().unwrap();
-        assert_eq!(failure.code, "webfetch_failed");
-        assert_eq!(failure.message, "response content type is not textual");
-    }
-
-    #[test]
-    fn rejects_cross_origin_redirects() {
-        let target = TcpListener::bind("127.0.0.1:0").unwrap();
-        let target_url = format!("http://{}/not-approved", target.local_addr().unwrap());
-        let (url, redirect_server) = redirect_once(target_url);
-        let failure = execute(
-            None,
-            WebfetchArguments {
-                url,
-                format: None,
-                timeout: None,
-            },
-            None,
-            &NetworkSettings::default(),
-        )
-        .unwrap_err();
-        redirect_server.join().unwrap();
-        assert_eq!(failure.code, "webfetch_failed");
-        assert_eq!(failure.message, "request could not be completed");
-    }
-
-    #[test]
-    fn retains_large_converted_output_as_an_artifact() {
-        let checkpoints = temporary_checkpoints("artifact");
-        let body = "a".repeat(MAX_MODEL_BYTES + 1024);
-        let (url, server) = serve_once("text/plain", body);
-        let result = execute(
-            Some(&checkpoints),
-            WebfetchArguments {
-                url,
-                format: None,
-                timeout: None,
-            },
-            None,
-            &NetworkSettings::default(),
-        )
-        .unwrap();
-        server.join().unwrap();
-        assert_eq!(result["truncated"], true);
-        assert_eq!(result["content"].as_str().unwrap().len(), MAX_MODEL_BYTES);
-        let artifact_id = result["artifact_id"].as_str().unwrap();
-        let artifact =
-            artifacts::artifact_directory(&checkpoints).join(format!("{artifact_id}.bin"));
-        assert!(artifact.exists());
-        assert!(std::fs::metadata(artifact).unwrap().len() > MAX_MODEL_BYTES as u64);
-        fs::remove_dir_all(checkpoints.parent().unwrap()).unwrap();
-    }
-
-    #[test]
-    fn routes_webfetch_through_the_custom_proxy() {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let address = listener.local_addr().unwrap();
-        let server = thread::spawn(move || {
-            let (mut stream, _) = listener.accept().unwrap();
-            let mut request = [0_u8; 4096];
-            let read = stream.read(&mut request).unwrap();
-            let request = String::from_utf8_lossy(&request[..read]);
-            assert!(request.starts_with("GET http://example.test/page HTTP/1.1"));
-            let body = "proxied";
-            write!(
-                stream,
-                "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-                body.len()
-            )
-            .unwrap();
-        });
-        let result = execute(
-            None,
-            WebfetchArguments {
-                url: "http://example.test/page".into(),
-                format: Some("text".into()),
-                timeout: None,
-            },
-            None,
-            &NetworkSettings {
-                proxy: HttpProxyConfiguration {
-                    mode: HttpProxyMode::Custom,
-                    url: format!("http://{address}"),
-                    username: String::new(),
-                    password: String::new(),
-                    bypass: Vec::new(),
-                },
-                ..NetworkSettings::default()
-            },
-        )
-        .unwrap();
-        server.join().unwrap();
-        assert_eq!(result["content"], "proxied");
-    }
-}
+mod tests;
