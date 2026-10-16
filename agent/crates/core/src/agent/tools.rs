@@ -891,7 +891,7 @@ impl Agent {
                 .unwrap_or_else(|| serde_json::to_string(&metadata).unwrap_or_default()),
         );
         if let Some(image) = &result.image {
-            message.content.push(crate::domain::ContentPart {
+            message.content.push(suncode_data::ContentPart {
                 kind: "image_url".into(),
                 text: format!(
                     "data:{};base64,{}",
@@ -1127,7 +1127,7 @@ mod computer_context_tests {
 
     fn screenshot(call_id: &str) -> Message {
         let mut message = Message::text("tool", "Computer screenshot captured.");
-        message.content.push(crate::domain::ContentPart {
+        message.content.push(suncode_data::ContentPart {
             kind: "image_url".into(),
             text: "data:image/png;base64,cG5n".into(),
         });

@@ -1,5 +1,6 @@
 use super::*;
-use suncode_agent::{agent::TurnResponse, domain::ApprovalRecord};
+use suncode_agent::agent::TurnResponse;
+use suncode_data::ApprovalRecord;
 
 impl AsyncAgentSdk {
     pub async fn submit_turn(

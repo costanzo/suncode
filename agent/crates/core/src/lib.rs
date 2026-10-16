@@ -1,8 +1,10 @@
+//! The SunCode agent core: turn execution, policy, approval, events, and
+//! tool routing. Data and shared types are used from their defining crates
+//! (`suncode_data`, `suncode_common`, `suncode_llm`) directly.
+
 pub mod agent;
 mod agent_lock;
 mod context;
-pub mod domain;
-pub mod logging;
 mod policy;
 
 pub use agent::events::*;
@@ -15,14 +17,6 @@ pub use agent::{
     SessionEventHub, TurnResponse,
 };
 pub use agent_lock::AgentLock;
-pub use domain::{
-    ApprovalRecord, CheckpointItem, CheckpointManifest, Message, ProjectDependencyRecord,
-    ProjectRecord, SessionEvent, SessionImageRecord, SessionRecord, SettingRecord,
-    SubagentInvocationRecord,
-};
-pub use suncode_common::BusinessError;
-pub use suncode_config::Config;
-pub use suncode_llm::{ModelCapabilities, ModelDescriptor, ModelLimits};
 
 pub const fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")

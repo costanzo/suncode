@@ -1,6 +1,6 @@
-use crate::domain::Message;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use suncode_data::Message;
 
 pub const DEFAULT_CONTEXT_WINDOW_TOKENS: usize = 64_000;
 pub const DEFAULT_RESERVE_TOKENS: usize = 16_384;
@@ -105,7 +105,7 @@ pub fn persistable_messages(messages: &[Message]) -> Vec<Message> {
             let original = message.content.len();
             message.content.retain(|part| part.kind != "image_url");
             if message.content.len() != original {
-                message.content.push(crate::domain::ContentPart {
+                message.content.push(suncode_data::ContentPart {
                     kind: "text".into(),
                     text: "[transient image omitted from persisted context]".into(),
                 });
@@ -432,11 +432,11 @@ mod tests {
         let mut messages = vec![Message::text("user", "old objective ".repeat(2_000))];
         messages.push(Message {
             role: "assistant".into(),
-            content: vec![crate::domain::ContentPart {
+            content: vec![suncode_data::ContentPart {
                 kind: "text".into(),
                 text: "call tools".into(),
             }],
-            tool_calls: vec![crate::domain::ToolCall {
+            tool_calls: vec![suncode_data::ToolCall {
                 call_id: "one".into(),
                 name: "read".into(),
                 arguments: serde_json::json!({"path":"a"}),
@@ -473,7 +473,7 @@ mod tests {
     #[test]
     fn image_references_contribute_to_context_budget() {
         let mut message = Message::text("user", "inspect");
-        message.content.push(crate::domain::ContentPart {
+        message.content.push(suncode_data::ContentPart {
             kind: "image_ref".into(),
             text: "image-id".into(),
         });
@@ -483,7 +483,7 @@ mod tests {
     #[test]
     fn persisted_checkpoint_omits_transient_image_bytes() {
         let mut message = Message::text("tool", "Computer screenshot captured.");
-        message.content.push(crate::domain::ContentPart {
+        message.content.push(suncode_data::ContentPart {
             kind: "image_url".into(),
             text: "data:image/png;base64,secret".into(),
         });

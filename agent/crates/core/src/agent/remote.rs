@@ -173,7 +173,7 @@ impl Agent {
     pub(super) fn remote_session(
         &self,
         session_id: &str,
-    ) -> Result<crate::domain::SessionRecord, BusinessError> {
+    ) -> Result<suncode_data::SessionRecord, BusinessError> {
         let session = self
             .store
             .session_by_id(session_id)?

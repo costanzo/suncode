@@ -2,7 +2,8 @@ use super::*;
 use futures_util::{stream::FusedStream, StreamExt};
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
-use suncode_agent::{domain::Message, AgentEvent, EventPayload, TurnStatePayload};
+use suncode_agent::{AgentEvent, EventPayload, TurnStatePayload};
+use suncode_data::Message;
 
 static ENVIRONMENT: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
 
@@ -1328,8 +1329,8 @@ fn session_snapshot_associates_images_with_messages_and_protects_them() {
             "message":Message {
                 role:"user".into(),
                 content:vec![
-                    suncode_agent::domain::ContentPart { kind:"text".into(), text:"inspect".into() },
-                    suncode_agent::domain::ContentPart { kind:"image_ref".into(), text:image.image_id.clone() }
+                    suncode_data::ContentPart { kind:"text".into(), text:"inspect".into() },
+                    suncode_data::ContentPart { kind:"image_ref".into(), text:image.image_id.clone() }
                 ],
                 tool_calls:vec![],
                 tool_call_id:None

@@ -46,7 +46,7 @@ pub(in crate::agent) fn message_with_image_refs(
     let mut message = Message::text("user", input);
     message
         .content
-        .extend(images.iter().map(|image| crate::domain::ContentPart {
+        .extend(images.iter().map(|image| suncode_data::ContentPart {
             kind: "image_ref".into(),
             text: image.image_id.clone(),
         }));

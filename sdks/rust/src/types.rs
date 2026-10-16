@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
-use suncode_agent::domain::{
+use suncode_common::BusinessError;
+use suncode_config::EnvironmentSource;
+use suncode_data::{
     CheckpointItem, CheckpointManifest, Message, ProjectDependencyRecord, ProjectRecord,
     ProviderExchange, SessionCallMessage, SessionCallToolUse, SessionImageRecord, SessionRecord,
     SessionTraceTurn, SettingRecord,
 };
-use suncode_common::BusinessError;
-use suncode_config::EnvironmentSource;
 use suncode_llm::ModelDescriptor;
 
 pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 18;
@@ -452,7 +452,7 @@ pub struct ChildSessionsResult {
     pub parent_session_id: String,
     pub sessions: Vec<SessionRecord>,
     pub session_states: std::collections::HashMap<String, String>,
-    pub invocations: Vec<suncode_agent::domain::SubagentInvocationRecord>,
+    pub invocations: Vec<suncode_data::SubagentInvocationRecord>,
 }
 
 #[derive(Debug, Serialize)]
@@ -489,7 +489,7 @@ pub struct SessionSnapshot {
 #[serde(rename_all = "camelCase")]
 pub struct SessionMessagePage {
     pub session_id: String,
-    pub messages: Vec<suncode_agent::domain::SessionCallMessage>,
+    pub messages: Vec<suncode_data::SessionCallMessage>,
     pub has_more: bool,
     pub oldest_created_at: Option<String>,
     pub oldest_message_id: Option<String>,

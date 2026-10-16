@@ -1,6 +1,6 @@
-use crate::domain::{Message, ToolCall, Usage};
 use serde::Serialize;
 use serde_json::Value;
+use suncode_data::{Message, ToolCall, Usage};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventType {

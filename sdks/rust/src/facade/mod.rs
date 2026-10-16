@@ -7,12 +7,12 @@ use std::{
         Arc, Mutex, RwLock,
     },
 };
-use suncode_agent::logging::{self};
 use suncode_agent::{
     agent::{Agent, AgentHostCapabilities},
     AgentLock, AttentionEventHub, CheckpointItemRestoredPayload, CheckpointRestoreFailedPayload,
     CheckpointRestoredPayload, EventPayload, SessionEventHub,
 };
+use suncode_common::logging;
 use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
 use suncode_config::Config;
 use suncode_config::PersistedSettings;
@@ -76,7 +76,7 @@ impl AsyncAgentSdk {
     pub(crate) fn project_for_user(
         &self,
         project_id: &str,
-    ) -> SdkResult<suncode_agent::domain::ProjectRecord> {
+    ) -> SdkResult<suncode_data::ProjectRecord> {
         self.state
             .store
             .project_by_id_for_user(&self.state.user_id, project_id)?
@@ -86,7 +86,7 @@ impl AsyncAgentSdk {
     pub(crate) fn session_for_user(
         &self,
         session_id: &str,
-    ) -> SdkResult<suncode_agent::domain::SessionRecord> {
+    ) -> SdkResult<suncode_data::SessionRecord> {
         let session = self
             .state
             .store

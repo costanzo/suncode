@@ -1,5 +1,5 @@
 use super::*;
-use suncode_agent::domain::{SessionImageRecord, SessionRecord};
+use suncode_data::{SessionImageRecord, SessionRecord};
 
 impl AsyncAgentSdk {
     pub fn load_session_message_page(
@@ -355,7 +355,7 @@ impl AsyncAgentSdk {
                 .messages
                 .iter()
                 .map(|item| serde_json::from_value(item.message.clone()))
-                .collect::<Result<Vec<suncode_agent::domain::Message>, _>>()?;
+                .collect::<Result<Vec<suncode_data::Message>, _>>()?;
             let conversation_turns = self
                 .state
                 .store

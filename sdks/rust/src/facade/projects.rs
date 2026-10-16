@@ -1,5 +1,5 @@
 use super::*;
-use suncode_agent::domain::ProjectRecord;
+use suncode_data::ProjectRecord;
 
 impl AsyncAgentSdk {
     pub fn list_projects(&self) -> SdkResult<ProjectsResult> {
