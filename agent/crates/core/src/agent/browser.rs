@@ -32,16 +32,7 @@ pub(super) fn new_runtime(
 }
 
 pub(super) async fn catalog(runtime: &BrowserRuntime) -> Vec<suncode_llm::ToolDefinition> {
-    runtime
-        .catalog()
-        .await
-        .into_iter()
-        .map(|definition| suncode_llm::ToolDefinition {
-            name: definition.name.into(),
-            description: definition.description.into(),
-            parameters: definition.parameters,
-        })
-        .collect()
+    runtime.catalog().await
 }
 
 impl Agent {

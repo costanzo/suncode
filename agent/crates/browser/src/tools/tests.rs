@@ -28,9 +28,9 @@ fn definitions_are_valid_and_parseable() {
             );
             definition.name
         })
-        .collect::<BTreeSet<_>>();
+        .collect::<BTreeSet<String>>();
     assert_eq!(
-        names,
+        names.iter().map(String::as_str).collect::<BTreeSet<_>>(),
         BTreeSet::from([
             "browser_click",
             "browser_close_page",

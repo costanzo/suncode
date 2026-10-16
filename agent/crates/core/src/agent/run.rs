@@ -286,14 +286,7 @@ impl Agent {
             self.drain_queued_messages(&mut context)?;
             context.iterations += 1;
             self.turn_state(&context, TurnState::CallingModel, None)?;
-            let mut tool_definitions = suncode_tool::definitions::all()
-                .into_iter()
-                .map(|definition| suncode_llm::ToolDefinition {
-                    name: definition.name.into(),
-                    description: definition.description.into(),
-                    parameters: definition.parameters,
-                })
-                .collect::<Vec<_>>();
+            let mut tool_definitions = suncode_tool::definitions::all();
             if !context.allowed_tools.is_empty() {
                 tool_definitions.retain(|definition| {
                     context

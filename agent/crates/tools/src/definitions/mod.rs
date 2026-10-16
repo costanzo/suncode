@@ -12,14 +12,7 @@ mod todowrite;
 mod webfetch;
 mod write;
 
-use serde_json::Value;
-
-#[derive(Debug, Clone)]
-pub struct ToolDefinition {
-    pub name: &'static str,
-    pub description: &'static str,
-    pub parameters: Value,
-}
+pub use suncode_common::tool::ToolDefinition;
 
 pub fn all() -> Vec<ToolDefinition> {
     [
@@ -41,8 +34,8 @@ pub fn all() -> Vec<ToolDefinition> {
     ]
     .into_iter()
     .map(|(name, description, parameters)| ToolDefinition {
-        name,
-        description,
+        name: name.into(),
+        description: description.into(),
         parameters,
     })
     .collect()
@@ -58,7 +51,7 @@ mod tests {
         let definitions = all();
         let names = definitions
             .iter()
-            .map(|definition| definition.name)
+            .map(|definition| definition.name.as_str())
             .collect::<BTreeSet<_>>();
         assert_eq!(
             names,

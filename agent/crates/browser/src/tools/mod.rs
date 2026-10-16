@@ -10,19 +10,14 @@ use suncode_common::BusinessError;
 
 const MAX_KEY_CHARS: usize = 100;
 
-#[derive(Debug, Clone)]
-pub struct ToolDefinition {
-    pub name: &'static str,
-    pub description: &'static str,
-    pub parameters: Value,
-}
+pub use suncode_common::tool::ToolDefinition;
 
 pub fn definitions() -> Vec<ToolDefinition> {
     definitions::definitions()
         .into_iter()
         .map(|(name, description, parameters)| ToolDefinition {
-            name,
-            description,
+            name: name.into(),
+            description: description.into(),
             parameters,
         })
         .collect()

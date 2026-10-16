@@ -1,15 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Risk {
-    ReadOnly,
-    ProjectWrite,
-    ProcessExecution,
-    NetworkAccess,
-    ExternalTool,
-    BrowserAccess,
-    ComputerObserve,
-    ComputerInput,
-}
-
+pub use suncode_common::tool::Risk;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Decision {
     Allow,

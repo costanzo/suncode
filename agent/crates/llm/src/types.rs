@@ -64,12 +64,7 @@ pub struct Usage {
     pub reasoning_tokens: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ToolDefinition {
-    pub name: String,
-    pub description: String,
-    pub parameters: Value,
-}
+pub use suncode_common::tool::ToolDefinition;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClientToolsetDefinition {
