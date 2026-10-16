@@ -482,10 +482,12 @@ async fn fixture_with_router(
     let server = tokio::spawn(async move {
         axum::serve(listener, router).await.unwrap();
     });
-    let directory = tempfile::tempdir().unwrap().keep();
-    std::fs::write(directory.join("README.md"), "hello").unwrap();
+    let directory = tempfile::tempdir().unwrap().keep().canonicalize().unwrap();
+    // Keep the dependency outside the project, using canonical paths on every OS.
+    let root = directory.join("project");
+    std::fs::create_dir(&root).unwrap();
+    std::fs::write(root.join("README.md"), "hello").unwrap();
     let store = Store::open_memory().unwrap();
-    let root = directory.canonicalize().unwrap();
     let project = store.project(root.to_str().unwrap(), "Fixture").unwrap();
     let dependency_root = directory.join("dependency-source");
     std::fs::create_dir_all(&dependency_root).unwrap();
@@ -1102,6 +1104,13 @@ async fn reasoning_effort_rejects_invalid_values_and_unsupported_models() {
 #[tokio::test]
 async fn dependency_read_is_routed_and_write_is_rejected_before_approval() {
     let (agent, store, root, server, session_id) = fixture().await;
+    let project_id = store
+        .session_by_id(&session_id)
+        .unwrap()
+        .unwrap()
+        .project_id
+        .unwrap();
+    let dependency = store.project_dependencies(&project_id).unwrap().remove(0);
     let response = agent
         .submit(
             &session_id,
@@ -1138,7 +1147,7 @@ async fn dependency_read_is_routed_and_write_is_rejected_before_approval() {
         .unwrap_err();
     assert_eq!(error.code, "scope_denied");
     assert_eq!(
-        std::fs::read_to_string(root.join("dependency-source/lib.rs")).unwrap(),
+        std::fs::read_to_string(Path::new(&dependency.canonical_root).join("lib.rs")).unwrap(),
         "pub fn shared() {}\n"
     );
     server.abort();
@@ -1547,6 +1556,37 @@ async fn documents_are_read_through_audited_operations_and_paths_map_back() {
     );
     assert_eq!(paths.display_path(Path::new("/elsewhere/file.rs")), None);
     server.abort();
+}
+
+#[test]
+fn project_paths_take_precedence_over_nested_dependencies() {
+    use suncode_common::tool::PathScopes;
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().canonicalize().unwrap();
+    let dependency_root = root.join("dependency-source");
+    fs::create_dir(&dependency_root).unwrap();
+    fs::write(dependency_root.join("lib.rs"), "pub fn shared() {}\n").unwrap();
+    let store = Store::open_memory().unwrap();
+    let project = store.project(root.to_str().unwrap(), "Fixture").unwrap();
+    store
+        .add_project_dependency(
+            &project.project_id,
+            dependency_root.to_str().unwrap(),
+            "Nested source",
+        )
+        .unwrap();
+    let paths = providers::StorePathScopes {
+        store: &store,
+        project_id: &project.project_id,
+        project_root: &root,
+    };
+
+    assert_eq!(
+        paths
+            .display_path(&dependency_root.join("lib.rs"))
+            .as_deref(),
+        Some("dependency-source/lib.rs")
+    );
 }
 
 /// A batched read-only provider: `fake_step` fails when `fail` is set and
