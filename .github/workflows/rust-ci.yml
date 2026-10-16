@@ -12,6 +12,8 @@ permissions:
   contents: read
 
 env:
+  # Override the repository's stable channel for every Rust CI command.
+  RUSTUP_TOOLCHAIN: '1.98.0'
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: '0'
   RUST_BACKTRACE: 1
@@ -28,7 +30,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          toolchain: ${{ env.RUSTUP_TOOLCHAIN }}
           components: rustfmt, clippy
 
       - name: Identify Rust compiler
