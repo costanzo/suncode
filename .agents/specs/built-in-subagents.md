@@ -2,7 +2,7 @@
 
 ## Catalog
 
-Definitions are compiled into `agent/crates/core/src/agent/builtin_agents.rs` and expose stable ID, unique name, display name, description, version, instructions, exact allowlist, model policy, MCP policy, delegation policy, and tool-call limit.
+Definitions are compiled into the `suncode-agents` crate (`agent/crates/agents`). Each `AgentDefinition` has a stable ID, unique name, display name, description, version, instructions, a tool scope (the full catalog or an exact allowlist), a model policy, explicit capabilities (delegate, ask the user, use MCP/Browser/Computer tools, use Skills), and an optional tool-call limit. The primary agent is an explicit definition (`builtin.primary.v1`); sessions without an agent id run it. The core harness reads only these definitions to build prompts, advertise tools, and enforce capabilities; definitions can narrow but never widen core policy, approval, or authority rules. The SDK `list_agents` DTO derives its model, MCP, and delegation policy text from these typed fields.
 
 - Architect, UI/UX, Product: `read`, `glob`, `grep`, `webfetch`, `todowrite`; limit 32.
 - SWE, QA, SRE: `read`, `glob`, `grep`, `write`, `edit`, `bash`, `todowrite`, `webfetch`; limit 64.

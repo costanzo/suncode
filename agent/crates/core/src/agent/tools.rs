@@ -375,7 +375,7 @@ impl Agent {
         call: &ToolCall,
         token: CancellationToken,
     ) -> Result<(), BusinessError> {
-        if context.agent_id.is_some() {
+        if !context.agent().can_delegate {
             let error = BusinessError::new("agent_tool_denied", "child agents cannot delegate");
             return self.record_call_success(
                 context,
@@ -397,7 +397,7 @@ impl Agent {
             .ok_or_else(|| {
                 BusinessError::invalid("task must contain 1 through 16000 characters")
             })?;
-        let definition = builtin_agents::by_name(agent_name)
+        let definition = suncode_agents::specialist_by_name(agent_name)
             .ok_or_else(|| BusinessError::new("unknown_agent", "built-in agent was not found"))?;
         self.tool_state(context, call, ToolState::PolicyCheck, None)?;
         self.tool_state(context, call, ToolState::Authorized, None)?;
@@ -427,7 +427,10 @@ impl Agent {
                 definition.id,
                 definition.version,
                 &json!({"text":task}),
-                &json!(definition.allowed_tools),
+                &json!(match definition.tools {
+                    suncode_agents::ToolScope::Only(tools) => tools,
+                    suncode_agents::ToolScope::Catalog => &[][..],
+                }),
                 &context.model,
             )
         })?;

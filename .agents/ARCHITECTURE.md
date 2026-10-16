@@ -165,7 +165,8 @@ Startup marks non-recoverable in-memory turn execution interrupted, discovers ad
 apps/desktop-avalonia/    .NET 10 Avalonia desktop client
 apps/cli/                 native Rust CLI administration and one-shot turn client
 contracts/                hand-written protocols and contract documentation
-agent/crates/core/      agent harness and core services
+agent/crates/core/      `suncode-core` harness: turn loop, policy, approval, events, prompts, and tool routing
+agent/crates/agents/    `suncode-agents` definitions: identity, instructions, tool scope, and capabilities
 agent/crates/config/    Rust-owned bootstrap configuration crate
 agent/crates/common/    shared Rust business errors and cross-crate contracts, including the std-only `tool` provider contract
 agent/crates/http/      shared TLS trust and proxy settings for every outbound reqwest client (LLM providers, Remote, MCP, webfetch)

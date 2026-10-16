@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/common", "crates/http", "crates/config", "crates/tools", "crates/skills", "crates/database", "crates/data", "crates/llm", "crates/mcp", "crates/lsp", "crates/browser", "crates/computer", "crates/remote", "crates/core"]
+members = ["crates/common", "crates/agents", "crates/http", "crates/config", "crates/tools", "crates/skills", "crates/database", "crates/data", "crates/llm", "crates/mcp", "crates/lsp", "crates/browser", "crates/computer", "crates/remote", "crates/core"]
 
 [workspace.package]
 version = "0.1.0"
@@ -8,6 +8,7 @@ edition = "2021"
 
 [workspace.dependencies]
 # Internal crates
+suncode-agents = { path = "crates/agents" }
 suncode-browser = { path = "crates/browser" }
 suncode-common = { path = "crates/common" }
 suncode-computer = { path = "crates/computer" }

@@ -1,0 +1,8 @@
+[package]
+name = "suncode-agents"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "suncode_agents"
+path = "src/lib.rs"

@@ -3,7 +3,7 @@ use super::*;
 impl AsyncAgentSdk {
     pub fn list_agents(&self) -> SdkResult<AgentsResult> {
         Ok(AgentsResult {
-            agents: suncode_core::agent::builtin_agents::all()
+            agents: suncode_agents::specialists()
                 .iter()
                 .map(|agent| BuiltinAgentDto {
                     id: agent.id.into(),
@@ -11,15 +11,16 @@ impl AsyncAgentSdk {
                     display_name: agent.display_name.into(),
                     description: agent.description.into(),
                     version: agent.version,
-                    allowed_tools: agent
-                        .allowed_tools
-                        .iter()
-                        .map(|tool| (*tool).into())
-                        .collect(),
-                    model_policy: agent.model_policy.into(),
-                    mcp_policy: agent.mcp_policy.into(),
+                    allowed_tools: match agent.tools {
+                        suncode_agents::ToolScope::Only(tools) => {
+                            tools.iter().map(|tool| (*tool).into()).collect()
+                        }
+                        suncode_agents::ToolScope::Catalog => Vec::new(),
+                    },
+                    model_policy: agent.model_policy.description().into(),
+                    mcp_policy: agent.mcp_policy().into(),
                     can_delegate: agent.can_delegate,
-                    tool_call_limit: agent.tool_call_limit,
+                    tool_call_limit: agent.tool_call_limit.unwrap_or_default(),
                 })
                 .collect(),
         })

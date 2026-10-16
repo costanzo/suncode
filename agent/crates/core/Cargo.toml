@@ -16,6 +16,7 @@ jsonschema.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+suncode-agents.workspace = true
 suncode-tool.workspace = true
 suncode-skills.workspace = true
 suncode-common.workspace = true

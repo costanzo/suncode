@@ -19,7 +19,7 @@ pub(super) fn delegate_agent_definition() -> suncode_llm::ToolDefinition {
             "properties": {
                 "agent": {
                     "type": "string",
-                    "enum": builtin_agents::all().iter().map(|agent| agent.name).collect::<Vec<_>>(),
+                    "enum": suncode_agents::specialists().iter().map(|agent| agent.name).collect::<Vec<_>>(),
                 },
                 "task": {"type": "string", "minLength": 1, "maxLength": 16000}
             },
@@ -264,9 +264,9 @@ impl Agent {
             non_interactive: self.non_interactive,
             host_capabilities: self.host_capabilities,
             allowed_tools: &context.allowed_tools,
-            agent_id: context.agent_id.as_deref(),
+            agent: context.agent(),
             dependency_context: self.dependency_context_message(&context.project_id)?,
-            skill_guidance: if context.allowed_tools.is_empty() {
+            skill_guidance: if context.agent().can_use_skills {
                 skill_guidance(&context.project_root, Some(&self.config.user_directory))
             } else {
                 None
@@ -286,16 +286,15 @@ impl Agent {
             self.drain_queued_messages(&mut context)?;
             context.iterations += 1;
             self.turn_state(&context, TurnState::CallingModel, None)?;
+            let agent = context.agent();
             let mut tool_definitions = suncode_tool::definitions::all();
-            if !context.allowed_tools.is_empty() {
-                tool_definitions.retain(|definition| {
-                    context
-                        .allowed_tools
-                        .iter()
-                        .any(|allowed| allowed == &definition.name)
-                });
-            } else {
+            if !agent.can_ask_user {
+                tool_definitions.retain(|definition| definition.name != "question");
+            }
+            if agent.can_delegate {
                 tool_definitions.push(delegate_agent_definition());
+            }
+            if agent.can_use_external_tools {
                 // The static set already lists the built-in tools; add only
                 // tools that providers contribute beyond it.
                 let catalog = suncode_common::tool::CatalogContext {
@@ -323,6 +322,16 @@ impl Agent {
                     ),
                 );
                 tool_definitions.extend(provider_tools);
+            }
+            // The agent's tool scope, snapshotted at admission; empty means
+            // the full catalog.
+            if !context.allowed_tools.is_empty() {
+                tool_definitions.retain(|definition| {
+                    context
+                        .allowed_tools
+                        .iter()
+                        .any(|allowed| allowed == &definition.name)
+                });
             }
             if !context.host_tool_allowlist.is_empty() {
                 tool_definitions.retain(|definition| {

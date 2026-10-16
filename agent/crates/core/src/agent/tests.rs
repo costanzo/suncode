@@ -117,7 +117,7 @@ fn system_prompt_builder_contains_authority_workflow_and_capabilities() {
             computer_use: true,
         },
         allowed_tools: &["read".into(), "grep".into()],
-        agent_id: None,
+        agent: &suncode_agents::PRIMARY,
         dependency_context: None,
         skill_guidance: None,
     })

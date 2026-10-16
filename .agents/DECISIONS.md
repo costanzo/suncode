@@ -593,3 +593,13 @@ Newest first. Historical context is retained only when it still explains a curre
 - Decision: Record the schema version in SQLite `PRAGMA user_version`. `suncode-data` keeps an ordered list of migration steps; step `n` upgrades version `n` to `n + 1`, and `SCHEMA_VERSION` equals the step count. Opening runs the table scripts (`IF NOT EXISTS`), the steps above the stored version, structural validation, and the idempotent seed scripts in one transaction, then writes the version. Version 1 holds the pre-versioning column additions; version 2 holds the Claude adapter patch. Existing steps are never edited. Foreign-key constraints are intentionally not used; referential cleanup stays in explicit cascades.
 - Consequences: Schema changes become reviewable numbered steps. A database whose version is newer than the build is rejected without mutation. Unversioned databases run every step once; the steps stay guarded by layout checks, so already-upgraded databases are unaffected.
 - Details: `agent/crates/data/src/store.rs`
+
+## ADR-20261016-core-and-agent-definitions
+
+- Date: 2026-10-16
+- Status: Accepted
+- Amends: ADR naming the Rust crate `suncode-agent`
+- Context: The harness crate held both the turn loop and the specialist catalog, and "primary agent" was inferred from an empty tool allowlist or a missing agent id. Several catalog fields (model, MCP, delegation policy) were display text that nothing enforced.
+- Decision: Rename the harness package to `suncode-core`. Add `suncode-agents` for agent definitions with typed capabilities and an explicit primary definition. The core reads capabilities from the definition instead of inferring them. The C ABI keeps the `suncode_agent` library name and `suncode_agent_sdk_*` symbols.
+- Consequences: New built-in agents are added in `suncode-agents` only. User-defined agents can later be another definition source; they must only narrow capabilities and stay subject to core policy. Prompts, tool catalogs, and the SDK agent list were verified byte-identical across the change.
+- Details: `specs/built-in-subagents.md`, `agent/crates/agents/src/lib.rs`, `agent/crates/core/src/agent/system_prompt.rs`

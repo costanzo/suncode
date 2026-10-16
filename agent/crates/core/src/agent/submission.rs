@@ -299,11 +299,8 @@ impl Agent {
                 "child sessions can only be started by the parent agent",
             ));
         }
-        let agent_definition = session
-            .agent_id
-            .as_deref()
-            .and_then(crate::agent::builtin_agents::by_id);
-        if session.kind == "child" && agent_definition.is_none() {
+        let agent_definition = suncode_agents::by_id(session.agent_id.as_deref());
+        if session.kind == "child" && agent_definition.is_none_or(|agent| agent.is_primary()) {
             return Err(BusinessError::new(
                 "agent_unavailable",
                 "child session agent is not available",
@@ -322,11 +319,13 @@ impl Agent {
             .project_tool_call_limit(&project_id)?
             .unwrap_or(DEFAULT_TOOL_CALL_LIMIT);
         let runtime = self.runtime_for(&project_id, session_id)?;
+        let agent_definition = agent_definition.unwrap_or(&suncode_agents::PRIMARY);
         let tool_call_limit = agent_definition
-            .map(|definition| {
+            .tool_call_limit
+            .map(|limit| {
                 project_tool_call_limit
                     .min(runtime.tool_call_limit.unwrap_or(project_tool_call_limit))
-                    .min(definition.tool_call_limit)
+                    .min(limit)
             })
             .unwrap_or_else(|| {
                 project_tool_call_limit
@@ -373,15 +372,13 @@ impl Agent {
             project_root: project.canonical_root,
             agent_id: session.agent_id.clone(),
             agent_version: session.agent_version,
-            allowed_tools: agent_definition
-                .map(|definition| {
-                    definition
-                        .allowed_tools
-                        .iter()
-                        .map(|tool| (*tool).to_string())
-                        .collect()
-                })
-                .unwrap_or_default(),
+            // Snapshotted with the turn; an empty list means the full catalog.
+            allowed_tools: match agent_definition.tools {
+                suncode_agents::ToolScope::Catalog => Vec::new(),
+                suncode_agents::ToolScope::Only(tools) => {
+                    tools.iter().map(|tool| (*tool).to_string()).collect()
+                }
+            },
             turn_id: admission.turn_id.clone(),
             submission_key: key.into(),
             model,

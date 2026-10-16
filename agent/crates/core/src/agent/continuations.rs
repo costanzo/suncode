@@ -13,7 +13,7 @@ impl Agent {
         let Some(agent_id) = continuation.agent_id.as_deref() else {
             return Ok(());
         };
-        let definition = builtin_agents::by_id(agent_id)
+        let definition = suncode_agents::by_id(Some(agent_id))
             .ok_or_else(|| BusinessError::unavailable("child session agent is not available"))?;
         let (state, result, error_code) = match outcome {
             Ok(TurnResponse::Completed {
