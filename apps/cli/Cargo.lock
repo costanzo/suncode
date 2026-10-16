@@ -3180,6 +3180,7 @@ dependencies = [
  "sha2",
  "suncode-common",
  "suncode-http",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

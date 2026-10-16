@@ -1,5 +1,11 @@
-//! Process-tree termination and post-exit group reaping.
+//! Process-tree ownership, termination, and post-exit reaping.
+//!
+//! On Unix the child leads its own process group (see `configure_command`).
+//! On Windows it is placed in a kill-on-close Job Object, with `taskkill /T`
+//! as a fallback for descendants created before assignment.
 
+#[cfg(target_os = "windows")]
+use super::job::ProcessJob;
 #[cfg(target_os = "windows")]
 use super::spawn::CREATE_NO_WINDOW;
 #[cfg(target_os = "windows")]
@@ -8,37 +14,62 @@ use std::process::Child;
 #[cfg(target_os = "windows")]
 use std::process::Command;
 
-pub(super) fn terminate_process_tree(child: &mut Child) {
+/// A spawned child together with whatever owns its descendants.
+pub(super) struct ProcessTree {
+    pub(super) child: Child,
     #[cfg(target_os = "windows")]
-    {
-        let pid = child.id();
-        let _ = Command::new("taskkill")
-            .creation_flags(CREATE_NO_WINDOW)
-            .args(["/F", "/T", "/PID", &pid.to_string()])
-            .status();
-    }
-    #[cfg(unix)]
-    {
-        let pid = child.id() as i32;
-        // The child is placed in its own process group by configure_command.
-        unsafe {
-            let _ = libc::kill(-pid, libc::SIGKILL);
-        }
-    }
-    let _ = child.kill();
+    job: Option<ProcessJob>,
 }
 
-/// Kills processes left in the leader's process group after the leader exited,
-/// such as `cmd &`, so they cannot keep the output pipes open.
-pub(super) fn reap_process_group(child: &Child) {
-    #[cfg(unix)]
-    {
-        // The group id stays reserved while any member is alive, so this cannot
-        // reach an unrelated group.
-        unsafe {
-            let _ = libc::kill(-(child.id() as i32), libc::SIGKILL);
+impl ProcessTree {
+    pub(super) fn new(child: Child) -> Self {
+        Self {
+            #[cfg(target_os = "windows")]
+            job: ProcessJob::assign(&child),
+            child,
         }
     }
-    #[cfg(not(unix))]
-    let _ = child;
+
+    /// Kills the child and every descendant that can still be reached.
+    pub(super) fn terminate(&mut self) {
+        #[cfg(target_os = "windows")]
+        {
+            if let Some(job) = self.job.as_ref() {
+                job.terminate();
+            }
+            let pid = self.child.id();
+            let _ = Command::new("taskkill")
+                .creation_flags(CREATE_NO_WINDOW)
+                .args(["/F", "/T", "/PID", &pid.to_string()])
+                .status();
+        }
+        #[cfg(unix)]
+        {
+            let pid = self.child.id() as i32;
+            // SAFETY: signalling a process group has no memory-safety
+            // requirements; the child leads its own group.
+            unsafe {
+                let _ = libc::kill(-pid, libc::SIGKILL);
+            }
+        }
+        let _ = self.child.kill();
+    }
+
+    /// Kills descendants left behind after the child exited, such as
+    /// `cmd &`, so they cannot keep the output pipes open.
+    pub(super) fn reap(&self) {
+        #[cfg(unix)]
+        {
+            // The group id stays reserved while any member is alive, so this
+            // cannot reach an unrelated group.
+            // SAFETY: as in `terminate`.
+            unsafe {
+                let _ = libc::kill(-(self.child.id() as i32), libc::SIGKILL);
+            }
+        }
+        #[cfg(target_os = "windows")]
+        if let Some(job) = self.job.as_ref() {
+            job.terminate();
+        }
+    }
 }

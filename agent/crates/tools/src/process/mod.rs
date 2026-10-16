@@ -9,6 +9,8 @@
 mod artifact;
 mod background;
 mod capture;
+#[cfg(target_os = "windows")]
+mod job;
 mod spawn;
 mod tree;
 
@@ -29,7 +31,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use suncode_common::BusinessError;
-use tree::{reap_process_group, terminate_process_tree};
+use tree::ProcessTree;
 
 /// Bytes of each stream kept inline; beyond this, output spills to a file.
 const PREVIEW_BYTES: usize = 64 * 1024;
@@ -59,50 +61,53 @@ pub(crate) fn run(
         );
         sha256_hex(seed.as_bytes())
     });
-    let mut child = configure_command(Command::new(&command), args)
+    let child = configure_command(Command::new(&command), args)
         .args(&command_args)
         .current_dir(cwd)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .map_err(process_start_failure)?;
+    let mut tree = ProcessTree::new(child);
     let stdout_callback = output_callback.clone();
     let stderr_callback = output_callback;
-    let stdout = child
+    let stdout = tree
+        .child
         .stdout
         .take()
         .map(|reader| std::thread::spawn(|| collect_output(reader, "stdout", stdout_callback)));
-    let stderr = child
+    let stderr = tree
+        .child
         .stderr
         .take()
         .map(|reader| std::thread::spawn(|| collect_output(reader, "stderr", stderr_callback)));
     let started = std::time::Instant::now();
     let mut timed_out = false;
     let mut cancelled = false;
-    let status = loop {
-        if let Some(status) = child
-            .try_wait()
-            .map_err(|_| retryable("process_status_failed", "process status could not be read"))?
-        {
-            break status;
-        }
-        if cancellation.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
-            cancelled = true;
-            terminate_process_tree(&mut child);
-            break child.wait().map_err(|_| {
+    let status =
+        loop {
+            if let Some(status) = tree.child.try_wait().map_err(|_| {
                 retryable("process_status_failed", "process status could not be read")
-            })?;
-        }
-        if started.elapsed().as_millis() >= u128::from(timeout_ms) {
-            timed_out = true;
-            terminate_process_tree(&mut child);
-            break child.wait().map_err(|_| {
-                retryable("process_status_failed", "process status could not be read")
-            })?;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(10));
-    };
-    reap_process_group(&child);
+            })? {
+                break status;
+            }
+            if cancellation.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+                cancelled = true;
+                tree.terminate();
+                break tree.child.wait().map_err(|_| {
+                    retryable("process_status_failed", "process status could not be read")
+                })?;
+            }
+            if started.elapsed().as_millis() >= u128::from(timeout_ms) {
+                timed_out = true;
+                tree.terminate();
+                break tree.child.wait().map_err(|_| {
+                    retryable("process_status_failed", "process status could not be read")
+                })?;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        };
+    tree.reap();
     let drain_deadline = std::time::Instant::now() + OUTPUT_DRAIN_TIMEOUT;
     let (out, out_complete) = joined_output(join_output(stdout, drain_deadline), "stdout")?;
     let (err, err_complete) = joined_output(join_output(stderr, drain_deadline), "stderr")?;

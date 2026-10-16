@@ -1,31 +1,31 @@
 //! Long-lived project processes owned by the host.
 
 use super::spawn::{command_arguments, configure_command, process_cwd, process_start_failure};
-use super::tree::terminate_process_tree;
+use super::tree::ProcessTree;
 use crate::arguments::ProcessArguments;
 use crate::scope::require_project;
 use std::path::Path;
-use std::process::{Child, Command, Stdio};
+use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use suncode_common::BusinessError;
 
 /// A project-scoped process that remains alive until the host explicitly stops it.
 pub struct BackgroundProcess {
-    child: Mutex<Child>,
+    tree: Mutex<ProcessTree>,
 }
 
 impl BackgroundProcess {
     pub fn stop(&self) {
-        if let Ok(mut child) = self.child.lock() {
-            terminate_process_tree(&mut child);
-            let _ = child.wait();
+        if let Ok(mut tree) = self.tree.lock() {
+            tree.terminate();
+            let _ = tree.child.wait();
         }
     }
 
     pub fn is_running(&self) -> bool {
-        self.child
+        self.tree
             .lock()
-            .map(|mut child| child.try_wait().ok().flatten().is_none())
+            .map(|mut tree| tree.child.try_wait().ok().flatten().is_none())
             .unwrap_or(false)
     }
 }
@@ -51,6 +51,6 @@ pub fn start_background(
         .spawn()
         .map_err(process_start_failure)?;
     Ok(BackgroundProcess {
-        child: Mutex::new(child),
+        tree: Mutex::new(ProcessTree::new(child)),
     })
 }
