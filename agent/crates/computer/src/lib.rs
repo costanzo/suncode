@@ -1,12 +1,15 @@
 //! Provider-independent Computer Use actions and serialized desktop execution.
 //!
-//! This crate owns no provider protocol, policy, approval, persistence, SDK, or UI state.
+//! This crate owns no provider protocol, policy, approval, persistence, SDK, or UI
+//! state. [`ComputerRuntime`] implements the core's tool provider contract.
 
 mod action;
 mod backend;
 mod enigo_backend;
 mod executor;
 mod frame;
+mod provider;
+mod runtime;
 
 pub use action::{
     ComputerAction, KeyChord, KeyModifier, MouseButton, ScrollDirection, MAX_ACTION_DURATION,
@@ -23,3 +26,5 @@ pub use frame::{
     ComputerFrame, DisplayGeometry, PixelPoint, PixelRegion, MAX_PROVIDER_IMAGE_EDGE,
     MAX_PROVIDER_IMAGE_PIXELS, MAX_PROVIDER_PNG_BYTES,
 };
+pub use provider::member;
+pub use runtime::{ComputerRuntime, ComputerRuntimeInfo};

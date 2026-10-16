@@ -3,7 +3,8 @@
 use crate::runtime::{infer_language_id, is_lsp_tool, operation, LspRuntime, SemanticRequest};
 use serde_json::Value;
 use suncode_common::tool::{
-    BoxFuture, Risk, ScopedPath, ToolContext, ToolDefinition, ToolInvocation, ToolProvider,
+    BoxFuture, CatalogContext, Risk, ScopedPath, ToolContext, ToolDefinition, ToolInvocation,
+    ToolProvider, ToolResult,
 };
 use suncode_common::BusinessError;
 use tokio_util::sync::CancellationToken;
@@ -19,7 +20,10 @@ impl ToolProvider for LspRuntime {
     }
 
     /// The `lsp_*` definitions are part of the static built-in set.
-    fn catalog<'a>(&'a self, _project_id: &'a str) -> BoxFuture<'a, Vec<ToolDefinition>> {
+    fn catalog<'a>(
+        &'a self,
+        _context: &'a CatalogContext<'a>,
+    ) -> BoxFuture<'a, Vec<ToolDefinition>> {
         Box::pin(async { Vec::new() })
     }
 
@@ -44,7 +48,7 @@ impl ToolProvider for LspRuntime {
         &'a self,
         invocation: ToolInvocation<'a>,
         context: ToolContext<'a>,
-    ) -> BoxFuture<'a, Result<Value, BusinessError>> {
+    ) -> BoxFuture<'a, Result<ToolResult, BusinessError>> {
         Box::pin(async move {
             let arguments = &invocation.arguments;
             let display_path = arguments
@@ -107,13 +111,14 @@ impl ToolProvider for LspRuntime {
                 token.clone(),
             );
             tokio::pin!(request);
-            tokio::select! {
+            let result = tokio::select! {
                 result = &mut request => result,
                 () = context.cancellation.cancelled() => {
                     token.cancel();
                     request.await
                 }
-            }
+            };
+            result.map(ToolResult::from)
         })
     }
 }

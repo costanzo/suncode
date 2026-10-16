@@ -5,7 +5,8 @@ use crate::action::BrowserAction;
 use crate::tools::parse_call;
 use serde_json::Value;
 use suncode_common::tool::{
-    BoxFuture, Cancellation, Risk, ToolContext, ToolDefinition, ToolInvocation, ToolProvider,
+    BoxFuture, Cancellation, CatalogContext, Risk, ToolContext, ToolDefinition, ToolInvocation,
+    ToolProvider, ToolResult,
 };
 use suncode_common::{logging, BusinessError};
 
@@ -73,7 +74,10 @@ impl ToolProvider for BrowserRuntime {
         crate::tools::is_browser_tool(name)
     }
 
-    fn catalog<'a>(&'a self, _project_id: &'a str) -> BoxFuture<'a, Vec<ToolDefinition>> {
+    fn catalog<'a>(
+        &'a self,
+        _context: &'a CatalogContext<'a>,
+    ) -> BoxFuture<'a, Vec<ToolDefinition>> {
         Box::pin(BrowserRuntime::catalog(self))
     }
 
@@ -89,12 +93,16 @@ impl ToolProvider for BrowserRuntime {
         &'a self,
         invocation: ToolInvocation<'a>,
         context: ToolContext<'a>,
-    ) -> BoxFuture<'a, Result<Value, BusinessError>> {
-        Box::pin(self.call(
-            context.project_id,
-            invocation.name,
-            invocation.arguments,
-            context.cancellation,
-        ))
+    ) -> BoxFuture<'a, Result<ToolResult, BusinessError>> {
+        Box::pin(async move {
+            self.call(
+                context.project_id,
+                invocation.name,
+                invocation.arguments,
+                context.cancellation,
+            )
+            .await
+            .map(ToolResult::from)
+        })
     }
 }

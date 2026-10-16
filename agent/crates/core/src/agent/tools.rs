@@ -80,8 +80,10 @@ impl Agent {
             }
             self.tool_state(context, call, ToolState::Requested, None)?;
             self.tool_state(context, call, ToolState::Validating, None)?;
-            if computer::is_computer_call(call) && context.computer_batch_failed {
-                self.record_computer_skipped(context, call)?;
+            let provider = self.tool_providers.find(&tool_name(call));
+            let batch = provider.and_then(|provider| provider.approval_batch(&tool_name(call)));
+            if batch.is_some() && context.approval_batch_failed {
+                self.record_batch_skipped(context, call)?;
                 continue;
             }
             if !context.allowed_tools.is_empty()
@@ -136,7 +138,7 @@ impl Agent {
                     .await?;
                 continue;
             }
-            if !suncode_mcp::is_mcp_tool(&call.name) && !computer::is_computer_call(call) {
+            if !suncode_mcp::is_mcp_tool(&call.name) && batch.is_none() {
                 if let Err(error) = self.validate_dependency_call(context, call) {
                     if !self.record_recoverable_call_error(context, call, &error)? {
                         return Err(error);
@@ -145,39 +147,28 @@ impl Agent {
                 }
             }
             let mut approval_pin = None;
-            let (mut approval_operation, mut approval_arguments) =
-                if let Some(provider) = self.tool_providers.find(&call.name) {
-                    match provider
-                        .approval_target(&context.project_id, &call.name, &call.arguments)
-                        .await
-                    {
-                        Ok(target) => {
-                            approval_pin = target.pin;
-                            (target.operation, target.arguments)
-                        }
-                        Err(error) => {
-                            if !self.record_recoverable_call_error(context, call, &error)? {
-                                return Err(error);
-                            }
-                            continue;
-                        }
+            let (mut approval_operation, mut approval_arguments) = if let Some(provider) = provider
+            {
+                match provider
+                    .approval_target(&context.project_id, &tool_name(call), &call.arguments)
+                    .await
+                {
+                    Ok(target) => {
+                        approval_pin = target.pin;
+                        (target.operation, target.arguments)
                     }
-                } else if computer::is_computer_call(call) {
-                    let member = computer::member_name(call).unwrap_or(&call.name);
-                    (
-                        format!("computer.{member}"),
-                        json!({"toolsetName":"computer","member":member,"input":call.arguments}),
-                    )
-                } else {
-                    (call.name.clone(), call.arguments.clone())
-                };
-            let validation = if computer::is_computer_call(call) {
-                let member = computer::member_name(call).unwrap_or(&call.name);
-                suncode_computer::ComputerAction::from_member(member, &call.arguments)
-                    .map(|_| ())
-                    .map_err(|error| BusinessError::invalid(error.to_string()))
-            } else if let Some(provider) = self.tool_providers.find(&call.name) {
-                provider.validate(&call.name, &call.arguments)
+                    Err(error) => {
+                        if !self.record_recoverable_call_error(context, call, &error)? {
+                            return Err(error);
+                        }
+                        continue;
+                    }
+                }
+            } else {
+                (call.name.clone(), call.arguments.clone())
+            };
+            let validation = if let Some(provider) = provider {
+                provider.validate(&tool_name(call), &call.arguments)
             } else {
                 validate_before_policy(&call.name, &call.arguments)
             };
@@ -230,19 +221,16 @@ impl Agent {
                 continue;
             }
             self.tool_state(context, call, ToolState::PolicyCheck, None)?;
-            let risk = if computer::is_computer_call(call) {
-                computer::risk(&call.name)
-            } else if let Some(provider) = self.tool_providers.find(&call.name) {
-                provider.risk(&call.name)
-            } else {
-                tool_risk(&call.name)
+            let risk = match provider {
+                Some(provider) => provider.risk(&tool_name(call)),
+                None => tool_risk(&call.name),
             };
-            let computer_batch_approved = computer::is_computer_call(call)
+            let batch_approved = batch.is_some()
                 && context
-                    .approved_computer_call_ids
+                    .approved_batch_call_ids
                     .iter()
                     .any(|call_id| call_id == &call.call_id);
-            let decision = if computer_batch_approved {
+            let decision = if batch_approved {
                 Decision::Allow
             } else {
                 evaluate(
@@ -285,25 +273,43 @@ impl Agent {
                         ToolState::AwaitingApproval,
                         Some("risk_requires_approval"),
                     )?;
-                    if computer::is_computer_call(call) {
-                        let batch = calls[index..]
+                    if let Some(key) = batch {
+                        // Consecutive calls in the same batch are approved together.
+                        let members = calls[index..]
                             .iter()
-                            .take_while(|candidate| computer::is_computer_call(candidate))
+                            .take_while(|candidate| {
+                                self.tool_providers.find(&tool_name(candidate)).and_then(
+                                    |provider| provider.approval_batch(&tool_name(candidate)),
+                                ) == Some(key)
+                            })
                             .cloned()
                             .collect::<Vec<_>>();
-                        context.approved_computer_call_ids = batch
+                        context.approved_batch_call_ids = members
                             .iter()
                             .map(|candidate| candidate.call_id.clone())
                             .collect();
-                        approval_operation = "computer.batch".into();
-                        approval_arguments = json!({
-                            "toolsetName":"computer",
-                            "actions":batch.iter().map(|candidate| json!({
-                                "toolCallId":candidate.call_id,
-                                "member":computer::member_name(candidate).unwrap_or(&candidate.name),
-                                "input":candidate.arguments,
-                            })).collect::<Vec<_>>(),
-                        });
+                        approval_operation = format!("{key}.batch");
+                        let mut actions = Vec::with_capacity(members.len());
+                        for candidate in &members {
+                            let target = provider
+                                .expect("batched calls have a provider")
+                                .approval_target(
+                                    &context.project_id,
+                                    &tool_name(candidate),
+                                    &candidate.arguments,
+                                )
+                                .await?;
+                            let mut action = json!({"toolCallId": candidate.call_id});
+                            if let Some(arguments) = target.arguments.as_object() {
+                                for (field, value) in arguments {
+                                    if field != "toolsetName" {
+                                        action[field] = value.clone();
+                                    }
+                                }
+                            }
+                            actions.push(action);
+                        }
+                        approval_arguments = json!({"toolsetName": key, "actions": actions});
                     }
                     context.pending_call = Some(call.clone());
                     context.pending_approval_pin = approval_pin;
@@ -338,9 +344,10 @@ impl Agent {
                     return Err(BusinessError::new("approval_required",format!("Tool call requires approval: {}",call.name)).details(json!({"turn_id":context.turn_id,"tool_call_id":call.call_id,"approval_id":approval.approval_id})));
                 }
                 Decision::Allow => {
-                    if computer::is_computer_call(call) {
+                    if batch.is_some() {
+                        // Batched calls run in order so a failure can halt the rest.
                         context
-                            .approved_computer_call_ids
+                            .approved_batch_call_ids
                             .retain(|call_id| call_id != &call.call_id);
                         self.execute_allowed_calls(
                             context,
@@ -358,7 +365,7 @@ impl Agent {
         }
         self.execute_allowed_calls(context, allowed_calls, token)
             .await?;
-        context.computer_batch_failed = false;
+        context.approval_batch_failed = false;
         Ok(())
     }
 
@@ -591,7 +598,7 @@ impl Agent {
                     continue;
                 }
             };
-            self.record_call_success(context, call, result)?;
+            self.record_tool_result(context, call, result)?;
         }
         Ok(())
     }
@@ -660,7 +667,7 @@ impl Agent {
     ) -> Result<(), BusinessError> {
         self.tool_state(context, call, ToolState::Authorized, None)?;
         self.tool_state(context, call, ToolState::Executing, None)?;
-        if let Some(provider) = self.tool_providers.find(&call.name) {
+        if let Some(provider) = self.tool_providers.find(&tool_name(call)) {
             let result = match self
                 .execute_provider(provider, context, call, token, approval_pin)
                 .await
@@ -670,24 +677,13 @@ impl Agent {
                     if !self.record_recoverable_call_error(context, call, &error)? {
                         return Err(error);
                     }
-                    return Ok(());
-                }
-            };
-            return self.record_call_success(context, call, result);
-        }
-        if computer::is_computer_call(call) {
-            let member = computer::member_name(call).unwrap_or(&call.name);
-            let result = match self.computer.execute(member, &call.arguments, token).await {
-                Ok(result) => result,
-                Err(error) => {
-                    if !self.record_recoverable_call_error(context, call, &error)? {
-                        return Err(error);
+                    if provider.approval_batch(&tool_name(call)).is_some() {
+                        context.approval_batch_failed = true;
                     }
-                    context.computer_batch_failed = true;
                     return Ok(());
                 }
             };
-            return self.record_computer_success(context, call, result);
+            return self.record_tool_result(context, call, result);
         }
         if call.name == "skill" {
             let result = match self.execute_skill_call(context, call) {
@@ -875,53 +871,35 @@ impl Agent {
         Ok(())
     }
 
-    pub(super) fn record_computer_success(
+    /// Records a provider result. Results with only a value take the regular
+    /// path; results with model text or an image keep the image in the
+    /// provider context and a redacted copy in session history.
+    pub(super) fn record_tool_result(
         &self,
         context: &mut Continuation,
         call: &ToolCall,
-        outcome: suncode_computer::ActionOutcome,
+        result: suncode_common::tool::ToolResult,
     ) -> Result<(), BusinessError> {
-        let (metadata, message) = match outcome {
-            suncode_computer::ActionOutcome::Text(text) => {
-                let metadata = json!({"type":"computer_text","text":text});
-                (metadata, Message::text("tool", text))
-            }
-            suncode_computer::ActionOutcome::Image {
-                frame,
-                source_frame,
-            } => {
-                let source_png = source_frame.png().map_err(|error| {
-                    BusinessError::new("computer_capture_failed", error.to_string())
-                })?;
-                let provider_png = frame.png().map_err(|error| {
-                    BusinessError::new("computer_capture_failed", error.to_string())
-                })?;
-                let artifact_id = self.computer.persist_screenshot(&source_png)?;
-                let metadata = json!({
-                    "type":"computer_image",
-                    "artifact_id":artifact_id,
-                    "relative_path":format!("computer/artifacts/{artifact_id}.png"),
-                    "mime_type":"image/png",
-                    "bytes":source_png.len(),
-                    "pixelWidth":frame.display.pixel_width,
-                    "pixelHeight":frame.display.pixel_height,
-                    "sourcePixelWidth":source_frame.display.pixel_width,
-                    "sourcePixelHeight":source_frame.display.pixel_height,
-                    "displayGeneration":frame.display.generation,
-                });
-                let mut message = Message::text(
-                    "tool",
-                    format!(
-                        "Computer screenshot captured and saved as artifact {artifact_id} at computer/artifacts/{artifact_id}.png."
-                    ),
-                );
-                message.content.push(crate::domain::ContentPart {
-                    kind: "image_url".into(),
-                    text: format!("data:image/png;base64,{}", STANDARD.encode(provider_png)),
-                });
-                (metadata, message)
-            }
-        };
+        if result.model_text.is_none() && result.image.is_none() {
+            return self.record_call_success(context, call, result.value);
+        }
+        let metadata = result.value;
+        let mut message = Message::text(
+            "tool",
+            result
+                .model_text
+                .unwrap_or_else(|| serde_json::to_string(&metadata).unwrap_or_default()),
+        );
+        if let Some(image) = &result.image {
+            message.content.push(crate::domain::ContentPart {
+                kind: "image_url".into(),
+                text: format!(
+                    "data:{};base64,{}",
+                    image.mime_type,
+                    STANDARD.encode(&image.bytes)
+                ),
+            });
+        }
         self.tool_state(context, call, ToolState::Succeeded, None)?;
         self.emit(
             &context.session_id,
@@ -932,10 +910,9 @@ impl Agent {
                 result: metadata.clone(),
             }),
         )?;
-        let mut provider_message = message;
-        provider_message.tool_call_id = Some(call.call_id.clone());
-        context.messages.push(provider_message);
-        prune_computer_screenshot_images(&mut context.messages, 2);
+        message.tool_call_id = Some(call.call_id.clone());
+        context.messages.push(message);
+        prune_tool_images(&mut context.messages, MAX_TOOL_IMAGES);
         let mut redacted = Message::text(
             "tool",
             serde_json::to_string(&metadata).unwrap_or_else(|_| "{}".into()),
@@ -953,7 +930,8 @@ impl Agent {
         Ok(())
     }
 
-    pub(super) fn record_computer_skipped(
+    /// Records a call skipped because an earlier call in its approval batch failed.
+    pub(super) fn record_batch_skipped(
         &self,
         context: &mut Continuation,
         call: &ToolCall,
@@ -1109,15 +1087,26 @@ pub(super) fn is_recoverable_tool_error(code: &str) -> bool {
     )
 }
 
-pub(super) fn prune_computer_screenshot_images(messages: &mut [Message], keep_latest: usize) {
+/// The provider-facing name for `call`. Toolset calls such as native computer
+/// use (`toolset_name = "computer"`, `name = "screenshot"`) route as
+/// `computer_screenshot`; the original call is kept for the model history.
+pub(super) fn tool_name(call: &ToolCall) -> std::borrow::Cow<'_, str> {
+    match call.toolset_name.as_deref() {
+        Some(toolset) => format!("{toolset}_{}", call.name).into(),
+        None => call.name.as_str().into(),
+    }
+}
+
+/// Images kept in the provider context; older tool images are replaced with
+/// a placeholder so long turns stay within provider limits.
+const MAX_TOOL_IMAGES: usize = 2;
+
+pub(super) fn prune_tool_images(messages: &mut [Message], keep_latest: usize) {
     let mut retained = 0usize;
     for message in messages.iter_mut().rev() {
-        let computer_screenshot = message.role == "tool"
-            && message.content.iter().any(|part| {
-                part.kind == "text" && part.text.starts_with("Computer screenshot captured")
-            })
-            && message.content.iter().any(|part| part.kind == "image_url");
-        if !computer_screenshot {
+        let has_image =
+            message.role == "tool" && message.content.iter().any(|part| part.kind == "image_url");
+        if !has_image {
             continue;
         }
         retained += 1;
@@ -1126,6 +1115,7 @@ pub(super) fn prune_computer_screenshot_images(messages: &mut [Message], keep_la
         }
         message.content.retain(|part| part.kind != "image_url");
         if let Some(text) = message.content.iter_mut().find(|part| part.kind == "text") {
+            // Only Computer Use attaches images today.
             text.text = "[older computer screenshot omitted from provider context]".into();
         }
     }
@@ -1148,7 +1138,7 @@ mod computer_context_tests {
     #[test]
     fn older_computer_screenshots_are_redacted_but_tool_results_remain() {
         let mut messages = vec![screenshot("one"), screenshot("two"), screenshot("three")];
-        prune_computer_screenshot_images(&mut messages, 2);
+        prune_tool_images(&mut messages, 2);
         assert_eq!(messages[0].tool_call_id.as_deref(), Some("one"));
         assert_eq!(
             messages[0].content[0].text,

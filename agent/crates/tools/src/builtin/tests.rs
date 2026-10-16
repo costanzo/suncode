@@ -370,6 +370,7 @@ mod execute {
                     cancellation: self.cancellation,
                 },
             ))
+            .map(|result| result.value)
         }
     }
 

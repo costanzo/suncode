@@ -2847,8 +2847,12 @@ version = "0.1.0"
 dependencies = [
  "enigo",
  "image",
+ "jsonschema",
  "serde",
  "serde_json",
+ "suncode-common",
+ "tempfile",
+ "uuid",
 ]
 
 [[package]]

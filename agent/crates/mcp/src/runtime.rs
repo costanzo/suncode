@@ -1002,6 +1002,7 @@ mod tests {
                 },
             )
             .await
+            .map(|result| result.value)
         }
 
         #[tokio::test]

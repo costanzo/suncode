@@ -1,5 +1,6 @@
 //! Shared contracts and errors used by the Rust SunCode crates.
 
+pub mod blocking;
 pub mod logging;
 pub mod tool;
 

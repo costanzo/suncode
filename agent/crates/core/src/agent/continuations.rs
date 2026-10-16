@@ -435,7 +435,7 @@ impl Agent {
             self.execute_call(continuation, &call, token.clone(), approval_pin)
                 .await?;
             continuation
-                .approved_computer_call_ids
+                .approved_batch_call_ids
                 .retain(|call_id| call_id != &call.call_id);
         }
         let siblings = std::mem::take(&mut continuation.remaining_calls);

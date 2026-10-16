@@ -16,7 +16,8 @@ use std::future::Future;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use suncode_common::tool::{
-    BoxFuture, Risk, ScopedPath, ToolContext, ToolDefinition, ToolInvocation, ToolProvider,
+    BoxFuture, CatalogContext, Risk, ScopedPath, ToolContext, ToolDefinition, ToolInvocation,
+    ToolProvider, ToolResult,
 };
 use suncode_common::BusinessError;
 
@@ -51,7 +52,10 @@ impl ToolProvider for BuiltinTools {
         method(name).is_some()
     }
 
-    fn catalog<'a>(&'a self, _project_id: &'a str) -> BoxFuture<'a, Vec<ToolDefinition>> {
+    fn catalog<'a>(
+        &'a self,
+        _context: &'a CatalogContext<'a>,
+    ) -> BoxFuture<'a, Vec<ToolDefinition>> {
         Box::pin(async {
             definitions::all()
                 .into_iter()
@@ -86,17 +90,13 @@ impl ToolProvider for BuiltinTools {
         &'a self,
         invocation: ToolInvocation<'a>,
         context: ToolContext<'a>,
-    ) -> BoxFuture<'a, Result<Value, BusinessError>> {
+    ) -> BoxFuture<'a, Result<ToolResult, BusinessError>> {
         Box::pin(async move {
             let method = method(invocation.name)
                 .ok_or_else(|| BusinessError::new("authorization_denied", "Unknown tool"))?;
             let (root, params, dependency_id) = prepare(&invocation, &context)?;
             let raw = self.run_blocking(root, method, params, &context).await?;
-            Ok(translate::normalize_result(
-                invocation.name,
-                raw,
-                dependency_id.as_deref(),
-            ))
+            Ok(translate::normalize_result(invocation.name, raw, dependency_id.as_deref()).into())
         })
     }
 }
@@ -150,25 +150,20 @@ impl BuiltinTools {
         let operations = self.operations.clone();
         let cancelled = Arc::new(AtomicBool::new(false));
         let output = context.output.clone();
-        let (sender, receiver) = oneshot::channel();
-        {
+        let receiver = {
             let cancelled = cancelled.clone();
-            std::thread::Builder::new()
-                .name("suncode-tool".into())
-                .spawn(move || {
-                    let callback: crate::ProcessOutputCallback =
-                        Arc::new(move |stream: &str, bytes: &[u8]| output.chunk(stream, bytes));
-                    let result = operations.execute_in_project_with_cancellation_and_output(
-                        &root,
-                        method,
-                        params,
-                        Some(&cancelled),
-                        Some(callback),
-                    );
-                    sender.send(result);
-                })
-                .map_err(|_| BusinessError::new("agent_unavailable", "operation task failed"))?;
-        }
+            suncode_common::blocking::run_blocking("suncode-tool", move || {
+                let callback: crate::ProcessOutputCallback =
+                    Arc::new(move |stream: &str, bytes: &[u8]| output.chunk(stream, bytes));
+                operations.execute_in_project_with_cancellation_and_output(
+                    &root,
+                    method,
+                    params,
+                    Some(&cancelled),
+                    Some(callback),
+                )
+            })
+        };
         let mut receiver = std::pin::pin!(receiver);
         let mut cancellation = context.cancellation.cancelled();
         // Wait for the result; on cancellation, signal the operation and keep
@@ -193,73 +188,5 @@ impl BuiltinTools {
                 "operation task failed",
             ))
         })
-    }
-}
-
-/// A minimal std-only one-shot channel. `None` means the sender was dropped,
-/// for example because the operation thread panicked.
-mod oneshot {
-    use std::future::Future;
-    use std::pin::Pin;
-    use std::sync::{Arc, Mutex};
-    use std::task::{Context, Poll, Waker};
-
-    struct State<T> {
-        value: Option<T>,
-        waker: Option<Waker>,
-        closed: bool,
-    }
-
-    pub(super) struct Sender<T>(Arc<Mutex<State<T>>>);
-    pub(super) struct Receiver<T>(Arc<Mutex<State<T>>>);
-
-    pub(super) fn channel<T>() -> (Sender<T>, Receiver<T>) {
-        let state = Arc::new(Mutex::new(State {
-            value: None,
-            waker: None,
-            closed: false,
-        }));
-        (Sender(state.clone()), Receiver(state))
-    }
-
-    impl<T> Sender<T> {
-        pub(super) fn send(self, value: T) {
-            if let Ok(mut state) = self.0.lock() {
-                state.value = Some(value);
-            }
-        }
-    }
-
-    impl<T> Drop for Sender<T> {
-        fn drop(&mut self) {
-            let waker = match self.0.lock() {
-                Ok(mut state) => {
-                    state.closed = true;
-                    state.waker.take()
-                }
-                Err(_) => None,
-            };
-            if let Some(waker) = waker {
-                waker.wake();
-            }
-        }
-    }
-
-    impl<T> Future for Receiver<T> {
-        type Output = Option<T>;
-
-        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<T>> {
-            let Ok(mut state) = self.0.lock() else {
-                return Poll::Ready(None);
-            };
-            if let Some(value) = state.value.take() {
-                return Poll::Ready(Some(value));
-            }
-            if state.closed {
-                return Poll::Ready(None);
-            }
-            state.waker = Some(cx.waker().clone());
-            Poll::Pending
-        }
     }
 }

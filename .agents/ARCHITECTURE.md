@@ -177,6 +177,7 @@ agent/crates/mcp/        bounded MCP client transports and the per-project MCP r
 agent/crates/lsp/        bounded local-stdio LSP framing and the per-project language-server runtime: lifecycle, document sync, semantic requests, and the `ToolProvider`
 agent/crates/browser/    bounded Browser Use worker protocol, runtime validation, and process lifecycle
 agent/crates/browser/    bounded Browser Use CDP client and target lifecycle
+agent/crates/computer/   Computer Use actions, serialized desktop execution, and the runtime and `ToolProvider` for `computer_*` tools
 sdks/rust/                typed Rust SDK facade over the agent harness
     sdks/c/                   stable C ABI/native library
     sdks/csharp/              typed managed SDK and native integration for Avalonia

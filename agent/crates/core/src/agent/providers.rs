@@ -12,8 +12,8 @@ use serde_json::Value;
 use std::sync::Arc;
 use std::time::Duration;
 use suncode_common::tool::{
-    BoxFuture, Cancellation, Document, DocumentReader, PathScopes, ScopedPath, ToolContext,
-    ToolDefinition, ToolInvocation, ToolOutput, ToolProvider,
+    BoxFuture, Cancellation, CatalogContext, Document, DocumentReader, PathScopes, ScopedPath,
+    ToolContext, ToolDefinition, ToolInvocation, ToolOutput, ToolProvider,
 };
 use suncode_common::BusinessError;
 use suncode_data::Store;
@@ -35,11 +35,11 @@ impl ToolProviders {
             .map(Arc::as_ref)
     }
 
-    /// Tools advertised by every provider for `project_id`, in registration order.
-    pub(super) async fn catalog(&self, project_id: &str) -> Vec<ToolDefinition> {
+    /// Tools advertised by every provider, in registration order.
+    pub(super) async fn catalog(&self, context: &CatalogContext<'_>) -> Vec<ToolDefinition> {
         let mut definitions = Vec::new();
         for provider in &self.0 {
-            definitions.extend(provider.catalog(project_id).await);
+            definitions.extend(provider.catalog(context).await);
         }
         definitions
     }
@@ -217,7 +217,7 @@ impl Agent {
         call: &ToolCall,
         token: CancellationToken,
         approval_pin: Option<Value>,
-    ) -> Result<Value, BusinessError> {
+    ) -> Result<suncode_common::tool::ToolResult, BusinessError> {
         let call_key = format!("{}:{}", context.turn_id, call.call_id);
         let project_root = std::path::Path::new(&context.project_root);
         let paths = StorePathScopes {
@@ -241,7 +241,7 @@ impl Agent {
         provider
             .execute(
                 ToolInvocation {
-                    name: &call.name,
+                    name: &super::tools::tool_name(call),
                     arguments: call.arguments.clone(),
                     approval_pin,
                 },

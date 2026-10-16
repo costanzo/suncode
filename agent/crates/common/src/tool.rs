@@ -134,13 +134,49 @@ pub struct ApprovalTarget {
     pub pin: Option<Value>,
 }
 
+/// What a provider needs to decide which tools to advertise.
+pub struct CatalogContext<'a> {
+    pub project_id: &'a str,
+    /// Whether the selected model supports native computer use.
+    pub computer_use: bool,
+}
+
+/// An image attached to a tool result for the model.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolImage {
+    pub mime_type: String,
+    pub bytes: Vec<u8>,
+}
+
+/// The outcome of a tool call.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ToolResult {
+    /// The result recorded in events and history.
+    pub value: Value,
+    /// Text shown to the model instead of `value` as JSON, if set.
+    pub model_text: Option<String>,
+    /// An image shown to the model alongside the text.
+    pub image: Option<ToolImage>,
+}
+
+impl From<Value> for ToolResult {
+    fn from(value: Value) -> Self {
+        Self {
+            value,
+            model_text: None,
+            image: None,
+        }
+    }
+}
+
 /// A source of model-facing tools.
 pub trait ToolProvider: Send + Sync {
     /// Whether this provider handles the tool `name`.
     fn owns(&self, name: &str) -> bool;
 
-    /// Tools currently advertised for `project_id`.
-    fn catalog<'a>(&'a self, project_id: &'a str) -> BoxFuture<'a, Vec<ToolDefinition>>;
+    /// Tools currently advertised.
+    fn catalog<'a>(&'a self, context: &'a CatalogContext<'a>)
+        -> BoxFuture<'a, Vec<ToolDefinition>>;
 
     /// Validates arguments before policy evaluation and approval.
     fn validate(&self, name: &str, arguments: &Value) -> Result<(), BusinessError>;
@@ -166,6 +202,13 @@ pub trait ToolProvider: Send + Sync {
         })
     }
 
+    /// Consecutive calls returning the same key are approved together, and
+    /// the first failure skips the rest of the batch. `None` means each call
+    /// is approved on its own.
+    fn approval_batch(&self, _name: &str) -> Option<&'static str> {
+        None
+    }
+
     /// Whether read-only calls to `name` may run concurrently with other
     /// read-only calls in the same batch. Providers that serialize on shared
     /// state, such as one language-server connection, return `false`.
@@ -184,5 +227,5 @@ pub trait ToolProvider: Send + Sync {
         &'a self,
         invocation: ToolInvocation<'a>,
         context: ToolContext<'a>,
-    ) -> BoxFuture<'a, Result<Value, BusinessError>>;
+    ) -> BoxFuture<'a, Result<ToolResult, BusinessError>>;
 }

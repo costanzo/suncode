@@ -4,7 +4,8 @@
 use crate::runtime::{is_mcp_tool, McpRuntime};
 use serde_json::{json, Value};
 use suncode_common::tool::{
-    ApprovalTarget, BoxFuture, Risk, ToolContext, ToolDefinition, ToolInvocation, ToolProvider,
+    ApprovalTarget, BoxFuture, CatalogContext, Risk, ToolContext, ToolDefinition, ToolInvocation,
+    ToolProvider, ToolResult,
 };
 use suncode_common::BusinessError;
 use tokio_util::sync::CancellationToken;
@@ -14,8 +15,11 @@ impl ToolProvider for McpRuntime {
         is_mcp_tool(name)
     }
 
-    fn catalog<'a>(&'a self, project_id: &'a str) -> BoxFuture<'a, Vec<ToolDefinition>> {
-        Box::pin(McpRuntime::catalog(self, project_id))
+    fn catalog<'a>(
+        &'a self,
+        context: &'a CatalogContext<'a>,
+    ) -> BoxFuture<'a, Vec<ToolDefinition>> {
+        Box::pin(McpRuntime::catalog(self, context.project_id))
     }
 
     /// Schema validation needs the live catalog, so it happens in
@@ -56,7 +60,7 @@ impl ToolProvider for McpRuntime {
         &'a self,
         invocation: ToolInvocation<'a>,
         context: ToolContext<'a>,
-    ) -> BoxFuture<'a, Result<Value, BusinessError>> {
+    ) -> BoxFuture<'a, Result<ToolResult, BusinessError>> {
         Box::pin(async move {
             let expected_generation = invocation.approval_pin.as_ref().and_then(Value::as_u64);
             // The connection API takes a Tokio token; bridge the call's
@@ -70,13 +74,14 @@ impl ToolProvider for McpRuntime {
                 expected_generation,
             );
             tokio::pin!(call);
-            tokio::select! {
+            let result = tokio::select! {
                 result = &mut call => result,
                 () = context.cancellation.cancelled() => {
                     token.cancel();
                     call.await
                 }
-            }
+            };
+            result.map(ToolResult::from)
         })
     }
 }

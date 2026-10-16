@@ -298,9 +298,13 @@ impl Agent {
                 tool_definitions.push(delegate_agent_definition());
                 // The static set already lists the built-in tools; add only
                 // tools that providers contribute beyond it.
+                let catalog = suncode_common::tool::CatalogContext {
+                    project_id: &context.project_id,
+                    computer_use: self.providers.supports_computer_use(&context.model),
+                };
                 let provider_tools = self
                     .tool_providers
-                    .catalog(&context.project_id)
+                    .catalog(&catalog)
                     .await
                     .into_iter()
                     .filter(|tool| {
@@ -319,12 +323,6 @@ impl Agent {
                     ),
                 );
                 tool_definitions.extend(provider_tools);
-            }
-            if context.allowed_tools.is_empty() {
-                tool_definitions.extend(
-                    self.computer
-                        .catalog(self.providers.supports_computer_use(&context.model)),
-                );
             }
             if !context.host_tool_allowlist.is_empty() {
                 tool_definitions.retain(|definition| {
@@ -554,7 +552,7 @@ impl Agent {
                 return Ok(response);
             }
             self.turn_state(&context, TurnState::ResolvingCalls, None)?;
-            context.computer_batch_failed = false;
+            context.approval_batch_failed = false;
             self.resolve_calls(&mut context, tool_calls, token.clone())
                 .await?;
             self.drain_queued_messages(&mut context)?;

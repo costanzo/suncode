@@ -104,18 +104,19 @@ impl Agent {
             host_capabilities.browser_use,
         );
         let preview = preview::PreviewManager::new(operations.clone());
-        let tool_providers = providers::ToolProviders::new(vec![
-            Arc::new(suncode_tool::BuiltinTools::new(operations.clone())),
-            Arc::new(lsp.clone()),
-            // MCP before browser keeps the advertised tool order.
-            Arc::new(mcp.clone()),
-            Arc::new(browser.clone()),
-        ]);
-        let computer = ComputerManager::new(
-            &store,
+        let computer = suncode_computer::ComputerRuntime::new(
+            computer::enabled_setting(&store),
             host_capabilities.computer_use,
             application_data.clone(),
         );
+        // Registration order is the advertised tool order.
+        let tool_providers = providers::ToolProviders::new(vec![
+            Arc::new(suncode_tool::BuiltinTools::new(operations.clone())),
+            Arc::new(lsp.clone()),
+            Arc::new(mcp.clone()),
+            Arc::new(browser.clone()),
+            Arc::new(computer.clone()),
+        ]);
         Self {
             user_id,
             store,
@@ -392,8 +393,8 @@ impl Agent {
             usage: Usage::default(),
             pending_call: None,
             pending_approval_pin: None,
-            approved_computer_call_ids: Vec::new(),
-            computer_batch_failed: false,
+            approved_batch_call_ids: Vec::new(),
+            approval_batch_failed: false,
             remaining_calls: Vec::new(),
             overflow_recovery_attempted: false,
             last_tool_signature: None,

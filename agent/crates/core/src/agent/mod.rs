@@ -41,7 +41,6 @@ pub use browser::{
 };
 pub use preview::{PreviewState, PreviewStatus};
 mod computer;
-use computer::ComputerManager;
 pub use computer::ComputerRuntimeInfo;
 mod mcp;
 pub use mcp::{McpLoadProgress, McpRuntimeState, McpRuntimeStatus};
@@ -133,10 +132,13 @@ struct Continuation {
     /// the generic pin stored an MCP generation number under the old name.
     #[serde(default, alias = "pending_mcp_generation")]
     pending_approval_pin: Option<Value>,
-    #[serde(default)]
-    approved_computer_call_ids: Vec<String>,
-    #[serde(default)]
-    computer_batch_failed: bool,
+    /// Calls already approved as part of the current approval batch.
+    /// Snapshots taken before generic batches used the computer-specific names.
+    #[serde(default, alias = "approved_computer_call_ids")]
+    approved_batch_call_ids: Vec<String>,
+    /// Set when a call in the current batch failed; the rest are skipped.
+    #[serde(default, alias = "computer_batch_failed")]
+    approval_batch_failed: bool,
     remaining_calls: Vec<ToolCall>,
     #[serde(default)]
     overflow_recovery_attempted: bool,
@@ -190,7 +192,7 @@ pub struct Agent {
     browser: suncode_browser::BrowserRuntime,
     tool_providers: providers::ToolProviders,
     preview: preview::PreviewManager,
-    computer: ComputerManager,
+    computer: suncode_computer::ComputerRuntime,
     host_capabilities: AgentHostCapabilities,
     config: Config,
     shutting_down: Arc<std::sync::atomic::AtomicBool>,

@@ -2705,6 +2705,8 @@ dependencies = [
  "image",
  "serde",
  "serde_json",
+ "suncode-common",
+ "uuid",
 ]
 
 [[package]]

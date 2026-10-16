@@ -1382,7 +1382,7 @@ impl suncode_common::tool::ToolProvider for EchoProvider {
 
     fn catalog<'a>(
         &'a self,
-        _project_id: &'a str,
+        _context: &'a suncode_common::tool::CatalogContext<'a>,
     ) -> suncode_common::tool::BoxFuture<'a, Vec<suncode_llm::ToolDefinition>> {
         Box::pin(async {
             vec![suncode_llm::ToolDefinition {
@@ -1409,9 +1409,10 @@ impl suncode_common::tool::ToolProvider for EchoProvider {
         &'a self,
         invocation: suncode_common::tool::ToolInvocation<'a>,
         _context: suncode_common::tool::ToolContext<'a>,
-    ) -> suncode_common::tool::BoxFuture<'a, Result<Value, BusinessError>> {
+    ) -> suncode_common::tool::BoxFuture<'a, Result<suncode_common::tool::ToolResult, BusinessError>>
+    {
         self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        Box::pin(async move { Ok(json!({"echo": invocation.arguments["text"]})) })
+        Box::pin(async move { Ok(json!({"echo": invocation.arguments["text"]}).into()) })
     }
 }
 
@@ -1490,8 +1491,14 @@ fn legacy_mcp_generation_snapshot_resumes_as_an_approval_pin() {
     let object = snapshot.as_object_mut().unwrap();
     object.remove("pending_approval_pin");
     object.insert("pending_mcp_generation".into(), json!(7));
+    object.remove("approved_batch_call_ids");
+    object.remove("approval_batch_failed");
+    object.insert("approved_computer_call_ids".into(), json!(["call-2"]));
+    object.insert("computer_batch_failed".into(), json!(true));
     let restored: Continuation = serde_json::from_value(snapshot).unwrap();
     assert_eq!(restored.pending_approval_pin, Some(json!(7)));
+    assert_eq!(restored.approved_batch_call_ids, ["call-2"]);
+    assert!(restored.approval_batch_failed);
 }
 
 #[tokio::test]
@@ -1540,4 +1547,136 @@ async fn documents_are_read_through_audited_operations_and_paths_map_back() {
     );
     assert_eq!(paths.display_path(Path::new("/elsewhere/file.rs")), None);
     server.abort();
+}
+
+/// A batched read-only provider: `fake_step` fails when `fail` is set and
+/// returns an image otherwise. Owns toolset calls as `fake_<member>`.
+struct BatchProvider {
+    calls: Arc<std::sync::Mutex<Vec<String>>>,
+}
+
+impl suncode_common::tool::ToolProvider for BatchProvider {
+    fn owns(&self, name: &str) -> bool {
+        name == "fake_step"
+    }
+    fn catalog<'a>(
+        &'a self,
+        _context: &'a suncode_common::tool::CatalogContext<'a>,
+    ) -> suncode_common::tool::BoxFuture<'a, Vec<suncode_llm::ToolDefinition>> {
+        Box::pin(async { Vec::new() })
+    }
+    fn validate(&self, _name: &str, _arguments: &Value) -> Result<(), BusinessError> {
+        Ok(())
+    }
+    fn risk(&self, _name: &str) -> Option<suncode_common::tool::Risk> {
+        Some(suncode_common::tool::Risk::ReadOnly)
+    }
+    fn approval_batch(&self, _name: &str) -> Option<&'static str> {
+        Some("fake")
+    }
+    fn concurrent(&self, _name: &str) -> bool {
+        false
+    }
+    fn execute<'a>(
+        &'a self,
+        invocation: suncode_common::tool::ToolInvocation<'a>,
+        _context: suncode_common::tool::ToolContext<'a>,
+    ) -> suncode_common::tool::BoxFuture<'a, Result<suncode_common::tool::ToolResult, BusinessError>>
+    {
+        let label = invocation.arguments["label"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string();
+        self.calls.lock().unwrap().push(label.clone());
+        Box::pin(async move {
+            if invocation.arguments["fail"] == true {
+                return Err(BusinessError::new("fake_failed", "step failed"));
+            }
+            Ok(suncode_common::tool::ToolResult {
+                value: json!({"label": label}),
+                model_text: Some(format!("step {label}")),
+                image: Some(suncode_common::tool::ToolImage {
+                    mime_type: "image/png".into(),
+                    bytes: b"png".to_vec(),
+                }),
+            })
+        })
+    }
+}
+
+#[tokio::test]
+async fn approval_batch_halts_after_a_failure_and_toolset_calls_route_by_prefix() {
+    let router = Router::new().route(
+        "/responses",
+        post(|Json(body): Json<Value>| async move {
+            let answered = body["input"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .any(|item| item["type"] == "function_call_output");
+            let chunks = if answered {
+                vec![json!({"choices":[{"delta":{"content":"done"}}]})]
+            } else {
+                let call = |index: u64, id: &str, arguments: Value| {
+                    json!({"index":index,"id":id,"function":{
+                        "name":"fake_step","arguments":arguments.to_string()
+                    }})
+                };
+                vec![json!({"choices":[{"delta":{"tool_calls":[
+                    call(0, "one", json!({"label":"one"})),
+                    call(1, "two", json!({"label":"two","fail":true})),
+                    call(2, "three", json!({"label":"three"}))
+                ]}}]})]
+            };
+            (
+                [(header::CONTENT_TYPE, "text/event-stream")],
+                responses_stream(chunks),
+            )
+        }),
+    );
+    let (mut agent, store, _root, server, session_id) = fixture_with_router(47_616, router).await;
+    let calls = Arc::new(std::sync::Mutex::new(Vec::new()));
+    agent.tool_providers = providers::ToolProviders::new(vec![Arc::new(BatchProvider {
+        calls: calls.clone(),
+    })]);
+    agent
+        .submit(&session_id, "batch-1", "batch", None, None)
+        .await
+        .unwrap();
+    assert_eq!(
+        *calls.lock().unwrap(),
+        ["one", "two"],
+        "third call must be skipped"
+    );
+    let context = store.context_messages(&session_id).unwrap();
+    let tool_text = |id: &str| {
+        context
+            .iter()
+            .find(|message| message.tool_call_id.as_deref() == Some(id))
+            .map(|message| message.text_content())
+            .unwrap_or_default()
+    };
+    assert!(tool_text("three").contains(suncode_computer::HALT_MESSAGE));
+    // Persisted context keeps the redacted metadata; the image lives only in
+    // the in-memory provider context of the running turn.
+    let one = context
+        .iter()
+        .find(|message| message.tool_call_id.as_deref() == Some("one"))
+        .unwrap();
+    assert_eq!(one.text_content(), r#"{"label":"one"}"#);
+    let history = store.messages(&session_id).unwrap();
+    assert!(context
+        .iter()
+        .chain(history.iter())
+        .flat_map(|message| message.content.iter())
+        .all(|part| part.kind != "image_url"));
+    server.abort();
+
+    let toolset = ToolCall {
+        call_id: "c".into(),
+        name: "step".into(),
+        arguments: json!({}),
+        toolset_name: Some("fake".into()),
+    };
+    assert_eq!(tools::tool_name(&toolset), "fake_step");
 }
