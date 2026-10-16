@@ -16,7 +16,6 @@ serde_json.workspace = true
 sha2.workspace = true
 suncode-common.workspace = true
 tokio = { workspace = true, features = ["macros", "sync", "time"] }
-tokio-util.workspace = true
 url.workspace = true
 uuid.workspace = true
 

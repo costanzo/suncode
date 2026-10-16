@@ -193,6 +193,8 @@ impl Agent {
                 suncode_computer::ComputerAction::from_member(member, &call.arguments)
                     .map(|_| ())
                     .map_err(|error| BusinessError::invalid(error.to_string()))
+            } else if let Some(provider) = self.tool_providers.find(&call.name) {
+                provider.validate(&call.name, &call.arguments)
             } else {
                 validate_before_policy(&call.name, &call.arguments)
             };
@@ -247,6 +249,8 @@ impl Agent {
             self.tool_state(context, call, ToolState::PolicyCheck, None)?;
             let risk = if computer::is_computer_call(call) {
                 computer::risk(&call.name)
+            } else if let Some(provider) = self.tool_providers.find(&call.name) {
+                provider.risk(&call.name)
             } else {
                 tool_risk(&call.name)
             };
@@ -739,17 +743,14 @@ impl Agent {
             };
             return self.record_call_success(context, call, result);
         }
-        if browser::is_browser_tool(&call.name) {
-            let result = match self
-                .browser
-                .call(
-                    &context.project_id,
-                    &call.name,
-                    call.arguments.clone(),
-                    token,
-                )
-                .await
-            {
+        if let Some(provider) = self.tool_providers.find(&call.name) {
+            let invocation = suncode_common::tool::ToolInvocation {
+                project_id: &context.project_id,
+                name: &call.name,
+                arguments: call.arguments.clone(),
+            };
+            let cancellation = providers::TokenCancellation(token);
+            let result = match provider.execute(invocation, &cancellation).await {
                 Ok(result) => result,
                 Err(error) => {
                     if !self.record_recoverable_call_error(context, call, &error)? {

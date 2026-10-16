@@ -2940,7 +2940,6 @@ dependencies = [
  "sha2",
  "suncode-common",
  "tokio",
- "tokio-util",
  "url",
  "uuid",
 ]

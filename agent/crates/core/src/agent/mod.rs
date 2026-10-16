@@ -188,6 +188,7 @@ pub struct Agent {
     mcp: McpManager,
     lsp: LanguageServerManager,
     browser: suncode_browser::BrowserRuntime,
+    tool_providers: providers::ToolProviders,
     preview: preview::PreviewManager,
     computer: ComputerManager,
     host_capabilities: AgentHostCapabilities,
@@ -215,6 +216,7 @@ fn default_turn_timeout_ms() -> u64 {
 
 mod continuations;
 mod lifecycle;
+mod providers;
 mod remote;
 mod run;
 mod states;

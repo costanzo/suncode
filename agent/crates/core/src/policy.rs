@@ -21,12 +21,10 @@ pub fn evaluate(risk: Option<Risk>, non_interactive: bool, full_control: bool) -
     }
 }
 
+/// Risk of built-in and MCP tools. Tool providers classify their own tools.
 pub fn tool_risk(name: &str) -> Option<Risk> {
     if name.starts_with("mcp__") {
         return Some(Risk::ExternalTool);
-    }
-    if name.starts_with("browser_") {
-        return Some(Risk::BrowserAccess);
     }
     match name {
         "read" | "glob" | "grep" | "lsp_diagnostics" | "lsp_definition" | "lsp_references"
@@ -68,11 +66,11 @@ mod tests {
             Decision::Deny
         );
         assert_eq!(
-            evaluate(tool_risk("browser_click"), false, false),
+            evaluate(Some(Risk::BrowserAccess), false, false),
             Decision::ApprovalRequired
         );
         assert_eq!(
-            evaluate(tool_risk("browser_snapshot"), true, false),
+            evaluate(Some(Risk::BrowserAccess), true, false),
             Decision::Deny
         );
     }
@@ -86,7 +84,7 @@ mod tests {
             Decision::Allow
         );
         assert_eq!(
-            evaluate(tool_risk("browser_click"), false, true),
+            evaluate(Some(Risk::BrowserAccess), false, true),
             Decision::ApprovalRequired
         );
         assert_eq!(evaluate(tool_risk("unknown"), false, true), Decision::Deny);

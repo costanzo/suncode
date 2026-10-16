@@ -5,7 +5,6 @@
 use super::*;
 use suncode_browser::BrowserRuntime;
 
-pub(super) use suncode_browser::tools::{is_browser_tool, validate_browser_arguments};
 pub use suncode_browser::{
     BrowserHostCallback, BrowserInstallationState, BrowserRuntimeInfo, BrowserRuntimeState,
     BrowserVisibilityCapability,
@@ -29,10 +28,6 @@ pub(super) fn new_runtime(
         })
         .unwrap_or(false);
     BrowserRuntime::new(data_dir, enabled, host_available)
-}
-
-pub(super) async fn catalog(runtime: &BrowserRuntime) -> Vec<suncode_llm::ToolDefinition> {
-    runtime.catalog().await
 }
 
 impl Agent {

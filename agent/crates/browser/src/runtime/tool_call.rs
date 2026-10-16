@@ -4,8 +4,10 @@ use super::BrowserRuntime;
 use crate::action::BrowserAction;
 use crate::tools::parse_call;
 use serde_json::Value;
+use suncode_common::tool::{
+    BoxFuture, Cancellation, Risk, ToolDefinition, ToolInvocation, ToolProvider,
+};
 use suncode_common::{logging, BusinessError};
-use tokio_util::sync::CancellationToken;
 
 impl BrowserRuntime {
     /// Runs one `browser_*` tool call, starting the project browser on demand.
@@ -15,7 +17,7 @@ impl BrowserRuntime {
         project_id: &str,
         name: &str,
         arguments: Value,
-        cancellation: CancellationToken,
+        cancellation: &dyn Cancellation,
     ) -> Result<Value, BusinessError> {
         logging::debug(
             "browser.call",
@@ -63,5 +65,36 @@ impl BrowserRuntime {
             result = self.retain_screenshot(result)?;
         }
         Ok(result)
+    }
+}
+
+impl ToolProvider for BrowserRuntime {
+    fn owns(&self, name: &str) -> bool {
+        crate::tools::is_browser_tool(name)
+    }
+
+    fn catalog<'a>(&'a self, _project_id: &'a str) -> BoxFuture<'a, Vec<ToolDefinition>> {
+        Box::pin(BrowserRuntime::catalog(self))
+    }
+
+    fn validate(&self, name: &str, arguments: &Value) -> Result<(), BusinessError> {
+        crate::tools::validate_browser_arguments(name, arguments)
+    }
+
+    fn risk(&self, _name: &str) -> Option<Risk> {
+        Some(Risk::BrowserAccess)
+    }
+
+    fn execute<'a>(
+        &'a self,
+        invocation: ToolInvocation<'a>,
+        cancellation: &'a dyn Cancellation,
+    ) -> BoxFuture<'a, Result<Value, BusinessError>> {
+        Box::pin(self.call(
+            invocation.project_id,
+            invocation.name,
+            invocation.arguments,
+            cancellation,
+        ))
     }
 }

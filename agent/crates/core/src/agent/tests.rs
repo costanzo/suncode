@@ -1556,3 +1556,106 @@ async fn db_blocking_runs_inline_on_current_thread_runtime() {
 fn db_blocking_runs_inline_outside_a_runtime() {
     assert_eq!(db_blocking(|| 7), 7);
 }
+
+/// A provider with one read-only tool that echoes its argument.
+struct EchoProvider {
+    calls: Arc<std::sync::atomic::AtomicUsize>,
+}
+
+impl suncode_common::tool::ToolProvider for EchoProvider {
+    fn owns(&self, name: &str) -> bool {
+        name == "fake_echo"
+    }
+
+    fn catalog<'a>(
+        &'a self,
+        _project_id: &'a str,
+    ) -> suncode_common::tool::BoxFuture<'a, Vec<suncode_llm::ToolDefinition>> {
+        Box::pin(async {
+            vec![suncode_llm::ToolDefinition {
+                name: "fake_echo".into(),
+                description: "Echo text".into(),
+                parameters: json!({"type":"object","properties":{"text":{"type":"string"}}}),
+            }]
+        })
+    }
+
+    fn validate(&self, _name: &str, arguments: &Value) -> Result<(), BusinessError> {
+        arguments
+            .get("text")
+            .and_then(Value::as_str)
+            .map(|_| ())
+            .ok_or_else(|| BusinessError::invalid("text is required"))
+    }
+
+    fn risk(&self, _name: &str) -> Option<suncode_common::tool::Risk> {
+        Some(suncode_common::tool::Risk::ReadOnly)
+    }
+
+    fn execute<'a>(
+        &'a self,
+        invocation: suncode_common::tool::ToolInvocation<'a>,
+        _cancellation: &'a dyn suncode_common::tool::Cancellation,
+    ) -> suncode_common::tool::BoxFuture<'a, Result<Value, BusinessError>> {
+        self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Box::pin(async move { Ok(json!({"echo": invocation.arguments["text"]})) })
+    }
+}
+
+#[tokio::test]
+async fn provider_tool_is_advertised_validated_and_executed() {
+    let router = Router::new().route(
+        "/responses",
+        post(|Json(body): Json<Value>| async move {
+            let advertised = body["tools"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .any(|tool| tool["name"] == "fake_echo");
+            let tool_output = body["input"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .find(|item| item["type"] == "function_call_output")
+                .and_then(|item| item["output"].as_str())
+                .map(str::to_string);
+            let chunks = match tool_output {
+                None => vec![json!({"choices":[{"delta":{"tool_calls":[{
+                    "index":0,"id":"call-echo","function":{
+                        "name":"fake_echo","arguments":"{\"text\":\"hi\"}"
+                    }
+                }]}}]})],
+                Some(output) => vec![json!({"choices":[{"delta":{
+                    "content": format!("advertised={advertised} output={output}")
+                }}]})],
+            };
+            (
+                [(header::CONTENT_TYPE, "text/event-stream")],
+                responses_stream(chunks),
+            )
+        }),
+    );
+    let (mut agent, store, _root, server, session_id) = fixture_with_router(47_616, router).await;
+    let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    agent.tool_providers = providers::ToolProviders::new(vec![Arc::new(EchoProvider {
+        calls: calls.clone(),
+    })]);
+    let response = agent
+        .submit(&session_id, "echo-1", "echo", None, None)
+        .await
+        .unwrap();
+    assert!(matches!(
+        response,
+        TurnResponse::Completed { tool_calls: 1, .. }
+    ));
+    assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
+    let reply = store
+        .messages(&session_id)
+        .unwrap()
+        .last()
+        .unwrap()
+        .text_content();
+    assert!(reply.contains("advertised=true"), "{reply}");
+    assert!(reply.contains("hi"), "{reply}");
+    server.abort();
+}

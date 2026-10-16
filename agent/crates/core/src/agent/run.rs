@@ -297,17 +297,17 @@ impl Agent {
             } else {
                 tool_definitions.push(delegate_agent_definition());
                 tool_definitions.extend(self.mcp.catalog(&context.project_id).await);
-                let browser_tools = browser::catalog(&self.browser).await;
+                let provider_tools = self.tool_providers.catalog(&context.project_id).await;
                 logging::debug(
                     "agent.tools",
                     format!(
-                        "browser_catalog session={} project={} count={}",
+                        "provider_catalog session={} project={} count={}",
                         context.session_id,
                         context.project_id,
-                        browser_tools.len()
+                        provider_tools.len()
                     ),
                 );
-                tool_definitions.extend(browser_tools);
+                tool_definitions.extend(provider_tools);
             }
             if context.allowed_tools.is_empty() {
                 tool_definitions.extend(

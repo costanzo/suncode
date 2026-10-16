@@ -9,8 +9,30 @@ use serde_json::{json, Value};
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
-use tokio_util::sync::CancellationToken;
+use suncode_common::tool::{BoxFuture, Cancellation};
+
+/// A test cancellation flag; `cancelled()` never resolves, so tests only use
+/// the pre-request check.
+#[derive(Default)]
+struct TestCancellation(AtomicBool);
+
+impl TestCancellation {
+    fn cancel(&self) {
+        self.0.store(true, Ordering::SeqCst);
+    }
+}
+
+impl Cancellation for TestCancellation {
+    fn is_cancelled(&self) -> bool {
+        self.0.load(Ordering::SeqCst)
+    }
+
+    fn cancelled(&self) -> BoxFuture<'_, ()> {
+        Box::pin(std::future::pending())
+    }
+}
 
 const PAGE: &str = r#"<!doctype html><title>Fixture</title>
 <label for="email">Email</label><input id="email">
@@ -134,7 +156,7 @@ async fn call(
     arguments: Value,
 ) -> Result<Value, BusinessError> {
     runtime
-        .call("project-1", name, arguments, CancellationToken::new())
+        .call("project-1", name, arguments, &TestCancellation::default())
         .await
 }
 
@@ -261,10 +283,10 @@ async fn cancellation_drops_the_session_and_shutdown_refuses_new_work() {
     let (runtime, _) = runtime_with_host(&chromium, data.path().to_path_buf());
     runtime.start_project("project-1").await.unwrap();
 
-    let cancellation = CancellationToken::new();
+    let cancellation = TestCancellation::default();
     cancellation.cancel();
     let cancelled = runtime
-        .call("project-1", "browser_tabs", json!({}), cancellation)
+        .call("project-1", "browser_tabs", json!({}), &cancellation)
         .await
         .unwrap_err();
     assert_eq!(cancelled.code, "cancelled");
@@ -274,4 +296,15 @@ async fn cancellation_drops_the_session_and_shutdown_refuses_new_work() {
     assert_eq!(refused.code, "agent_shutting_down");
     let info = runtime.info(Some("project-1")).await.unwrap();
     assert_eq!(info.active_page_count, 0);
+}
+
+#[test]
+fn provider_owns_and_classifies_browser_tools() {
+    use suncode_common::tool::{Risk, ToolProvider};
+    let data = tempfile::tempdir().unwrap();
+    let runtime = BrowserRuntime::new(data.path().to_path_buf(), true, true);
+    assert!(runtime.owns("browser_click"));
+    assert!(!runtime.owns("read"));
+    assert_eq!(runtime.risk("browser_snapshot"), Some(Risk::BrowserAccess));
+    assert!(runtime.validate("browser_navigate", &json!({})).is_err());
 }

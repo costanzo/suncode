@@ -118,6 +118,9 @@ impl Agent {
             session_locks: Arc::new(AsyncMutex::new(HashMap::new())),
             mcp,
             lsp,
+            tool_providers: providers::ToolProviders::new(vec![std::sync::Arc::new(
+                browser.clone(),
+            )]),
             browser,
             preview,
             computer,

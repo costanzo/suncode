@@ -167,7 +167,7 @@ apps/cli/                 native Rust CLI administration and one-shot turn clien
 contracts/                hand-written protocols and contract documentation
 agent/crates/core/      agent harness and core services
 agent/crates/config/    Rust-owned bootstrap configuration crate
-agent/crates/common/    shared Rust business errors and cross-crate contracts
+agent/crates/common/    shared Rust business errors and cross-crate contracts, including the std-only `tool` provider contract
 agent/crates/http/      shared TLS trust and proxy settings for every outbound reqwest client (LLM providers, Remote, MCP, webfetch)
 agent/crates/database/  backend-specific SQL resources and database setup
 agent/crates/data/      Diesel ORM, persistence DTOs, and data operations

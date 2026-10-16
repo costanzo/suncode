@@ -187,9 +187,6 @@ pub(in crate::agent) fn validate_before_policy(
     if name == "bash" {
         return validate_bash_arguments(value);
     }
-    if browser::is_browser_tool(name) {
-        return browser::validate_browser_arguments(name, value);
-    }
     if lsp::is_lsp_tool(name) {
         return validate_lsp_arguments(name, value);
     }
