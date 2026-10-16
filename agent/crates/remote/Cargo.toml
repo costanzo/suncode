@@ -1,23 +1,23 @@
 [package]
 name = "suncode-remote"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [lib]
 name = "suncode_remote"
 path = "src/lib.rs"
 
 [dependencies]
-aes-gcm = "0.10"
-base64 = "0.22"
-futures-util = "0.3"
-reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "stream", "system-proxy"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-suncode-common = { path = "../common" }
-suncode-http = { path = "../http" }
-suncode-data = { path = "../data" }
-tokio = { version = "1", features = ["sync", "time", "rt", "macros"] }
-tokio-util = "0.7"
-uuid = { version = "1", features = ["v4", "serde"] }
-url = "2"
+aes-gcm.workspace = true
+base64.workspace = true
+futures-util.workspace = true
+reqwest = { workspace = true, features = ["json", "stream", "system-proxy"] }
+serde.workspace = true
+serde_json.workspace = true
+suncode-common.workspace = true
+suncode-http.workspace = true
+suncode-data.workspace = true
+tokio = { workspace = true, features = ["sync", "time", "rt", "macros"] }
+tokio-util.workspace = true
+uuid = { workspace = true, features = ["serde"] }
+url.workspace = true

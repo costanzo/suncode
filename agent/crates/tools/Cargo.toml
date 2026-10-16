@@ -1,29 +1,29 @@
 [package]
 name = "suncode-tool"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [lib]
 name = "suncode_tool"
 path = "src/lib.rs"
 
 [dependencies]
-base64 = "0.22"
-encoding_rs = "0.8"
-globset = "0.4"
-grep-matcher = "0.1"
-grep-regex = "0.1"
-grep-searcher = "0.1"
-html-escape = "0.2"
-html2md-rs = "0.12"
-ignore = "0.4"
-libc = "0.2"
-reqwest = { version = "0.13", default-features = false, features = ["blocking", "rustls", "system-proxy"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-sha2 = "0.10"
-suncode-common = { path = "../common" }
-suncode-http = { path = "../http", features = ["blocking"] }
+base64.workspace = true
+encoding_rs.workspace = true
+globset.workspace = true
+grep-matcher.workspace = true
+grep-regex.workspace = true
+grep-searcher.workspace = true
+html-escape.workspace = true
+html2md-rs.workspace = true
+ignore.workspace = true
+libc.workspace = true
+reqwest = { workspace = true, features = ["blocking", "system-proxy"] }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+suncode-common.workspace = true
+suncode-http = { workspace = true, features = ["blocking"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
+windows-sys.workspace = true

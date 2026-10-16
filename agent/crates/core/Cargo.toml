@@ -1,38 +1,38 @@
 [package]
 name = "suncode-agent"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [lib]
 name = "suncode_agent"
 path = "src/lib.rs"
 
 [dependencies]
-base64 = "0.22"
-chrono = { version = "0.4", features = ["serde"] }
-futures-util = "0.3"
-fs2 = "0.4"
-jsonschema = { version = "0.55", default-features = false }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-sha2 = "0.10"
-suncode-tool = { path = "../tools" }
-suncode-skills = { path = "../skills" }
-suncode-common = { path = "../common" }
-suncode-config = { path = "../config" }
-suncode-data = { path = "../data" }
-suncode-llm = { path = "../llm" }
-suncode-mcp = { path = "../mcp" }
-suncode-remote = { path = "../remote" }
-suncode-lsp = { path = "../lsp" }
-suncode-browser = { path = "../browser" }
-suncode-computer = { path = "../computer" }
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
-tokio-util = "0.7"
-uuid = { version = "1", features = ["v4", "serde"] }
-url = "2"
+base64.workspace = true
+chrono = { workspace = true, features = ["serde"] }
+futures-util.workspace = true
+fs2.workspace = true
+jsonschema.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+suncode-tool.workspace = true
+suncode-skills.workspace = true
+suncode-common.workspace = true
+suncode-config.workspace = true
+suncode-data.workspace = true
+suncode-llm.workspace = true
+suncode-mcp.workspace = true
+suncode-remote.workspace = true
+suncode-lsp.workspace = true
+suncode-browser.workspace = true
+suncode-computer.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
+tokio-util.workspace = true
+uuid = { workspace = true, features = ["serde"] }
+url.workspace = true
 
 [dev-dependencies]
-axum = "0.8"
-tempfile = "3"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time", "net"] }
+axum.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time", "net"] }

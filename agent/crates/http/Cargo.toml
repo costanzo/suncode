@@ -1,15 +1,15 @@
 [package]
 name = "suncode-http"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [lib]
 name = "suncode_http"
 path = "src/lib.rs"
 
 [dependencies]
-reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
-suncode-common = { path = "../common" }
+reqwest.workspace = true
+suncode-common.workspace = true
 
 [features]
 blocking = ["reqwest/blocking"]

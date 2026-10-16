@@ -2,6 +2,9 @@
 
 ## Build output
 
+The `agent/` workspace declares every external and internal dependency once in `[workspace.dependencies]`, with package `version` and `edition` in `[workspace.package]`. Member crates use `name.workspace = true` and may only add `features`. Workspace entries carry the version, source, `default-features = false` where needed, and only the features every member requires. Each dependency therefore has a single version across the workspace. All outbound HTTP clients use the shared `suncode-http` crate on that single reqwest version.
+
+
 The agent, Rust facade, C binding, and CLI keep separate manifests and lockfiles but share the repository-root `target/` through `.cargo/config.toml`. Cargo must run from the repository root or a descendant to discover this configuration; callers outside the repository can pass its path with `--config`. Dev/test profiles retain line-table debug information (`debug = 1`) and Cargo's default incremental compilation. Release profiles remain unchanged. Rust CI disables incremental compilation and caches the shared output; CLI release packaging reads `target/<triple>/release`.
 
 The managed SDK invokes locked Cargo builds with the repository root as the working directory and an explicit shared target directory. Its native-library copy source uses the same directory. `SunCodeCargoTargetDirectory` overrides `CARGO_TARGET_DIR`, which overrides the root `target/` default; relative overrides resolve from the repository root. This changes build placement only, with no SDK or runtime contract change.

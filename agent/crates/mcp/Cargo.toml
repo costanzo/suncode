@@ -1,23 +1,23 @@
 [package]
 name = "suncode-mcp"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [lib]
 name = "suncode_mcp"
 path = "src/lib.rs"
 
 [dependencies]
-futures-util = "0.3"
-http = "1"
-reqwest = { version = "0.13", default-features = false, features = ["rustls", "system-proxy"] }
-rmcp = { version = "=3.2.0", default-features = false, features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-suncode-common = { path = "../common" }
-suncode-http = { path = "../http" }
-tokio = { version = "1", features = ["process", "sync", "time"] }
-tokio-util = "0.7"
+futures-util.workspace = true
+http.workspace = true
+reqwest = { workspace = true, features = ["system-proxy"] }
+rmcp.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+suncode-common.workspace = true
+suncode-http.workspace = true
+tokio = { workspace = true, features = ["process", "sync", "time"] }
+tokio-util.workspace = true
 
 [dev-dependencies]
-rmcp = { version = "=3.2.0", default-features = false, features = ["client", "server", "transport-async-rw", "transport-child-process", "transport-streamable-http-client-reqwest"] }
+rmcp = { workspace = true, features = ["server", "transport-async-rw"] }

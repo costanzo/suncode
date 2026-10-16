@@ -1,3 +1,62 @@
 [workspace]
 resolver = "2"
 members = ["crates/common", "crates/http", "crates/config", "crates/tools", "crates/skills", "crates/database", "crates/data", "crates/llm", "crates/mcp", "crates/lsp", "crates/browser", "crates/computer", "crates/remote", "crates/core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+[workspace.dependencies]
+# Internal crates
+suncode-browser = { path = "crates/browser" }
+suncode-common = { path = "crates/common" }
+suncode-computer = { path = "crates/computer" }
+suncode-config = { path = "crates/config" }
+suncode-data = { path = "crates/data" }
+suncode-database = { path = "crates/database" }
+suncode-http = { path = "crates/http" }
+suncode-llm = { path = "crates/llm" }
+suncode-lsp = { path = "crates/lsp" }
+suncode-mcp = { path = "crates/mcp" }
+suncode-remote = { path = "crates/remote" }
+suncode-skills = { path = "crates/skills" }
+suncode-tool = { path = "crates/tools" }
+
+# External crates
+aes-gcm = "0.10"
+axum = "0.8"
+base64 = "0.22"
+bytes = "1"
+chromiumoxide = "0.9.1"
+chrono = "0.4"
+diesel = { version = "2.2", features = ["sqlite"] }
+encoding_rs = "0.8"
+enigo = { git = "https://github.com/costanzo/enigo.git", rev = "707ab1300c004336a58cbfa4c64ad14a38894b65" }
+fs2 = "0.4"
+futures-util = "0.3"
+globset = "0.4"
+grep-matcher = "0.1"
+grep-regex = "0.1"
+grep-searcher = "0.1"
+html-escape = "0.2"
+html2md-rs = "0.12"
+http = "1"
+httpdate = "1"
+hyper = { version = "1", default-features = false }
+ignore = "0.4"
+image = { version = "0.25", default-features = false, features = ["png"] }
+jsonschema = { version = "0.55", default-features = false }
+libc = "0.2"
+libsqlite3-sys = { version = "0.30.1", features = ["bundled"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
+rmcp = { version = "=3.2.0", default-features = false, features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+sha2 = "0.10"
+tempfile = "3"
+tokio = "1"
+tokio-util = "0.7"
+url = "2"
+uuid = { version = "1", features = ["v4"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
