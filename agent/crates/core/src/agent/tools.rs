@@ -566,11 +566,14 @@ impl Agent {
         if calls.is_empty() {
             return Ok(());
         }
+        // Independent read-only provider calls run concurrently. Anything
+        // else, including LSP, runs in order.
         let parallel_read_only = calls.len() > 1
-            && !calls.iter().any(|call| lsp::is_lsp_tool(&call.name))
-            && calls
-                .iter()
-                .all(|call| tool_risk(&call.name) == Some(Risk::ReadOnly));
+            && calls.iter().all(|call| {
+                self.tool_providers
+                    .find(&call.name)
+                    .is_some_and(|provider| provider.risk(&call.name) == Some(Risk::ReadOnly))
+            });
         if !parallel_read_only {
             for call in calls {
                 self.execute_call(context, &call, token.clone(), None)
@@ -579,68 +582,30 @@ impl Agent {
             return Ok(());
         }
 
-        let mut futures = Vec::with_capacity(calls.len());
-        for call in calls {
-            self.tool_state(context, &call, ToolState::Authorized, None)?;
-            self.tool_state(context, &call, ToolState::Executing, None)?;
-            let (project_root, mut params) = match self.prepare_call(context, &call) {
-                Ok(prepared) => prepared,
-                Err(error) => {
-                    if !self.record_recoverable_call_error(context, &call, &error)? {
-                        return Err(error);
-                    }
-                    continue;
-                }
-            };
-            params["idempotency_key"] = json!(format!("{}:{}", context.turn_id, call.call_id));
-            let method = match method_name(&call.name) {
-                Some(method) => method.to_string(),
-                None => {
-                    let error = BusinessError::new("authorization_denied", "Unknown tool");
-                    self.tool_state(context, &call, ToolState::Failed, Some(&error.code))?;
-                    return Err(error);
-                }
-            };
-            let agent = self.clone();
-            let token = token.clone();
-            let output_callback = {
-                let agent = agent.clone();
-                let session_id = context.session_id.clone();
-                let turn_id = context.turn_id.clone();
-                let call_id = context.active_call_id.clone();
-                let tool_call_id = call.call_id.clone();
-                Some(std::sync::Arc::new(move |stream: &str, chunk: &[u8]| {
-                    agent.emit_live(
-                        &session_id,
-                        EventPayload::ToolOutput(ToolOutputPayload {
-                            turn_id: turn_id.clone(),
-                            call_id: call_id.clone(),
-                            tool_call_id: tool_call_id.clone(),
-                            stream: stream.to_owned(),
-                            chunk_base64: STANDARD.encode(chunk),
-                        }),
-                    );
-                }) as suncode_tool::ProcessOutputCallback)
-            };
-            futures.push(async move {
-                let result = agent
-                    .operation_in_project(&project_root, &method, params, token, output_callback)
-                    .await;
-                (call, result)
-            });
+        for call in &calls {
+            self.tool_state(context, call, ToolState::Authorized, None)?;
+            self.tool_state(context, call, ToolState::Executing, None)?;
         }
-
-        for (call, result) in join_all(futures).await {
+        let shared: &Continuation = context;
+        let results = join_all(calls.iter().map(|call| {
+            let provider = self
+                .tool_providers
+                .find(&call.name)
+                .expect("parallel calls were checked for a provider");
+            self.execute_provider(provider, shared, call, token.clone())
+        }))
+        .await;
+        for (call, result) in calls.iter().zip(results) {
             let result = match result {
                 Ok(result) => result,
                 Err(error) => {
-                    if !self.record_recoverable_call_error(context, &call, &error)? {
+                    if !self.record_recoverable_call_error(context, call, &error)? {
                         return Err(error);
                     }
                     continue;
                 }
             };
-            self.record_call_success(context, &call, result)?;
+            self.record_call_success(context, call, result)?;
         }
         Ok(())
     }
@@ -744,13 +709,7 @@ impl Agent {
             return self.record_call_success(context, call, result);
         }
         if let Some(provider) = self.tool_providers.find(&call.name) {
-            let invocation = suncode_common::tool::ToolInvocation {
-                project_id: &context.project_id,
-                name: &call.name,
-                arguments: call.arguments.clone(),
-            };
-            let cancellation = providers::TokenCancellation(token);
-            let result = match provider.execute(invocation, &cancellation).await {
+            let result = match self.execute_provider(provider, context, call, token).await {
                 Ok(result) => result,
                 Err(error) => {
                     if !self.record_recoverable_call_error(context, call, &error)? {
@@ -787,55 +746,9 @@ impl Agent {
             };
             return self.record_call_success(context, call, result);
         }
-        let (project_root, mut params) = match self.prepare_call(context, call) {
-            Ok(prepared) => prepared,
-            Err(error) => {
-                if !self.record_recoverable_call_error(context, call, &error)? {
-                    return Err(error);
-                }
-                return Ok(());
-            }
-        };
-        params["idempotency_key"] = json!(format!("{}:{}", context.turn_id, call.call_id));
-        let method = match method_name(&call.name) {
-            Some(method) => method,
-            None => {
-                let error = BusinessError::new("authorization_denied", "Unknown tool");
-                self.tool_state(context, call, ToolState::Failed, Some(&error.code))?;
-                return Err(error);
-            }
-        };
-        let result = match self
-            .operation_in_project(&project_root, method, params, token, {
-                let agent = self.clone();
-                let session_id = context.session_id.clone();
-                let turn_id = context.turn_id.clone();
-                let call_id = context.active_call_id.clone();
-                let tool_call_id = call.call_id.clone();
-                Some(std::sync::Arc::new(move |stream: &str, chunk: &[u8]| {
-                    agent.emit_live(
-                        &session_id,
-                        EventPayload::ToolOutput(ToolOutputPayload {
-                            turn_id: turn_id.clone(),
-                            call_id: call_id.clone(),
-                            tool_call_id: tool_call_id.clone(),
-                            stream: stream.to_owned(),
-                            chunk_base64: STANDARD.encode(chunk),
-                        }),
-                    );
-                }) as suncode_tool::ProcessOutputCallback)
-            })
-            .await
-        {
-            Ok(result) => result,
-            Err(error) => {
-                if !self.record_recoverable_call_error(context, call, &error)? {
-                    return Err(error);
-                }
-                return Ok(());
-            }
-        };
-        self.record_call_success(context, call, result)
+        let error = BusinessError::new("authorization_denied", "Unknown tool");
+        self.tool_state(context, call, ToolState::Failed, Some(&error.code))?;
+        Err(error)
     }
 
     pub(super) fn execute_skill_call(
@@ -917,13 +830,9 @@ impl Agent {
         call: &ToolCall,
         result: Value,
     ) -> Result<(), BusinessError> {
-        let dependency_id = call
-            .arguments
-            .get("path")
-            .and_then(Value::as_str)
-            .and_then(dependency_path)
-            .map(|(dependency_id, _)| dependency_id);
-        let mut normalized_result = normalize_result(&call.name, result.clone(), dependency_id);
+        // Providers return model-facing results; built-in tools normalize
+        // their own operation output.
+        let mut normalized_result = result.clone();
         attach_nearby_instructions(context, call, &mut normalized_result);
         let process_failed = (call.name == "bash"
             && normalized_result.get("success").and_then(Value::as_bool) == Some(false))
@@ -1141,18 +1050,26 @@ impl Agent {
             .get("path")
             .and_then(Value::as_str)
             .ok_or_else(|| BusinessError::invalid("path is required"))?;
-        let (scope_root, prepared) = self.prepare_call(context, call)?;
-        let relative_path = prepared
-            .get("path")
-            .and_then(Value::as_str)
-            .ok_or_else(|| BusinessError::invalid("path is required"))?;
+        let scopes = providers::StorePathScopes {
+            store: &self.store,
+            project_id: &context.project_id,
+        };
+        let (scope_root, relative_path) =
+            match suncode_common::tool::PathScopes::resolve(&scopes, display_path)? {
+                suncode_common::tool::ScopedPath::Project { relative } => {
+                    (context.project_root.clone(), relative)
+                }
+                suncode_common::tool::ScopedPath::Dependency { root, relative, .. } => {
+                    (root.to_string_lossy().into_owned(), relative)
+                }
+            };
+        let relative_path = relative_path.as_str();
         let read = self
             .operation_in_project(
                 &scope_root,
                 "tool/read",
-                json!({"path":relative_path,"offset":1,"max_bytes":1024 * 1024}),
+                json!({"path":relative_path,"offset":1,"max_bytes":LSP_DOCUMENT_BYTES}),
                 token.clone(),
-                None,
             )
             .await?;
         if read.get("truncated").and_then(Value::as_bool) == Some(true) {
@@ -1224,7 +1141,6 @@ impl Agent {
         method: &str,
         params: Value,
         token: CancellationToken,
-        output_callback: Option<suncode_tool::ProcessOutputCallback>,
     ) -> Result<Value, BusinessError> {
         let operations = self.operations.clone();
         let root = std::path::PathBuf::from(project_root);
@@ -1237,7 +1153,7 @@ impl Agent {
                 &method,
                 params,
                 Some(&cancelled_for_operation),
-                output_callback,
+                None,
             )
         }));
         let join_result = tokio::select! {
@@ -1250,86 +1166,6 @@ impl Agent {
         join_result.map_err(|_| BusinessError::new("agent_unavailable", "operation task failed"))?
     }
 
-    pub(super) fn prepare_call(
-        &self,
-        context: &Continuation,
-        call: &ToolCall,
-    ) -> Result<(String, Value), BusinessError> {
-        let mut arguments = call.arguments.clone();
-        let Some(path) = arguments.get("path").and_then(Value::as_str) else {
-            return Ok((
-                context.project_root.clone(),
-                self.cap_bash_timeout(
-                    &call.name,
-                    translate_arguments(&call.name, &arguments)?,
-                    context.bash_timeout_ms,
-                ),
-            ));
-        };
-        if path.starts_with("dependency:") && dependency_path(path).is_none() {
-            return Err(BusinessError::new(
-                "invalid_arguments",
-                "dependency path must include a dependency ID",
-            ));
-        }
-        let Some((dependency_id, relative_path)) = dependency_path(path) else {
-            return Ok((
-                context.project_root.clone(),
-                self.cap_bash_timeout(
-                    &call.name,
-                    translate_arguments_with_root(
-                        &call.name,
-                        &arguments,
-                        Some(Path::new(&context.project_root)),
-                    )?,
-                    context.bash_timeout_ms,
-                ),
-            ));
-        };
-        if !dependency_tool_allowed(&call.name) {
-            return Err(BusinessError::new(
-                "scope_denied",
-                "dependencies are read-only and support only read, glob, and grep",
-            ));
-        }
-        let dependency = self
-            .store
-            .project_dependency_by_id(&context.project_id, dependency_id)?
-            .ok_or_else(|| BusinessError::new("dependency_not_found", "dependency not found"))?;
-        arguments["path"] = json!(relative_path);
-        let dependency_root = dependency.canonical_root.clone();
-        Ok((
-            dependency_root.clone(),
-            self.cap_bash_timeout(
-                &call.name,
-                translate_arguments_with_root(
-                    &call.name,
-                    &arguments,
-                    Some(Path::new(&dependency_root)),
-                )?,
-                context.bash_timeout_ms,
-            ),
-        ))
-    }
-
-    pub(super) fn cap_bash_timeout(
-        &self,
-        name: &str,
-        mut params: Value,
-        limit: Option<u64>,
-    ) -> Value {
-        if name == "bash" {
-            if let Some(limit) = limit {
-                let requested = params
-                    .get("timeout_ms")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(120_000);
-                params["timeout_ms"] = json!(requested.min(limit));
-            }
-        }
-        params
-    }
-
     pub(super) fn validate_dependency_call(
         &self,
         context: &Continuation,
@@ -1338,32 +1174,31 @@ impl Agent {
         let Some(path) = call.arguments.get("path").and_then(Value::as_str) else {
             return Ok(());
         };
-        if path.starts_with("dependency:") && dependency_path(path).is_none() {
+        if !path.starts_with("dependency:") {
+            return Ok(());
+        }
+        if providers::dependency_path(path).is_none() {
             return Err(BusinessError::new(
                 "invalid_arguments",
                 "dependency path must include a dependency ID",
             ));
         }
-        let Some((dependency_id, _)) = dependency_path(path) else {
-            return Ok(());
-        };
-        if !dependency_tool_allowed(&call.name) {
+        let allowed = lsp::is_lsp_tool(&call.name)
+            || self
+                .tool_providers
+                .find(&call.name)
+                .is_some_and(|provider| provider.allows_dependency_paths(&call.name));
+        if !allowed {
             return Err(BusinessError::new(
                 "scope_denied",
                 "dependencies are read-only and support only read, glob, and grep",
             ));
         }
-        if self
-            .store
-            .project_dependency_by_id(&context.project_id, dependency_id)?
-            .is_none()
-        {
-            return Err(BusinessError::new(
-                "dependency_not_found",
-                "dependency not found",
-            ));
-        }
-        Ok(())
+        let scopes = providers::StorePathScopes {
+            store: &self.store,
+            project_id: &context.project_id,
+        };
+        suncode_common::tool::PathScopes::resolve(&scopes, path).map(|_| ())
     }
 
     pub(super) fn dependency_context_message(
@@ -1397,6 +1232,9 @@ impl Agent {
         }))
     }
 }
+
+/// Language server document sync bound; matches the semantic-tool contract.
+const LSP_DOCUMENT_BYTES: u64 = 1024 * 1024;
 
 pub(super) fn is_recoverable_tool_error(code: &str) -> bool {
     !matches!(

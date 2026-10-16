@@ -99,6 +99,10 @@ impl Agent {
             host_capabilities.browser_use,
         );
         let preview = preview::PreviewManager::new(operations.clone());
+        let tool_providers = providers::ToolProviders::new(vec![
+            Arc::new(suncode_tool::BuiltinTools::new(operations.clone())),
+            Arc::new(browser.clone()),
+        ]);
         let computer = ComputerManager::new(
             &store,
             host_capabilities.computer_use,
@@ -118,9 +122,7 @@ impl Agent {
             session_locks: Arc::new(AsyncMutex::new(HashMap::new())),
             mcp,
             lsp,
-            tool_providers: providers::ToolProviders::new(vec![std::sync::Arc::new(
-                browser.clone(),
-            )]),
+            tool_providers,
             browser,
             preview,
             computer,

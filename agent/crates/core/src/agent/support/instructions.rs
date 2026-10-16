@@ -1,7 +1,6 @@
 //! Project instruction files and host-environment context messages.
 
 use super::super::*;
-use super::dependencies::*;
 
 #[derive(Debug, Serialize)]
 pub(in crate::agent) struct LoadedInstruction {
@@ -39,7 +38,7 @@ pub(in crate::agent) fn attach_nearby_instructions(
     let Some(path) = call.arguments.get("path").and_then(Value::as_str) else {
         return;
     };
-    if dependency_path(path).is_some() || !is_safe_relative_path(path) {
+    if path.starts_with("dependency:") || !is_safe_relative_path(path) {
         return;
     }
     let instructions = nearby_instruction_files(

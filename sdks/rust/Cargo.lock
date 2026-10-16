@@ -2953,6 +2953,7 @@ dependencies = [
  "sha2",
  "suncode-common",
  "suncode-http",
+ "url",
  "windows-sys 0.61.2",
 ]
 

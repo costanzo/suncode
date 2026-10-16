@@ -1,8 +1,9 @@
-//! Bash argument validation and platform shell selection.
+//! Bash argument validation, the hard-deny filter, and platform shell selection.
 
-use super::super::*;
+use serde_json::{json, Value};
+use suncode_common::BusinessError;
 
-pub(in crate::agent) fn validate_bash_arguments(value: &Value) -> Result<(), BusinessError> {
+pub(crate) fn validate_bash_arguments(value: &Value) -> Result<(), BusinessError> {
     let command = value
         .get("command")
         .and_then(Value::as_str)
@@ -175,7 +176,7 @@ pub(in crate::agent) fn validate_bash_arguments(value: &Value) -> Result<(), Bus
     Ok(())
 }
 
-pub(in crate::agent) fn normalize_shell_command(command: &str) -> String {
+fn normalize_shell_command(command: &str) -> String {
     let mut normalized = String::with_capacity(command.len());
     let mut quote = None;
     let mut escaped = false;
@@ -219,7 +220,7 @@ pub(in crate::agent) fn normalize_shell_command(command: &str) -> String {
         .replace("$ifs", " ")
 }
 
-pub(in crate::agent) fn contains_root_delete(command: &str) -> bool {
+fn contains_root_delete(command: &str) -> bool {
     [
         "rm -rf /",
         "rm -fr /",
@@ -244,7 +245,7 @@ pub(in crate::agent) fn contains_root_delete(command: &str) -> bool {
             .any(|prefix| command.contains(prefix))
 }
 
-pub(in crate::agent) fn command_boundary_after(command: &str, prefix: &str) -> bool {
+fn command_boundary_after(command: &str, prefix: &str) -> bool {
     command.match_indices(prefix).any(|(index, _)| {
         command[index + prefix.len()..]
             .chars()
@@ -254,14 +255,12 @@ pub(in crate::agent) fn command_boundary_after(command: &str, prefix: &str) -> b
     })
 }
 
-pub(in crate::agent) fn contains_any(command: &str, needles: &[&str]) -> bool {
+fn contains_any(command: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| command.contains(needle))
 }
 
 #[cfg(target_os = "windows")]
-pub(in crate::agent) fn shell_command(
-    script: &str,
-) -> Result<(String, Vec<String>), BusinessError> {
+pub(crate) fn shell_command(script: &str) -> Result<(String, Vec<String>), BusinessError> {
     let program = powershell_executable().ok_or_else(|| {
         BusinessError::new(
             "process_executable_not_found",
@@ -281,14 +280,12 @@ pub(in crate::agent) fn shell_command(
 }
 
 #[cfg(not(target_os = "windows"))]
-pub(in crate::agent) fn shell_command(
-    script: &str,
-) -> Result<(String, Vec<String>), BusinessError> {
+pub(crate) fn shell_command(script: &str) -> Result<(String, Vec<String>), BusinessError> {
     Ok(("/bin/sh".into(), vec!["-lc".into(), script.into()]))
 }
 
 #[cfg(target_os = "windows")]
-pub(in crate::agent) fn powershell_executable() -> Option<String> {
+fn powershell_executable() -> Option<String> {
     let bundled = std::env::current_exe()
         .ok()
         .and_then(|path| {

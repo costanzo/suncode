@@ -44,9 +44,50 @@ pub trait Cancellation: Send + Sync {
     fn cancelled(&self) -> BoxFuture<'_, ()>;
 }
 
+/// Where a model-supplied path resolves.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ScopedPath {
+    /// Inside the opened project.
+    Project { relative: String },
+    /// Inside a registered read-only source dependency.
+    Dependency {
+        dependency_id: String,
+        root: std::path::PathBuf,
+        relative: String,
+    },
+}
+
+/// Resolves model-supplied paths, including `dependency:<id>/...` aliases,
+/// to the root a tool may access. Implemented by the core.
+pub trait PathScopes: Send + Sync {
+    fn resolve(&self, path: &str) -> Result<ScopedPath, BusinessError>;
+}
+
+/// Receives bounded live output chunks while a call runs. Best effort: a
+/// provider must never fail or block because of the sink.
+pub trait ToolOutput: Send + Sync {
+    fn chunk(&self, stream: &str, bytes: &[u8]);
+}
+
+/// Everything a provider may use while running one call.
+pub struct ToolContext<'a> {
+    pub project_id: &'a str,
+    /// Canonical root of the opened project.
+    pub project_root: &'a std::path::Path,
+    /// Unique and stable for this call across retries and resumption;
+    /// providers that mutate state use it as their idempotency key.
+    pub call_key: &'a str,
+    /// Upper bound the host places on this call's runtime, if any.
+    pub timeout_ceiling: Option<std::time::Duration>,
+    pub paths: &'a dyn PathScopes,
+    /// Shared so blocking work on another thread can stream through it.
+    pub output: std::sync::Arc<dyn ToolOutput>,
+    pub cancellation: &'a dyn Cancellation,
+}
+
+/// One tool call routed to a provider.
 /// One tool call routed to a provider.
 pub struct ToolInvocation<'a> {
-    pub project_id: &'a str,
     pub name: &'a str,
     pub arguments: Value,
 }
@@ -65,10 +106,16 @@ pub trait ToolProvider: Send + Sync {
     /// Risk of calling `name`; `None` means the call is denied.
     fn risk(&self, name: &str) -> Option<Risk>;
 
+    /// Whether `name` accepts `dependency:` paths. Dependencies are read-only,
+    /// so only tools that never write may opt in.
+    fn allows_dependency_paths(&self, _name: &str) -> bool {
+        false
+    }
+
     /// Runs the call.
     fn execute<'a>(
         &'a self,
         invocation: ToolInvocation<'a>,
-        cancellation: &'a dyn Cancellation,
+        context: ToolContext<'a>,
     ) -> BoxFuture<'a, Result<Value, BusinessError>>;
 }

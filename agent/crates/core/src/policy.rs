@@ -21,17 +21,15 @@ pub fn evaluate(risk: Option<Risk>, non_interactive: bool, full_control: bool) -
     }
 }
 
-/// Risk of built-in and MCP tools. Tool providers classify their own tools.
+/// Risk of tools the core runs itself: MCP and turn-level tools. Tool
+/// providers classify their own tools.
 pub fn tool_risk(name: &str) -> Option<Risk> {
     if name.starts_with("mcp__") {
         return Some(Risk::ExternalTool);
     }
     match name {
-        "read" | "glob" | "grep" | "lsp_diagnostics" | "lsp_definition" | "lsp_references"
-        | "lsp_hover" | "lsp_symbols" | "question" | "skill" | "todowrite" => Some(Risk::ReadOnly),
-        "webfetch" => Some(Risk::NetworkAccess),
-        "write" | "edit" => Some(Risk::ProjectWrite),
-        "bash" => Some(Risk::ProcessExecution),
+        "lsp_diagnostics" | "lsp_definition" | "lsp_references" | "lsp_hover" | "lsp_symbols"
+        | "question" | "skill" | "todowrite" => Some(Risk::ReadOnly),
         _ => None,
     }
 }
@@ -39,23 +37,25 @@ pub fn tool_risk(name: &str) -> Option<Risk> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn defaults_match_contract() {
-        assert_eq!(evaluate(tool_risk("read"), false, false), Decision::Allow);
+        assert_eq!(
+            evaluate(Some(Risk::ReadOnly), false, false),
+            Decision::Allow
+        );
         assert_eq!(evaluate(tool_risk("skill"), false, false), Decision::Allow);
-        assert_eq!(
-            evaluate(tool_risk("write"), false, false),
-            Decision::ApprovalRequired
-        );
-        assert_eq!(
-            evaluate(tool_risk("bash"), false, false),
-            Decision::ApprovalRequired
-        );
-        assert_eq!(
-            evaluate(tool_risk("webfetch"), false, false),
-            Decision::ApprovalRequired
-        );
-        assert_eq!(evaluate(tool_risk("write"), true, false), Decision::Deny);
+        for risk in [
+            Risk::ProjectWrite,
+            Risk::ProcessExecution,
+            Risk::NetworkAccess,
+        ] {
+            assert_eq!(
+                evaluate(Some(risk), false, false),
+                Decision::ApprovalRequired
+            );
+            assert_eq!(evaluate(Some(risk), true, false), Decision::Deny);
+        }
         assert_eq!(evaluate(tool_risk("unknown"), false, false), Decision::Deny);
         assert_eq!(
             evaluate(tool_risk("mcp__github__search"), false, false),
@@ -77,12 +77,13 @@ mod tests {
 
     #[test]
     fn full_control_allows_known_risks_but_not_unknown_tools() {
-        assert_eq!(evaluate(tool_risk("write"), false, true), Decision::Allow);
-        assert_eq!(evaluate(tool_risk("bash"), false, true), Decision::Allow);
-        assert_eq!(
-            evaluate(tool_risk("webfetch"), false, true),
-            Decision::Allow
-        );
+        for risk in [
+            Risk::ProjectWrite,
+            Risk::ProcessExecution,
+            Risk::NetworkAccess,
+        ] {
+            assert_eq!(evaluate(Some(risk), false, true), Decision::Allow);
+        }
         assert_eq!(
             evaluate(Some(Risk::BrowserAccess), false, true),
             Decision::ApprovalRequired
