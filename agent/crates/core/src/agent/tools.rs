@@ -549,13 +549,16 @@ impl Agent {
         if calls.is_empty() {
             return Ok(());
         }
-        // Independent read-only provider calls run concurrently. Anything
-        // else, including LSP, runs in order.
+        // Independent read-only provider calls run concurrently when every
+        // provider allows it; anything else runs in order.
         let parallel_read_only = calls.len() > 1
             && calls.iter().all(|call| {
                 self.tool_providers
                     .find(&call.name)
-                    .is_some_and(|provider| provider.risk(&call.name) == Some(Risk::ReadOnly))
+                    .is_some_and(|provider| {
+                        provider.risk(&call.name) == Some(Risk::ReadOnly)
+                            && provider.concurrent(&call.name)
+                    })
             });
         if !parallel_read_only {
             for call in calls {
@@ -657,18 +660,6 @@ impl Agent {
     ) -> Result<(), BusinessError> {
         self.tool_state(context, call, ToolState::Authorized, None)?;
         self.tool_state(context, call, ToolState::Executing, None)?;
-        if lsp::is_lsp_tool(&call.name) {
-            let result = match self.execute_lsp_call(context, call, token).await {
-                Ok(result) => result,
-                Err(error) => {
-                    if !self.record_recoverable_call_error(context, call, &error)? {
-                        return Err(error);
-                    }
-                    return Ok(());
-                }
-            };
-            return self.record_call_success(context, call, result);
-        }
         if let Some(provider) = self.tool_providers.find(&call.name) {
             let result = match self
                 .execute_provider(provider, context, call, token, approval_pin)
@@ -1003,102 +994,6 @@ impl Agent {
         Ok(())
     }
 
-    pub(super) async fn execute_lsp_call(
-        &self,
-        context: &Continuation,
-        call: &ToolCall,
-        token: CancellationToken,
-    ) -> Result<Value, BusinessError> {
-        let display_path = call
-            .arguments
-            .get("path")
-            .and_then(Value::as_str)
-            .ok_or_else(|| BusinessError::invalid("path is required"))?;
-        let scopes = providers::StorePathScopes {
-            store: &self.store,
-            project_id: &context.project_id,
-        };
-        let (scope_root, relative_path) =
-            match suncode_common::tool::PathScopes::resolve(&scopes, display_path)? {
-                suncode_common::tool::ScopedPath::Project { relative } => {
-                    (context.project_root.clone(), relative)
-                }
-                suncode_common::tool::ScopedPath::Dependency { root, relative, .. } => {
-                    (root.to_string_lossy().into_owned(), relative)
-                }
-            };
-        let relative_path = relative_path.as_str();
-        let read = self
-            .operation_in_project(
-                &scope_root,
-                "tool/read",
-                json!({"path":relative_path,"offset":1,"max_bytes":LSP_DOCUMENT_BYTES}),
-                token.clone(),
-            )
-            .await?;
-        if read.get("truncated").and_then(Value::as_bool) == Some(true) {
-            return Err(BusinessError::new(
-                "lsp_document_too_large",
-                "Language server document exceeds the 1 MiB semantic-tool bound",
-            ));
-        }
-        let bytes = read
-            .get("data_base64")
-            .and_then(Value::as_str)
-            .ok_or_else(|| BusinessError::new("read_failed", "file content is unavailable"))
-            .and_then(|encoded| {
-                STANDARD.decode(encoded).map_err(|_| {
-                    BusinessError::new("read_failed", "file content could not be decoded")
-                })
-            })?;
-        let text = String::from_utf8(bytes).map_err(|_| {
-            BusinessError::new(
-                "encoding_unsupported",
-                "language server tools require UTF-8 text",
-            )
-        })?;
-        let language_id = call
-            .arguments
-            .get("languageId")
-            .and_then(Value::as_str)
-            .or_else(|| lsp::infer_language_id(display_path))
-            .ok_or_else(|| {
-                BusinessError::new(
-                    "lsp_language_unknown",
-                    "Language could not be inferred; provide languageId",
-                )
-            })?;
-        let line = call
-            .arguments
-            .get("line")
-            .and_then(Value::as_u64)
-            .map(|value| u32::try_from(value).unwrap_or(u32::MAX));
-        let column = call
-            .arguments
-            .get("column")
-            .and_then(Value::as_u64)
-            .map(|value| u32::try_from(value).unwrap_or(u32::MAX));
-        let operation = lsp::operation(&call.name)
-            .ok_or_else(|| BusinessError::new("authorization_denied", "Unknown LSP tool"))?;
-        self.lsp
-            .execute(
-                lsp::SemanticRequest {
-                    project_id: &context.project_id,
-                    project_root: Path::new(&context.project_root),
-                    scope_root: Path::new(&scope_root),
-                    display_path,
-                    relative_path,
-                    language_id,
-                    text: &text,
-                    line,
-                    column,
-                    operation,
-                },
-                token,
-            )
-            .await
-    }
-
     pub(super) async fn operation_in_project(
         &self,
         project_root: &str,
@@ -1147,11 +1042,10 @@ impl Agent {
                 "dependency path must include a dependency ID",
             ));
         }
-        let allowed = lsp::is_lsp_tool(&call.name)
-            || self
-                .tool_providers
-                .find(&call.name)
-                .is_some_and(|provider| provider.allows_dependency_paths(&call.name));
+        let allowed = self
+            .tool_providers
+            .find(&call.name)
+            .is_some_and(|provider| provider.allows_dependency_paths(&call.name));
         if !allowed {
             return Err(BusinessError::new(
                 "scope_denied",
@@ -1161,6 +1055,7 @@ impl Agent {
         let scopes = providers::StorePathScopes {
             store: &self.store,
             project_id: &context.project_id,
+            project_root: Path::new(&context.project_root),
         };
         suncode_common::tool::PathScopes::resolve(&scopes, path).map(|_| ())
     }
@@ -1196,9 +1091,6 @@ impl Agent {
         }))
     }
 }
-
-/// Language server document sync bound; matches the semantic-tool contract.
-const LSP_DOCUMENT_BYTES: u64 = 1024 * 1024;
 
 pub(super) fn is_recoverable_tool_error(code: &str) -> bool {
     !matches!(

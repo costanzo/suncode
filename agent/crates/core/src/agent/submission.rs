@@ -95,7 +95,9 @@ impl Agent {
             store: store.clone(),
             application_data: application_data.clone(),
         }));
-        let lsp = LanguageServerManager::new(store.clone());
+        let lsp = suncode_lsp::LspRuntime::new(Arc::new(lsp::StoreServerSource {
+            store: store.clone(),
+        }));
         let browser = browser::new_runtime(
             &store,
             application_data.clone(),
@@ -104,6 +106,7 @@ impl Agent {
         let preview = preview::PreviewManager::new(operations.clone());
         let tool_providers = providers::ToolProviders::new(vec![
             Arc::new(suncode_tool::BuiltinTools::new(operations.clone())),
+            Arc::new(lsp.clone()),
             // MCP before browser keeps the advertised tool order.
             Arc::new(mcp.clone()),
             Arc::new(browser.clone()),

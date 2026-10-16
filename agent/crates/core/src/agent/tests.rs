@@ -1493,3 +1493,51 @@ fn legacy_mcp_generation_snapshot_resumes_as_an_approval_pin() {
     let restored: Continuation = serde_json::from_value(snapshot).unwrap();
     assert_eq!(restored.pending_approval_pin, Some(json!(7)));
 }
+
+#[tokio::test]
+async fn documents_are_read_through_audited_operations_and_paths_map_back() {
+    use suncode_common::tool::{DocumentReader, PathScopes};
+    let (agent, store, root, server, session_id) = fixture().await;
+    let project_id = store
+        .session_by_id(&session_id)
+        .unwrap()
+        .unwrap()
+        .project_id
+        .unwrap();
+    let dependency = store.project_dependencies(&project_id).unwrap().remove(0);
+    let paths = providers::StorePathScopes {
+        store: &store,
+        project_id: &project_id,
+        project_root: &root,
+    };
+    let documents = providers::OperationsDocumentReader {
+        agent: &agent,
+        paths: &paths,
+        token: CancellationToken::new(),
+    };
+
+    let readme = documents.read_text("README.md", 1024).await.unwrap();
+    assert_eq!(readme.text, "hello");
+    assert_eq!(readme.path, root.join("README.md"));
+    let alias = format!("dependency:{}/lib.rs", dependency.dependency_id);
+    let shared = documents.read_text(&alias, 1024).await.unwrap();
+    assert_eq!(shared.text, "pub fn shared() {}\n");
+    assert_eq!(shared.display_path, alias);
+    assert_eq!(
+        documents.read_text("README.md", 2).await.unwrap_err().code,
+        "file_too_large"
+    );
+
+    assert_eq!(
+        paths.display_path(&root.join("src/main.rs")).as_deref(),
+        Some("src/main.rs")
+    );
+    assert_eq!(
+        paths
+            .display_path(&Path::new(&dependency.canonical_root).join("lib.rs"))
+            .as_deref(),
+        Some(alias.as_str())
+    );
+    assert_eq!(paths.display_path(Path::new("/elsewhere/file.rs")), None);
+    server.abort();
+}

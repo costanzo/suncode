@@ -174,7 +174,7 @@ agent/crates/data/      Diesel ORM, persistence DTOs, and data operations
 agent/crates/llm/       provider-neutral LLM contracts, catalog, registry, and adapters
 agent/crates/tools/      `suncode-tool` package for built-in definitions and audited in-process machine operations
 agent/crates/mcp/        bounded MCP client transports and the per-project MCP runtime: reconciliation, discovery, the `ToolProvider`, and result normalization
-agent/crates/lsp/        bounded local-stdio LSP framing, lifecycle, document sync, and semantic requests
+agent/crates/lsp/        bounded local-stdio LSP framing and the per-project language-server runtime: lifecycle, document sync, semantic requests, and the `ToolProvider`
 agent/crates/browser/    bounded Browser Use worker protocol, runtime validation, and process lifecycle
 agent/crates/browser/    bounded Browser Use CDP client and target lifecycle
 sdks/rust/                typed Rust SDK facade over the agent harness

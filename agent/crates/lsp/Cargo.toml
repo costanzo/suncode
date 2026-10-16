@@ -11,10 +11,11 @@ path = "src/lib.rs"
 serde.workspace = true
 serde_json.workspace = true
 suncode-common.workspace = true
-tokio = { workspace = true, features = ["io-util", "process", "sync", "time"] }
+tokio = { workspace = true, features = ["io-util", "macros", "process", "rt", "sync", "time"] }
 tokio-util.workspace = true
 url.workspace = true
 
 [dev-dependencies]
+futures-util.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["io-util", "macros", "process", "rt-multi-thread", "sync", "time"] }

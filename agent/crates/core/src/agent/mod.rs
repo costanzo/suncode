@@ -32,7 +32,6 @@ pub mod events;
 use events::*;
 mod lsp;
 mod system_prompt;
-use lsp::LanguageServerManager;
 pub use lsp::{LanguageServerRuntimeState, LanguageServerRuntimeStatus};
 mod browser;
 mod preview;
@@ -187,7 +186,7 @@ pub struct Agent {
     non_interactive: bool,
     session_locks: Arc<AsyncMutex<HashMap<String, Arc<AsyncMutex<()>>>>>,
     mcp: suncode_mcp::McpRuntime,
-    lsp: LanguageServerManager,
+    lsp: suncode_lsp::LspRuntime,
     browser: suncode_browser::BrowserRuntime,
     tool_providers: providers::ToolProviders,
     preview: preview::PreviewManager,

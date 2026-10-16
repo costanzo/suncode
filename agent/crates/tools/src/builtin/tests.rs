@@ -271,8 +271,26 @@ mod execute {
         }
     }
 
+    struct NoDocuments;
+    impl suncode_common::tool::DocumentReader for NoDocuments {
+        fn read_text<'a>(
+            &'a self,
+            _path: &'a str,
+            _max_bytes: u64,
+        ) -> suncode_common::tool::BoxFuture<
+            'a,
+            Result<suncode_common::tool::Document, suncode_common::BusinessError>,
+        > {
+            Box::pin(async { Err(suncode_common::BusinessError::invalid("no documents")) })
+        }
+    }
+
     struct Scopes(std::path::PathBuf);
     impl PathScopes for Scopes {
+        fn display_path(&self, _path: &std::path::Path) -> Option<String> {
+            None
+        }
+
         fn resolve(&self, path: &str) -> Result<ScopedPath, BusinessError> {
             Ok(match path.strip_prefix("dependency:dep/") {
                 Some(relative) => ScopedPath::Dependency {
@@ -347,6 +365,7 @@ mod execute {
                     call_key: "turn-1:call-1",
                     timeout_ceiling: self.timeout_ceiling,
                     paths: &scopes,
+                    documents: &NoDocuments,
                     output: self.output.clone(),
                     cancellation: self.cancellation,
                 },

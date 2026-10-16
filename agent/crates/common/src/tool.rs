@@ -61,6 +61,32 @@ pub enum ScopedPath {
 /// to the root a tool may access. Implemented by the core.
 pub trait PathScopes: Send + Sync {
     fn resolve(&self, path: &str) -> Result<ScopedPath, BusinessError>;
+
+    /// The model-facing path for an absolute `path` inside the project or a
+    /// registered dependency, or `None` if it lies outside all of them.
+    fn display_path(&self, path: &std::path::Path) -> Option<String>;
+}
+
+/// A text document read through the host's audited file access.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Document {
+    /// Canonical absolute path, inside the resolved root.
+    pub path: std::path::PathBuf,
+    /// The path as the model wrote it.
+    pub display_path: String,
+    pub text: String,
+}
+
+/// Reads bounded UTF-8 documents through the host's audited file access, for
+/// providers that need file content without their own file system access.
+pub trait DocumentReader: Send + Sync {
+    /// Reads `path` (project-relative or a `dependency:` alias) up to
+    /// `max_bytes`; larger files are an error rather than a truncated read.
+    fn read_text<'a>(
+        &'a self,
+        path: &'a str,
+        max_bytes: u64,
+    ) -> BoxFuture<'a, Result<Document, BusinessError>>;
 }
 
 /// Receives bounded live output chunks while a call runs. Best effort: a
@@ -80,6 +106,7 @@ pub struct ToolContext<'a> {
     /// Upper bound the host places on this call's runtime, if any.
     pub timeout_ceiling: Option<std::time::Duration>,
     pub paths: &'a dyn PathScopes,
+    pub documents: &'a dyn DocumentReader,
     /// Shared so blocking work on another thread can stream through it.
     pub output: std::sync::Arc<dyn ToolOutput>,
     pub cancellation: &'a dyn Cancellation,
@@ -137,6 +164,13 @@ pub trait ToolProvider: Send + Sync {
                 pin: None,
             })
         })
+    }
+
+    /// Whether read-only calls to `name` may run concurrently with other
+    /// read-only calls in the same batch. Providers that serialize on shared
+    /// state, such as one language-server connection, return `false`.
+    fn concurrent(&self, _name: &str) -> bool {
+        true
     }
 
     /// Whether `name` accepts `dependency:` paths. Dependencies are read-only,

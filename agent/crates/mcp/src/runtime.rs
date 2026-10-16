@@ -908,8 +908,26 @@ mod tests {
             }
         }
 
+        struct NoDocuments;
+        impl suncode_common::tool::DocumentReader for NoDocuments {
+            fn read_text<'a>(
+                &'a self,
+                _path: &'a str,
+                _max_bytes: u64,
+            ) -> suncode_common::tool::BoxFuture<
+                'a,
+                Result<suncode_common::tool::Document, suncode_common::BusinessError>,
+            > {
+                Box::pin(async { Err(suncode_common::BusinessError::invalid("no documents")) })
+            }
+        }
+
         struct Paths;
         impl PathScopes for Paths {
+            fn display_path(&self, _path: &Path) -> Option<String> {
+                None
+            }
+
             fn resolve(&self, path: &str) -> Result<ScopedPath, BusinessError> {
                 Ok(ScopedPath::Project {
                     relative: path.into(),
@@ -978,6 +996,7 @@ mod tests {
                     call_key: "turn:call",
                     timeout_ceiling: None,
                     paths: &Paths,
+                    documents: &NoDocuments,
                     output: Arc::new(Sink),
                     cancellation: &Never,
                 },
