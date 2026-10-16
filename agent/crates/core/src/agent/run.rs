@@ -297,7 +297,19 @@ impl Agent {
             } else {
                 tool_definitions.push(delegate_agent_definition());
                 tool_definitions.extend(self.mcp.catalog(&context.project_id).await);
-                let provider_tools = self.tool_providers.catalog(&context.project_id).await;
+                // The static set already lists the built-in tools; add only
+                // tools that providers contribute beyond it.
+                let provider_tools = self
+                    .tool_providers
+                    .catalog(&context.project_id)
+                    .await
+                    .into_iter()
+                    .filter(|tool| {
+                        !tool_definitions
+                            .iter()
+                            .any(|existing| existing.name == tool.name)
+                    })
+                    .collect::<Vec<_>>();
                 logging::debug(
                     "agent.tools",
                     format!(

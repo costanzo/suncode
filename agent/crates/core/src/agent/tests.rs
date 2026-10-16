@@ -248,6 +248,15 @@ async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
         .filter_map(|tool| tool.get("name"))
         .filter_map(Value::as_str)
         .collect::<BTreeSet<_>>();
+    let advertised_count = body
+        .get("tools")
+        .and_then(Value::as_array)
+        .map_or(0, Vec::len);
+    assert_eq!(
+        advertised_tools.len(),
+        advertised_count,
+        "tool names must be unique"
+    );
     let is_child = messages.iter().any(|message| {
         message.get("role").and_then(Value::as_str) == Some("system")
             && message
