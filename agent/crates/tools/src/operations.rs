@@ -2,7 +2,7 @@
 
 use crate::arguments::ProcessArguments;
 use crate::context::{ExecutionContext, NetworkSettings, ProcessOutputCallback};
-use crate::error::{failure_value, fatal};
+use crate::error::fatal;
 use crate::process::{self, BackgroundProcess};
 use crate::{dispatch, project_view, scope};
 use serde_json::Value;
@@ -69,10 +69,8 @@ impl Operations {
         process::start_background(project_path, &args)
     }
 
-    pub fn open_project(&self, project_path: &Path) -> Result<Value, Value> {
-        scope::open_project(project_path)
-            .map(|(_, value)| value)
-            .map_err(failure_value)
+    pub fn open_project(&self, project_path: &Path) -> Result<Value, BusinessError> {
+        scope::open_project(project_path).map(|(_, value)| value)
     }
 
     pub fn list_directory(
@@ -80,8 +78,8 @@ impl Operations {
         root_path: &Path,
         relative_path: &str,
         max_entries: usize,
-    ) -> Result<Value, Value> {
-        project_view::list_directory(root_path, relative_path, max_entries).map_err(failure_value)
+    ) -> Result<Value, BusinessError> {
+        project_view::list_directory(root_path, relative_path, max_entries)
     }
 
     pub fn read_text_file(
@@ -89,8 +87,8 @@ impl Operations {
         root_path: &Path,
         relative_path: &str,
         max_bytes: usize,
-    ) -> Result<Value, Value> {
-        project_view::read_text_file(root_path, relative_path, max_bytes).map_err(failure_value)
+    ) -> Result<Value, BusinessError> {
+        project_view::read_text_file(root_path, relative_path, max_bytes)
     }
 
     pub fn execute_in_project(
@@ -98,7 +96,7 @@ impl Operations {
         project_path: &Path,
         method: &str,
         params: Value,
-    ) -> Result<Value, Value> {
+    ) -> Result<Value, BusinessError> {
         self.execute_in_project_with_cancellation_and_output(
             project_path,
             method,
@@ -115,8 +113,8 @@ impl Operations {
         params: Value,
         cancellation: Option<&AtomicBool>,
         output_callback: Option<ProcessOutputCallback>,
-    ) -> Result<Value, Value> {
-        let project_root = canonical_project(project_path).map_err(failure_value)?;
+    ) -> Result<Value, BusinessError> {
+        let project_root = canonical_project(project_path)?;
         let context = ExecutionContext {
             project_root: Some(&project_root),
             checkpoint_root: Some(&self.checkpoint_root),
@@ -124,7 +122,7 @@ impl Operations {
             output_callback,
             network: self.network_settings(),
         };
-        dispatch::dispatch(method, &params, context).map_err(failure_value)
+        dispatch::dispatch(method, &params, context)
     }
 
     fn network_settings(&self) -> NetworkSettings {

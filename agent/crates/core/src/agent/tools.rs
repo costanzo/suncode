@@ -1246,24 +1246,7 @@ impl Agent {
                 (&mut operation).await
             }
         };
-        join_result
-            .map_err(|_| BusinessError::new("agent_unavailable", "operation task failed"))?
-            .map_err(|error| {
-                let mut agent_error = BusinessError::new(
-                    error
-                        .get("code")
-                        .and_then(Value::as_str)
-                        .unwrap_or("operation_failed"),
-                    error
-                        .get("message")
-                        .and_then(Value::as_str)
-                        .unwrap_or("operation failed"),
-                );
-                if let Some(details) = error.get("details") {
-                    agent_error = agent_error.details(details.clone());
-                }
-                agent_error
-            })
+        join_result.map_err(|_| BusinessError::new("agent_unavailable", "operation task failed"))?
     }
 
     pub(super) fn prepare_call(

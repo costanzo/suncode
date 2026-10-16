@@ -707,19 +707,6 @@ impl AsyncAgentSdk {
     }
 }
 
-fn operation_error(error: Value) -> BusinessError {
-    BusinessError::new(
-        error
-            .get("code")
-            .and_then(Value::as_str)
-            .unwrap_or("operation_failed"),
-        error
-            .get("message")
-            .and_then(Value::as_str)
-            .unwrap_or("operation failed"),
-    )
-}
-
 fn detail_string(error: &BusinessError, name: &str) -> SdkResult<String> {
     error
         .details

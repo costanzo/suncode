@@ -15,8 +15,7 @@ impl AsyncAgentSdk {
         let result = self
             .state
             .operations
-            .open_project(std::path::Path::new(path))
-            .map_err(operation_error)?;
+            .open_project(std::path::Path::new(path))?;
         let root = result
             .get("canonical_path")
             .and_then(Value::as_str)
@@ -44,8 +43,7 @@ impl AsyncAgentSdk {
             .ok_or_else(|| BusinessError::missing("project"))?;
         self.state
             .operations
-            .open_project(std::path::Path::new(&project.canonical_root))
-            .map_err(operation_error)?;
+            .open_project(std::path::Path::new(&project.canonical_root))?;
         if let Ok(mut active) = self.state.active_project.lock() {
             *active = Some(project.project_id.clone());
         }
@@ -86,11 +84,7 @@ impl AsyncAgentSdk {
             .store
             .project_by_id_for_user(&self.state.user_id, project_id)?
             .ok_or_else(|| BusinessError::missing("project"))?;
-        let opened = self
-            .state
-            .operations
-            .open_project(Path::new(path))
-            .map_err(operation_error)?;
+        let opened = self.state.operations.open_project(Path::new(path))?;
         let canonical_root = opened
             .get("canonical_path")
             .and_then(Value::as_str)
@@ -167,8 +161,7 @@ impl AsyncAgentSdk {
         let mut value = self
             .state
             .operations
-            .list_directory(Path::new(&root), path, 500)
-            .map_err(operation_error)?;
+            .list_directory(Path::new(&root), path, 500)?;
         value["projectId"] = json!(project_id);
         value["dependencyId"] = dependency_id.map_or(Value::Null, |value| json!(value));
         Ok(value)
@@ -195,11 +188,10 @@ impl AsyncAgentSdk {
                 .ok_or_else(|| BusinessError::missing("project"))?
                 .canonical_root
         };
-        let value = self
-            .state
-            .operations
-            .read_text_file(Path::new(&root), path, EDITOR_FILE_LIMIT)
-            .map_err(operation_error)?;
+        let value =
+            self.state
+                .operations
+                .read_text_file(Path::new(&root), path, EDITOR_FILE_LIMIT)?;
         let content = value
             .get("content")
             .and_then(Value::as_str)

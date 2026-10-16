@@ -1,7 +1,6 @@
 //! Cross-tool dispatch tests.
 
 use crate::context::{ExecutionContext, NetworkSettings};
-use crate::error::failure_value;
 use crate::scope::{open_project, safe_relative_path};
 use crate::Operations;
 use base64::engine::general_purpose::STANDARD;
@@ -26,7 +25,7 @@ fn dispatch(
     };
     Some(match crate::dispatch::dispatch(method, &params, context) {
         Ok(value) => json!({"result":value}),
-        Err(failure) => json!({"error":failure_value(failure)}),
+        Err(failure) => json!({"error":{"code":failure.code,"message":failure.message}}),
     })
 }
 
@@ -81,26 +80,30 @@ fn reads_bounded_utf8_files_without_following_symlinks() {
     assert_eq!(
         operations
             .read_text_file(&root, "large.txt", 4)
-            .unwrap_err()["code"],
+            .unwrap_err()
+            .code,
         "file_too_large"
     );
     assert_eq!(
         operations
             .read_text_file(&root, "binary.bin", 1024)
-            .unwrap_err()["code"],
+            .unwrap_err()
+            .code,
         "encoding_unsupported"
     );
     assert_eq!(
         operations
             .read_text_file(&root, "nul.bin", 1024)
-            .unwrap_err()["code"],
+            .unwrap_err()
+            .code,
         "encoding_unsupported"
     );
     #[cfg(unix)]
     assert_eq!(
         operations
             .read_text_file(&root, "linked.rs", 1024)
-            .unwrap_err()["code"],
+            .unwrap_err()
+            .code,
         "scope_denied"
     );
     cleanup(&root, &checkpoints);

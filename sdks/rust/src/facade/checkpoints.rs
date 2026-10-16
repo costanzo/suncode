@@ -83,22 +83,10 @@ impl AsyncAgentSdk {
                         EventPayload::CheckpointRestoreFailed(CheckpointRestoreFailedPayload {
                             manifest_id: manifest_id.to_string(),
                             status: status.to_string(),
-                            code: error
-                                .get("code")
-                                .and_then(Value::as_str)
-                                .map(str::to_string),
+                            code: Some(error.code.clone()),
                         }),
                     )?;
-                    return Err(BusinessError::new(
-                        error
-                            .get("code")
-                            .and_then(Value::as_str)
-                            .unwrap_or("restore_conflict"),
-                        error
-                            .get("message")
-                            .and_then(Value::as_str)
-                            .unwrap_or("checkpoint restore failed"),
-                    ));
+                    return Err(error);
                 }
             }
         }
