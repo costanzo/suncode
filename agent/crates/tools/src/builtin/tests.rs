@@ -336,7 +336,11 @@ mod execute {
         ) -> Result<serde_json::Value, BusinessError> {
             let scopes = Scopes(self.dependency.to_path_buf());
             block_on(self.tools.execute(
-                ToolInvocation { name, arguments },
+                ToolInvocation {
+                    name,
+                    arguments,
+                    approval_pin: None,
+                },
                 ToolContext {
                     project_id: "project",
                     project_root: self.project,

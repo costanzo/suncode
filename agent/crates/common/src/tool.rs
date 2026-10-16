@@ -90,6 +90,21 @@ pub struct ToolContext<'a> {
 pub struct ToolInvocation<'a> {
     pub name: &'a str,
     pub arguments: Value,
+    /// The pin from this call's [`ApprovalTarget`], if it needed approval.
+    pub approval_pin: Option<Value>,
+}
+
+/// What a user approves for one call.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ApprovalTarget {
+    /// Short operation label shown to the user.
+    pub operation: String,
+    /// Arguments shown to the user.
+    pub arguments: Value,
+    /// Opaque provider state captured at approval time and handed back on
+    /// execution, so a provider can refuse a call whose target changed
+    /// after the user approved it.
+    pub pin: Option<Value>,
 }
 
 /// A source of model-facing tools.
@@ -105,6 +120,24 @@ pub trait ToolProvider: Send + Sync {
 
     /// Risk of calling `name`; `None` means the call is denied.
     fn risk(&self, name: &str) -> Option<Risk>;
+
+    /// What the user approves for this call. The default shows the tool name
+    /// and its arguments; providers whose target can change between approval
+    /// and execution return a pin.
+    fn approval_target<'a>(
+        &'a self,
+        _project_id: &'a str,
+        name: &'a str,
+        arguments: &'a Value,
+    ) -> BoxFuture<'a, Result<ApprovalTarget, BusinessError>> {
+        Box::pin(async move {
+            Ok(ApprovalTarget {
+                operation: name.to_string(),
+                arguments: arguments.clone(),
+                pin: None,
+            })
+        })
+    }
 
     /// Whether `name` accepts `dependency:` paths. Dependencies are read-only,
     /// so only tools that never write may opt in.

@@ -45,7 +45,6 @@ mod computer;
 use computer::ComputerManager;
 pub use computer::ComputerRuntimeInfo;
 mod mcp;
-use mcp::McpManager;
 pub use mcp::{McpLoadProgress, McpRuntimeState, McpRuntimeStatus};
 
 const DEFAULT_TOOL_CALL_LIMIT: u32 = 64;
@@ -131,8 +130,10 @@ struct Continuation {
     tool_call_limit: u32,
     usage: Usage,
     pending_call: Option<ToolCall>,
-    #[serde(default)]
-    pending_mcp_generation: Option<u64>,
+    /// The provider's approval pin for `pending_call`. Snapshots taken before
+    /// the generic pin stored an MCP generation number under the old name.
+    #[serde(default, alias = "pending_mcp_generation")]
+    pending_approval_pin: Option<Value>,
     #[serde(default)]
     approved_computer_call_ids: Vec<String>,
     #[serde(default)]
@@ -185,7 +186,7 @@ pub struct Agent {
     queued_messages: Arc<Mutex<HashMap<String, VecDeque<QueuedMessage>>>>,
     non_interactive: bool,
     session_locks: Arc<AsyncMutex<HashMap<String, Arc<AsyncMutex<()>>>>>,
-    mcp: McpManager,
+    mcp: suncode_mcp::McpRuntime,
     lsp: LanguageServerManager,
     browser: suncode_browser::BrowserRuntime,
     tool_providers: providers::ToolProviders,

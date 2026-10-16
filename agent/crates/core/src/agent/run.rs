@@ -296,7 +296,6 @@ impl Agent {
                 });
             } else {
                 tool_definitions.push(delegate_agent_definition());
-                tool_definitions.extend(self.mcp.catalog(&context.project_id).await);
                 // The static set already lists the built-in tools; add only
                 // tools that providers contribute beyond it.
                 let provider_tools = self

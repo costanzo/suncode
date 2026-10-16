@@ -1472,3 +1472,24 @@ async fn provider_tool_is_advertised_validated_and_executed() {
     assert!(reply.contains("hi"), "{reply}");
     server.abort();
 }
+
+#[test]
+fn legacy_mcp_generation_snapshot_resumes_as_an_approval_pin() {
+    let mut snapshot = serde_json::to_value(Continuation {
+        pending_approval_pin: None,
+        ..serde_json::from_value::<Continuation>(json!({
+            "session_id": "s", "project_id": "p", "project_root": "/",
+            "turn_id": "t", "submission_key": "k", "model": "m",
+            "messages": [], "iterations": 0, "tool_calls": 0,
+            "usage": {"input_tokens":0,"output_tokens":0,"total_tokens":0},
+            "pending_call": null, "remaining_calls": []
+        }))
+        .unwrap()
+    })
+    .unwrap();
+    let object = snapshot.as_object_mut().unwrap();
+    object.remove("pending_approval_pin");
+    object.insert("pending_mcp_generation".into(), json!(7));
+    let restored: Continuation = serde_json::from_value(snapshot).unwrap();
+    assert_eq!(restored.pending_approval_pin, Some(json!(7)));
+}

@@ -3051,10 +3051,12 @@ version = "0.1.0"
 dependencies = [
  "futures-util",
  "http",
+ "jsonschema",
  "reqwest",
  "rmcp",
  "serde",
  "serde_json",
+ "sha2",
  "suncode-common",
  "suncode-http",
  "tokio",

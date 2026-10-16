@@ -431,8 +431,8 @@ impl Agent {
         token: CancellationToken,
     ) -> Result<TurnResponse, BusinessError> {
         if let Some(call) = continuation.pending_call.take() {
-            let expected_mcp_generation = continuation.pending_mcp_generation.take();
-            self.execute_call(continuation, &call, token.clone(), expected_mcp_generation)
+            let approval_pin = continuation.pending_approval_pin.take();
+            self.execute_call(continuation, &call, token.clone(), approval_pin)
                 .await?;
             continuation
                 .approved_computer_call_ids

@@ -11,9 +11,14 @@ mod client;
 mod config;
 mod connection;
 mod error;
+mod provider;
+mod runtime;
+mod spec;
 mod tool;
 mod transport;
 
 pub use config::{ConnectionConfig, TlsConfig};
 pub use connection::{connect, Connected, Connection};
+pub use runtime::{is_mcp_tool, McpLoadProgress, McpRuntime, McpRuntimeState, McpRuntimeStatus};
+pub use spec::{ServerSource, ServerSpec, ServerTransport, WorkingDirectory};
 pub use tool::{tool_result_value, ToolDefinition, ToolResult};

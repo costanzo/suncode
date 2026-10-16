@@ -91,7 +91,10 @@ impl Agent {
     where
         P: Into<Arc<ModelProviderRegistry>>,
     {
-        let mcp = McpManager::new(store.clone(), application_data.clone());
+        let mcp = suncode_mcp::McpRuntime::new(Arc::new(mcp::StoreServerSource {
+            store: store.clone(),
+            application_data: application_data.clone(),
+        }));
         let lsp = LanguageServerManager::new(store.clone());
         let browser = browser::new_runtime(
             &store,
@@ -101,6 +104,8 @@ impl Agent {
         let preview = preview::PreviewManager::new(operations.clone());
         let tool_providers = providers::ToolProviders::new(vec![
             Arc::new(suncode_tool::BuiltinTools::new(operations.clone())),
+            // MCP before browser keeps the advertised tool order.
+            Arc::new(mcp.clone()),
             Arc::new(browser.clone()),
         ]);
         let computer = ComputerManager::new(
@@ -383,7 +388,7 @@ impl Agent {
             tool_call_limit,
             usage: Usage::default(),
             pending_call: None,
-            pending_mcp_generation: None,
+            pending_approval_pin: None,
             approved_computer_call_ids: Vec::new(),
             computer_batch_failed: false,
             remaining_calls: Vec::new(),

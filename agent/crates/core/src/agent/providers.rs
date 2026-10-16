@@ -135,6 +135,7 @@ impl Agent {
         context: &Continuation,
         call: &ToolCall,
         token: CancellationToken,
+        approval_pin: Option<Value>,
     ) -> Result<Value, BusinessError> {
         let call_key = format!("{}:{}", context.turn_id, call.call_id);
         let paths = StorePathScopes {
@@ -154,6 +155,7 @@ impl Agent {
                 ToolInvocation {
                     name: &call.name,
                     arguments: call.arguments.clone(),
+                    approval_pin,
                 },
                 ToolContext {
                     project_id: &context.project_id,

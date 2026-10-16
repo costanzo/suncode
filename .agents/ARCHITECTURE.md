@@ -173,7 +173,7 @@ agent/crates/database/  backend-specific SQL resources and database setup
 agent/crates/data/      Diesel ORM, persistence DTOs, and data operations
 agent/crates/llm/       provider-neutral LLM contracts, catalog, registry, and adapters
 agent/crates/tools/      `suncode-tool` package for built-in definitions and audited in-process machine operations
-agent/crates/mcp/        bounded MCP client transports, discovery, invocation, and result normalization
+agent/crates/mcp/        bounded MCP client transports and the per-project MCP runtime: reconciliation, discovery, the `ToolProvider`, and result normalization
 agent/crates/lsp/        bounded local-stdio LSP framing, lifecycle, document sync, and semantic requests
 agent/crates/browser/    bounded Browser Use worker protocol, runtime validation, and process lifecycle
 agent/crates/browser/    bounded Browser Use CDP client and target lifecycle

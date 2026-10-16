@@ -10,13 +10,15 @@ path = "src/lib.rs"
 [dependencies]
 futures-util.workspace = true
 http.workspace = true
+jsonschema.workspace = true
 reqwest = { workspace = true, features = ["system-proxy"] }
 rmcp.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 suncode-common.workspace = true
 suncode-http.workspace = true
-tokio = { workspace = true, features = ["process", "sync", "time"] }
+tokio = { workspace = true, features = ["macros", "process", "rt", "sync", "time"] }
 tokio-util.workspace = true
 
 [dev-dependencies]

@@ -136,7 +136,7 @@ impl Agent {
                     .await?;
                 continue;
             }
-            if !mcp::is_mcp_tool(&call.name) && !computer::is_computer_call(call) {
+            if !suncode_mcp::is_mcp_tool(&call.name) && !computer::is_computer_call(call) {
                 if let Err(error) = self.validate_dependency_call(context, call) {
                     if !self.record_recoverable_call_error(context, call, &error)? {
                         return Err(error);
@@ -144,50 +144,33 @@ impl Agent {
                     continue;
                 }
             }
-            let mut mcp_generation = None;
-            let (mut approval_operation, mut approval_arguments) = if mcp::is_mcp_tool(&call.name) {
-                match self
-                    .mcp
-                    .approval_target(&context.project_id, &call.name, &call.arguments)
-                    .await
-                {
-                    Ok(Some(target)) => {
-                        mcp_generation = Some(target.generation);
-                        (
-                            target.label,
-                            json!({
-                                "serverId": target.server_id,
-                                "toolName": target.remote_name,
-                                "arguments": call.arguments,
-                            }),
-                        )
-                    }
-                    Ok(None) => {
-                        let error = BusinessError::new(
-                            "mcp_tool_unavailable",
-                            "MCP tool is no longer available for this project",
-                        );
-                        if !self.record_recoverable_call_error(context, call, &error)? {
-                            return Err(error);
+            let mut approval_pin = None;
+            let (mut approval_operation, mut approval_arguments) =
+                if let Some(provider) = self.tool_providers.find(&call.name) {
+                    match provider
+                        .approval_target(&context.project_id, &call.name, &call.arguments)
+                        .await
+                    {
+                        Ok(target) => {
+                            approval_pin = target.pin;
+                            (target.operation, target.arguments)
                         }
-                        continue;
-                    }
-                    Err(error) => {
-                        if !self.record_recoverable_call_error(context, call, &error)? {
-                            return Err(error);
+                        Err(error) => {
+                            if !self.record_recoverable_call_error(context, call, &error)? {
+                                return Err(error);
+                            }
+                            continue;
                         }
-                        continue;
                     }
-                }
-            } else if computer::is_computer_call(call) {
-                let member = computer::member_name(call).unwrap_or(&call.name);
-                (
-                    format!("computer.{member}"),
-                    json!({"toolsetName":"computer","member":member,"input":call.arguments}),
-                )
-            } else {
-                (call.name.clone(), call.arguments.clone())
-            };
+                } else if computer::is_computer_call(call) {
+                    let member = computer::member_name(call).unwrap_or(&call.name);
+                    (
+                        format!("computer.{member}"),
+                        json!({"toolsetName":"computer","member":member,"input":call.arguments}),
+                    )
+                } else {
+                    (call.name.clone(), call.arguments.clone())
+                };
             let validation = if computer::is_computer_call(call) {
                 let member = computer::member_name(call).unwrap_or(&call.name);
                 suncode_computer::ComputerAction::from_member(member, &call.arguments)
@@ -323,7 +306,7 @@ impl Agent {
                         });
                     }
                     context.pending_call = Some(call.clone());
-                    context.pending_mcp_generation = mcp_generation;
+                    context.pending_approval_pin = approval_pin;
                     context.remaining_calls = calls[index + 1..].to_vec();
                     let snapshot = continuation_snapshot(context).map_err(|_| {
                         BusinessError::new(
@@ -592,7 +575,7 @@ impl Agent {
                 .tool_providers
                 .find(&call.name)
                 .expect("parallel calls were checked for a provider");
-            self.execute_provider(provider, shared, call, token.clone())
+            self.execute_provider(provider, shared, call, token.clone(), None)
         }))
         .await;
         for (call, result) in calls.iter().zip(results) {
@@ -670,32 +653,10 @@ impl Agent {
         context: &mut Continuation,
         call: &ToolCall,
         token: CancellationToken,
-        expected_mcp_generation: Option<u64>,
+        approval_pin: Option<Value>,
     ) -> Result<(), BusinessError> {
         self.tool_state(context, call, ToolState::Authorized, None)?;
         self.tool_state(context, call, ToolState::Executing, None)?;
-        if mcp::is_mcp_tool(&call.name) {
-            let result = match self
-                .mcp
-                .call(
-                    &context.project_id,
-                    &call.name,
-                    call.arguments.clone(),
-                    token,
-                    expected_mcp_generation,
-                )
-                .await
-            {
-                Ok(result) => result,
-                Err(error) => {
-                    if !self.record_recoverable_call_error(context, call, &error)? {
-                        return Err(error);
-                    }
-                    return Ok(());
-                }
-            };
-            return self.record_call_success(context, call, result);
-        }
         if lsp::is_lsp_tool(&call.name) {
             let result = match self.execute_lsp_call(context, call, token).await {
                 Ok(result) => result,
@@ -709,7 +670,10 @@ impl Agent {
             return self.record_call_success(context, call, result);
         }
         if let Some(provider) = self.tool_providers.find(&call.name) {
-            let result = match self.execute_provider(provider, context, call, token).await {
+            let result = match self
+                .execute_provider(provider, context, call, token, approval_pin)
+                .await
+            {
                 Ok(result) => result,
                 Err(error) => {
                     if !self.record_recoverable_call_error(context, call, &error)? {
@@ -836,7 +800,7 @@ impl Agent {
         attach_nearby_instructions(context, call, &mut normalized_result);
         let process_failed = (call.name == "bash"
             && normalized_result.get("success").and_then(Value::as_bool) == Some(false))
-            || (mcp::is_mcp_tool(&call.name)
+            || (suncode_mcp::is_mcp_tool(&call.name)
                 && normalized_result.get("isError").and_then(Value::as_bool) == Some(true));
         self.tool_state(
             context,
@@ -847,7 +811,7 @@ impl Agent {
                 ToolState::Succeeded
             },
             if process_failed {
-                if mcp::is_mcp_tool(&call.name) {
+                if suncode_mcp::is_mcp_tool(&call.name) {
                     Some("mcp_server_error")
                 } else {
                     normalized_result.get("status").and_then(Value::as_str)
