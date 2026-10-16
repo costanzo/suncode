@@ -3,6 +3,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::{error::Error, time::Duration};
 use suncode_common::BusinessError;
+use suncode_http::ApplyHttpSettings;
 use url::Url;
 
 use crate::{
@@ -58,52 +59,22 @@ pub(crate) fn remote_http_client(
     configuration: &RemoteNetworkConfiguration,
     timeout: RemoteTimeout,
 ) -> RemoteResult<Client> {
-    let verify_certificates = configuration.verify_https_certificates;
-    let use_system_certificates = configuration.use_system_certificates;
+    let trust = suncode_http::trust_roots(
+        configuration.verify_https_certificates,
+        configuration.use_system_certificates,
+        configuration.certificate_path.as_deref(),
+    )
+    .map_err(|error| BusinessError::unavailable(format!("Remote Server {}", error.message)))?;
+    let proxy = suncode_http::proxy_route(&configuration.proxy)
+        .map_err(|_| BusinessError::unavailable("Remote Server proxy URL is invalid"))?;
     let builder = match timeout {
         RemoteTimeout::Total(timeout) => Client::builder().timeout(timeout),
         RemoteTimeout::Idle(timeout) => Client::builder()
             .connect_timeout(timeout)
             .read_timeout(timeout),
-    };
-    let mut builder = builder
-        .danger_accept_invalid_certs(!verify_certificates)
-        .danger_accept_invalid_hostnames(!verify_certificates);
-    if verify_certificates {
-        if !use_system_certificates {
-            builder = builder.tls_built_in_root_certs(false);
-        }
-        if let Some(path) = configuration.certificate_path.clone() {
-            let bytes = std::fs::read(&path).map_err(|error| {
-                BusinessError::unavailable(format!(
-                    "Remote Server certificate file could not be read: {error}"
-                ))
-            })?;
-            let certificate = reqwest::Certificate::from_pem(&bytes)
-                .or_else(|_| reqwest::Certificate::from_der(&bytes))
-                .map_err(|error| {
-                    BusinessError::unavailable(format!(
-                        "Remote Server certificate file is invalid: {error}"
-                    ))
-                })?;
-            builder = builder.add_root_certificate(certificate);
-        }
     }
-    let proxy = configuration.proxy.clone();
-    builder = match proxy.mode {
-        suncode_common::HttpProxyMode::NoProxy => builder.no_proxy(),
-        suncode_common::HttpProxyMode::System => builder,
-        suncode_common::HttpProxyMode::Custom => {
-            let mut configured = reqwest::Proxy::all(&proxy.url)
-                .map_err(|_| BusinessError::unavailable("Remote Server proxy URL is invalid"))?;
-            if !proxy.username.is_empty() {
-                configured = configured.basic_auth(&proxy.username, &proxy.password);
-            }
-            configured =
-                configured.no_proxy(reqwest::NoProxy::from_string(&proxy.no_proxy_value()));
-            builder.no_proxy().proxy(configured)
-        }
-    };
+    .apply_trust(trust)
+    .apply_proxy(proxy);
     builder.build().map_err(|error| {
         BusinessError::unavailable(format!("Remote HTTP client could not start: {error}"))
     })

@@ -15,7 +15,8 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex, RwLock,
 };
-use suncode_common::{logging, HttpProxyConfiguration, HttpProxyMode};
+use suncode_common::{logging, HttpProxyConfiguration};
+use suncode_http::ApplyHttpSettings;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -116,70 +117,35 @@ impl HttpClientFactory {
 }
 
 fn build_client(key: &ClientKey) -> Result<reqwest::Client, BusinessError> {
-    let verify_certificates = key.verify_certificates;
-    let mut builder = reqwest::Client::builder()
+    let trust = suncode_http::trust_roots(
+        key.verify_certificates,
+        key.use_system_certificates,
+        key.certificate_path.as_deref(),
+    )
+    .map_err(provider_setup_error)?;
+    let proxy = suncode_http::proxy_route(&key.proxy).map_err(|error| {
+        BusinessError::provider("provider_client_unavailable", error.message, false, None)
+    })?;
+    reqwest::Client::builder()
         .retry(reqwest::retry::never())
         .connect_timeout(crate::CONNECT_TIMEOUT)
         .read_timeout(crate::READ_TIMEOUT)
-        .danger_accept_invalid_certs(!verify_certificates)
-        .danger_accept_invalid_hostnames(!verify_certificates);
-    if verify_certificates && !key.use_system_certificates {
-        builder = builder.tls_built_in_root_certs(false);
-    }
-    if let Some(path) = &key.certificate_path {
-        let bytes = std::fs::read(path).map_err(|e| {
+        .apply_trust(trust)
+        .apply_proxy(proxy)
+        .build()
+        .map_err(|error| {
             BusinessError::provider(
-                "certificate_unavailable",
-                format!("could not read certificate file: {e}"),
+                "provider_client_unavailable",
+                error.to_string(),
                 false,
                 None,
             )
-        })?;
-        let cert = reqwest::Certificate::from_pem(&bytes)
-            .or_else(|_| reqwest::Certificate::from_der(&bytes))
-            .map_err(|e| {
-                BusinessError::provider(
-                    "certificate_invalid",
-                    format!("invalid certificate file: {e}"),
-                    false,
-                    None,
-                )
-            })?;
-        builder = builder.add_root_certificate(cert);
-    }
-    builder = apply_proxy(builder, &key.proxy).map_err(|message| {
-        BusinessError::provider("provider_client_unavailable", message, false, None)
-    })?;
-    builder.build().map_err(|error| {
-        BusinessError::provider(
-            "provider_client_unavailable",
-            error.to_string(),
-            false,
-            None,
-        )
-    })
+        })
 }
 
-pub(crate) fn apply_proxy(
-    builder: reqwest::ClientBuilder,
-    configuration: &HttpProxyConfiguration,
-) -> Result<reqwest::ClientBuilder, String> {
-    match configuration.mode {
-        HttpProxyMode::NoProxy => Ok(builder.no_proxy()),
-        HttpProxyMode::System => Ok(builder),
-        HttpProxyMode::Custom => {
-            // The URL may embed credentials, so the parse error is not echoed.
-            let mut proxy = reqwest::Proxy::all(&configuration.url)
-                .map_err(|_| "custom proxy URL is invalid".to_string())?;
-            if !configuration.username.is_empty() {
-                proxy = proxy.basic_auth(&configuration.username, &configuration.password);
-            }
-            proxy = proxy.no_proxy(reqwest::NoProxy::from_string(
-                &configuration.no_proxy_value(),
-            ));
-            Ok(builder.no_proxy().proxy(proxy))
-        }
-    }
+/// Keeps the shared error code and message but marks it as a provider error.
+fn provider_setup_error(error: BusinessError) -> BusinessError {
+    BusinessError::provider(error.code, error.message, false, None)
 }
 
 /// Returns the first non-empty provider request id header.
@@ -293,6 +259,7 @@ fn error_from_body(
 mod tests {
     use super::*;
     use reqwest::StatusCode;
+    use suncode_common::HttpProxyMode;
 
     fn factory() -> (
         HttpClientFactory,
