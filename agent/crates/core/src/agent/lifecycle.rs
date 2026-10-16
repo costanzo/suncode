@@ -98,7 +98,7 @@ impl Agent {
         result: &context::ContextBuildResult,
     ) -> Result<(), BusinessError> {
         let event = EventPayload::ContextCompacted(ContextCompactedPayload {
-            exchange_id: Uuid::new_v4().to_string(),
+            exchange_id: suncode_common::id::new(suncode_common::id::IdKind::Exchange),
             turn_id: context.turn_id.clone(),
             provider: "SunCode".into(),
             model_id: "context-compaction".into(),

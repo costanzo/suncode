@@ -155,7 +155,7 @@ async fn upload_desktop_snapshot(
     host_id: &str,
 ) -> RemoteResult<()> {
     let payload = host.snapshot()?;
-    let request_id = uuid::Uuid::new_v4().to_string();
+    let request_id = suncode_common::id::new(suncode_common::id::IdKind::RemoteRequest);
     let url = resolve_endpoint(&persisted.config.server_url, "/v1/desktop/snapshot");
     let body = remote_request_body(&payload, persisted)?;
     log_http_request("POST", &url, &body);

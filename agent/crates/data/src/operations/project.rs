@@ -10,7 +10,6 @@ use diesel::sql_types::Text;
 use diesel::sqlite::Sqlite;
 use diesel::sqlite::SqliteConnection;
 use suncode_common::BusinessError;
-use uuid::Uuid;
 
 use crate::schema::tables::project::dsl as projects;
 
@@ -102,7 +101,7 @@ impl Store {
         .map_err(crate::database_error)?;
         let id = existing
             .map(|row| row.value)
-            .unwrap_or_else(|| Uuid::new_v4().to_string());
+            .unwrap_or_else(|| suncode_common::id::new(suncode_common::id::IdKind::Project));
         let timestamp = now();
         sql_query("INSERT INTO project(project_id,user_id,canonical_root,display_name,created_at,updated_at,last_opened_at,archived_at) VALUES (?,?,?,?,?,?,?,NULL) ON CONFLICT(project_id) DO UPDATE SET user_id=excluded.user_id,display_name=excluded.display_name,updated_at=excluded.updated_at,last_opened_at=excluded.last_opened_at,archived_at=NULL")
             .bind::<Text, _>(&id)

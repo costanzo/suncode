@@ -9,7 +9,6 @@ use diesel::sql_query;
 use diesel::sql_types::{Nullable, Text};
 use diesel::sqlite::SqliteConnection;
 use suncode_common::BusinessError;
-use uuid::Uuid;
 
 #[derive(QueryableByName)]
 struct Row {
@@ -98,7 +97,7 @@ impl Store {
         {
             return Err(BusinessError::invalid("project not found or archived"));
         }
-        let id = Uuid::new_v4().to_string();
+        let id = suncode_common::id::new(suncode_common::id::IdKind::Session);
         let timestamp = now();
         sql_query("INSERT INTO session(session_id,project_id,title,model_id,reasoning_effort,kind,parent_session_id,agent_id,agent_version,status,created_at,updated_at,last_activity_at,pin_at,archived_at) VALUES (?,?,?,?,?,'primary',NULL,NULL,NULL,?,?,?,?,NULL,NULL)")
             .bind::<Text, _>(&id)
@@ -126,7 +125,7 @@ impl Store {
         model_id: &str,
     ) -> Result<SessionRecord, BusinessError> {
         let mut connection = lock(&self.connection)?;
-        let id = Uuid::new_v4().to_string();
+        let id = suncode_common::id::new(suncode_common::id::IdKind::Session);
         let timestamp = now();
         sql_query("INSERT INTO session(session_id,project_id,title,model_id,reasoning_effort,kind,parent_session_id,agent_id,agent_version,status,created_at,updated_at,last_activity_at,pin_at,archived_at) VALUES (?,?,?,?,?,'child',?,?,?,?,?,?,?,NULL,NULL)")
             .bind::<Text,_>(&id)

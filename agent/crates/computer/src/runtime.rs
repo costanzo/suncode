@@ -16,7 +16,6 @@ use std::task::Poll;
 use suncode_common::blocking::run_blocking;
 use suncode_common::tool::{Cancellation, ToolDefinition};
 use suncode_common::BusinessError;
-use uuid::Uuid;
 
 pub(crate) fn is_known_member(name: &str) -> bool {
     matches!(
@@ -318,7 +317,7 @@ impl ComputerRuntime {
         let root = self.inner.data_dir.join("computer");
         let directory = root.join("artifacts");
         prepare_artifact_directory(&directory, &root)?;
-        let artifact_id = format!("computer-{}", Uuid::new_v4());
+        let artifact_id = suncode_common::id::with_prefix("computer");
         fs::write(directory.join(format!("{artifact_id}.png")), png).map_err(|error| {
             BusinessError::new(
                 "computer_artifact_failed",

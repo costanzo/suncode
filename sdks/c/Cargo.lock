@@ -2669,7 +2669,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "url",
- "uuid",
 ]
 
 [[package]]
@@ -2685,7 +2684,6 @@ dependencies = [
  "suncode-common",
  "tokio",
  "url",
- "uuid",
 ]
 
 [[package]]
@@ -2693,8 +2691,10 @@ name = "suncode-common"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "getrandom 0.4.3",
  "serde",
  "serde_json",
+ "uuid",
 ]
 
 [[package]]
@@ -2706,7 +2706,6 @@ dependencies = [
  "serde",
  "serde_json",
  "suncode-common",
- "uuid",
 ]
 
 [[package]]
@@ -2728,7 +2727,6 @@ dependencies = [
  "suncode-common",
  "suncode-database",
  "url",
- "uuid",
 ]
 
 [[package]]
@@ -2807,7 +2805,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "url",
- "uuid",
 ]
 
 [[package]]

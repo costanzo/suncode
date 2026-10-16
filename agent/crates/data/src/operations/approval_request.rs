@@ -10,7 +10,6 @@ use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::{Nullable, Text};
 use suncode_common::BusinessError;
-use uuid::Uuid;
 
 pub(crate) fn by_id(
     c: &mut diesel::sqlite::SqliteConnection,
@@ -58,7 +57,7 @@ impl Store {
             return by_id(&mut c, &row.value)?
                 .ok_or_else(|| BusinessError::invalid("approval disappeared"));
         }
-        let id = Uuid::new_v4().to_string();
+        let id = suncode_common::id::new(suncode_common::id::IdKind::Approval);
         let t = now();
         let args = serde_json::to_string(input.arguments)?;
         let snapshot = serde_json::to_string(input.snapshot)?;

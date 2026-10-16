@@ -17,7 +17,6 @@ sha2.workspace = true
 suncode-common.workspace = true
 tokio = { workspace = true, features = ["macros", "sync", "time"] }
 url.workspace = true
-uuid.workspace = true
 
 [dev-dependencies]
 jsonschema.workspace = true

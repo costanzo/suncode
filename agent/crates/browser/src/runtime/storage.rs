@@ -8,7 +8,6 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 use suncode_common::BusinessError;
-use uuid::Uuid;
 
 impl BrowserRuntime {
     pub async fn clear_profile(&self, project_id: &str) -> Result<(), BusinessError> {
@@ -89,7 +88,7 @@ impl BrowserRuntime {
                 "Browser screenshot must be between 1 byte and 5 MiB",
             ));
         }
-        let artifact_id = format!("browser-{}", Uuid::new_v4());
+        let artifact_id = suncode_common::id::with_prefix("browser");
         let directory = self.inner.data_dir.join("browser").join("artifacts");
         prepare_managed_directory(&directory, &self.inner.data_dir.join("browser"))
             .map_err(|error| BusinessError::new("browser_artifact_failed", error.message))?;

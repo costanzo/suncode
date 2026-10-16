@@ -1,5 +1,11 @@
 # Rust Core Phase 1
 
+## Identifiers and randomness
+
+Rust-generated ids come from `suncode_common::id`: `<prefix>_<26 lowercase Crockford base32 characters>` encoding a UUID v7, so ids are URL- and filename-safe and sort by creation time as strings. Prefixes name the kind: `prj` project, `dep` dependency, `ses` session, `trn` turn, `msg` message, `xch` provider exchange, `apr` approval, `que` question, `ckm` checkpoint manifest, `qmsg` queued message, `sub` subagent invocation, `sbm` internal submission key, `rreq`/`revt` Remote request/event; screenshot artifacts use `browser` and `computer`. Ids are opaque: nothing parses them, and stores keep ids created before this scheme (bare UUIDs) unchanged. Content-addressed ids (tool artifacts, checkpoints, MCP/LSP server ids derived from idempotency keys) are not random and keep their existing formats.
+
+Keys, nonces, and jitter come from `suncode_common::random`, which reads the operating system secure random source and treats its absence as fatal. Remote end-to-end encryption uses a 32-byte random AES-256 key and a fresh random 12-byte AES-GCM nonce per payload.
+
 ## Build output
 
 The `agent/` workspace declares every external and internal dependency once in `[workspace.dependencies]`, with package `version` and `edition` in `[workspace.package]`. Member crates use `name.workspace = true` and may only add `features`. Workspace entries carry the version, source, `default-features = false` where needed, and only the features every member requires. Each dependency therefore has a single version across the workspace. All outbound HTTP clients use the shared `suncode-http` crate on that single reqwest version.

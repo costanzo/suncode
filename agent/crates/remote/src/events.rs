@@ -166,7 +166,7 @@ pub(crate) async fn upload_remote_session_event(
     occurred_at: &str,
     payload: Value,
 ) {
-    let event_id = uuid::Uuid::new_v4().to_string();
+    let event_id = suncode_common::id::new(suncode_common::id::IdKind::RemoteEvent);
     let event = RemoteEventEnvelope {
         session_id: session_id.to_owned(),
         occurred_at: occurred_at.to_owned(),

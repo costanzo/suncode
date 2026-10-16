@@ -71,7 +71,7 @@ impl Agent {
                     "Turn exceeded its wall-clock budget",
                 ));
             }
-            let exchange_id = Uuid::new_v4().to_string();
+            let exchange_id = suncode_common::id::new(suncode_common::id::IdKind::Exchange);
             context.active_call_id = Some(exchange_id.clone());
             self.emit(
                 &context.session_id,
@@ -196,7 +196,7 @@ impl Agent {
             if attempt == 2 || !provider_retry_allowed(&error) {
                 return Err(error);
             }
-            let jitter = u64::from(Uuid::new_v4().as_bytes()[0]) % 251;
+            let jitter = suncode_common::random::below(251);
             let delay_ms = (1000_u64 << attempt)
                 .saturating_add(jitter)
                 .max(error.details["retry_after_ms"].as_u64().unwrap_or(0));
@@ -244,7 +244,7 @@ impl Agent {
                 self.emit(
                     &context.session_id,
                     EventPayload::MessageUser(MessageUserPayload {
-                        message_id: Uuid::new_v4().to_string(),
+                        message_id: suncode_common::id::new(suncode_common::id::IdKind::Message),
                         turn_id: context.turn_id.clone(),
                         queued_id: None,
                         queued_idempotency_key: None,
@@ -507,7 +507,7 @@ impl Agent {
             self.emit(
                 &context.session_id,
                 EventPayload::MessageAssistant(MessageAssistantPayload {
-                    message_id: Uuid::new_v4().to_string(),
+                    message_id: suncode_common::id::new(suncode_common::id::IdKind::Message),
                     turn_id: context.turn_id.clone(),
                     call_id: context.active_call_id.clone(),
                     message: assistant.clone(),
@@ -587,7 +587,7 @@ impl Agent {
             self.emit(
                 &context.session_id,
                 EventPayload::MessageUser(MessageUserPayload {
-                    message_id: Uuid::new_v4().to_string(),
+                    message_id: suncode_common::id::new(suncode_common::id::IdKind::Message),
                     turn_id: context.turn_id.clone(),
                     queued_id: Some(item.queued_id),
                     queued_idempotency_key: Some(item.idempotency_key),
@@ -654,7 +654,7 @@ impl Agent {
             max_output_tokens: Some(2_048),
             transfer_progress: transfer_sender,
         };
-        let exchange_id = Uuid::new_v4().to_string();
+        let exchange_id = suncode_common::id::new(suncode_common::id::IdKind::Exchange);
         self.emit(
             &context.session_id,
             EventPayload::ProviderExchangeStarted(ProviderExchangeStartedPayload {

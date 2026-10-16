@@ -9,7 +9,6 @@ use diesel::sql_query;
 use diesel::sql_types::Text;
 use diesel::sqlite::SqliteConnection;
 use suncode_common::BusinessError;
-use uuid::Uuid;
 
 #[derive(QueryableByName)]
 struct Row {
@@ -73,7 +72,7 @@ impl Store {
             .map_err(crate::database_error)?;
         let id = existing
             .map(|row| row.value)
-            .unwrap_or_else(|| Uuid::new_v4().to_string());
+            .unwrap_or_else(|| suncode_common::id::new(suncode_common::id::IdKind::Dependency));
         sql_query("INSERT INTO project_dependency(dependency_id,project_id,canonical_root,display_name,created_at) VALUES (?,?,?,?,?) ON CONFLICT(project_id,canonical_root) DO UPDATE SET display_name=excluded.display_name")
             .bind::<Text, _>(&id)
             .bind::<Text, _>(project_id)

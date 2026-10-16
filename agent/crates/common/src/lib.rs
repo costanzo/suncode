@@ -1,7 +1,9 @@
 //! Shared contracts and errors used by the Rust SunCode crates.
 
 pub mod blocking;
+pub mod id;
 pub mod logging;
+pub mod random;
 pub mod tool;
 
 use serde::{Deserialize, Serialize};

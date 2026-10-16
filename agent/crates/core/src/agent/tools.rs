@@ -191,7 +191,7 @@ impl Agent {
                     ToolState::AwaitingQuestion,
                     Some("user_input_required"),
                 )?;
-                let request_id = format!("que_{}", Uuid::new_v4());
+                let request_id = suncode_common::id::new(suncode_common::id::IdKind::Question);
                 context.pending_call = Some(call.clone());
                 context.remaining_calls = calls[index + 1..].to_vec();
                 let snapshot = continuation_snapshot(context).map_err(|_| {
@@ -416,7 +416,7 @@ impl Agent {
                 &context.model,
             )
         })?;
-        let invocation_id = Uuid::new_v4().to_string();
+        let invocation_id = suncode_common::id::new(suncode_common::id::IdKind::SubagentInvocation);
         db_blocking(|| {
             self.store.create_subagent_invocation(
                 &invocation_id,

@@ -19,5 +19,4 @@ suncode-http.workspace = true
 suncode-data.workspace = true
 tokio = { workspace = true, features = ["sync", "time", "rt", "macros"] }
 tokio-util.workspace = true
-uuid = { workspace = true, features = ["serde"] }
 url.workspace = true

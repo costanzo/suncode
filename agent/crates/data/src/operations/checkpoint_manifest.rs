@@ -10,7 +10,6 @@ use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::Text;
 use suncode_common::BusinessError;
-use uuid::Uuid;
 
 pub(crate) fn from_row(row: ManifestRow) -> Result<CheckpointManifest, BusinessError> {
     Ok(CheckpointManifest {
@@ -42,7 +41,7 @@ impl Store {
         if let Some(v) = by_turn(&mut c, turn_id)? {
             return Ok(v);
         }
-        let id = Uuid::new_v4().to_string();
+        let id = suncode_common::id::new(suncode_common::id::IdKind::CheckpointManifest);
         let t = now();
         let expires =
             (Utc::now() + Duration::days(30)).to_rfc3339_opts(chrono::SecondsFormat::Millis, true);

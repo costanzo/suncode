@@ -13,7 +13,6 @@ image.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 suncode-common.workspace = true
-uuid.workspace = true
 
 [dev-dependencies]
 jsonschema.workspace = true

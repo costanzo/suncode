@@ -466,7 +466,7 @@ impl Agent {
     ) -> Result<TurnResponse, BusinessError> {
         self.submit_session(
             session_id,
-            &Uuid::new_v4().to_string(),
+            &suncode_common::id::new(suncode_common::id::IdKind::Submission),
             input,
             Some(model),
             reasoning_effort,
@@ -493,7 +493,7 @@ impl Agent {
         }
         self.submit_session(
             session_id,
-            &Uuid::new_v4().to_string(),
+            &suncode_common::id::new(suncode_common::id::IdKind::Submission),
             &input,
             Some(&model),
             None,
@@ -542,7 +542,7 @@ impl Agent {
                 position: index + 1,
             });
         }
-        let queued_id = Uuid::new_v4().to_string();
+        let queued_id = suncode_common::id::new(suncode_common::id::IdKind::QueuedMessage);
         queue.push_back(QueuedMessage {
             queued_id: queued_id.clone(),
             idempotency_key: key.to_string(),

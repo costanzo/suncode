@@ -1329,3 +1329,43 @@ fn newer_schema_version_is_rejected() {
     let error = Store::open(&path).err().unwrap();
     assert!(error.message.contains("newer than this build supports"));
 }
+
+#[test]
+fn new_rows_get_kind_prefixed_ids_and_legacy_uuid_rows_still_load() {
+    let store = Store::open_memory().unwrap();
+    let project = store.project("/tmp/ids", "Ids").unwrap();
+    assert!(
+        project.project_id.starts_with("prj_"),
+        "{}",
+        project.project_id
+    );
+    let dependency = store
+        .add_project_dependency(&project.project_id, "/tmp/ids-dependency", "Dependency")
+        .unwrap();
+    assert!(dependency.dependency_id.starts_with("dep_"));
+    let first = store
+        .create_session(&project.project_id, None, None)
+        .unwrap();
+    let second = store
+        .create_session(&project.project_id, None, None)
+        .unwrap();
+    assert!(first.session_id.starts_with("ses_"));
+    assert!(first.session_id < second.session_id, "ids sort by creation");
+    let turn = store
+        .begin_turn(&second.session_id, "key-1", "hello", "model")
+        .unwrap();
+    assert!(turn.turn_id.starts_with("trn_"), "{}", turn.turn_id);
+
+    // Rows written before prefixed ids keep their bare UUIDs.
+    let legacy = "6f1d3c1e-8b4a-4f6e-9a7d-2c5b8e9f0a1b";
+    {
+        let mut connection = store.connection.lock().unwrap();
+        sql_query("UPDATE session SET session_id=? WHERE session_id=?")
+            .bind::<diesel::sql_types::Text, _>(legacy)
+            .bind::<diesel::sql_types::Text, _>(&first.session_id)
+            .execute(&mut *connection)
+            .unwrap();
+    }
+    let loaded = store.session_by_id(legacy).unwrap().unwrap();
+    assert_eq!(loaded.session_id, legacy);
+}

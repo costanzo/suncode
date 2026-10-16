@@ -21,7 +21,6 @@ use suncode_data::{ApprovalInput, Store};
 use suncode_llm::{CompletionRequest, ModelProviderRegistry, ModelRoute};
 use tokio::sync::{mpsc, Mutex as AsyncMutex};
 use tokio_util::sync::CancellationToken;
-use uuid::Uuid;
 
 mod attention_hub;
 pub mod builtin_agents;

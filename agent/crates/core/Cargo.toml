@@ -29,7 +29,6 @@ suncode-browser.workspace = true
 suncode-computer.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
 tokio-util.workspace = true
-uuid = { workspace = true, features = ["serde"] }
 url.workspace = true
 
 [dev-dependencies]

@@ -11,7 +11,6 @@ use diesel::sql_query;
 use diesel::sql_types::{BigInt, Integer, Nullable, Text};
 use serde_json::{json, Value};
 use suncode_common::BusinessError;
-use uuid::Uuid;
 
 fn to_trace(row: TurnRow) -> Result<SessionTraceTurn, BusinessError> {
     Ok(SessionTraceTurn {
@@ -104,7 +103,7 @@ impl Store {
             if s.status != "active" {
                 return Err(BusinessError::invalid("session is archived"));
             }
-            let id = Uuid::new_v4().to_string();
+            let id = suncode_common::id::new(suncode_common::id::IdKind::Turn);
             let t = now();
             let input_json = serde_json::to_string(
                 &json!({"input":input,"image_ids":image_ids,"reasoning_effort":reasoning_effort}),
