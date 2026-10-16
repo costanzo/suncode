@@ -471,6 +471,32 @@ fn built_in_agents_and_child_sessions_are_exposed_as_read_only_sdk_data() {
     assert_eq!(agents[0].name, "architect-agent");
     assert_eq!(agents[5].name, "sre-agent");
     assert!(agents.iter().all(|agent| !agent.can_delegate));
+    // The DTO the desktop renders; values match the catalog before the
+    // agents crate split.
+    let read = json!(["read", "glob", "grep", "webfetch", "todowrite"]);
+    let implementation = json!([
+        "read",
+        "glob",
+        "grep",
+        "write",
+        "edit",
+        "bash",
+        "todowrite",
+        "webfetch"
+    ]);
+    for agent in &agents {
+        let value = serde_json::to_value(agent).unwrap();
+        let (tools, limit) = match agent.name.as_str() {
+            "architect-agent" | "ui-ux-agent" | "product-agent" => (&read, 32),
+            _ => (&implementation, 64),
+        };
+        assert_eq!(value["allowedTools"], *tools, "{}", agent.name);
+        assert_eq!(value["toolCallLimit"], limit, "{}", agent.name);
+        assert_eq!(value["modelPolicy"], "Inherits parent session model");
+        assert_eq!(value["mcpPolicy"], "Not allowed");
+        assert_eq!(value["canDelegate"], false);
+        assert_eq!(value["version"], 1);
+    }
 
     let project = sdk
         .open_project(directory.path().to_str().unwrap(), None)

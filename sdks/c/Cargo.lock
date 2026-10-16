@@ -2825,7 +2825,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "suncode-agents",
  "suncode-common",
  "suncode-computer",
  "suncode-config",

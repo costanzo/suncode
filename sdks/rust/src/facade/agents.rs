@@ -1,9 +1,13 @@
 use super::*;
+use suncode_core::agent::ToolScope;
 
 impl AsyncAgentSdk {
     pub fn list_agents(&self) -> SdkResult<AgentsResult> {
         Ok(AgentsResult {
-            agents: suncode_agents::specialists()
+            agents: self
+                .state
+                .agent
+                .list_agents()
                 .iter()
                 .map(|agent| BuiltinAgentDto {
                     id: agent.id.into(),
@@ -12,10 +16,8 @@ impl AsyncAgentSdk {
                     description: agent.description.into(),
                     version: agent.version,
                     allowed_tools: match agent.tools {
-                        suncode_agents::ToolScope::Only(tools) => {
-                            tools.iter().map(|tool| (*tool).into()).collect()
-                        }
-                        suncode_agents::ToolScope::Catalog => Vec::new(),
+                        ToolScope::Only(tools) => tools.iter().map(|tool| (*tool).into()).collect(),
+                        ToolScope::Catalog => Vec::new(),
                     },
                     model_policy: agent.model_policy.description().into(),
                     mcp_policy: agent.mcp_policy().into(),

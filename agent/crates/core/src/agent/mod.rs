@@ -42,6 +42,7 @@ mod computer;
 pub use computer::ComputerRuntimeInfo;
 mod mcp;
 pub use mcp::{McpLoadProgress, McpRuntimeState, McpRuntimeStatus};
+pub use suncode_agents::{AgentDefinition, ModelPolicy, ToolScope};
 
 const DEFAULT_TOOL_CALL_LIMIT: u32 = 64;
 const MAX_INSTRUCTION_FILE_BYTES: u64 = 32 * 1024;
@@ -162,6 +163,13 @@ struct Continuation {
     full_control_override: Option<bool>,
     #[serde(default)]
     host_tool_allowlist: Vec<String>,
+}
+
+impl Agent {
+    /// Agents the primary agent may delegate to, in catalog order.
+    pub fn list_agents(&self) -> &'static [AgentDefinition] {
+        suncode_agents::specialists()
+    }
 }
 
 impl Continuation {
