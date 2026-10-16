@@ -57,7 +57,7 @@ dotnet run --project apps/desktop-avalonia/SunCode.Desktop.csproj
 
 CEF is initialized by the Avalonia client with a localhost CDP endpoint; the Rust agent connects to that endpoint and no Node.js or Playwright runtime is packaged.
 
-The desktop build invokes Cargo for `sdks/c` (which links the typed `sdks/rust` facade and the `suncode-agent` harness) and copies the resulting native library beside the managed executable.
+The desktop build invokes Cargo for `sdks/c` (which links the typed `sdks/rust` facade and the `suncode-core` harness) and copies the resulting native library beside the managed executable.
 
 Rust builds from the repository root or any member directory share the root `target/` through `.cargo/config.toml`. The four manifests retain their own lockfiles; compatible dependency artifacts can be reused, while different versions or feature sets still compile separately. Development and test builds use line-table debug information (`debug = 1`) with incremental compilation enabled; release settings are unchanged. CI disables incremental compilation and caches the shared directory.
 

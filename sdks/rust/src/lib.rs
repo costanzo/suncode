@@ -9,12 +9,12 @@ pub use facade::{
     BrowserHostCallback, RemoteServerConfiguration, RemoteServerStatus, SessionEventStream,
     SessionEventStreamControl, SessionWatch, SubscriptionError,
 };
-pub use suncode_agent::agent::TurnResponse;
-pub use suncode_agent::{AgentAttentionEvent, AttentionKind};
 pub use suncode_common::logging as logging_module;
+pub use suncode_core::agent::TurnResponse;
+pub use suncode_core::{AgentAttentionEvent, AttentionKind};
 pub use suncode_data::ApprovalRecord;
 pub mod events {
-    pub use suncode_agent::agent::events::*;
+    pub use suncode_core::agent::events::*;
 }
 pub use events::{AgentEvent, EventPayload as AgentEventPayload, EventType};
 pub use suncode_common::BusinessError;

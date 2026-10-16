@@ -24,7 +24,7 @@ impl AsyncAgentSdk {
     pub async fn browser_runtime_info(
         &self,
         project_id: Option<&str>,
-    ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
+    ) -> SdkResult<suncode_core::BrowserRuntimeInfo> {
         if let Some(project_id) = project_id {
             self.project_for_user(project_id)?;
         }
@@ -34,7 +34,7 @@ impl AsyncAgentSdk {
     pub async fn set_browser_use_enabled(
         &self,
         enabled: bool,
-    ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
+    ) -> SdkResult<suncode_core::BrowserRuntimeInfo> {
         self.ensure_browser_host_available()?;
         self.state.store.set_setting(
             "global",
@@ -49,7 +49,7 @@ impl AsyncAgentSdk {
     pub async fn verify_browser_runtime(
         &self,
         project_id: Option<&str>,
-    ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
+    ) -> SdkResult<suncode_core::BrowserRuntimeInfo> {
         self.ensure_browser_host_available()?;
         if let Some(project_id) = project_id {
             self.project_for_user(project_id)?;
@@ -65,7 +65,7 @@ impl AsyncAgentSdk {
     pub async fn start_browser_project(
         &self,
         project_id: &str,
-    ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
+    ) -> SdkResult<suncode_core::BrowserRuntimeInfo> {
         self.ensure_browser_host_available()?;
         self.project_for_user(project_id)?;
         self.state.agent.start_browser_project(project_id).await?;
@@ -75,7 +75,7 @@ impl AsyncAgentSdk {
     pub async fn take_browser_control(
         &self,
         project_id: &str,
-    ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
+    ) -> SdkResult<suncode_core::BrowserRuntimeInfo> {
         self.ensure_browser_host_available()?;
         self.project_for_user(project_id)?;
         self.state.agent.take_browser_control(project_id).await?;
@@ -85,7 +85,7 @@ impl AsyncAgentSdk {
     pub async fn return_browser_control(
         &self,
         project_id: &str,
-    ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
+    ) -> SdkResult<suncode_core::BrowserRuntimeInfo> {
         self.ensure_browser_host_available()?;
         self.project_for_user(project_id)?;
         self.state.agent.return_browser_control(project_id).await?;
@@ -95,7 +95,7 @@ impl AsyncAgentSdk {
     pub async fn restart_browser_runtime(
         &self,
         project_id: &str,
-    ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
+    ) -> SdkResult<suncode_core::BrowserRuntimeInfo> {
         self.ensure_browser_host_available()?;
         self.project_for_user(project_id)?;
         self.state.agent.restart_browser_runtime(project_id).await?;
@@ -105,7 +105,7 @@ impl AsyncAgentSdk {
     pub async fn stop_browser_runtime(
         &self,
         project_id: &str,
-    ) -> SdkResult<suncode_agent::BrowserRuntimeInfo> {
+    ) -> SdkResult<suncode_core::BrowserRuntimeInfo> {
         self.ensure_browser_host_available()?;
         self.project_for_user(project_id)?;
         self.state.agent.stop_browser_runtime(project_id).await?;

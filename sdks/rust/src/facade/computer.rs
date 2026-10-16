@@ -12,14 +12,14 @@ impl AsyncAgentSdk {
         }
     }
 
-    pub fn computer_runtime_info(&self) -> SdkResult<suncode_agent::ComputerRuntimeInfo> {
+    pub fn computer_runtime_info(&self) -> SdkResult<suncode_core::ComputerRuntimeInfo> {
         Ok(self.state.agent.computer_runtime_info())
     }
 
     pub fn set_computer_use_enabled(
         &self,
         enabled: bool,
-    ) -> SdkResult<suncode_agent::ComputerRuntimeInfo> {
+    ) -> SdkResult<suncode_core::ComputerRuntimeInfo> {
         self.ensure_computer_host_available()?;
         if enabled {
             apply_computer_enablement(&self.state.agent, true)?;
@@ -31,7 +31,7 @@ impl AsyncAgentSdk {
         Ok(self.state.agent.computer_runtime_info())
     }
 
-    pub fn emergency_stop_computer_use(&self) -> SdkResult<suncode_agent::ComputerRuntimeInfo> {
+    pub fn emergency_stop_computer_use(&self) -> SdkResult<suncode_core::ComputerRuntimeInfo> {
         self.ensure_computer_host_available()?;
         persist_computer_enablement(&self.state.store, false)?;
         self.state.agent.emergency_stop_computer_use()?;
@@ -40,14 +40,14 @@ impl AsyncAgentSdk {
 
     pub fn request_computer_capture_permission(
         &self,
-    ) -> SdkResult<suncode_agent::ComputerRuntimeInfo> {
+    ) -> SdkResult<suncode_core::ComputerRuntimeInfo> {
         self.ensure_computer_host_available()?;
         self.state.agent.request_computer_capture_permission()
     }
 
     pub fn request_computer_input_permission(
         &self,
-    ) -> SdkResult<suncode_agent::ComputerRuntimeInfo> {
+    ) -> SdkResult<suncode_core::ComputerRuntimeInfo> {
         self.ensure_computer_host_available()?;
         let info = self.state.agent.request_computer_input_permission()?;
         if info.input_permission == "allowed" && computer_enablement_desired(&self.state.store) {
@@ -56,12 +56,12 @@ impl AsyncAgentSdk {
         Ok(self.state.agent.computer_runtime_info())
     }
 
-    pub fn take_computer_control(&self) -> SdkResult<suncode_agent::ComputerRuntimeInfo> {
+    pub fn take_computer_control(&self) -> SdkResult<suncode_core::ComputerRuntimeInfo> {
         self.ensure_computer_host_available()?;
         self.state.agent.take_computer_control()
     }
 
-    pub fn return_computer_control(&self) -> SdkResult<suncode_agent::ComputerRuntimeInfo> {
+    pub fn return_computer_control(&self) -> SdkResult<suncode_core::ComputerRuntimeInfo> {
         self.ensure_computer_host_available()?;
         self.state.agent.return_computer_control()
     }

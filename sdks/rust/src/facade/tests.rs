@@ -2,7 +2,7 @@ use super::*;
 use futures_util::{stream::FusedStream, StreamExt};
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
-use suncode_agent::{AgentEvent, EventPayload, TurnStatePayload};
+use suncode_core::{AgentEvent, EventPayload, TurnStatePayload};
 use suncode_data::Message;
 
 static ENVIRONMENT: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
@@ -223,7 +223,7 @@ async fn host_capability_ceiling_disables_browser_and_computer_without_mutating_
     assert!(browser.enabled);
     assert_eq!(
         browser.installation_state,
-        suncode_agent::BrowserInstallationState::Unsupported
+        suncode_core::BrowserInstallationState::Unsupported
     );
     assert_eq!(
         browser.error.as_deref(),
@@ -369,7 +369,7 @@ fn proxy_configuration_rejects_unsupported_or_unsafe_values() {
 fn named_sdk_methods_serve_project_session_and_model_dtos() {
     let directory = tempfile::tempdir().unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
-    assert_eq!(AgentSdk::version().version, suncode_agent::version());
+    assert_eq!(AgentSdk::version().version, suncode_core::version());
     assert!(sdk.health().unwrap().ok);
     assert_eq!(sdk.list_credentials().unwrap().credentials.len(), 11);
     assert_eq!(sdk.list_models().unwrap().models.len(), 25);
@@ -707,7 +707,7 @@ fn mcp_sdk_redacts_secrets_and_enforces_idempotency_and_revisions() {
         .unwrap();
     assert_eq!(
         created.runtime_status,
-        suncode_agent::agent::McpRuntimeState::Disabled
+        suncode_core::agent::McpRuntimeState::Disabled
     );
     assert_eq!(created.environment_keys, ["KEEP", "TOKEN"]);
     let serialized = serde_json::to_string(&created).unwrap();
@@ -801,7 +801,7 @@ fn mcp_sdk_redacts_secrets_and_enforces_idempotency_and_revisions() {
         .unwrap();
     assert_eq!(
         enabled.runtime_status,
-        suncode_agent::agent::McpRuntimeState::NotStarted
+        suncode_core::agent::McpRuntimeState::NotStarted
     );
 }
 
@@ -833,7 +833,7 @@ fn language_server_sdk_redacts_environment_and_enforces_revisions() {
         .unwrap();
     assert_eq!(
         created.runtime_status,
-        suncode_agent::LanguageServerRuntimeState::Disabled
+        suncode_core::LanguageServerRuntimeState::Disabled
     );
     assert_eq!(created.environment_keys, ["KEEP", "TOKEN"]);
     assert!(!serde_json::to_string(&created)
@@ -927,7 +927,7 @@ fn language_server_save_succeeds_when_project_runtime_fails_to_start() {
 
     assert_eq!(
         created.runtime_status,
-        suncode_agent::LanguageServerRuntimeState::Failed
+        suncode_core::LanguageServerRuntimeState::Failed
     );
     assert!(created.error.is_some());
     assert!(sdk

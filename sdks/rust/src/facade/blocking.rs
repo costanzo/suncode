@@ -1,7 +1,7 @@
 use super::*;
 use serde_json::Value;
 use std::ops::{Deref, DerefMut};
-use suncode_agent::{agent::TurnResponse, BrowserRuntimeInfo};
+use suncode_core::{agent::TurnResponse, BrowserRuntimeInfo};
 
 pub struct AgentSdk {
     inner: AsyncAgentSdk,
@@ -27,7 +27,7 @@ impl AgentSdk {
         self.inner.set_browser_host_callback(callback);
     }
 
-    pub fn preview_state(&self, project_id: &str) -> SdkResult<suncode_agent::PreviewState> {
+    pub fn preview_state(&self, project_id: &str) -> SdkResult<suncode_core::PreviewState> {
         self.inner.preview_state(project_id)
     }
     pub fn start_preview(
@@ -37,11 +37,11 @@ impl AgentSdk {
         args: Vec<String>,
         cwd: Option<String>,
         url: &str,
-    ) -> SdkResult<suncode_agent::PreviewState> {
+    ) -> SdkResult<suncode_core::PreviewState> {
         self.inner
             .start_preview(project_id, program, args, cwd, url)
     }
-    pub fn stop_preview(&self, project_id: &str) -> SdkResult<suncode_agent::PreviewState> {
+    pub fn stop_preview(&self, project_id: &str) -> SdkResult<suncode_core::PreviewState> {
         self.inner.stop_preview(project_id)
     }
     pub fn remote_server_configuration(&self) -> RemoteServerConfiguration {

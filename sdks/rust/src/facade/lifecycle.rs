@@ -3,7 +3,7 @@ use super::*;
 impl AsyncAgentSdk {
     pub fn version() -> VersionResult {
         VersionResult {
-            version: suncode_agent::version(),
+            version: suncode_core::version(),
         }
     }
 

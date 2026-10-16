@@ -1,10 +1,10 @@
 [package]
-name = "suncode-agent"
+name = "suncode-core"
 version.workspace = true
 edition.workspace = true
 
 [lib]
-name = "suncode_agent"
+name = "suncode_core"
 path = "src/lib.rs"
 
 [dependencies]

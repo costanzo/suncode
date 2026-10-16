@@ -7,7 +7,7 @@ use std::{
 
 use futures_core::{stream::FusedStream, Stream};
 
-use suncode_agent::{
+use suncode_core::{
     AgentAttentionEvent, AgentEvent, AgentEventSubscription, AgentEventSubscriptionControl,
     AttentionEventSubscription, AttentionEventSubscriptionControl, AttentionReceiveError,
     EventReceiveError,

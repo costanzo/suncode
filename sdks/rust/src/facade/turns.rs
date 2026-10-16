@@ -1,5 +1,5 @@
 use super::*;
-use suncode_agent::agent::TurnResponse;
+use suncode_core::agent::TurnResponse;
 use suncode_data::ApprovalRecord;
 
 impl AsyncAgentSdk {

@@ -225,7 +225,7 @@ pub struct McpServerDto {
     pub enabled: bool,
     pub sort_order: i64,
     pub revision: u64,
-    pub runtime_status: suncode_agent::agent::McpRuntimeState,
+    pub runtime_status: suncode_core::agent::McpRuntimeState,
     pub tool_count: usize,
     pub error: Option<String>,
     pub created_at: String,
@@ -302,7 +302,7 @@ pub struct LanguageServerDto {
     pub enabled: bool,
     pub sort_order: i64,
     pub revision: u64,
-    pub runtime_status: suncode_agent::LanguageServerRuntimeState,
+    pub runtime_status: suncode_core::LanguageServerRuntimeState,
     pub capability_count: usize,
     pub error: Option<String>,
     pub created_at: String,
@@ -423,7 +423,7 @@ pub struct SessionsResult {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AttentionCandidatesResult {
-    pub candidates: Vec<suncode_agent::AgentAttentionEvent>,
+    pub candidates: Vec<suncode_core::AgentAttentionEvent>,
 }
 
 #[derive(Debug, Serialize)]

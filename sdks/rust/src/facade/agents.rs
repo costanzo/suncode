@@ -3,7 +3,7 @@ use super::*;
 impl AsyncAgentSdk {
     pub fn list_agents(&self) -> SdkResult<AgentsResult> {
         Ok(AgentsResult {
-            agents: suncode_agent::agent::builtin_agents::all()
+            agents: suncode_core::agent::builtin_agents::all()
                 .iter()
                 .map(|agent| BuiltinAgentDto {
                     id: agent.id.into(),

@@ -7,15 +7,15 @@ use std::{
         Arc, Mutex, RwLock,
     },
 };
-use suncode_agent::{
-    agent::{Agent, AgentHostCapabilities},
-    AgentLock, AttentionEventHub, CheckpointItemRestoredPayload, CheckpointRestoreFailedPayload,
-    CheckpointRestoredPayload, EventPayload, SessionEventHub,
-};
 use suncode_common::logging;
 use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
 use suncode_config::Config;
 use suncode_config::PersistedSettings;
+use suncode_core::{
+    agent::{Agent, AgentHostCapabilities},
+    AgentLock, AttentionEventHub, CheckpointItemRestoredPayload, CheckpointRestoreFailedPayload,
+    CheckpointRestoredPayload, EventPayload, SessionEventHub,
+};
 use suncode_data::{LlmModelProviderInput, LlmModelProviderRecord, Store};
 use suncode_llm::{
     AnthropicProvider, ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,

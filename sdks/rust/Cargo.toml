@@ -17,7 +17,7 @@ futures-util = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
-suncode-agent = { path = "../../agent/crates/core" }
+suncode-core = { path = "../../agent/crates/core" }
 suncode-common = { path = "../../agent/crates/common" }
 suncode-computer = { path = "../../agent/crates/computer" }
 suncode-config = { path = "../../agent/crates/config" }

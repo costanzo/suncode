@@ -1,6 +1,6 @@
 use super::*;
 use chrono::{DateTime, Duration, SecondsFormat, Utc};
-use suncode_agent::{AgentAttentionEvent, AttentionKind};
+use suncode_core::{AgentAttentionEvent, AttentionKind};
 
 impl AsyncAgentSdk {
     pub fn subscribe_attention_events(&self) -> SdkResult<AttentionEventStream> {

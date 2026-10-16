@@ -2732,34 +2732,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
-name = "suncode-agent"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "chrono",
- "fs2",
- "futures-util",
- "jsonschema",
- "serde",
- "serde_json",
- "sha2",
- "suncode-browser",
- "suncode-common",
- "suncode-computer",
- "suncode-config",
- "suncode-data",
- "suncode-llm",
- "suncode-lsp",
- "suncode-mcp",
- "suncode-remote",
- "suncode-skills",
- "suncode-tool",
- "tokio",
- "tokio-util",
- "url",
-]
-
-[[package]]
 name = "suncode-browser"
 version = "0.1.0"
 dependencies = [
@@ -2801,6 +2773,34 @@ name = "suncode-config"
 version = "0.1.0"
 dependencies = [
  "serde_json",
+]
+
+[[package]]
+name = "suncode-core"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "fs2",
+ "futures-util",
+ "jsonschema",
+ "serde",
+ "serde_json",
+ "sha2",
+ "suncode-browser",
+ "suncode-common",
+ "suncode-computer",
+ "suncode-config",
+ "suncode-data",
+ "suncode-llm",
+ "suncode-lsp",
+ "suncode-mcp",
+ "suncode-remote",
+ "suncode-skills",
+ "suncode-tool",
+ "tokio",
+ "tokio-util",
+ "url",
 ]
 
 [[package]]
@@ -2909,10 +2909,10 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "suncode-agent",
  "suncode-common",
  "suncode-computer",
  "suncode-config",
+ "suncode-core",
  "suncode-data",
  "suncode-llm",
  "suncode-remote",
