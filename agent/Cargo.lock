@@ -2268,7 +2268,6 @@ checksum = "eddd3ca559203180a307f12d114c268abf583f59b03cb906fd0b3ff8646c1147"
 dependencies = [
  "base64 0.22.1",
  "bytes",
- "futures-channel",
  "futures-core",
  "futures-util",
  "http",
@@ -2310,6 +2309,7 @@ checksum = "219c5811de6525e5416c7d5d53bb656d3afdbc6c5af816e0802bcfa42dbdc1c3"
 dependencies = [
  "base64 0.22.1",
  "bytes",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "http",
@@ -2926,6 +2926,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "suncode-http"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.13.4",
+ "suncode-common",
+]
+
+[[package]]
 name = "suncode-llm"
 version = "0.1.0"
 dependencies = [
@@ -2967,6 +2975,7 @@ dependencies = [
  "serde",
  "serde_json",
  "suncode-common",
+ "suncode-http",
  "tokio",
  "tokio-util",
 ]
@@ -3013,11 +3022,12 @@ dependencies = [
  "html2md-rs",
  "ignore",
  "libc",
- "reqwest 0.12.28",
+ "reqwest 0.13.4",
  "serde",
  "serde_json",
  "sha2",
  "suncode-common",
+ "suncode-http",
 ]
 
 [[package]]

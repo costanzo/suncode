@@ -168,6 +168,7 @@ contracts/                hand-written protocols and contract documentation
 agent/crates/core/      agent harness and core services
 agent/crates/config/    Rust-owned bootstrap configuration crate
 agent/crates/common/    shared Rust business errors and cross-crate contracts
+agent/crates/http/      shared outbound HTTP TLS trust and proxy settings for reqwest clients
 agent/crates/database/  backend-specific SQL resources and database setup
 agent/crates/data/      Diesel ORM, persistence DTOs, and data operations
 agent/crates/llm/       provider-neutral LLM contracts, catalog, registry, and adapters

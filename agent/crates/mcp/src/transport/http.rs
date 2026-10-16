@@ -7,7 +7,8 @@ use std::{
     collections::{BTreeMap, HashMap},
     time::Duration,
 };
-use suncode_common::{BusinessError, HttpProxyMode};
+use suncode_common::BusinessError;
+use suncode_http::ApplyHttpSettings;
 
 const MAX_SSE_EVENT_BYTES: usize = 2 * 1024 * 1024;
 const CONTROL_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
@@ -45,43 +46,17 @@ fn http_headers(
 }
 
 fn http_client(config: &TlsConfig) -> Result<reqwest::Client, BusinessError> {
-    let mut builder = reqwest::Client::builder()
+    let trust = suncode_http::trust_roots(
+        config.verify_certificates,
+        config.use_system_certificates,
+        config.certificate_path.as_deref(),
+    )?;
+    let proxy = suncode_http::proxy_route(&config.proxy)?;
+    reqwest::Client::builder()
         .pool_max_idle_per_host(0)
         .redirect(reqwest::redirect::Policy::none())
-        .danger_accept_invalid_certs(!config.verify_certificates);
-    let custom_certificate = if let Some(path) = &config.certificate_path {
-        let pem = std::fs::read(path)
-            .map_err(|_| BusinessError::invalid("custom certificate file is unavailable"))?;
-        Some(
-            reqwest::Certificate::from_pem(&pem)
-                .map_err(|_| BusinessError::invalid("custom certificate file is invalid"))?,
-        )
-    } else {
-        None
-    };
-    if config.use_system_certificates {
-        if let Some(certificate) = custom_certificate {
-            builder = builder.tls_certs_merge([certificate]);
-        }
-    } else {
-        builder = builder.tls_certs_only(custom_certificate);
-    }
-    builder = match config.proxy.mode {
-        HttpProxyMode::NoProxy => builder.no_proxy(),
-        HttpProxyMode::System => builder,
-        HttpProxyMode::Custom => {
-            let mut proxy = reqwest::Proxy::all(&config.proxy.url)
-                .map_err(|_| BusinessError::invalid("custom proxy URL is invalid"))?;
-            if !config.proxy.username.is_empty() {
-                proxy = proxy.basic_auth(&config.proxy.username, &config.proxy.password);
-            }
-            proxy = proxy.no_proxy(reqwest::NoProxy::from_string(
-                &config.proxy.no_proxy_value(),
-            ));
-            builder.no_proxy().proxy(proxy)
-        }
-    };
-    builder
+        .apply_trust(trust)
+        .apply_proxy(proxy)
         .build()
         .map_err(|error| mcp_error("mcp_http_client_failed", error.to_string()))
 }
@@ -89,7 +64,7 @@ fn http_client(config: &TlsConfig) -> Result<reqwest::Client, BusinessError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use suncode_common::HttpProxyConfiguration;
+    use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
 
     #[test]
     fn builds_clients_for_each_proxy_mode() {
