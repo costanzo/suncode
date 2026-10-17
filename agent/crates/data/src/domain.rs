@@ -194,69 +194,7 @@ pub struct LlmModelInput<'a> {
     pub sort_order: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ContentPart {
-    #[serde(rename = "type")]
-    pub kind: String,
-    pub text: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ToolCall {
-    pub call_id: String,
-    pub name: String,
-    pub arguments: Value,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub toolset_name: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Message {
-    pub role: String,
-    pub content: Vec<ContentPart>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub tool_calls: Vec<ToolCall>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_call_id: Option<String>,
-}
-
-impl Message {
-    pub fn text(role: &str, text: impl Into<String>) -> Self {
-        Self {
-            role: role.to_string(),
-            content: vec![ContentPart {
-                kind: "text".to_string(),
-                text: text.into(),
-            }],
-            tool_calls: Vec::new(),
-            tool_call_id: None,
-        }
-    }
-
-    pub fn text_content(&self) -> String {
-        self.content
-            .iter()
-            .filter(|part| part.kind == "text")
-            .map(|part| part.text.as_str())
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-pub struct Usage {
-    pub input_tokens: u64,
-    pub output_tokens: u64,
-    pub total_tokens: u64,
-}
-
-impl Usage {
-    pub fn add(&mut self, other: &Usage) {
-        self.input_tokens += other.input_tokens;
-        self.output_tokens += other.output_tokens;
-        self.total_tokens += other.total_tokens;
-    }
-}
+pub use suncode_types::{ContentPart, Message, ToolCall, Usage};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionEvent {

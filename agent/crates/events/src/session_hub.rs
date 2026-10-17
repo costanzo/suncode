@@ -1,4 +1,4 @@
-use super::events::{AgentEvent, EventPayload};
+use crate::payload::{AgentEvent, EventPayload};
 use std::{
     collections::HashMap,
     fmt,
@@ -354,7 +354,7 @@ impl Drop for AgentEventSubscription {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::events::{EventPayload, EventType, TurnStatePayload};
+    use crate::payload::{EventPayload, EventType, TurnStatePayload};
     use std::sync::atomic::AtomicUsize;
 
     fn turn_event(session_id: &str, turn_id: &str) -> AgentEvent {

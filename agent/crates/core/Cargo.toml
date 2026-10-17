@@ -22,6 +22,7 @@ suncode-skills.workspace = true
 suncode-common.workspace = true
 suncode-config.workspace = true
 suncode-data.workspace = true
+suncode-events.workspace = true
 suncode-llm.workspace = true
 suncode-mcp.workspace = true
 suncode-remote.workspace = true

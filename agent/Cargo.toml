@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/common", "crates/agents", "crates/http", "crates/config", "crates/tools", "crates/skills", "crates/database", "crates/data", "crates/llm", "crates/mcp", "crates/lsp", "crates/browser", "crates/computer", "crates/remote", "crates/core"]
+members = ["crates/types", "crates/common", "crates/events", "crates/agents", "crates/http", "crates/config", "crates/tools", "crates/skills", "crates/database", "crates/data", "crates/llm", "crates/mcp", "crates/lsp", "crates/browser", "crates/computer", "crates/remote", "crates/core"]
 
 [workspace.package]
 version = "0.1.0"
@@ -14,6 +14,7 @@ suncode-common = { path = "crates/common" }
 suncode-computer = { path = "crates/computer" }
 suncode-config = { path = "crates/config" }
 suncode-data = { path = "crates/data" }
+suncode-events = { path = "crates/events" }
 suncode-database = { path = "crates/database" }
 suncode-http = { path = "crates/http" }
 suncode-llm = { path = "crates/llm" }
@@ -22,6 +23,7 @@ suncode-mcp = { path = "crates/mcp" }
 suncode-remote = { path = "crates/remote" }
 suncode-skills = { path = "crates/skills" }
 suncode-tool = { path = "crates/tools" }
+suncode-types = { path = "crates/types" }
 
 # External crates
 aes-gcm = "0.10"

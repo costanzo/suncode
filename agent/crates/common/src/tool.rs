@@ -6,20 +6,13 @@
 //! that depend on `suncode-common` do not pull in an async runtime.
 
 use crate::BusinessError;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{future::Future, pin::Pin};
 
 /// A boxed, sendable future; identical to `futures_util::future::BoxFuture`.
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-/// A model-facing tool declaration.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ToolDefinition {
-    pub name: String,
-    pub description: String,
-    pub parameters: Value,
-}
+pub use suncode_types::ToolDefinition;
 
 /// What a tool call can affect. The core maps a risk to allow, approval, or
 /// deny; providers only classify their own tools.

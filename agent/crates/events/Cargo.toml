@@ -1,0 +1,17 @@
+[package]
+name = "suncode-events"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "suncode_events"
+path = "src/lib.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+suncode-types.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }

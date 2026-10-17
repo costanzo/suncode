@@ -80,7 +80,7 @@ Provider and orchestration modules cannot perform project operations directly. T
 
 ### 3.3 LLM providers
 
-The `suncode-llm` package owns provider-neutral messages, tool schemas, completion results, provider errors, model metadata, model routing, and OpenAI-compatible HTTP/SSE behavior. It has no database, agent-core, SDK, desktop, or machine-operation dependency. The Rust SDK facade loads the seeded or custom database catalog, converts its rows into LLM descriptors, and supplies credentials through a private SQLite-backed implementation of the `ApiKeyResolver` trait at the agent composition boundary. There is no separate credential store alongside SQLite.
+Shared conversation data (`Message`, `ContentPart`, `ToolCall`, `Usage`, `ToolDefinition`) is defined once in `suncode-types`, which depends only on serde; a type belongs there only when it is pure data used by at least two crates. `suncode-llm` and `suncode-data` re-export these types. The `suncode-llm` package owns tool schemas, completion results, provider errors, model metadata, model routing, and OpenAI-compatible HTTP/SSE behavior. It has no database, agent-core, SDK, desktop, or machine-operation dependency. The Rust SDK facade loads the seeded or custom database catalog, converts its rows into LLM descriptors, and supplies credentials through a private SQLite-backed implementation of the `ApiKeyResolver` trait at the agent composition boundary. There is no separate credential store alongside SQLite.
 
 The registry accepts trusted in-process Rust implementations of `LlmProvider` with owned provider and model identifiers. Enterprise OpenAI-compatible gateways can use the built-in adapter with a custom endpoint; other trusted integrations can implement the trait. Rust hosts can extend the built-in registry during `AgentSdk` construction. This is library composition inside the host process, not dynamic plugin loading or an isolation boundary.
 
@@ -165,9 +165,11 @@ Startup marks non-recoverable in-memory turn execution interrupted, discovers ad
 apps/desktop-avalonia/    .NET 10 Avalonia desktop client
 apps/cli/                 native Rust CLI administration and one-shot turn client
 contracts/                hand-written protocols and contract documentation
-agent/crates/core/      `suncode-core` harness: turn loop, policy, approval, events, prompts, and tool routing
+agent/crates/core/      `suncode-core` harness: turn loop, policy, approval, event emission, prompts, and tool routing
+agent/crates/events/    `suncode-events` session event payloads, per-session event hub, and attention hub
 agent/crates/agents/    `suncode-agents` definitions: identity, instructions, tool scope, and capabilities
 agent/crates/config/    Rust-owned bootstrap configuration crate
+agent/crates/types/     `suncode-types` serde-only shared data: messages, tool calls, usage, and tool definitions
 agent/crates/common/    shared Rust business errors and cross-crate contracts, including the std-only `tool` provider contract
 agent/crates/http/      shared TLS trust and proxy settings for every outbound reqwest client (LLM providers, Remote, MCP, webfetch)
 agent/crates/database/  backend-specific SQL resources and database setup

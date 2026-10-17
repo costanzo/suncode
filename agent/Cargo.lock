@@ -2811,6 +2811,7 @@ dependencies = [
  "getrandom 0.4.3",
  "serde",
  "serde_json",
+ "suncode-types",
  "tempfile",
  "uuid",
 ]
@@ -2854,6 +2855,7 @@ dependencies = [
  "suncode-computer",
  "suncode-config",
  "suncode-data",
+ "suncode-events",
  "suncode-llm",
  "suncode-lsp",
  "suncode-mcp",
@@ -2877,6 +2879,7 @@ dependencies = [
  "serde_json",
  "suncode-common",
  "suncode-database",
+ "suncode-types",
  "tempfile",
  "url",
 ]
@@ -2886,6 +2889,16 @@ name = "suncode-database"
 version = "0.1.0"
 dependencies = [
  "tempfile",
+]
+
+[[package]]
+name = "suncode-events"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "suncode-types",
+ "tokio",
 ]
 
 [[package]]
@@ -2911,6 +2924,7 @@ dependencies = [
  "serde_json",
  "suncode-common",
  "suncode-http",
+ "suncode-types",
  "tokio",
  "tokio-util",
 ]
@@ -2997,6 +3011,14 @@ dependencies = [
  "suncode-http",
  "url",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "suncode-types"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

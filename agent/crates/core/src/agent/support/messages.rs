@@ -14,31 +14,6 @@ pub(in crate::agent) fn is_context_overflow_error(error: &BusinessError) -> bool
             || text.contains("maximum"))
 }
 
-pub(in crate::agent) fn to_llm_message(message: &Message) -> suncode_llm::Message {
-    suncode_llm::Message {
-        role: message.role.clone(),
-        content: message
-            .content
-            .iter()
-            .map(|part| suncode_llm::ContentPart {
-                kind: part.kind.clone(),
-                text: part.text.clone(),
-            })
-            .collect(),
-        tool_calls: message
-            .tool_calls
-            .iter()
-            .map(|call| suncode_llm::ToolCall {
-                call_id: call.call_id.clone(),
-                name: call.name.clone(),
-                arguments: call.arguments.clone(),
-                toolset_name: call.toolset_name.clone(),
-            })
-            .collect(),
-        tool_call_id: message.tool_call_id.clone(),
-    }
-}
-
 pub(in crate::agent) fn message_with_image_refs(
     input: &str,
     images: &[suncode_data::SessionImageRecord],

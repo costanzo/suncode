@@ -440,37 +440,8 @@ impl Agent {
                     "Provider output exceeded its budget",
                 );
             }
-            let usage = result.usage.as_ref().map(|usage| Usage {
-                input_tokens: usage.input_tokens,
-                output_tokens: usage.output_tokens,
-                total_tokens: usage.total_tokens,
-            });
-            let cache_read_tokens = result
-                .usage
-                .as_ref()
-                .and_then(|usage| usage.cache_read_tokens);
-            let cache_miss_tokens = result
-                .usage
-                .as_ref()
-                .and_then(|usage| usage.cache_miss_tokens);
-            let cache_write_tokens = result
-                .usage
-                .as_ref()
-                .and_then(|usage| usage.cache_write_tokens);
-            let reasoning_tokens = result
-                .usage
-                .as_ref()
-                .and_then(|usage| usage.reasoning_tokens);
-            let tool_calls = result
-                .tool_calls
-                .iter()
-                .map(|call| ToolCall {
-                    call_id: call.call_id.clone(),
-                    name: call.name.clone(),
-                    arguments: call.arguments.clone(),
-                    toolset_name: call.toolset_name.clone(),
-                })
-                .collect::<Vec<_>>();
+            let usage = result.usage.as_ref().map(Usage::without_breakdown);
+            let tool_calls = result.tool_calls.clone();
             if let Some(usage) = &usage {
                 context.usage.add(usage);
                 self.emit(
@@ -498,15 +469,7 @@ impl Agent {
                     turn_id: context.turn_id.clone(),
                     output_message: assistant.clone(),
                     tool_calls: tool_calls.clone(),
-                    usage: usage.as_ref().map(|usage| suncode_llm::Usage {
-                        input_tokens: usage.input_tokens,
-                        output_tokens: usage.output_tokens,
-                        total_tokens: usage.total_tokens,
-                        cache_read_tokens,
-                        cache_miss_tokens,
-                        cache_write_tokens,
-                        reasoning_tokens,
-                    }),
+                    usage: result.usage.clone(),
                     provider_request_id: result.provider_request_id.clone(),
                     provider_response_id: result.provider_response_id.clone(),
                     finish_reason: result.finish_reason.clone(),
@@ -789,7 +752,7 @@ impl Agent {
         session_id: &str,
         message: &Message,
     ) -> Result<suncode_llm::Message, BusinessError> {
-        let mut converted = to_llm_message(message);
+        let mut converted = message.clone();
         for part in &mut converted.content {
             if part.kind != "image_ref" {
                 continue;

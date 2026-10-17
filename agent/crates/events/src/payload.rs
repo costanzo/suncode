@@ -1,6 +1,6 @@
 use serde::Serialize;
 use serde_json::Value;
-use suncode_data::{Message, ToolCall, Usage};
+use suncode_types::{Message, ToolCall, Usage};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventType {
@@ -108,7 +108,7 @@ payload!(ProviderExchangeProgressPayload { pub exchange_id: String, pub turn_id:
 payload!(ProviderRetryScheduledPayload { pub exchange_id: String, pub turn_id: String, pub retry_attempt: u32, pub max_retries: u32, pub delay_ms: u64, pub error_code: String, });
 payload!(ProviderErrorPayload { pub code: String, pub message: String, pub retryable: bool, });
 payload!(ProviderExchangeFailedPayload { pub exchange_id: String, pub turn_id: String, pub error: ProviderErrorPayload, pub provider_request_id: Option<String>, });
-payload!(ProviderExchangeCompletedPayload { pub exchange_id: String, pub turn_id: String, pub output_message: Message, pub tool_calls: Vec<ToolCall>, pub usage: Option<suncode_llm::Usage>, pub provider_request_id: Option<String>, pub provider_response_id: Option<String>, pub finish_reason: String, });
+payload!(ProviderExchangeCompletedPayload { pub exchange_id: String, pub turn_id: String, pub output_message: Message, pub tool_calls: Vec<ToolCall>, pub usage: Option<Usage>, pub provider_request_id: Option<String>, pub provider_response_id: Option<String>, pub finish_reason: String, });
 payload!(ApprovalRequestedPayload { pub turn_id: String, pub tool_call_id: String, pub approval_id: String, pub operation: String, pub arguments: Value, });
 payload!(ApprovalResolvedPayload { pub approval_id: String, pub turn_id: String, pub decision: String, });
 payload!(QuestionAskedPayload { pub request_id: String, pub turn_id: String, pub tool_call_id: String, pub questions: Value, });

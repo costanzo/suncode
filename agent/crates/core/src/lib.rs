@@ -1,6 +1,7 @@
-//! The SunCode agent core: turn execution, policy, approval, events, and
-//! tool routing. Data and shared types are used from their defining crates
-//! (`suncode_data`, `suncode_common`, `suncode_llm`) directly.
+//! The SunCode agent core: turn execution, policy, approval, event emission,
+//! and tool routing. Data and shared types are used from their defining crates
+//! (`suncode_types`, `suncode_events`, `suncode_data`, `suncode_common`,
+//! `suncode_llm`) directly.
 
 pub mod agent;
 mod agent_lock;

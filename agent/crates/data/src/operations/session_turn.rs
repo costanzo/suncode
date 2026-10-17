@@ -42,11 +42,11 @@ impl Store {
         }
         let mut c = lock(&self.connection)?;
         let r=sql_query("SELECT COALESCE(SUM(input_tokens),0) AS input_tokens,COALESCE(SUM(output_tokens),0) AS output_tokens,COALESCE(SUM(total_tokens),0) AS total_tokens FROM session_turn WHERE session_id=?").bind::<Text,_>(session_id).get_result::<Row>(&mut *c).map_err(crate::database_error)?;
-        Ok(Usage {
-            input_tokens: nonnegative(r.input_tokens)?,
-            output_tokens: nonnegative(r.output_tokens)?,
-            total_tokens: nonnegative(r.total_tokens)?,
-        })
+        Ok(Usage::totals(
+            nonnegative(r.input_tokens)?,
+            nonnegative(r.output_tokens)?,
+            nonnegative(r.total_tokens)?,
+        ))
     }
     pub fn session_trace_turns(
         &self,

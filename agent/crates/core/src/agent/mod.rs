@@ -22,12 +22,13 @@ use suncode_llm::{CompletionRequest, ModelProviderRegistry, ModelRoute};
 use tokio::sync::{mpsc, Mutex as AsyncMutex};
 use tokio_util::sync::CancellationToken;
 
-mod attention_hub;
-pub use attention_hub::*;
-mod event_hub;
-pub use event_hub::*;
-pub mod events;
 use events::*;
+pub use suncode_events::payload as events;
+pub use suncode_events::{
+    AgentAttentionEvent, AgentEventSubscription, AgentEventSubscriptionControl, AttentionEventHub,
+    AttentionEventSubscription, AttentionEventSubscriptionControl, AttentionKind,
+    AttentionReceiveError, EventReceiveError, SessionEventHub,
+};
 mod lsp;
 mod system_prompt;
 pub use lsp::{LanguageServerRuntimeState, LanguageServerRuntimeStatus};
