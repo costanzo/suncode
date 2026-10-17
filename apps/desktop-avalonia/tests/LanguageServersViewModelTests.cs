@@ -109,6 +109,32 @@ public sealed class LanguageServersViewModelTests
     }
 
     [Fact]
+    public void RoslynItemExposesServerSpecificConfiguration()
+    {
+        var item = new LanguageServerItem(new LanguageServer(
+            "roslyn-language-server", "roslyn-language-server", "Roslyn Language Server",
+            "C# semantic analysis", "C#", true, "5.13.0-1.26514.10",
+            "/home/test/.dotnet/tools/roslyn-language-server", null, true,
+            "/home/test/.dotnet/tools/roslyn-language-server", ["--stdio"], ["csharp"],
+            ["*.sln", "*.csproj"], JsonDocument.Parse("{}").RootElement.Clone(), [], 120, 30,
+            null, string.Empty, string.Empty, "src/App/App.csproj", false, 40, 1, "disabled",
+            0, null, string.Empty, string.Empty, null, null, null,
+            new RoslynLanguageServerConfiguration(
+                "/home/test/.dotnet/tools/roslyn-language-server", "10.0.400", "10.0.11",
+                "custom", 750, "custom", "src/App.slnx", false, "automatic",
+                "fullSolution", "none")));
+
+        Assert.True(item.IsRoslyn);
+        Assert.Equal("10.0.400", item.DetectedDotnetSdkVersion);
+        Assert.Equal("custom", item.RoslynProjectLoadMode);
+        Assert.Equal(750UL, item.RoslynMaxProjects);
+        Assert.Equal("src/App.slnx", item.RoslynSolutionPath);
+        Assert.False(item.RoslynAutomaticRestore);
+        Assert.Equal("fullSolution", item.RoslynCompilerDiagnosticScope);
+        Assert.Equal("none", item.RoslynAnalyzerDiagnosticScope);
+    }
+
+    [Fact]
     public async Task MutationsFailWithoutSdkAndLeaveStateUntouched()
     {
         var host = new FakeViewModelHost();

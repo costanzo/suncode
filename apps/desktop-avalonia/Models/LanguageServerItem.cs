@@ -23,6 +23,7 @@ public sealed class LanguageServerItem : ObservableObject
     public bool IsVtsls => Kind == "vtsls";
     public bool IsBasedpyright => Kind == "basedpyright";
     public bool IsRustAnalyzer => Kind == "rust-analyzer";
+    public bool IsRoslyn => Kind == "roslyn-language-server";
     public VtslsLanguageServerConfiguration? Vtsls => Server.Vtsls;
     public string VtslsExecutable => Vtsls?.Executable ?? Command;
     public string NodePath => Vtsls?.NodePath ?? string.Empty;
@@ -53,6 +54,18 @@ public sealed class LanguageServerItem : ObservableObject
     public string RustCheckCommand => RustAnalyzer?.CheckCommand ?? "check";
     public string RustTargetMode => RustAnalyzer?.TargetMode ?? "host";
     public string? RustTarget => RustAnalyzer?.Target;
+    public RoslynLanguageServerConfiguration? Roslyn => Server.Roslyn;
+    public string RoslynExecutable => Roslyn?.Executable ?? Command;
+    public string? DetectedDotnetSdkVersion => Roslyn?.DetectedDotnetSdkVersion;
+    public string? DetectedDotnetRuntimeVersion => Roslyn?.DetectedDotnetRuntimeVersion;
+    public string RoslynProjectLoadMode => Roslyn?.ProjectLoadMode ?? "recommended";
+    public ulong RoslynMaxProjects => Roslyn?.MaxProjects ?? 500;
+    public string RoslynSolutionMode => Roslyn?.SolutionMode ?? "automatic";
+    public string? RoslynSolutionPath => Roslyn?.SolutionPath;
+    public bool RoslynAutomaticRestore => Roslyn?.AutomaticRestore ?? true;
+    public string RoslynSourceGeneratorMode => Roslyn?.SourceGeneratorMode ?? "balanced";
+    public string RoslynCompilerDiagnosticScope => Roslyn?.CompilerDiagnosticScope ?? "openFiles";
+    public string RoslynAnalyzerDiagnosticScope => Roslyn?.AnalyzerDiagnosticScope ?? "openFiles";
     public bool ProjectConfigurable => Server.ProjectConfigurable;
     public string Command => Server.Command;
     public IReadOnlyList<string> Arguments => Server.Arguments;

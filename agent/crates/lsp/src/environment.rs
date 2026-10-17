@@ -26,6 +26,9 @@ pub(crate) fn default_environment(
             "PATHEXT",
             "USERNAME",
             "OS",
+            "DOTNET_ROOT",
+            "DOTNET_ROOT_X64",
+            "DOTNET_ROOT_X86",
             "http_proxy",
             "https_proxy",
             "no_proxy",
@@ -85,6 +88,9 @@ pub(crate) fn default_environment(
             "PNPM_HOME",
             "VIRTUAL_ENV",
             "CONDA_PREFIX",
+            "DOTNET_ROOT",
+            "DOTNET_ROOT_X64",
+            "DOTNET_ROOT_X86",
         ] {
             insert_host(&mut values, key);
         }

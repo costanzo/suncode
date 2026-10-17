@@ -1,6 +1,6 @@
 # Progress
 
-- Status: Design review
+- Status: Implemented
 - Last updated: 2026-10-17
 
 ## Completed
@@ -11,17 +11,23 @@
 - Added the catalog fixture, tailored detail page, direct route, and design documentation.
 - Passed the design-system production build, `git diff --check`, and headless desktop, narrow, light, and dark review.
 - Confirmed the five-entry catalog, initial disabled actions, dirty-state save behavior, conditional project-limit/solution fields, and zero horizontal overflow at 760px.
+- Received user approval for the production implementation.
+- Added the Rust catalog adapter, version 6 persistence, bounded glob root matching, .NET/Roslyn detection, managed launch construction, and workspace settings.
+- Added blocking Rust, C ABI 23, typed C# SDK, and Avalonia Settings support with English and Chinese resources.
+- Added focused Rust and C# tests and completed a real stdio initialization against the installed Roslyn Language Server.
 
 ## In progress
 
-- User design review.
+- None.
 
 ## Blocked
 
-- Production implementation intentionally waits for design approval.
+- None.
 
 ## Log
 
 ### 2026-10-17
 
 - Requirement initialized for design review before production implementation.
+- User approved the design and production implementation started.
+- Production implementation and focused verification completed.

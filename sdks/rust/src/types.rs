@@ -10,7 +10,7 @@ use suncode_data::{
 };
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 22;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 23;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -416,6 +416,49 @@ pub struct RustAnalyzerLanguageServerConfigurationDto {
     pub target: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoslynLanguageServerWriteRequest {
+    pub executable: String,
+    #[serde(default)]
+    pub root_markers: Vec<String>,
+    #[serde(default)]
+    pub project_load_mode: String,
+    pub max_projects: u64,
+    #[serde(default)]
+    pub solution_mode: String,
+    #[serde(default)]
+    pub solution_path: Option<String>,
+    pub automatic_restore: bool,
+    #[serde(default)]
+    pub source_generator_mode: String,
+    #[serde(default)]
+    pub compiler_diagnostic_scope: String,
+    #[serde(default)]
+    pub analyzer_diagnostic_scope: String,
+    #[serde(default)]
+    pub environment: Option<LanguageServerEnvironmentChanges>,
+    pub startup_timeout_seconds: u64,
+    pub request_timeout_seconds: u64,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoslynLanguageServerConfigurationDto {
+    pub executable: String,
+    pub detected_dotnet_sdk_version: Option<String>,
+    pub detected_dotnet_runtime_version: Option<String>,
+    pub project_load_mode: String,
+    pub max_projects: u64,
+    pub solution_mode: String,
+    pub solution_path: Option<String>,
+    pub automatic_restore: bool,
+    pub source_generator_mode: String,
+    pub compiler_diagnostic_scope: String,
+    pub analyzer_diagnostic_scope: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LanguageServerDto {
@@ -434,6 +477,8 @@ pub struct LanguageServerDto {
     pub basedpyright: Option<BasedpyrightLanguageServerConfigurationDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rust_analyzer: Option<RustAnalyzerLanguageServerConfigurationDto>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub roslyn: Option<RoslynLanguageServerConfigurationDto>,
     pub project_configurable: bool,
     pub command: String,
     pub arguments: Vec<String>,

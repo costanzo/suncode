@@ -36,6 +36,15 @@ public sealed partial class LanguageServersSettingsControl : UserControl
     private readonly SCComboBoxItem _clippyOption;
     private readonly SCComboBoxItem _hostRustTargetOption;
     private readonly SCComboBoxItem _customRustTargetOption;
+    private readonly SCComboBoxItem _recommendedRoslynProjectLimitOption;
+    private readonly SCComboBoxItem _customRoslynProjectLimitOption;
+    private readonly SCComboBoxItem _automaticRoslynSolutionOption;
+    private readonly SCComboBoxItem _customRoslynSolutionOption;
+    private readonly SCComboBoxItem _balancedSourceGeneratorsOption;
+    private readonly SCComboBoxItem _automaticSourceGeneratorsOption;
+    private readonly SCComboBoxItem _openFilesDiagnosticScopeOption;
+    private readonly SCComboBoxItem _fullSolutionDiagnosticScopeOption;
+    private readonly SCComboBoxItem _offDiagnosticScopeOption;
 
     public LanguageServersSettingsControl()
     {
@@ -82,6 +91,32 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         _customRustTargetOption = new(L("LocCustomTarget", "Custom target"), "custom");
         RustTargetModeSelector.ItemsSource = [_hostRustTargetOption, _customRustTargetOption];
         RustTargetModeSelector.SelectedItem = _hostRustTargetOption;
+        _recommendedRoslynProjectLimitOption = new(
+            L("LocRecommendedProjectLimit", "Recommended · 500 projects"), "recommended");
+        _customRoslynProjectLimitOption = new(L("LocCustomLimit", "Custom limit"), "custom");
+        RoslynProjectLoadModeSelector.ItemsSource =
+            [_recommendedRoslynProjectLimitOption, _customRoslynProjectLimitOption];
+        RoslynProjectLoadModeSelector.SelectedItem = _recommendedRoslynProjectLimitOption;
+        _automaticRoslynSolutionOption = new(
+            L("LocAutomaticFromProject", "Automatic from project"), "automatic");
+        _customRoslynSolutionOption = new(L("LocCustomSolution", "Custom solution"), "custom");
+        RoslynSolutionModeSelector.ItemsSource =
+            [_automaticRoslynSolutionOption, _customRoslynSolutionOption];
+        RoslynSolutionModeSelector.SelectedItem = _automaticRoslynSolutionOption;
+        _balancedSourceGeneratorsOption = new(L("LocBalanced", "Balanced"), "balanced");
+        _automaticSourceGeneratorsOption = new(L("LocAutomatic", "Automatic"), "automatic");
+        RoslynSourceGeneratorModeSelector.ItemsSource =
+            [_balancedSourceGeneratorsOption, _automaticSourceGeneratorsOption];
+        RoslynSourceGeneratorModeSelector.SelectedItem = _balancedSourceGeneratorsOption;
+        _openFilesDiagnosticScopeOption = new(L("LocOpenFiles", "Open files"), "openFiles");
+        _fullSolutionDiagnosticScopeOption = new(L("LocFullSolution", "Full solution"), "fullSolution");
+        _offDiagnosticScopeOption = new(L("LocOff", "Off"), "none");
+        RoslynCompilerDiagnosticScopeSelector.ItemsSource =
+            [_openFilesDiagnosticScopeOption, _fullSolutionDiagnosticScopeOption, _offDiagnosticScopeOption];
+        RoslynAnalyzerDiagnosticScopeSelector.ItemsSource =
+            [_openFilesDiagnosticScopeOption, _fullSolutionDiagnosticScopeOption, _offDiagnosticScopeOption];
+        RoslynCompilerDiagnosticScopeSelector.SelectedItem = _openFilesDiagnosticScopeOption;
+        RoslynAnalyzerDiagnosticScopeSelector.SelectedItem = _openFilesDiagnosticScopeOption;
         WireDirtyTracking();
     }
 
@@ -136,6 +171,8 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             PythonPathInput.Text = refreshed.DetectedPythonPath;
         if (refreshed.IsRustAnalyzer)
             RustToolchainText.Text = RustToolchainLabel(refreshed);
+        if (refreshed.IsRoslyn)
+            DotnetRuntimeText.Text = DotnetRuntimeLabel(refreshed);
     }
 
     private async void RetryClicked(object? sender, RoutedEventArgs e)
@@ -176,6 +213,25 @@ public sealed partial class LanguageServersSettingsControl : UserControl
                 IsCustomTypeScriptSdk ? NullIfEmpty(TypeScriptSdkPathInput.Text) : null,
                 Lines(RootMarkersInput.Text),
                 (ulong)(TsServerMemoryInput.Value ?? 3072),
+                environment,
+                startup,
+                request,
+                EnabledToggle.IsChecked == true);
+        }
+        else if (_selected.IsRoslyn)
+        {
+            saved = await ViewModel.SaveRoslynAsync(
+                _selected,
+                ExecutableInput.Text?.Trim() ?? string.Empty,
+                Lines(RootMarkersInput.Text),
+                RoslynProjectLoadMode,
+                (ulong)(RoslynMaxProjectsInput.Value ?? 500),
+                RoslynSolutionMode,
+                IsCustomRoslynSolution ? NormalizeSolutionPath(RoslynSolutionPathInput.Text) : null,
+                RoslynAutomaticRestoreToggle.IsChecked == true,
+                RoslynSourceGeneratorMode,
+                RoslynCompilerDiagnosticScope,
+                RoslynAnalyzerDiagnosticScope,
                 environment,
                 startup,
                 request,
@@ -292,6 +348,35 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             ValidationText.Text = "A custom Rust target triple is required.";
             return false;
         }
+        if (_selected?.IsRoslyn == true && IsCustomRoslynProjectLimit
+            && (RoslynMaxProjectsInput.Value is not { } projectLimit
+                || projectLimit is < 1 or > 5000))
+        {
+            ValidationText.Text = L(
+                "LocRoslynProjectLimitInvalid",
+                "Maximum projects must be between 1 and 5000.");
+            return false;
+        }
+        if (_selected?.IsRoslyn == true && IsCustomRoslynSolution)
+        {
+            var solutionPath = NormalizeSolutionPath(RoslynSolutionPathInput.Text);
+            if (string.IsNullOrWhiteSpace(solutionPath)
+                || (!solutionPath.EndsWith(".sln", StringComparison.OrdinalIgnoreCase)
+                    && !solutionPath.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)))
+            {
+                ValidationText.Text = L(
+                    "LocRoslynSolutionInvalid",
+                    "Choose a .sln or .slnx file inside the current project.");
+                return false;
+            }
+            if (Path.IsPathRooted(solutionPath))
+            {
+                ValidationText.Text = L(
+                    "LocRoslynSolutionOutsideProject",
+                    "The custom solution must be inside the current project.");
+                return false;
+            }
+        }
         if (StartupTimeoutInput.Value is not { } startupValue || startupValue is < 1 or > 120
             || RequestTimeoutInput.Value is not { } requestValue || requestValue is < 1 or > 600)
         {
@@ -348,52 +433,66 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             var isVtsls = item.IsVtsls;
             var isBasedpyright = item.IsBasedpyright;
             var isRustAnalyzer = item.IsRustAnalyzer;
-            DetailSubtitle.Text = isRustAnalyzer
+            var isRoslyn = item.IsRoslyn;
+            DetailSubtitle.Text = isRoslyn
+                ? L("LocProjectCSharpAnalysis", "Project configuration for C# semantic analysis.")
+                : isRustAnalyzer
                 ? L("LocProjectRustAnalysis", "Project configuration for Rust semantic analysis.")
                 : isBasedpyright
                 ? L("LocProjectPythonAnalysis", "Project configuration for Python semantic analysis.")
                 : isVtsls
                     ? L("LocProjectJavaScriptTypeScriptAnalysis", "Project JavaScript and TypeScript analysis")
                     : L("LocProjectJavaAnalysis", "Project Java analysis");
-            EnableHint.Text = isRustAnalyzer
+            EnableHint.Text = isRoslyn
+                ? L("LocEnableRoslynHint", "Starts one Roslyn language-server process for C# files in this project.")
+                : isRustAnalyzer
                 ? L("LocEnableRustAnalyzerHint", "Starts one rust-analyzer process for Rust files in this project.")
                 : isBasedpyright
                 ? L("LocEnableBasedpyrightHint", "Starts one basedpyright process for Python files in this project.")
                 : isVtsls
                     ? L("LocEnableVtslsHint", "Starts one vtsls process for JavaScript and TypeScript files in this project.")
                     : L("LocEnableJdtlsHint", "Starts one jdtls process and keeps a separate index for this project.");
-            ExecutableLabel.Text = isRustAnalyzer
+            ExecutableLabel.Text = isRoslyn
+                ? L("LocRoslynExecutable", "roslyn-language-server executable")
+                : isRustAnalyzer
                 ? L("LocRustAnalyzerExecutable", "rust-analyzer executable")
                 : isBasedpyright
                 ? L("LocBasedpyrightExecutable", "basedpyright executable")
                 : isVtsls
                     ? L("LocVtslsExecutable", "vtsls executable")
                     : L("LocJdtlsExecutable", "jdtls executable");
-            ExecutableHint.Text = isRustAnalyzer
+            ExecutableHint.Text = isRoslyn
+                ? L("LocRoslynExecutableHint", "The .NET tool executable SunCode starts with --stdio.")
+                : isRustAnalyzer
                 ? L("LocRustAnalyzerExecutableHint", "The rust-analyzer executable SunCode starts over standard input and output.")
                 : isBasedpyright
                 ? L("LocBasedpyrightExecutableHint", "The basedpyright-langserver executable SunCode starts with --stdio.")
                 : isVtsls
                     ? L("LocVtslsExecutableHint", "The @vtsls/language-server executable SunCode starts with --stdio.")
                     : L("LocJdtlsExecutableHint", "Executable used for this project.");
-            ExecutableInput.DialogTitle = isRustAnalyzer
+            ExecutableInput.DialogTitle = isRoslyn
+                ? "Choose roslyn-language-server executable"
+                : isRustAnalyzer
                 ? "Choose rust-analyzer executable"
                 : isBasedpyright
                 ? "Choose basedpyright executable"
                 : isVtsls ? "Choose vtsls executable" : "Choose jdtls executable";
-            RootMarkersHint.Text = isRustAnalyzer
+            RootMarkersHint.Text = isRoslyn
+                ? L("LocRoslynRootPatternsHint", "One project-relative file pattern per line. The first match identifies a C# project.")
+                : isRustAnalyzer
                 ? L("LocRustRootMarkersHint", "The first match identifies a Rust project.")
                 : isBasedpyright
                 ? L("LocPythonRootMarkersHint", "The first match identifies a Python project.")
                 : isVtsls
                     ? L("LocVtslsRootMarkersHint", "The first match identifies a JavaScript or TypeScript project.")
                     : L("LocJdtlsRootMarkersHint", "The first match identifies a Java project.");
-            ProjectConfigurationLabel.Text = isBasedpyright || isRustAnalyzer
+            ProjectConfigurationLabel.Text = isBasedpyright || isRustAnalyzer || isRoslyn
                 ? L("LocProjectMatchingCaps", "PROJECT MATCHING")
                 : L("LocProjectIndexCaps", "PROJECT INDEX");
             JavaRuntimeRow.IsVisible = item.IsJdtls;
             NodeRuntimeRow.IsVisible = isVtsls;
             RustToolchainRow.IsVisible = isRustAnalyzer;
+            DotnetRuntimeRow.IsVisible = isRoslyn;
             PythonEnvironmentDivider.IsVisible = isBasedpyright;
             PythonEnvironmentSection.IsVisible = isBasedpyright;
             PythonAnalysisDivider.IsVisible = isBasedpyright;
@@ -402,11 +501,18 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             RustCargoSection.IsVisible = isRustAnalyzer;
             RustDiagnosticsDivider.IsVisible = isRustAnalyzer;
             RustDiagnosticsSection.IsVisible = isRustAnalyzer;
+            RoslynLoadingDivider.IsVisible = isRoslyn;
+            RoslynLoadingSection.IsVisible = isRoslyn;
+            RoslynAnalysisDivider.IsVisible = isRoslyn;
+            RoslynAnalysisSection.IsVisible = isRoslyn;
+            RoslynAuthorityHint.IsVisible = isRoslyn;
             DataPathModeRow.IsVisible = item.IsJdtls;
             DataPathRow.IsVisible = item.IsJdtls;
             TypeScriptSdkModeRow.IsVisible = isVtsls;
             TsServerMemoryRow.IsVisible = isVtsls;
-            ExecutableInput.Text = isRustAnalyzer
+            ExecutableInput.Text = isRoslyn
+                ? item.RoslynExecutable
+                : isRustAnalyzer
                 ? item.RustAnalyzerExecutable
                 : isBasedpyright
                 ? item.BasedpyrightExecutable
@@ -417,6 +523,7 @@ public sealed partial class LanguageServersSettingsControl : UserControl
                 ? L("LocNodeRuntimeHint", "vtsls requires Node.js 18 or newer.")
                 : $"Node.js {item.DetectedNodeVersion} detected. vtsls requires version 18 or newer.";
             RustToolchainText.Text = RustToolchainLabel(item);
+            DotnetRuntimeText.Text = DotnetRuntimeLabel(item);
             PythonPathInput.Text = item.PythonPath ?? string.Empty;
             PythonInterpreterHint.Text = string.IsNullOrWhiteSpace(item.DetectedPythonVersion)
                 ? L("LocPythonInterpreterHint", "Used to resolve installed packages and infer the target Python version.")
@@ -469,6 +576,22 @@ public sealed partial class LanguageServersSettingsControl : UserControl
                 ? _customRustTargetOption
                 : _hostRustTargetOption;
             RustTargetInput.Text = item.RustTarget ?? string.Empty;
+            RoslynProjectLoadModeSelector.SelectedItem = item.RoslynProjectLoadMode == "custom"
+                ? _customRoslynProjectLimitOption
+                : _recommendedRoslynProjectLimitOption;
+            RoslynMaxProjectsInput.Value = item.RoslynMaxProjects;
+            RoslynSolutionModeSelector.SelectedItem = item.RoslynSolutionMode == "custom"
+                ? _customRoslynSolutionOption
+                : _automaticRoslynSolutionOption;
+            RoslynSolutionPathInput.Text = item.RoslynSolutionPath ?? string.Empty;
+            RoslynAutomaticRestoreToggle.IsChecked = item.RoslynAutomaticRestore;
+            RoslynSourceGeneratorModeSelector.SelectedItem = item.RoslynSourceGeneratorMode == "automatic"
+                ? _automaticSourceGeneratorsOption
+                : _balancedSourceGeneratorsOption;
+            RoslynCompilerDiagnosticScopeSelector.SelectedItem = DiagnosticScopeOption(
+                item.RoslynCompilerDiagnosticScope);
+            RoslynAnalyzerDiagnosticScopeSelector.SelectedItem = DiagnosticScopeOption(
+                item.RoslynAnalyzerDiagnosticScope);
             EnvironmentInput.Text = string.Empty;
             EnvironmentInput.PlaceholderText = item.EnvironmentKeys.Count > 0
                 ? $"Stored keys: {string.Join(", ", item.EnvironmentKeys)}"
@@ -480,6 +603,7 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             UpdateTypeScriptSdkMode();
             UpdateBasedpyrightOptions();
             UpdateRustOptions();
+            UpdateRoslynOptions();
         }
         finally
         {
@@ -492,7 +616,9 @@ public sealed partial class LanguageServersSettingsControl : UserControl
     private void UpdateRuntimePresentation(LanguageServerItem item)
     {
         DetailTitle.Text = item.DisplayName;
-        FailureTitle.Text = item.IsRustAnalyzer
+        FailureTitle.Text = item.IsRoslyn
+            ? L("LocRoslynCouldNotStart", "Roslyn Language Server could not start")
+            : item.IsRustAnalyzer
             ? L("LocRustAnalyzerCouldNotStart", "rust-analyzer could not start")
             : item.IsBasedpyright
             ? L("LocBasedpyrightCouldNotStart", "basedpyright could not start")
@@ -538,6 +664,12 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         UpdateDirtyState();
     }
 
+    private void RoslynOptionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        UpdateRoslynOptions();
+        UpdateDirtyState();
+    }
+
     private bool IsCustomDataPath =>
         string.Equals(DataPathModeSelector.SelectedItem?.Value as string, "custom", StringComparison.Ordinal);
 
@@ -569,6 +701,25 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         RustTargetModeSelector.SelectedItem?.Value as string ?? "host";
 
     private bool IsCustomRustTarget => RustTargetMode == "custom";
+
+    private string RoslynProjectLoadMode =>
+        RoslynProjectLoadModeSelector.SelectedItem?.Value as string ?? "recommended";
+
+    private bool IsCustomRoslynProjectLimit => RoslynProjectLoadMode == "custom";
+
+    private string RoslynSolutionMode =>
+        RoslynSolutionModeSelector.SelectedItem?.Value as string ?? "automatic";
+
+    private bool IsCustomRoslynSolution => RoslynSolutionMode == "custom";
+
+    private string RoslynSourceGeneratorMode =>
+        RoslynSourceGeneratorModeSelector.SelectedItem?.Value as string ?? "balanced";
+
+    private string RoslynCompilerDiagnosticScope =>
+        RoslynCompilerDiagnosticScopeSelector.SelectedItem?.Value as string ?? "openFiles";
+
+    private string RoslynAnalyzerDiagnosticScope =>
+        RoslynAnalyzerDiagnosticScopeSelector.SelectedItem?.Value as string ?? "openFiles";
 
     private void UpdateDataPathMode()
     {
@@ -612,6 +763,30 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             : L("LocHostRustTargetHint", "Uses the host target reported by the selected Rust toolchain.");
     }
 
+    private void UpdateRoslynOptions()
+    {
+        RoslynMaxProjectsRow.IsVisible = _selected?.IsRoslyn == true && IsCustomRoslynProjectLimit;
+        RoslynMaxProjectsInput.IsEnabled = IsCustomRoslynProjectLimit;
+        RoslynProjectLoadHint.Text = IsCustomRoslynProjectLimit
+            ? L("LocCustomRoslynProjectLimitHint", "Limits recursive project discovery when no single solution can be selected.")
+            : L("LocRecommendedRoslynProjectLimitHint", "Uses Roslyn's recommended limit of 500 discovered projects.");
+        RoslynSolutionPathRow.IsVisible = _selected?.IsRoslyn == true && IsCustomRoslynSolution;
+        RoslynSolutionPathInput.IsEnabled = IsCustomRoslynSolution;
+        RoslynSolutionModeHint.Text = IsCustomRoslynSolution
+            ? L("LocCustomRoslynSolutionHint", "Loads one solution relative to the project root.")
+            : L("LocAutomaticRoslynSolutionHint", "Loads a single root solution, or discovers C# projects recursively.");
+        RoslynSourceGeneratorHint.Text = RoslynSourceGeneratorMode == "automatic"
+            ? L("LocAutomaticSourceGeneratorsHint", "Runs source generators whenever Roslyn needs generated code for analysis.")
+            : L("LocBalancedSourceGeneratorsHint", "Balances generated-code freshness with project loading cost.");
+    }
+
+    private SCComboBoxItem DiagnosticScopeOption(string value) => value switch
+    {
+        "fullSolution" => _fullSolutionDiagnosticScopeOption,
+        "none" => _offDiagnosticScopeOption,
+        _ => _openFilesDiagnosticScopeOption
+    };
+
     private void WireDirtyTracking()
     {
         EnabledToggle.Click += (_, _) => UpdateDirtyState();
@@ -630,6 +805,12 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         ProcMacrosToggle.Click += (_, _) => UpdateDirtyState();
         CheckOnSaveToggle.Click += (_, _) => UpdateDirtyState();
         RustTargetInput.TextChanged += (_, _) => UpdateDirtyState();
+        RoslynMaxProjectsInput.ValueChanged += (_, _) => UpdateDirtyState();
+        RoslynSolutionPathInput.PropertyChanged += (_, change) =>
+        {
+            if (change.Property == SCFileSelector.TextProperty) UpdateDirtyState();
+        };
+        RoslynAutomaticRestoreToggle.Click += (_, _) => UpdateDirtyState();
         EnvironmentInput.TextChanged += (_, _) => UpdateDirtyState();
         StartupTimeoutInput.ValueChanged += (_, _) => UpdateDirtyState();
         RequestTimeoutInput.ValueChanged += (_, _) => UpdateDirtyState();
@@ -670,6 +851,18 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         _selected?.IsRustAnalyzer == true ? RustCheckCommand : null,
         _selected?.IsRustAnalyzer == true ? RustTargetMode : null,
         _selected?.IsRustAnalyzer == true && IsCustomRustTarget ? NullIfEmpty(RustTargetInput.Text) : null,
+        _selected?.IsRoslyn == true ? RoslynProjectLoadMode : null,
+        _selected?.IsRoslyn == true && IsCustomRoslynProjectLimit
+            ? RoslynMaxProjectsInput.Value
+            : _selected?.IsRoslyn == true ? 500 : null,
+        _selected?.IsRoslyn == true ? RoslynSolutionMode : null,
+        _selected?.IsRoslyn == true && IsCustomRoslynSolution
+            ? NormalizeSolutionPath(RoslynSolutionPathInput.Text)
+            : null,
+        _selected?.IsRoslyn == true ? RoslynAutomaticRestoreToggle.IsChecked == true : null,
+        _selected?.IsRoslyn == true ? RoslynSourceGeneratorMode : null,
+        _selected?.IsRoslyn == true ? RoslynCompilerDiagnosticScope : null,
+        _selected?.IsRoslyn == true ? RoslynAnalyzerDiagnosticScope : null,
         string.Join('\n', Lines(RootMarkersInput.Text)),
         string.Join('\n', Lines(EnvironmentInput.Text)),
         StartupTimeoutInput.Value,
@@ -686,6 +879,48 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             string.IsNullOrWhiteSpace(item.DetectedCargoVersion) ? null : $"Cargo {item.DetectedCargoVersion}"
         }.Where(version => version is not null));
         return value.Length > 0 ? value : L("LocNotDetected", "Not detected");
+    }
+
+    private static string DotnetRuntimeLabel(LanguageServerItem item)
+    {
+        var value = string.Join(" · ", new[]
+        {
+            string.IsNullOrWhiteSpace(item.DetectedDotnetSdkVersion)
+                ? null
+                : $".NET SDK {item.DetectedDotnetSdkVersion}",
+            string.IsNullOrWhiteSpace(item.DetectedDotnetRuntimeVersion)
+                ? null
+                : $"Runtime {item.DetectedDotnetRuntimeVersion}"
+        }.Where(version => version is not null));
+        return value.Length > 0 ? value : L("LocNotDetected", "Not detected");
+    }
+
+    private string? NormalizeSolutionPath(string? value)
+    {
+        var trimmed = NullIfEmpty(value);
+        if (trimmed is null || !Path.IsPathRooted(trimmed) || string.IsNullOrWhiteSpace(ViewModel?.ProjectPath))
+            return trimmed;
+        try
+        {
+            var relative = Path.GetRelativePath(Path.GetFullPath(ViewModel.ProjectPath), Path.GetFullPath(trimmed));
+            if (!Path.IsPathRooted(relative)
+                && relative != ".."
+                && !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+                return relative.Replace('\\', '/');
+        }
+        catch (ArgumentException)
+        {
+            // Validation below the control reports malformed paths.
+        }
+        catch (NotSupportedException)
+        {
+            // Validation below the control reports unsupported paths.
+        }
+        catch (IOException)
+        {
+            // Validation below the control reports malformed or out-of-project paths.
+        }
+        return trimmed;
     }
 
     private static string[] Lines(string? value) => (value ?? string.Empty)
@@ -718,6 +953,14 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         string? RustCheckCommand,
         string? RustTargetMode,
         string? RustTarget,
+        string? RoslynProjectLoadMode,
+        decimal? RoslynMaxProjects,
+        string? RoslynSolutionMode,
+        string? RoslynSolutionPath,
+        bool? RoslynAutomaticRestore,
+        string? RoslynSourceGeneratorMode,
+        string? RoslynCompilerDiagnosticScope,
+        string? RoslynAnalyzerDiagnosticScope,
         string RootMarkers,
         string Environment,
         decimal? StartupTimeout,

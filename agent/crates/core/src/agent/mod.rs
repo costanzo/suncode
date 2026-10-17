@@ -31,7 +31,10 @@ pub use suncode_events::{
 };
 mod lsp;
 mod system_prompt;
-pub use lsp::{LanguageServerRuntimeState, LanguageServerRuntimeStatus};
+pub use lsp::{
+    match_root_marker, validate_root_marker, LanguageServerRuntimeState,
+    LanguageServerRuntimeStatus,
+};
 mod browser;
 mod preview;
 pub use browser::{

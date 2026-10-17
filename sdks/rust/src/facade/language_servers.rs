@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use suncode_data::{
-    LanguageServerConfig, LanguageServerInput, LanguageServerRecord,
+    LanguageServerConfig, LanguageServerInput, LanguageServerRecord, RoslynLanguageServerConfig,
     RustAnalyzerLanguageServerConfig,
 };
 
@@ -39,6 +39,11 @@ const RUST_ANALYZER_DISPLAY_NAME: &str = "rust-analyzer";
 const RUST_ANALYZER_DESCRIPTION: &str =
     "Rust diagnostics, definitions, references, hover details, and symbols.";
 const RUST_ANALYZER_ROOT_MARKERS: &[&str] = &["Cargo.toml", "rust-project.json"];
+const ROSLYN_KIND: &str = "roslyn-language-server";
+const ROSLYN_DISPLAY_NAME: &str = "Roslyn Language Server";
+const ROSLYN_DESCRIPTION: &str =
+    "C# diagnostics, definitions, references, hover details, and symbols.";
+const ROSLYN_ROOT_MARKERS: &[&str] = &["*.sln", "*.slnx", "*.csproj", "global.json"];
 
 impl AsyncAgentSdk {
     pub async fn start_language_server_project(
@@ -67,6 +72,7 @@ impl AsyncAgentSdk {
                     self.unscoped_vtsls_dto(),
                     self.unscoped_basedpyright_dto(),
                     self.unscoped_rust_analyzer_dto(),
+                    self.unscoped_roslyn_dto(),
                 ],
             });
         };
@@ -99,8 +105,15 @@ impl AsyncAgentSdk {
         let rust_analyzer = self
             .rust_analyzer_dto(project_id, &project.canonical_root, rust_analyzer_record)
             .await?;
+        let roslyn_record = self
+            .state
+            .store
+            .language_server_for_project(project_id, ROSLYN_KIND)?;
+        let roslyn = self
+            .roslyn_dto(project_id, &project.canonical_root, roslyn_record)
+            .await?;
         Ok(LanguageServersResult {
-            servers: vec![jdtls, vtsls, basedpyright, rust_analyzer],
+            servers: vec![jdtls, vtsls, basedpyright, rust_analyzer, roslyn],
         })
     }
 
@@ -201,6 +214,7 @@ impl AsyncAgentSdk {
                 config_path_mode: None,
                 config_path: None,
                 rust_analyzer: None,
+                roslyn: None,
             },
             enabled: request.enabled,
             sort_order: 0,
@@ -306,6 +320,7 @@ impl AsyncAgentSdk {
                 config_path_mode: None,
                 config_path: None,
                 rust_analyzer: None,
+                roslyn: None,
             },
             enabled: request.enabled,
             sort_order: 10,
@@ -407,6 +422,7 @@ impl AsyncAgentSdk {
                 config_path_mode: Some(config_path_mode.into()),
                 config_path,
                 rust_analyzer: None,
+                roslyn: None,
             },
             enabled: request.enabled,
             sort_order: 20,
@@ -513,6 +529,7 @@ impl AsyncAgentSdk {
                 config_path_mode: None,
                 config_path: None,
                 rust_analyzer: Some(rust_analyzer),
+                roslyn: None,
             },
             enabled: request.enabled,
             sort_order: 30,
@@ -538,6 +555,130 @@ impl AsyncAgentSdk {
             .reconcile_language_server(project_id, RUST_ANALYZER_KIND)
             .await?;
         self.rust_analyzer_dto(project_id, &project.canonical_root, Some(record))
+            .await
+    }
+
+    pub async fn configure_roslyn_language_server(
+        &self,
+        project_id: &str,
+        expected_revision: u64,
+        idempotency_key: &str,
+        request: RoslynLanguageServerWriteRequest,
+    ) -> SdkResult<LanguageServerDto> {
+        let project = self.project_for_user(project_id)?;
+        require_idempotency_key(idempotency_key)?;
+        validate_roslyn_request(&request)?;
+        let current = self
+            .state
+            .store
+            .language_server_for_project(project_id, ROSLYN_KIND)?;
+        let environment = apply_environment_changes(
+            current
+                .as_ref()
+                .map(|record| record.config.environment.clone())
+                .unwrap_or_default(),
+            request.environment,
+        )?;
+        let project_load_mode = normalize_roslyn_project_load_mode(&request.project_load_mode)?;
+        let max_projects = if project_load_mode == "recommended" {
+            500
+        } else {
+            request.max_projects
+        };
+        let solution_mode = normalize_roslyn_solution_mode(&request.solution_mode)?;
+        let solution_path = (solution_mode == "custom")
+            .then(|| optional_trimmed(request.solution_path))
+            .flatten();
+        if let Some(solution_path) = solution_path.as_deref() {
+            validate_roslyn_solution_path(Path::new(&project.canonical_root), solution_path)?;
+        }
+        let source_generator_mode =
+            normalize_roslyn_source_generator_mode(&request.source_generator_mode)?;
+        let compiler_diagnostic_scope =
+            normalize_roslyn_diagnostic_scope(&request.compiler_diagnostic_scope)?;
+        let analyzer_diagnostic_scope =
+            normalize_roslyn_diagnostic_scope(&request.analyzer_diagnostic_scope)?;
+        let executable = request.executable.trim().to_string();
+        let roslyn = RoslynLanguageServerConfig {
+            executable: executable.clone(),
+            project_load_mode: project_load_mode.into(),
+            max_projects,
+            solution_mode: solution_mode.into(),
+            solution_path: solution_path.clone(),
+            automatic_restore: request.automatic_restore,
+            source_generator_mode: source_generator_mode.into(),
+            compiler_diagnostic_scope: compiler_diagnostic_scope.into(),
+            analyzer_diagnostic_scope: analyzer_diagnostic_scope.into(),
+        };
+        let log_directory = self.managed_roslyn_log_path(project_id);
+        std::fs::create_dir_all(&log_directory).map_err(|error| {
+            BusinessError::unavailable(format!(
+                "Roslyn log directory could not be prepared: {error}"
+            ))
+        })?;
+        let input = LanguageServerInput {
+            display_name: format!("{ROSLYN_DISPLAY_NAME} [{project_id}]"),
+            config: LanguageServerConfig {
+                version: 6,
+                project_id: Some(project_id.to_string()),
+                server_kind: Some(ROSLYN_KIND.into()),
+                command: executable,
+                arguments: roslyn_arguments(max_projects, source_generator_mode, &log_directory),
+                language_ids: vec!["csharp".into()],
+                root_markers: if request.root_markers.is_empty() {
+                    ROSLYN_ROOT_MARKERS
+                        .iter()
+                        .map(|value| (*value).into())
+                        .collect()
+                } else {
+                    request.root_markers
+                },
+                initialization_options: json!({}),
+                configuration: roslyn_configuration(&roslyn),
+                environment,
+                startup_timeout_seconds: request.startup_timeout_seconds,
+                request_timeout_seconds: request.request_timeout_seconds,
+                java_home: None,
+                data_path_mode: None,
+                data_path: None,
+                vtsls_executable: None,
+                node_path: None,
+                typescript_sdk_mode: None,
+                typescript_sdk_path: None,
+                max_ts_server_memory: None,
+                basedpyright_executable: None,
+                python_path: None,
+                diagnostic_mode: None,
+                type_checking_mode: None,
+                config_path_mode: None,
+                config_path: None,
+                rust_analyzer: None,
+                roslyn: Some(roslyn),
+            },
+            enabled: request.enabled,
+            sort_order: 40,
+        };
+        let record = match current {
+            Some(current) => self.state.store.update_language_server(
+                &current.language_server_id,
+                expected_revision,
+                &input,
+            )?,
+            None if expected_revision == 0 => self.state.store.create_language_server(
+                &project_language_server_id(project_id, ROSLYN_KIND),
+                &input,
+            )?,
+            None => return Err(BusinessError::missing("language_server")),
+        };
+        self.state
+            .agent
+            .activate_language_server_project(project_id, Path::new(&project.canonical_root))
+            .await?;
+        self.state
+            .agent
+            .reconcile_language_server(project_id, ROSLYN_KIND)
+            .await?;
+        self.roslyn_dto(project_id, &project.canonical_root, Some(record))
             .await
     }
 
@@ -617,6 +758,20 @@ impl AsyncAgentSdk {
                 )
                 .await
             }
+            ROSLYN_KIND => {
+                let request = match current.as_ref() {
+                    Some(record) => roslyn_request_from_record(record, enabled),
+                    None => self
+                        .default_roslyn_request(Some(Path::new(&project.canonical_root)), enabled),
+                };
+                self.configure_roslyn_language_server(
+                    project_id,
+                    expected_revision,
+                    idempotency_key,
+                    request,
+                )
+                .await
+            }
             _ => Err(BusinessError::missing("language_server")),
         }
     }
@@ -629,7 +784,7 @@ impl AsyncAgentSdk {
         let project = self.project_for_user(project_id)?;
         if !matches!(
             language_server_id,
-            JDTLS_KIND | VTSLS_KIND | BASEDPYRIGHT_KIND | RUST_ANALYZER_KIND
+            JDTLS_KIND | VTSLS_KIND | BASEDPYRIGHT_KIND | RUST_ANALYZER_KIND | ROSLYN_KIND
         ) {
             return Err(BusinessError::missing("language_server"));
         }
@@ -656,6 +811,10 @@ impl AsyncAgentSdk {
             }
             RUST_ANALYZER_KIND => {
                 self.rust_analyzer_dto(project_id, &project.canonical_root, record)
+                    .await
+            }
+            ROSLYN_KIND => {
+                self.roslyn_dto(project_id, &project.canonical_root, record)
                     .await
             }
             _ => unreachable!(),
@@ -757,6 +916,7 @@ impl AsyncAgentSdk {
             vtsls: None,
             basedpyright: None,
             rust_analyzer: None,
+            roslyn: None,
             project_configurable: true,
             command: if record.revision == 0 {
                 detected_command.unwrap_or_else(|| "jdtls".into())
@@ -828,6 +988,7 @@ impl AsyncAgentSdk {
                 config_path_mode: None,
                 config_path: None,
                 rust_analyzer: None,
+                roslyn: None,
             },
             enabled: false,
             sort_order: 0,
@@ -853,6 +1014,7 @@ impl AsyncAgentSdk {
             vtsls: None,
             basedpyright: None,
             rust_analyzer: None,
+            roslyn: None,
             project_configurable: false,
             command: detected_executable.unwrap_or_else(|| "jdtls".into()),
             arguments: Vec::new(),
@@ -961,6 +1123,7 @@ impl AsyncAgentSdk {
             }),
             basedpyright: None,
             rust_analyzer: None,
+            roslyn: None,
             project_configurable: true,
             command: executable,
             arguments: record.config.arguments.clone(),
@@ -1039,6 +1202,7 @@ impl AsyncAgentSdk {
                 config_path_mode: None,
                 config_path: None,
                 rust_analyzer: None,
+                roslyn: None,
             },
             enabled: false,
             sort_order: 10,
@@ -1082,6 +1246,7 @@ impl AsyncAgentSdk {
             }),
             basedpyright: None,
             rust_analyzer: None,
+            roslyn: None,
             project_configurable: false,
             command: executable,
             arguments: vec!["--stdio".into()],
@@ -1196,6 +1361,7 @@ impl AsyncAgentSdk {
                 config_path: record.config.config_path.clone(),
             }),
             rust_analyzer: None,
+            roslyn: None,
             project_configurable: true,
             command: executable,
             arguments: vec!["--stdio".into()],
@@ -1269,6 +1435,7 @@ impl AsyncAgentSdk {
                 config_path_mode: Some("automatic".into()),
                 config_path: None,
                 rust_analyzer: None,
+                roslyn: None,
             },
             enabled: false,
             sort_order: 20,
@@ -1309,6 +1476,7 @@ impl AsyncAgentSdk {
                 config_path: None,
             }),
             rust_analyzer: None,
+            roslyn: None,
             project_configurable: false,
             command: executable,
             arguments: vec!["--stdio".into()],
@@ -1422,6 +1590,7 @@ impl AsyncAgentSdk {
                 target_mode: settings.target_mode.clone(),
                 target: settings.target.clone(),
             }),
+            roslyn: None,
             project_configurable: true,
             command: if record.revision == 0 {
                 detected_executable.unwrap_or(settings.executable)
@@ -1504,6 +1673,7 @@ impl AsyncAgentSdk {
                 config_path_mode: None,
                 config_path: None,
                 rust_analyzer: Some(settings),
+                roslyn: None,
             },
             enabled: false,
             sort_order: 30,
@@ -1545,6 +1715,7 @@ impl AsyncAgentSdk {
                 target_mode: "host".into(),
                 target: None,
             }),
+            roslyn: None,
             project_configurable: false,
             command: executable,
             arguments: Vec::new(),
@@ -1599,6 +1770,234 @@ impl AsyncAgentSdk {
             request_timeout_seconds: 30,
             enabled,
         }
+    }
+
+    async fn roslyn_dto(
+        &self,
+        project_id: &str,
+        project_root: &str,
+        record: Option<LanguageServerRecord>,
+    ) -> SdkResult<LanguageServerDto> {
+        let project_root_path = Path::new(project_root);
+        let host_detection = detect_roslyn(Some(project_root_path));
+        let configured_detection = record.as_ref().and_then(|record| {
+            detect_roslyn_version(&record.config.command, Some(project_root_path))
+                .map(|version| (record.config.command.clone(), version))
+        });
+        let detection = configured_detection.or(host_detection);
+        let default = self.default_roslyn_record(project_id, project_root_path);
+        let record = record.unwrap_or(default);
+        let runtime = self
+            .state
+            .agent
+            .language_server_runtime_status(Some(project_id), &record)
+            .await;
+        let settings = record
+            .config
+            .roslyn
+            .clone()
+            .unwrap_or_else(default_roslyn_config);
+        let detected_executable = detection.as_ref().map(|(path, _)| path.clone());
+        Ok(LanguageServerDto {
+            language_server_id: ROSLYN_KIND.into(),
+            kind: ROSLYN_KIND.into(),
+            display_name: ROSLYN_DISPLAY_NAME.into(),
+            description: ROSLYN_DESCRIPTION.into(),
+            language: "C#".into(),
+            detected: detection.is_some(),
+            detected_version: detection.as_ref().map(|(_, version)| version.clone()),
+            detected_executable: detected_executable.clone(),
+            detected_java_home: None,
+            vtsls: None,
+            basedpyright: None,
+            rust_analyzer: None,
+            roslyn: Some(RoslynLanguageServerConfigurationDto {
+                executable: settings.executable.clone(),
+                detected_dotnet_sdk_version: detect_dotnet_sdk_version(Some(project_root_path)),
+                detected_dotnet_runtime_version: detect_dotnet_runtime_version(Some(
+                    project_root_path,
+                )),
+                project_load_mode: settings.project_load_mode.clone(),
+                max_projects: settings.max_projects,
+                solution_mode: settings.solution_mode.clone(),
+                solution_path: settings.solution_path.clone(),
+                automatic_restore: settings.automatic_restore,
+                source_generator_mode: settings.source_generator_mode.clone(),
+                compiler_diagnostic_scope: settings.compiler_diagnostic_scope.clone(),
+                analyzer_diagnostic_scope: settings.analyzer_diagnostic_scope.clone(),
+            }),
+            project_configurable: true,
+            command: if record.revision == 0 {
+                detected_executable.unwrap_or(settings.executable)
+            } else {
+                record.config.command.clone()
+            },
+            arguments: record.config.arguments.clone(),
+            language_ids: vec!["csharp".into()],
+            root_markers: record.config.root_markers.clone(),
+            initialization_options: json!({}),
+            environment_keys: record.config.environment.keys().cloned().collect(),
+            startup_timeout_seconds: record.config.startup_timeout_seconds,
+            request_timeout_seconds: record.config.request_timeout_seconds,
+            java_home: None,
+            data_path_mode: String::new(),
+            data_path: String::new(),
+            matched_root_marker: suncode_core::match_root_marker(
+                project_root_path,
+                &record.config.root_markers,
+            ),
+            enabled: record.enabled,
+            sort_order: 40,
+            revision: record.revision,
+            runtime_status: runtime.state,
+            capability_count: runtime.capability_count,
+            error: runtime.error,
+            created_at: record.created_at,
+            updated_at: record.updated_at,
+        })
+    }
+
+    fn default_roslyn_record(&self, project_id: &str, project_root: &Path) -> LanguageServerRecord {
+        let request = self.default_roslyn_request(Some(project_root), false);
+        let settings = default_roslyn_config_with_executable(request.executable.clone());
+        LanguageServerRecord {
+            language_server_id: project_language_server_id(project_id, ROSLYN_KIND),
+            display_name: format!("{ROSLYN_DISPLAY_NAME} [{project_id}]"),
+            config: LanguageServerConfig {
+                version: 6,
+                project_id: Some(project_id.into()),
+                server_kind: Some(ROSLYN_KIND.into()),
+                command: request.executable,
+                arguments: roslyn_arguments(
+                    settings.max_projects,
+                    &settings.source_generator_mode,
+                    &self.managed_roslyn_log_path(project_id),
+                ),
+                language_ids: vec!["csharp".into()],
+                root_markers: request.root_markers,
+                initialization_options: json!({}),
+                configuration: roslyn_configuration(&settings),
+                environment: BTreeMap::new(),
+                startup_timeout_seconds: request.startup_timeout_seconds,
+                request_timeout_seconds: request.request_timeout_seconds,
+                java_home: None,
+                data_path_mode: None,
+                data_path: None,
+                vtsls_executable: None,
+                node_path: None,
+                typescript_sdk_mode: None,
+                typescript_sdk_path: None,
+                max_ts_server_memory: None,
+                basedpyright_executable: None,
+                python_path: None,
+                diagnostic_mode: None,
+                type_checking_mode: None,
+                config_path_mode: None,
+                config_path: None,
+                rust_analyzer: None,
+                roslyn: Some(settings),
+            },
+            enabled: false,
+            sort_order: 40,
+            revision: 0,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
+
+    fn unscoped_roslyn_dto(&self) -> LanguageServerDto {
+        let detection = detect_roslyn(None);
+        let executable = detection
+            .as_ref()
+            .map(|(path, _)| path.clone())
+            .unwrap_or_else(|| "roslyn-language-server".into());
+        LanguageServerDto {
+            language_server_id: ROSLYN_KIND.into(),
+            kind: ROSLYN_KIND.into(),
+            display_name: ROSLYN_DISPLAY_NAME.into(),
+            description: ROSLYN_DESCRIPTION.into(),
+            language: "C#".into(),
+            detected: detection.is_some(),
+            detected_version: detection.as_ref().map(|(_, version)| version.clone()),
+            detected_executable: detection.as_ref().map(|(path, _)| path.clone()),
+            detected_java_home: None,
+            vtsls: None,
+            basedpyright: None,
+            rust_analyzer: None,
+            roslyn: Some(RoslynLanguageServerConfigurationDto {
+                executable: executable.clone(),
+                detected_dotnet_sdk_version: detect_dotnet_sdk_version(None),
+                detected_dotnet_runtime_version: detect_dotnet_runtime_version(None),
+                project_load_mode: "recommended".into(),
+                max_projects: 500,
+                solution_mode: "automatic".into(),
+                solution_path: None,
+                automatic_restore: true,
+                source_generator_mode: "balanced".into(),
+                compiler_diagnostic_scope: "openFiles".into(),
+                analyzer_diagnostic_scope: "openFiles".into(),
+            }),
+            project_configurable: false,
+            command: executable,
+            arguments: Vec::new(),
+            language_ids: vec!["csharp".into()],
+            root_markers: ROSLYN_ROOT_MARKERS
+                .iter()
+                .map(|value| (*value).into())
+                .collect(),
+            initialization_options: json!({}),
+            environment_keys: Vec::new(),
+            startup_timeout_seconds: 120,
+            request_timeout_seconds: 30,
+            java_home: None,
+            data_path_mode: String::new(),
+            data_path: String::new(),
+            matched_root_marker: None,
+            enabled: false,
+            sort_order: 40,
+            revision: 0,
+            runtime_status: suncode_core::LanguageServerRuntimeState::NotStarted,
+            capability_count: 0,
+            error: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
+
+    fn default_roslyn_request(
+        &self,
+        project_root: Option<&Path>,
+        enabled: bool,
+    ) -> RoslynLanguageServerWriteRequest {
+        RoslynLanguageServerWriteRequest {
+            executable: detect_roslyn(project_root)
+                .map(|(path, _)| path)
+                .unwrap_or_else(|| "roslyn-language-server".into()),
+            root_markers: ROSLYN_ROOT_MARKERS
+                .iter()
+                .map(|value| (*value).into())
+                .collect(),
+            project_load_mode: "recommended".into(),
+            max_projects: 500,
+            solution_mode: "automatic".into(),
+            solution_path: None,
+            automatic_restore: true,
+            source_generator_mode: "balanced".into(),
+            compiler_diagnostic_scope: "openFiles".into(),
+            analyzer_diagnostic_scope: "openFiles".into(),
+            environment: None,
+            startup_timeout_seconds: 120,
+            request_timeout_seconds: 30,
+            enabled,
+        }
+    }
+
+    fn managed_roslyn_log_path(&self, project_id: &str) -> PathBuf {
+        self.state
+            .data_dir
+            .join("logs")
+            .join(ROSLYN_KIND)
+            .join(project_id)
     }
 
     fn managed_jdtls_data_path(&self, project_id: &str) -> PathBuf {
@@ -1784,6 +2183,225 @@ fn default_rust_analyzer_config() -> RustAnalyzerLanguageServerConfig {
         target_mode: "host".into(),
         target: None,
     }
+}
+
+fn roslyn_request_from_record(
+    record: &LanguageServerRecord,
+    enabled: bool,
+) -> RoslynLanguageServerWriteRequest {
+    let settings = record
+        .config
+        .roslyn
+        .clone()
+        .unwrap_or_else(default_roslyn_config);
+    RoslynLanguageServerWriteRequest {
+        executable: settings.executable,
+        root_markers: record.config.root_markers.clone(),
+        project_load_mode: settings.project_load_mode,
+        max_projects: settings.max_projects,
+        solution_mode: settings.solution_mode,
+        solution_path: settings.solution_path,
+        automatic_restore: settings.automatic_restore,
+        source_generator_mode: settings.source_generator_mode,
+        compiler_diagnostic_scope: settings.compiler_diagnostic_scope,
+        analyzer_diagnostic_scope: settings.analyzer_diagnostic_scope,
+        environment: None,
+        startup_timeout_seconds: record.config.startup_timeout_seconds,
+        request_timeout_seconds: record.config.request_timeout_seconds,
+        enabled,
+    }
+}
+
+fn default_roslyn_config() -> RoslynLanguageServerConfig {
+    default_roslyn_config_with_executable("roslyn-language-server".into())
+}
+
+fn default_roslyn_config_with_executable(executable: String) -> RoslynLanguageServerConfig {
+    RoslynLanguageServerConfig {
+        executable,
+        project_load_mode: "recommended".into(),
+        max_projects: 500,
+        solution_mode: "automatic".into(),
+        solution_path: None,
+        automatic_restore: true,
+        source_generator_mode: "balanced".into(),
+        compiler_diagnostic_scope: "openFiles".into(),
+        analyzer_diagnostic_scope: "openFiles".into(),
+    }
+}
+
+fn validate_roslyn_request(request: &RoslynLanguageServerWriteRequest) -> SdkResult<()> {
+    if request.executable.trim().is_empty()
+        || request.executable.chars().count() > 2_048
+        || request.executable.contains('\0')
+    {
+        return Err(BusinessError::invalid(
+            "roslyn-language-server executable is required and must not exceed 2048 characters",
+        ));
+    }
+    let project_load_mode = normalize_roslyn_project_load_mode(&request.project_load_mode)?;
+    if project_load_mode == "custom" && !(1..=5_000).contains(&request.max_projects) {
+        return Err(BusinessError::invalid(
+            "Roslyn project discovery limit must be between 1 and 5000",
+        ));
+    }
+    let solution_mode = normalize_roslyn_solution_mode(&request.solution_mode)?;
+    if solution_mode == "custom" {
+        let value = request
+            .solution_path
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| BusinessError::invalid("Custom Roslyn solution path is required"))?;
+        validate_roslyn_solution_path_form(value)?;
+    }
+    normalize_roslyn_source_generator_mode(&request.source_generator_mode)?;
+    normalize_roslyn_diagnostic_scope(&request.compiler_diagnostic_scope)?;
+    normalize_roslyn_diagnostic_scope(&request.analyzer_diagnostic_scope)?;
+    if request.root_markers.iter().any(|marker| {
+        marker.trim().is_empty()
+            || marker.chars().count() > 255
+            || marker.contains('\0')
+            || !suncode_core::validate_root_marker(marker)
+    }) {
+        return Err(BusinessError::invalid(
+            "Roslyn root patterns contain an invalid entry",
+        ));
+    }
+    if !(1..=120).contains(&request.startup_timeout_seconds)
+        || !(1..=600).contains(&request.request_timeout_seconds)
+    {
+        return Err(BusinessError::invalid(
+            "Language server timeout is outside the supported range",
+        ));
+    }
+    Ok(())
+}
+
+fn normalize_roslyn_project_load_mode(value: &str) -> SdkResult<&'static str> {
+    match value.trim() {
+        "" | "recommended" => Ok("recommended"),
+        "custom" => Ok("custom"),
+        _ => Err(BusinessError::invalid(
+            "Roslyn project load mode must be recommended or custom",
+        )),
+    }
+}
+
+fn normalize_roslyn_solution_mode(value: &str) -> SdkResult<&'static str> {
+    match value.trim() {
+        "" | "automatic" => Ok("automatic"),
+        "custom" => Ok("custom"),
+        _ => Err(BusinessError::invalid(
+            "Roslyn solution mode must be automatic or custom",
+        )),
+    }
+}
+
+fn normalize_roslyn_source_generator_mode(value: &str) -> SdkResult<&'static str> {
+    match value.trim() {
+        "" | "balanced" => Ok("balanced"),
+        "automatic" => Ok("automatic"),
+        _ => Err(BusinessError::invalid(
+            "Roslyn source generator mode must be balanced or automatic",
+        )),
+    }
+}
+
+fn normalize_roslyn_diagnostic_scope(value: &str) -> SdkResult<&'static str> {
+    match value.trim() {
+        "" | "openFiles" => Ok("openFiles"),
+        "fullSolution" => Ok("fullSolution"),
+        "none" => Ok("none"),
+        _ => Err(BusinessError::invalid(
+            "Roslyn diagnostic scope must be openFiles, fullSolution, or none",
+        )),
+    }
+}
+
+fn validate_roslyn_solution_path_form(value: &str) -> SdkResult<()> {
+    let path = Path::new(value);
+    let valid_extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .is_some_and(|value| {
+            value.eq_ignore_ascii_case("sln") || value.eq_ignore_ascii_case("slnx")
+        });
+    if value.chars().count() > 2_048
+        || value.contains('\0')
+        || path.is_absolute()
+        || path.components().any(|component| {
+            matches!(
+                component,
+                std::path::Component::ParentDir
+                    | std::path::Component::RootDir
+                    | std::path::Component::Prefix(_)
+            )
+        })
+        || !valid_extension
+    {
+        return Err(BusinessError::invalid(
+            "Custom Roslyn solution must be a project-relative .sln or .slnx path",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_roslyn_solution_path(project_root: &Path, value: &str) -> SdkResult<()> {
+    validate_roslyn_solution_path_form(value)?;
+    let project_root = std::fs::canonicalize(project_root)
+        .map_err(|_| BusinessError::invalid("The project root could not be resolved for Roslyn"))?;
+    let solution = std::fs::canonicalize(project_root.join(value)).map_err(|_| {
+        BusinessError::invalid("Custom Roslyn solution does not exist in this project")
+    })?;
+    if !solution.is_file() || !solution.starts_with(&project_root) {
+        return Err(BusinessError::invalid(
+            "Custom Roslyn solution must stay inside this project",
+        ));
+    }
+    Ok(())
+}
+
+fn roslyn_arguments(
+    max_projects: u64,
+    source_generator_mode: &str,
+    log_directory: &Path,
+) -> Vec<String> {
+    vec![
+        "--stdio".into(),
+        "--telemetryLevel".into(),
+        "off".into(),
+        "--logLevel".into(),
+        "Warning".into(),
+        "--extensionLogDirectory".into(),
+        log_directory.to_string_lossy().into_owned(),
+        "--autoLoadProjects".into(),
+        max_projects.to_string(),
+        "--sourceGeneratorExecutionPreference".into(),
+        if source_generator_mode == "automatic" {
+            "Automatic"
+        } else {
+            "Balanced"
+        }
+        .into(),
+    ]
+}
+
+fn roslyn_configuration(settings: &RoslynLanguageServerConfig) -> serde_json::Value {
+    let mut dotnet = json!({
+        "backgroundAnalysis": {
+            "compilerDiagnosticsScope": settings.compiler_diagnostic_scope,
+            "analyzerDiagnosticsScope": settings.analyzer_diagnostic_scope
+        },
+        "projects": {
+            "enableAutomaticRestore": settings.automatic_restore
+        }
+    });
+    if settings.solution_mode == "custom" {
+        dotnet["defaultSolution"] =
+            serde_json::Value::String(settings.solution_path.clone().unwrap_or_default());
+    }
+    json!({"dotnet": dotnet})
 }
 
 fn validate_rust_analyzer_request(
@@ -2280,6 +2898,148 @@ fn rustup_which_rust_analyzer(project_root: Option<&Path>) -> Option<PathBuf> {
 
 fn detect_rust_analyzer_version(executable: &str, project_root: Option<&Path>) -> Option<String> {
     detect_tool_version(executable, "rust-analyzer ", project_root)
+}
+
+fn detect_roslyn(project_root: Option<&Path>) -> Option<(String, String)> {
+    let name = if cfg!(windows) {
+        "roslyn-language-server.exe"
+    } else {
+        "roslyn-language-server"
+    };
+    let mut candidates = Vec::new();
+    if let Some(path) = find_on_path(name) {
+        candidates.push(path);
+    }
+    if let Some(home) = std::env::var_os("HOME") {
+        candidates.push(Path::new(&home).join(".dotnet/tools").join(name));
+    }
+    candidates.extend(
+        ["/opt/homebrew/bin", "/usr/local/bin"]
+            .into_iter()
+            .map(|directory| Path::new(directory).join(name)),
+    );
+    let mut seen = HashSet::new();
+    candidates.into_iter().find_map(|path| {
+        let display = path.to_string_lossy().into_owned();
+        if !path.is_file() || !seen.insert(display.clone()) {
+            return None;
+        }
+        detect_roslyn_version(&display, project_root).map(|version| (display, version))
+    })
+}
+
+fn detect_roslyn_version(executable: &str, project_root: Option<&Path>) -> Option<String> {
+    let mut command = std::process::Command::new(executable);
+    command.args(["--stdio", "--version"]);
+    if let Some(project_root) = project_root.filter(|path| path.is_dir()) {
+        command.current_dir(project_root);
+    }
+    let output = command.output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let value = if output.stdout.is_empty() {
+        output.stderr
+    } else {
+        output.stdout
+    };
+    let value = String::from_utf8(value).ok()?;
+    value
+        .lines()
+        .flat_map(str::split_whitespace)
+        .map(|token| {
+            token.trim_matches(|value: char| {
+                !value.is_ascii_alphanumeric() && value != '.' && value != '-' && value != '+'
+            })
+        })
+        .find(|token| {
+            token
+                .chars()
+                .next()
+                .is_some_and(|value| value.is_ascii_digit())
+                && token.contains('.')
+        })
+        .map(str::to_string)
+}
+
+fn detect_dotnet_sdk_version(project_root: Option<&Path>) -> Option<String> {
+    let dotnet = detect_dotnet()?;
+    let mut command = std::process::Command::new(dotnet);
+    command.arg("--version");
+    if let Some(project_root) = project_root.filter(|path| path.is_dir()) {
+        command.current_dir(project_root);
+    }
+    let output = command.output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn detect_dotnet_runtime_version(project_root: Option<&Path>) -> Option<String> {
+    let dotnet = detect_dotnet()?;
+    let mut command = std::process::Command::new(dotnet);
+    command.arg("--list-runtimes");
+    if let Some(project_root) = project_root.filter(|path| path.is_dir()) {
+        command.current_dir(project_root);
+    }
+    let output = command.output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let output = String::from_utf8(output.stdout).ok()?;
+    output
+        .lines()
+        .filter_map(|line| {
+            let mut parts = line.split_whitespace();
+            (parts.next()? == "Microsoft.NETCore.App").then(|| parts.next().map(str::to_string))?
+        })
+        .max_by(|left, right| compare_dotnet_versions(left, right))
+}
+
+fn compare_dotnet_versions(left: &str, right: &str) -> std::cmp::Ordering {
+    let components = |value: &str| {
+        value
+            .split(['.', '-'])
+            .take(4)
+            .map(|part| part.parse::<u64>().unwrap_or(0))
+            .collect::<Vec<_>>()
+    };
+    components(left).cmp(&components(right))
+}
+
+fn detect_dotnet() -> Option<PathBuf> {
+    let name = if cfg!(windows) {
+        "dotnet.exe"
+    } else {
+        "dotnet"
+    };
+    find_on_path(name)
+        .or_else(|| {
+            std::env::var_os("DOTNET_ROOT").and_then(|root| {
+                let candidate = Path::new(&root).join(name);
+                candidate.is_file().then_some(candidate)
+            })
+        })
+        .or_else(|| {
+            std::env::var_os("HOME").and_then(|home| {
+                let candidate = Path::new(&home).join(".dotnet").join(name);
+                candidate.is_file().then_some(candidate)
+            })
+        })
+        .or_else(|| {
+            [
+                "/usr/local/share/dotnet/dotnet",
+                "/opt/homebrew/bin/dotnet",
+                "/usr/local/bin/dotnet",
+            ]
+            .into_iter()
+            .map(PathBuf::from)
+            .find(|candidate| candidate.is_file())
+        })
 }
 
 fn detect_tool_version(

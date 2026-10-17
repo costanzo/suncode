@@ -8,6 +8,8 @@ name = "suncode_lsp"
 path = "src/lib.rs"
 
 [dependencies]
+globset.workspace = true
+ignore.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 suncode-common.workspace = true

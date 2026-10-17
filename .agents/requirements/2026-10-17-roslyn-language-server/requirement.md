@@ -7,7 +7,7 @@ SunCode currently provides project-scoped Java, JavaScript/TypeScript, Python, a
 ## Goals
 
 - Add Roslyn Language Server as the proposed fifth built-in language-server type.
-- Design a focused project configuration surface before production implementation.
+- Provide a focused project configuration surface in the design system and Avalonia client.
 - Detect the executable and the .NET SDK/runtime selected from the project root.
 - Expose stable C# project-loading and diagnostic choices without recreating Roslyn's editor configuration.
 
@@ -16,7 +16,7 @@ SunCode currently provides project-scoped Java, JavaScript/TypeScript, Python, a
 - Bundling or installing .NET, Roslyn Language Server, SDK workloads, NuGet packages, or project dependencies.
 - Supporting Razor as a separate model-facing language in this delivery.
 - Exposing completion, rename, formatting, code actions, extensions, daemon/pipe transport, telemetry, log level, arbitrary launch arguments, or raw initialization JSON.
-- Implementing Rust, SDK, persistence, or Avalonia behavior before design approval.
+- Bundling a production web runtime from the design-system specimen.
 
 ## Requirements
 
@@ -29,6 +29,7 @@ SunCode currently provides project-scoped Java, JavaScript/TypeScript, Python, a
 - Save and Reset remain disabled until the normalized draft differs from the loaded project configuration.
 - Runtime failure retains configuration and exposes an actionable Retry.
 - The UI states that restore, analyzers, and source generators run with the user's authority and are outside filesystem undo.
+- The Rust adapter persists version 6 typed records, uses bounded recursive glob matching for catalog root patterns, and remains compatible with version 1-5 records.
 
 ## Edge cases
 
@@ -46,8 +47,10 @@ SunCode currently provides project-scoped Java, JavaScript/TypeScript, Python, a
 - A direct route opens the Roslyn detail page.
 - The page covers default, custom project limit, custom solution, dirty, disabled, indexing, ready, failed, and retry states.
 - Light, dark, and constrained-width layouts remain usable.
-- Production behavior remains unchanged until the design is approved.
+- Rust, C, C#, and Avalonia implement the approved Roslyn configuration without making the React design system a production dependency.
 
-## Open questions
+## Resolved implementation choices
 
-- Confirm production persistence versioning, root-pattern matching, and exact Roslyn workspace-configuration keys during implementation.
+- Persistence uses version 6 with an optional typed Roslyn payload.
+- Glob root patterns are recursively matched within 20,000 entries and depth 16 while literal markers remain root-relative.
+- Workspace configuration uses `dotnet.defaultSolution`, `dotnet.projects.enableAutomaticRestore`, and the compiler/analyzer keys below `dotnet.backgroundAnalysis`.

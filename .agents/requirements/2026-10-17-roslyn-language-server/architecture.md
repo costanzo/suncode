@@ -2,9 +2,9 @@
 
 ## Current state
 
-The immutable Rust-owned catalog contains jdtls, vtsls, basedpyright, and rust-analyzer. Shared lifecycle, document synchronization, runtime status, bounded stderr reporting, and five semantic tools are language-neutral. No Roslyn production adapter exists yet.
+The immutable Rust-owned catalog contains jdtls, vtsls, basedpyright, rust-analyzer, and Roslyn Language Server. Shared lifecycle, document synchronization, runtime status, bounded stderr reporting, and five semantic tools are language-neutral. Roslyn uses the same project-scoped process and typed SDK path as the other catalog entries.
 
-## Proposed design
+## Implemented design
 
 Add a fixed `roslyn-language-server` catalog kind. Its adapter will launch the configured executable with `--stdio`, `--telemetryLevel off`, a SunCode-managed extension log directory, automatic project loading, and the selected source-generator policy. It will supply the C# language id and typed workspace settings for solution selection, restore, and diagnostic scopes.
 
@@ -28,13 +28,13 @@ Restore, analyzers, and source generators run with the user's operating-system a
 
 ## Compatibility and migration
 
-The production persistence version and optional typed fields will be chosen after design approval. Existing version 1-5 records must remain readable. Supporting project-relative glob patterns may require a catalog-specific matcher without changing existing literal-marker behavior.
+Roslyn records use configuration version 6 and an optional typed `roslyn` payload. Existing version 1-5 records remain readable. Literal root markers retain root-relative behavior; catalog-owned globs use a bounded recursive matcher with configured-pattern priority.
 
 ## Risks and rollback
 
 The .NET tool is currently prerelease and its command-line options may evolve. SDK selection, MSBuild evaluation, NuGet restore, analyzers, and source generators vary across projects. The design keeps detection visible and expensive analysis choices explicit. Until production implementation is approved, rollback is limited to removing the design-only catalog fixture and route.
 
-## Open questions
+## Resolved questions
 
-- Confirm whether project auto-load policy belongs in launch arguments or initialization options for the pinned server version.
-- Confirm the production representation for project-relative root patterns.
+- Automatic project loading uses Roslyn's supported `--autoLoadProjects` launch option.
+- Project-relative root patterns remain strings in the existing root-marker list and are recognized by the bounded matcher when they contain glob syntax.

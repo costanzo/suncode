@@ -6,7 +6,9 @@
 //! results from a replaced server.
 
 use crate::spec::{ServerSource, ServerSpec};
-use crate::{connect, Client, ConnectionConfig, PositionEncoding, ServerCapabilities};
+use crate::{
+    connect, match_root_marker, Client, ConnectionConfig, PositionEncoding, ServerCapabilities,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::{
@@ -294,10 +296,7 @@ impl LspRuntime {
                 .get_mut(project_id)
                 .ok_or_else(|| BusinessError::missing("project_runtime"))?;
             let marker_matches = server.root_markers.is_empty()
-                || server
-                    .root_markers
-                    .iter()
-                    .any(|marker| runtime.root.join(marker).exists());
+                || match_root_marker(&runtime.root, &server.root_markers).is_some();
             let previous = runtime.slots.remove(&server.server_id);
             let generation = previous
                 .as_ref()
@@ -522,10 +521,7 @@ impl LspRuntime {
 }
 
 fn root_markers_match(project_root: &Path, root_markers: &[String]) -> bool {
-    root_markers.is_empty()
-        || root_markers
-            .iter()
-            .any(|marker| project_root.join(marker).exists())
+    root_markers.is_empty() || match_root_marker(project_root, root_markers).is_some()
 }
 
 fn capability_count(capabilities: &ServerCapabilities) -> usize {

@@ -837,11 +837,12 @@ fn project_jdtls_sdk_redacts_environment_and_enforces_revisions() {
     let directory = tempfile::tempdir().unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
     let catalog = sdk.list_language_servers(None).unwrap();
-    assert_eq!(catalog.servers.len(), 4);
+    assert_eq!(catalog.servers.len(), 5);
     assert_eq!(catalog.servers[0].kind, "jdtls");
     assert_eq!(catalog.servers[1].kind, "vtsls");
     assert_eq!(catalog.servers[2].kind, "basedpyright");
     assert_eq!(catalog.servers[3].kind, "rust-analyzer");
+    assert_eq!(catalog.servers[4].kind, "roslyn-language-server");
     assert!(!catalog.servers[0].project_configurable);
     assert_eq!(
         catalog.servers[0].runtime_status,
@@ -1207,6 +1208,148 @@ fn project_rust_analyzer_sdk_maps_settings_redacts_environment_and_isolates_proj
         .unwrap();
     assert_eq!(second.revision, 0);
     assert!(!second.enabled);
+}
+
+#[test]
+fn project_roslyn_sdk_maps_settings_redacts_environment_and_isolates_projects() {
+    let directory = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(directory.path().join("src/App")).unwrap();
+    std::fs::write(directory.path().join("src/App/App.csproj"), "<Project />").unwrap();
+    std::fs::write(directory.path().join("src/SunCode.slnx"), "<Solution />").unwrap();
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    let project = sdk
+        .open_project(directory.path().to_str().unwrap(), None)
+        .unwrap();
+    let created = sdk
+        .configure_roslyn_language_server(
+            &project.project_id,
+            0,
+            "roslyn-create",
+            RoslynLanguageServerWriteRequest {
+                executable: "missing-roslyn-language-server".into(),
+                root_markers: vec!["*.csproj".into(), "*.slnx".into()],
+                project_load_mode: "custom".into(),
+                max_projects: 750,
+                solution_mode: "custom".into(),
+                solution_path: Some("src/SunCode.slnx".into()),
+                automatic_restore: false,
+                source_generator_mode: "automatic".into(),
+                compiler_diagnostic_scope: "fullSolution".into(),
+                analyzer_diagnostic_scope: "none".into(),
+                environment: Some(LanguageServerEnvironmentChanges {
+                    set: BTreeMap::from([("NUGET_TOKEN".into(), "private-value".into())]),
+                    remove: Vec::new(),
+                }),
+                startup_timeout_seconds: 120,
+                request_timeout_seconds: 45,
+                enabled: false,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(created.kind, "roslyn-language-server");
+    assert_eq!(
+        created.matched_root_marker.as_deref(),
+        Some("src/App/App.csproj")
+    );
+    assert_eq!(created.environment_keys, ["NUGET_TOKEN"]);
+    assert!(!serde_json::to_string(&created)
+        .unwrap()
+        .contains("private-value"));
+    let roslyn = created.roslyn.as_ref().unwrap();
+    assert_eq!(roslyn.project_load_mode, "custom");
+    assert_eq!(roslyn.max_projects, 750);
+    assert_eq!(roslyn.solution_path.as_deref(), Some("src/SunCode.slnx"));
+    assert!(!roslyn.automatic_restore);
+    assert_eq!(roslyn.source_generator_mode, "automatic");
+    assert_eq!(roslyn.compiler_diagnostic_scope, "fullSolution");
+    assert_eq!(roslyn.analyzer_diagnostic_scope, "none");
+
+    let stored = sdk
+        .state
+        .store
+        .language_server_for_project(&project.project_id, "roslyn-language-server")
+        .unwrap()
+        .unwrap();
+    assert_eq!(stored.config.version, 6);
+    assert_eq!(stored.config.language_ids, ["csharp"]);
+    assert_eq!(stored.config.arguments[0], "--stdio");
+    assert!(stored
+        .config
+        .arguments
+        .windows(2)
+        .any(|values| values == ["--telemetryLevel", "off"]));
+    assert!(stored
+        .config
+        .arguments
+        .windows(2)
+        .any(|values| values == ["--autoLoadProjects", "750"]));
+    assert!(stored
+        .config
+        .arguments
+        .windows(2)
+        .any(|values| values == ["--sourceGeneratorExecutionPreference", "Automatic"]));
+    assert_eq!(
+        stored.config.configuration["dotnet"]["defaultSolution"],
+        "src/SunCode.slnx"
+    );
+    assert_eq!(
+        stored.config.configuration["dotnet"]["projects"]["enableAutomaticRestore"],
+        false
+    );
+    assert_eq!(
+        stored.config.configuration["dotnet"]["backgroundAnalysis"]["compilerDiagnosticsScope"],
+        "fullSolution"
+    );
+
+    let second_root = directory.path().join("second-project");
+    std::fs::create_dir_all(&second_root).unwrap();
+    let second_project = sdk
+        .open_project(second_root.to_str().unwrap(), None)
+        .unwrap();
+    let second = sdk
+        .list_language_servers(Some(&second_project.project_id))
+        .unwrap()
+        .servers
+        .into_iter()
+        .find(|server| server.kind == "roslyn-language-server")
+        .unwrap();
+    assert_eq!(second.revision, 0);
+    assert!(!second.enabled);
+}
+
+#[test]
+fn project_roslyn_sdk_rejects_solution_outside_project() {
+    let directory = tempfile::tempdir().unwrap();
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    let project = sdk
+        .open_project(directory.path().to_str().unwrap(), None)
+        .unwrap();
+    let error = sdk
+        .configure_roslyn_language_server(
+            &project.project_id,
+            0,
+            "roslyn-invalid-solution",
+            RoslynLanguageServerWriteRequest {
+                executable: "roslyn-language-server".into(),
+                root_markers: vec!["*.csproj".into()],
+                project_load_mode: "recommended".into(),
+                max_projects: 500,
+                solution_mode: "custom".into(),
+                solution_path: Some("../outside.sln".into()),
+                automatic_restore: true,
+                source_generator_mode: "balanced".into(),
+                compiler_diagnostic_scope: "openFiles".into(),
+                analyzer_diagnostic_scope: "openFiles".into(),
+                environment: None,
+                startup_timeout_seconds: 120,
+                request_timeout_seconds: 30,
+                enabled: false,
+            },
+        )
+        .unwrap_err();
+
+    assert_eq!(error.code, "invalid_arguments");
 }
 
 #[test]

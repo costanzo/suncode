@@ -136,6 +136,8 @@ pub struct LanguageServerConfig {
     pub config_path: Option<String>,
     #[serde(default)]
     pub rust_analyzer: Option<RustAnalyzerLanguageServerConfig>,
+    #[serde(default)]
+    pub roslyn: Option<RoslynLanguageServerConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -153,6 +155,21 @@ pub struct RustAnalyzerLanguageServerConfig {
     pub target_mode: String,
     #[serde(default)]
     pub target: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RoslynLanguageServerConfig {
+    pub executable: String,
+    pub project_load_mode: String,
+    pub max_projects: u64,
+    pub solution_mode: String,
+    #[serde(default)]
+    pub solution_path: Option<String>,
+    pub automatic_restore: bool,
+    pub source_generator_mode: String,
+    pub compiler_diagnostic_scope: String,
+    pub analyzer_diagnostic_scope: String,
 }
 
 fn empty_json_object() -> Value {

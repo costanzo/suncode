@@ -222,6 +222,15 @@
                        FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
                        VerticalAlignment="Center" TextWrapping="Wrap" />
           </Grid>
+          <Grid x:Name="DotnetRuntimeRow" Classes="settings-row" ColumnDefinitions="*,220" IsVisible="False">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocDetectedDotnet}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocDetectedDotnetHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <TextBlock x:Name="DotnetRuntimeText" Grid.Column="1" Classes="mono"
+                       FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
+                       VerticalAlignment="Center" TextWrapping="Wrap" />
+          </Grid>
         </StackPanel>
 
         <Border x:Name="PythonEnvironmentDivider" Classes="settings-divider" IsVisible="False" />
@@ -412,6 +421,84 @@
           </Grid>
         </StackPanel>
 
+        <Border x:Name="RoslynLoadingDivider" Classes="settings-divider" IsVisible="False" />
+        <StackPanel x:Name="RoslynLoadingSection" Classes="settings-panel-section" IsVisible="False">
+          <TextBlock Text="{DynamicResource LocProjectLoadingCaps}" Classes="section-label" />
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocProjectDiscoveryLimit}" Classes="settings-row-title" />
+              <TextBlock x:Name="RoslynProjectLoadHint" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="RoslynProjectLoadModeSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="RoslynOptionChanged" />
+          </Grid>
+          <Grid x:Name="RoslynMaxProjectsRow" Classes="settings-row" ColumnDefinitions="*,220" IsVisible="False">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocMaximumProjects}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocMaximumProjectsHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCNumericInput x:Name="RoslynMaxProjectsInput" Grid.Column="1"
+                                     Minimum="1" Maximum="5000" Increment="50" Unit="PROJECTS" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocSolutionSelection}" Classes="settings-row-title" />
+              <TextBlock x:Name="RoslynSolutionModeHint" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="RoslynSolutionModeSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="RoslynOptionChanged" />
+          </Grid>
+          <Grid x:Name="RoslynSolutionPathRow" Classes="settings-row" ColumnDefinitions="*,220" IsVisible="False">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocSolutionFile}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocSolutionFileHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFileSelector x:Name="RoslynSolutionPathInput" Grid.Column="1"
+                                     SelectionMode="File" AllowedExtensions="sln,slnx"
+                                     FileTypeName="C# solutions" PlaceholderText="src/MyApp.slnx"
+                                     DialogTitle="Choose Roslyn solution" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocAutomaticRestore}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocAutomaticRestoreHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <ToggleSwitch x:Name="RoslynAutomaticRestoreToggle" Grid.Column="1"
+                          Classes="sc-toggle-switch settings-switch"
+                          HorizontalAlignment="Right" VerticalAlignment="Center"
+                          OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" />
+          </Grid>
+        </StackPanel>
+
+        <Border x:Name="RoslynAnalysisDivider" Classes="settings-divider" IsVisible="False" />
+        <StackPanel x:Name="RoslynAnalysisSection" Classes="settings-panel-section" IsVisible="False">
+          <TextBlock Text="{DynamicResource LocCodeAnalysisCaps}" Classes="section-label" />
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocSourceGenerators}" Classes="settings-row-title" />
+              <TextBlock x:Name="RoslynSourceGeneratorHint" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="RoslynSourceGeneratorModeSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="RoslynOptionChanged" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocCompilerDiagnostics}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocCompilerDiagnosticsHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="RoslynCompilerDiagnosticScopeSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="RoslynOptionChanged" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocAnalyzerDiagnostics}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocAnalyzerDiagnosticsHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="RoslynAnalyzerDiagnosticScopeSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="RoslynOptionChanged" />
+          </Grid>
+        </StackPanel>
+
         <Expander Classes="settings-expander" Header="{DynamicResource LocAdvancedConfiguration}" Margin="0,28,0,0">
           <StackPanel Classes="settings-panel-section">
             <Grid Classes="settings-row" ColumnDefinitions="*,220" VerticalAlignment="Top">
@@ -438,6 +525,11 @@
             </Grid>
           </StackPanel>
         </Expander>
+
+        <TextBlock x:Name="RoslynAuthorityHint" IsVisible="False"
+                   Text="{DynamicResource LocRoslynAuthorityHint}"
+                   Margin="0,16,0,0" FontSize="10"
+                   Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
 
         <TextBlock x:Name="ValidationText" Classes="sc-text-status" Margin="0,16,0,0"
                    Foreground="{DynamicResource DangerBrush}" />

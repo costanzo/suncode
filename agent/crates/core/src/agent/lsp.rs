@@ -6,7 +6,10 @@ use super::*;
 use suncode_data::LanguageServerRecord;
 use suncode_lsp::{ServerSource, ServerSpec};
 
-pub use suncode_lsp::{LanguageServerRuntimeState, LanguageServerRuntimeStatus};
+pub use suncode_lsp::{
+    match_root_marker, validate_root_marker, LanguageServerRuntimeState,
+    LanguageServerRuntimeStatus,
+};
 
 /// Desired language-server configuration read from the store.
 pub(super) struct StoreServerSource {

@@ -2936,6 +2936,8 @@ name = "suncode-lsp"
 version = "0.1.0"
 dependencies = [
  "futures-util",
+ "globset",
+ "ignore",
  "serde",
  "serde_json",
  "suncode-common",

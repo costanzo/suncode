@@ -300,6 +300,39 @@ public sealed class SdkTypedModelTests
     }
 
     [Fact]
+    public void Serializes_project_roslyn_request_with_typed_analysis_configuration()
+    {
+        var request = new RoslynLanguageServerWriteRequest(
+            "/home/test/.dotnet/tools/roslyn-language-server",
+            ["*.sln", "*.slnx", "*.csproj", "global.json"],
+            "custom",
+            750,
+            "custom",
+            "src/App.slnx",
+            false,
+            "automatic",
+            "fullSolution",
+            "none",
+            new LanguageServerEnvironmentChanges(
+                new Dictionary<string, string> { ["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1" },
+                Array.Empty<string>()),
+            120,
+            45,
+            true);
+
+        var json = JsonSerializer.Serialize(request, Options);
+        using var document = JsonDocument.Parse(json);
+
+        Assert.Equal("custom", document.RootElement.GetProperty("projectLoadMode").GetString());
+        Assert.Equal(750UL, document.RootElement.GetProperty("maxProjects").GetUInt64());
+        Assert.Equal("src/App.slnx", document.RootElement.GetProperty("solutionPath").GetString());
+        Assert.False(document.RootElement.GetProperty("automaticRestore").GetBoolean());
+        Assert.Equal("automatic", document.RootElement.GetProperty("sourceGeneratorMode").GetString());
+        Assert.Equal("fullSolution", document.RootElement.GetProperty("compilerDiagnosticScope").GetString());
+        Assert.Equal("none", document.RootElement.GetProperty("analyzerDiagnosticScope").GetString());
+    }
+
+    [Fact]
     public void Serializes_proxy_configuration_with_write_only_password_patch()
     {
         var request = new ProxyConfigurationRequest(

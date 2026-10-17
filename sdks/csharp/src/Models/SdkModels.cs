@@ -227,6 +227,19 @@ public sealed record RustAnalyzerLanguageServerConfiguration(
     string TargetMode,
     string? Target);
 
+public sealed record RoslynLanguageServerConfiguration(
+    string Executable,
+    string? DetectedDotnetSdkVersion,
+    string? DetectedDotnetRuntimeVersion,
+    string ProjectLoadMode,
+    ulong MaxProjects,
+    string SolutionMode,
+    string? SolutionPath,
+    bool AutomaticRestore,
+    string SourceGeneratorMode,
+    string CompilerDiagnosticScope,
+    string AnalyzerDiagnosticScope);
+
 public sealed record McpServersResult(IReadOnlyList<McpServer> Servers);
 
 public sealed record McpLoadProgress(
@@ -271,7 +284,8 @@ public sealed record LanguageServer(
     string UpdatedAt,
     VtslsLanguageServerConfiguration? Vtsls = null,
     BasedpyrightLanguageServerConfiguration? Basedpyright = null,
-    RustAnalyzerLanguageServerConfiguration? RustAnalyzer = null);
+    RustAnalyzerLanguageServerConfiguration? RustAnalyzer = null,
+    RoslynLanguageServerConfiguration? Roslyn = null);
 
 public sealed record LanguageServersResult(IReadOnlyList<LanguageServer> Servers);
 
@@ -373,6 +387,28 @@ public sealed record ConfigureRustAnalyzerLanguageServerRequest(
     ulong ExpectedRevision,
     string IdempotencyKey,
     RustAnalyzerLanguageServerWriteRequest Server);
+
+public sealed record RoslynLanguageServerWriteRequest(
+    string Executable,
+    IReadOnlyList<string> RootMarkers,
+    string ProjectLoadMode = "recommended",
+    ulong MaxProjects = 500,
+    string SolutionMode = "automatic",
+    string? SolutionPath = null,
+    bool AutomaticRestore = true,
+    string SourceGeneratorMode = "balanced",
+    string CompilerDiagnosticScope = "openFiles",
+    string AnalyzerDiagnosticScope = "openFiles",
+    LanguageServerEnvironmentChanges? Environment = null,
+    ulong StartupTimeoutSeconds = 120,
+    ulong RequestTimeoutSeconds = 30,
+    bool Enabled = false);
+
+public sealed record ConfigureRoslynLanguageServerRequest(
+    string ProjectId,
+    ulong ExpectedRevision,
+    string IdempotencyKey,
+    RoslynLanguageServerWriteRequest Server);
 
 public sealed record CreateLanguageServerRequest(
     string? ProjectId,

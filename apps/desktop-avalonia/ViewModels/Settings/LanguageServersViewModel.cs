@@ -220,6 +220,51 @@ public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
             : "rust-analyzer configuration saved as disabled for this project.");
     }
 
+    public async Task<bool> SaveRoslynAsync(
+        LanguageServerItem item,
+        string executable,
+        IReadOnlyList<string> rootMarkers,
+        string projectLoadMode,
+        ulong maxProjects,
+        string solutionMode,
+        string? solutionPath,
+        bool automaticRestore,
+        string sourceGeneratorMode,
+        string compilerDiagnosticScope,
+        string analyzerDiagnosticScope,
+        LanguageServerEnvironmentChanges? environment,
+        ulong startupTimeout,
+        ulong requestTimeout,
+        bool enabled)
+    {
+        if (_host.SelectedProject is null || !await _host.EnsureSdkReadyAsync()) return false;
+        return await RunMutationAsync(item, async () =>
+        {
+            var server = await _host.Sdk!.ConfigureRoslynLanguageServerAsync(new(
+                _host.SelectedProject.ProjectId,
+                item.Revision,
+                Guid.NewGuid().ToString("N"),
+                new(
+                    executable,
+                    rootMarkers,
+                    projectLoadMode,
+                    maxProjects,
+                    solutionMode,
+                    solutionPath,
+                    automaticRestore,
+                    sourceGeneratorMode,
+                    compilerDiagnosticScope,
+                    analyzerDiagnosticScope,
+                    environment,
+                    startupTimeout,
+                    requestTimeout,
+                    enabled)));
+            UpsertServer(server);
+        }, enabled
+            ? "Roslyn Language Server configuration saved. Restarting the project language server."
+            : "Roslyn Language Server configuration saved as disabled for this project.");
+    }
+
     public async Task<bool> SetServerEnabledAsync(LanguageServerItem item, bool enabled)
     {
         if (_host.SelectedProject is null || !await _host.EnsureSdkReadyAsync()) return false;

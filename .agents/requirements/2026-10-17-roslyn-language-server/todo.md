@@ -6,21 +6,21 @@
 - [x] Review the proposed boundary and stable settings.
 - [x] Add the design-system specimen.
 - [x] Complete visual and responsive verification.
-- [ ] Receive user approval.
+- [x] Receive user approval.
 
 ## Implementation
 
-- [ ] Add the Rust catalog adapter and detection.
-- [ ] Add typed persistence and SDK bindings.
-- [ ] Add the Avalonia Settings page.
-- [ ] Add focused production tests.
+- [x] Add the Rust catalog adapter and detection.
+- [x] Add typed persistence and SDK bindings.
+- [x] Add the Avalonia Settings page.
+- [x] Add focused production tests.
 
 ## Verification
 
 - [x] Run focused design-system checks.
-- [ ] Run production checks after implementation.
+- [x] Run production checks after implementation.
 
 ## Closeout
 
-- [ ] Update stable feature and specification records after implementation.
-- [ ] Remove or consolidate this delivery package when it no longer explains active work.
+- [x] Update stable feature and specification records after implementation.
+- [x] Retain this package as the Roslyn design and implementation decision trail.
