@@ -41,9 +41,9 @@ SunCode supports Java through jdtls and JavaScript/TypeScript through vtsls. Pyt
 - A direct route opens the basedpyright detail page.
 - The page covers default, custom configuration location, dirty, disabled, indexing, ready, failed, and retry behavior.
 - Light, dark, and constrained-width layouts remain usable.
-- Production implementation remains pending explicit design approval.
+- Production Rust, SDK binding, and Avalonia behavior match the approved design.
 
-## Open questions
+## Resolved decisions
 
-- Whether production interpreter detection should prefer `.venv`, the executable environment, or the host PATH when several interpreters exist.
-- Whether type-checking mode should be omitted from runtime settings when a project configuration file is present.
+- Interpreter detection prefers project `.venv`/`venv`, active conda/virtualenv state, PATH and standard paths, then user pyenv/local paths.
+- Settings always supplies the selected default type-checking mode; committed basedpyright project configuration may override it.

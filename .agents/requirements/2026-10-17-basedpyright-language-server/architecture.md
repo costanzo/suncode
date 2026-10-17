@@ -1,20 +1,16 @@
 # Architecture
 
-## Current state
+## Implemented state
 
-The Rust catalog contains jdtls and vtsls. Shared lifecycle, document synchronization, workspace configuration, runtime status, and the five semantic tools are language-neutral.
-
-## Proposed design
-
-Add an immutable `basedpyright` catalog kind with a typed project adapter. The adapter launches `basedpyright-langserver --stdio`, supplies the Python language id, maps the selected interpreter and analysis policy to supported settings, and preserves committed project configuration precedence.
+The Rust catalog contains jdtls, vtsls, and basedpyright. The basedpyright adapter launches `basedpyright-langserver --stdio`, supplies the Python language id, maps the selected interpreter and analysis policy to supported settings, and preserves committed project configuration precedence. Shared lifecycle, document synchronization, workspace configuration, runtime status, and the five semantic tools remain language-neutral.
 
 ## Boundaries and dependencies
 
-Rust remains authoritative for detection, launch construction, configuration mapping, persistence, and runtime reconciliation. The later production phase will add typed SDK and Avalonia fields. The design-system implementation in this delivery remains review tooling only.
+Rust remains authoritative for detection, launch construction, configuration mapping, persistence, and runtime reconciliation. Rust, C ABI 21, C#, and Avalonia expose typed basedpyright configuration. The design-system implementation remains review tooling only.
 
 ## Data and control flow
 
-Settings loads the catalog, opens the basedpyright detail by stable kind, edits a typed draft, and eventually submits one optimistic project mutation. Runtime settings use `python.pythonPath`, `basedpyright.analysis.diagnosticMode`, `basedpyright.analysis.typeCheckingMode`, and optional `basedpyright.analysis.configFilePath`.
+Settings loads the catalog, opens the basedpyright detail by stable kind, edits a typed draft, and submits one optimistic project mutation. Runtime settings use `python.pythonPath`, `basedpyright.analysis.diagnosticMode`, `basedpyright.analysis.typeCheckingMode`, and optional `basedpyright.analysis.configFilePath`.
 
 ## Security and failure handling
 
@@ -22,13 +18,13 @@ The language server runs without a shell in the project root using the filtered 
 
 ## Compatibility and migration
 
-Production persistence will require optional basedpyright-specific fields while retaining existing jdtls and vtsls records. No persistence change is part of design review.
+basedpyright records use configuration version 4 with optional typed fields in the existing JSON column. Existing jdtls and vtsls records remain readable through serde defaults; no database table migration is required.
 
 ## Risks and rollback
 
 Interpreter discovery varies across virtualenv, uv, conda, Homebrew, and system installations. The design keeps detection visible and editable while treating project configuration files as the durable team-owned source for detailed checking rules.
 
-## Open questions
+## Decisions
 
-- Final interpreter discovery priority.
-- Final runtime behavior when configuration-file settings conflict with Settings values.
+- Interpreter discovery prefers project `.venv`/`venv`, active conda/virtualenv state, host PATH and standard paths, then user pyenv/local paths.
+- basedpyright project configuration files remain authoritative and may override Settings type-checking defaults.

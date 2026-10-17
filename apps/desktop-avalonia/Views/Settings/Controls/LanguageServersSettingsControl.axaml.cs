@@ -19,6 +19,16 @@ public sealed partial class LanguageServersSettingsControl : UserControl
     private readonly SCComboBoxItem _workspacePreferredOption;
     private readonly SCComboBoxItem _bundledTypeScriptOption;
     private readonly SCComboBoxItem _customTypeScriptOption;
+    private readonly SCComboBoxItem _openFilesOnlyOption;
+    private readonly SCComboBoxItem _workspaceDiagnosticOption;
+    private readonly SCComboBoxItem _recommendedCheckingOption;
+    private readonly SCComboBoxItem _standardCheckingOption;
+    private readonly SCComboBoxItem _basicCheckingOption;
+    private readonly SCComboBoxItem _strictCheckingOption;
+    private readonly SCComboBoxItem _offCheckingOption;
+    private readonly SCComboBoxItem _allCheckingOption;
+    private readonly SCComboBoxItem _automaticConfigOption;
+    private readonly SCComboBoxItem _customConfigOption;
 
     public LanguageServersSettingsControl()
     {
@@ -33,6 +43,24 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         TypeScriptSdkModeSelector.ItemsSource =
             [_workspacePreferredOption, _bundledTypeScriptOption, _customTypeScriptOption];
         TypeScriptSdkModeSelector.SelectedItem = _workspacePreferredOption;
+        _openFilesOnlyOption = new(L("LocOpenFilesOnly", "Open files only"), "openFilesOnly");
+        _workspaceDiagnosticOption = new(L("LocEntireWorkspace", "Entire workspace"), "workspace");
+        DiagnosticModeSelector.ItemsSource = [_openFilesOnlyOption, _workspaceDiagnosticOption];
+        DiagnosticModeSelector.SelectedItem = _openFilesOnlyOption;
+        _recommendedCheckingOption = new(L("LocRecommended", "Recommended"), "recommended");
+        _standardCheckingOption = new(L("LocStandard", "Standard"), "standard");
+        _basicCheckingOption = new(L("LocBasic", "Basic"), "basic");
+        _strictCheckingOption = new(L("LocStrict", "Strict"), "strict");
+        _offCheckingOption = new(L("LocOff", "Off"), "off");
+        _allCheckingOption = new(L("LocAllRules", "All rules"), "all");
+        TypeCheckingModeSelector.ItemsSource =
+            [_recommendedCheckingOption, _standardCheckingOption, _basicCheckingOption,
+             _strictCheckingOption, _offCheckingOption, _allCheckingOption];
+        TypeCheckingModeSelector.SelectedItem = _recommendedCheckingOption;
+        _automaticConfigOption = new(L("LocAutomaticFromProject", "Automatic from project"), "automatic");
+        _customConfigOption = new(L("LocCustomLocation", "Custom location"), "custom");
+        ConfigPathModeSelector.ItemsSource = [_automaticConfigOption, _customConfigOption];
+        ConfigPathModeSelector.SelectedItem = _automaticConfigOption;
         WireDirtyTracking();
     }
 
@@ -83,6 +111,8 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             JavaHomeInput.Text = refreshed.DetectedJavaHome;
         if (refreshed.IsVtsls && !string.IsNullOrWhiteSpace(refreshed.DetectedNodePath))
             NodePathInput.Text = refreshed.DetectedNodePath;
+        if (refreshed.IsBasedpyright && !string.IsNullOrWhiteSpace(refreshed.DetectedPythonPath))
+            PythonPathInput.Text = refreshed.DetectedPythonPath;
     }
 
     private async void RetryClicked(object? sender, RoutedEventArgs e)
@@ -112,8 +142,10 @@ public sealed partial class LanguageServersSettingsControl : UserControl
     {
         if (_selected is null || ViewModel is null || !TryCreateRequest(out var environment, out var startup, out var request))
             return;
-        var saved = _selected.IsVtsls
-            ? await ViewModel.SaveVtslsAsync(
+        bool saved;
+        if (_selected.IsVtsls)
+        {
+            saved = await ViewModel.SaveVtslsAsync(
                 _selected,
                 ExecutableInput.Text?.Trim() ?? string.Empty,
                 NodePathInput.Text?.Trim() ?? string.Empty,
@@ -124,8 +156,27 @@ public sealed partial class LanguageServersSettingsControl : UserControl
                 environment,
                 startup,
                 request,
-                EnabledToggle.IsChecked == true)
-            : await ViewModel.SaveJdtlsAsync(
+                EnabledToggle.IsChecked == true);
+        }
+        else if (_selected.IsBasedpyright)
+        {
+            saved = await ViewModel.SaveBasedpyrightAsync(
+                _selected,
+                ExecutableInput.Text?.Trim() ?? string.Empty,
+                NullIfEmpty(PythonPathInput.Text),
+                Lines(RootMarkersInput.Text),
+                DiagnosticMode,
+                TypeCheckingMode,
+                ConfigPathMode,
+                IsCustomConfigPath ? NullIfEmpty(ConfigPathInput.Text) : null,
+                environment,
+                startup,
+                request,
+                EnabledToggle.IsChecked == true);
+        }
+        else
+        {
+            saved = await ViewModel.SaveJdtlsAsync(
                 _selected,
                 ExecutableInput.Text?.Trim() ?? string.Empty,
                 NullIfEmpty(JavaHomeInput.Text),
@@ -136,6 +187,7 @@ public sealed partial class LanguageServersSettingsControl : UserControl
                 startup,
                 request,
                 EnabledToggle.IsChecked == true);
+        }
         if (!saved)
         {
             ValidationText.Text = ViewModel.StatusText;
@@ -183,6 +235,12 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             && (TsServerMemoryInput.Value is not { } memoryValue || memoryValue is < 512 or > 16384))
         {
             ValidationText.Text = "tsserver memory must be between 512 and 16384 MiB.";
+            return false;
+        }
+        if (_selected?.IsBasedpyright == true && IsCustomConfigPath
+            && string.IsNullOrWhiteSpace(ConfigPathInput.Text))
+        {
+            ValidationText.Text = "A custom basedpyright configuration location is required.";
             return false;
         }
         if (StartupTimeoutInput.Value is not { } startupValue || startupValue is < 1 or > 120
@@ -239,33 +297,60 @@ public sealed partial class LanguageServersSettingsControl : UserControl
                 ? "No root marker matched"
                 : $"Matched  {item.MatchedRootMarker}";
             var isVtsls = item.IsVtsls;
-            DetailSubtitle.Text = isVtsls
-                ? L("LocProjectJavaScriptTypeScriptAnalysis", "Project JavaScript and TypeScript analysis")
-                : L("LocProjectJavaAnalysis", "Project Java analysis");
-            EnableHint.Text = isVtsls
-                ? L("LocEnableVtslsHint", "Starts one vtsls process for JavaScript and TypeScript files in this project.")
-                : L("LocEnableJdtlsHint", "Starts one jdtls process and keeps a separate index for this project.");
-            ExecutableLabel.Text = isVtsls
-                ? L("LocVtslsExecutable", "vtsls executable")
-                : L("LocJdtlsExecutable", "jdtls executable");
-            ExecutableHint.Text = isVtsls
-                ? L("LocVtslsExecutableHint", "The @vtsls/language-server executable SunCode starts with --stdio.")
-                : L("LocJdtlsExecutableHint", "Executable used for this project.");
-            RootMarkersHint.Text = isVtsls
-                ? L("LocVtslsRootMarkersHint", "The first match identifies a JavaScript or TypeScript project.")
-                : L("LocJdtlsRootMarkersHint", "The first match identifies a Java project.");
-            JavaRuntimeRow.IsVisible = !isVtsls;
+            var isBasedpyright = item.IsBasedpyright;
+            DetailSubtitle.Text = isBasedpyright
+                ? L("LocProjectPythonAnalysis", "Project configuration for Python semantic analysis.")
+                : isVtsls
+                    ? L("LocProjectJavaScriptTypeScriptAnalysis", "Project JavaScript and TypeScript analysis")
+                    : L("LocProjectJavaAnalysis", "Project Java analysis");
+            EnableHint.Text = isBasedpyright
+                ? L("LocEnableBasedpyrightHint", "Starts one basedpyright process for Python files in this project.")
+                : isVtsls
+                    ? L("LocEnableVtslsHint", "Starts one vtsls process for JavaScript and TypeScript files in this project.")
+                    : L("LocEnableJdtlsHint", "Starts one jdtls process and keeps a separate index for this project.");
+            ExecutableLabel.Text = isBasedpyright
+                ? L("LocBasedpyrightExecutable", "basedpyright executable")
+                : isVtsls
+                    ? L("LocVtslsExecutable", "vtsls executable")
+                    : L("LocJdtlsExecutable", "jdtls executable");
+            ExecutableHint.Text = isBasedpyright
+                ? L("LocBasedpyrightExecutableHint", "The basedpyright-langserver executable SunCode starts with --stdio.")
+                : isVtsls
+                    ? L("LocVtslsExecutableHint", "The @vtsls/language-server executable SunCode starts with --stdio.")
+                    : L("LocJdtlsExecutableHint", "Executable used for this project.");
+            ExecutableInput.DialogTitle = isBasedpyright
+                ? "Choose basedpyright executable"
+                : isVtsls ? "Choose vtsls executable" : "Choose jdtls executable";
+            RootMarkersHint.Text = isBasedpyright
+                ? L("LocPythonRootMarkersHint", "The first match identifies a Python project.")
+                : isVtsls
+                    ? L("LocVtslsRootMarkersHint", "The first match identifies a JavaScript or TypeScript project.")
+                    : L("LocJdtlsRootMarkersHint", "The first match identifies a Java project.");
+            ProjectConfigurationLabel.Text = isBasedpyright
+                ? L("LocProjectMatchingCaps", "PROJECT MATCHING")
+                : L("LocProjectIndexCaps", "PROJECT INDEX");
+            JavaRuntimeRow.IsVisible = item.IsJdtls;
             NodeRuntimeRow.IsVisible = isVtsls;
-            DataPathModeRow.IsVisible = !isVtsls;
-            DataPathRow.IsVisible = !isVtsls;
+            PythonEnvironmentDivider.IsVisible = isBasedpyright;
+            PythonEnvironmentSection.IsVisible = isBasedpyright;
+            PythonAnalysisDivider.IsVisible = isBasedpyright;
+            PythonAnalysisSection.IsVisible = isBasedpyright;
+            DataPathModeRow.IsVisible = item.IsJdtls;
+            DataPathRow.IsVisible = item.IsJdtls;
             TypeScriptSdkModeRow.IsVisible = isVtsls;
             TsServerMemoryRow.IsVisible = isVtsls;
-            ExecutableInput.Text = isVtsls ? item.VtslsExecutable : item.Command;
+            ExecutableInput.Text = isBasedpyright
+                ? item.BasedpyrightExecutable
+                : isVtsls ? item.VtslsExecutable : item.Command;
             JavaHomeInput.Text = item.JavaHome ?? string.Empty;
             NodePathInput.Text = item.NodePath;
             NodeRuntimeHint.Text = string.IsNullOrWhiteSpace(item.DetectedNodeVersion)
                 ? L("LocNodeRuntimeHint", "vtsls requires Node.js 18 or newer.")
                 : $"Node.js {item.DetectedNodeVersion} detected. vtsls requires version 18 or newer.";
+            PythonPathInput.Text = item.PythonPath ?? string.Empty;
+            PythonInterpreterHint.Text = string.IsNullOrWhiteSpace(item.DetectedPythonVersion)
+                ? L("LocPythonInterpreterHint", "Used to resolve installed packages and infer the target Python version.")
+                : $"{L("LocPythonInterpreterHint", "Used to resolve installed packages and infer the target Python version.")} Detected Python {item.DetectedPythonVersion}.";
             _managedDataPath = item.DataPathMode == "managed" ? item.DataPath : string.Empty;
             DataPathModeSelector.SelectedItem = item.DataPathMode == "custom"
                 ? _customDataPathOption
@@ -280,6 +365,22 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             };
             TypeScriptSdkPathInput.Text = item.TypeScriptSdkPath ?? string.Empty;
             TsServerMemoryInput.Value = item.MaxTsServerMemory;
+            DiagnosticModeSelector.SelectedItem = item.DiagnosticMode == "workspace"
+                ? _workspaceDiagnosticOption
+                : _openFilesOnlyOption;
+            TypeCheckingModeSelector.SelectedItem = item.TypeCheckingMode switch
+            {
+                "standard" => _standardCheckingOption,
+                "basic" => _basicCheckingOption,
+                "strict" => _strictCheckingOption,
+                "off" => _offCheckingOption,
+                "all" => _allCheckingOption,
+                _ => _recommendedCheckingOption
+            };
+            ConfigPathModeSelector.SelectedItem = item.ConfigPathMode == "custom"
+                ? _customConfigOption
+                : _automaticConfigOption;
+            ConfigPathInput.Text = item.ConfigPath ?? string.Empty;
             EnvironmentInput.Text = string.Empty;
             EnvironmentInput.PlaceholderText = item.EnvironmentKeys.Count > 0
                 ? $"Stored keys: {string.Join(", ", item.EnvironmentKeys)}"
@@ -289,6 +390,7 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             ValidationText.Text = string.Empty;
             UpdateDataPathMode();
             UpdateTypeScriptSdkMode();
+            UpdateBasedpyrightOptions();
         }
         finally
         {
@@ -301,9 +403,11 @@ public sealed partial class LanguageServersSettingsControl : UserControl
     private void UpdateRuntimePresentation(LanguageServerItem item)
     {
         DetailTitle.Text = item.DisplayName;
-        FailureTitle.Text = item.IsVtsls
-            ? L("LocVtslsCouldNotStart", "vtsls could not start")
-            : L("LocJdtlsCouldNotStart", "jdtls could not start");
+        FailureTitle.Text = item.IsBasedpyright
+            ? L("LocBasedpyrightCouldNotStart", "basedpyright could not start")
+            : item.IsVtsls
+                ? L("LocVtslsCouldNotStart", "vtsls could not start")
+                : L("LocJdtlsCouldNotStart", "jdtls could not start");
         DetailStatus.Text = item.StatusLabel;
         DetailStatusText.Text = item.StatusDetail;
         DetailStatus.Classes.Set("tone-danger", item.IsFailed);
@@ -325,6 +429,18 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         UpdateDirtyState();
     }
 
+    private void BasedpyrightOptionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        UpdateBasedpyrightOptions();
+        UpdateDirtyState();
+    }
+
+    private void ConfigPathModeChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        UpdateBasedpyrightOptions();
+        UpdateDirtyState();
+    }
+
     private bool IsCustomDataPath =>
         string.Equals(DataPathModeSelector.SelectedItem?.Value as string, "custom", StringComparison.Ordinal);
 
@@ -332,6 +448,17 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         TypeScriptSdkModeSelector.SelectedItem?.Value as string ?? "workspace-preferred";
 
     private bool IsCustomTypeScriptSdk => TypeScriptSdkMode == "custom";
+
+    private string DiagnosticMode =>
+        DiagnosticModeSelector.SelectedItem?.Value as string ?? "openFilesOnly";
+
+    private string TypeCheckingMode =>
+        TypeCheckingModeSelector.SelectedItem?.Value as string ?? "recommended";
+
+    private string ConfigPathMode =>
+        ConfigPathModeSelector.SelectedItem?.Value as string ?? "automatic";
+
+    private bool IsCustomConfigPath => ConfigPathMode == "custom";
 
     private void UpdateDataPathMode()
     {
@@ -346,16 +473,30 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         TypeScriptSdkPathInput.IsEnabled = IsCustomTypeScriptSdk;
     }
 
+    private void UpdateBasedpyrightOptions()
+    {
+        CustomConfigPathRow.IsVisible = _selected?.IsBasedpyright == true && IsCustomConfigPath;
+        ConfigPathInput.IsEnabled = IsCustomConfigPath;
+        DiagnosticModeHint.Text = DiagnosticMode == "workspace"
+            ? L("LocEntireWorkspaceHint", "Analyzes every Python file selected by the project configuration.")
+            : L("LocOpenFilesOnlyHint", "Analyzes files after SunCode opens them for semantic work.");
+        ConfigPathModeHint.Text = IsCustomConfigPath
+            ? L("LocCustomConfigHint", "Uses a specific configuration file or directory for this project.")
+            : L("LocAutomaticConfigHint", "Finds pyproject.toml or pyrightconfig.json from the project root.");
+    }
+
     private void WireDirtyTracking()
     {
         EnabledToggle.Click += (_, _) => UpdateDirtyState();
         ExecutableInput.TextChanged += (_, _) => UpdateDirtyState();
         JavaHomeInput.TextChanged += (_, _) => UpdateDirtyState();
         NodePathInput.TextChanged += (_, _) => UpdateDirtyState();
+        PythonPathInput.TextChanged += (_, _) => UpdateDirtyState();
         DataPathInput.TextChanged += (_, _) => UpdateDirtyState();
         RootMarkersInput.TextChanged += (_, _) => UpdateDirtyState();
         TypeScriptSdkPathInput.TextChanged += (_, _) => UpdateDirtyState();
         TsServerMemoryInput.ValueChanged += (_, _) => UpdateDirtyState();
+        ConfigPathInput.TextChanged += (_, _) => UpdateDirtyState();
         EnvironmentInput.TextChanged += (_, _) => UpdateDirtyState();
         StartupTimeoutInput.ValueChanged += (_, _) => UpdateDirtyState();
         RequestTimeoutInput.ValueChanged += (_, _) => UpdateDirtyState();
@@ -375,11 +516,16 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         ExecutableInput.Text?.Trim() ?? string.Empty,
         _selected?.IsJdtls == true ? NullIfEmpty(JavaHomeInput.Text) : null,
         _selected?.IsVtsls == true ? NullIfEmpty(NodePathInput.Text) : null,
+        _selected?.IsBasedpyright == true ? NullIfEmpty(PythonPathInput.Text) : null,
         _selected?.IsJdtls == true && IsCustomDataPath ? "custom" : "managed",
         _selected?.IsJdtls == true && IsCustomDataPath ? NullIfEmpty(DataPathInput.Text) : null,
         _selected?.IsVtsls == true ? TypeScriptSdkMode : null,
         _selected?.IsVtsls == true && IsCustomTypeScriptSdk ? NullIfEmpty(TypeScriptSdkPathInput.Text) : null,
         _selected?.IsVtsls == true ? TsServerMemoryInput.Value : null,
+        _selected?.IsBasedpyright == true ? DiagnosticMode : null,
+        _selected?.IsBasedpyright == true ? TypeCheckingMode : null,
+        _selected?.IsBasedpyright == true ? ConfigPathMode : null,
+        _selected?.IsBasedpyright == true && IsCustomConfigPath ? NullIfEmpty(ConfigPathInput.Text) : null,
         string.Join('\n', Lines(RootMarkersInput.Text)),
         string.Join('\n', Lines(EnvironmentInput.Text)),
         StartupTimeoutInput.Value,
@@ -399,11 +545,16 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         string Executable,
         string? JavaHome,
         string? NodePath,
+        string? PythonPath,
         string DataPathMode,
         string? DataPath,
         string? TypeScriptSdkMode,
         string? TypeScriptSdkPath,
         decimal? MaxTsServerMemory,
+        string? DiagnosticMode,
+        string? TypeCheckingMode,
+        string? ConfigPathMode,
+        string? ConfigPath,
         string RootMarkers,
         string Environment,
         decimal? StartupTimeout,

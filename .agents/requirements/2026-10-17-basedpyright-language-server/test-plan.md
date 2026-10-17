@@ -2,15 +2,20 @@
 
 ## Scope
 
-Design-system catalog and basedpyright detail review in this phase.
+Design-system catalog, Rust runtime and persistence, SDK bindings, Avalonia Settings behavior, and a live installed-server handshake.
 
 ## Unit tests
 
-- None required for fixture-only design work.
+- Version-2 persistence compatibility and version-4 basedpyright settings.
+- Rust SDK settings mapping, environment redaction, and project isolation.
+- C# request serialization and desktop item projection.
 
 ## Integration and conformance tests
 
+- Rust SDK and C ABI contract tests.
+- Avalonia build and test suite.
 - Design-system production build and direct route rendering.
+- Live basedpyright stdio initialization.
 
 ## Regression checks
 
@@ -30,7 +35,12 @@ Design-system catalog and basedpyright detail review in this phase.
 - Targeted `prettier --write`: completed with no formatting changes.
 - Headless Chrome screenshots: desktop catalog, desktop detail, and narrow detail passed visual inspection.
 - `git diff --check`: passed.
+- `cargo test -p suncode-data -p suncode-lsp --no-fail-fast`: passed, 46 tests.
+- `cargo test` in `sdks/rust`: passed, 36 tests.
+- `cargo test` in `sdks/c`: passed, 4 tests.
+- `dotnet test tests/SunCode.Desktop.Tests.csproj --no-restore`: passed, 322 tests.
+- Live `basedpyright-langserver --stdio` initialization: passed with 21 capability fields.
 
 ## Residual risks
 
-- The fixture will not prove interpreter discovery or a live basedpyright protocol handshake.
+- Interpreter discovery is focused-tested through deterministic project paths; conda, pyenv, and Windows installations remain environment-dependent.

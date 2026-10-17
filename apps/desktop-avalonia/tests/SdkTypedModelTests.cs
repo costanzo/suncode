@@ -239,6 +239,34 @@ public sealed class SdkTypedModelTests
     }
 
     [Fact]
+    public void Serializes_project_basedpyright_request_with_typed_analysis_configuration()
+    {
+        var request = new BasedpyrightLanguageServerWriteRequest(
+            "/opt/homebrew/bin/basedpyright-langserver",
+            "/project/.venv/bin/python",
+            ["pyproject.toml", "pyrightconfig.json"],
+            "workspace",
+            "strict",
+            "custom",
+            "/project/backend/pyproject.toml",
+            new LanguageServerEnvironmentChanges(
+                new Dictionary<string, string> { ["PYTHONWARNINGS"] = "default" },
+                Array.Empty<string>()),
+            60,
+            30,
+            true);
+
+        var json = JsonSerializer.Serialize(request, Options);
+        using var document = JsonDocument.Parse(json);
+
+        Assert.Equal("/opt/homebrew/bin/basedpyright-langserver", document.RootElement.GetProperty("executable").GetString());
+        Assert.Equal("/project/.venv/bin/python", document.RootElement.GetProperty("pythonPath").GetString());
+        Assert.Equal("workspace", document.RootElement.GetProperty("diagnosticMode").GetString());
+        Assert.Equal("strict", document.RootElement.GetProperty("typeCheckingMode").GetString());
+        Assert.Equal("custom", document.RootElement.GetProperty("configPathMode").GetString());
+    }
+
+    [Fact]
     public void Serializes_proxy_configuration_with_write_only_password_patch()
     {
         var request = new ProxyConfigurationRequest(

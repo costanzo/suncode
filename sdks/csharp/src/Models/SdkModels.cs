@@ -203,6 +203,16 @@ public sealed record VtslsLanguageServerConfiguration(
     [property: JsonPropertyName("typescriptSdkPath")] string? TypeScriptSdkPath,
     ulong MaxTsServerMemory);
 
+public sealed record BasedpyrightLanguageServerConfiguration(
+    string Executable,
+    string? PythonPath,
+    string? DetectedPythonPath,
+    string? DetectedPythonVersion,
+    string DiagnosticMode,
+    string TypeCheckingMode,
+    string ConfigPathMode,
+    string? ConfigPath);
+
 public sealed record McpServersResult(IReadOnlyList<McpServer> Servers);
 
 public sealed record McpLoadProgress(
@@ -245,7 +255,8 @@ public sealed record LanguageServer(
     string? Error,
     string CreatedAt,
     string UpdatedAt,
-    VtslsLanguageServerConfiguration? Vtsls = null);
+    VtslsLanguageServerConfiguration? Vtsls = null,
+    BasedpyrightLanguageServerConfiguration? Basedpyright = null);
 
 public sealed record LanguageServersResult(IReadOnlyList<LanguageServer> Servers);
 
@@ -305,6 +316,25 @@ public sealed record ConfigureVtslsLanguageServerRequest(
     ulong ExpectedRevision,
     string IdempotencyKey,
     VtslsLanguageServerWriteRequest Server);
+
+public sealed record BasedpyrightLanguageServerWriteRequest(
+    string Executable,
+    string? PythonPath,
+    IReadOnlyList<string> RootMarkers,
+    string DiagnosticMode = "openFilesOnly",
+    string TypeCheckingMode = "recommended",
+    string ConfigPathMode = "automatic",
+    string? ConfigPath = null,
+    LanguageServerEnvironmentChanges? Environment = null,
+    ulong StartupTimeoutSeconds = 60,
+    ulong RequestTimeoutSeconds = 30,
+    bool Enabled = false);
+
+public sealed record ConfigureBasedpyrightLanguageServerRequest(
+    string ProjectId,
+    ulong ExpectedRevision,
+    string IdempotencyKey,
+    BasedpyrightLanguageServerWriteRequest Server);
 
 public sealed record CreateLanguageServerRequest(
     string? ProjectId,

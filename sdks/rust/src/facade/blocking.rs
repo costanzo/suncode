@@ -417,6 +417,22 @@ impl AgentSdk {
             ))
     }
 
+    pub fn configure_basedpyright_language_server(
+        &self,
+        project_id: &str,
+        expected_revision: u64,
+        idempotency_key: &str,
+        request: BasedpyrightLanguageServerWriteRequest,
+    ) -> SdkResult<LanguageServerDto> {
+        self.runtime
+            .block_on(self.inner.configure_basedpyright_language_server(
+                project_id,
+                expected_revision,
+                idempotency_key,
+                request,
+            ))
+    }
+
     pub fn set_language_server_enabled(
         &self,
         project_id: Option<&str>,

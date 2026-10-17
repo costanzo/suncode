@@ -65,6 +65,27 @@ public sealed class LanguageServersViewModelTests
     }
 
     [Fact]
+    public void BasedpyrightItemExposesServerSpecificConfiguration()
+    {
+        var item = new LanguageServerItem(new LanguageServer(
+            "basedpyright", "basedpyright", "basedpyright", "Python semantic analysis", "Python",
+            true, null, "/opt/homebrew/bin/basedpyright-langserver", null, true,
+            "/opt/homebrew/bin/basedpyright-langserver", ["--stdio"], ["python"], ["pyproject.toml"],
+            JsonDocument.Parse("{}").RootElement.Clone(), [], 60, 30, null, string.Empty, string.Empty,
+            "pyproject.toml", false, 20, 1, "disabled", 0, null, string.Empty, string.Empty, null,
+            new BasedpyrightLanguageServerConfiguration(
+                "/opt/homebrew/bin/basedpyright-langserver", "/project/.venv/bin/python",
+                "/project/.venv/bin/python", "3.12.7", "openFilesOnly", "recommended",
+                "automatic", null)));
+
+        Assert.True(item.IsBasedpyright);
+        Assert.Equal("/project/.venv/bin/python", item.PythonPath);
+        Assert.Equal("openFilesOnly", item.DiagnosticMode);
+        Assert.Equal("recommended", item.TypeCheckingMode);
+        Assert.Equal("automatic", item.ConfigPathMode);
+    }
+
+    [Fact]
     public async Task MutationsFailWithoutSdkAndLeaveStateUntouched()
     {
         var host = new FakeViewModelHost();

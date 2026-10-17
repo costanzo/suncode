@@ -215,9 +215,22 @@
           </Grid>
         </StackPanel>
 
+        <Border x:Name="PythonEnvironmentDivider" Classes="settings-divider" IsVisible="False" />
+        <StackPanel x:Name="PythonEnvironmentSection" Classes="settings-panel-section" IsVisible="False">
+          <TextBlock Text="{DynamicResource LocPythonEnvironmentCaps}" Classes="section-label" />
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocPythonInterpreter}" Classes="settings-row-title" />
+              <TextBlock x:Name="PythonInterpreterHint" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFileSelector x:Name="PythonPathInput" Grid.Column="1"
+                                     SelectionMode="File" DialogTitle="Choose Python interpreter" />
+          </Grid>
+        </StackPanel>
+
         <Border Classes="settings-divider" />
         <StackPanel Classes="settings-panel-section">
-          <TextBlock Text="{DynamicResource LocProjectIndexCaps}" Classes="section-label" />
+          <TextBlock x:Name="ProjectConfigurationLabel" Text="{DynamicResource LocProjectIndexCaps}" Classes="section-label" />
           <Grid x:Name="DataPathModeRow" Classes="settings-row" ColumnDefinitions="*,220">
             <StackPanel Classes="settings-row-copy">
               <TextBlock Text="{DynamicResource LocDataDirectory}" Classes="settings-row-title" />
@@ -265,6 +278,43 @@
             </StackPanel>
             <controls:SCNumericInput x:Name="TsServerMemoryInput" Grid.Column="1"
                                      Minimum="512" Maximum="16384" Increment="256" Unit="MIB" />
+          </Grid>
+        </StackPanel>
+
+        <Border x:Name="PythonAnalysisDivider" Classes="settings-divider" IsVisible="False" />
+        <StackPanel x:Name="PythonAnalysisSection" Classes="settings-panel-section" IsVisible="False">
+          <TextBlock Text="{DynamicResource LocPythonAnalysisCaps}" Classes="section-label" />
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocDiagnosticScope}" Classes="settings-row-title" />
+              <TextBlock x:Name="DiagnosticModeHint" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="DiagnosticModeSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="BasedpyrightOptionChanged" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocTypeChecking}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocTypeCheckingHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="TypeCheckingModeSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="BasedpyrightOptionChanged" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocConfigurationLocation}" Classes="settings-row-title" />
+              <TextBlock x:Name="ConfigPathModeHint" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="ConfigPathModeSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="ConfigPathModeChanged" />
+          </Grid>
+          <Grid x:Name="CustomConfigPathRow" Classes="settings-row" ColumnDefinitions="*,220" IsVisible="False">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocConfigurationFileOrDirectory}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocConfigurationFileOrDirectoryHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFileSelector x:Name="ConfigPathInput" Grid.Column="1"
+                                     SelectionMode="Folder" DialogTitle="Choose basedpyright configuration location" />
           </Grid>
         </StackPanel>
 

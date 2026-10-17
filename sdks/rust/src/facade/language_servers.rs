@@ -20,6 +20,17 @@ const VTSLS_LANGUAGE_IDS: &[&str] = &[
     "typescript",
     "typescriptreact",
 ];
+const BASEDPYRIGHT_KIND: &str = "basedpyright";
+const BASEDPYRIGHT_DISPLAY_NAME: &str = "basedpyright";
+const BASEDPYRIGHT_DESCRIPTION: &str =
+    "Python diagnostics, definitions, references, hover details, and symbols.";
+const BASEDPYRIGHT_ROOT_MARKERS: &[&str] = &[
+    "pyproject.toml",
+    "pyrightconfig.json",
+    "setup.py",
+    "setup.cfg",
+    "requirements.txt",
+];
 
 impl AsyncAgentSdk {
     pub async fn start_language_server_project(
@@ -43,7 +54,11 @@ impl AsyncAgentSdk {
     ) -> SdkResult<LanguageServersResult> {
         let Some(project_id) = project_id else {
             return Ok(LanguageServersResult {
-                servers: vec![self.unscoped_jdtls_dto(), self.unscoped_vtsls_dto()],
+                servers: vec![
+                    self.unscoped_jdtls_dto(),
+                    self.unscoped_vtsls_dto(),
+                    self.unscoped_basedpyright_dto(),
+                ],
             });
         };
         let project = self.project_for_user(project_id)?;
@@ -61,8 +76,15 @@ impl AsyncAgentSdk {
         let vtsls = self
             .vtsls_dto(project_id, &project.canonical_root, vtsls_record)
             .await?;
+        let basedpyright_record = self
+            .state
+            .store
+            .language_server_for_project(project_id, BASEDPYRIGHT_KIND)?;
+        let basedpyright = self
+            .basedpyright_dto(project_id, &project.canonical_root, basedpyright_record)
+            .await?;
         Ok(LanguageServersResult {
-            servers: vec![jdtls, vtsls],
+            servers: vec![jdtls, vtsls, basedpyright],
         })
     }
 
@@ -156,6 +178,12 @@ impl AsyncAgentSdk {
                 typescript_sdk_mode: None,
                 typescript_sdk_path: None,
                 max_ts_server_memory: None,
+                basedpyright_executable: None,
+                python_path: None,
+                diagnostic_mode: None,
+                type_checking_mode: None,
+                config_path_mode: None,
+                config_path: None,
             },
             enabled: request.enabled,
             sort_order: 0,
@@ -254,6 +282,12 @@ impl AsyncAgentSdk {
                 typescript_sdk_mode: Some(sdk_mode.into()),
                 typescript_sdk_path: sdk_path,
                 max_ts_server_memory: Some(request.max_ts_server_memory),
+                basedpyright_executable: None,
+                python_path: None,
+                diagnostic_mode: None,
+                type_checking_mode: None,
+                config_path_mode: None,
+                config_path: None,
             },
             enabled: request.enabled,
             sort_order: 10,
@@ -282,6 +316,106 @@ impl AsyncAgentSdk {
             .await
     }
 
+    pub async fn configure_basedpyright_language_server(
+        &self,
+        project_id: &str,
+        expected_revision: u64,
+        idempotency_key: &str,
+        request: BasedpyrightLanguageServerWriteRequest,
+    ) -> SdkResult<LanguageServerDto> {
+        let project = self.project_for_user(project_id)?;
+        require_idempotency_key(idempotency_key)?;
+        validate_basedpyright_request(&request)?;
+        let current = self
+            .state
+            .store
+            .language_server_for_project(project_id, BASEDPYRIGHT_KIND)?;
+        let environment = apply_environment_changes(
+            current
+                .as_ref()
+                .map(|record| record.config.environment.clone())
+                .unwrap_or_default(),
+            request.environment,
+        )?;
+        let diagnostic_mode = normalize_diagnostic_mode(&request.diagnostic_mode)?;
+        let type_checking_mode = normalize_type_checking_mode(&request.type_checking_mode)?;
+        let config_path_mode = normalize_config_path_mode(&request.config_path_mode)?;
+        let python_path = optional_trimmed(request.python_path);
+        let config_path = (config_path_mode == "custom")
+            .then(|| optional_trimmed(request.config_path))
+            .flatten();
+        let executable = request.executable.trim().to_string();
+        let configuration = basedpyright_configuration(
+            python_path.as_deref(),
+            diagnostic_mode,
+            type_checking_mode,
+            config_path_mode,
+            config_path.as_deref(),
+        );
+        let input = LanguageServerInput {
+            display_name: format!("{BASEDPYRIGHT_DISPLAY_NAME} [{project_id}]"),
+            config: LanguageServerConfig {
+                version: 4,
+                project_id: Some(project_id.to_string()),
+                server_kind: Some(BASEDPYRIGHT_KIND.into()),
+                command: executable.clone(),
+                arguments: vec!["--stdio".into()],
+                language_ids: vec!["python".into()],
+                root_markers: if request.root_markers.is_empty() {
+                    BASEDPYRIGHT_ROOT_MARKERS
+                        .iter()
+                        .map(|value| (*value).into())
+                        .collect()
+                } else {
+                    request.root_markers
+                },
+                initialization_options: json!({}),
+                configuration,
+                environment,
+                startup_timeout_seconds: request.startup_timeout_seconds,
+                request_timeout_seconds: request.request_timeout_seconds,
+                java_home: None,
+                data_path_mode: None,
+                data_path: None,
+                vtsls_executable: None,
+                node_path: None,
+                typescript_sdk_mode: None,
+                typescript_sdk_path: None,
+                max_ts_server_memory: None,
+                basedpyright_executable: Some(executable),
+                python_path,
+                diagnostic_mode: Some(diagnostic_mode.into()),
+                type_checking_mode: Some(type_checking_mode.into()),
+                config_path_mode: Some(config_path_mode.into()),
+                config_path,
+            },
+            enabled: request.enabled,
+            sort_order: 20,
+        };
+        let record = match current {
+            Some(current) => self.state.store.update_language_server(
+                &current.language_server_id,
+                expected_revision,
+                &input,
+            )?,
+            None if expected_revision == 0 => self.state.store.create_language_server(
+                &project_language_server_id(project_id, BASEDPYRIGHT_KIND),
+                &input,
+            )?,
+            None => return Err(BusinessError::missing("language_server")),
+        };
+        self.state
+            .agent
+            .activate_language_server_project(project_id, Path::new(&project.canonical_root))
+            .await?;
+        self.state
+            .agent
+            .reconcile_language_server(project_id, BASEDPYRIGHT_KIND)
+            .await?;
+        self.basedpyright_dto(project_id, &project.canonical_root, Some(record))
+            .await
+    }
+
     pub async fn set_language_server_enabled(
         &self,
         project_id: Option<&str>,
@@ -292,7 +426,7 @@ impl AsyncAgentSdk {
     ) -> SdkResult<LanguageServerDto> {
         let project_id =
             project_id.ok_or_else(|| BusinessError::invalid("project_id is required"))?;
-        self.project_for_user(project_id)?;
+        let project = self.project_for_user(project_id)?;
         require_idempotency_key(idempotency_key)?;
         let current = self
             .state
@@ -325,6 +459,23 @@ impl AsyncAgentSdk {
                 )
                 .await
             }
+            BASEDPYRIGHT_KIND => {
+                let request = match current.as_ref() {
+                    Some(record) => basedpyright_request_from_record(record, enabled),
+                    None => self.default_basedpyright_request(
+                        project_id,
+                        &project.canonical_root,
+                        enabled,
+                    ),
+                };
+                self.configure_basedpyright_language_server(
+                    project_id,
+                    expected_revision,
+                    idempotency_key,
+                    request,
+                )
+                .await
+            }
             _ => Err(BusinessError::missing("language_server")),
         }
     }
@@ -335,7 +486,10 @@ impl AsyncAgentSdk {
         language_server_id: &str,
     ) -> SdkResult<LanguageServerDto> {
         let project = self.project_for_user(project_id)?;
-        if !matches!(language_server_id, JDTLS_KIND | VTSLS_KIND) {
+        if !matches!(
+            language_server_id,
+            JDTLS_KIND | VTSLS_KIND | BASEDPYRIGHT_KIND
+        ) {
             return Err(BusinessError::missing("language_server"));
         }
         self.state
@@ -353,6 +507,10 @@ impl AsyncAgentSdk {
             }
             VTSLS_KIND => {
                 self.vtsls_dto(project_id, &project.canonical_root, record)
+                    .await
+            }
+            BASEDPYRIGHT_KIND => {
+                self.basedpyright_dto(project_id, &project.canonical_root, record)
                     .await
             }
             _ => unreachable!(),
@@ -452,6 +610,7 @@ impl AsyncAgentSdk {
             detected_executable: detected_executable.clone(),
             detected_java_home: detected_java_home.clone(),
             vtsls: None,
+            basedpyright: None,
             project_configurable: true,
             command: if record.revision == 0 {
                 detected_command.unwrap_or_else(|| "jdtls".into())
@@ -516,6 +675,12 @@ impl AsyncAgentSdk {
                 typescript_sdk_mode: None,
                 typescript_sdk_path: None,
                 max_ts_server_memory: None,
+                basedpyright_executable: None,
+                python_path: None,
+                diagnostic_mode: None,
+                type_checking_mode: None,
+                config_path_mode: None,
+                config_path: None,
             },
             enabled: false,
             sort_order: 0,
@@ -539,6 +704,7 @@ impl AsyncAgentSdk {
             detected_executable: detected_executable.clone(),
             detected_java_home: detected_java_home.clone(),
             vtsls: None,
+            basedpyright: None,
             project_configurable: false,
             command: detected_executable.unwrap_or_else(|| "jdtls".into()),
             arguments: Vec::new(),
@@ -645,6 +811,7 @@ impl AsyncAgentSdk {
                 typescript_sdk_path: record.config.typescript_sdk_path.clone(),
                 max_ts_server_memory: record.config.max_ts_server_memory.unwrap_or(3072),
             }),
+            basedpyright: None,
             project_configurable: true,
             command: executable,
             arguments: record.config.arguments.clone(),
@@ -716,6 +883,12 @@ impl AsyncAgentSdk {
                 typescript_sdk_mode: Some("workspace-preferred".into()),
                 typescript_sdk_path: None,
                 max_ts_server_memory: Some(request.max_ts_server_memory),
+                basedpyright_executable: None,
+                python_path: None,
+                diagnostic_mode: None,
+                type_checking_mode: None,
+                config_path_mode: None,
+                config_path: None,
             },
             enabled: false,
             sort_order: 10,
@@ -757,6 +930,7 @@ impl AsyncAgentSdk {
                 typescript_sdk_path: None,
                 max_ts_server_memory: 3072,
             }),
+            basedpyright: None,
             project_configurable: false,
             command: executable,
             arguments: vec!["--stdio".into()],
@@ -800,6 +974,234 @@ impl AsyncAgentSdk {
             max_ts_server_memory: 3072,
             environment: None,
             startup_timeout_seconds: 120,
+            request_timeout_seconds: 30,
+            enabled,
+        }
+    }
+
+    async fn basedpyright_dto(
+        &self,
+        project_id: &str,
+        project_root: &str,
+        record: Option<LanguageServerRecord>,
+    ) -> SdkResult<LanguageServerDto> {
+        let detected_executable = detect_basedpyright(Some(Path::new(project_root)));
+        let detected_python_path = detect_python(Some(Path::new(project_root)));
+        let detected_python_version = detected_python_path
+            .as_deref()
+            .and_then(detect_python_version);
+        let default = self.default_basedpyright_record(project_id, project_root);
+        let record = record.unwrap_or(default);
+        let runtime = self
+            .state
+            .agent
+            .language_server_runtime_status(Some(project_id), &record)
+            .await;
+        let executable = record
+            .config
+            .basedpyright_executable
+            .clone()
+            .unwrap_or_else(|| {
+                detected_executable
+                    .clone()
+                    .unwrap_or_else(|| "basedpyright-langserver".into())
+            });
+        let python_path = record
+            .config
+            .python_path
+            .clone()
+            .or_else(|| detected_python_path.clone());
+        Ok(LanguageServerDto {
+            language_server_id: BASEDPYRIGHT_KIND.into(),
+            kind: BASEDPYRIGHT_KIND.into(),
+            display_name: BASEDPYRIGHT_DISPLAY_NAME.into(),
+            description: BASEDPYRIGHT_DESCRIPTION.into(),
+            language: "Python".into(),
+            detected: detected_executable.is_some(),
+            detected_version: None,
+            detected_executable,
+            detected_java_home: None,
+            vtsls: None,
+            basedpyright: Some(BasedpyrightLanguageServerConfigurationDto {
+                executable: executable.clone(),
+                python_path,
+                detected_python_path,
+                detected_python_version,
+                diagnostic_mode: record
+                    .config
+                    .diagnostic_mode
+                    .clone()
+                    .unwrap_or_else(|| "openFilesOnly".into()),
+                type_checking_mode: record
+                    .config
+                    .type_checking_mode
+                    .clone()
+                    .unwrap_or_else(|| "recommended".into()),
+                config_path_mode: record
+                    .config
+                    .config_path_mode
+                    .clone()
+                    .unwrap_or_else(|| "automatic".into()),
+                config_path: record.config.config_path.clone(),
+            }),
+            project_configurable: true,
+            command: executable,
+            arguments: vec!["--stdio".into()],
+            language_ids: vec!["python".into()],
+            root_markers: record.config.root_markers.clone(),
+            initialization_options: json!({}),
+            environment_keys: record.config.environment.keys().cloned().collect(),
+            startup_timeout_seconds: record.config.startup_timeout_seconds,
+            request_timeout_seconds: record.config.request_timeout_seconds,
+            java_home: None,
+            data_path_mode: String::new(),
+            data_path: String::new(),
+            matched_root_marker: record
+                .config
+                .root_markers
+                .iter()
+                .find(|marker| Path::new(project_root).join(marker).exists())
+                .cloned(),
+            enabled: record.enabled,
+            sort_order: 20,
+            revision: record.revision,
+            runtime_status: runtime.state,
+            capability_count: runtime.capability_count,
+            error: runtime.error,
+            created_at: record.created_at,
+            updated_at: record.updated_at,
+        })
+    }
+
+    fn default_basedpyright_record(
+        &self,
+        project_id: &str,
+        project_root: &str,
+    ) -> LanguageServerRecord {
+        let request = self.default_basedpyright_request(project_id, project_root, false);
+        let executable = request.executable.clone();
+        LanguageServerRecord {
+            language_server_id: project_language_server_id(project_id, BASEDPYRIGHT_KIND),
+            display_name: format!("{BASEDPYRIGHT_DISPLAY_NAME} [{project_id}]"),
+            config: LanguageServerConfig {
+                version: 4,
+                project_id: Some(project_id.into()),
+                server_kind: Some(BASEDPYRIGHT_KIND.into()),
+                command: executable.clone(),
+                arguments: vec!["--stdio".into()],
+                language_ids: vec!["python".into()],
+                root_markers: request.root_markers.clone(),
+                initialization_options: json!({}),
+                configuration: basedpyright_configuration(
+                    request.python_path.as_deref(),
+                    "openFilesOnly",
+                    "recommended",
+                    "automatic",
+                    None,
+                ),
+                environment: BTreeMap::new(),
+                startup_timeout_seconds: request.startup_timeout_seconds,
+                request_timeout_seconds: request.request_timeout_seconds,
+                java_home: None,
+                data_path_mode: None,
+                data_path: None,
+                vtsls_executable: None,
+                node_path: None,
+                typescript_sdk_mode: None,
+                typescript_sdk_path: None,
+                max_ts_server_memory: None,
+                basedpyright_executable: Some(executable),
+                python_path: request.python_path,
+                diagnostic_mode: Some("openFilesOnly".into()),
+                type_checking_mode: Some("recommended".into()),
+                config_path_mode: Some("automatic".into()),
+                config_path: None,
+            },
+            enabled: false,
+            sort_order: 20,
+            revision: 0,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
+
+    fn unscoped_basedpyright_dto(&self) -> LanguageServerDto {
+        let detected_executable = detect_basedpyright(None);
+        let detected_python_path = detect_python(None);
+        let detected_python_version = detected_python_path
+            .as_deref()
+            .and_then(detect_python_version);
+        let executable = detected_executable
+            .clone()
+            .unwrap_or_else(|| "basedpyright-langserver".into());
+        LanguageServerDto {
+            language_server_id: BASEDPYRIGHT_KIND.into(),
+            kind: BASEDPYRIGHT_KIND.into(),
+            display_name: BASEDPYRIGHT_DISPLAY_NAME.into(),
+            description: BASEDPYRIGHT_DESCRIPTION.into(),
+            language: "Python".into(),
+            detected: detected_executable.is_some(),
+            detected_version: None,
+            detected_executable,
+            detected_java_home: None,
+            vtsls: None,
+            basedpyright: Some(BasedpyrightLanguageServerConfigurationDto {
+                executable: executable.clone(),
+                python_path: detected_python_path.clone(),
+                detected_python_path,
+                detected_python_version,
+                diagnostic_mode: "openFilesOnly".into(),
+                type_checking_mode: "recommended".into(),
+                config_path_mode: "automatic".into(),
+                config_path: None,
+            }),
+            project_configurable: false,
+            command: executable,
+            arguments: vec!["--stdio".into()],
+            language_ids: vec!["python".into()],
+            root_markers: BASEDPYRIGHT_ROOT_MARKERS
+                .iter()
+                .map(|value| (*value).into())
+                .collect(),
+            initialization_options: json!({}),
+            environment_keys: Vec::new(),
+            startup_timeout_seconds: 60,
+            request_timeout_seconds: 30,
+            java_home: None,
+            data_path_mode: String::new(),
+            data_path: String::new(),
+            matched_root_marker: None,
+            enabled: false,
+            sort_order: 20,
+            revision: 0,
+            runtime_status: suncode_core::LanguageServerRuntimeState::NotStarted,
+            capability_count: 0,
+            error: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
+
+    fn default_basedpyright_request(
+        &self,
+        _project_id: &str,
+        project_root: &str,
+        enabled: bool,
+    ) -> BasedpyrightLanguageServerWriteRequest {
+        BasedpyrightLanguageServerWriteRequest {
+            executable: detect_basedpyright(Some(Path::new(project_root)))
+                .unwrap_or_else(|| "basedpyright-langserver".into()),
+            python_path: detect_python(Some(Path::new(project_root))),
+            root_markers: BASEDPYRIGHT_ROOT_MARKERS
+                .iter()
+                .map(|value| (*value).into())
+                .collect(),
+            diagnostic_mode: "openFilesOnly".into(),
+            type_checking_mode: "recommended".into(),
+            config_path_mode: "automatic".into(),
+            config_path: None,
+            environment: None,
+            startup_timeout_seconds: 60,
             request_timeout_seconds: 30,
             enabled,
         }
@@ -910,6 +1312,161 @@ fn vtsls_request_from_record(
         request_timeout_seconds: record.config.request_timeout_seconds,
         enabled,
     }
+}
+
+fn basedpyright_request_from_record(
+    record: &LanguageServerRecord,
+    enabled: bool,
+) -> BasedpyrightLanguageServerWriteRequest {
+    BasedpyrightLanguageServerWriteRequest {
+        executable: record
+            .config
+            .basedpyright_executable
+            .clone()
+            .unwrap_or_else(|| record.config.command.clone()),
+        python_path: record.config.python_path.clone(),
+        root_markers: record.config.root_markers.clone(),
+        diagnostic_mode: record
+            .config
+            .diagnostic_mode
+            .clone()
+            .unwrap_or_else(|| "openFilesOnly".into()),
+        type_checking_mode: record
+            .config
+            .type_checking_mode
+            .clone()
+            .unwrap_or_else(|| "recommended".into()),
+        config_path_mode: record
+            .config
+            .config_path_mode
+            .clone()
+            .unwrap_or_else(|| "automatic".into()),
+        config_path: record.config.config_path.clone(),
+        environment: None,
+        startup_timeout_seconds: record.config.startup_timeout_seconds,
+        request_timeout_seconds: record.config.request_timeout_seconds,
+        enabled,
+    }
+}
+
+fn validate_basedpyright_request(
+    request: &BasedpyrightLanguageServerWriteRequest,
+) -> SdkResult<()> {
+    if request.executable.trim().is_empty()
+        || request.executable.chars().count() > 2_048
+        || request.executable.contains('\0')
+    {
+        return Err(BusinessError::invalid(
+            "basedpyright executable is required and must not exceed 2048 characters",
+        ));
+    }
+    normalize_diagnostic_mode(&request.diagnostic_mode)?;
+    normalize_type_checking_mode(&request.type_checking_mode)?;
+    let config_path_mode = normalize_config_path_mode(&request.config_path_mode)?;
+    if let Some(python_path) = request
+        .python_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        if python_path.chars().count() > 2_048
+            || python_path.contains('\0')
+            || !Path::new(python_path).is_absolute()
+        {
+            return Err(BusinessError::invalid(
+                "Python interpreter path must be absolute and must not exceed 2048 characters",
+            ));
+        }
+    }
+    if config_path_mode == "custom" {
+        let value = request
+            .config_path
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| {
+                BusinessError::invalid("Custom basedpyright configuration location is required")
+            })?;
+        if value.chars().count() > 2_048 || value.contains('\0') || !Path::new(value).is_absolute()
+        {
+            return Err(BusinessError::invalid(
+                "Custom basedpyright configuration location must be absolute",
+            ));
+        }
+    }
+    if !(1..=120).contains(&request.startup_timeout_seconds)
+        || !(1..=600).contains(&request.request_timeout_seconds)
+    {
+        return Err(BusinessError::invalid(
+            "Language server timeout is outside the supported range",
+        ));
+    }
+    Ok(())
+}
+
+fn normalize_diagnostic_mode(value: &str) -> SdkResult<&'static str> {
+    match value.trim() {
+        "" | "openFilesOnly" => Ok("openFilesOnly"),
+        "workspace" => Ok("workspace"),
+        _ => Err(BusinessError::invalid(
+            "basedpyright diagnostic mode must be openFilesOnly or workspace",
+        )),
+    }
+}
+
+fn normalize_type_checking_mode(value: &str) -> SdkResult<&'static str> {
+    match value.trim() {
+        "" | "recommended" => Ok("recommended"),
+        "off" => Ok("off"),
+        "basic" => Ok("basic"),
+        "standard" => Ok("standard"),
+        "strict" => Ok("strict"),
+        "all" => Ok("all"),
+        _ => Err(BusinessError::invalid(
+            "basedpyright type checking mode is unsupported",
+        )),
+    }
+}
+
+fn normalize_config_path_mode(value: &str) -> SdkResult<&'static str> {
+    match value.trim() {
+        "" | "automatic" => Ok("automatic"),
+        "custom" => Ok("custom"),
+        _ => Err(BusinessError::invalid(
+            "basedpyright configuration location mode must be automatic or custom",
+        )),
+    }
+}
+
+fn optional_trimmed(value: Option<String>) -> Option<String> {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn basedpyright_configuration(
+    python_path: Option<&str>,
+    diagnostic_mode: &str,
+    type_checking_mode: &str,
+    config_path_mode: &str,
+    config_path: Option<&str>,
+) -> serde_json::Value {
+    let mut settings = json!({
+        "basedpyright": {
+            "analysis": {
+                "diagnosticMode": diagnostic_mode,
+                "typeCheckingMode": type_checking_mode
+            }
+        }
+    });
+    if let Some(python_path) = python_path {
+        settings["python"]["pythonPath"] = serde_json::Value::String(python_path.into());
+    }
+    if config_path_mode == "custom" {
+        settings["basedpyright"]["analysis"]["configFilePath"] =
+            serde_json::Value::String(config_path.unwrap_or_default().into());
+    }
+    settings
 }
 
 fn validate_vtsls_request(request: &VtslsLanguageServerWriteRequest) -> SdkResult<()> {
@@ -1059,6 +1616,133 @@ fn detect_vtsls() -> Option<String> {
         })
         .or_else(|| detect_nvm_binary(name))
         .map(|path| path.to_string_lossy().into_owned())
+}
+
+fn detect_basedpyright(project_root: Option<&Path>) -> Option<String> {
+    let name = if cfg!(windows) {
+        "basedpyright-langserver.exe"
+    } else {
+        "basedpyright-langserver"
+    };
+    project_root
+        .into_iter()
+        .flat_map(|root| {
+            if cfg!(windows) {
+                vec![
+                    root.join(".venv/Scripts").join(name),
+                    root.join("venv/Scripts").join(name),
+                ]
+            } else {
+                vec![
+                    root.join(".venv/bin").join(name),
+                    root.join("venv/bin").join(name),
+                ]
+            }
+        })
+        .find(|candidate| candidate.is_file())
+        .or_else(|| find_on_path(name))
+        .or_else(|| {
+            ["/opt/homebrew/bin", "/usr/local/bin"]
+                .into_iter()
+                .map(|directory| Path::new(directory).join(name))
+                .find(|candidate| candidate.is_file())
+        })
+        .or_else(|| {
+            std::env::var_os("HOME").and_then(|home| {
+                [".local/bin", ".pyenv/shims"]
+                    .into_iter()
+                    .map(|directory| Path::new(&home).join(directory).join(name))
+                    .find(|candidate| candidate.is_file())
+            })
+        })
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
+fn detect_python(project_root: Option<&Path>) -> Option<String> {
+    let name = if cfg!(windows) {
+        "python.exe"
+    } else {
+        "python"
+    };
+    project_root
+        .into_iter()
+        .flat_map(|root| {
+            if cfg!(windows) {
+                vec![
+                    root.join(".venv/Scripts").join(name),
+                    root.join("venv/Scripts").join(name),
+                ]
+            } else {
+                vec![
+                    root.join(".venv/bin").join(name),
+                    root.join("venv/bin").join(name),
+                ]
+            }
+        })
+        .find(|candidate| candidate.is_file())
+        .or_else(|| {
+            std::env::var_os("CONDA_PREFIX").and_then(|directory| {
+                let bin = if cfg!(windows) { "Scripts" } else { "bin" };
+                let candidate = Path::new(&directory).join(bin).join(name);
+                candidate.is_file().then_some(candidate)
+            })
+        })
+        .or_else(|| {
+            std::env::var_os("VIRTUAL_ENV").and_then(|directory| {
+                let bin = if cfg!(windows) { "Scripts" } else { "bin" };
+                let candidate = Path::new(&directory).join(bin).join(name);
+                candidate.is_file().then_some(candidate)
+            })
+        })
+        .or_else(|| {
+            find_on_path(if cfg!(windows) {
+                "python.exe"
+            } else {
+                "python3"
+            })
+        })
+        .or_else(|| find_on_path(name))
+        .or_else(|| {
+            ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]
+                .into_iter()
+                .flat_map(|directory| {
+                    let directory = Path::new(directory);
+                    [directory.join("python3"), directory.join(name)]
+                })
+                .find(|candidate| candidate.is_file())
+        })
+        .or_else(|| {
+            std::env::var_os("HOME").and_then(|home| {
+                [
+                    ".pyenv/shims/python",
+                    ".local/bin/python3",
+                    ".local/bin/python",
+                ]
+                .into_iter()
+                .map(|relative| Path::new(&home).join(relative))
+                .find(|candidate| candidate.is_file())
+            })
+        })
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
+fn detect_python_version(python_path: &str) -> Option<String> {
+    let output = std::process::Command::new(python_path)
+        .arg("--version")
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let value = if output.stdout.is_empty() {
+        output.stderr
+    } else {
+        output.stdout
+    };
+    String::from_utf8(value)
+        .ok()
+        .map(|value| value.trim().trim_start_matches("Python ").to_string())
+        .filter(|value| !value.is_empty())
 }
 
 fn detect_node() -> Option<String> {

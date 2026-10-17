@@ -21,6 +21,7 @@ public sealed class LanguageServerItem : ObservableObject
     public string? DetectedJavaHome => Server.DetectedJavaHome;
     public bool IsJdtls => Kind == "jdtls";
     public bool IsVtsls => Kind == "vtsls";
+    public bool IsBasedpyright => Kind == "basedpyright";
     public VtslsLanguageServerConfiguration? Vtsls => Server.Vtsls;
     public string VtslsExecutable => Vtsls?.Executable ?? Command;
     public string NodePath => Vtsls?.NodePath ?? string.Empty;
@@ -29,6 +30,15 @@ public sealed class LanguageServerItem : ObservableObject
     public string TypeScriptSdkMode => Vtsls?.TypeScriptSdkMode ?? "workspace-preferred";
     public string? TypeScriptSdkPath => Vtsls?.TypeScriptSdkPath;
     public ulong MaxTsServerMemory => Vtsls?.MaxTsServerMemory ?? 3072;
+    public BasedpyrightLanguageServerConfiguration? Basedpyright => Server.Basedpyright;
+    public string BasedpyrightExecutable => Basedpyright?.Executable ?? Command;
+    public string? PythonPath => Basedpyright?.PythonPath;
+    public string? DetectedPythonPath => Basedpyright?.DetectedPythonPath;
+    public string? DetectedPythonVersion => Basedpyright?.DetectedPythonVersion;
+    public string DiagnosticMode => Basedpyright?.DiagnosticMode ?? "openFilesOnly";
+    public string TypeCheckingMode => Basedpyright?.TypeCheckingMode ?? "recommended";
+    public string ConfigPathMode => Basedpyright?.ConfigPathMode ?? "automatic";
+    public string? ConfigPath => Basedpyright?.ConfigPath;
     public bool ProjectConfigurable => Server.ProjectConfigurable;
     public string Command => Server.Command;
     public IReadOnlyList<string> Arguments => Server.Arguments;

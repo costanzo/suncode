@@ -134,6 +134,45 @@ public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
             : "vtsls configuration saved as disabled for this project.");
     }
 
+    public async Task<bool> SaveBasedpyrightAsync(
+        LanguageServerItem item,
+        string executable,
+        string? pythonPath,
+        IReadOnlyList<string> rootMarkers,
+        string diagnosticMode,
+        string typeCheckingMode,
+        string configPathMode,
+        string? configPath,
+        LanguageServerEnvironmentChanges? environment,
+        ulong startupTimeout,
+        ulong requestTimeout,
+        bool enabled)
+    {
+        if (_host.SelectedProject is null || !await _host.EnsureSdkReadyAsync()) return false;
+        return await RunMutationAsync(item, async () =>
+        {
+            var server = await _host.Sdk!.ConfigureBasedpyrightLanguageServerAsync(new(
+                _host.SelectedProject.ProjectId,
+                item.Revision,
+                Guid.NewGuid().ToString("N"),
+                new(
+                    executable,
+                    pythonPath,
+                    rootMarkers,
+                    diagnosticMode,
+                    typeCheckingMode,
+                    configPathMode,
+                    configPath,
+                    environment,
+                    startupTimeout,
+                    requestTimeout,
+                    enabled)));
+            UpsertServer(server);
+        }, enabled
+            ? "basedpyright configuration saved. Restarting the project language server."
+            : "basedpyright configuration saved as disabled for this project.");
+    }
+
     public async Task<bool> SetServerEnabledAsync(LanguageServerItem item, bool enabled)
     {
         if (_host.SelectedProject is null || !await _host.EnsureSdkReadyAsync()) return false;

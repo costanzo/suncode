@@ -1229,6 +1229,12 @@ fn language_server_crud_preserves_configuration_and_enforces_revisions() {
             typescript_sdk_mode: None,
             typescript_sdk_path: None,
             max_ts_server_memory: None,
+            basedpyright_executable: None,
+            python_path: None,
+            diagnostic_mode: None,
+            type_checking_mode: None,
+            config_path_mode: None,
+            config_path: None,
         },
         enabled: true,
         sort_order: 0,
@@ -1287,6 +1293,12 @@ fn language_server_version_two_json_defaults_new_runtime_configuration_fields() 
     assert!(config.typescript_sdk_mode.is_none());
     assert!(config.typescript_sdk_path.is_none());
     assert!(config.max_ts_server_memory.is_none());
+    assert!(config.basedpyright_executable.is_none());
+    assert!(config.python_path.is_none());
+    assert!(config.diagnostic_mode.is_none());
+    assert!(config.type_checking_mode.is_none());
+    assert!(config.config_path_mode.is_none());
+    assert!(config.config_path.is_none());
 }
 
 #[test]
@@ -1315,6 +1327,12 @@ fn language_server_validation_rejects_unsafe_configuration() {
             typescript_sdk_mode: None,
             typescript_sdk_path: None,
             max_ts_server_memory: None,
+            basedpyright_executable: None,
+            python_path: None,
+            diagnostic_mode: None,
+            type_checking_mode: None,
+            config_path_mode: None,
+            config_path: None,
         },
         enabled: true,
         sort_order: 0,
@@ -1350,6 +1368,12 @@ fn language_server_validation_rejects_unsafe_configuration() {
             typescript_sdk_mode: None,
             typescript_sdk_path: None,
             max_ts_server_memory: None,
+            basedpyright_executable: None,
+            python_path: None,
+            diagnostic_mode: None,
+            type_checking_mode: None,
+            config_path_mode: None,
+            config_path: None,
         },
         enabled: true,
         sort_order: i64::from(i32::MAX) + 1,

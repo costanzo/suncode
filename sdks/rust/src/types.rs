@@ -10,7 +10,7 @@ use suncode_data::{
 };
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 20;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 21;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -336,6 +336,42 @@ pub struct VtslsLanguageServerConfigurationDto {
     pub max_ts_server_memory: u64,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BasedpyrightLanguageServerWriteRequest {
+    pub executable: String,
+    #[serde(default)]
+    pub python_path: Option<String>,
+    #[serde(default)]
+    pub root_markers: Vec<String>,
+    #[serde(default)]
+    pub diagnostic_mode: String,
+    #[serde(default)]
+    pub type_checking_mode: String,
+    #[serde(default)]
+    pub config_path_mode: String,
+    #[serde(default)]
+    pub config_path: Option<String>,
+    #[serde(default)]
+    pub environment: Option<LanguageServerEnvironmentChanges>,
+    pub startup_timeout_seconds: u64,
+    pub request_timeout_seconds: u64,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BasedpyrightLanguageServerConfigurationDto {
+    pub executable: String,
+    pub python_path: Option<String>,
+    pub detected_python_path: Option<String>,
+    pub detected_python_version: Option<String>,
+    pub diagnostic_mode: String,
+    pub type_checking_mode: String,
+    pub config_path_mode: String,
+    pub config_path: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LanguageServerDto {
@@ -350,6 +386,8 @@ pub struct LanguageServerDto {
     pub detected_java_home: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vtsls: Option<VtslsLanguageServerConfigurationDto>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub basedpyright: Option<BasedpyrightLanguageServerConfigurationDto>,
     pub project_configurable: bool,
     pub command: String,
     pub arguments: Vec<String>,

@@ -122,6 +122,18 @@ pub struct LanguageServerConfig {
     pub typescript_sdk_path: Option<String>,
     #[serde(default)]
     pub max_ts_server_memory: Option<u64>,
+    #[serde(default)]
+    pub basedpyright_executable: Option<String>,
+    #[serde(default)]
+    pub python_path: Option<String>,
+    #[serde(default)]
+    pub diagnostic_mode: Option<String>,
+    #[serde(default)]
+    pub type_checking_mode: Option<String>,
+    #[serde(default)]
+    pub config_path_mode: Option<String>,
+    #[serde(default)]
+    pub config_path: Option<String>,
 }
 
 fn empty_json_object() -> Value {

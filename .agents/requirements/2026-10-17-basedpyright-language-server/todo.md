@@ -6,13 +6,13 @@
 - [x] Review the existing language-server design.
 - [x] Add catalog and detail specimens.
 - [x] Verify themes, widths, and interaction states.
-- [ ] Obtain user design approval.
+- [x] Obtain user design approval.
 
 ## Implementation
 
-- [ ] Finalize production contract after approval.
-- [ ] Make Rust, binding, and Avalonia changes.
-- [ ] Add focused production tests.
+- [x] Finalize production contract after approval.
+- [x] Make Rust, binding, and Avalonia changes.
+- [x] Add focused production tests.
 
 ## Verification
 
@@ -20,4 +20,4 @@
 
 ## Closeout
 
-- [ ] Update stable feature and contract documentation after production implementation.
+- [x] Update stable feature and contract documentation after production implementation.

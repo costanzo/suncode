@@ -837,9 +837,10 @@ fn project_jdtls_sdk_redacts_environment_and_enforces_revisions() {
     let directory = tempfile::tempdir().unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
     let catalog = sdk.list_language_servers(None).unwrap();
-    assert_eq!(catalog.servers.len(), 2);
+    assert_eq!(catalog.servers.len(), 3);
     assert_eq!(catalog.servers[0].kind, "jdtls");
     assert_eq!(catalog.servers[1].kind, "vtsls");
+    assert_eq!(catalog.servers[2].kind, "basedpyright");
     assert!(!catalog.servers[0].project_configurable);
     assert_eq!(
         catalog.servers[0].runtime_status,
@@ -1023,6 +1024,93 @@ fn project_vtsls_sdk_maps_settings_redacts_environment_and_isolates_projects() {
         .servers
         .into_iter()
         .find(|server| server.kind == "vtsls")
+        .unwrap();
+    assert_eq!(second.revision, 0);
+    assert!(!second.enabled);
+}
+
+#[test]
+fn project_basedpyright_sdk_maps_settings_redacts_environment_and_isolates_projects() {
+    let directory = tempfile::tempdir().unwrap();
+    let python = directory.path().join(".venv/bin/python");
+    let config = directory.path().join("backend/pyproject.toml");
+    std::fs::create_dir_all(python.parent().unwrap()).unwrap();
+    std::fs::create_dir_all(config.parent().unwrap()).unwrap();
+    std::fs::write(&python, "").unwrap();
+    std::fs::write(&config, "").unwrap();
+
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    let project = sdk
+        .open_project(directory.path().to_str().unwrap(), None)
+        .unwrap();
+    let created = sdk
+        .configure_basedpyright_language_server(
+            &project.project_id,
+            0,
+            "basedpyright-create",
+            BasedpyrightLanguageServerWriteRequest {
+                executable: "missing-basedpyright-langserver".into(),
+                python_path: Some(python.to_string_lossy().into_owned()),
+                root_markers: vec!["pyproject.toml".into()],
+                diagnostic_mode: "workspace".into(),
+                type_checking_mode: "strict".into(),
+                config_path_mode: "custom".into(),
+                config_path: Some(config.to_string_lossy().into_owned()),
+                environment: Some(LanguageServerEnvironmentChanges {
+                    set: BTreeMap::from([("TOKEN".into(), "private-value".into())]),
+                    remove: Vec::new(),
+                }),
+                startup_timeout_seconds: 60,
+                request_timeout_seconds: 30,
+                enabled: false,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(created.kind, "basedpyright");
+    assert_eq!(created.environment_keys, ["TOKEN"]);
+    assert!(!serde_json::to_string(&created)
+        .unwrap()
+        .contains("private-value"));
+    let basedpyright = created.basedpyright.as_ref().unwrap();
+    assert_eq!(basedpyright.diagnostic_mode, "workspace");
+    assert_eq!(basedpyright.type_checking_mode, "strict");
+    assert_eq!(basedpyright.config_path_mode, "custom");
+    let stored = sdk
+        .state
+        .store
+        .language_server_for_project(&project.project_id, "basedpyright")
+        .unwrap()
+        .unwrap();
+    assert_eq!(stored.config.arguments, ["--stdio"]);
+    assert_eq!(
+        stored.config.configuration["python"]["pythonPath"],
+        python.to_string_lossy().as_ref()
+    );
+    assert_eq!(
+        stored.config.configuration["basedpyright"]["analysis"]["diagnosticMode"],
+        "workspace"
+    );
+    assert_eq!(
+        stored.config.configuration["basedpyright"]["analysis"]["typeCheckingMode"],
+        "strict"
+    );
+    assert_eq!(
+        stored.config.configuration["basedpyright"]["analysis"]["configFilePath"],
+        config.to_string_lossy().as_ref()
+    );
+
+    let second_root = directory.path().join("second-project");
+    std::fs::create_dir_all(&second_root).unwrap();
+    let second_project = sdk
+        .open_project(second_root.to_str().unwrap(), None)
+        .unwrap();
+    let second = sdk
+        .list_language_servers(Some(&second_project.project_id))
+        .unwrap()
+        .servers
+        .into_iter()
+        .find(|server| server.kind == "basedpyright")
         .unwrap();
     assert_eq!(second.revision, 0);
     assert!(!second.enabled);
