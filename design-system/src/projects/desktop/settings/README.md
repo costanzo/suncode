@@ -10,4 +10,6 @@ Settings is organized into:
 
 `index.jsx` is the stable route entrypoint. `SettingsPage.jsx` owns only page state, navigation, and section selection; section implementations, dialogs, and fixtures live under their focused directories. Keep route imports pointed at `index.jsx` so internal file moves do not spread through the application shell.
 
+Language servers use a SunCode-owned catalog rather than a free-form server editor. The overview is scoped to the current project, and each supported server opens an in-panel configuration page tailored to that server. The initial fixture covers jdtls detection, project enablement, managed and custom data directories, root markers, environment, timeouts, runtime status, and retry behavior.
+
 The Remote Server specimen covers disconnected input, pairing-code validation, connected status, mobile QR presentation, the pairing link with a copy affordance below the QR, QR renewal, and disconnect. Its pairing QR is a visual placeholder and does not encode a live credential.

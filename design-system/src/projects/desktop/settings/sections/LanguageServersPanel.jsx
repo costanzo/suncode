@@ -1,31 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "../../../../components/universal/button/index.js";
-import { ConfirmationDialog } from "../../../../components/universal/modal/index.js";
 import { Icon } from "../../../../shared/Icon.jsx";
-import { LanguageServerEditorWindow } from "../dialogs/LanguageServerEditorWindow.jsx";
+import { SettingRow } from "../components/SettingRow.jsx";
 import { initialLanguageServers } from "../data/languageServers.js";
 
 export { initialLanguageServers };
 
-const languageServerStatusLabels = {
+const statusLabels = {
   ready: "Ready",
   indexing: "Indexing",
-  failed: "Failed",
+  failed: "Needs attention",
   disabled: "Disabled",
   not_started: "Not started",
 };
 
-export function LanguageServerSwitch({ server, onToggle }) {
-  const pending = server.status === "indexing";
+function ServerSwitch({ server, onToggle, compact = false }) {
   return (
-    <label className="settings-switch lsp-server-switch">
+    <label className={`settings-switch ${compact ? "lsp-server-switch" : ""}`}>
       <input
         type="checkbox"
         checked={server.enabled}
-        disabled={pending}
-        onChange={(event) => onToggle(server.id, event.target.checked)}
-        aria-label={`${server.enabled ? "Disable" : "Enable"} ${server.name}`}
+        disabled={server.status === "indexing"}
+        onChange={(event) => onToggle(event.target.checked)}
+        aria-label={`${server.enabled ? "Disable" : "Enable"} ${server.name} for this project`}
       />
       <span className="settings-switch-track">
         <span />
@@ -35,33 +33,354 @@ export function LanguageServerSwitch({ server, onToggle }) {
   );
 }
 
-export function LanguageServersPanel({ servers, setServers, onSave }) {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
-  const editingServer = servers.find((server) => server.id === editingId);
-  const deletingServer = servers.find((server) => server.id === deletingId);
+function RuntimeStatus({ server }) {
+  return (
+    <div className={`lsp-runtime-status is-${server.status}`} aria-live="polite">
+      <span className="settings-status-dot" />
+      <div>
+        <strong>{statusLabels[server.status]}</strong>
+        <span>
+          {server.status === "ready"
+            ? `${server.capabilityCount} semantic capabilities`
+            : server.status === "indexing"
+              ? "Indexing project sources"
+              : server.status === "failed"
+                ? server.error
+                : server.status === "not_started"
+                  ? "Starts when this project opens"
+                  : "Unavailable to new agent turns"}
+        </span>
+      </div>
+    </div>
+  );
+}
 
-  const startIndexing = (id) => {
+function LanguageServerCatalog({ servers, onConfigure, onToggle }) {
+  return (
+    <div className="settings-panel-content settings-lsp-content">
+      <div className="settings-panel-heading">
+        <h2>Language servers</h2>
+        <p>
+          Enable SunCode-supported language servers for the current project. Each project keeps its
+          own process, index, and configuration.
+        </p>
+      </div>
+      <div className="lsp-project-context">
+        <Icon name="project" size={16} />
+        <div>
+          <span>Current project</span>
+          <strong>suncode</strong>
+          <code>~/Projects/suncode/suncode</code>
+        </div>
+      </div>
+      <div className="lsp-catalog-heading">
+        <span>Available for this project</span>
+        <small>{servers.length} supported</small>
+      </div>
+      <div className="lsp-catalog-list" aria-label="Supported language servers">
+        {servers.map((server) => (
+          <div className="lsp-catalog-row" key={server.id}>
+            <div className="lsp-server-mark" aria-hidden="true">
+              <Icon name="file-code" size={18} />
+            </div>
+            <div className="lsp-catalog-identity">
+              <strong>{server.name}</strong>
+              <span>{server.description}</span>
+              <div className="lsp-server-meta">
+                <code>{server.shortName}</code>
+                <span>{server.language}</span>
+                <span className={server.detected ? "is-detected" : ""}>
+                  {server.detected ? `Detected · ${server.version}` : "Not detected"}
+                </span>
+              </div>
+            </div>
+            <RuntimeStatus server={server} />
+            <ServerSwitch
+              server={server}
+              compact
+              onToggle={(enabled) => onToggle(server.id, enabled)}
+            />
+            <Button size="sm" onClick={() => onConfigure(server.id)}>
+              Configure
+            </Button>
+          </div>
+        ))}
+      </div>
+      <p className="lsp-catalog-footnote">
+        Language-server processes run locally with your user permissions. Their caches and toolchain
+        effects are outside filesystem undo.
+      </p>
+    </div>
+  );
+}
+
+function JdtlsSettings({ server, onBack, onSave, onRetry }) {
+  const [draft, setDraft] = useState(server);
+  const [detecting, setDetecting] = useState(false);
+  const update = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
+
+  useEffect(() => setDraft(server), [server]);
+
+  const detectInstallation = () => {
+    setDetecting(true);
+    window.setTimeout(() => {
+      setDraft((current) => ({
+        ...current,
+        detected: true,
+        executable: "/opt/homebrew/bin/jdtls",
+        javaHome: "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home",
+        version: "1.57.0",
+      }));
+      setDetecting(false);
+    }, 650);
+  };
+
+  return (
+    <div className="settings-panel-content settings-lsp-content lsp-detail-content">
+      <button type="button" className="lsp-back-button" onClick={onBack}>
+        <Icon name="chevron-right" size={13} />
+        Language servers
+      </button>
+      <div className="lsp-detail-heading">
+        <div className="lsp-server-mark" aria-hidden="true">
+          <Icon name="file-code" size={20} />
+        </div>
+        <div>
+          <h2>{server.name}</h2>
+          <p>Project configuration for Java semantic analysis.</p>
+        </div>
+        <RuntimeStatus server={server} />
+      </div>
+
+      {server.status === "failed" && (
+        <div className="lsp-error-banner" role="alert">
+          <Icon name="warning" size={16} />
+          <div>
+            <strong>jdtls could not start</strong>
+            <span>{server.error}</span>
+          </div>
+          <Button size="sm" onClick={onRetry} icon="refresh">
+            Retry
+          </Button>
+        </div>
+      )}
+
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Project availability</span>
+        <SettingRow
+          label="Enable for suncode"
+          hint="Starts one jdtls process and keeps a separate index for this project."
+        >
+          <ServerSwitch server={draft} onToggle={(enabled) => update("enabled", enabled)} />
+        </SettingRow>
+        <SettingRow label="Project detection" hint="Matched against the opened project root.">
+          <span className="lsp-inline-status is-ready">
+            <span className="settings-status-dot" />
+            Matched <code>{server.matchedRootMarker}</code>
+          </span>
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <div className="lsp-section-heading">
+          <span className="settings-section-label">Installation</span>
+          <Button size="sm" onClick={detectInstallation} disabled={detecting} icon="search">
+            {detecting ? "Detecting…" : "Detect again"}
+          </Button>
+        </div>
+        <SettingRow
+          label="jdtls executable"
+          hint="SunCode detected this executable on the current system."
+        >
+          <div className="lsp-path-control">
+            <input
+              className="field mono"
+              value={draft.executable}
+              onChange={(event) => update("executable", event.target.value)}
+              spellCheck="false"
+              aria-label="jdtls executable path"
+            />
+            <button type="button" aria-label="Choose jdtls executable" title="Choose executable">
+              <Icon name="folder" size={14} />
+            </button>
+          </div>
+        </SettingRow>
+        <SettingRow label="Java runtime" hint="Used as JAVA_HOME when SunCode starts jdtls.">
+          <div className="lsp-path-control">
+            <input
+              className="field mono"
+              value={draft.javaHome}
+              onChange={(event) => update("javaHome", event.target.value)}
+              spellCheck="false"
+              aria-label="Java runtime path"
+            />
+            <button type="button" aria-label="Choose Java runtime" title="Choose Java runtime">
+              <Icon name="folder" size={14} />
+            </button>
+          </div>
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Project index</span>
+        <SettingRow
+          label="Data directory"
+          hint="jdtls stores its workspace metadata here. The directory is unique to this project."
+        >
+          <div
+            className="lsp-choice-control"
+            role="radiogroup"
+            aria-label="jdtls data directory mode"
+          >
+            <label>
+              <input
+                type="radio"
+                name="jdtls-data-mode"
+                checked={draft.dataPathMode === "managed"}
+                onChange={() => update("dataPathMode", "managed")}
+              />
+              Managed by SunCode
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="jdtls-data-mode"
+                checked={draft.dataPathMode === "custom"}
+                onChange={() => update("dataPathMode", "custom")}
+              />
+              Custom
+            </label>
+          </div>
+        </SettingRow>
+        <SettingRow
+          label={draft.dataPathMode === "managed" ? "Resolved data path" : "Custom data path"}
+          hint={
+            draft.dataPathMode === "managed"
+              ? "Generated from the stable project identity."
+              : "Use a directory that is not shared with another running jdtls instance."
+          }
+        >
+          <div
+            className={`lsp-path-control ${draft.dataPathMode === "managed" ? "is-readonly" : ""}`}
+          >
+            <input
+              className="field mono"
+              value={
+                draft.dataPathMode === "managed" ? draft.managedDataPath : draft.customDataPath
+              }
+              readOnly={draft.dataPathMode === "managed"}
+              onChange={(event) => update("customDataPath", event.target.value)}
+              spellCheck="false"
+              aria-label="jdtls data path"
+            />
+            {draft.dataPathMode === "custom" && (
+              <button
+                type="button"
+                aria-label="Choose jdtls data directory"
+                title="Choose directory"
+              >
+                <Icon name="folder" size={14} />
+              </button>
+            )}
+          </div>
+        </SettingRow>
+        <label className="lsp-wide-field">
+          <span>Root markers</span>
+          <textarea
+            className="field mono"
+            value={draft.rootMarkers}
+            onChange={(event) => update("rootMarkers", event.target.value)}
+            spellCheck="false"
+            aria-label="jdtls project root markers"
+          />
+          <small>
+            One file or directory name per line. The first match identifies a Java project.
+          </small>
+        </label>
+      </div>
+
+      <details className="lsp-advanced-settings">
+        <summary>Advanced configuration</summary>
+        <div className="lsp-advanced-content">
+          <label className="lsp-wide-field">
+            <span>Environment</span>
+            <textarea
+              className="field mono"
+              value={draft.environment}
+              onChange={(event) => update("environment", event.target.value)}
+              placeholder="NAME=value"
+              spellCheck="false"
+              aria-label="jdtls environment variables"
+            />
+            <small>
+              One NAME=value entry per line. Values are stored locally and hidden after saving.
+            </small>
+          </label>
+          <div className="lsp-timeout-grid">
+            <label>
+              <span>Startup timeout</span>
+              <span className="settings-unit-field">
+                <input
+                  className="field mono"
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={draft.startupTimeout}
+                  onChange={(event) => update("startupTimeout", event.target.value)}
+                />
+                <span>SEC</span>
+              </span>
+            </label>
+            <label>
+              <span>Request timeout</span>
+              <span className="settings-unit-field">
+                <input
+                  className="field mono"
+                  type="number"
+                  min="1"
+                  max="600"
+                  value={draft.requestTimeout}
+                  onChange={(event) => update("requestTimeout", event.target.value)}
+                />
+                <span>SEC</span>
+              </span>
+            </label>
+          </div>
+        </div>
+      </details>
+
+      <div className="lsp-detail-actions">
+        <Button size="sm" onClick={() => setDraft(server)}>
+          Reset changes
+        </Button>
+        <Button variant="primary" size="sm" onClick={() => onSave(draft)}>
+          Save configuration
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function LanguageServersPanel({ servers, setServers, onSave, initialSelectedId = null }) {
+  const [selectedId, setSelectedId] = useState(initialSelectedId);
+  const selectedServer = servers.find((server) => server.id === selectedId);
+
+  const startServer = (id, message) => {
     setServers((current) =>
       current.map((server) =>
         server.id === id
-          ? {
-              ...server,
-              enabled: true,
-              status: "indexing",
-              progress: 18,
-              error: undefined,
-              capabilityCount: 0,
-            }
+          ? { ...server, enabled: true, status: "indexing", error: undefined }
           : server,
       ),
     );
+    onSave(message);
     window.setTimeout(() => {
       setServers((current) =>
         current.map((server) =>
           server.id === id
-            ? { ...server, status: "ready", progress: undefined, capabilityCount: 5 }
+            ? { ...server, status: "ready", capabilityCount: 5, error: undefined }
             : server,
         ),
       );
@@ -69,235 +388,60 @@ export function LanguageServersPanel({ servers, setServers, onSave }) {
   };
 
   const toggleServer = (id, enabled) => {
-    if (!enabled) {
-      setServers((current) =>
-        current.map((server) =>
-          server.id === id
-            ? {
-                ...server,
-                enabled: false,
-                status: "disabled",
-                progress: undefined,
-                capabilityCount: 0,
-                error: undefined,
-              }
-            : server,
-        ),
-      );
-      onSave("Language server disabled for new project runtimes.");
+    if (enabled) {
+      startServer(id, "jdtls enabled for suncode. Indexing the current project.");
       return;
     }
-    startIndexing(id);
-    onSave("Language server enabled. Starting and indexing the current project.");
+    setServers((current) =>
+      current.map((server) =>
+        server.id === id
+          ? { ...server, enabled: false, status: "disabled", capabilityCount: 0 }
+          : server,
+      ),
+    );
+    onSave("jdtls disabled for suncode. Its project process was stopped.");
   };
 
-  const saveServer = (draft) => {
-    const languages = draft.languageIds
-      .split("\n")
-      .map((value) => value.trim())
-      .filter(Boolean)
-      .slice(0, 3)
-      .map((value) => value.replace(/react$/i, " React"))
-      .map((value) => value.charAt(0).toUpperCase() + value.slice(1));
-    if (draft.id) {
+  const saveConfiguration = (draft) => {
+    setServers((current) =>
+      current.map((server) =>
+        server.id === draft.id
+          ? {
+              ...draft,
+              status: draft.enabled ? "indexing" : "disabled",
+              capabilityCount: 0,
+            }
+          : server,
+      ),
+    );
+    if (!draft.enabled) {
+      onSave("jdtls configuration saved as disabled for suncode.");
+      return;
+    }
+    onSave("jdtls configuration saved. Restarting the project language server.");
+    window.setTimeout(() => {
       setServers((current) =>
         current.map((server) =>
           server.id === draft.id
-            ? {
-                ...server,
-                name: draft.name.trim(),
-                command: draft.command.trim(),
-                arguments: draft.arguments.trim(),
-                languageIds: draft.languageIds.trim(),
-                rootMarkers: draft.rootMarkers.trim(),
-                initializationOptions: draft.initializationOptions.trim(),
-                startupTimeout: draft.startupTimeout,
-                requestTimeout: draft.requestTimeout,
-                languages,
-                enabled: draft.enabled,
-                status: draft.enabled ? "indexing" : "disabled",
-                progress: draft.enabled ? 18 : undefined,
-                capabilityCount: 0,
-                error: undefined,
-              }
+            ? { ...server, status: "ready", capabilityCount: 5, error: undefined }
             : server,
         ),
       );
-      if (draft.enabled) startIndexing(draft.id);
-    } else {
-      const id = `lsp_${Date.now()}`;
-      const next = {
-        id,
-        name: draft.name.trim(),
-        command: draft.command.trim(),
-        arguments: draft.arguments.trim(),
-        languageIds: draft.languageIds.trim(),
-        rootMarkers: draft.rootMarkers.trim(),
-        initializationOptions: draft.initializationOptions.trim(),
-        startupTimeout: draft.startupTimeout,
-        requestTimeout: draft.requestTimeout,
-        languages,
-        enabled: draft.enabled,
-        status: draft.enabled ? "indexing" : "disabled",
-        progress: draft.enabled ? 18 : undefined,
-        capabilityCount: 0,
-      };
-      setServers((current) => [...current, next]);
-      if (draft.enabled) window.setTimeout(() => startIndexing(id), 0);
-    }
-    setDialogOpen(false);
-    setEditingId(null);
-    onSave(
-      draft.enabled
-        ? "Language server saved. Starting the current project runtime."
-        : "Language server saved as disabled.",
-    );
+    }, 850);
   };
 
-  const deleteServer = () => {
-    if (!deletingServer) return;
-    setServers((current) => current.filter((server) => server.id !== deletingServer.id));
-    setDeletingId(null);
-    onSave("Language server deleted. Its project runtimes were stopped.");
-  };
+  if (selectedServer) {
+    return (
+      <JdtlsSettings
+        server={selectedServer}
+        onBack={() => setSelectedId(null)}
+        onSave={saveConfiguration}
+        onRetry={() => startServer(selectedServer.id, "Retrying jdtls for suncode.")}
+      />
+    );
+  }
 
   return (
-    <div className="settings-panel-content settings-lsp-content">
-      <div className="settings-panel-heading settings-heading-row">
-        <div>
-          <h2>Language servers</h2>
-          <p>Manage project-scoped semantic analysis used by the coding agent.</p>
-        </div>
-        <Button
-          variant="primary"
-          size="sm"
-          icon="plus"
-          onClick={() => {
-            setEditingId(null);
-            setDialogOpen(true);
-          }}
-        >
-          Add server
-        </Button>
-      </div>
-      {servers.length ? (
-        <div className="lsp-server-list" aria-label="Configured language servers">
-          <div className="lsp-server-list-header" aria-hidden="true">
-            <span>Server</span>
-            <span>Languages</span>
-            <span>Status</span>
-            <span>Enabled</span>
-            <span>Actions</span>
-          </div>
-          {servers.map((server) => (
-            <div className={`lsp-server-row is-${server.status}`} key={server.id}>
-              <div className="lsp-server-identity">
-                <strong>{server.name}</strong>
-                <code>
-                  {[server.command, server.arguments?.replaceAll("\n", " ")]
-                    .filter(Boolean)
-                    .join(" ")}
-                </code>
-                {server.error && <span className="lsp-server-error">{server.error}</span>}
-              </div>
-              <div
-                className="lsp-language-list"
-                aria-label={`Languages: ${server.languages.join(", ")}`}
-              >
-                {server.languages.map((language) => (
-                  <code key={language}>{language}</code>
-                ))}
-              </div>
-              <div className={`lsp-server-status is-${server.status}`}>
-                <span className="settings-status-dot" />
-                <div>
-                  <strong>{languageServerStatusLabels[server.status]}</strong>
-                  <span>
-                    {server.status === "ready"
-                      ? `${server.capabilityCount} capabilities`
-                      : server.status === "indexing"
-                        ? `${server.progress ?? 0}% indexed`
-                        : server.status === "failed"
-                          ? "No semantic results"
-                          : server.status === "not_started"
-                            ? "Open a project"
-                            : "Not running"}
-                  </span>
-                  {server.status === "indexing" && (
-                    <span className="lsp-index-progress" aria-hidden="true">
-                      <span style={{ width: `${server.progress ?? 0}%` }} />
-                    </span>
-                  )}
-                </div>
-              </div>
-              <LanguageServerSwitch server={server} onToggle={toggleServer} />
-              <div className="lsp-server-actions">
-                {server.status === "failed" && (
-                  <button
-                    type="button"
-                    className="btn btn-icon btn-quiet"
-                    aria-label={`Retry ${server.name}`}
-                    title="Retry server"
-                    onClick={() => startIndexing(server.id)}
-                  >
-                    <Icon name="refresh" size={14} />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-icon btn-quiet"
-                  aria-label={`Edit ${server.name}`}
-                  title="Edit server"
-                  onClick={() => {
-                    setEditingId(server.id);
-                    setDialogOpen(true);
-                  }}
-                >
-                  <Icon name="edit" size={14} />
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-icon btn-quiet lsp-delete-button"
-                  aria-label={`Delete ${server.name}`}
-                  title="Delete server"
-                  onClick={() => setDeletingId(server.id)}
-                >
-                  <Icon name="trash" size={14} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="lsp-empty-state">
-          <Icon name="file-code" size={22} />
-          <strong>No language servers configured</strong>
-          <span>Add a local language server to give the agent project-aware semantic context.</span>
-        </div>
-      )}
-      <LanguageServerEditorWindow
-        key={`${editingId ?? "new"}:${dialogOpen}`}
-        open={dialogOpen}
-        server={editingServer}
-        onClose={() => {
-          setDialogOpen(false);
-          setEditingId(null);
-        }}
-        onSubmit={saveServer}
-      />
-      <ConfirmationDialog
-        open={Boolean(deletingServer)}
-        title="Delete language server?"
-        description="Its project runtimes will stop and semantic results will no longer be available to new agent turns."
-        confirmLabel="Delete server"
-        onCancel={() => setDeletingId(null)}
-        onConfirm={deleteServer}
-      >
-        <div className="confirmation-dialog-target">
-          <span>LANGUAGE SERVER</span>
-          <strong>{deletingServer?.name}</strong>
-        </div>
-      </ConfirmationDialog>
-    </div>
+    <LanguageServerCatalog servers={servers} onConfigure={setSelectedId} onToggle={toggleServer} />
   );
 }

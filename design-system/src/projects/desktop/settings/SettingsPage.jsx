@@ -26,7 +26,7 @@ import { NetworkPanel } from "./sections/NetworkPanel.jsx";
 import { RemoteServerPanel } from "./sections/RemoteServerPanel.jsx";
 import "../styles/remote-server.css";
 
-export function SettingsPage({ initialPage = "defaults" }) {
+export function SettingsPage({ initialPage = "defaults", initialLanguageServerId = null }) {
   const [page, setPage] = useState(initialPage);
   const [agentsExpanded, setAgentsExpanded] = useState(false);
   const [providersExpanded, setProvidersExpanded] = useState(false);
@@ -58,6 +58,7 @@ export function SettingsPage({ initialPage = "defaults" }) {
           servers={languageServers}
           setServers={setLanguageServers}
           onSave={save}
+          initialSelectedId={initialLanguageServerId}
         />
       );
     if (page === "agents")
