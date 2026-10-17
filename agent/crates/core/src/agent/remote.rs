@@ -4,14 +4,23 @@ use super::*;
 
 impl AgentRuntime {
     pub fn remote_snapshot(&self) -> Result<serde_json::Value, BusinessError> {
-        let projects = self.store.projects_for_user(&self.user_id, false)?;
+        let projects = self
+            .services
+            .store
+            .projects_for_user(&self.services.user_id, false)?;
         let mut sessions = Vec::new();
         let mut session_states = serde_json::Map::new();
         for project in &projects {
-            for session in self.store.sessions_for_project(&project.project_id, true)? {
+            for session in self
+                .services
+                .store
+                .sessions_for_project(&project.project_id, true)?
+            {
                 session_states.insert(
                     session.session_id.clone(),
-                    serde_json::Value::String(self.store.session_ui_state(&session.session_id)?),
+                    serde_json::Value::String(
+                        self.services.store.session_ui_state(&session.session_id)?,
+                    ),
                 );
                 sessions.push(session);
             }
@@ -52,16 +61,20 @@ impl AgentRuntime {
                     }))
                 } else {
                     let project = self
+                        .services
                         .store
-                        .project_by_id_for_user(&self.user_id, project_id)?
+                        .project_by_id_for_user(&self.services.user_id, project_id)?
                         .ok_or_else(|| BusinessError::missing("project"))?;
-                    let sessions = self.store.sessions_for_project(&project.project_id, true)?;
+                    let sessions = self
+                        .services
+                        .store
+                        .sessions_for_project(&project.project_id, true)?;
                     let mut states = serde_json::Map::new();
                     for session in &sessions {
                         states.insert(
                             session.session_id.clone(),
                             serde_json::Value::String(
-                                self.store.session_ui_state(&session.session_id)?,
+                                self.services.store.session_ui_state(&session.session_id)?,
                             ),
                         );
                     }
@@ -72,12 +85,15 @@ impl AgentRuntime {
             }
             "session.create" => {
                 let project_id = string("project_id", "projectId")?;
-                self.store
-                    .project_by_id_for_user(&self.user_id, project_id)?
+                self.services
+                    .store
+                    .project_by_id_for_user(&self.services.user_id, project_id)?
                     .ok_or_else(|| BusinessError::missing("project"))?;
                 let title = arguments.get("title").and_then(serde_json::Value::as_str);
                 Ok(serde_json::to_value(
-                    self.store.create_session(project_id, title, None)?,
+                    self.services
+                        .store
+                        .create_session(project_id, title, None)?,
                 )?)
             }
             "session.get" => {
@@ -85,11 +101,11 @@ impl AgentRuntime {
                 let session = self.remote_session(session_id)?;
                 Ok(serde_json::json!({
                     "session": session,
-                    "messages": self.store.messages(session_id)?,
-                    "conversationTurns": self.store.session_conversation_turns(session_id)?,
-                    "images": self.store.session_images(session_id)?,
-                    "pendingQuestion": self.store.pending_question(session_id)?,
-                    "pendingApproval": self.store.pending_approval(session_id)?.map(serde_json::to_value).transpose()?,
+                    "messages": self.services.store.messages(session_id)?,
+                    "conversationTurns": self.services.store.session_conversation_turns(session_id)?,
+                    "images": self.services.store.session_images(session_id)?,
+                    "pendingQuestion": self.services.store.pending_question(session_id)?,
+                    "pendingApproval": self.services.store.pending_approval(session_id)?.map(serde_json::to_value).transpose()?,
                 }))
             }
             "session.send_message" | "session.message" => {
@@ -117,7 +133,8 @@ impl AgentRuntime {
                     .and_then(serde_json::Value::as_str)
                     .map(str::to_owned)
                     .or_else(|| {
-                        self.store
+                        self.services
+                            .store
                             .session_conversation_turns(session_id)
                             .ok()
                             .and_then(|turns| turns.last().map(|turn| turn.turn_id.clone()))
@@ -175,14 +192,16 @@ impl AgentRuntime {
         session_id: &str,
     ) -> Result<suncode_data::SessionRecord, BusinessError> {
         let session = self
+            .services
             .store
             .session_by_id(session_id)?
             .ok_or_else(|| BusinessError::missing("session"))?;
         let project_id = session.project_id.as_deref().ok_or_else(|| {
             BusinessError::new("scope_denied", "session is not bound to a project")
         })?;
-        self.store
-            .project_by_id_for_user(&self.user_id, project_id)?
+        self.services
+            .store
+            .project_by_id_for_user(&self.services.user_id, project_id)?
             .ok_or_else(|| BusinessError::missing("session"))?;
         Ok(session)
     }

@@ -118,25 +118,27 @@ impl AgentRuntime {
             Arc::new(computer.clone()),
         ]);
         Self {
-            user_id,
-            store,
-            providers: providers.into(),
-            operations,
-            events,
-            attention_events: AttentionEventHub::new(64),
+            services: services::TurnServices {
+                store,
+                user_id,
+                providers: providers.into(),
+                operations,
+                events,
+                attention_events: AttentionEventHub::new(64),
+                queued_messages: Arc::new(Mutex::new(HashMap::new())),
+                tool_providers,
+                non_interactive,
+                host_capabilities,
+                config,
+            },
             cancellations: Arc::new(Mutex::new(HashMap::new())),
             active_turns: Arc::new(Mutex::new(HashMap::new())),
-            queued_messages: Arc::new(Mutex::new(HashMap::new())),
-            non_interactive,
             session_locks: Arc::new(AsyncMutex::new(HashMap::new())),
             mcp,
             lsp,
-            tool_providers,
             browser,
             preview,
             computer,
-            host_capabilities,
-            config,
             shutting_down: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
@@ -220,26 +222,28 @@ impl AgentRuntime {
             Some(model) => model.to_string(),
             None => {
                 let session = self
+                    .services
                     .store
                     .session_by_id(session_id)?
                     .ok_or_else(|| BusinessError::new("not_found", "session not found"))?;
                 let project_id = session.project_id.ok_or_else(|| {
                     BusinessError::new("conflict", "session is not bound to a project")
                 })?;
-                self.store
+                self.services
+                    .store
                     .project_default_model(&project_id)?
                     .unwrap_or_else(|| "deepseek-v4-flash".into())
             }
         };
-        let Some(provider) = self.providers.route(&model) else {
+        let Some(provider) = self.services.providers.route(&model) else {
             return Err(BusinessError::new(
                 "model_unavailable",
                 "model is not advertised",
             ));
         };
         let reasoning_effort = reasoning_effort.filter(|value| !value.trim().is_empty());
-        let reasoning_effort = if self.providers.supports_reasoning_effort(&model) {
-            let supported = self.providers.reasoning_efforts(&model);
+        let reasoning_effort = if self.services.providers.supports_reasoning_effort(&model) {
+            let supported = self.services.providers.reasoning_efforts(&model);
             match reasoning_effort {
                 Some(value) => {
                     if !supported.iter().any(|effort| effort == value) {
@@ -261,7 +265,9 @@ impl AgentRuntime {
             }
             None
         };
-        let images = self.validate_message_images(session_id, &model, image_ids)?;
+        let images = self
+            .services
+            .validate_message_images(session_id, &model, image_ids)?;
         let user_message = message_with_image_refs(input, &images);
         let _guard = match session_lock.try_lock() {
             Ok(guard) => guard,
@@ -290,6 +296,7 @@ impl AgentRuntime {
             }
         };
         let session = self
+            .services
             .store
             .session_by_id(session_id)?
             .ok_or_else(|| BusinessError::new("not_found", "session not found"))?;
@@ -311,10 +318,12 @@ impl AgentRuntime {
             .project_id
             .ok_or_else(|| BusinessError::new("conflict", "session is not bound to a project"))?;
         let project = self
+            .services
             .store
-            .project_by_id_for_user(&self.user_id, &project_id)?
+            .project_by_id_for_user(&self.services.user_id, &project_id)?
             .ok_or_else(|| BusinessError::new("not_found", "project not found"))?;
         let project_tool_call_limit = self
+            .services
             .store
             .project_tool_call_limit(&project_id)?
             .unwrap_or(DEFAULT_TOOL_CALL_LIMIT);
@@ -332,7 +341,7 @@ impl AgentRuntime {
                     .min(runtime.tool_call_limit.unwrap_or(project_tool_call_limit))
             });
         let admission = db_blocking(|| {
-            self.store.begin_turn_with_images(
+            self.services.store.begin_turn_with_images(
                 session_id,
                 key,
                 input,
@@ -355,7 +364,7 @@ impl AgentRuntime {
                 format!("turn submission is {}", admission.status),
             ));
         }
-        db_blocking(|| self.store.mark_turn_started(session_id, key))?;
+        db_blocking(|| self.services.store.mark_turn_started(session_id, key))?;
         let token = inherited_token.unwrap_or_default();
         self.cancellations
             .lock()
@@ -383,7 +392,7 @@ impl AgentRuntime {
             submission_key: key.into(),
             model,
             reasoning_effort,
-            messages: db_blocking(|| self.store.context_messages(session_id))?,
+            messages: db_blocking(|| self.services.store.context_messages(session_id))?,
             iterations: 0,
             tool_calls: 0,
             tool_call_limit,
@@ -439,13 +448,13 @@ impl AgentRuntime {
             );
             if !states::suspends_turn(&error.code) {
                 self.clear_queued_messages(session_id);
-                let _ = self.turn_state(
+                let _ = self.services.turn_state(
                     &continuation,
                     states::failed_turn_state(&error.code),
                     Some(&error.code),
                 );
                 db_blocking(|| {
-                    self.store.fail_turn(
+                    self.services.store.fail_turn(
                         session_id,
                         key,
                         &json!({"code":error.code,"message":error.message,"details":error.details}),
@@ -481,7 +490,8 @@ impl AgentRuntime {
     /// Retry the session's latest turn when it failed. The retry is admitted as a new turn
     /// /// that continues from the persisted context, so the original user message is not repeated.
     pub async fn retry_last_turn(&self, session_id: &str) -> Result<TurnResponse, BusinessError> {
-        let Some((input, model, image_ids)) = self.store.latest_failed_turn_input(session_id)?
+        let Some((input, model, image_ids)) =
+            self.services.store.latest_failed_turn_input(session_id)?
         else {
             return Err(BusinessError::new("conflict", "no failed turn to retry"));
         };
@@ -506,7 +516,8 @@ impl AgentRuntime {
     }
 
     pub(super) fn clear_queued_messages(&self, session_id: &str) {
-        self.queued_messages
+        self.services
+            .queued_messages
             .lock()
             .ok()
             .map(|mut values| values.remove(session_id));
@@ -527,6 +538,7 @@ impl AgentRuntime {
             .cloned()
             .ok_or_else(|| BusinessError::new("conflict", "session is busy"))?;
         let mut queues = self
+            .services
             .queued_messages
             .lock()
             .map_err(|_| BusinessError::new("agent_unavailable", "turn queue unavailable"))?;
@@ -551,7 +563,7 @@ impl AgentRuntime {
         });
         let position = queue.len();
         drop(queues);
-        self.emit(
+        self.services.emit(
             session_id,
             EventPayload::TurnQueued(TurnQueuedPayload {
                 queued_id: queued_id.clone(),
@@ -584,14 +596,15 @@ impl AgentRuntime {
         session_id: &str,
         turn_id: &str,
     ) -> Result<bool, BusinessError> {
-        let Some(details) = db_blocking(|| self.store.cancel_dormant_turn(session_id, turn_id))?
+        let Some(details) =
+            db_blocking(|| self.services.store.cancel_dormant_turn(session_id, turn_id))?
         else {
             return Ok(false);
         };
         let tool_call_id = details.pending_tool_call_id.clone();
         let call_id = details.pending_call_id.clone();
         let tool_name = details.pending_tool_name.clone();
-        self.emit(
+        self.services.emit(
             &details.session_id,
             EventPayload::TurnState(TurnStatePayload {
                 turn_id: details.turn_id.clone(),
@@ -608,7 +621,7 @@ impl AgentRuntime {
                     tool_call_id.as_deref(),
                     tool_name.as_deref(),
                 ) {
-                    self.emit(
+                    self.services.emit(
                         &details.session_id,
                         EventPayload::ToolState(ToolStatePayload {
                             turn_id: details.turn_id.clone(),
@@ -619,7 +632,7 @@ impl AgentRuntime {
                             reason: Some("user_cancelled".into()),
                         }),
                     )?;
-                    self.emit(
+                    self.services.emit(
                         &details.session_id,
                         EventPayload::ApprovalResolved(ApprovalResolvedPayload {
                             approval_id: request_id.to_string(),
@@ -634,7 +647,7 @@ impl AgentRuntime {
                     details.pending_request_id.as_deref(),
                     tool_call_id.as_deref(),
                 ) {
-                    self.emit(
+                    self.services.emit(
                         &details.session_id,
                         EventPayload::QuestionRejected(QuestionAnsweredPayload {
                             request_id: request_id.to_string(),
@@ -665,12 +678,17 @@ impl AgentRuntime {
         session_id: &str,
     ) -> Result<suncode_config::RuntimeConfig, BusinessError> {
         let mut persisted = suncode_config::PersistedSettings::default();
-        for setting in self.store.settings(Some(project_id), Some(session_id))? {
+        for setting in self
+            .services
+            .store
+            .settings(Some(project_id), Some(session_id))?
+        {
             persisted
                 .insert(&setting.scope, setting.key, setting.value)
                 .map_err(BusinessError::invalid)?;
         }
-        self.config
+        self.services
+            .config
             .runtime(&persisted)
             .map_err(BusinessError::invalid)
     }

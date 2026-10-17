@@ -6,14 +6,14 @@
 //! auditing, and events. Turn-level tools (`question`, `todowrite`, `skill`,
 //! `delegate_agent`) stay in the core because they act on the turn itself.
 
-use super::{AgentRuntime, Continuation, EventPayload, ToolCall, ToolOutputPayload};
+use super::services::TurnServices;
+use super::{EventPayload, ToolOutputPayload};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
 use std::sync::Arc;
-use std::time::Duration;
 use suncode_common::tool::{
     BoxFuture, Cancellation, CatalogContext, Document, DocumentReader, PathScopes, ScopedPath,
-    ToolContext, ToolDefinition, ToolInvocation, ToolOutput, ToolProvider,
+    ToolDefinition, ToolOutput, ToolProvider,
 };
 use suncode_common::BusinessError;
 use suncode_data::Store;
@@ -126,7 +126,7 @@ impl PathScopes for StorePathScopes<'_> {
 /// Reads documents through the audited `tool/read` operation, so providers
 /// get file content without their own file system access.
 pub(super) struct OperationsDocumentReader<'a> {
-    pub(super) agent: &'a AgentRuntime,
+    pub(super) services: &'a TurnServices,
     pub(super) paths: &'a StorePathScopes<'a>,
     pub(super) token: CancellationToken,
 }
@@ -145,7 +145,7 @@ impl DocumentReader for OperationsDocumentReader<'_> {
                 ScopedPath::Dependency { root, relative, .. } => (root, relative),
             };
             let read = self
-                .agent
+                .services
                 .operation_in_project(
                     &root.to_string_lossy(),
                     "tool/read",
@@ -186,7 +186,7 @@ impl DocumentReader for OperationsDocumentReader<'_> {
 
 /// Publishes live tool output as session events.
 pub(super) struct EventOutput {
-    pub(super) agent: AgentRuntime,
+    pub(super) services: TurnServices,
     pub(super) session_id: String,
     pub(super) turn_id: String,
     pub(super) call_id: Option<String>,
@@ -195,7 +195,7 @@ pub(super) struct EventOutput {
 
 impl ToolOutput for EventOutput {
     fn chunk(&self, stream: &str, bytes: &[u8]) {
-        self.agent.emit_live(
+        self.services.emit_live(
             &self.session_id,
             EventPayload::ToolOutput(ToolOutputPayload {
                 turn_id: self.turn_id.clone(),
@@ -205,57 +205,5 @@ impl ToolOutput for EventOutput {
                 chunk_base64: STANDARD.encode(bytes),
             }),
         );
-    }
-}
-
-impl AgentRuntime {
-    /// Runs `call` through `provider` with this turn's context.
-    pub(super) async fn execute_provider(
-        &self,
-        provider: &dyn ToolProvider,
-        context: &Continuation,
-        call: &ToolCall,
-        token: CancellationToken,
-        approval_pin: Option<Value>,
-    ) -> Result<suncode_common::tool::ToolResult, BusinessError> {
-        let call_key = format!("{}:{}", context.turn_id, call.call_id);
-        let project_root = std::path::Path::new(&context.project_root);
-        let paths = StorePathScopes {
-            store: &self.store,
-            project_id: &context.project_id,
-            project_root,
-        };
-        let documents = OperationsDocumentReader {
-            agent: self,
-            paths: &paths,
-            token: token.clone(),
-        };
-        let output: Arc<dyn ToolOutput> = Arc::new(EventOutput {
-            agent: self.clone(),
-            session_id: context.session_id.clone(),
-            turn_id: context.turn_id.clone(),
-            call_id: context.active_call_id.clone(),
-            tool_call_id: call.call_id.clone(),
-        });
-        let cancellation = TokenCancellation(token);
-        provider
-            .execute(
-                ToolInvocation {
-                    name: &super::tools::tool_name(call),
-                    arguments: call.arguments.clone(),
-                    approval_pin,
-                },
-                ToolContext {
-                    project_id: &context.project_id,
-                    project_root,
-                    call_key: &call_key,
-                    timeout_ceiling: context.bash_timeout_ms.map(Duration::from_millis),
-                    paths: &paths,
-                    documents: &documents,
-                    output,
-                    cancellation: &cancellation,
-                },
-            )
-            .await
     }
 }

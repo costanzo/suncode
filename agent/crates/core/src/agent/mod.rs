@@ -197,25 +197,15 @@ struct QueuedMessage {
 /// [`turn_loop::TurnLoop`].
 #[derive(Clone)]
 pub struct AgentRuntime {
-    store: Store,
-    pub(crate) user_id: String,
-    providers: Arc<ModelProviderRegistry>,
-    operations: Arc<suncode_tool::Operations>,
-    events: SessionEventHub,
-    attention_events: AttentionEventHub,
+    services: services::TurnServices,
     cancellations: Arc<Mutex<HashMap<String, CancellationToken>>>,
     active_turns: Arc<Mutex<HashMap<String, String>>>,
-    queued_messages: Arc<Mutex<HashMap<String, VecDeque<QueuedMessage>>>>,
-    non_interactive: bool,
     session_locks: Arc<AsyncMutex<HashMap<String, Arc<AsyncMutex<()>>>>>,
     mcp: suncode_mcp::McpRuntime,
     lsp: suncode_lsp::LspRuntime,
     browser: suncode_browser::BrowserRuntime,
-    tool_providers: providers::ToolProviders,
     preview: preview::PreviewManager,
     computer: suncode_computer::ComputerRuntime,
-    host_capabilities: AgentHostCapabilities,
-    config: Config,
     shutting_down: Arc<std::sync::atomic::AtomicBool>,
 }
 
@@ -242,6 +232,7 @@ mod lifecycle;
 mod providers;
 mod remote;
 mod run;
+mod services;
 mod states;
 mod submission;
 mod support;

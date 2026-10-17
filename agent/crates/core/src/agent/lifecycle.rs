@@ -32,7 +32,7 @@ impl AgentRuntime {
         for token in tokens {
             token.cancel();
         }
-        if let Ok(mut queued) = self.queued_messages.lock() {
+        if let Ok(mut queued) = self.services.queued_messages.lock() {
             queued.clear();
         }
 
@@ -60,8 +60,8 @@ impl AgentRuntime {
         .await
         .is_ok();
 
-        self.events.close_all();
-        self.attention_events.close_all();
+        self.services.events.close_all();
+        self.services.attention_events.close_all();
 
         computer_result?;
         if !cancellation_state_available {
@@ -77,206 +77,8 @@ impl AgentRuntime {
         Ok(())
     }
 
-    pub(super) fn emit(&self, session_id: &str, event: EventPayload) -> Result<(), BusinessError> {
-        let attention_payload = event.clone();
-        let occurred_at = self.events.publish_projected(session_id, event, |event| {
-            let event_type = event.event_type();
-            let payload = event.clone().into_value();
-            let projected = db_blocking(|| {
-                self.store
-                    .append_content(session_id, event_type.as_str(), &payload)
-            })?;
-            Ok::<String, BusinessError>(projected.occurred_at)
-        })?;
-        self.publish_attention(session_id, &occurred_at, &attention_payload);
-        Ok(())
-    }
-
-    pub(super) fn emit_context_compacted(
-        &self,
-        context: &Continuation,
-        result: &context::ContextBuildResult,
-    ) -> Result<(), BusinessError> {
-        let event = EventPayload::ContextCompacted(ContextCompactedPayload {
-            exchange_id: suncode_common::id::new(suncode_common::id::IdKind::Exchange),
-            turn_id: context.turn_id.clone(),
-            provider: "SunCode".into(),
-            model_id: "context-compaction".into(),
-            wire_model: "internal".into(),
-            iteration: context.iterations,
-            started_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-            original_characters: result.original_characters,
-            retained_characters: result.retained_characters,
-            original_tokens: result.original_tokens,
-            retained_tokens: result.retained_tokens,
-            dropped_messages: result.dropped_messages,
-            summary: result
-                .summary
-                .as_ref()
-                .map(|summary| ContextSummaryPayload {
-                    objective: summary.objective.clone(),
-                    important_constraints: summary.important_constraints.clone(),
-                    completed_work: summary.completed_work.clone(),
-                    active_work: summary.active_work.clone(),
-                    blockers: summary.blockers.clone(),
-                    next_action: summary.next_action.clone(),
-                }),
-        });
-        self.events
-            .publish_projected(&context.session_id, event, |event| {
-                let mut payload = event.clone().into_value();
-                payload["retained_messages"] =
-                    serde_json::to_value(context::persistable_messages(&result.messages))?;
-                let projected = self.store.append_content(
-                    &context.session_id,
-                    "context.compacted",
-                    &payload,
-                )?;
-                Ok::<String, BusinessError>(projected.occurred_at)
-            })?;
-        Ok(())
-    }
-
     pub fn attention_event_hub(&self) -> AttentionEventHub {
-        self.attention_events.clone()
-    }
-
-    pub(super) fn publish_attention(
-        &self,
-        session_id: &str,
-        occurred_at: &str,
-        event: &EventPayload,
-    ) {
-        let (kind, turn_id, correlation_id) = match event {
-            EventPayload::TurnCompleted(payload) => (
-                AttentionKind::PrimaryTurnCompleted,
-                payload.turn_id.as_str(),
-                payload.turn_id.as_str(),
-            ),
-            EventPayload::TurnState(payload) if payload.state == "failed" => (
-                AttentionKind::PrimaryTurnFailed,
-                payload.turn_id.as_str(),
-                payload.turn_id.as_str(),
-            ),
-            EventPayload::ApprovalRequested(payload) => (
-                AttentionKind::ApprovalRequested,
-                payload.turn_id.as_str(),
-                payload.approval_id.as_str(),
-            ),
-            EventPayload::QuestionAsked(payload) => (
-                AttentionKind::QuestionAsked,
-                payload.turn_id.as_str(),
-                payload.request_id.as_str(),
-            ),
-            _ => return,
-        };
-        let session = match self.store.session_by_id(session_id) {
-            Ok(Some(session)) => session,
-            Ok(None) => return,
-            Err(error) => {
-                logging::write_business_error(
-                    "attention",
-                    "resolve_session",
-                    &error,
-                    "delivery=skipped",
-                );
-                return;
-            }
-        };
-        if matches!(
-            kind,
-            AttentionKind::PrimaryTurnCompleted
-                | AttentionKind::PrimaryTurnFailed
-                | AttentionKind::QuestionAsked
-        ) && session.kind != "primary"
-        {
-            return;
-        }
-        let Some(project_id) = session.project_id.clone() else {
-            return;
-        };
-        let project = match self
-            .store
-            .project_by_id_for_user(&self.user_id, &project_id)
-        {
-            Ok(Some(project)) => project,
-            Ok(None) => return,
-            Err(error) => {
-                logging::write_business_error(
-                    "attention",
-                    "resolve_project",
-                    &error,
-                    "delivery=skipped",
-                );
-                return;
-            }
-        };
-        self.attention_events.publish(AgentAttentionEvent {
-            kind,
-            correlation_id: correlation_id.to_string(),
-            project_id,
-            project_display_name: project.display_name,
-            session_id: session.session_id,
-            session_title: session.title.unwrap_or_default(),
-            session_kind: session.kind,
-            parent_session_id: session.parent_session_id,
-            turn_id: turn_id.to_string(),
-            occurred_at: occurred_at.to_string(),
-        });
-    }
-
-    pub(super) fn emit_live(&self, session_id: &str, event: EventPayload) {
-        let event = AgentEvent {
-            session_id: session_id.to_string(),
-            occurred_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-            payload: event,
-        };
-        self.events.publish(event);
-    }
-    pub(super) fn turn_state(
-        &self,
-        context: &Continuation,
-        state: TurnState,
-        reason: Option<&str>,
-    ) -> Result<(), BusinessError> {
-        self.emit(
-            &context.session_id,
-            EventPayload::TurnState(TurnStatePayload {
-                turn_id: context.turn_id.clone(),
-                state: state.as_str().to_owned(),
-                model_id: Some(context.model.clone()),
-                submission_idempotency_key: Some(context.submission_key.clone()),
-                reason: reason.map(str::to_owned),
-            }),
-        )
-    }
-    pub(super) fn tool_state(
-        &self,
-        context: &Continuation,
-        call: &ToolCall,
-        state: ToolState,
-        reason: Option<&str>,
-    ) -> Result<(), BusinessError> {
-        self.emit(
-            &context.session_id,
-            EventPayload::ToolState(ToolStatePayload {
-                turn_id: context.turn_id.clone(),
-                call_id: context.active_call_id.clone(),
-                tool_call_id: call.call_id.clone(),
-                name: call.name.clone(),
-                state: state.as_str().to_owned(),
-                reason: reason.map(str::to_owned),
-            }),
-        )
-    }
-    pub(super) fn fail_context<T>(
-        &self,
-        context: &Continuation,
-        code: &str,
-        message: &str,
-    ) -> Result<T, BusinessError> {
-        self.turn_state(context, states::failed_turn_state(code), Some(code))?;
-        Err(BusinessError::new(code, message))
+        self.services.attention_events.clone()
     }
 
     pub(super) async fn session_lock(&self, session_id: &str) -> Arc<AsyncMutex<()>> {
@@ -288,7 +90,7 @@ impl AgentRuntime {
     }
 
     pub async fn recover(&self) -> Result<(), BusinessError> {
-        for event in db_blocking(|| self.store.recover_startup())? {
+        for event in db_blocking(|| self.services.store.recover_startup())? {
             let payload = EventPayload::TurnState(TurnStatePayload {
                 turn_id: event.payload["turn_id"]
                     .as_str()
@@ -304,13 +106,13 @@ impl AgentRuntime {
                     .map(str::to_string),
                 reason: event.payload["reason"].as_str().map(str::to_string),
             });
-            self.events.publish(AgentEvent {
+            self.services.events.publish(AgentEvent {
                 session_id: event.session_id,
                 occurred_at: event.occurred_at,
                 payload,
             });
         }
-        for suspended in db_blocking(|| self.store.resuming_turns())? {
+        for suspended in db_blocking(|| self.services.store.resuming_turns())? {
             let mut continuation: Continuation = serde_json::from_value(suspended.snapshot)
                 .map_err(|_| {
                     BusinessError::new("agent_unavailable", "approval continuation is invalid")
@@ -363,7 +165,7 @@ impl AgentRuntime {
                     );
                 }
                 let _ = db_blocking(|| {
-                    agent.store.finish_suspended(
+                    agent.services.store.finish_suspended(
                         &approval_id,
                         if result.is_ok() || suspended_again {
                             "completed"

@@ -1460,7 +1460,7 @@ async fn provider_tool_is_advertised_validated_and_executed() {
     );
     let (mut agent, store, _root, server, session_id) = fixture_with_router(47_616, router).await;
     let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    agent.tool_providers = providers::ToolProviders::new(vec![Arc::new(EchoProvider {
+    agent.services.tool_providers = providers::ToolProviders::new(vec![Arc::new(EchoProvider {
         calls: calls.clone(),
     })]);
     let response = agent
@@ -1527,7 +1527,7 @@ async fn documents_are_read_through_audited_operations_and_paths_map_back() {
         project_root: &root,
     };
     let documents = providers::OperationsDocumentReader {
-        agent: &agent,
+        services: &agent.services,
         paths: &paths,
         token: CancellationToken::new(),
     };
@@ -1676,7 +1676,7 @@ async fn approval_batch_halts_after_a_failure_and_toolset_calls_route_by_prefix(
     );
     let (mut agent, store, _root, server, session_id) = fixture_with_router(47_616, router).await;
     let calls = Arc::new(std::sync::Mutex::new(Vec::new()));
-    agent.tool_providers = providers::ToolProviders::new(vec![Arc::new(BatchProvider {
+    agent.services.tool_providers = providers::ToolProviders::new(vec![Arc::new(BatchProvider {
         calls: calls.clone(),
     })]);
     agent

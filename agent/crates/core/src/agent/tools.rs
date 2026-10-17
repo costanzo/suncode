@@ -1,72 +1,8 @@
-//! Tool resolution, approval, and execution for [`TurnLoop`], plus the
-//! runtime's audited operation helpers; see `agent/turn_loop.rs`.
+//! Tool resolution, approval, execution, and delegation for [`TurnLoop`];
+//! see `agent/turn_loop.rs`.
 
 use super::support::*;
 use super::*;
-
-impl AgentRuntime {
-    pub(super) async fn operation_in_project(
-        &self,
-        project_root: &str,
-        method: &str,
-        params: Value,
-        token: CancellationToken,
-    ) -> Result<Value, BusinessError> {
-        let operations = self.operations.clone();
-        let root = std::path::PathBuf::from(project_root);
-        let method = method.to_string();
-        let cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let cancelled_for_operation = cancelled.clone();
-        let mut operation = Box::pin(tokio::task::spawn_blocking(move || {
-            operations.execute_in_project_with_cancellation_and_output(
-                &root,
-                &method,
-                params,
-                Some(&cancelled_for_operation),
-                None,
-            )
-        }));
-        let join_result = tokio::select! {
-            result = &mut operation => result,
-            _ = token.cancelled() => {
-                cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
-                (&mut operation).await
-            }
-        };
-        join_result.map_err(|_| BusinessError::new("agent_unavailable", "operation task failed"))?
-    }
-
-    pub(super) fn dependency_context_message(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<suncode_llm::Message>, BusinessError> {
-        let dependencies = self.store.project_dependencies(project_id)?;
-        if dependencies.is_empty() {
-            return Ok(None);
-        }
-        let roots = dependencies
-            .iter()
-            .map(|dependency| {
-                format!(
-                    "- {}: dependency:{}",
-                    dependency.display_name, dependency.dependency_id
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        Ok(Some(suncode_llm::Message {
-            role: "system".into(),
-            content: vec![suncode_llm::ContentPart {
-                kind: "text".into(),
-                text: format!(
-                    "Registered read-only source dependencies:\n{roots}\nUse dependency:<dependencyId>/<relativePath> with read, or dependency:<dependencyId> as the glob/grep path. Dependencies cannot be modified or used as a process working directory."
-                ),
-            }],
-            tool_calls: Vec::new(),
-            tool_call_id: None,
-        }))
-    }
-}
 
 impl TurnLoop<'_> {
     pub(super) async fn resolve_calls(
@@ -78,7 +14,7 @@ impl TurnLoop<'_> {
         if next_tool_calls > self.context.tool_call_limit {
             self.context.tool_calls = next_tool_calls;
             for (index, call) in calls.iter().enumerate() {
-                self.runtime.emit(
+                self.services.emit(
                     &self.context.session_id,
                     EventPayload::ToolRequested(ToolRequestedPayload {
                         turn_id: self.context.turn_id.clone(),
@@ -89,14 +25,14 @@ impl TurnLoop<'_> {
                         ordinal: index,
                     }),
                 )?;
-                self.runtime.tool_state(
+                self.services.tool_state(
                     self.context,
                     call,
                     ToolState::Failed,
                     Some("tool_budget_exceeded"),
                 )?;
             }
-            self.runtime.turn_state(
+            self.services.turn_state(
                 self.context,
                 TurnState::Failed,
                 Some("tool_budget_exceeded"),
@@ -114,7 +50,7 @@ impl TurnLoop<'_> {
         self.context.tool_calls = next_tool_calls;
         let mut allowed_calls = Vec::new();
         for (index, call) in calls.iter().enumerate() {
-            self.runtime.emit(
+            self.services.emit(
                 &self.context.session_id,
                 EventPayload::ToolRequested(ToolRequestedPayload {
                     turn_id: self.context.turn_id.clone(),
@@ -133,23 +69,23 @@ impl TurnLoop<'_> {
                 self.context.repeated_tool_stalls = 1;
             }
             if self.context.repeated_tool_stalls >= 4 {
-                self.runtime.tool_state(
+                self.services.tool_state(
                     self.context,
                     call,
                     ToolState::Failed,
                     Some("repeated_equivalent_call"),
                 )?;
-                return self.runtime.fail_context(
+                return self.services.fail_context(
                     self.context,
                     "tool_stall_detected",
                     "Repeated equivalent tool calls indicate a stalled turn",
                 );
             }
-            self.runtime
+            self.services
                 .tool_state(self.context, call, ToolState::Requested, None)?;
-            self.runtime
+            self.services
                 .tool_state(self.context, call, ToolState::Validating, None)?;
-            let provider = self.runtime.tool_providers.find(&tool_name(call));
+            let provider = self.services.tool_providers.find(&tool_name(call));
             let batch = provider.and_then(|provider| provider.approval_batch(&tool_name(call)));
             if batch.is_some() && self.context.approval_batch_failed {
                 self.record_batch_skipped(call)?;
@@ -247,7 +183,7 @@ impl TurnLoop<'_> {
             if call.name == "question" {
                 self.execute_allowed_calls(std::mem::take(&mut allowed_calls))
                     .await?;
-                self.runtime.tool_state(
+                self.services.tool_state(
                     self.context,
                     call,
                     ToolState::AwaitingQuestion,
@@ -259,12 +195,12 @@ impl TurnLoop<'_> {
                 let snapshot = continuation_snapshot(self.context).map_err(|_| {
                     BusinessError::new("agent_unavailable", "turn continuation could not be stored")
                 })?;
-                self.runtime.store.create_question(
+                self.services.store.create_question(
                     &request_id,
                     &self.context.turn_id,
                     &snapshot,
                 )?;
-                self.runtime.emit(
+                self.services.emit(
                     &self.context.session_id,
                     EventPayload::QuestionAsked(QuestionAskedPayload {
                         request_id: request_id.clone(),
@@ -281,7 +217,7 @@ impl TurnLoop<'_> {
                 self.execute_todowrite(call)?;
                 continue;
             }
-            self.runtime
+            self.services
                 .tool_state(self.context, call, ToolState::PolicyCheck, None)?;
             let risk = match provider {
                 Some(provider) => provider.risk(&tool_name(call)),
@@ -298,9 +234,9 @@ impl TurnLoop<'_> {
             } else {
                 evaluate(
                     risk,
-                    self.runtime.non_interactive,
+                    self.services.non_interactive,
                     self.context.full_control_override.unwrap_or(
-                        self.runtime
+                        self.services
                             .store
                             .session_full_control(&self.context.session_id)?,
                     ),
@@ -310,7 +246,7 @@ impl TurnLoop<'_> {
                 Decision::Deny => {
                     self.execute_allowed_calls(std::mem::take(&mut allowed_calls))
                         .await?;
-                    self.runtime.tool_state(
+                    self.services.tool_state(
                         self.context,
                         call,
                         ToolState::Denied,
@@ -324,7 +260,7 @@ impl TurnLoop<'_> {
                 Decision::ApprovalRequired => {
                     self.execute_allowed_calls(std::mem::take(&mut allowed_calls))
                         .await?;
-                    self.runtime.tool_state(
+                    self.services.tool_state(
                         self.context,
                         call,
                         ToolState::AwaitingApproval,
@@ -335,7 +271,7 @@ impl TurnLoop<'_> {
                         let members = calls[index..]
                             .iter()
                             .take_while(|candidate| {
-                                self.runtime
+                                self.services
                                     .tool_providers
                                     .find(&tool_name(candidate))
                                     .and_then(|provider| {
@@ -382,7 +318,7 @@ impl TurnLoop<'_> {
                         )
                     })?;
                     let approval = db_blocking(|| {
-                        self.runtime.store.create_approval(ApprovalInput {
+                        self.services.store.create_approval(ApprovalInput {
                             project_id: Some(&self.context.project_id),
                             session_id: &self.context.session_id,
                             turn_id: &self.context.turn_id,
@@ -392,7 +328,7 @@ impl TurnLoop<'_> {
                             snapshot: &snapshot,
                         })
                     })?;
-                    self.runtime.emit(
+                    self.services.emit(
                         &self.context.session_id,
                         EventPayload::ApprovalRequested(ApprovalRequestedPayload {
                             turn_id: self.context.turn_id.clone(),
@@ -451,18 +387,18 @@ impl TurnLoop<'_> {
             })?;
         let definition = suncode_agents::specialist_by_name(agent_name)
             .ok_or_else(|| BusinessError::new("unknown_agent", "built-in agent was not found"))?;
-        self.runtime
+        self.services
             .tool_state(self.context, call, ToolState::PolicyCheck, None)?;
-        self.runtime
+        self.services
             .tool_state(self.context, call, ToolState::Authorized, None)?;
-        self.runtime
+        self.services
             .tool_state(self.context, call, ToolState::Executing, None)?;
         if self.token.is_cancelled() {
             return Err(BusinessError::new("cancelled", "Turn was cancelled"));
         }
         let title = task.chars().take(80).collect::<String>();
         let child = db_blocking(|| {
-            self.runtime.store.create_child_session(
+            self.services.store.create_child_session(
                 &self.context.project_id,
                 &self.context.session_id,
                 definition.id,
@@ -473,7 +409,7 @@ impl TurnLoop<'_> {
         })?;
         let invocation_id = suncode_common::id::new(suncode_common::id::IdKind::SubagentInvocation);
         db_blocking(|| {
-            self.runtime.store.create_subagent_invocation(
+            self.services.store.create_subagent_invocation(
                 &invocation_id,
                 &self.context.session_id,
                 &self.context.turn_id,
@@ -489,17 +425,19 @@ impl TurnLoop<'_> {
                 &self.context.model,
             )
         })?;
-        self.runtime
+        self.services
             .store
             .update_subagent_invocation(&child.session_id, "running", None, None)?;
-        let outcome = Box::pin(self.runtime.submit_child(
-            &child.session_id,
-            task,
-            &self.context.model,
-            self.context.reasoning_effort.as_deref(),
-            self.token.clone(),
-        ))
-        .await;
+        let outcome = self
+            .children
+            .submit_child(
+                &child.session_id,
+                task,
+                &self.context.model,
+                self.context.reasoning_effort.as_deref(),
+                self.token.clone(),
+            )
+            .await;
         let result = match outcome {
             Ok(TurnResponse::Completed {
                 message,
@@ -520,7 +458,7 @@ impl TurnLoop<'_> {
                     "toolCalls":tool_calls
                 });
                 db_blocking(|| {
-                    self.runtime.store.update_subagent_invocation(
+                    self.services.store.update_subagent_invocation(
                         &child.session_id,
                         "completed",
                         Some(&result),
@@ -532,7 +470,7 @@ impl TurnLoop<'_> {
             Ok(TurnResponse::AwaitingApproval { approval_id, .. }) => {
                 let result = json!({"status":"awaiting_approval","agentId":definition.id,"childSessionId":child.session_id,"approvalId":approval_id});
                 db_blocking(|| {
-                    self.runtime.store.update_subagent_invocation(
+                    self.services.store.update_subagent_invocation(
                         &child.session_id,
                         "awaiting_approval",
                         Some(&result),
@@ -544,7 +482,7 @@ impl TurnLoop<'_> {
             Ok(TurnResponse::AwaitingQuestion { .. }) => {
                 let result = json!({"status":"failed","agentId":definition.id,"childSessionId":child.session_id,"error":{"code":"agent_question_denied","message":"child agents cannot ask the user questions"}});
                 db_blocking(|| {
-                    self.runtime.store.update_subagent_invocation(
+                    self.services.store.update_subagent_invocation(
                         &child.session_id,
                         "failed",
                         Some(&result),
@@ -556,7 +494,7 @@ impl TurnLoop<'_> {
             Ok(TurnResponse::Queued { .. }) => {
                 let result = json!({"status":"failed","agentId":definition.id,"childSessionId":child.session_id,"error":{"code":"agent_busy","message":"child agent unexpectedly queued its initial task"}});
                 db_blocking(|| {
-                    self.runtime.store.update_subagent_invocation(
+                    self.services.store.update_subagent_invocation(
                         &child.session_id,
                         "failed",
                         Some(&result),
@@ -575,7 +513,7 @@ impl TurnLoop<'_> {
                     })?;
                 let result = json!({"status":"awaiting_approval","agentId":definition.id,"childSessionId":child.session_id,"approvalId":approval_id});
                 db_blocking(|| {
-                    self.runtime.store.update_subagent_invocation(
+                    self.services.store.update_subagent_invocation(
                         &child.session_id,
                         "awaiting_approval",
                         Some(&result),
@@ -593,7 +531,7 @@ impl TurnLoop<'_> {
                 let error_code = error.code.clone();
                 let result = json!({"status":state,"agentId":definition.id,"childSessionId":child.session_id,"error":{"code":error.code,"message":error.message,"details":error.details}});
                 db_blocking(|| {
-                    self.runtime.store.update_subagent_invocation(
+                    self.services.store.update_subagent_invocation(
                         &child.session_id,
                         state,
                         Some(&result),
@@ -617,7 +555,7 @@ impl TurnLoop<'_> {
         // provider allows it; anything else runs in order.
         let parallel_read_only = calls.len() > 1
             && calls.iter().all(|call| {
-                self.runtime
+                self.services
                     .tool_providers
                     .find(&call.name)
                     .is_some_and(|provider| {
@@ -633,19 +571,19 @@ impl TurnLoop<'_> {
         }
 
         for call in &calls {
-            self.runtime
+            self.services
                 .tool_state(self.context, call, ToolState::Authorized, None)?;
-            self.runtime
+            self.services
                 .tool_state(self.context, call, ToolState::Executing, None)?;
         }
         let shared: &Continuation = self.context;
         let results = join_all(calls.iter().map(|call| {
             let provider = self
-                .runtime
+                .services
                 .tool_providers
                 .find(&call.name)
                 .expect("parallel calls were checked for a provider");
-            self.runtime
+            self.services
                 .execute_provider(provider, shared, call, self.token.clone(), None)
         }))
         .await;
@@ -666,14 +604,14 @@ impl TurnLoop<'_> {
 
     pub(super) fn execute_todowrite(&mut self, call: &ToolCall) -> Result<(), BusinessError> {
         let todos = parse_todos(&call.arguments)?;
-        self.runtime
+        self.services
             .tool_state(self.context, call, ToolState::PolicyCheck, None)?;
-        self.runtime
+        self.services
             .tool_state(self.context, call, ToolState::Authorized, None)?;
-        self.runtime
+        self.services
             .tool_state(self.context, call, ToolState::Executing, None)?;
         self.context.todos = todos.clone();
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::TodoUpdated(TodoUpdatedPayload {
                 turn_id: self.context.turn_id.clone(),
@@ -689,10 +627,10 @@ impl TurnLoop<'_> {
                     .collect(),
             }),
         )?;
-        self.runtime
+        self.services
             .tool_state(self.context, call, ToolState::Succeeded, None)?;
         let result = json!({"todos": self.context.todos});
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::ToolResult(ToolResultPayload {
                 turn_id: self.context.turn_id.clone(),
@@ -707,7 +645,7 @@ impl TurnLoop<'_> {
         );
         tool.tool_call_id = Some(call.call_id.clone());
         self.context.messages.push(tool.clone());
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::MessageTool(MessageToolPayload {
                 turn_id: self.context.turn_id.clone(),
@@ -724,13 +662,13 @@ impl TurnLoop<'_> {
         call: &ToolCall,
         approval_pin: Option<Value>,
     ) -> Result<(), BusinessError> {
-        self.runtime
+        self.services
             .tool_state(self.context, call, ToolState::Authorized, None)?;
-        self.runtime
+        self.services
             .tool_state(self.context, call, ToolState::Executing, None)?;
-        if let Some(provider) = self.runtime.tool_providers.find(&tool_name(call)) {
+        if let Some(provider) = self.services.tool_providers.find(&tool_name(call)) {
             let result = match self
-                .runtime
+                .services
                 .execute_provider(
                     provider,
                     self.context,
@@ -766,7 +704,7 @@ impl TurnLoop<'_> {
             return self.record_call_success(call, result);
         }
         let error = BusinessError::new("authorization_denied", "Unknown tool");
-        self.runtime
+        self.services
             .tool_state(self.context, call, ToolState::Failed, Some(&error.code))?;
         Err(error)
     }
@@ -781,7 +719,7 @@ impl TurnLoop<'_> {
         let catalog =
             suncode_skills::SkillCatalog::discover(&suncode_skills::DiscoveryOptions::for_user(
                 self.context.project_root.clone(),
-                Some(&self.runtime.config.user_directory),
+                Some(&self.services.config.user_directory),
             ));
         let document = catalog.load_for_model(name).map_err(|diagnostic| {
             BusinessError::new("skill_load_failed", diagnostic.message.clone())
@@ -801,7 +739,7 @@ impl TurnLoop<'_> {
         call: &ToolCall,
         error: &BusinessError,
     ) -> Result<bool, BusinessError> {
-        self.runtime
+        self.services
             .tool_state(self.context, call, ToolState::Failed, Some(&error.code))?;
         if !is_recoverable_tool_error(&error.code) {
             return Ok(false);
@@ -813,7 +751,7 @@ impl TurnLoop<'_> {
                 "details": error.details,
             }
         });
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::ToolResult(ToolResultPayload {
                 turn_id: self.context.turn_id.clone(),
@@ -828,7 +766,7 @@ impl TurnLoop<'_> {
         );
         tool.tool_call_id = Some(call.call_id.clone());
         self.context.messages.push(tool.clone());
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::MessageTool(MessageToolPayload {
                 turn_id: self.context.turn_id.clone(),
@@ -853,7 +791,7 @@ impl TurnLoop<'_> {
             && normalized_result.get("success").and_then(Value::as_bool) == Some(false))
             || (suncode_mcp::is_mcp_tool(&call.name)
                 && normalized_result.get("isError").and_then(Value::as_bool) == Some(true));
-        self.runtime.tool_state(
+        self.services.tool_state(
             self.context,
             call,
             if process_failed {
@@ -871,7 +809,7 @@ impl TurnLoop<'_> {
                 None
             },
         )?;
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::ToolResult(ToolResultPayload {
                 turn_id: self.context.turn_id.clone(),
@@ -893,11 +831,11 @@ impl TurnLoop<'_> {
             });
         if !checkpoint_ids.is_empty() {
             let manifest = self
-                .runtime
+                .services
                 .store
                 .ensure_manifest(&self.context.session_id, &self.context.turn_id)?;
             let existing =
-                db_blocking(|| self.runtime.store.checkpoint_items(&manifest.manifest_id))?.len()
+                db_blocking(|| self.services.store.checkpoint_items(&manifest.manifest_id))?.len()
                     as i64;
             for (index, id) in checkpoint_ids.iter().enumerate() {
                 let path = if index == 0 {
@@ -906,7 +844,7 @@ impl TurnLoop<'_> {
                     result.get("to")
                 }
                 .and_then(Value::as_str);
-                self.runtime.emit(
+                self.services.emit(
                     &self.context.session_id,
                     EventPayload::CheckpointCaptured(CheckpointCapturedPayload {
                         turn_id: self.context.turn_id.clone(),
@@ -925,7 +863,7 @@ impl TurnLoop<'_> {
         );
         tool.tool_call_id = Some(call.call_id.clone());
         self.context.messages.push(tool.clone());
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::MessageTool(MessageToolPayload {
                 turn_id: self.context.turn_id.clone(),
@@ -965,9 +903,9 @@ impl TurnLoop<'_> {
                 ),
             });
         }
-        self.runtime
+        self.services
             .tool_state(self.context, call, ToolState::Succeeded, None)?;
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::ToolResult(ToolResultPayload {
                 turn_id: self.context.turn_id.clone(),
@@ -984,7 +922,7 @@ impl TurnLoop<'_> {
             serde_json::to_string(&metadata).unwrap_or_else(|_| "{}".into()),
         );
         redacted.tool_call_id = Some(call.call_id.clone());
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::MessageTool(MessageToolPayload {
                 turn_id: self.context.turn_id.clone(),
@@ -998,7 +936,7 @@ impl TurnLoop<'_> {
 
     /// Records a call skipped because an earlier call in its approval batch failed.
     pub(super) fn record_batch_skipped(&mut self, call: &ToolCall) -> Result<(), BusinessError> {
-        self.runtime.tool_state(
+        self.services.tool_state(
             self.context,
             call,
             ToolState::Failed,
@@ -1010,7 +948,7 @@ impl TurnLoop<'_> {
                 "message": suncode_computer::HALT_MESSAGE,
             }
         });
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::ToolResult(ToolResultPayload {
                 turn_id: self.context.turn_id.clone(),
@@ -1022,7 +960,7 @@ impl TurnLoop<'_> {
         let mut tool = Message::text("tool", suncode_computer::HALT_MESSAGE);
         tool.tool_call_id = Some(call.call_id.clone());
         self.context.messages.push(tool.clone());
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::MessageTool(MessageToolPayload {
                 turn_id: self.context.turn_id.clone(),
@@ -1048,7 +986,7 @@ impl TurnLoop<'_> {
             ));
         }
         let allowed = self
-            .runtime
+            .services
             .tool_providers
             .find(&call.name)
             .is_some_and(|provider| provider.allows_dependency_paths(&call.name));
@@ -1059,7 +997,7 @@ impl TurnLoop<'_> {
             ));
         }
         let scopes = providers::StorePathScopes {
-            store: &self.runtime.store,
+            store: &self.services.store,
             project_id: &self.context.project_id,
             project_root: Path::new(&self.context.project_root),
         };

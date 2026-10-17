@@ -1,5 +1,5 @@
-//! Model requests and compaction for [`TurnLoop`], plus the runtime's image
-//! and message helpers; see `agent/turn_loop.rs`.
+//! Model requests, the iteration loop, and compaction for [`TurnLoop`]; see
+//! `agent/turn_loop.rs`.
 
 use super::support::*;
 use super::*;
@@ -51,84 +51,6 @@ pub(super) enum TurnStart {
     Resume,
 }
 
-impl AgentRuntime {
-    pub(super) fn validate_message_images(
-        &self,
-        session_id: &str,
-        model: &str,
-        image_ids: &[String],
-    ) -> Result<Vec<suncode_data::SessionImageRecord>, BusinessError> {
-        if image_ids.len() > 3 {
-            return Err(BusinessError::invalid(
-                "a message can include at most three images",
-            ));
-        }
-        if !image_ids.is_empty() && !self.providers.supports_vision(model) {
-            return Err(BusinessError::new(
-                "unsupported_capability",
-                "selected model does not support image input",
-            ));
-        }
-        let mut seen = std::collections::HashSet::new();
-        let mut images = Vec::with_capacity(image_ids.len());
-        for image_id in image_ids {
-            if image_id.trim().is_empty() || !seen.insert(image_id.as_str()) {
-                return Err(BusinessError::invalid(
-                    "image IDs must be non-empty and unique",
-                ));
-            }
-            let image = self
-                .store
-                .session_image_by_id(session_id, image_id)?
-                .ok_or_else(|| {
-                    BusinessError::new("not_found", "message image was not found in this session")
-                })?;
-            let size = fs::metadata(&image.storage_path)
-                .map_err(|_| BusinessError::new("not_found", "message image file is unavailable"))?
-                .len();
-            if size == 0 || size > 20 * 1024 * 1024 {
-                return Err(BusinessError::invalid(
-                    "message image must be between 1 byte and 20 MiB",
-                ));
-            }
-            images.push(image);
-        }
-        Ok(images)
-    }
-
-    pub(super) fn to_llm_message_with_images(
-        &self,
-        session_id: &str,
-        message: &Message,
-    ) -> Result<suncode_llm::Message, BusinessError> {
-        let mut converted = message.clone();
-        for part in &mut converted.content {
-            if part.kind != "image_ref" {
-                continue;
-            }
-            let image = self
-                .store
-                .session_image_by_id(session_id, &part.text)?
-                .ok_or_else(|| BusinessError::new("not_found", "message image is unavailable"))?;
-            let bytes = fs::read(&image.storage_path).map_err(|_| {
-                BusinessError::new("not_found", "message image file is unavailable")
-            })?;
-            if bytes.is_empty() || bytes.len() > 20 * 1024 * 1024 {
-                return Err(BusinessError::invalid(
-                    "message image must be between 1 byte and 20 MiB",
-                ));
-            }
-            part.kind = "image_url".into();
-            part.text = format!(
-                "data:{};base64,{}",
-                image_mime_type(&image.storage_path)?,
-                STANDARD.encode(bytes)
-            );
-        }
-        Ok(converted)
-    }
-}
-
 impl TurnLoop<'_> {
     /// Retries one immutable provider request, never the tools that produced it.
     pub(super) async fn complete_with_retries(
@@ -150,7 +72,7 @@ impl TurnLoop<'_> {
             }
             let exchange_id = suncode_common::id::new(suncode_common::id::IdKind::Exchange);
             self.context.active_call_id = Some(exchange_id.clone());
-            self.runtime.emit(
+            self.services.emit(
                 &self.context.session_id,
                 EventPayload::ProviderExchangeStarted(ProviderExchangeStartedPayload {
                     exchange_id: exchange_id.clone(),
@@ -178,7 +100,7 @@ impl TurnLoop<'_> {
                         client_toolsets: &[],
                         reasoning_effort: self.context.reasoning_effort.as_deref(),
                         max_output_tokens: self
-                            .runtime
+                            .services
                             .providers
                             .limits(&self.context.model)
                             .and_then(|limits| limits.max_output_tokens),
@@ -199,7 +121,7 @@ impl TurnLoop<'_> {
                         _ = &mut turn_deadline => break Err(BusinessError::new("turn_timeout", "Turn exceeded its wall-clock budget")),
                         Some(delta) = delta_receiver.recv() => {
                             response_started |= !delta.is_empty();
-                            self.runtime.emit_live(&self.context.session_id, EventPayload::AssistantDelta(AssistantDeltaPayload { turn_id: self.context.turn_id.clone(), text: delta }));
+                            self.services.emit_live(&self.context.session_id, EventPayload::AssistantDelta(AssistantDeltaPayload { turn_id: self.context.turn_id.clone(), text: delta }));
                         }
                         Some(progress) = transfer_receiver.recv() => {
                             uploaded_bytes = uploaded_bytes.saturating_add(progress.uploaded_bytes);
@@ -207,7 +129,7 @@ impl TurnLoop<'_> {
                         }
                         _ = transfer_tick.tick() => {
                             if published_transfer != (uploaded_bytes, downloaded_bytes) {
-                                self.runtime.emit_live(&self.context.session_id, EventPayload::ProviderExchangeProgress(ProviderExchangeProgressPayload {
+                                self.services.emit_live(&self.context.session_id, EventPayload::ProviderExchangeProgress(ProviderExchangeProgressPayload {
                                     exchange_id: exchange_id.clone(),
                                     turn_id: self.context.turn_id.clone(),
                                     provider: provider.provider_id.clone(),
@@ -222,7 +144,7 @@ impl TurnLoop<'_> {
                 };
                 while let Ok(delta) = delta_receiver.try_recv() {
                     response_started |= !delta.is_empty();
-                    self.runtime.emit_live(
+                    self.services.emit_live(
                         &self.context.session_id,
                         EventPayload::AssistantDelta(AssistantDeltaPayload {
                             turn_id: self.context.turn_id.clone(),
@@ -235,7 +157,7 @@ impl TurnLoop<'_> {
                     downloaded_bytes = downloaded_bytes.saturating_add(progress.downloaded_bytes);
                 }
                 if published_transfer != (uploaded_bytes, downloaded_bytes) {
-                    self.runtime.emit_live(
+                    self.services.emit_live(
                         &self.context.session_id,
                         EventPayload::ProviderExchangeProgress(ProviderExchangeProgressPayload {
                             exchange_id: exchange_id.clone(),
@@ -258,7 +180,7 @@ impl TurnLoop<'_> {
                 Ok(completion) => return Ok(completion),
                 Err(error) => error,
             };
-            self.runtime.emit(
+            self.services.emit(
                 &self.context.session_id,
                 EventPayload::ProviderExchangeFailed(ProviderExchangeFailedPayload {
                     exchange_id: exchange_id.clone(),
@@ -286,7 +208,7 @@ impl TurnLoop<'_> {
                     "Provider retry cannot fit within the turn's remaining budget",
                 ));
             }
-            self.runtime.emit_live(
+            self.services.emit_live(
                 &self.context.session_id,
                 EventPayload::ProviderRetryScheduled(ProviderRetryScheduledPayload {
                     exchange_id,
@@ -315,10 +237,10 @@ impl TurnLoop<'_> {
         let started = Instant::now();
         match start {
             TurnStart::Submit(message) => {
-                self.runtime
+                self.services
                     .turn_state(self.context, TurnState::Admitted, None)?;
                 self.context.messages.push(message.clone());
-                self.runtime.emit(
+                self.services.emit(
                     &self.context.session_id,
                     EventPayload::MessageUser(MessageUserPayload {
                         message_id: suncode_common::id::new(suncode_common::id::IdKind::Message),
@@ -329,29 +251,30 @@ impl TurnLoop<'_> {
                     }),
                 )?;
             }
-            TurnStart::Retry => self
-                .runtime
-                .turn_state(self.context, TurnState::Admitted, None)?,
+            TurnStart::Retry => {
+                self.services
+                    .turn_state(self.context, TurnState::Admitted, None)?
+            }
             TurnStart::Resume => {}
         }
-        self.runtime
+        self.services
             .turn_state(self.context, TurnState::Preparing, None)?;
         let base_system_messages = system_prompt::build_messages(system_prompt::PromptContext {
             model_id: &self.context.model,
             provider_id: &provider.provider_id,
             project_root: &self.context.project_root,
             session_started_at: &self.context.session_started_at,
-            non_interactive: self.runtime.non_interactive,
-            host_capabilities: self.runtime.host_capabilities,
+            non_interactive: self.services.non_interactive,
+            host_capabilities: self.services.host_capabilities,
             allowed_tools: &self.context.allowed_tools,
             agent: self.context.agent(),
             dependency_context: self
-                .runtime
+                .services
                 .dependency_context_message(&self.context.project_id)?,
             skill_guidance: if self.context.agent().can_use_skills {
                 skill_guidance(
                     &self.context.project_root,
-                    Some(&self.runtime.config.user_directory),
+                    Some(&self.services.config.user_directory),
                 )
             } else {
                 None
@@ -360,11 +283,11 @@ impl TurnLoop<'_> {
         while self.context.iterations < 1024 {
             if self.token.is_cancelled() {
                 return self
-                    .runtime
+                    .services
                     .fail_context(self.context, "cancelled", "Turn was cancelled");
             }
             if started.elapsed() > Duration::from_millis(self.context.turn_timeout_ms) {
-                return self.runtime.fail_context(
+                return self.services.fail_context(
                     self.context,
                     "turn_timeout",
                     "Turn exceeded its wall-clock budget",
@@ -372,7 +295,7 @@ impl TurnLoop<'_> {
             }
             self.drain_queued_messages()?;
             self.context.iterations += 1;
-            self.runtime
+            self.services
                 .turn_state(self.context, TurnState::CallingModel, None)?;
             let agent = self.context.agent();
             let mut tool_definitions = suncode_tool::definitions::all();
@@ -388,12 +311,12 @@ impl TurnLoop<'_> {
                 let catalog = suncode_common::tool::CatalogContext {
                     project_id: &self.context.project_id,
                     computer_use: self
-                        .runtime
+                        .services
                         .providers
                         .supports_computer_use(&self.context.model),
                 };
                 let provider_tools = self
-                    .runtime
+                    .services
                     .tool_providers
                     .catalog(&catalog)
                     .await
@@ -438,7 +361,7 @@ impl TurnLoop<'_> {
                     .map(|value| value.len().div_ceil(4))
                     .unwrap_or(0)
                     .saturating_add(
-                        self.runtime
+                        self.services
                             .providers
                             .limits(&self.context.model)
                             .and_then(|limits| limits.max_output_tokens)
@@ -447,11 +370,11 @@ impl TurnLoop<'_> {
                     );
             let mut prompt = context::build_for_model_with_overhead(
                 &self.context.messages,
-                self.runtime
+                self.services
                     .providers
                     .limits(&self.context.model)
                     .and_then(|limits| limits.max_input_tokens),
-                self.runtime
+                self.services
                     .providers
                     .limits(&self.context.model)
                     .and_then(|limits| limits.auto_compact_tokens),
@@ -462,14 +385,15 @@ impl TurnLoop<'_> {
                     .await?;
             }
             if prompt.retained_tokens > prompt.max_retained_tokens {
-                return self.runtime.fail_context(
+                return self.services.fail_context(
                     self.context,
                     "context_budget_exceeded",
                     "Compacted context still exceeds the selected model's request budget",
                 );
             }
             if prompt.compacted {
-                self.runtime.emit_context_compacted(self.context, &prompt)?;
+                self.services
+                    .emit_context_compacted(self.context, &prompt)?;
             }
             if prompt.compacted {
                 self.context.messages = prompt.messages;
@@ -480,7 +404,7 @@ impl TurnLoop<'_> {
                     .messages
                     .iter()
                     .map(|message| {
-                        self.runtime
+                        self.services
                             .to_llm_message_with_images(&self.context.session_id, message)
                     })
                     .collect::<Result<Vec<_>, _>>()?,
@@ -498,7 +422,7 @@ impl TurnLoop<'_> {
                         self.context.overflow_recovery_attempted = true;
                         let mut forced = context::force_compact(
                             &self.context.messages,
-                            self.runtime
+                            self.services
                                 .providers
                                 .limits(&self.context.model)
                                 .and_then(|limits| limits.max_input_tokens)
@@ -509,7 +433,8 @@ impl TurnLoop<'_> {
                             self.generate_compaction_summary(&mut forced, &provider)
                                 .await?;
                             self.context.messages = forced.messages.clone();
-                            self.runtime.emit_context_compacted(self.context, &forced)?;
+                            self.services
+                                .emit_context_compacted(self.context, &forced)?;
                             continue;
                         }
                     }
@@ -522,7 +447,7 @@ impl TurnLoop<'_> {
                 .clone()
                 .expect("successful provider attempt has an exchange ID");
             if result.text.len() > 8 * 1024 * 1024 {
-                return self.runtime.fail_context(
+                return self.services.fail_context(
                     self.context,
                     "output_budget_exceeded",
                     "Provider output exceeded its budget",
@@ -532,7 +457,7 @@ impl TurnLoop<'_> {
             let tool_calls = result.tool_calls.clone();
             if let Some(usage) = &usage {
                 self.context.usage.add(usage);
-                self.runtime.emit(
+                self.services.emit(
                     &self.context.session_id,
                     EventPayload::UsageUpdated(UsageUpdatedPayload {
                         turn_id: self.context.turn_id.clone(),
@@ -550,7 +475,7 @@ impl TurnLoop<'_> {
                 tool_calls: tool_calls.clone(),
                 tool_call_id: None,
             };
-            self.runtime.emit(
+            self.services.emit(
                 &self.context.session_id,
                 EventPayload::ProviderExchangeCompleted(ProviderExchangeCompletedPayload {
                     exchange_id: exchange_id.clone(),
@@ -564,7 +489,7 @@ impl TurnLoop<'_> {
                 }),
             )?;
             self.context.messages.push(assistant.clone());
-            self.runtime.emit(
+            self.services.emit(
                 &self.context.session_id,
                 EventPayload::MessageAssistant(MessageAssistantPayload {
                     message_id: suncode_common::id::new(suncode_common::id::IdKind::Message),
@@ -577,13 +502,13 @@ impl TurnLoop<'_> {
             )?;
             if tool_calls.is_empty() {
                 if self.drain_queued_messages()? {
-                    self.runtime
+                    self.services
                         .turn_state(self.context, TurnState::Preparing, None)?;
                     continue;
                 }
-                self.runtime
+                self.services
                     .turn_state(self.context, TurnState::Completed, None)?;
-                self.runtime.emit(
+                self.services.emit(
                     &self.context.session_id,
                     EventPayload::TurnCompleted(TurnCompletedPayload {
                         turn_id: self.context.turn_id.clone(),
@@ -600,7 +525,7 @@ impl TurnLoop<'_> {
                     tool_calls: self.context.tool_calls,
                 };
                 db_blocking(|| {
-                    self.runtime.store.complete_turn(
+                    self.services.store.complete_turn(
                         &self.context.session_id,
                         &self.context.submission_key,
                         &serde_json::to_value(&response).map_err(|_| {
@@ -613,15 +538,15 @@ impl TurnLoop<'_> {
                 })?;
                 return Ok(response);
             }
-            self.runtime
+            self.services
                 .turn_state(self.context, TurnState::ResolvingCalls, None)?;
             self.context.approval_batch_failed = false;
             self.resolve_calls(tool_calls).await?;
             self.drain_queued_messages()?;
-            self.runtime
+            self.services
                 .turn_state(self.context, TurnState::Preparing, None)?;
         }
-        self.runtime.fail_context(
+        self.services.fail_context(
             self.context,
             "iteration_budget_exceeded",
             "Turn exceeded its iteration budget",
@@ -631,7 +556,7 @@ impl TurnLoop<'_> {
     pub(super) fn drain_queued_messages(&mut self) -> Result<bool, BusinessError> {
         let queued = {
             let mut queues =
-                self.runtime.queued_messages.lock().map_err(|_| {
+                self.services.queued_messages.lock().map_err(|_| {
                     BusinessError::new("agent_unavailable", "turn queue unavailable")
                 })?;
             queues.remove(&self.context.session_id).unwrap_or_default()
@@ -640,14 +565,14 @@ impl TurnLoop<'_> {
             return Ok(false);
         }
         for item in queued {
-            let images = self.runtime.validate_message_images(
+            let images = self.services.validate_message_images(
                 &self.context.session_id,
                 &self.context.model,
                 &item.image_ids,
             )?;
             let message = message_with_image_refs(&item.input, &images);
             self.context.messages.push(message.clone());
-            self.runtime.emit(
+            self.services.emit(
                 &self.context.session_id,
                 EventPayload::MessageUser(MessageUserPayload {
                     message_id: suncode_common::id::new(suncode_common::id::IdKind::Message),
@@ -717,7 +642,7 @@ impl TurnLoop<'_> {
             transfer_progress: transfer_sender,
         };
         let exchange_id = suncode_common::id::new(suncode_common::id::IdKind::Exchange);
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::ProviderExchangeStarted(ProviderExchangeStartedPayload {
                 exchange_id: exchange_id.clone(),
@@ -753,7 +678,7 @@ impl TurnLoop<'_> {
                     ),
                     Ok(Ok(_)) => unreachable!(),
                 };
-                self.runtime.emit(
+                self.services.emit(
                     &self.context.session_id,
                     EventPayload::ProviderExchangeFailed(ProviderExchangeFailedPayload {
                         exchange_id,
@@ -769,7 +694,7 @@ impl TurnLoop<'_> {
                 return Ok(());
             }
         };
-        self.runtime.emit(
+        self.services.emit(
             &self.context.session_id,
             EventPayload::ProviderExchangeCompleted(ProviderExchangeCompletedPayload {
                 exchange_id,
