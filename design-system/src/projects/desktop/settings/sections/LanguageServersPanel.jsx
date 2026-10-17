@@ -1243,6 +1243,348 @@ function RustAnalyzerSettings({ server, onBack, onSave, onRetry }) {
   );
 }
 
+function RoslynLanguageServerSettings({ server, onBack, onSave, onRetry }) {
+  const [draft, setDraft] = useState(server);
+  const [detecting, setDetecting] = useState(false);
+  const update = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(server);
+
+  useEffect(() => setDraft(server), [server]);
+
+  const detectInstallation = () => {
+    setDetecting(true);
+    window.setTimeout(() => {
+      setDraft((current) => ({
+        ...current,
+        detected: true,
+        executable: "~/.dotnet/tools/roslyn-language-server",
+        dotnetVersion: ".NET SDK 10.0.400 · Runtime 10.0.11",
+        version: "5.13.0-1.26514.10",
+      }));
+      setDetecting(false);
+    }, 650);
+  };
+
+  const projectLoadHint =
+    draft.projectLoadMode === "custom"
+      ? "Limits recursive project discovery when no single solution can be selected."
+      : "Uses Roslyn's recommended limit of 500 discovered projects.";
+  const solutionHint =
+    draft.solutionMode === "custom"
+      ? "Loads one solution relative to the project root."
+      : "Loads a single root solution, or discovers C# projects recursively.";
+  const sourceGeneratorHint =
+    draft.sourceGeneratorMode === "automatic"
+      ? "Runs source generators whenever Roslyn needs generated code for analysis."
+      : "Balances generated-code freshness with project loading cost.";
+
+  return (
+    <div className="settings-panel-content settings-lsp-content lsp-detail-content">
+      <button type="button" className="lsp-back-button" onClick={onBack}>
+        <Icon name="chevron-right" size={13} />
+        Language servers
+      </button>
+      <div className="lsp-detail-heading">
+        <div className="lsp-server-mark" aria-hidden="true">
+          <Icon name="file-code" size={20} />
+        </div>
+        <div>
+          <h2>{server.name}</h2>
+          <p>Project configuration for C# semantic analysis.</p>
+        </div>
+        <RuntimeStatus server={server} />
+      </div>
+
+      {server.status === "failed" && (
+        <div className="lsp-error-banner" role="alert">
+          <Icon name="warning" size={16} />
+          <div>
+            <strong>Roslyn Language Server could not start</strong>
+            <span>{server.error}</span>
+          </div>
+          <Button size="sm" onClick={onRetry} icon="refresh">
+            Retry
+          </Button>
+        </div>
+      )}
+
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Project availability</span>
+        <SettingRow
+          label="Enable for suncode"
+          hint="Starts one Roslyn language-server process for C# files in this project."
+        >
+          <ServerSwitch server={draft} onToggle={(enabled) => update("enabled", enabled)} />
+        </SettingRow>
+        <SettingRow label="Project detection" hint="Matched against the opened project tree.">
+          <span className="lsp-inline-status is-ready">
+            <span className="settings-status-dot" />
+            Matched <code>{server.matchedRootMarker}</code>
+          </span>
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <div className="lsp-section-heading">
+          <span className="settings-section-label">Installation</span>
+          <Button size="sm" onClick={detectInstallation} disabled={detecting} icon="search">
+            {detecting ? "Detecting…" : "Detect again"}
+          </Button>
+        </div>
+        <SettingRow
+          label="roslyn-language-server executable"
+          hint="The .NET tool executable SunCode starts with --stdio."
+        >
+          <div className="lsp-path-control">
+            <input
+              className="field mono"
+              value={draft.executable}
+              onChange={(event) => update("executable", event.target.value)}
+              spellCheck="false"
+              aria-label="roslyn-language-server executable path"
+            />
+            <button
+              type="button"
+              aria-label="Choose roslyn-language-server executable"
+              title="Choose executable"
+            >
+              <Icon name="folder" size={14} />
+            </button>
+          </div>
+        </SettingRow>
+        <SettingRow
+          label="Detected .NET"
+          hint="Read-only SDK and runtime versions available from the project root."
+        >
+          <span className="lsp-toolchain-summary">
+            <span className="settings-status-dot" />
+            <code>{draft.dotnetVersion}</code>
+          </span>
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Project matching</span>
+        <SettingRow
+          label="Root patterns"
+          hint="One project-relative file pattern per line. The first match identifies a C# project."
+        >
+          <textarea
+            className="field mono lsp-multiline-field"
+            value={draft.rootMarkers}
+            onChange={(event) => update("rootMarkers", event.target.value)}
+            spellCheck="false"
+            aria-label="Roslyn project root patterns"
+          />
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Project loading</span>
+        <SettingRow label="Project discovery limit" hint={projectLoadHint}>
+          <SingleDropdown
+            options={[
+              { value: "recommended", label: "Recommended · 500 projects" },
+              { value: "custom", label: "Custom limit" },
+            ]}
+            value={draft.projectLoadMode}
+            onChange={(value) => update("projectLoadMode", value)}
+            ariaLabel="Roslyn project discovery limit"
+            className="settings-dropdown"
+            wide
+          />
+        </SettingRow>
+        {draft.projectLoadMode === "custom" && (
+          <div className="settings-subsection">
+            <span className="settings-subsection-label">Discovery limit</span>
+            <SettingRow
+              label="Maximum projects"
+              hint="Must be greater than zero. Test projects are dropped first when the limit is reached."
+            >
+              <span className="settings-unit-field">
+                <input
+                  className="field mono"
+                  type="number"
+                  min="1"
+                  max="5000"
+                  value={draft.maxProjects}
+                  onChange={(event) => update("maxProjects", event.target.value)}
+                  aria-label="Maximum Roslyn projects"
+                />
+                <span>PROJECTS</span>
+              </span>
+            </SettingRow>
+          </div>
+        )}
+        <SettingRow label="Solution selection" hint={solutionHint}>
+          <SingleDropdown
+            options={[
+              { value: "automatic", label: "Automatic from project" },
+              { value: "custom", label: "Custom solution" },
+            ]}
+            value={draft.solutionMode}
+            onChange={(value) => update("solutionMode", value)}
+            ariaLabel="Roslyn solution selection"
+            className="settings-dropdown"
+            wide
+          />
+        </SettingRow>
+        {draft.solutionMode === "custom" && (
+          <div className="settings-subsection">
+            <span className="settings-subsection-label">Custom solution</span>
+            <SettingRow
+              label="Solution file"
+              hint="Choose a .sln or .slnx file inside the current project."
+            >
+              <div className="lsp-path-control">
+                <input
+                  className="field mono"
+                  value={draft.customSolution}
+                  onChange={(event) => update("customSolution", event.target.value)}
+                  placeholder="src/MyApp.slnx"
+                  spellCheck="false"
+                  aria-label="Custom Roslyn solution file"
+                />
+                <button
+                  type="button"
+                  aria-label="Choose Roslyn solution file"
+                  title="Choose solution"
+                >
+                  <Icon name="folder" size={14} />
+                </button>
+              </div>
+            </SettingRow>
+          </div>
+        )}
+        <SettingRow
+          label="Automatic restore"
+          hint="Allows Roslyn to restore missing project dependencies while loading."
+        >
+          <SettingsSwitch
+            checked={draft.automaticRestore}
+            onChange={(value) => update("automaticRestore", value)}
+            label="Automatically restore C# projects"
+          />
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Code analysis</span>
+        <SettingRow label="Source generators" hint={sourceGeneratorHint}>
+          <SingleDropdown
+            options={[
+              { value: "balanced", label: "Balanced" },
+              { value: "automatic", label: "Automatic" },
+            ]}
+            value={draft.sourceGeneratorMode}
+            onChange={(value) => update("sourceGeneratorMode", value)}
+            ariaLabel="Roslyn source generator execution"
+            className="settings-dropdown"
+            wide
+          />
+        </SettingRow>
+        <SettingRow
+          label="Compiler diagnostics"
+          hint="Controls how much of the loaded solution Roslyn checks in the background."
+        >
+          <SingleDropdown
+            options={[
+              { value: "openFiles", label: "Open files" },
+              { value: "fullSolution", label: "Full solution" },
+              { value: "none", label: "Off" },
+            ]}
+            value={draft.compilerDiagnosticScope}
+            onChange={(value) => update("compilerDiagnosticScope", value)}
+            ariaLabel="Roslyn compiler diagnostic scope"
+            className="settings-dropdown"
+            wide
+          />
+        </SettingRow>
+        <SettingRow
+          label="Analyzer diagnostics"
+          hint="Controls background diagnostics from project analyzers and analyzer packages."
+        >
+          <SingleDropdown
+            options={[
+              { value: "openFiles", label: "Open files" },
+              { value: "fullSolution", label: "Full solution" },
+              { value: "none", label: "Off" },
+            ]}
+            value={draft.analyzerDiagnosticScope}
+            onChange={(value) => update("analyzerDiagnosticScope", value)}
+            ariaLabel="Roslyn analyzer diagnostic scope"
+            className="settings-dropdown"
+            wide
+          />
+        </SettingRow>
+      </div>
+
+      <details className="lsp-advanced-settings">
+        <summary>Advanced configuration</summary>
+        <div className="lsp-advanced-content">
+          <SettingRow
+            label="Environment"
+            hint="One NAME=value entry per line. Values are stored locally and hidden after saving."
+          >
+            <textarea
+              className="field mono lsp-multiline-field"
+              value={draft.environment}
+              onChange={(event) => update("environment", event.target.value)}
+              placeholder="NAME=value"
+              spellCheck="false"
+              aria-label="roslyn-language-server environment variables"
+            />
+          </SettingRow>
+          <SettingRow label="Startup timeout">
+            <span className="settings-unit-field">
+              <input
+                className="field mono"
+                type="number"
+                min="1"
+                max="120"
+                value={draft.startupTimeout}
+                onChange={(event) => update("startupTimeout", event.target.value)}
+              />
+              <span>SEC</span>
+            </span>
+          </SettingRow>
+          <SettingRow label="Request timeout">
+            <span className="settings-unit-field">
+              <input
+                className="field mono"
+                type="number"
+                min="1"
+                max="600"
+                value={draft.requestTimeout}
+                onChange={(event) => update("requestTimeout", event.target.value)}
+              />
+              <span>SEC</span>
+            </span>
+          </SettingRow>
+        </div>
+      </details>
+
+      <p className="lsp-detail-footnote">
+        Project restore and source generators run with your user permissions. Their network,
+        package-cache, and generated-code effects are outside filesystem undo.
+      </p>
+
+      <div className="lsp-detail-actions">
+        <Button size="sm" disabled={!isDirty} onClick={() => setDraft(server)}>
+          Reset changes
+        </Button>
+        <Button variant="primary" size="sm" disabled={!isDirty} onClick={() => onSave(draft)}>
+          Save configuration
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function LanguageServersPanel({
   servers,
   setServers,
@@ -1332,6 +1674,9 @@ export function LanguageServersPanel({
     }
     if (selectedServer.kind === "rust-analyzer") {
       return <RustAnalyzerSettings {...detailProps} />;
+    }
+    if (selectedServer.kind === "roslyn-language-server") {
+      return <RoslynLanguageServerSettings {...detailProps} />;
     }
     return <JdtlsSettings {...detailProps} />;
   }

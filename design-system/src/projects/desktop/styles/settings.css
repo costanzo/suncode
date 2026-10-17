@@ -1529,20 +1529,28 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  width: 100%;
+  min-width: 0;
   font-size: 10px;
 }
 .lsp-inline-status code {
+  min-width: 0;
+  overflow: hidden;
   color: inherit;
   font: 10px var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .lsp-toolchain-summary {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  width: 100%;
   min-width: 0;
   color: var(--success);
 }
 .lsp-toolchain-summary code {
+  min-width: 0;
   overflow: hidden;
   color: var(--text-secondary);
   font: 10px var(--font-mono);
@@ -1612,6 +1620,13 @@
   justify-content: flex-end;
   gap: 8px;
   padding-top: 20px;
+}
+.lsp-detail-footnote {
+  max-width: 620px;
+  margin: 16px 4px 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.5;
 }
 @media (max-width: 860px) {
   .settings-body {

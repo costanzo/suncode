@@ -176,6 +176,9 @@ const routes = {
   "/projects/desktop/settings/language-servers/rust-analyzer": () => (
     <SettingsPage initialPage="lsp" initialLanguageServerId="rust-analyzer" />
   ),
+  "/projects/desktop/settings/language-servers/roslyn-language-server": () => (
+    <SettingsPage initialPage="lsp" initialLanguageServerId="roslyn-language-server" />
+  ),
   "/projects/desktop/settings/agents": () => <SettingsPage initialPage="agents" />,
   "/projects/desktop/workspace": WorkspacePage,
   "/projects/desktop/workspace/sessions": WorkspaceSessionsPage,
