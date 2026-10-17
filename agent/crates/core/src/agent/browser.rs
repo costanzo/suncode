@@ -10,23 +10,14 @@ pub use suncode_browser::{
     BrowserVisibilityCapability,
 };
 
-const ENABLED_SETTING: &str = "browser_use_enabled";
-
 pub(super) fn new_runtime(
     store: &Store,
     data_dir: PathBuf,
     host_available: bool,
 ) -> BrowserRuntime {
     let enabled = store
-        .settings(None, None)
-        .ok()
-        .and_then(|settings| {
-            settings
-                .into_iter()
-                .find(|setting| setting.key == ENABLED_SETTING)
-                .and_then(|setting| setting.value.as_bool())
-        })
-        .unwrap_or(false);
+        .global_settings()
+        .is_ok_and(|settings| settings.browser_use_enabled);
     BrowserRuntime::new(data_dir, enabled, host_available)
 }
 

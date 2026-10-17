@@ -742,7 +742,11 @@ fn reopening_legacy_gemini_catalog_migrates_selections_and_preserves_history() {
         assert_eq!(session.model_id.as_deref(), Some("gemini-3.8-flash"));
         assert_eq!(session.reasoning_effort.as_deref(), Some("low"));
         assert_eq!(
-            store.project_default_model(&project_id).unwrap().as_deref(),
+            store
+                .project_settings(&project_id)
+                .unwrap()
+                .default_model
+                .as_deref(),
             Some("gemini-3.8-flash")
         );
         assert_eq!(

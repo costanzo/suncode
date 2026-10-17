@@ -10,9 +10,9 @@ use std::{
 use suncode_common::logging;
 use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
 use suncode_config::Config;
-use suncode_config::PersistedSettings;
+use suncode_config::{LogSettings, SettingScope};
 use suncode_core::{
-    agent::{AgentRuntime, AgentHostCapabilities},
+    agent::{AgentHostCapabilities, AgentRuntime},
     AgentLock, AttentionEventHub, CheckpointItemRestoredPayload, CheckpointRestoreFailedPayload,
     CheckpointRestoredPayload, EventPayload, SessionEventHub,
 };
@@ -282,25 +282,14 @@ where
     F: FnOnce(&mut ModelProviderRegistry) -> Result<(), BusinessError>,
 {
     let store = Store::open(&config.database_path)?;
-    let persisted = persisted_settings(&store, None, None)?;
+    let persisted = store.persisted_settings(None, None)?;
     let runtime_config = config.runtime(&persisted).map_err(BusinessError::invalid)?;
-    configure_logging(&store, &config.data_dir, options.log_console_output)?;
-    let verify_https_certificates = Arc::new(AtomicBool::new(global_bool_setting(
-        &store,
-        "verify_https_certificates",
-        true,
-    )?));
-    let use_system_certificates = Arc::new(AtomicBool::new(global_bool_setting(
-        &store,
-        "use_system_certificates",
-        true,
-    )?));
-    let certificate_path = Arc::new(RwLock::new(
-        global_string_setting(&store, "certificate_path")?
-            .filter(|value| !value.trim().is_empty())
-            .map(PathBuf::from),
-    ));
-    let proxy_configuration = Arc::new(RwLock::new(proxy_configuration_from_store(&store)?));
+    let global = persisted.global();
+    configure_logging(&global.log, &config.data_dir, options.log_console_output);
+    let verify_https_certificates = Arc::new(AtomicBool::new(global.tls.verify_https_certificates));
+    let use_system_certificates = Arc::new(AtomicBool::new(global.tls.use_system_certificates));
+    let certificate_path = Arc::new(RwLock::new(global.tls.certificate_path.clone()));
+    let proxy_configuration = Arc::new(RwLock::new(global.proxy.clone()));
     let operations = Arc::new(
         suncode_tool::Operations::new_with_https_certificate_verification(
             config.data_dir.join("operations"),
@@ -351,14 +340,11 @@ where
         "browser.host",
         format!(
             "sdk_open host_capability={} persisted_enabled={}",
-            options.host_capabilities.browser_use,
-            global_bool_setting(&store, "browser_use_enabled", false)?
+            options.host_capabilities.browser_use, global.browser_use_enabled
         ),
     );
     let attention_events = agent.attention_event_hub();
-    if options.host_capabilities.computer_use
-        && global_bool_setting(&store, "computer_use_enabled", false)?
-    {
+    if options.host_capabilities.computer_use && global.computer_use_enabled {
         match suncode_computer::EnigoBackend::new() {
             Ok(backend) => agent.install_computer_backend(Box::new(backend))?,
             Err(error) => logging::warn(
@@ -388,77 +374,6 @@ where
     Ok(state)
 }
 
-fn persisted_settings(
-    store: &Store,
-    project_id: Option<&str>,
-    session_id: Option<&str>,
-) -> SdkResult<PersistedSettings> {
-    let mut settings = PersistedSettings::default();
-    for record in store.settings(project_id, session_id)? {
-        settings
-            .insert(&record.scope, record.key, record.value)
-            .map_err(BusinessError::invalid)?;
-    }
-    Ok(settings)
-}
-
-fn proxy_configuration_from_store(store: &Store) -> SdkResult<HttpProxyConfiguration> {
-    let settings = store.settings(None, None)?;
-    let value = |key: &str| {
-        settings
-            .iter()
-            .find(|record| record.key == key)
-            .map(|record| &record.value)
-    };
-    let mode = value("proxy_mode")
-        .and_then(Value::as_str)
-        .and_then(HttpProxyMode::parse)
-        .unwrap_or(HttpProxyMode::System);
-    let bypass = value("proxy_bypass")
-        .and_then(Value::as_array)
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(Value::as_str)
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or_default();
-    Ok(HttpProxyConfiguration {
-        mode,
-        url: value("proxy_url")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        username: value("proxy_username")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        password: value("proxy_password")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        bypass,
-    })
-}
-
-fn global_bool_setting(store: &Store, key: &str, fallback: bool) -> SdkResult<bool> {
-    Ok(store
-        .settings(None, None)?
-        .into_iter()
-        .find(|record| record.key == key)
-        .and_then(|record| record.value.as_bool())
-        .unwrap_or(fallback))
-}
-
-fn global_string_setting(store: &Store, key: &str) -> SdkResult<Option<String>> {
-    Ok(store
-        .settings(None, None)?
-        .into_iter()
-        .find(|record| record.key == key)
-        .and_then(|record| record.value.as_str().map(str::to_string)))
-}
-
 fn normalize_provider_endpoint(value: &str) -> SdkResult<String> {
     let value = value.trim();
     let url = url::Url::parse(value)
@@ -481,34 +396,14 @@ fn normalize_provider_endpoint(value: &str) -> SdkResult<String> {
     Ok(value.trim_end_matches('/').to_string())
 }
 
-fn configure_logging(
-    store: &Store,
-    data_dir: &Path,
-    console_output: SdkLogConsoleOutput,
-) -> SdkResult<()> {
-    let settings = store.settings(None, None)?;
-    let value = |key: &str| {
-        settings
-            .iter()
-            .find(|record| record.key == key)
-            .map(|record| &record.value)
-    };
-    let level = value("log_level").and_then(Value::as_str).unwrap_or("INFO");
-    let directory = value("log_directory").and_then(Value::as_str);
-    let max_bytes = value("log_max_bytes")
-        .and_then(Value::as_u64)
-        .unwrap_or(10 * 1024 * 1024);
-    let retention = value("log_retention")
-        .and_then(Value::as_u64)
-        .and_then(|value| usize::try_from(value).ok())
-        .unwrap_or(5);
+fn configure_logging(log: &LogSettings, data_dir: &Path, console_output: SdkLogConsoleOutput) {
     logging::configure(
         data_dir,
         logging::Config {
-            level,
-            directory,
-            max_bytes,
-            retention,
+            level: &log.level,
+            directory: Some(&log.directory),
+            max_bytes: log.max_bytes,
+            retention: log.retention,
             console: match console_output {
                 SdkLogConsoleOutput::None => logging::ConsoleOutput::None,
                 SdkLogConsoleOutput::Stderr => logging::ConsoleOutput::Stderr,
@@ -517,9 +412,10 @@ fn configure_logging(
             },
         },
     );
-    Ok(())
 }
 
+/// Checks a client write against the settings schema. Proxy rows change only
+/// together, through `set_proxy_configuration`.
 fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
     if matches!(
         key,
@@ -534,154 +430,10 @@ fn validate_setting(scope: &str, key: &str, value: &Value) -> SdkResult<()> {
             "proxy settings must be updated through set_proxy_configuration",
         ));
     }
-    if key == "image_directory" {
-        if scope != "global" {
-            return Err(BusinessError::invalid(
-                "image_directory is a global-only setting",
-            ));
-        }
-        if !value.is_string() {
-            return Err(BusinessError::invalid("image_directory must be a string"));
-        }
-        return Ok(());
-    }
-    if matches!(key, "browser_use_enabled" | "computer_use_enabled") {
-        if scope != "global" {
-            return Err(BusinessError::invalid(format!(
-                "{key} is a global-only setting"
-            )));
-        }
-        if !value.is_boolean() {
-            return Err(BusinessError::invalid(format!("{key} must be a boolean")));
-        }
-        return Ok(());
-    }
-    if key == "verify_https_certificates" {
-        if scope != "global" {
-            return Err(BusinessError::invalid(
-                "verify_https_certificates is a global-only setting",
-            ));
-        }
-        if !value.is_boolean() {
-            return Err(BusinessError::invalid(
-                "verify_https_certificates must be a boolean",
-            ));
-        }
-        return Ok(());
-    }
-    if key == "use_system_certificates" {
-        if scope != "global" {
-            return Err(BusinessError::invalid(
-                "use_system_certificates is a global-only setting",
-            ));
-        }
-        if !value.is_boolean() {
-            return Err(BusinessError::invalid(
-                "use_system_certificates must be a boolean",
-            ));
-        }
-        return Ok(());
-    }
-    if key == "certificate_path" {
-        if scope != "global" {
-            return Err(BusinessError::invalid(
-                "certificate_path is a global-only setting",
-            ));
-        }
-        if !value.is_string() {
-            return Err(BusinessError::invalid("certificate_path must be a string"));
-        }
-        return Ok(());
-    }
-    if key == "tool_call_limit" {
-        if scope != "project" {
-            return Err(BusinessError::invalid(
-                "tool_call_limit is a project-only setting",
-            ));
-        }
-        if value
-            .as_u64()
-            .is_none_or(|limit| !(1..=256).contains(&limit))
-        {
-            return Err(BusinessError::invalid(
-                "tool_call_limit must be an integer between 1 and 256",
-            ));
-        }
-        return Ok(());
-    }
-    if matches!(
-        key,
-        "preview_program" | "preview_url" | "preview_args" | "preview_cwd"
-    ) {
-        if scope != "project" {
-            return Err(BusinessError::invalid(format!(
-                "{key} is a project-only setting"
-            )));
-        }
-        match key {
-            "preview_program" | "preview_url" | "preview_cwd" if !value.is_string() => {
-                return Err(BusinessError::invalid(format!("{key} must be a string")));
-            }
-            "preview_args" if !value.is_array() => {
-                return Err(BusinessError::invalid("preview_args must be an array"));
-            }
-            _ => {}
-        }
-        return Ok(());
-    }
-    if key == "full_control" {
-        if scope != "session" {
-            return Err(BusinessError::invalid(
-                "full_control is a session-only setting",
-            ));
-        }
-        if !value.is_boolean() {
-            return Err(BusinessError::invalid("full_control must be a boolean"));
-        }
-        return Ok(());
-    }
-    let is_logging_setting = matches!(
-        key,
-        "log_level" | "log_directory" | "log_max_bytes" | "log_retention"
-    );
-    if !is_logging_setting {
-        return Ok(());
-    }
-    if scope != "global" {
-        return Err(BusinessError::invalid(format!(
-            "{key} is a global-only setting"
-        )));
-    }
-    match key {
-        "log_level" => {
-            let Some(level) = value.as_str() else {
-                return Err(BusinessError::invalid("log_level must be a string"));
-            };
-            if !matches!(
-                level.trim().to_ascii_uppercase().as_str(),
-                "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR" | "OFF"
-            ) {
-                return Err(BusinessError::invalid(
-                    "log_level must be TRACE, DEBUG, INFO, WARN, ERROR, or OFF",
-                ));
-            }
-        }
-        "log_directory" if !value.is_string() => {
-            return Err(BusinessError::invalid("log_directory must be a string"));
-        }
-        "log_max_bytes" if value.as_u64().is_none_or(|size| size < 1024) => {
-            return Err(BusinessError::invalid(
-                "log_max_bytes must be an integer greater than or equal to 1024",
-            ));
-        }
-        "log_retention" if value.as_u64().is_none_or(|count| count > 100) => {
-            return Err(BusinessError::invalid(
-                "log_retention must be an integer between 0 and 100",
-            ));
-        }
-        _ => {}
-    }
-    Ok(())
+    let scope = scope
+        .parse::<SettingScope>()
+        .map_err(|_| BusinessError::invalid("scope must be global, project, or session"))?;
+    suncode_config::validate_setting(scope, key, value).map_err(BusinessError::invalid)
 }
 
 pub struct AsyncAgentSdk {

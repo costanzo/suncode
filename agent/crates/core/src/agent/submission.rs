@@ -231,7 +231,8 @@ impl AgentRuntime {
                 })?;
                 self.services
                     .store
-                    .project_default_model(&project_id)?
+                    .project_settings(&project_id)?
+                    .default_model
                     .unwrap_or_else(|| "deepseek-v4-flash".into())
             }
         };
@@ -325,7 +326,8 @@ impl AgentRuntime {
         let project_tool_call_limit = self
             .services
             .store
-            .project_tool_call_limit(&project_id)?
+            .project_settings(&project_id)?
+            .tool_call_limit
             .unwrap_or(DEFAULT_TOOL_CALL_LIMIT);
         let runtime = self.runtime_for(&project_id, session_id)?;
         let agent_definition = agent_definition.unwrap_or(&suncode_agents::PRIMARY);
@@ -677,16 +679,10 @@ impl AgentRuntime {
         project_id: &str,
         session_id: &str,
     ) -> Result<suncode_config::RuntimeConfig, BusinessError> {
-        let mut persisted = suncode_config::PersistedSettings::default();
-        for setting in self
+        let persisted = self
             .services
             .store
-            .settings(Some(project_id), Some(session_id))?
-        {
-            persisted
-                .insert(&setting.scope, setting.key, setting.value)
-                .map_err(BusinessError::invalid)?;
-        }
+            .persisted_settings(Some(project_id), Some(session_id))?;
         self.services
             .config
             .runtime(&persisted)

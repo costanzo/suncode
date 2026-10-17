@@ -1236,7 +1236,14 @@ fn https_certificate_verification_setting_updates_live_state() {
     .unwrap();
 
     assert!(!sdk.state.verify_https_certificates.load(Ordering::SeqCst));
-    assert!(!global_bool_setting(&sdk.state.store, "verify_https_certificates", true).unwrap());
+    assert!(
+        !sdk.state
+            .store
+            .global_settings()
+            .unwrap()
+            .tls
+            .verify_https_certificates
+    );
 }
 
 #[test]

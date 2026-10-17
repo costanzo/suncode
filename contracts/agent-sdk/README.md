@@ -27,7 +27,7 @@ The Rust API uses typed inputs and outputs. Async Rust hosts use `AsyncAgentSdk`
 | `list_models` | List stable models and credential-derived availability |
 | `list_agents` | List the six immutable Rust-defined specialist agents and their exact tool policies |
 | `list_settings` | Read effective non-secret settings with scope provenance |
-| `set_setting` | Store one global, project, or session configuration value |
+| `set_setting` | Store one global, project, or session configuration value; known keys are validated against the `suncode-config` settings schema for scope and type |
 | `set_proxy_configuration` | Atomically store global proxy mode, endpoint, credentials, and bypass rules while returning only redacted password state |
 | `list_credentials` | Read redacted provider credential status |
 | `set_credential` | Store or replace one provider API key |

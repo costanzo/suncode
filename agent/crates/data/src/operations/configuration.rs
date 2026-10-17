@@ -9,6 +9,7 @@ use diesel::sql_query;
 use diesel::sql_types::{Nullable, Text};
 use serde_json::Value;
 use suncode_common::BusinessError;
+use suncode_config::{GlobalSettings, PersistedSettings, ProjectSettings, SessionSettings};
 
 #[derive(QueryableByName)]
 struct Row {
@@ -20,12 +21,6 @@ struct Row {
     key: String,
     #[diesel(sql_type = Text)]
     value_json: String,
-}
-
-#[derive(QueryableByName)]
-struct ValueRow {
-    #[diesel(sql_type = Text)]
-    value: String,
 }
 
 impl Store {
@@ -51,50 +46,44 @@ impl Store {
         Ok(settings)
     }
 
-    pub fn session_full_control(&self, session_id: &str) -> Result<bool, BusinessError> {
+    /// The stored settings that apply to a session, layered by scope. Unlike
+    /// [`Store::settings`], every scope keeps its own rows.
+    pub fn persisted_settings(
+        &self,
+        project_id: Option<&str>,
+        session_id: Option<&str>,
+    ) -> Result<PersistedSettings, BusinessError> {
         let mut connection = lock(&self.connection)?;
-        match sql_query("SELECT value_json AS value FROM configuration WHERE scope='session' AND session_id=? AND key='full_control'")
-            .bind::<Text, _>(session_id).get_result::<ValueRow>(&mut *connection).optional().map_err(crate::database_error)? {
-            None => Ok(false),
-            Some(value) => serde_json::from_str::<Value>(&value.value)?.as_bool()
-                .ok_or_else(|| BusinessError::invalid("session full_control configuration must be a boolean")),
+        let rows = sql_query("SELECT scope,COALESCE(project_id,session_id,'global') AS scope_id,key,value_json FROM configuration WHERE scope='global' OR (scope='project' AND project_id=?) OR (scope='session' AND session_id=?)")
+            .bind::<Nullable<Text>, _>(project_id).bind::<Nullable<Text>, _>(session_id)
+            .load::<Row>(&mut *connection).map_err(crate::database_error)?;
+        let mut settings = PersistedSettings::default();
+        for row in rows {
+            settings
+                .insert(&row.scope, row.key, serde_json::from_str(&row.value_json)?)
+                .map_err(BusinessError::invalid)?;
         }
+        Ok(settings)
     }
 
-    pub fn project_default_model(&self, project_id: &str) -> Result<Option<String>, BusinessError> {
-        let value = self
-            .settings(Some(project_id), None)?
-            .into_iter()
-            .find(|record| record.key == "default_model")
-            .map(|record| record.value);
-        let Some(value) = value else { return Ok(None) };
-        let model = value
-            .as_str()
-            .ok_or_else(|| BusinessError::invalid("project default_model must be a string"))?;
-        if model.trim().is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(model.trim().into()))
-        }
+    /// The typed global settings.
+    pub fn global_settings(&self) -> Result<GlobalSettings, BusinessError> {
+        Ok(self.persisted_settings(None, None)?.global())
     }
 
-    pub fn project_tool_call_limit(&self, project_id: &str) -> Result<Option<u32>, BusinessError> {
-        let mut connection = lock(&self.connection)?;
-        let Some(value) = sql_query("SELECT value_json AS value FROM configuration WHERE scope='project' AND project_id=? AND key='tool_call_limit'")
-            .bind::<Text, _>(project_id).get_result::<ValueRow>(&mut *connection).optional().map_err(crate::database_error)? else { return Ok(None) };
-        let limit = serde_json::from_str::<Value>(&value.value)?
-            .as_u64()
-            .ok_or_else(|| {
-                BusinessError::invalid(
-                    "project tool_call_limit must be an integer between 1 and 256",
-                )
-            })?;
-        if !(1..=256).contains(&limit) {
-            return Err(BusinessError::invalid(
-                "project tool_call_limit must be an integer between 1 and 256",
-            ));
-        }
-        Ok(Some(limit as u32))
+    /// The typed settings of a project, with `default_model` falling back to
+    /// the global value.
+    pub fn project_settings(&self, project_id: &str) -> Result<ProjectSettings, BusinessError> {
+        self.persisted_settings(Some(project_id), None)?
+            .project()
+            .map_err(BusinessError::invalid)
+    }
+
+    /// The typed settings of a session.
+    pub fn session_settings(&self, session_id: &str) -> Result<SessionSettings, BusinessError> {
+        self.persisted_settings(None, Some(session_id))?
+            .session()
+            .map_err(BusinessError::invalid)
     }
 
     pub fn set_setting(

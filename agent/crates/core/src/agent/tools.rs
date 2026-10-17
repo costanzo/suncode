@@ -238,7 +238,8 @@ impl TurnLoop<'_> {
                     self.context.full_control_override.unwrap_or(
                         self.services
                             .store
-                            .session_full_control(&self.context.session_id)?,
+                            .session_settings(&self.context.session_id)?
+                            .full_control,
                     ),
                 )
             };

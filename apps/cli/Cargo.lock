@@ -2964,6 +2964,7 @@ name = "suncode-config"
 version = "0.1.0"
 dependencies = [
  "serde_json",
+ "suncode-common",
 ]
 
 [[package]]
@@ -3006,6 +3007,7 @@ dependencies = [
  "serde",
  "serde_json",
  "suncode-common",
+ "suncode-config",
  "suncode-database",
  "suncode-types",
  "url",

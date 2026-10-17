@@ -48,7 +48,7 @@ impl AsyncAgentSdk {
         self.project_for_user(project_id)?;
         let selected_model = match model {
             Some(model) => Some(model.to_string()),
-            None => self.state.store.project_default_model(project_id)?,
+            None => self.state.store.project_settings(project_id)?.default_model,
         };
         if let Some(model) = selected_model.as_deref() {
             if self.state.providers.route(model).is_none() {
@@ -436,8 +436,7 @@ impl AsyncAgentSdk {
     }
 
     fn resolved_image_directory(&self) -> SdkResult<PathBuf> {
-        let configured =
-            global_string_setting(&self.state.store, "image_directory")?.unwrap_or_default();
+        let configured = self.state.store.global_settings()?.image_directory;
         let configured = configured.trim();
         if configured.is_empty() {
             Ok(self.data_dir.join("data/images"))

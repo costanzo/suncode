@@ -1,5 +1,6 @@
 use super::computer::apply_computer_enablement;
 use super::*;
+use suncode_config::GlobalSettings;
 
 impl AsyncAgentSdk {
     pub fn list_settings(
@@ -111,10 +112,10 @@ impl AsyncAgentSdk {
             )
         {
             configure_logging(
-                &self.state.store,
+                &self.state.store.global_settings()?.log,
                 &self.data_dir,
                 self.state.log_console_output,
-            )?;
+            );
         }
         Ok(SettingUpdate {
             saved: true,
@@ -135,32 +136,9 @@ impl AsyncAgentSdk {
             .map(|configuration| configuration.clone())
             .unwrap_or_default();
         let configuration = validate_proxy_configuration(request, &current)?;
-        self.state.store.set_global_settings(&[
-            (
-                "proxy_mode".into(),
-                Value::String(configuration.mode.as_str().into()),
-            ),
-            ("proxy_url".into(), Value::String(configuration.url.clone())),
-            (
-                "proxy_username".into(),
-                Value::String(configuration.username.clone()),
-            ),
-            (
-                "proxy_password".into(),
-                Value::String(configuration.password.clone()),
-            ),
-            (
-                "proxy_bypass".into(),
-                Value::Array(
-                    configuration
-                        .bypass
-                        .iter()
-                        .cloned()
-                        .map(Value::String)
-                        .collect(),
-                ),
-            ),
-        ])?;
+        self.state
+            .store
+            .set_global_settings(&GlobalSettings::proxy_values(&configuration))?;
         if let Ok(mut current) = self.state.proxy_configuration.write() {
             *current = configuration.clone();
         }

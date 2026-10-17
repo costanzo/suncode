@@ -41,22 +41,29 @@ impl RuntimeConfig {
         source: EnvironmentSource,
         persisted: &PersistedSettings,
     ) -> Result<Self, String> {
+        let persisted = persisted.layered()?;
         let full_control = match source.bool("SUNCODE_FULL_CONTROL")? {
             Some(value) => Some(value),
-            None => persisted.bool("full_control")?,
+            None => persisted.full_control,
         };
         let tool_allowlist = source
             .value("SUNCODE_TOOL_ALLOWLIST")
-            .or_else(|| persisted.string("tool_allowlist"))
+            .or(persisted.tool_allowlist)
             .map(|value| parse_allowlist(&value))
             .transpose()?;
-        let turn_timeout_ms = resolve_u64(source, persisted, "turn_timeout_ms")?
+        let turn_timeout_ms = source
+            .u64("SUNCODE_TURN_TIMEOUT_MS")?
+            .or(persisted.turn_timeout_ms)
             .unwrap_or(Self::DEFAULT_TURN_TIMEOUT_MS);
         validate_range("turn timeout", turn_timeout_ms, TURN_TIMEOUT_RANGE_MS)?;
-        let bash_timeout_ms = resolve_u64(source, persisted, "bash_timeout_ms")?
+        let bash_timeout_ms = source
+            .u64("SUNCODE_BASH_TIMEOUT_MS")?
+            .or(persisted.bash_timeout_ms)
             .map(|value| validate_range("bash timeout", value, BASH_TIMEOUT_RANGE_MS))
             .transpose()?;
-        let tool_call_limit = resolve_u64(source, persisted, "tool_call_limit")?
+        let tool_call_limit = source
+            .u64("SUNCODE_TOOL_CALL_LIMIT")?
+            .or(persisted.tool_call_limit)
             .map(|value| {
                 validate_range("tool call limit", value, TOOL_CALL_LIMIT_RANGE).and_then(|v| {
                     u32::try_from(v).map_err(|_| "tool call limit is invalid".to_owned())
@@ -85,18 +92,6 @@ impl std::fmt::Debug for RuntimeConfig {
             .field("tool_call_limit", &self.tool_call_limit)
             .field("credentials", &self.credentials.keys().collect::<Vec<_>>())
             .finish()
-    }
-}
-
-/// Reads `SUNCODE_<KEY>` from the environment, then the persisted `key`.
-fn resolve_u64(
-    source: EnvironmentSource,
-    persisted: &PersistedSettings,
-    key: &str,
-) -> Result<Option<u64>, String> {
-    match source.u64(&format!("SUNCODE_{}", key.to_ascii_uppercase()))? {
-        Some(value) => Ok(Some(value)),
-        None => persisted.u64(key),
     }
 }
 

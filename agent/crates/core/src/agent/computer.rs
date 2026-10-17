@@ -7,20 +7,11 @@ use suncode_computer::{ComputerBackend, EnigoBackend};
 
 pub use suncode_computer::ComputerRuntimeInfo;
 
-const ENABLED_SETTING: &str = "computer_use_enabled";
-
 /// The persisted Computer Use setting; disabled when unset or unreadable.
 pub(super) fn enabled_setting(store: &Store) -> bool {
     store
-        .settings(None, None)
-        .ok()
-        .and_then(|settings| {
-            settings
-                .into_iter()
-                .find(|setting| setting.key == ENABLED_SETTING)
-                .and_then(|setting| setting.value.as_bool())
-        })
-        .unwrap_or(false)
+        .global_settings()
+        .is_ok_and(|settings| settings.computer_use_enabled)
 }
 
 impl AgentRuntime {

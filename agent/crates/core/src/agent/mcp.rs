@@ -3,7 +3,6 @@
 //! and exposes the public `Agent` API.
 
 use super::*;
-use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
 use suncode_data::{McpServerRecord, McpTransportConfig, McpWorkingDirectory};
 use suncode_mcp::{ServerSource, ServerSpec, ServerTransport, TlsConfig, WorkingDirectory};
 
@@ -33,25 +32,12 @@ impl ServerSource for StoreServerSource {
     }
 
     fn network(&self) -> Result<TlsConfig, BusinessError> {
-        let settings = self.store.settings(None, None)?;
-        let value = |key: &str| {
-            settings
-                .iter()
-                .find(|setting| setting.key == key)
-                .map(|setting| &setting.value)
-        };
+        let settings = self.store.global_settings()?;
         Ok(TlsConfig {
-            verify_certificates: value("verify_https_certificates")
-                .and_then(Value::as_bool)
-                .unwrap_or(true),
-            use_system_certificates: value("use_system_certificates")
-                .and_then(Value::as_bool)
-                .unwrap_or(true),
-            certificate_path: value("certificate_path")
-                .and_then(Value::as_str)
-                .filter(|value| !value.trim().is_empty())
-                .map(PathBuf::from),
-            proxy: proxy_config(&self.store)?,
+            verify_certificates: settings.tls.verify_https_certificates,
+            use_system_certificates: settings.tls.use_system_certificates,
+            certificate_path: settings.tls.certificate_path,
+            proxy: settings.proxy,
         })
     }
 }
@@ -97,44 +83,6 @@ pub(super) fn server_spec(record: &McpServerRecord) -> ServerSpec {
             },
         },
     }
-}
-
-fn proxy_config(store: &Store) -> Result<HttpProxyConfiguration, BusinessError> {
-    let settings = store.settings(None, None)?;
-    let value = |key: &str| {
-        settings
-            .iter()
-            .find(|setting| setting.key == key)
-            .map(|setting| &setting.value)
-    };
-    Ok(HttpProxyConfiguration {
-        mode: value("proxy_mode")
-            .and_then(Value::as_str)
-            .and_then(HttpProxyMode::parse)
-            .unwrap_or(HttpProxyMode::System),
-        url: value("proxy_url")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        username: value("proxy_username")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        password: value("proxy_password")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        bypass: value("proxy_bypass")
-            .and_then(Value::as_array)
-            .map(|values| {
-                values
-                    .iter()
-                    .filter_map(Value::as_str)
-                    .map(str::to_string)
-                    .collect()
-            })
-            .unwrap_or_default(),
-    })
 }
 
 impl AgentRuntime {
