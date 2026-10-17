@@ -36,7 +36,7 @@ export const settingsGuide = {
       "MCP configuration is persisted by the embedded Rust agent; the effective tool catalog is refreshed without starting a new session.",
       "Connected, connecting, failed, and disabled are runtime states. Enabled is the persisted desired state.",
       "MCP server definitions are global, while the status shown belongs to the current project connection.",
-      "Language server definitions are global desired state, while indexing and readiness belong to the current project runtime.",
+      "Language server enablement and typed configuration are project-scoped; catalog definitions, language IDs, launch construction, and validation are built into SunCode.",
       "Language servers run as local processes with user authority. Their caches and toolchain side effects are not covered by SunCode undo.",
       "Browser use is globally enabled and lazily started by the first browser action. Browser profiles and remote site changes are outside filesystem undo.",
       "Computer use targets the real primary display, remains approval-gated for input, and is unavailable to non-interactive turns.",
