@@ -170,6 +170,9 @@ const routes = {
   "/projects/desktop/settings/language-servers/vtsls": () => (
     <SettingsPage initialPage="lsp" initialLanguageServerId="vtsls" />
   ),
+  "/projects/desktop/settings/language-servers/basedpyright": () => (
+    <SettingsPage initialPage="lsp" initialLanguageServerId="basedpyright" />
+  ),
   "/projects/desktop/settings/agents": () => <SettingsPage initialPage="agents" />,
   "/projects/desktop/workspace": WorkspacePage,
   "/projects/desktop/workspace/sessions": WorkspaceSessionsPage,

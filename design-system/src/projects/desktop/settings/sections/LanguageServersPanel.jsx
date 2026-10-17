@@ -626,6 +626,289 @@ function VtslsSettings({ server, onBack, onSave, onRetry }) {
   );
 }
 
+function BasedpyrightSettings({ server, onBack, onSave, onRetry }) {
+  const [draft, setDraft] = useState(server);
+  const [detecting, setDetecting] = useState(false);
+  const update = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(server);
+
+  useEffect(() => setDraft(server), [server]);
+
+  const detectInstallation = () => {
+    setDetecting(true);
+    window.setTimeout(() => {
+      setDraft((current) => ({
+        ...current,
+        detected: true,
+        executable: "/opt/homebrew/bin/basedpyright-langserver",
+        pythonPath: "~/Projects/suncode/suncode/.venv/bin/python",
+        pythonVersion: "3.12.7",
+        version: "1.40.2",
+      }));
+      setDetecting(false);
+    }, 650);
+  };
+
+  const diagnosticHint =
+    draft.diagnosticMode === "workspace"
+      ? "Analyzes every Python file selected by the project configuration."
+      : "Analyzes files after SunCode opens them for semantic work.";
+  const configPathHint =
+    draft.configPathMode === "automatic"
+      ? "Finds pyproject.toml or pyrightconfig.json from the project root."
+      : "Uses a specific configuration file or directory for this project.";
+
+  return (
+    <div className="settings-panel-content settings-lsp-content lsp-detail-content">
+      <button type="button" className="lsp-back-button" onClick={onBack}>
+        <Icon name="chevron-right" size={13} />
+        Language servers
+      </button>
+      <div className="lsp-detail-heading">
+        <div className="lsp-server-mark" aria-hidden="true">
+          <Icon name="file-code" size={20} />
+        </div>
+        <div>
+          <h2>{server.name}</h2>
+          <p>Project configuration for Python semantic analysis.</p>
+        </div>
+        <RuntimeStatus server={server} />
+      </div>
+
+      {server.status === "failed" && (
+        <div className="lsp-error-banner" role="alert">
+          <Icon name="warning" size={16} />
+          <div>
+            <strong>basedpyright could not start</strong>
+            <span>{server.error}</span>
+          </div>
+          <Button size="sm" onClick={onRetry} icon="refresh">
+            Retry
+          </Button>
+        </div>
+      )}
+
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Project availability</span>
+        <SettingRow
+          label="Enable for suncode"
+          hint="Starts one basedpyright process for Python files in this project."
+        >
+          <ServerSwitch server={draft} onToggle={(enabled) => update("enabled", enabled)} />
+        </SettingRow>
+        <SettingRow label="Project detection" hint="Matched against the opened project root.">
+          <span className="lsp-inline-status is-ready">
+            <span className="settings-status-dot" />
+            Matched <code>{server.matchedRootMarker}</code>
+          </span>
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <div className="lsp-section-heading">
+          <span className="settings-section-label">Installation</span>
+          <Button size="sm" onClick={detectInstallation} disabled={detecting} icon="search">
+            {detecting ? "Detecting…" : "Detect again"}
+          </Button>
+        </div>
+        <SettingRow
+          label="basedpyright executable"
+          hint="The basedpyright-langserver executable SunCode starts with --stdio."
+        >
+          <div className="lsp-path-control">
+            <input
+              className="field mono"
+              value={draft.executable}
+              onChange={(event) => update("executable", event.target.value)}
+              spellCheck="false"
+              aria-label="basedpyright executable path"
+            />
+            <button
+              type="button"
+              aria-label="Choose basedpyright executable"
+              title="Choose executable"
+            >
+              <Icon name="folder" size={14} />
+            </button>
+          </div>
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Python environment</span>
+        <SettingRow
+          label="Python interpreter"
+          hint={`Used to resolve installed packages and infer the target version. Detected Python ${draft.pythonVersion}.`}
+        >
+          <div className="lsp-path-control">
+            <input
+              className="field mono"
+              value={draft.pythonPath}
+              onChange={(event) => update("pythonPath", event.target.value)}
+              spellCheck="false"
+              aria-label="Python interpreter path"
+            />
+            <button type="button" aria-label="Choose Python interpreter" title="Choose interpreter">
+              <Icon name="folder" size={14} />
+            </button>
+          </div>
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Project matching</span>
+        <SettingRow
+          label="Root markers"
+          hint="One file name per line. The first match identifies a Python project."
+        >
+          <textarea
+            className="field mono lsp-multiline-field"
+            value={draft.rootMarkers}
+            onChange={(event) => update("rootMarkers", event.target.value)}
+            spellCheck="false"
+            aria-label="basedpyright project root markers"
+          />
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Python analysis</span>
+        <SettingRow label="Diagnostic scope" hint={diagnosticHint}>
+          <SingleDropdown
+            options={[
+              { value: "openFilesOnly", label: "Open files only" },
+              { value: "workspace", label: "Entire workspace" },
+            ]}
+            value={draft.diagnosticMode}
+            onChange={(value) => update("diagnosticMode", value)}
+            ariaLabel="basedpyright diagnostic scope"
+            className="settings-dropdown"
+            wide
+          />
+        </SettingRow>
+        <SettingRow
+          label="Type checking"
+          hint="Project pyproject.toml or pyrightconfig.json settings take precedence."
+        >
+          <SingleDropdown
+            options={[
+              { value: "recommended", label: "Recommended" },
+              { value: "standard", label: "Standard" },
+              { value: "basic", label: "Basic" },
+              { value: "strict", label: "Strict" },
+              { value: "off", label: "Off" },
+              { value: "all", label: "All rules" },
+            ]}
+            value={draft.typeCheckingMode}
+            onChange={(value) => update("typeCheckingMode", value)}
+            ariaLabel="basedpyright type checking mode"
+            className="settings-dropdown"
+            wide
+          />
+        </SettingRow>
+        <SettingRow label="Configuration location" hint={configPathHint}>
+          <SingleDropdown
+            options={[
+              { value: "automatic", label: "Automatic from project" },
+              { value: "custom", label: "Custom location" },
+            ]}
+            value={draft.configPathMode}
+            onChange={(value) => update("configPathMode", value)}
+            ariaLabel="basedpyright configuration location"
+            className="settings-dropdown"
+            wide
+          />
+        </SettingRow>
+        {draft.configPathMode === "custom" && (
+          <div className="settings-subsection">
+            <span className="settings-subsection-label">Custom configuration</span>
+            <SettingRow
+              label="Configuration file or directory"
+              hint="Choose a pyproject.toml, pyrightconfig.json, or the directory containing it."
+            >
+              <div className="lsp-path-control">
+                <input
+                  className="field mono"
+                  value={draft.customConfigPath}
+                  onChange={(event) => update("customConfigPath", event.target.value)}
+                  placeholder="~/Projects/suncode/suncode/backend/pyproject.toml"
+                  spellCheck="false"
+                  aria-label="Custom basedpyright configuration location"
+                />
+                <button
+                  type="button"
+                  aria-label="Choose basedpyright configuration location"
+                  title="Choose configuration"
+                >
+                  <Icon name="folder" size={14} />
+                </button>
+              </div>
+            </SettingRow>
+          </div>
+        )}
+      </div>
+
+      <details className="lsp-advanced-settings">
+        <summary>Advanced configuration</summary>
+        <div className="lsp-advanced-content">
+          <SettingRow
+            label="Environment"
+            hint="One NAME=value entry per line. Values are stored locally and hidden after saving."
+          >
+            <textarea
+              className="field mono lsp-multiline-field"
+              value={draft.environment}
+              onChange={(event) => update("environment", event.target.value)}
+              placeholder="NAME=value"
+              spellCheck="false"
+              aria-label="basedpyright environment variables"
+            />
+          </SettingRow>
+          <SettingRow label="Startup timeout">
+            <span className="settings-unit-field">
+              <input
+                className="field mono"
+                type="number"
+                min="1"
+                max="120"
+                value={draft.startupTimeout}
+                onChange={(event) => update("startupTimeout", event.target.value)}
+              />
+              <span>SEC</span>
+            </span>
+          </SettingRow>
+          <SettingRow label="Request timeout">
+            <span className="settings-unit-field">
+              <input
+                className="field mono"
+                type="number"
+                min="1"
+                max="600"
+                value={draft.requestTimeout}
+                onChange={(event) => update("requestTimeout", event.target.value)}
+              />
+              <span>SEC</span>
+            </span>
+          </SettingRow>
+        </div>
+      </details>
+
+      <div className="lsp-detail-actions">
+        <Button size="sm" disabled={!isDirty} onClick={() => setDraft(server)}>
+          Reset changes
+        </Button>
+        <Button variant="primary" size="sm" disabled={!isDirty} onClick={() => onSave(draft)}>
+          Save configuration
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function LanguageServersPanel({
   servers,
   setServers,
@@ -710,6 +993,9 @@ export function LanguageServersPanel({
         startServer(selectedServer.id, `Retrying ${selectedServer.shortName} for suncode.`),
     };
     if (selectedServer.kind === "vtsls") return <VtslsSettings {...detailProps} />;
+    if (selectedServer.kind === "basedpyright") {
+      return <BasedpyrightSettings {...detailProps} />;
+    }
     return <JdtlsSettings {...detailProps} />;
   }
 
