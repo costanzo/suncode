@@ -564,6 +564,7 @@
   <x:String x:Key="LocEnvironmentEntriesHint">每行一个 NAME=value。值保存在本机，保存后不再显示。</x:String>
   <x:String x:Key="LocStartupTimeoutSeconds">启动超时</x:String>
   <x:String x:Key="LocRequestTimeoutSeconds">请求超时</x:String>
+  <x:String x:Key="LocJdtlsCouldNotStart">jdtls 无法启动</x:String>
   <x:String x:Key="LocResetChanges">重置更改</x:String>
   <x:String x:Key="LocSaveConfiguration">保存配置</x:String>
   <x:String x:Key="LocDetected">已检测</x:String>

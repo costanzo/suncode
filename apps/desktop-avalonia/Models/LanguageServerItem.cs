@@ -60,7 +60,9 @@ public sealed class LanguageServerItem : ObservableObject
         "ready" => $"{Server.CapabilityCount} {LocalizationService.GetString("LocCapabilities", "capabilities")}",
         "starting" => LocalizationService.GetString("LocInitializing", "Initializing"),
         "indexing" => LocalizationService.GetString("LocSemanticDataLoading", "Semantic data loading"),
-        "failed" => LocalizationService.GetString("LocNoSemanticResults", "No semantic results"),
+        "failed" => string.IsNullOrWhiteSpace(Error)
+            ? LocalizationService.GetString("LocNoSemanticResults", "No semantic results")
+            : Error,
         _ => LocalizationService.GetString("LocNotRunning", "Not running")
     };
     public string DetectionLabel => Detected

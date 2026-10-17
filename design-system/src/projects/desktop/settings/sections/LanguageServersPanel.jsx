@@ -138,6 +138,7 @@ function JdtlsSettings({ server, onBack, onSave, onRetry }) {
   const [draft, setDraft] = useState(server);
   const [detecting, setDetecting] = useState(false);
   const update = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(server);
 
   useEffect(() => setDraft(server), [server]);
 
@@ -353,10 +354,10 @@ function JdtlsSettings({ server, onBack, onSave, onRetry }) {
       </details>
 
       <div className="lsp-detail-actions">
-        <Button size="sm" onClick={() => setDraft(server)}>
+        <Button size="sm" disabled={!isDirty} onClick={() => setDraft(server)}>
           Reset changes
         </Button>
-        <Button variant="primary" size="sm" onClick={() => onSave(draft)}>
+        <Button variant="primary" size="sm" disabled={!isDirty} onClick={() => onSave(draft)}>
           Save configuration
         </Button>
       </div>

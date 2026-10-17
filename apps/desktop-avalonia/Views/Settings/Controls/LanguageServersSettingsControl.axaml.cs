@@ -12,6 +12,8 @@ public sealed partial class LanguageServersSettingsControl : UserControl
 {
     private LanguageServerItem? _selected;
     private string _managedDataPath = string.Empty;
+    private JdtlsDraft? _baseline;
+    private bool _populating;
     private readonly SCComboBoxItem _managedDataPathOption;
     private readonly SCComboBoxItem _customDataPathOption;
 
@@ -22,6 +24,7 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         _customDataPathOption = new(L("LocCustom", "Custom"), "custom");
         DataPathModeSelector.ItemsSource = [_managedDataPathOption, _customDataPathOption];
         DataPathModeSelector.SelectedItem = _managedDataPathOption;
+        WireDirtyTracking();
     }
 
     private LanguageServersViewModel? ViewModel => DataContext as LanguageServersViewModel;
@@ -42,6 +45,8 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         DetailPanel.IsVisible = false;
         CatalogPanel.IsVisible = true;
         _selected = null;
+        _baseline = null;
+        UpdateDirtyState();
     }
 
     private async void ToggleClicked(object? sender, RoutedEventArgs e)
@@ -61,11 +66,30 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         var refreshed = ViewModel.Servers.FirstOrDefault(item => item.ServerId == _selected.ServerId);
         if (refreshed is null) return;
         _selected = refreshed;
-        Populate(refreshed);
+        UpdateRuntimePresentation(refreshed);
+        UpdateDirtyState();
         if (!string.IsNullOrWhiteSpace(refreshed.DetectedExecutable))
             ExecutableInput.Text = refreshed.DetectedExecutable;
         if (!string.IsNullOrWhiteSpace(refreshed.DetectedJavaHome))
             JavaHomeInput.Text = refreshed.DetectedJavaHome;
+    }
+
+    private async void RetryClicked(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel is null || _selected is null) return;
+        RetryButton.IsEnabled = false;
+        var retried = await ViewModel.RetryServerAsync(_selected);
+        if (!retried)
+        {
+            ValidationText.Text = ViewModel.StatusText;
+            RetryButton.IsEnabled = _selected.CanRetry;
+            return;
+        }
+        var refreshed = ViewModel.Servers.FirstOrDefault(item => item.ServerId == _selected.ServerId);
+        if (refreshed is null) return;
+        _selected = refreshed;
+        UpdateRuntimePresentation(refreshed);
+        UpdateDirtyState();
     }
 
     private void ResetClicked(object? sender, RoutedEventArgs e)
@@ -165,32 +189,56 @@ public sealed partial class LanguageServersSettingsControl : UserControl
 
     private void Populate(LanguageServerItem item)
     {
+        _populating = true;
+        try
+        {
+            UpdateRuntimePresentation(item);
+            EnabledToggle.IsChecked = item.Enabled;
+            MatchedRootMarkerText.Text = string.IsNullOrWhiteSpace(item.MatchedRootMarker)
+                ? "No root marker matched"
+                : $"Matched  {item.MatchedRootMarker}";
+            ExecutableInput.Text = item.Command;
+            JavaHomeInput.Text = item.JavaHome ?? string.Empty;
+            _managedDataPath = item.DataPathMode == "managed" ? item.DataPath : string.Empty;
+            DataPathModeSelector.SelectedItem = item.DataPathMode == "custom"
+                ? _customDataPathOption
+                : _managedDataPathOption;
+            DataPathInput.Text = item.DataPath;
+            RootMarkersInput.Text = string.Join(Environment.NewLine, item.RootMarkers);
+            EnvironmentInput.Text = string.Empty;
+            EnvironmentInput.PlaceholderText = item.EnvironmentKeys.Count > 0
+                ? $"Stored keys: {string.Join(", ", item.EnvironmentKeys)}"
+                : "NAME=value";
+            StartupTimeoutInput.Value = item.StartupTimeoutSeconds;
+            RequestTimeoutInput.Value = item.RequestTimeoutSeconds;
+            ValidationText.Text = string.Empty;
+            UpdateDataPathMode();
+        }
+        finally
+        {
+            _populating = false;
+        }
+        _baseline = CaptureDraft();
+        UpdateDirtyState();
+    }
+
+    private void UpdateRuntimePresentation(LanguageServerItem item)
+    {
         DetailTitle.Text = item.DisplayName;
         DetailStatus.Text = item.StatusLabel;
         DetailStatusText.Text = item.StatusDetail;
-        EnabledToggle.IsChecked = item.Enabled;
-        MatchedRootMarkerText.Text = string.IsNullOrWhiteSpace(item.MatchedRootMarker)
-            ? "No root marker matched"
-            : $"Matched  {item.MatchedRootMarker}";
-        ExecutableInput.Text = item.Command;
-        JavaHomeInput.Text = item.JavaHome ?? string.Empty;
-        _managedDataPath = item.DataPathMode == "managed" ? item.DataPath : string.Empty;
-        DataPathModeSelector.SelectedItem = item.DataPathMode == "custom"
-            ? _customDataPathOption
-            : _managedDataPathOption;
-        DataPathInput.Text = item.DataPath;
-        RootMarkersInput.Text = string.Join(Environment.NewLine, item.RootMarkers);
-        EnvironmentInput.Text = string.Empty;
-        EnvironmentInput.PlaceholderText = item.EnvironmentKeys.Count > 0
-            ? $"Stored keys: {string.Join(", ", item.EnvironmentKeys)}"
-            : "NAME=value";
-        StartupTimeoutInput.Value = item.StartupTimeoutSeconds;
-        RequestTimeoutInput.Value = item.RequestTimeoutSeconds;
-        ValidationText.Text = string.Empty;
-        UpdateDataPathMode();
+        DetailStatus.Classes.Set("tone-danger", item.IsFailed);
+        DetailStatusText.Classes.Set("tone-danger", item.IsFailed);
+        FailureBanner.IsVisible = item.IsFailed;
+        DetailErrorText.Text = item.StatusDetail;
+        RetryButton.IsEnabled = item.CanRetry;
     }
 
-    private void DataPathModeChanged(object? sender, SelectionChangedEventArgs e) => UpdateDataPathMode();
+    private void DataPathModeChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        UpdateDataPathMode();
+        UpdateDirtyState();
+    }
 
     private bool IsCustomDataPath =>
         string.Equals(DataPathModeSelector.SelectedItem?.Value as string, "custom", StringComparison.Ordinal);
@@ -202,6 +250,37 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         if (!custom && _managedDataPath.Length > 0) DataPathInput.Text = _managedDataPath;
     }
 
+    private void WireDirtyTracking()
+    {
+        EnabledToggle.Click += (_, _) => UpdateDirtyState();
+        ExecutableInput.TextChanged += (_, _) => UpdateDirtyState();
+        JavaHomeInput.TextChanged += (_, _) => UpdateDirtyState();
+        DataPathInput.TextChanged += (_, _) => UpdateDirtyState();
+        RootMarkersInput.TextChanged += (_, _) => UpdateDirtyState();
+        EnvironmentInput.TextChanged += (_, _) => UpdateDirtyState();
+        StartupTimeoutInput.ValueChanged += (_, _) => UpdateDirtyState();
+        RequestTimeoutInput.ValueChanged += (_, _) => UpdateDirtyState();
+    }
+
+    private void UpdateDirtyState()
+    {
+        if (_populating) return;
+        var isDirty = _baseline is not null && CaptureDraft() != _baseline;
+        SaveButton.IsEnabled = isDirty;
+        ResetButton.IsEnabled = isDirty;
+    }
+
+    private JdtlsDraft CaptureDraft() => new(
+        EnabledToggle.IsChecked == true,
+        ExecutableInput.Text?.Trim() ?? string.Empty,
+        NullIfEmpty(JavaHomeInput.Text),
+        IsCustomDataPath ? "custom" : "managed",
+        IsCustomDataPath ? NullIfEmpty(DataPathInput.Text) : null,
+        string.Join('\n', Lines(RootMarkersInput.Text)),
+        string.Join('\n', Lines(EnvironmentInput.Text)),
+        StartupTimeoutInput.Value,
+        RequestTimeoutInput.Value);
+
     private static string? NullIfEmpty(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
@@ -209,4 +288,15 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .Where(line => line.Length > 0)
         .ToArray();
+
+    private sealed record JdtlsDraft(
+        bool Enabled,
+        string Executable,
+        string? JavaHome,
+        string DataPathMode,
+        string? DataPath,
+        string RootMarkers,
+        string Environment,
+        decimal? StartupTimeout,
+        decimal? RequestTimeout);
 }

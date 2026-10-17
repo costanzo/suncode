@@ -564,6 +564,7 @@
   <x:String x:Key="LocEnvironmentEntriesHint">One NAME=value entry per line. Values are stored locally and hidden after saving.</x:String>
   <x:String x:Key="LocStartupTimeoutSeconds">Startup timeout</x:String>
   <x:String x:Key="LocRequestTimeoutSeconds">Request timeout</x:String>
+  <x:String x:Key="LocJdtlsCouldNotStart">jdtls could not start</x:String>
   <x:String x:Key="LocResetChanges">Reset changes</x:String>
   <x:String x:Key="LocSaveConfiguration">Save configuration</x:String>
   <x:String x:Key="LocDetected">Detected</x:String>

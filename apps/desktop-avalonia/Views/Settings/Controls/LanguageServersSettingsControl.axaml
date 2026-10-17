@@ -127,6 +127,35 @@
           </StackPanel>
         </Grid>
 
+        <Border x:Name="FailureBanner"
+                IsVisible="False"
+                Margin="0,0,0,24"
+                Padding="12,10"
+                Background="{DynamicResource DangerSurfaceBrush}"
+                BorderBrush="{DynamicResource DangerBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+            <StackPanel Spacing="3">
+              <TextBlock Text="{DynamicResource LocJdtlsCouldNotStart}"
+                         FontSize="11"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource DangerBrush}" />
+              <TextBlock x:Name="DetailErrorText"
+                         Classes="mono"
+                         FontSize="10"
+                         Foreground="{DynamicResource TextSecondaryBrush}"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+            <Button x:Name="RetryButton"
+                    Grid.Column="1"
+                    Classes="compact sc-button"
+                    Content="{DynamicResource LocRetry}"
+                    VerticalAlignment="Center"
+                    Click="RetryClicked" />
+          </Grid>
+        </Border>
+
         <StackPanel Classes="settings-panel-section">
           <TextBlock Text="{DynamicResource LocProjectAvailabilityCaps}" Classes="section-label" />
           <Grid Classes="settings-row" ColumnDefinitions="*,220">
@@ -237,8 +266,10 @@
         <TextBlock x:Name="ValidationText" Classes="sc-text-status" Margin="0,16,0,0"
                    Foreground="{DynamicResource DangerBrush}" />
         <StackPanel Classes="settings-actions" HorizontalAlignment="Right">
-          <Button Classes="compact sc-button" Content="{DynamicResource LocResetChanges}" Click="ResetClicked" />
-          <Button Classes="compact primary sc-button" Content="{DynamicResource LocSaveConfiguration}" Click="SaveClicked" />
+          <Button x:Name="ResetButton" Classes="compact sc-button"
+                  Content="{DynamicResource LocResetChanges}" Click="ResetClicked" IsEnabled="False" />
+          <Button x:Name="SaveButton" Classes="compact primary sc-button"
+                  Content="{DynamicResource LocSaveConfiguration}" Click="SaveClicked" IsEnabled="False" />
         </StackPanel>
       </StackPanel>
     </Grid>
