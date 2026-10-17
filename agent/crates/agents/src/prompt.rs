@@ -35,6 +35,18 @@ pub fn workflow(allowed_tools: &[String]) -> String {
         .join("\n")
 }
 
+/// The `delegate_agent` tool description: what delegation does and, for each
+/// specialist, the description the primary agent chooses by.
+pub fn delegation(specialists: &[AgentDefinition]) -> String {
+    let mut text = String::from(
+        "Delegate a bounded task to one fixed specialist agent. The specialist works in a linked child session and returns a result to the main agent. It sees only the task text, not this conversation, so include the goal, relevant paths, constraints, and the expected result.\n\nAvailable specialists:",
+    );
+    for agent in specialists {
+        text.push_str(&format!("\n- {}: {}", agent.name, agent.description));
+    }
+    text
+}
+
 /// Fields of the summary the compaction model must return, in order. The
 /// core parses the reply into its context summary type with these fields.
 pub const COMPACTION_SUMMARY_FIELDS: &[&str] = &[

@@ -276,6 +276,16 @@ async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
     if user_text == "assert primary tools" {
         assert!(!is_child);
         assert!(advertised_tools.contains("delegate_agent"));
+        let delegate = body["tools"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|tool| tool.get("name").and_then(Value::as_str) == Some("delegate_agent"))
+            .expect("delegate_agent is advertised");
+        let description = delegate["description"].as_str().unwrap_or_default();
+        for agent in suncode_agents::specialists() {
+            assert!(description.contains(&format!("- {}: {}", agent.name, agent.description)));
+        }
     }
     if user_text == "assert child tools" {
         assert!(is_child);

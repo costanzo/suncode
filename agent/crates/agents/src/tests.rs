@@ -133,3 +133,14 @@ fn workflow_omits_rules_for_tools_outside_the_scope() {
     assert!(!read_only.contains("todowrite"));
     assert!(read_only.starts_with("SunCode coding workflow:\n"));
 }
+
+#[test]
+fn delegation_lists_every_specialist_with_its_description() {
+    let text = prompt::delegation(specialists());
+    assert!(text.starts_with("Delegate a bounded task to one fixed specialist agent."));
+    assert!(text.contains("It sees only the task text"));
+    for agent in specialists() {
+        assert!(text.contains(&format!("\n- {}: {}", agent.name, agent.description)));
+    }
+    assert!(!text.contains(PRIMARY.name));
+}

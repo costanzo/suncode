@@ -14,15 +14,21 @@ pub(super) fn provider_retry_allowed(error: &BusinessError) -> bool {
 pub(super) fn delegate_agent_definition() -> suncode_llm::ToolDefinition {
     suncode_llm::ToolDefinition {
         name: "delegate_agent".into(),
-        description: "Delegate a bounded task to one fixed specialist agent. The specialist works in a linked child session and returns a result to the main agent.".into(),
+        description: suncode_agents::prompt::delegation(suncode_agents::specialists()),
         parameters: json!({
             "type": "object",
             "properties": {
                 "agent": {
                     "type": "string",
+                    "description": "Name of the specialist to delegate to.",
                     "enum": suncode_agents::specialists().iter().map(|agent| agent.name).collect::<Vec<_>>(),
                 },
-                "task": {"type": "string", "minLength": 1, "maxLength": 16000}
+                "task": {
+                    "type": "string",
+                    "description": "Self-contained task for the specialist.",
+                    "minLength": 1,
+                    "maxLength": 16000
+                }
             },
             "required": ["agent", "task"],
             "additionalProperties": false
