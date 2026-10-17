@@ -21,20 +21,16 @@ impl AsyncAgentSdk {
         enabled: bool,
     ) -> SdkResult<suncode_core::ComputerRuntimeInfo> {
         self.ensure_computer_host_available()?;
-        if enabled {
-            apply_computer_enablement(&self.state.agent, true)?;
-            persist_computer_enablement(&self.state.store, true)?;
-        } else {
-            persist_computer_enablement(&self.state.store, false)?;
-            apply_computer_enablement(&self.state.agent, false)?;
-        }
+        set_computer_enablement(&self.state.agent, &self.state.store, enabled)?;
         Ok(self.state.agent.computer_runtime_info())
     }
 
     pub fn emergency_stop_computer_use(&self) -> SdkResult<suncode_core::ComputerRuntimeInfo> {
         self.ensure_computer_host_available()?;
-        persist_computer_enablement(&self.state.store, false)?;
+        // Stop first: a failed settings write must not keep the agent in
+        // control. The stored setting is then turned off as well.
         self.state.agent.emergency_stop_computer_use()?;
+        persist_computer_enablement(&self.state.store, false)?;
         Ok(self.state.agent.computer_runtime_info())
     }
 
@@ -51,7 +47,8 @@ impl AsyncAgentSdk {
         self.ensure_computer_host_available()?;
         let info = self.state.agent.request_computer_input_permission()?;
         if info.input_permission == "allowed" && computer_enablement_desired(&self.state.store) {
-            apply_computer_enablement(&self.state.agent, true)?;
+            prepare_computer_enablement(&self.state.agent)?;
+            self.state.agent.set_computer_use_enabled(true)?;
         }
         Ok(self.state.agent.computer_runtime_info())
     }
@@ -65,6 +62,22 @@ impl AsyncAgentSdk {
         self.ensure_computer_host_available()?;
         self.state.agent.return_computer_control()
     }
+}
+
+/// Turns Computer Use on or off. The runtime changes only after the setting
+/// is stored, so a failed write leaves both unchanged. Enabling first checks
+/// the input permission and installs the backend, so an unusable setting is
+/// never stored as enabled.
+pub(super) fn set_computer_enablement(
+    agent: &AgentRuntime,
+    store: &Store,
+    enabled: bool,
+) -> SdkResult<()> {
+    if enabled {
+        prepare_computer_enablement(agent)?;
+    }
+    persist_computer_enablement(store, enabled)?;
+    agent.set_computer_use_enabled(enabled)
 }
 
 fn persist_computer_enablement(store: &Store, enabled: bool) -> SdkResult<()> {
@@ -83,8 +96,10 @@ fn computer_enablement_desired(store: &Store) -> bool {
         .is_ok_and(|settings| settings.computer_use_enabled)
 }
 
-pub(super) fn apply_computer_enablement(agent: &AgentRuntime, enabled: bool) -> SdkResult<()> {
-    if enabled && !agent.computer_runtime_info().backend_available {
+/// Ensures the input permission and an installed backend, without enabling
+/// the runtime.
+fn prepare_computer_enablement(agent: &AgentRuntime) -> SdkResult<()> {
+    if !agent.computer_runtime_info().backend_available {
         let runtime = agent.computer_runtime_info();
         if runtime.input_permission == "denied" {
             let permission = agent.request_computer_input_permission()?;
@@ -103,7 +118,7 @@ pub(super) fn apply_computer_enablement(agent: &AgentRuntime, enabled: bool) -> 
             })?,
         ))?;
     }
-    agent.set_computer_use_enabled(enabled)
+    Ok(())
 }
 
 fn computer_input_permission_required() -> BusinessError {

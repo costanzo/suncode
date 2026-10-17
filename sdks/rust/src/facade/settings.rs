@@ -1,4 +1,4 @@
-use super::computer::apply_computer_enablement;
+use super::computer::set_computer_enablement;
 use super::*;
 use suncode_config::GlobalSettings;
 
@@ -68,9 +68,14 @@ impl AsyncAgentSdk {
             }
         };
         if scope == "global" && key == "computer_use_enabled" {
-            apply_computer_enablement(&self.state.agent, value.as_bool().unwrap_or(false))?;
+            set_computer_enablement(
+                &self.state.agent,
+                &self.state.store,
+                value.as_bool().unwrap_or(false),
+            )?;
+        } else {
+            self.state.store.set_setting(scope, scope_id, key, value)?;
         }
-        self.state.store.set_setting(scope, scope_id, key, value)?;
         if scope == "global" && key == "verify_https_certificates" {
             self.state
                 .verify_https_certificates
