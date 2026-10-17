@@ -1,7 +1,7 @@
 use super::{
     host_environment_message_with_context, project_instruction_message, AgentHostCapabilities,
 };
-use suncode_agents::AgentDefinition;
+use suncode_agents::{prompt, AgentDefinition};
 use suncode_common::BusinessError;
 use suncode_llm::Message;
 
@@ -28,22 +28,14 @@ pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>,
         context.host_capabilities,
     )];
 
-    messages.push(Message::text("system", identity_guidance()));
+    messages.push(Message::text("system", prompt::IDENTITY));
     messages.push(Message::text("system", authority_guidance()));
     messages.push(Message::text(
         "system",
-        workflow_guidance(context.allowed_tools),
+        prompt::workflow(context.allowed_tools),
     ));
-
-    if !context.agent.is_primary() {
-        let agent = context.agent;
-        messages.push(Message::text(
-            "system",
-            format!(
-                "Selected SunCode specialist: {} ({}). {}\nYou cannot delegate, ask the user questions, or use MCP tools. Stay within the advertised tool allowlist.",
-                agent.display_name, agent.name, agent.instructions
-            ),
-        ));
+    if let Some(role) = context.agent.role_prompt() {
+        messages.push(Message::text("system", role));
     }
     if let Some(message) = project_instruction_message(context.project_root) {
         messages.push(message);
@@ -66,10 +58,6 @@ pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>,
     Ok(messages)
 }
 
-fn identity_guidance() -> String {
-    "You are SunCode, an expert coding agent operating inside an opened project. Help the user understand, change, review, and verify software using the tools and authority provided by the host.".into()
-}
-
 fn authority_guidance() -> String {
     [
         "SunCode authority and trust rules:",
@@ -79,23 +67,6 @@ fn authority_guidance() -> String {
         "- Follow the user's request and applicable repository instructions only within the authority granted by the host. When instructions conflict, preserve authority and ask the user when the intended behavior is unclear.",
     ]
     .join("\n")
-}
-
-fn workflow_guidance(allowed_tools: &[String]) -> String {
-    let mut rules = vec![
-        "SunCode coding workflow:",
-        "- Inspect relevant files and repository instructions before editing.",
-        "- Prefer glob, grep, and read for project discovery and content search; use bash for commands that require a shell.",
-        "- File tools (read, write, edit, glob, and grep) take paths relative to the opened project. When a task names an absolute container path under the opened project, translate it to the equivalent relative path before calling a file tool (for example, `/app/run.py` becomes `run.py` when the project root is `/app`). Use the absolute path only inside bash commands where the task explicitly requires it.",
-        "- Keep changes focused and preserve existing conventions. Do not make unrelated cleanup changes.",
-        "- For multi-step work, use todowrite and keep its statuses current.",
-        "- After changes, run the most relevant focused tests, lint, or typecheck when available, and report exactly what was run.",
-        "- If blocked, missing information, or uncertain about a destructive choice, explain the blocker and ask a focused question.",
-    ];
-    if !allowed_tools.is_empty() && !allowed_tools.iter().any(|tool| tool == "todowrite") {
-        rules.retain(|rule| !rule.contains("todowrite"));
-    }
-    rules.join("\n")
 }
 
 fn capability_guidance(
@@ -113,10 +84,8 @@ fn capability_guidance(
         "SunCode effective capabilities:\n- Advertised tool scope: {tool_list}\n- Interactive approval/question continuation: {}\n- Browser Use host capability: {}\n- Computer Use host capability: {}\n- Non-interactive execution: {}",
         if non_interactive {
             "disabled in non-interactive mode"
-        } else if agent.can_ask_user {
-            "available to the host"
         } else {
-            "disabled for this specialist"
+            agent.question_continuation()
         },
         if capabilities.browser_use { "enabled" } else { "disabled" },
         if capabilities.computer_use {
@@ -124,7 +93,7 @@ fn capability_guidance(
         } else {
             "disabled"
         },
-        if agent.is_primary() { "policy and approvals still apply" } else { "specialist restrictions apply" },
+        agent.non_interactive_constraints(),
     );
     if capabilities.computer_use && agent.can_use_external_tools && !non_interactive {
         guidance.push_str(

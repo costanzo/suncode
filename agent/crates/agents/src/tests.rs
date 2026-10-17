@@ -69,3 +69,67 @@ fn lookup_resolves_sessions_without_an_agent_to_the_primary() {
     assert!(ToolScope::Only(READ_TOOLS).allows("grep"));
     assert!(!ToolScope::Only(READ_TOOLS).allows("bash"));
 }
+
+#[test]
+fn the_primary_has_no_role_prompt_and_specialists_state_their_limits() {
+    assert!(!PRIMARY.is_restricted());
+    assert_eq!(PRIMARY.role_prompt(), None);
+    assert_eq!(PRIMARY.question_continuation(), "available to the host");
+    assert_eq!(
+        PRIMARY.non_interactive_constraints(),
+        "policy and approvals still apply"
+    );
+
+    let swe = specialist_by_name("swe-agent").unwrap();
+    assert!(swe.is_restricted());
+    assert_eq!(
+        swe.role_prompt().unwrap(),
+        format!(
+            "Selected SunCode specialist: Software Engineering Agent (swe-agent). {}\nYou cannot delegate, ask the user questions, or use MCP tools. Stay within the advertised tool allowlist.",
+            swe.instructions
+        )
+    );
+    assert_eq!(swe.question_continuation(), "disabled for this specialist");
+    assert_eq!(
+        swe.non_interactive_constraints(),
+        "specialist restrictions apply"
+    );
+    assert!(UNRESOLVED.is_restricted());
+    assert!(UNRESOLVED.role_prompt().is_some());
+}
+
+#[test]
+fn role_limits_follow_the_definition_capabilities() {
+    let delegating = AgentDefinition {
+        can_delegate: true,
+        can_use_external_tools: true,
+        ..*specialist_by_name("qa-agent").unwrap()
+    };
+    let role = delegating.role_prompt().unwrap();
+    assert!(role.ends_with(
+        "\nYou cannot ask the user questions. Stay within the advertised tool allowlist."
+    ));
+
+    let catalog_only = AgentDefinition {
+        tools: ToolScope::Catalog,
+        can_ask_user: true,
+        ..delegating
+    };
+    assert!(!catalog_only.is_restricted());
+    assert_eq!(
+        catalog_only.role_prompt().unwrap(),
+        format!(
+            "Selected SunCode specialist: QA Agent (qa-agent). {}\n",
+            catalog_only.instructions
+        )
+    );
+}
+
+#[test]
+fn workflow_omits_rules_for_tools_outside_the_scope() {
+    assert!(prompt::workflow(&[]).contains("todowrite"));
+    assert!(prompt::workflow(&["todowrite".into()]).contains("todowrite"));
+    let read_only = prompt::workflow(&["read".into()]);
+    assert!(!read_only.contains("todowrite"));
+    assert!(read_only.starts_with("SunCode coding workflow:\n"));
+}

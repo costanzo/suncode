@@ -1,11 +1,14 @@
 //! SunCode agent definitions: who an agent is and what it may do.
 //!
 //! The core harness runs every agent the same way and reads only these
-//! definitions to decide an agent's prompt, tool scope, and capabilities.
-//! Definitions can only narrow what the core allows: policy, approval, audit,
-//! and the authority rules in the system prompt stay in the core.
+//! definitions and the prompt text in [`prompt`] to decide an agent's prompt,
+//! tool scope, and capabilities. The primary agent is an ordinary definition
+//! with every capability. Definitions can only narrow what the core allows:
+//! policy, approval, audit, and the authority rules in the system prompt stay
+//! in the core.
 
 mod builtin;
+pub mod prompt;
 
 pub use builtin::{IMPLEMENTATION_TOOLS, READ_TOOLS};
 
@@ -102,6 +105,24 @@ pub const PRIMARY: AgentDefinition = AgentDefinition {
     can_use_external_tools: true,
     can_use_skills: true,
     tool_call_limit: None,
+};
+
+/// Capabilities for a turn whose persisted agent id no longer resolves: no
+/// tools and no capabilities, rather than the primary's.
+pub const UNRESOLVED: AgentDefinition = AgentDefinition {
+    id: "unresolved",
+    name: "unresolved",
+    display_name: "Unavailable agent",
+    description: "",
+    version: 0,
+    instructions: "",
+    tools: ToolScope::Only(&[]),
+    model_policy: ModelPolicy::InheritParent,
+    can_delegate: false,
+    can_ask_user: false,
+    can_use_external_tools: false,
+    can_use_skills: false,
+    tool_call_limit: Some(0),
 };
 
 /// Specialist agents the primary agent may delegate to.

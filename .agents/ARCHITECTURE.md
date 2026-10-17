@@ -167,7 +167,7 @@ apps/cli/                 native Rust CLI administration and one-shot turn clien
 contracts/                hand-written protocols and contract documentation
 agent/crates/core/      `suncode-core` harness: turn loop, policy, approval, event emission, prompts, and tool routing
 agent/crates/events/    `suncode-events` session event payloads, per-session event hub, and attention hub
-agent/crates/agents/    `suncode-agents` definitions: identity, instructions, tool scope, and capabilities
+agent/crates/agents/    `suncode-agents` definitions for the primary and specialist agents: identity, shared workflow and role prompts, compaction instructions, tool scope, and capabilities
 agent/crates/config/    Rust-owned bootstrap configuration crate
 agent/crates/types/     `suncode-types` serde-only shared data: messages, tool calls, usage, and tool definitions
 agent/crates/common/    shared Rust business errors and cross-crate contracts, including the std-only `tool` provider contract

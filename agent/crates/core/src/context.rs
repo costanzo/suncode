@@ -374,6 +374,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn compaction_prompt_fields_match_the_summary_type() {
+        let summary = summarize(&[], &[]);
+        let value = serde_json::to_value(&summary).unwrap();
+        let fields = value
+            .as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>();
+        let mut expected = suncode_agents::prompt::COMPACTION_SUMMARY_FIELDS
+            .iter()
+            .map(|field| field.to_string())
+            .collect::<Vec<_>>();
+        expected.sort();
+        let mut fields = fields;
+        fields.sort();
+        assert_eq!(fields, expected);
+        for field in suncode_agents::prompt::COMPACTION_SUMMARY_FIELDS {
+            assert!(suncode_agents::prompt::COMPACTION.contains(&format!("{field} (")));
+        }
+    }
+
+    #[test]
     fn keeps_recent_messages_and_tool_groups_when_compacting() {
         let mut messages = vec![Message::text("user", "old ".repeat(5_000))];
         messages.push(Message::text("assistant", "tool request"));

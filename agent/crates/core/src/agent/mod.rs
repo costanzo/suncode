@@ -178,26 +178,9 @@ impl Continuation {
     /// agent. An id that no longer resolves gets no capabilities rather than
     /// the primary's; its tool scope still comes from the turn snapshot.
     fn agent(&self) -> &'static suncode_agents::AgentDefinition {
-        suncode_agents::by_id(self.agent_id.as_deref()).unwrap_or(&UNRESOLVED_AGENT)
+        suncode_agents::by_id(self.agent_id.as_deref()).unwrap_or(&suncode_agents::UNRESOLVED)
     }
 }
-
-/// Capabilities for a turn whose agent definition is missing.
-const UNRESOLVED_AGENT: suncode_agents::AgentDefinition = suncode_agents::AgentDefinition {
-    id: "unresolved",
-    name: "unresolved",
-    display_name: "Unavailable agent",
-    description: "",
-    version: 0,
-    instructions: "",
-    tools: suncode_agents::ToolScope::Only(&[]),
-    model_policy: suncode_agents::ModelPolicy::InheritParent,
-    can_delegate: false,
-    can_ask_user: false,
-    can_use_external_tools: false,
-    can_use_skills: false,
-    tool_call_limit: Some(0),
-};
 
 #[derive(Debug, Clone)]
 struct QueuedMessage {
