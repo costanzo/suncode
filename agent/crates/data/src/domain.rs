@@ -92,6 +92,10 @@ pub struct McpServerInput {
 #[serde(rename_all = "camelCase")]
 pub struct LanguageServerConfig {
     pub version: u32,
+    #[serde(default)]
+    pub project_id: Option<String>,
+    #[serde(default)]
+    pub server_kind: Option<String>,
     pub command: String,
     pub arguments: Vec<String>,
     pub language_ids: Vec<String>,
@@ -100,6 +104,12 @@ pub struct LanguageServerConfig {
     pub environment: BTreeMap<String, String>,
     pub startup_timeout_seconds: u64,
     pub request_timeout_seconds: u64,
+    #[serde(default)]
+    pub java_home: Option<String>,
+    #[serde(default)]
+    pub data_path_mode: Option<String>,
+    #[serde(default)]
+    pub data_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

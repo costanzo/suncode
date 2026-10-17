@@ -76,9 +76,17 @@ fn validate_input(input: &LanguageServerInput) -> Result<(), BusinessError> {
         ));
     }
     let config = &input.config;
-    if config.version != 1 {
+    if !matches!(config.version, 1 | 2) {
         return Err(BusinessError::invalid(
             "Language server configuration version is unsupported",
+        ));
+    }
+    if config.version == 2
+        && (config.project_id.as_deref().is_none_or(str::is_empty)
+            || config.server_kind.as_deref().is_none_or(str::is_empty))
+    {
+        return Err(BusinessError::invalid(
+            "Project language server configuration is missing its project or kind",
         ));
     }
     if config.command.trim().is_empty()
@@ -189,6 +197,17 @@ fn revision_conflict(expected: u64, actual: u64) -> BusinessError {
 }
 
 impl Store {
+    pub fn language_server_for_project(
+        &self,
+        project_id: &str,
+        server_kind: &str,
+    ) -> Result<Option<LanguageServerRecord>, BusinessError> {
+        Ok(self.language_servers()?.into_iter().find(|server| {
+            server.config.project_id.as_deref() == Some(project_id)
+                && server.config.server_kind.as_deref() == Some(server_kind)
+        }))
+    }
+
     pub fn language_servers(&self) -> Result<Vec<LanguageServerRecord>, BusinessError> {
         let mut connection = lock(&self.connection)?;
         sql_query(format!(

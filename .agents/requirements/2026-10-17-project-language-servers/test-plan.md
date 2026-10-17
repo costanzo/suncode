@@ -6,11 +6,14 @@ Design-system prototype now; production catalog, persistence, runtime, bindings,
 
 ## Unit tests
 
-- Deferred until production implementation.
+- Data and LSP crate tests.
+- Rust SDK facade tests for project isolation, redaction, revisions, and failed process startup.
+- C ABI tests and C# typed serialization/view-model/localization tests.
 
 ## Integration and conformance tests
 
-- Deferred until production implementation.
+- Native C# binding and Avalonia build against ABI 19.
+- Production Avalonia startup with an isolated data directory.
 
 ## Regression checks
 
@@ -31,6 +34,11 @@ Design-system prototype now; production catalog, persistence, runtime, bindings,
 - `git diff --check`: passed.
 - Headless Chromium screenshots: passed for light desktop, dark desktop, and constrained-width detail views.
 - CDP interaction check: configure navigation, custom data path, advanced disclosure, indexing, and ready transitions passed.
+- `cargo test -p suncode-data -p suncode-lsp -p suncode-core`: passed (101 tests).
+- `cargo test` in `sdks/rust`: passed (34 tests).
+- `cargo test` in `sdks/c`: passed (4 tests).
+- `dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj --no-restore`: passed (317 tests).
+- Production Avalonia startup with an isolated data directory: passed after adding localization-key uniqueness coverage.
 - Repository-wide `npm run format:check`: still reports unrelated pre-existing formatting findings outside this change.
 
 ## Residual risks

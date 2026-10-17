@@ -15,9 +15,9 @@ use std::{
 use suncode_sdk::logging_module::{self as logging};
 use suncode_sdk::{
     AgentAttentionEvent, AgentEvent, AgentSdk, AttentionEventStream, AttentionEventStreamControl,
-    BusinessError, LanguageServerWriteRequest, McpServerWriteRequest, SdkResult,
-    SessionEventStream, SessionEventStreamControl, SubscriptionError,
-    SUNCODE_AGENT_SDK_ABI_VERSION,
+    BusinessError, JdtlsLanguageServerWriteRequest, LanguageServerWriteRequest,
+    McpServerWriteRequest, SdkResult, SessionEventStream, SessionEventStreamControl,
+    SubscriptionError, SUNCODE_AGENT_SDK_ABI_VERSION,
 };
 
 pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
@@ -547,6 +547,24 @@ pub unsafe extern "C" fn suncode_agent_sdk_update_language_server(
             expected_revision,
             &c_string(idempotency_key, "idempotency_key")?,
             typed_json_from_c::<LanguageServerWriteRequest>(request_json, "request_json")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_configure_jdtls_language_server(
+    handle: *mut SunCodeAgentHandle,
+    project_id: *const c_char,
+    expected_revision: u64,
+    idempotency_key: *const c_char,
+    request_json: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.configure_jdtls_language_server(
+            &c_string(project_id, "project_id")?,
+            expected_revision,
+            &c_string(idempotency_key, "idempotency_key")?,
+            typed_json_from_c::<JdtlsLanguageServerWriteRequest>(request_json, "request_json")?,
         )
     })
 }

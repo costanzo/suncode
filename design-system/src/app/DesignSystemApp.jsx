@@ -161,6 +161,9 @@ const routes = {
   "/projects/desktop/settings": SettingsPage,
   "/projects/desktop/settings/remote-server": () => <SettingsPage initialPage="remote-server" />,
   "/projects/desktop/settings/language-servers": () => <SettingsPage initialPage="lsp" />,
+  "/projects/desktop/settings/language-servers/no-project": () => (
+    <SettingsPage initialPage="lsp" languageServerHasProject={false} />
+  ),
   "/projects/desktop/settings/language-servers/jdtls": () => (
     <SettingsPage initialPage="lsp" initialLanguageServerId="jdtls" />
   ),

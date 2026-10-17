@@ -4,20 +4,20 @@
 
 - [x] Create the catalog overview and jdtls detail specimen.
 - [x] Update the durable design specification.
-- [ ] Confirm the design with the user.
+- [x] Confirm the design with the user.
 
 ## Implementation
 
-- [ ] Finalize architecture and migration.
-- [ ] Make Rust, persistence, SDK, and Avalonia changes.
-- [ ] Add focused tests.
+- [x] Finalize architecture and compatibility handling.
+- [x] Make Rust, persistence, SDK, and Avalonia changes.
+- [x] Add focused tests.
 
 ## Verification
 
-- [ ] Run focused production checks after implementation.
-- [ ] Run required broader checks after implementation.
+- [x] Run focused production checks after implementation.
+- [x] Run required broader checks after implementation.
 
 ## Closeout
 
-- [ ] Update features and specifications.
-- [ ] Record important decisions.
+- [x] Update features and specifications.
+- [x] Record important decisions.

@@ -79,8 +79,9 @@
         </StackPanel>
       </Border>
 
-      <Expander x:Name="AdvancedDiagnosticsExpander" Header="{DynamicResource LocAdvancedDiagnostics}" Margin="0,28,0,0">
-        <StackPanel Classes="settings-panel-section" Margin="0,16,0,0">
+      <Expander x:Name="AdvancedDiagnosticsExpander" Classes="settings-expander"
+                Header="{DynamicResource LocAdvancedDiagnostics}" Margin="0,28,0,0">
+        <StackPanel Classes="settings-panel-section">
           <StackPanel Classes="settings-actions" Margin="0">
             <Button Classes="compact quiet sc-button" Content="{DynamicResource LocVerifyRuntime}" Command="{Binding VerifyCommand}" IsEnabled="{Binding CanVerify}" />
             <Button Classes="compact quiet sc-button" Content="{DynamicResource LocStartBrowserRecovery}" Command="{Binding StartCommand}" IsVisible="{Binding IsStartVisible}" IsEnabled="{Binding CanStart}" />

@@ -50,6 +50,8 @@ public sealed class LocalizationTests
         var english = ReadKeys(Path.Combine(root, "Strings.en-US.axaml"));
         var chinese = ReadKeys(Path.Combine(root, "Strings.zh-CN.axaml"));
 
+        Assert.Equal(english.Count, english.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(chinese.Count, chinese.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(english.OrderBy(key => key), chinese.OrderBy(key => key));
     }
 

@@ -56,6 +56,7 @@ pub use suncode_remote::{RemoteServerConfiguration, RemoteServerStatus};
 #[derive(Clone)]
 pub(crate) struct AgentState {
     store: Store,
+    data_dir: PathBuf,
     user_id: String,
     operations: Arc<suncode_tool::Operations>,
     active_project: Arc<Mutex<Option<String>>>,
@@ -355,6 +356,7 @@ where
     }
     let state = AgentState {
         store,
+        data_dir: config.data_dir.clone(),
         user_id: user_id.to_owned(),
         operations,
         active_project: Arc::new(Mutex::new(None)),

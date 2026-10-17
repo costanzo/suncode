@@ -43,5 +43,5 @@ Language servers are currently configured as global free-form local processes. T
 
 ## Open questions
 
-- Whether legacy free-form definitions remain available as an advanced `Custom` type or are migrated out of the product surface.
-- Whether executable and JDK selections may inherit optional global defaults while the effective configuration remains project-owned.
+- Resolved: legacy free-form definitions remain persistence-compatible but are not exposed as a `Custom` type or launched.
+- Resolved: executable and JDK detection supplies per-project defaults; no global user-configurable defaults are introduced.

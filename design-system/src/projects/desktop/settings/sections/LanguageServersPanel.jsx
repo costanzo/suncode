@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Button } from "../../../../components/universal/button/index.js";
+import { SingleDropdown } from "../../../../components/universal/dropdown/index.js";
 import { Icon } from "../../../../shared/Icon.jsx";
 import { SettingRow } from "../components/SettingRow.jsx";
 import { initialLanguageServers } from "../data/languageServers.js";
@@ -15,13 +16,13 @@ const statusLabels = {
   not_started: "Not started",
 };
 
-function ServerSwitch({ server, onToggle, compact = false }) {
+function ServerSwitch({ server, onToggle, compact = false, disabled = false }) {
   return (
     <label className={`settings-switch ${compact ? "lsp-server-switch" : ""}`}>
       <input
         type="checkbox"
         checked={server.enabled}
-        disabled={server.status === "indexing"}
+        disabled={disabled || server.status === "indexing"}
         onChange={(event) => onToggle(event.target.checked)}
         aria-label={`${server.enabled ? "Disable" : "Enable"} ${server.name} for this project`}
       />
@@ -55,7 +56,7 @@ function RuntimeStatus({ server }) {
   );
 }
 
-function LanguageServerCatalog({ servers, onConfigure, onToggle }) {
+function LanguageServerCatalog({ servers, onConfigure, onToggle, hasProject }) {
   return (
     <div className="settings-panel-content settings-lsp-content">
       <div className="settings-panel-heading">
@@ -65,14 +66,26 @@ function LanguageServerCatalog({ servers, onConfigure, onToggle }) {
           own process, index, and configuration.
         </p>
       </div>
-      <div className="lsp-project-context">
-        <Icon name="project" size={16} />
-        <div>
-          <span>Current project</span>
-          <strong>suncode</strong>
-          <code>~/Projects/suncode/suncode</code>
+      {hasProject ? (
+        <div className="lsp-project-context">
+          <Icon name="project" size={16} />
+          <div>
+            <span>Current project</span>
+            <strong>suncode</strong>
+            <code>~/Projects/suncode/suncode</code>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="lsp-project-context is-unscoped">
+          <Icon name="project" size={16} />
+          <div>
+            <span>Project configuration unavailable</span>
+            <strong>
+              Open Settings from a project window to enable and configure language servers.
+            </strong>
+          </div>
+        </div>
+      )}
       <div className="lsp-catalog-heading">
         <span>Available for this project</span>
         <small>{servers.length} supported</small>
@@ -94,13 +107,20 @@ function LanguageServerCatalog({ servers, onConfigure, onToggle }) {
                 </span>
               </div>
             </div>
-            <RuntimeStatus server={server} />
+            <RuntimeStatus
+              server={
+                hasProject
+                  ? server
+                  : { ...server, enabled: false, status: "not_started", capabilityCount: 0 }
+              }
+            />
             <ServerSwitch
-              server={server}
+              server={hasProject ? server : { ...server, enabled: false, status: "not_started" }}
               compact
+              disabled={!hasProject}
               onToggle={(enabled) => onToggle(server.id, enabled)}
             />
-            <Button size="sm" onClick={() => onConfigure(server.id)}>
+            <Button size="sm" disabled={!hasProject} onClick={() => onConfigure(server.id)}>
               Configure
             </Button>
           </div>
@@ -229,30 +249,17 @@ function JdtlsSettings({ server, onBack, onSave, onRetry }) {
           label="Data directory"
           hint="jdtls stores its workspace metadata here. The directory is unique to this project."
         >
-          <div
-            className="lsp-choice-control"
-            role="radiogroup"
-            aria-label="jdtls data directory mode"
-          >
-            <label>
-              <input
-                type="radio"
-                name="jdtls-data-mode"
-                checked={draft.dataPathMode === "managed"}
-                onChange={() => update("dataPathMode", "managed")}
-              />
-              Managed by SunCode
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="jdtls-data-mode"
-                checked={draft.dataPathMode === "custom"}
-                onChange={() => update("dataPathMode", "custom")}
-              />
-              Custom
-            </label>
-          </div>
+          <SingleDropdown
+            options={[
+              { value: "managed", label: "Managed by SunCode" },
+              { value: "custom", label: "Custom" },
+            ]}
+            value={draft.dataPathMode}
+            onChange={(value) => update("dataPathMode", value)}
+            ariaLabel="jdtls data directory mode"
+            className="settings-dropdown"
+            wide
+          />
         </SettingRow>
         <SettingRow
           label={draft.dataPathMode === "managed" ? "Resolved data path" : "Custom data path"}
@@ -286,68 +293,62 @@ function JdtlsSettings({ server, onBack, onSave, onRetry }) {
             )}
           </div>
         </SettingRow>
-        <label className="lsp-wide-field">
-          <span>Root markers</span>
+        <SettingRow
+          label="Root markers"
+          hint="One file or directory name per line. The first match identifies a Java project."
+        >
           <textarea
-            className="field mono"
+            className="field mono lsp-multiline-field"
             value={draft.rootMarkers}
             onChange={(event) => update("rootMarkers", event.target.value)}
             spellCheck="false"
             aria-label="jdtls project root markers"
           />
-          <small>
-            One file or directory name per line. The first match identifies a Java project.
-          </small>
-        </label>
+        </SettingRow>
       </div>
 
       <details className="lsp-advanced-settings">
         <summary>Advanced configuration</summary>
         <div className="lsp-advanced-content">
-          <label className="lsp-wide-field">
-            <span>Environment</span>
+          <SettingRow
+            label="Environment"
+            hint="One NAME=value entry per line. Values are stored locally and hidden after saving."
+          >
             <textarea
-              className="field mono"
+              className="field mono lsp-multiline-field"
               value={draft.environment}
               onChange={(event) => update("environment", event.target.value)}
               placeholder="NAME=value"
               spellCheck="false"
               aria-label="jdtls environment variables"
             />
-            <small>
-              One NAME=value entry per line. Values are stored locally and hidden after saving.
-            </small>
-          </label>
-          <div className="lsp-timeout-grid">
-            <label>
-              <span>Startup timeout</span>
-              <span className="settings-unit-field">
-                <input
-                  className="field mono"
-                  type="number"
-                  min="1"
-                  max="120"
-                  value={draft.startupTimeout}
-                  onChange={(event) => update("startupTimeout", event.target.value)}
-                />
-                <span>SEC</span>
-              </span>
-            </label>
-            <label>
-              <span>Request timeout</span>
-              <span className="settings-unit-field">
-                <input
-                  className="field mono"
-                  type="number"
-                  min="1"
-                  max="600"
-                  value={draft.requestTimeout}
-                  onChange={(event) => update("requestTimeout", event.target.value)}
-                />
-                <span>SEC</span>
-              </span>
-            </label>
-          </div>
+          </SettingRow>
+          <SettingRow label="Startup timeout">
+            <span className="settings-unit-field">
+              <input
+                className="field mono"
+                type="number"
+                min="1"
+                max="120"
+                value={draft.startupTimeout}
+                onChange={(event) => update("startupTimeout", event.target.value)}
+              />
+              <span>SEC</span>
+            </span>
+          </SettingRow>
+          <SettingRow label="Request timeout">
+            <span className="settings-unit-field">
+              <input
+                className="field mono"
+                type="number"
+                min="1"
+                max="600"
+                value={draft.requestTimeout}
+                onChange={(event) => update("requestTimeout", event.target.value)}
+              />
+              <span>SEC</span>
+            </span>
+          </SettingRow>
         </div>
       </details>
 
@@ -363,7 +364,13 @@ function JdtlsSettings({ server, onBack, onSave, onRetry }) {
   );
 }
 
-export function LanguageServersPanel({ servers, setServers, onSave, initialSelectedId = null }) {
+export function LanguageServersPanel({
+  servers,
+  setServers,
+  onSave,
+  initialSelectedId = null,
+  hasProject = true,
+}) {
   const [selectedId, setSelectedId] = useState(initialSelectedId);
   const selectedServer = servers.find((server) => server.id === selectedId);
 
@@ -442,6 +449,11 @@ export function LanguageServersPanel({ servers, setServers, onSave, initialSelec
   }
 
   return (
-    <LanguageServerCatalog servers={servers} onConfigure={setSelectedId} onToggle={toggleServer} />
+    <LanguageServerCatalog
+      servers={servers}
+      onConfigure={setSelectedId}
+      onToggle={toggleServer}
+      hasProject={hasProject}
+    />
   );
 }

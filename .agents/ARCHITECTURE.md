@@ -71,7 +71,7 @@ The Rust agent packages own:
 - provider credentials and model catalog through SQLite-owned LLM provider/model records
 - global, project, and session configuration through the unified `configuration` table
 - project boundary checks and machine-affecting operations
-- project-scoped language-server definitions, lifecycle, document synchronization, and bounded semantic queries
+- Rust-owned language-server catalog definitions plus project-scoped configuration, lifecycle, document synchronization, and bounded semantic queries
 - bundled-browser validation, project-scoped Browser Use lifecycle, control handoff, policy enforcement, and artifact promotion
 - first-party Computer Use enablement, display-frame lifetime, approval, emergency stop, and transient screenshot handling
 - checkpoints, undo, managed artifacts, and operation reconciliation

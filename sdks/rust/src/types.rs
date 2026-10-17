@@ -10,7 +10,7 @@ use suncode_data::{
 };
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 18;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 19;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -286,11 +286,38 @@ pub struct LanguageServerWriteRequest {
     pub sort_order: i64,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JdtlsLanguageServerWriteRequest {
+    pub executable: String,
+    #[serde(default)]
+    pub java_home: Option<String>,
+    #[serde(default)]
+    pub data_path_mode: String,
+    #[serde(default)]
+    pub data_path: Option<String>,
+    #[serde(default)]
+    pub root_markers: Vec<String>,
+    #[serde(default)]
+    pub environment: Option<LanguageServerEnvironmentChanges>,
+    pub startup_timeout_seconds: u64,
+    pub request_timeout_seconds: u64,
+    pub enabled: bool,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LanguageServerDto {
     pub language_server_id: String,
+    pub kind: String,
     pub display_name: String,
+    pub description: String,
+    pub language: String,
+    pub detected: bool,
+    pub detected_version: Option<String>,
+    pub detected_executable: Option<String>,
+    pub detected_java_home: Option<String>,
+    pub project_configurable: bool,
     pub command: String,
     pub arguments: Vec<String>,
     pub language_ids: Vec<String>,
@@ -299,6 +326,10 @@ pub struct LanguageServerDto {
     pub environment_keys: Vec<String>,
     pub startup_timeout_seconds: u64,
     pub request_timeout_seconds: u64,
+    pub java_home: Option<String>,
+    pub data_path_mode: String,
+    pub data_path: String,
+    pub matched_root_marker: Option<String>,
     pub enabled: bool,
     pub sort_order: i64,
     pub revision: u64,

@@ -30,6 +30,10 @@ pub struct ServerSpec {
 
 /// Supplies desired language-server configuration.
 pub trait ServerSource: Send + Sync {
-    fn servers(&self) -> Result<Vec<ServerSpec>, BusinessError>;
-    fn server(&self, server_id: &str) -> Result<Option<ServerSpec>, BusinessError>;
+    fn servers(&self, project_id: &str) -> Result<Vec<ServerSpec>, BusinessError>;
+    fn server(
+        &self,
+        project_id: &str,
+        server_id: &str,
+    ) -> Result<Option<ServerSpec>, BusinessError>;
 }

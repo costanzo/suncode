@@ -139,7 +139,7 @@ impl LspRuntime {
         for server in self
             .inner
             .source
-            .servers()?
+            .servers(project_id)?
             .into_iter()
             .filter(|server| server.enabled)
         {
@@ -152,26 +152,20 @@ impl LspRuntime {
         Ok(())
     }
 
-    pub async fn reconcile_all(&self, language_server_id: &str) -> Result<(), BusinessError> {
-        let desired = self.inner.source.server(language_server_id)?;
-        let projects = self
-            .inner
-            .projects
-            .lock()
-            .await
-            .keys()
-            .cloned()
-            .collect::<Vec<_>>();
-        for project_id in projects {
-            match desired.clone() {
-                Some(server) if server.enabled => {
-                    // Persistence is already committed before reconciliation. A launch failure is
-                    // retained on the runtime slot and surfaced through status instead of turning
-                    // a successful configuration mutation into an ambiguous SDK failure.
-                    let _ = self.start_server(&project_id, server).await;
-                }
-                _ => self.retire_server(&project_id, language_server_id).await,
+    pub async fn reconcile_project(
+        &self,
+        project_id: &str,
+        language_server_id: &str,
+    ) -> Result<(), BusinessError> {
+        let desired = self.inner.source.server(project_id, language_server_id)?;
+        match desired {
+            Some(server) if server.enabled => {
+                // Persistence is already committed before reconciliation. A launch failure is
+                // retained on the runtime slot and surfaced through status instead of turning
+                // a successful configuration mutation into an ambiguous SDK failure.
+                let _ = self.start_server(project_id, server).await;
             }
+            _ => self.retire_server(project_id, language_server_id).await,
         }
         Ok(())
     }
@@ -184,7 +178,7 @@ impl LspRuntime {
         let server = self
             .inner
             .source
-            .server(language_server_id)?
+            .server(project_id, language_server_id)?
             .ok_or_else(|| BusinessError::missing("language_server"))?;
         if !server.enabled {
             return Err(BusinessError::new(
@@ -430,7 +424,7 @@ impl LspRuntime {
         let server = self
             .inner
             .source
-            .servers()?
+            .servers(request.project_id)?
             .into_iter()
             .find(|server| {
                 server.enabled
@@ -745,10 +739,10 @@ mod tests {
         };
         struct Fixed(ServerSpec);
         impl ServerSource for Fixed {
-            fn servers(&self) -> Result<Vec<ServerSpec>, BusinessError> {
+            fn servers(&self, _: &str) -> Result<Vec<ServerSpec>, BusinessError> {
                 Ok(vec![self.0.clone()])
             }
-            fn server(&self, _: &str) -> Result<Option<ServerSpec>, BusinessError> {
+            fn server(&self, _: &str, _: &str) -> Result<Option<ServerSpec>, BusinessError> {
                 Ok(Some(self.0.clone()))
             }
         }

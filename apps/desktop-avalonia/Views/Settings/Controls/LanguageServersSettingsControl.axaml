@@ -1,82 +1,85 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SunCode.Desktop.Controls"
              xmlns:models="using:SunCode.Desktop.Models"
              xmlns:vm="using:SunCode.Desktop.ViewModels"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Views.Settings.Controls.LanguageServersSettingsControl"
              x:DataType="vm:LanguageServersViewModel">
   <UserControl.Styles>
-    <Style Selector="Border.lsp-row">
-      <Setter Property="MinHeight" Value="78" />
-      <Setter Property="Padding" Value="4,11" />
+    <Style Selector="Border.lsp-context">
+      <Setter Property="Padding" Value="4,12" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,1" />
+    </Style>
+    <Style Selector="Border.lsp-catalog-row">
+      <Setter Property="MinHeight" Value="108" />
+      <Setter Property="Padding" Value="4,14" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
       <Setter Property="BorderThickness" Value="0,1,0,0" />
     </Style>
-    <Style Selector="Button.lsp-action">
-      <Setter Property="Width" Value="28" />
-      <Setter Property="Height" Value="28" />
-      <Setter Property="MinHeight" Value="28" />
-      <Setter Property="Padding" Value="6" />
-    </Style>
-    <Style Selector="Border.lsp-language">
-      <Setter Property="Padding" Value="5,3" />
-      <Setter Property="Margin" Value="0,0,4,4" />
+    <Style Selector="Border.lsp-mark">
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
       <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="CornerRadius" Value="6" />
     </Style>
   </UserControl.Styles>
 
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Classes="settings-panel-content" MaxWidth="840">
-      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18" Margin="0,0,0,26">
-        <StackPanel Spacing="4">
-          <TextBlock Text="{DynamicResource LocLanguageServers}" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="{DynamicResource LocLanguageServersHint}"
-                     FontSize="12" Foreground="{DynamicResource TextMutedBrush}" />
+    <Grid>
+      <StackPanel x:Name="CatalogPanel" Classes="settings-panel-content" MaxWidth="840">
+        <StackPanel Classes="settings-panel-heading">
+          <TextBlock Text="{DynamicResource LocLanguageServers}" Classes="sc-text-title" />
+          <TextBlock Text="{DynamicResource LocLanguageServersProjectHint}" Classes="settings-hint" />
         </StackPanel>
-        <Button Grid.Column="1" Classes="compact primary sc-button" Click="AddClicked">
-          <StackPanel Orientation="Horizontal" Spacing="7">
-            <svg:Svg Width="14" Height="14" Path="/Assets/icons/plus.svg" Css="{DynamicResource AccentInkSvgCss}" />
-            <TextBlock Text="{DynamicResource LocAddServer}" />
-          </StackPanel>
-        </Button>
-      </Grid>
 
-      <StackPanel x:Name="RegularList" IsVisible="False">
-        <Grid ColumnDefinitions="*,105,105,70,94" ColumnSpacing="10" MinHeight="31" Margin="4,0">
-          <TextBlock Text="{DynamicResource LocServer}" Classes="eyebrow" VerticalAlignment="Center" />
-          <TextBlock Grid.Column="1" Text="{DynamicResource LocLanguages}" Classes="eyebrow" VerticalAlignment="Center" />
-          <TextBlock Grid.Column="2" Text="{DynamicResource LocStatus}" Classes="eyebrow" VerticalAlignment="Center" />
-          <TextBlock Grid.Column="3" Text="{DynamicResource LocEnabled}" Classes="eyebrow" VerticalAlignment="Center" />
-          <TextBlock Grid.Column="4" Text="{DynamicResource LocActions}" Classes="eyebrow" VerticalAlignment="Center" HorizontalAlignment="Right" />
+        <Border Classes="lsp-context" IsVisible="{Binding HasProject}" Margin="0,0,0,26">
+          <Grid ColumnDefinitions="20,*" ColumnSpacing="10">
+            <svg:Svg Width="16" Height="16" Path="/Assets/icons/folder.svg" Css="{DynamicResource IconSvgCss}" />
+            <StackPanel Grid.Column="1" Spacing="3">
+              <TextBlock Text="{DynamicResource LocCurrentProject}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="{Binding ProjectName}" FontSize="12" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding ProjectPath}" Classes="mono" FontSize="10"
+                           Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </StackPanel>
+          </Grid>
+        </Border>
+        <Border IsVisible="{Binding !HasProject}" Padding="12" Margin="0,0,0,26"
+                Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1" CornerRadius="6">
+          <TextBlock Text="{DynamicResource LocOpenLspSettingsFromProject}" FontSize="11"
+                     Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+        </Border>
+
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+          <TextBlock Text="{DynamicResource LocAvailableForProject}" FontSize="11" FontWeight="SemiBold" />
+          <TextBlock Grid.Column="1" Text="{Binding Servers.Count, StringFormat={}{0} supported}"
+                     Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
         </Grid>
         <ItemsControl ItemsSource="{Binding Servers}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="models:LanguageServerItem">
-              <Border Classes="lsp-row">
-                <Grid ColumnDefinitions="*,105,105,70,94" ColumnSpacing="10">
-                  <StackPanel Spacing="4" VerticalAlignment="Center">
+              <Border Classes="lsp-catalog-row">
+                <Grid ColumnDefinitions="34,*,130,68,Auto" ColumnSpacing="10" VerticalAlignment="Center">
+                  <Border Classes="lsp-mark">
+                    <svg:Svg Width="17" Height="17" Path="/Assets/icons/file-code.svg" Css="{DynamicResource IconSvgCss}" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Spacing="5">
                     <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding CommandSummary}" Classes="mono" FontSize="10"
-                               Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding Error}" FontSize="10" Foreground="{DynamicResource DangerBrush}"
-                               TextWrapping="Wrap" MaxLines="2" IsVisible="{Binding HasError}" />
+                    <TextBlock Text="{Binding Description}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
+                               TextWrapping="Wrap" MaxLines="2" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <TextBlock Text="{Binding Kind}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+                      <TextBlock Text="{Binding Language}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+                      <TextBlock Text="{Binding DetectionLabel}" FontSize="9" Foreground="{DynamicResource SuccessBrush}" />
+                    </StackPanel>
                   </StackPanel>
-                  <ItemsControl Grid.Column="1" ItemsSource="{Binding LanguageIds}" VerticalAlignment="Center">
-                    <ItemsControl.ItemsPanel>
-                      <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                        <Border Classes="lsp-language">
-                          <TextBlock Text="{Binding}" Classes="mono" FontSize="9" />
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <Grid Grid.Column="2" ColumnDefinitions="7,*" ColumnSpacing="7" VerticalAlignment="Center">
+                  <Grid Grid.Column="2" ColumnDefinitions="7,*" ColumnSpacing="7">
                     <Ellipse Width="6" Height="6" Fill="{DynamicResource SuccessBrush}" IsVisible="{Binding IsReady}" />
                     <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsStarting}" />
                     <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsIndexing}" />
@@ -88,93 +91,156 @@
                     </StackPanel>
                   </Grid>
                   <ToggleSwitch Grid.Column="3" Classes="sc-toggle-switch settings-switch"
-                                IsChecked="{Binding Enabled, Mode=OneWay}"
+                                IsChecked="{Binding Enabled, Mode=OneWay}" IsEnabled="{Binding CanToggle}"
                                 OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}"
-                                IsEnabled="{Binding CanToggle}"
                                 Tag="{Binding}" Click="ToggleClicked" />
-                  <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="2" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button Classes="lsp-action quiet" Tag="{Binding}" Click="RetryClicked"
-                            IsVisible="{Binding CanRetry}" ToolTip.Tip="{DynamicResource LocRetryServer}">
-                      <svg:Svg Width="14" Height="14" Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
-                    </Button>
-                    <Button Classes="lsp-action quiet" Tag="{Binding}" Click="EditClicked"
-                            IsEnabled="{Binding !IsPending}" ToolTip.Tip="{DynamicResource LocEditServer}">
-                      <svg:Svg Width="14" Height="14" Path="/Assets/icons/pencil.svg" Css="{DynamicResource IconSvgCss}" />
-                    </Button>
-                    <Button Classes="lsp-action quiet" Tag="{Binding}" Click="DeleteClicked"
-                            IsEnabled="{Binding !IsPending}" ToolTip.Tip="{DynamicResource LocDeleteServer}">
-                      <svg:Svg Width="14" Height="14" Path="/Assets/icons/trash-2.svg" Css="{DynamicResource IconSvgCss}" />
-                    </Button>
-                  </StackPanel>
+                  <Button Grid.Column="4" Classes="compact sc-button" Content="{DynamicResource LocConfigure}"
+                          IsEnabled="{Binding CanConfigure}" Tag="{Binding}" Click="ConfigureClicked" />
                 </Grid>
               </Border>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <TextBlock Text="{DynamicResource LocLspAuthorityHint}"
+                   Margin="0,14,0,0" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
       </StackPanel>
 
-      <ItemsControl x:Name="CompactList" ItemsSource="{Binding Servers}" IsVisible="False">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="models:LanguageServerItem">
-            <Border Classes="lsp-row">
-              <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto,Auto" RowSpacing="12" ColumnSpacing="14">
-                <StackPanel Grid.ColumnSpan="2" Spacing="4">
-                  <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                  <TextBlock Text="{Binding CommandSummary}" Classes="mono" FontSize="10"
-                             Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
-                  <TextBlock Text="{Binding Error}" FontSize="10" Foreground="{DynamicResource DangerBrush}"
-                             TextWrapping="Wrap" MaxLines="2" IsVisible="{Binding HasError}" />
-                </StackPanel>
-                <ItemsControl Grid.Column="2" ItemsSource="{Binding LanguageIds}">
-                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Classes="lsp-language"><TextBlock Text="{Binding}" Classes="mono" FontSize="9" /></Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <Grid Grid.Row="1" ColumnDefinitions="7,*" ColumnSpacing="7" VerticalAlignment="Center">
-                  <Ellipse Width="6" Height="6" Fill="{DynamicResource SuccessBrush}" IsVisible="{Binding IsReady}" />
-                  <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsStarting}" />
-                  <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsIndexing}" />
-                  <Ellipse Width="6" Height="6" Fill="{DynamicResource DangerBrush}" IsVisible="{Binding IsFailed}" />
-                  <Ellipse Width="6" Height="6" Fill="{DynamicResource TextMutedBrush}" IsVisible="{Binding IsInactive}" />
-                  <StackPanel Grid.Column="1" Spacing="3">
-                    <TextBlock Text="{Binding StatusLabel}" FontSize="10" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding StatusDetail}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
-                  </StackPanel>
-                </Grid>
-                <ToggleSwitch Grid.Row="1" Grid.Column="1" Classes="sc-toggle-switch settings-switch"
-                              IsChecked="{Binding Enabled, Mode=OneWay}" OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}"
-                              IsEnabled="{Binding CanToggle}" Tag="{Binding}" Click="ToggleClicked" />
-                <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="2" HorizontalAlignment="Right">
-                  <Button Classes="lsp-action quiet" Tag="{Binding}" Click="RetryClicked" IsVisible="{Binding CanRetry}" ToolTip.Tip="{DynamicResource LocRetryServer}">
-                    <svg:Svg Width="14" Height="14" Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
-                  </Button>
-                  <Button Classes="lsp-action quiet" Tag="{Binding}" Click="EditClicked" IsEnabled="{Binding !IsPending}" ToolTip.Tip="{DynamicResource LocEditServer}">
-                    <svg:Svg Width="14" Height="14" Path="/Assets/icons/pencil.svg" Css="{DynamicResource IconSvgCss}" />
-                  </Button>
-                  <Button Classes="lsp-action quiet" Tag="{Binding}" Click="DeleteClicked" IsEnabled="{Binding !IsPending}" ToolTip.Tip="{DynamicResource LocDeleteServer}">
-                    <svg:Svg Width="14" Height="14" Path="/Assets/icons/trash-2.svg" Css="{DynamicResource IconSvgCss}" />
-                  </Button>
-                </StackPanel>
-              </Grid>
-            </Border>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+      <StackPanel x:Name="DetailPanel" Classes="settings-panel-content" MaxWidth="840" IsVisible="False">
+        <Button Classes="quiet compact sc-button" HorizontalAlignment="Left" Click="BackClicked" Margin="-8,0,0,18">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <svg:Svg Width="12" Height="12" Path="/Assets/icons/chevron-right.svg"
+                     Css="{DynamicResource IconSvgCss}" RenderTransform="rotate(180deg)" />
+            <TextBlock Text="{DynamicResource LocLanguageServers}" />
+          </StackPanel>
+        </Button>
+        <Grid ColumnDefinitions="38,*,160" ColumnSpacing="12" Margin="0,0,0,26">
+          <Border Classes="lsp-mark">
+            <svg:Svg Width="18" Height="18" Path="/Assets/icons/file-code.svg" Css="{DynamicResource IconSvgCss}" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="4">
+            <TextBlock x:Name="DetailTitle" Classes="sc-text-title" />
+            <TextBlock Text="{DynamicResource LocProjectJavaAnalysis}" Classes="settings-hint" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Spacing="3">
+            <TextBlock x:Name="DetailStatus" FontSize="10" FontWeight="SemiBold" />
+            <TextBlock x:Name="DetailStatusText" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Grid>
 
-      <Border IsVisible="{Binding HasNoServers}" Padding="24" Margin="0,8,0,0"
-              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
-        <StackPanel Spacing="7" HorizontalAlignment="Center">
-          <svg:Svg Width="22" Height="22" Path="/Assets/icons/file-code.svg" Css="{DynamicResource IconSvgCss}" />
-          <TextBlock Text="{DynamicResource LocNoLanguageServers}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" />
-          <TextBlock Text="{DynamicResource LocAddLanguageServerHint}"
-                     FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextAlignment="Center" TextWrapping="Wrap" />
+        <StackPanel Classes="settings-panel-section">
+          <TextBlock Text="{DynamicResource LocProjectAvailabilityCaps}" Classes="section-label" />
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocEnableForProject}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocEnableJdtlsHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <ToggleSwitch x:Name="EnabledToggle" Grid.Column="1" Classes="sc-toggle-switch settings-switch"
+                          HorizontalAlignment="Right" VerticalAlignment="Center"
+                          OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocProjectDetection}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocProjectDetectionHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <TextBlock x:Name="MatchedRootMarkerText" Grid.Column="1" Classes="mono"
+                       FontSize="10" Foreground="{DynamicResource SuccessBrush}"
+                       VerticalAlignment="Center" TextWrapping="Wrap" />
+          </Grid>
         </StackPanel>
-      </Border>
-      <TextBlock Text="{Binding StatusText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
-                 TextWrapping="Wrap" Margin="0,14,0,0" />
-    </StackPanel>
+
+        <Border Classes="settings-divider" />
+        <StackPanel Classes="settings-panel-section">
+          <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+            <TextBlock Text="{DynamicResource LocInstallationCaps}" Classes="section-label" />
+            <Button Grid.Column="1" Classes="compact sc-button" Click="DetectClicked">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <svg:Svg Width="13" Height="13" Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Text="{DynamicResource LocDetectAgain}" />
+              </StackPanel>
+            </Button>
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocJdtlsExecutable}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocJdtlsExecutableHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFileSelector x:Name="ExecutableInput" Grid.Column="1"
+                                     SelectionMode="File" DialogTitle="Choose jdtls executable" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocJavaRuntime}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocJavaRuntimeHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFileSelector x:Name="JavaHomeInput" Grid.Column="1"
+                                     SelectionMode="Folder" DialogTitle="Choose Java runtime" />
+          </Grid>
+        </StackPanel>
+
+        <Border Classes="settings-divider" />
+        <StackPanel Classes="settings-panel-section">
+          <TextBlock Text="{DynamicResource LocProjectIndexCaps}" Classes="section-label" />
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocDataDirectory}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocJdtlsDataHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="DataPathModeSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="DataPathModeChanged" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocResolvedDataPath}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocResolvedDataPathHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFileSelector x:Name="DataPathInput" Grid.Column="1"
+                                     SelectionMode="Folder" DialogTitle="Choose jdtls data directory" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220" VerticalAlignment="Top">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocRootMarkers}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocJdtlsRootMarkersHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <TextBox x:Name="RootMarkersInput" Grid.Column="1" Classes="mono settings-proxy-bypass"
+                     AcceptsReturn="True" Height="84" TextWrapping="NoWrap" />
+          </Grid>
+        </StackPanel>
+
+        <Expander Classes="settings-expander" Header="{DynamicResource LocAdvancedConfiguration}" Margin="0,28,0,0">
+          <StackPanel Classes="settings-panel-section">
+            <Grid Classes="settings-row" ColumnDefinitions="*,220" VerticalAlignment="Top">
+              <StackPanel Classes="settings-row-copy">
+                <TextBlock Text="{DynamicResource LocEnvironment}" Classes="settings-row-title" />
+                <TextBlock Text="{DynamicResource LocEnvironmentEntriesHint}" Classes="settings-row-hint" />
+              </StackPanel>
+              <TextBox x:Name="EnvironmentInput" Grid.Column="1" Classes="mono settings-proxy-bypass"
+                       AcceptsReturn="True" Height="84" TextWrapping="NoWrap" PlaceholderText="NAME=value" />
+            </Grid>
+            <Grid Classes="settings-row" ColumnDefinitions="*,220">
+              <StackPanel Classes="settings-row-copy">
+                <TextBlock Text="{DynamicResource LocStartupTimeoutSeconds}" Classes="settings-row-title" />
+              </StackPanel>
+              <controls:SCNumericInput x:Name="StartupTimeoutInput" Grid.Column="1"
+                                       Minimum="1" Maximum="120" Increment="1" Unit="SEC" />
+            </Grid>
+            <Grid Classes="settings-row" ColumnDefinitions="*,220">
+              <StackPanel Classes="settings-row-copy">
+                <TextBlock Text="{DynamicResource LocRequestTimeoutSeconds}" Classes="settings-row-title" />
+              </StackPanel>
+              <controls:SCNumericInput x:Name="RequestTimeoutInput" Grid.Column="1"
+                                       Minimum="1" Maximum="600" Increment="1" Unit="SEC" />
+            </Grid>
+          </StackPanel>
+        </Expander>
+
+        <TextBlock x:Name="ValidationText" Classes="sc-text-status" Margin="0,16,0,0"
+                   Foreground="{DynamicResource DangerBrush}" />
+        <StackPanel Classes="settings-actions" HorizontalAlignment="Right">
+          <Button Classes="compact sc-button" Content="{DynamicResource LocResetChanges}" Click="ResetClicked" />
+          <Button Classes="compact primary sc-button" Content="{DynamicResource LocSaveConfiguration}" Click="SaveClicked" />
+        </StackPanel>
+      </StackPanel>
+    </Grid>
   </ScrollViewer>
 </UserControl>

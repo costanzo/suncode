@@ -1,4 +1,5 @@
-<Styles xmlns="https://github.com/avaloniaui">
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Style Selector="StackPanel.settings-panel-content">
     <Setter Property="Margin" Value="32,28,32,34" />
     <Setter Property="MaxWidth" Value="720" />
@@ -107,6 +108,84 @@
     <Setter Property="Padding" Value="18,14,0,0" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
     <Setter Property="BorderThickness" Value="1,0,0,0" />
+  </Style>
+  <Style Selector="Expander.settings-expander">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="4,4,4,18" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,1"
+                Background="Transparent">
+          <StackPanel>
+            <ToggleButton x:Name="ExpanderHeader"
+                          IsChecked="{TemplateBinding IsExpanded, Mode=TwoWay}">
+              <ToggleButton.Template>
+                <ControlTemplate>
+                  <Border Background="{TemplateBinding Background}"
+                          BorderBrush="{TemplateBinding BorderBrush}"
+                          BorderThickness="{TemplateBinding BorderThickness}"
+                          CornerRadius="4"
+                          Padding="{TemplateBinding Padding}">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                  </Border>
+                </ControlTemplate>
+              </ToggleButton.Template>
+              <Grid ColumnDefinitions="12,*" ColumnSpacing="4">
+                <PathIcon x:Name="DisclosureChevron"
+                          Width="7"
+                          Height="10"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Foreground="{DynamicResource TextMutedBrush}"
+                          Data="M 1,0 L 6,5 L 1,10 Z"
+                          RenderTransformOrigin="50%,50%" />
+                <ContentPresenter Grid.Column="1"
+                                  Content="{TemplateBinding Header}"
+                                  ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                  VerticalAlignment="Center" />
+              </Grid>
+            </ToggleButton>
+            <Border IsVisible="{TemplateBinding IsExpanded}"
+                    Padding="{TemplateBinding Padding}"
+                    Background="Transparent">
+              <ContentPresenter Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalContentAlignment="Stretch" />
+            </Border>
+          </StackPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Expander.settings-expander /template/ ToggleButton#ExpanderHeader">
+    <Setter Property="MinHeight" Value="42" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Expander.settings-expander /template/ ToggleButton#ExpanderHeader:pointerover">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="Expander.settings-expander /template/ ToggleButton#ExpanderHeader:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="Expander.settings-expander:expanded /template/ PathIcon#DisclosureChevron">
+    <Setter Property="RenderTransform" Value="rotate(90deg)" />
   </Style>
   <Style Selector="Border.settings-warning">
     <Setter Property="CornerRadius" Value="6" />

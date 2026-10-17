@@ -14,19 +14,24 @@ pub(super) struct StoreServerSource {
 }
 
 impl ServerSource for StoreServerSource {
-    fn servers(&self) -> Result<Vec<ServerSpec>, BusinessError> {
+    fn servers(&self, project_id: &str) -> Result<Vec<ServerSpec>, BusinessError> {
         Ok(self
             .store
             .language_servers()?
             .iter()
+            .filter(|record| record.config.project_id.as_deref() == Some(project_id))
             .map(server_spec)
             .collect())
     }
 
-    fn server(&self, server_id: &str) -> Result<Option<ServerSpec>, BusinessError> {
+    fn server(
+        &self,
+        project_id: &str,
+        server_id: &str,
+    ) -> Result<Option<ServerSpec>, BusinessError> {
         Ok(self
             .store
-            .language_server_by_id(server_id)?
+            .language_server_for_project(project_id, server_id)?
             .as_ref()
             .map(server_spec))
     }
@@ -35,7 +40,10 @@ impl ServerSource for StoreServerSource {
 fn server_spec(record: &LanguageServerRecord) -> ServerSpec {
     let config = &record.config;
     ServerSpec {
-        server_id: record.language_server_id.clone(),
+        server_id: config
+            .server_kind
+            .clone()
+            .unwrap_or_else(|| record.language_server_id.clone()),
         enabled: record.enabled,
         revision: record.revision,
         command: config.command.clone(),
@@ -60,9 +68,12 @@ impl AgentRuntime {
 
     pub async fn reconcile_language_server(
         &self,
+        project_id: &str,
         language_server_id: &str,
     ) -> Result<(), BusinessError> {
-        self.lsp.reconcile_all(language_server_id).await
+        self.lsp
+            .reconcile_project(project_id, language_server_id)
+            .await
     }
 
     pub async fn retry_language_server(

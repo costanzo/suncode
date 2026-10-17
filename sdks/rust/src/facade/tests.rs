@@ -56,6 +56,7 @@ fn test_state(directory: &std::path::Path) -> AgentState {
     let attention_events = agent.attention_event_hub();
     AgentState {
         store,
+        data_dir: directory.to_path_buf(),
         user_id: "default".into(),
         operations,
         active_project: Arc::new(Mutex::new(None)),
@@ -832,16 +833,26 @@ fn mcp_sdk_redacts_secrets_and_enforces_idempotency_and_revisions() {
 }
 
 #[test]
-fn language_server_sdk_redacts_environment_and_enforces_revisions() {
+fn project_jdtls_sdk_redacts_environment_and_enforces_revisions() {
     let directory = tempfile::tempdir().unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
-    let create = LanguageServerWriteRequest {
-        display_name: "Rust Analyzer".into(),
-        command: "rust-analyzer".into(),
-        arguments: Vec::new(),
-        language_ids: vec!["rust".into()],
-        root_markers: vec!["Cargo.toml".into()],
-        initialization_options: json!({"check":{"command":"clippy"}}),
+    let catalog = sdk.list_language_servers(None).unwrap();
+    assert_eq!(catalog.servers.len(), 1);
+    assert_eq!(catalog.servers[0].kind, "jdtls");
+    assert!(!catalog.servers[0].project_configurable);
+    assert_eq!(
+        catalog.servers[0].runtime_status,
+        suncode_core::LanguageServerRuntimeState::NotStarted
+    );
+    let project = sdk
+        .open_project(directory.path().to_str().unwrap(), None)
+        .unwrap();
+    let create = JdtlsLanguageServerWriteRequest {
+        executable: "jdtls".into(),
+        java_home: Some("/test/jdk".into()),
+        data_path_mode: "managed".into(),
+        data_path: None,
+        root_markers: vec!["pom.xml".into()],
         environment: Some(LanguageServerEnvironmentChanges {
             set: BTreeMap::from([
                 ("KEEP".into(), "preserved".into()),
@@ -852,33 +863,43 @@ fn language_server_sdk_redacts_environment_and_enforces_revisions() {
         startup_timeout_seconds: 30,
         request_timeout_seconds: 30,
         enabled: false,
-        sort_order: 0,
     };
     let created = sdk
-        .create_language_server(None, "lsp-create", create.clone())
+        .configure_jdtls_language_server(&project.project_id, 0, "lsp-create", create)
         .unwrap();
     assert_eq!(
         created.runtime_status,
         suncode_core::LanguageServerRuntimeState::Disabled
     );
-    assert_eq!(created.environment_keys, ["KEEP", "TOKEN"]);
+    assert_eq!(created.environment_keys, ["JAVA_HOME", "KEEP", "TOKEN"]);
     assert!(!serde_json::to_string(&created)
         .unwrap()
         .contains("private-value"));
-    assert_eq!(
-        sdk.create_language_server(None, "lsp-create", create)
-            .unwrap()
-            .language_server_id,
-        created.language_server_id
-    );
+    assert_eq!(created.language_server_id, "jdtls");
+    assert_eq!(created.kind, "jdtls");
+    assert!(created.data_path.contains(&project.project_id));
+    let second_root = directory.path().join("second-project");
+    std::fs::create_dir_all(&second_root).unwrap();
+    let second_project = sdk
+        .open_project(second_root.to_str().unwrap(), None)
+        .unwrap();
+    let second = sdk
+        .list_language_servers(Some(&second_project.project_id))
+        .unwrap()
+        .servers
+        .into_iter()
+        .next()
+        .unwrap();
+    assert_eq!(second.revision, 0);
+    assert!(!second.enabled);
+    assert_ne!(created.data_path, second.data_path);
 
-    let update = LanguageServerWriteRequest {
-        display_name: "Rust Analyzer".into(),
-        command: "rust-analyzer".into(),
-        arguments: vec!["--log-file".into(), "ra.log".into()],
-        language_ids: vec!["rust".into()],
-        root_markers: vec!["Cargo.toml".into()],
-        initialization_options: json!({}),
+    let update = JdtlsLanguageServerWriteRequest {
+        executable: "jdtls".into(),
+        java_home: Some("/test/jdk".into()),
+        data_path_mode: "managed".into(),
+        data_path: None,
+        root_markers: vec!["pom.xml".into()],
         environment: Some(LanguageServerEnvironmentChanges {
             set: BTreeMap::from([("NEW".into(), "replacement".into())]),
             remove: vec!["TOKEN".into()],
@@ -886,22 +907,20 @@ fn language_server_sdk_redacts_environment_and_enforces_revisions() {
         startup_timeout_seconds: 45,
         request_timeout_seconds: 40,
         enabled: false,
-        sort_order: 0,
     };
     let updated = sdk
-        .update_language_server(
-            None,
-            &created.language_server_id,
+        .configure_jdtls_language_server(
+            &project.project_id,
             created.revision,
             "lsp-update",
             update,
         )
         .unwrap();
-    assert_eq!(updated.environment_keys, ["KEEP", "NEW"]);
+    assert_eq!(updated.environment_keys, ["JAVA_HOME", "KEEP", "NEW"]);
     let stored = sdk
         .state
         .store
-        .language_server_by_id(&created.language_server_id)
+        .language_server_for_project(&project.project_id, "jdtls")
         .unwrap()
         .unwrap();
     assert_eq!(stored.config.environment["KEEP"], "preserved");
@@ -909,8 +928,8 @@ fn language_server_sdk_redacts_environment_and_enforces_revisions() {
     assert!(!stored.config.environment.contains_key("TOKEN"));
     assert_eq!(
         sdk.set_language_server_enabled(
-            None,
-            &created.language_server_id,
+            Some(&project.project_id),
+            "jdtls",
             created.revision,
             "stale-enable",
             true,
@@ -924,6 +943,7 @@ fn language_server_sdk_redacts_environment_and_enforces_revisions() {
 #[test]
 fn language_server_save_succeeds_when_project_runtime_fails_to_start() {
     let directory = tempfile::tempdir().unwrap();
+    std::fs::write(directory.path().join("pom.xml"), "").unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
     let project = sdk
         .open_project(directory.path().to_str().unwrap(), None)
@@ -932,21 +952,20 @@ fn language_server_save_succeeds_when_project_runtime_fails_to_start() {
         .unwrap();
 
     let created = sdk
-        .create_language_server(
-            Some(&project.project_id),
+        .configure_jdtls_language_server(
+            &project.project_id,
+            0,
             "lsp-missing-executable",
-            LanguageServerWriteRequest {
-                display_name: "Missing server".into(),
-                command: "definitely-missing-suncode-language-server".into(),
-                arguments: Vec::new(),
-                language_ids: vec!["rust".into()],
+            JdtlsLanguageServerWriteRequest {
+                executable: "definitely-missing-suncode-language-server".into(),
+                java_home: None,
+                data_path_mode: "managed".into(),
+                data_path: None,
                 root_markers: Vec::new(),
-                initialization_options: json!({}),
                 environment: None,
                 startup_timeout_seconds: 1,
                 request_timeout_seconds: 1,
                 enabled: true,
-                sort_order: 0,
             },
         )
         .unwrap();
@@ -959,7 +978,7 @@ fn language_server_save_succeeds_when_project_runtime_fails_to_start() {
     assert!(sdk
         .state
         .store
-        .language_server_by_id(&created.language_server_id)
+        .language_server_for_project(&project.project_id, "jdtls")
         .unwrap()
         .is_some());
 }

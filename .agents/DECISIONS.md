@@ -603,3 +603,13 @@ Newest first. Historical context is retained only when it still explains a curre
 - Decision: Rename the harness package to `suncode-core`. Add `suncode-agents` for agent definitions with typed capabilities and an explicit primary definition. The core reads capabilities from the definition instead of inferring them. The C ABI keeps the `suncode_agent` library name and `suncode_agent_sdk_*` symbols.
 - Consequences: New built-in agents are added in `suncode-agents` only. User-defined agents can later be another definition source; they must only narrow capabilities and stay subject to core policy. Prompts, tool catalogs, and the SDK agent list were verified byte-identical across the change.
 - Details: `specs/built-in-subagents.md`, `agent/crates/agents/src/lib.rs`, `agent/crates/core/src/agent/system_prompt.rs`
+
+## ADR-20261017-project-language-server-catalog
+
+- Date: 2026-10-17
+- Status: Accepted
+- Supersedes: The global user-created definition model in ADR-20260919-rust-owned-language-server-support
+- Context: The generic executable, arguments, language IDs, initialization JSON, root markers, environment, and timeout form required users to understand each server's raw launch contract. Global arguments also caused project-specific state such as the jdtls data directory to be shared incorrectly.
+- Decision: Rust owns an immutable catalog of supported language-server kinds, beginning with `jdtls`. Enablement and effective configuration are persisted per project. Each kind owns typed validation and launch construction; jdtls exposes executable, Java runtime, managed or custom data path, root markers, environment, and timeouts while Rust fixes Java language identity, initialization behavior, and `-data` arguments. The default managed path is unique under application data by stable project id. Legacy global free-form records remain database-compatible but are ignored by catalog listing and runtime selection.
+- Consequences: Users no longer create, rename, or delete arbitrary LSP definitions. Each project owns an independent process, index, configuration, and runtime state. Adding another language server requires a Rust catalog adapter, typed SDK contract, design-system specimen, and corresponding Avalonia page rather than a new generic row.
+- Details: `.agents/features/language-servers/`, `contracts/agent-sdk/README.md`, `DESIGN.md`, `agent/crates/core/src/agent/lsp.rs`, `sdks/rust/src/facade/language_servers.rs`

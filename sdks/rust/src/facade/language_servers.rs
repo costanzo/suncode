@@ -1,7 +1,14 @@
 use super::*;
-use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashSet};
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use suncode_data::{LanguageServerConfig, LanguageServerInput, LanguageServerRecord};
+
+const JDTLS_KIND: &str = "jdtls";
+const JDTLS_DISPLAY_NAME: &str = "Eclipse JDT Language Server";
+const JDTLS_DESCRIPTION: &str =
+    "Java diagnostics, definitions, references, hover details, and symbols.";
+const DEFAULT_ROOT_MARKERS: &[&str] = &["pom.xml", "build.gradle", "build.gradle.kts"];
 
 impl AsyncAgentSdk {
     pub async fn start_language_server_project(
@@ -23,61 +30,134 @@ impl AsyncAgentSdk {
         &self,
         project_id: Option<&str>,
     ) -> SdkResult<LanguageServersResult> {
-        self.validate_language_server_project(project_id)?;
-        let mut servers = Vec::new();
-        for server in self.state.store.language_servers()? {
-            servers.push(self.language_server_dto(project_id, server).await?);
-        }
-        Ok(LanguageServersResult { servers })
-    }
-
-    pub async fn create_language_server(
-        &self,
-        project_id: Option<&str>,
-        idempotency_key: &str,
-        request: LanguageServerWriteRequest,
-    ) -> SdkResult<LanguageServerDto> {
-        self.validate_language_server_project(project_id)?;
-        require_idempotency_key(idempotency_key)?;
-        let language_server_id = deterministic_language_server_id(idempotency_key);
-        let input = language_server_input(request, None)?;
-        let server = self
+        let Some(project_id) = project_id else {
+            return Ok(LanguageServersResult {
+                servers: vec![self.unscoped_jdtls_dto()],
+            });
+        };
+        let project = self.project_for_user(project_id)?;
+        let record = self
             .state
             .store
-            .create_language_server(&language_server_id, &input)?;
-        self.state
-            .agent
-            .reconcile_language_server(&language_server_id)
+            .language_server_for_project(project_id, JDTLS_KIND)?;
+        let server = self
+            .jdtls_dto(project_id, &project.canonical_root, record)
             .await?;
-        self.language_server_dto(project_id, server).await
+        Ok(LanguageServersResult {
+            servers: vec![server],
+        })
     }
 
-    pub async fn update_language_server(
+    pub async fn configure_jdtls_language_server(
         &self,
-        project_id: Option<&str>,
-        language_server_id: &str,
+        project_id: &str,
         expected_revision: u64,
         idempotency_key: &str,
-        request: LanguageServerWriteRequest,
+        request: JdtlsLanguageServerWriteRequest,
     ) -> SdkResult<LanguageServerDto> {
-        self.validate_language_server_project(project_id)?;
+        let project = self.project_for_user(project_id)?;
         require_idempotency_key(idempotency_key)?;
+        validate_jdtls_request(&request)?;
         let current = self
             .state
             .store
-            .language_server_by_id(language_server_id)?
-            .ok_or_else(|| BusinessError::missing("language_server"))?;
-        let input = language_server_input(request, Some(&current.config))?;
-        let server = self.state.store.update_language_server(
-            language_server_id,
-            expected_revision,
-            &input,
+            .language_server_for_project(project_id, JDTLS_KIND)?;
+        let environment = apply_environment_changes(
+            current
+                .as_ref()
+                .map(|record| record.config.environment.clone())
+                .unwrap_or_default(),
+            request.environment,
         )?;
+        let data_path_mode = match request.data_path_mode.trim() {
+            "" | "managed" => "managed",
+            "custom" => "custom",
+            _ => {
+                return Err(BusinessError::invalid(
+                    "jdtls data path mode must be managed or custom",
+                ))
+            }
+        };
+        let data_path = if data_path_mode == "managed" {
+            self.managed_jdtls_data_path(project_id)
+        } else {
+            let value = request
+                .data_path
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| BusinessError::invalid("custom jdtls data path is required"))?;
+            let path = PathBuf::from(value);
+            if !path.is_absolute() {
+                return Err(BusinessError::invalid(
+                    "custom jdtls data path must be absolute",
+                ));
+            }
+            path
+        };
+        let mut environment = environment;
+        if let Some(java_home) = request
+            .java_home
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            environment.insert("JAVA_HOME".into(), java_home.into());
+        } else {
+            environment.remove("JAVA_HOME");
+        }
+        let input = LanguageServerInput {
+            // The legacy table keeps a global uniqueness constraint. The SDK never exposes this
+            // storage-only name; catalog identity remains the stable `jdtls` kind.
+            display_name: format!("{JDTLS_DISPLAY_NAME} [{project_id}]"),
+            config: LanguageServerConfig {
+                version: 2,
+                project_id: Some(project_id.to_string()),
+                server_kind: Some(JDTLS_KIND.into()),
+                command: request.executable.trim().to_string(),
+                arguments: vec!["-data".into(), data_path.to_string_lossy().into_owned()],
+                language_ids: vec!["java".into()],
+                root_markers: if request.root_markers.is_empty() {
+                    DEFAULT_ROOT_MARKERS
+                        .iter()
+                        .map(|value| (*value).into())
+                        .collect()
+                } else {
+                    request.root_markers
+                },
+                initialization_options: json!({}),
+                environment,
+                startup_timeout_seconds: request.startup_timeout_seconds,
+                request_timeout_seconds: request.request_timeout_seconds,
+                java_home: request.java_home.filter(|value| !value.trim().is_empty()),
+                data_path_mode: Some(data_path_mode.into()),
+                data_path: Some(data_path.to_string_lossy().into_owned()),
+            },
+            enabled: request.enabled,
+            sort_order: 0,
+        };
+        let record = match current {
+            Some(current) => self.state.store.update_language_server(
+                &current.language_server_id,
+                expected_revision,
+                &input,
+            )?,
+            None if expected_revision == 0 => self.state.store.create_language_server(
+                &project_language_server_id(project_id, JDTLS_KIND),
+                &input,
+            )?,
+            None => return Err(BusinessError::missing("language_server")),
+        };
         self.state
             .agent
-            .reconcile_language_server(language_server_id)
+            .activate_language_server_project(project_id, Path::new(&project.canonical_root))
             .await?;
-        self.language_server_dto(project_id, server).await
+        self.state
+            .agent
+            .reconcile_language_server(project_id, JDTLS_KIND)
+            .await?;
+        self.jdtls_dto(project_id, &project.canonical_root, Some(record))
+            .await
     }
 
     pub async fn set_language_server_enabled(
@@ -88,39 +168,28 @@ impl AsyncAgentSdk {
         idempotency_key: &str,
         enabled: bool,
     ) -> SdkResult<LanguageServerDto> {
-        self.validate_language_server_project(project_id)?;
+        let project_id =
+            project_id.ok_or_else(|| BusinessError::invalid("project_id is required"))?;
+        if language_server_id != JDTLS_KIND {
+            return Err(BusinessError::missing("language_server"));
+        }
+        self.project_for_user(project_id)?;
         require_idempotency_key(idempotency_key)?;
-        let server = self.state.store.set_language_server_enabled(
-            language_server_id,
-            expected_revision,
-            enabled,
-        )?;
-        self.state
-            .agent
-            .reconcile_language_server(language_server_id)
-            .await?;
-        self.language_server_dto(project_id, server).await
-    }
-
-    pub async fn delete_language_server(
-        &self,
-        language_server_id: &str,
-        expected_revision: u64,
-        idempotency_key: &str,
-    ) -> SdkResult<LanguageServerDeleteResult> {
-        require_idempotency_key(idempotency_key)?;
-        let removed = self
+        let current = self
             .state
             .store
-            .delete_language_server(language_server_id, expected_revision)?;
-        self.state
-            .agent
-            .reconcile_language_server(language_server_id)
-            .await?;
-        Ok(LanguageServerDeleteResult {
-            language_server_id: language_server_id.to_string(),
-            removed,
-        })
+            .language_server_for_project(project_id, JDTLS_KIND)?;
+        let request = match current.as_ref() {
+            Some(record) => request_from_record(record, enabled),
+            None => self.default_jdtls_request(project_id, enabled),
+        };
+        self.configure_jdtls_language_server(
+            project_id,
+            expected_revision,
+            idempotency_key,
+            request,
+        )
+        .await
     }
 
     pub async fn retry_language_server(
@@ -128,85 +197,321 @@ impl AsyncAgentSdk {
         project_id: &str,
         language_server_id: &str,
     ) -> SdkResult<LanguageServerDto> {
-        self.project_for_user(project_id)?;
+        let project = self.project_for_user(project_id)?;
+        if language_server_id != JDTLS_KIND {
+            return Err(BusinessError::missing("language_server"));
+        }
         self.state
             .agent
             .retry_language_server(project_id, language_server_id)
             .await?;
-        let server = self
+        let record = self
             .state
             .store
-            .language_server_by_id(language_server_id)?
-            .ok_or_else(|| BusinessError::missing("language_server"))?;
-        self.language_server_dto(Some(project_id), server).await
+            .language_server_for_project(project_id, JDTLS_KIND)?;
+        self.jdtls_dto(project_id, &project.canonical_root, record)
+            .await
     }
 
-    async fn language_server_dto(
+    // Compatibility entry points remain callable for existing bindings while the product surface
+    // moves to the typed project catalog. They accept only the built-in jdtls shape.
+    pub async fn create_language_server(
         &self,
         project_id: Option<&str>,
-        server: LanguageServerRecord,
+        idempotency_key: &str,
+        request: LanguageServerWriteRequest,
     ) -> SdkResult<LanguageServerDto> {
-        let runtime = self
-            .state
-            .agent
-            .language_server_runtime_status(project_id, &server)
-            .await;
-        Ok(LanguageServerDto {
-            language_server_id: server.language_server_id,
-            display_name: server.display_name,
-            command: server.config.command,
-            arguments: server.config.arguments,
-            language_ids: server.config.language_ids,
-            root_markers: server.config.root_markers,
-            initialization_options: server.config.initialization_options,
-            environment_keys: server.config.environment.keys().cloned().collect(),
-            startup_timeout_seconds: server.config.startup_timeout_seconds,
-            request_timeout_seconds: server.config.request_timeout_seconds,
-            enabled: server.enabled,
-            sort_order: server.sort_order,
-            revision: server.revision,
-            runtime_status: runtime.state,
-            capability_count: runtime.capability_count,
-            error: runtime.error,
-            created_at: server.created_at,
-            updated_at: server.updated_at,
+        let project_id =
+            project_id.ok_or_else(|| BusinessError::invalid("project_id is required"))?;
+        self.configure_jdtls_language_server(
+            project_id,
+            0,
+            idempotency_key,
+            legacy_request(request),
+        )
+        .await
+    }
+
+    pub async fn update_language_server(
+        &self,
+        project_id: Option<&str>,
+        language_server_id: &str,
+        expected_revision: u64,
+        idempotency_key: &str,
+        request: LanguageServerWriteRequest,
+    ) -> SdkResult<LanguageServerDto> {
+        let project_id =
+            project_id.ok_or_else(|| BusinessError::invalid("project_id is required"))?;
+        if language_server_id != JDTLS_KIND {
+            return Err(BusinessError::missing("language_server"));
+        }
+        self.configure_jdtls_language_server(
+            project_id,
+            expected_revision,
+            idempotency_key,
+            legacy_request(request),
+        )
+        .await
+    }
+
+    pub async fn delete_language_server(
+        &self,
+        language_server_id: &str,
+        _expected_revision: u64,
+        idempotency_key: &str,
+    ) -> SdkResult<LanguageServerDeleteResult> {
+        require_idempotency_key(idempotency_key)?;
+        Ok(LanguageServerDeleteResult {
+            language_server_id: language_server_id.to_string(),
+            removed: false,
         })
     }
 
-    fn validate_language_server_project(&self, project_id: Option<&str>) -> SdkResult<()> {
-        if let Some(project_id) = project_id {
-            self.project_for_user(project_id)?;
+    async fn jdtls_dto(
+        &self,
+        project_id: &str,
+        project_root: &str,
+        record: Option<LanguageServerRecord>,
+    ) -> SdkResult<LanguageServerDto> {
+        let detected_executable = detect_jdtls();
+        let detected_command = match record.as_ref() {
+            Some(record) => {
+                command_exists(&record.config.command).then(|| record.config.command.clone())
+            }
+            None => detected_executable.clone(),
         }
-        Ok(())
+        .or_else(|| detected_executable.clone());
+        let detected = detected_command.is_some();
+        let detected_java_home = detect_java_home();
+        let default = self.default_jdtls_record(project_id);
+        let record = record.unwrap_or(default);
+        let runtime = self
+            .state
+            .agent
+            .language_server_runtime_status(Some(project_id), &record)
+            .await;
+        let data_path = record.config.data_path.clone().unwrap_or_else(|| {
+            self.managed_jdtls_data_path(project_id)
+                .to_string_lossy()
+                .into()
+        });
+        Ok(LanguageServerDto {
+            language_server_id: JDTLS_KIND.into(),
+            kind: JDTLS_KIND.into(),
+            display_name: JDTLS_DISPLAY_NAME.into(),
+            description: JDTLS_DESCRIPTION.into(),
+            language: "Java".into(),
+            detected,
+            detected_version: None,
+            detected_executable: detected_executable.clone(),
+            detected_java_home: detected_java_home.clone(),
+            project_configurable: true,
+            command: if record.revision == 0 {
+                detected_command.unwrap_or_else(|| "jdtls".into())
+            } else {
+                record.config.command.clone()
+            },
+            arguments: record.config.arguments.clone(),
+            language_ids: vec!["java".into()],
+            root_markers: record.config.root_markers.clone(),
+            initialization_options: json!({}),
+            environment_keys: record.config.environment.keys().cloned().collect(),
+            startup_timeout_seconds: record.config.startup_timeout_seconds,
+            request_timeout_seconds: record.config.request_timeout_seconds,
+            java_home: record.config.java_home.clone().or(detected_java_home),
+            data_path_mode: record
+                .config
+                .data_path_mode
+                .clone()
+                .unwrap_or_else(|| "managed".into()),
+            data_path,
+            matched_root_marker: record
+                .config
+                .root_markers
+                .iter()
+                .find(|marker| Path::new(project_root).join(marker).exists())
+                .cloned(),
+            enabled: record.enabled,
+            sort_order: 0,
+            revision: record.revision,
+            runtime_status: runtime.state,
+            capability_count: runtime.capability_count,
+            error: runtime.error,
+            created_at: record.created_at,
+            updated_at: record.updated_at,
+        })
+    }
+
+    fn default_jdtls_record(&self, project_id: &str) -> LanguageServerRecord {
+        let request = self.default_jdtls_request(project_id, false);
+        let data_path = self.managed_jdtls_data_path(project_id);
+        LanguageServerRecord {
+            language_server_id: project_language_server_id(project_id, JDTLS_KIND),
+            display_name: format!("{JDTLS_DISPLAY_NAME} [{project_id}]"),
+            config: LanguageServerConfig {
+                version: 2,
+                project_id: Some(project_id.into()),
+                server_kind: Some(JDTLS_KIND.into()),
+                command: request.executable,
+                arguments: vec!["-data".into(), data_path.to_string_lossy().into_owned()],
+                language_ids: vec!["java".into()],
+                root_markers: request.root_markers,
+                initialization_options: json!({}),
+                environment: BTreeMap::new(),
+                startup_timeout_seconds: request.startup_timeout_seconds,
+                request_timeout_seconds: request.request_timeout_seconds,
+                java_home: request.java_home,
+                data_path_mode: Some("managed".into()),
+                data_path: Some(data_path.to_string_lossy().into_owned()),
+            },
+            enabled: false,
+            sort_order: 0,
+            revision: 0,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
+
+    fn unscoped_jdtls_dto(&self) -> LanguageServerDto {
+        let detected_executable = detect_jdtls();
+        let detected_java_home = detect_java_home();
+        LanguageServerDto {
+            language_server_id: JDTLS_KIND.into(),
+            kind: JDTLS_KIND.into(),
+            display_name: JDTLS_DISPLAY_NAME.into(),
+            description: JDTLS_DESCRIPTION.into(),
+            language: "Java".into(),
+            detected: detected_executable.is_some(),
+            detected_version: None,
+            detected_executable: detected_executable.clone(),
+            detected_java_home: detected_java_home.clone(),
+            project_configurable: false,
+            command: detected_executable.unwrap_or_else(|| "jdtls".into()),
+            arguments: Vec::new(),
+            language_ids: vec!["java".into()],
+            root_markers: DEFAULT_ROOT_MARKERS
+                .iter()
+                .map(|value| (*value).into())
+                .collect(),
+            initialization_options: json!({}),
+            environment_keys: Vec::new(),
+            startup_timeout_seconds: 120,
+            request_timeout_seconds: 30,
+            java_home: detected_java_home,
+            data_path_mode: "managed".into(),
+            data_path: String::new(),
+            matched_root_marker: None,
+            enabled: false,
+            sort_order: 0,
+            revision: 0,
+            runtime_status: suncode_core::LanguageServerRuntimeState::NotStarted,
+            capability_count: 0,
+            error: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
+
+    fn default_jdtls_request(
+        &self,
+        project_id: &str,
+        enabled: bool,
+    ) -> JdtlsLanguageServerWriteRequest {
+        JdtlsLanguageServerWriteRequest {
+            executable: detect_jdtls().unwrap_or_else(|| "jdtls".into()),
+            java_home: detect_java_home(),
+            data_path_mode: "managed".into(),
+            data_path: Some(
+                self.managed_jdtls_data_path(project_id)
+                    .to_string_lossy()
+                    .into(),
+            ),
+            root_markers: DEFAULT_ROOT_MARKERS
+                .iter()
+                .map(|value| (*value).into())
+                .collect(),
+            environment: None,
+            startup_timeout_seconds: 120,
+            request_timeout_seconds: 30,
+            enabled,
+        }
+    }
+
+    fn managed_jdtls_data_path(&self, project_id: &str) -> PathBuf {
+        self.state
+            .data_dir
+            .join("lsp")
+            .join(JDTLS_KIND)
+            .join(project_id)
     }
 }
 
-fn language_server_input(
-    request: LanguageServerWriteRequest,
-    existing: Option<&LanguageServerConfig>,
-) -> SdkResult<LanguageServerInput> {
-    let environment = apply_environment_changes(
-        existing
-            .map(|config| config.environment.clone())
-            .unwrap_or_default(),
-        request.environment,
-    )?;
-    Ok(LanguageServerInput {
-        display_name: request.display_name,
-        config: LanguageServerConfig {
-            version: 1,
-            command: request.command,
-            arguments: request.arguments,
-            language_ids: request.language_ids,
-            root_markers: request.root_markers,
-            initialization_options: request.initialization_options,
-            environment,
-            startup_timeout_seconds: request.startup_timeout_seconds,
-            request_timeout_seconds: request.request_timeout_seconds,
-        },
+fn validate_jdtls_request(request: &JdtlsLanguageServerWriteRequest) -> SdkResult<()> {
+    if request.executable.trim().is_empty()
+        || request.executable.chars().count() > 2_048
+        || request.executable.contains('\0')
+    {
+        return Err(BusinessError::invalid(
+            "jdtls executable is required and must not exceed 2048 characters",
+        ));
+    }
+    if !(1..=120).contains(&request.startup_timeout_seconds)
+        || !(1..=600).contains(&request.request_timeout_seconds)
+    {
+        return Err(BusinessError::invalid(
+            "Language server timeout is outside the supported range",
+        ));
+    }
+    Ok(())
+}
+
+fn legacy_request(request: LanguageServerWriteRequest) -> JdtlsLanguageServerWriteRequest {
+    let java_home = request
+        .environment
+        .as_ref()
+        .and_then(|changes| changes.set.get("JAVA_HOME").cloned());
+    let data_path = request
+        .arguments
+        .windows(2)
+        .find(|values| values[0] == "-data")
+        .map(|values| values[1].clone());
+    JdtlsLanguageServerWriteRequest {
+        executable: request.command,
+        java_home,
+        data_path_mode: if data_path.is_some() {
+            "custom"
+        } else {
+            "managed"
+        }
+        .into(),
+        data_path,
+        root_markers: request.root_markers,
+        environment: request.environment,
+        startup_timeout_seconds: request.startup_timeout_seconds,
+        request_timeout_seconds: request.request_timeout_seconds,
         enabled: request.enabled,
-        sort_order: request.sort_order,
-    })
+    }
+}
+
+fn request_from_record(
+    record: &LanguageServerRecord,
+    enabled: bool,
+) -> JdtlsLanguageServerWriteRequest {
+    JdtlsLanguageServerWriteRequest {
+        executable: record.config.command.clone(),
+        java_home: record.config.java_home.clone(),
+        data_path_mode: record
+            .config
+            .data_path_mode
+            .clone()
+            .unwrap_or_else(|| "managed".into()),
+        data_path: record.config.data_path.clone(),
+        root_markers: record.config.root_markers.clone(),
+        environment: None,
+        startup_timeout_seconds: record.config.startup_timeout_seconds,
+        request_timeout_seconds: record.config.request_timeout_seconds,
+        enabled,
+    }
 }
 
 fn apply_environment_changes(
@@ -247,12 +552,84 @@ fn apply_environment_changes(
     Ok(current)
 }
 
-fn deterministic_language_server_id(idempotency_key: &str) -> String {
-    let digest = Sha256::digest(format!("language-server:{idempotency_key}").as_bytes());
-    format!(
-        "lsp_{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-        digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7]
-    )
+fn project_language_server_id(project_id: &str, kind: &str) -> String {
+    format!("{project_id}:{kind}")
+}
+
+fn detect_jdtls() -> Option<String> {
+    let name = if cfg!(windows) { "jdtls.bat" } else { "jdtls" };
+    find_on_path(name)
+        .or_else(|| {
+            ["/opt/homebrew/bin", "/usr/local/bin"]
+                .into_iter()
+                .map(|directory| Path::new(directory).join(name))
+                .find(|candidate| candidate.is_file())
+        })
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
+fn detect_java_home() -> Option<String> {
+    static DETECTED: OnceLock<Option<String>> = OnceLock::new();
+    DETECTED.get_or_init(detect_java_home_uncached).clone()
+}
+
+fn detect_java_home_uncached() -> Option<String> {
+    std::env::var("JAVA_HOME")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(detect_macos_java_home)
+        .or_else(|| {
+            detect_java_home_under(
+                Path::new("/Library/Java/JavaVirtualMachines"),
+                "Contents/Home",
+            )
+        })
+        .or_else(|| detect_java_home_under(Path::new("/usr/lib/jvm"), ""))
+}
+
+fn detect_macos_java_home() -> Option<String> {
+    let executable = Path::new("/usr/libexec/java_home");
+    if !executable.is_file() {
+        return None;
+    }
+    let output = std::process::Command::new(executable).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn detect_java_home_under(root: &Path, suffix: &str) -> Option<String> {
+    let mut candidates = std::fs::read_dir(root)
+        .ok()?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path().join(suffix))
+        .filter(|candidate| candidate.join("bin").join("java").is_file())
+        .collect::<Vec<_>>();
+    candidates.sort();
+    candidates
+        .pop()
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
+fn command_exists(command: &str) -> bool {
+    let path = Path::new(command);
+    if path.components().count() > 1 {
+        path.is_file()
+    } else {
+        find_on_path(command).is_some()
+    }
+}
+
+fn find_on_path(name: &str) -> Option<PathBuf> {
+    std::env::var_os("PATH").and_then(|value| {
+        std::env::split_paths(&value)
+            .map(|directory| directory.join(name))
+            .find(|candidate| candidate.is_file())
+    })
 }
 
 fn require_idempotency_key(value: &str) -> SdkResult<()> {

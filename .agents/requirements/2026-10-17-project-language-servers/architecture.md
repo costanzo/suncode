@@ -22,7 +22,7 @@ Processes continue to launch without a shell using the filtered environment. Man
 
 ## Compatibility and migration
 
-The existing global free-form table and SDK methods require a migration decision before implementation. Existing definitions must not be silently applied to every project as typed built-ins.
+The existing table remains physically compatible. Version-2 configuration embeds the stable project id and built-in kind; version-1 global free-form rows remain readable but are ignored by catalog listing and runtime selection. The former generic C ABI functions remain callable as compatibility adapters, while current clients use the typed jdtls configuration operation.
 
 ## Risks and rollback
 
@@ -30,6 +30,4 @@ Server-specific configuration increases SDK and UI surface area. Keeping the exi
 
 ## Open questions
 
-- Persistence shape and migration strategy.
-- Optional global installation defaults.
-- Legacy custom-server support.
+- None for this delivery. Additional server kinds require separate catalog adapters and design review.

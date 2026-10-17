@@ -171,10 +171,10 @@ mod tests {
 
     struct NoServers;
     impl ServerSource for NoServers {
-        fn servers(&self) -> Result<Vec<ServerSpec>, BusinessError> {
+        fn servers(&self, _: &str) -> Result<Vec<ServerSpec>, BusinessError> {
             Ok(Vec::new())
         }
-        fn server(&self, _: &str) -> Result<Option<ServerSpec>, BusinessError> {
+        fn server(&self, _: &str, _: &str) -> Result<Option<ServerSpec>, BusinessError> {
             Ok(None)
         }
     }

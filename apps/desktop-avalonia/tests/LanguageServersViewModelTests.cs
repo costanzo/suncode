@@ -11,13 +11,11 @@ public sealed class LanguageServersViewModelTests
         var viewModel = new LanguageServersViewModel(host);
 
         Assert.False(await viewModel.RetryServerAsync(null!));
-        Assert.False(await viewModel.DeleteServerAsync(null!));
         await viewModel.LoadServersAsync();
         await viewModel.StartProjectAsync();
 
         Assert.Empty(viewModel.Servers);
-        Assert.False(viewModel.HasServers);
-        Assert.True(viewModel.HasNoServers);
+        Assert.False(viewModel.HasProject);
         Assert.Equal(string.Empty, viewModel.StatusText);
         Assert.Empty(host.Errors);
     }

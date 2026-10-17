@@ -207,7 +207,15 @@ public sealed record McpServerDeleteResult(string McpServerId, bool Removed);
 
 public sealed record LanguageServer(
     string LanguageServerId,
+    string Kind,
     string DisplayName,
+    string Description,
+    string Language,
+    bool Detected,
+    string? DetectedVersion,
+    string? DetectedExecutable,
+    string? DetectedJavaHome,
+    bool ProjectConfigurable,
     string Command,
     IReadOnlyList<string> Arguments,
     IReadOnlyList<string> LanguageIds,
@@ -216,6 +224,10 @@ public sealed record LanguageServer(
     IReadOnlyList<string> EnvironmentKeys,
     ulong StartupTimeoutSeconds,
     ulong RequestTimeoutSeconds,
+    string? JavaHome,
+    string DataPathMode,
+    string DataPath,
+    string? MatchedRootMarker,
     bool Enabled,
     long SortOrder,
     ulong Revision,
@@ -248,6 +260,23 @@ public sealed record LanguageServerWriteRequest(
     ulong RequestTimeoutSeconds = 30,
     bool Enabled = true,
     long SortOrder = 0);
+
+public sealed record JdtlsLanguageServerWriteRequest(
+    string Executable,
+    string? JavaHome,
+    string DataPathMode,
+    string? DataPath,
+    IReadOnlyList<string> RootMarkers,
+    LanguageServerEnvironmentChanges? Environment,
+    ulong StartupTimeoutSeconds = 120,
+    ulong RequestTimeoutSeconds = 30,
+    bool Enabled = false);
+
+public sealed record ConfigureJdtlsLanguageServerRequest(
+    string ProjectId,
+    ulong ExpectedRevision,
+    string IdempotencyKey,
+    JdtlsLanguageServerWriteRequest Server);
 
 public sealed record CreateLanguageServerRequest(
     string? ProjectId,

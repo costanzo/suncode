@@ -22,7 +22,6 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
         string.Format(System.Globalization.CultureInfo.CurrentCulture, L(key, fallback), args);
 
     private readonly SingletonWindow<McpServerEditorWindow> _mcpEditor = new();
-    private readonly SingletonWindow<LanguageServerEditorWindow> _languageServerEditor = new();
     private SettingsWindowViewModel? _settings;
 
     public SettingsWindow()
@@ -34,9 +33,6 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
         McpPage.AddRequested += () => OpenMcpEditor(null);
         McpPage.EditRequested += OpenMcpEditor;
         McpPage.DeleteRequested += DeleteMcpServer;
-        LanguageServersPage.AddRequested += () => OpenLanguageServerEditor(null);
-        LanguageServersPage.EditRequested += OpenLanguageServerEditor;
-        LanguageServersPage.DeleteRequested += DeleteLanguageServer;
         WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
         Icon = AppIcon.Window;
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
@@ -50,7 +46,6 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
         {
             Unbind();
             _mcpEditor.Close();
-            _languageServerEditor.Close();
         };
     }
 
@@ -100,9 +95,6 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
     private void OpenMcpEditor(McpServerItem? server) => _mcpEditor.Show(
         this, () => new McpServerEditorWindow(ViewModel.Mcp, server), () => McpNavigation.Focus());
 
-    private void OpenLanguageServerEditor(LanguageServerItem? server) => _languageServerEditor.Show(
-        this, () => new LanguageServerEditorWindow(ViewModel.LanguageServers, server), () => LanguageServersNavigation.Focus());
-
     private void DeleteMcpServer(McpServerItem server) => Confirm(
         new ConfirmationRequest(
             L("LocDeleteMcpServerTitle", "Delete MCP server?"),
@@ -111,15 +103,6 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
             L("LocMcpServerCaps", "MCP SERVER"),
             L("LocDeleteServer", "Delete server")),
         () => _ = ViewModel.Mcp.DeleteServerAsync(server));
-
-    private void DeleteLanguageServer(LanguageServerItem server) => Confirm(
-        new ConfirmationRequest(
-            L("LocDeleteLanguageServerTitle", "Delete language server?"),
-            L("LocDeleteLanguageServerMessage", "Its project runtimes will stop and semantic results will no longer be available to new agent turns."),
-            server.DisplayName,
-            L("LocLanguageServerCaps", "LANGUAGE SERVER"),
-            L("LocDeleteServer", "Delete server")),
-        () => _ = ViewModel.LanguageServers.DeleteServerAsync(server));
 
     // Shared modal confirmation; the window stays disabled while it is open.
     private void Confirm(ConfirmationRequest request, Action confirmed)

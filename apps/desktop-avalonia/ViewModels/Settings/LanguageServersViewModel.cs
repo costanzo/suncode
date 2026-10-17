@@ -7,7 +7,6 @@ namespace SunCode.Desktop.ViewModels;
 
 public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
 {
-    // Activation starts the project runtimes and loads in parallel, as before.
     Task IPolledPage.ActivateAsync() => Task.WhenAll(StartProjectAsync(), LoadServersAsync());
     Task IPolledPage.PollAsync() => LoadServersAsync();
     void IPolledPage.Deactivate() { }
@@ -19,8 +18,9 @@ public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
     internal LanguageServersViewModel(IViewModelHost host) => _host = host;
 
     public ObservableCollection<LanguageServerItem> Servers { get; } = [];
-    public bool HasServers => Servers.Count > 0;
-    public bool HasNoServers => !HasServers;
+    public string ProjectName => _host.SelectedProject?.DisplayName ?? string.Empty;
+    public string ProjectPath => _host.SelectedProject?.CanonicalRoot ?? string.Empty;
+    public bool HasProject => _host.SelectedProject is not null;
     public string StatusText
     {
         get => _statusText;
@@ -62,81 +62,74 @@ public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
         }
     }
 
-    public async Task<bool> CreateServerAsync(LanguageServerWriteRequest request)
-    {
-        if (!await _host.EnsureSdkReadyAsync()) return false;
-        return await RunMutationAsync(null, async () =>
-        {
-            var server = await _host.Sdk!.CreateLanguageServerAsync(new(
-                _host.SelectedProject?.ProjectId,
-                Guid.NewGuid().ToString("N"),
-                request));
-            UpsertServer(server);
-        }, request.Enabled ? "Language server saved and started." : "Language server saved as disabled.");
-    }
-
-    public async Task<bool> UpdateServerAsync(
+    public async Task<bool> SaveJdtlsAsync(
         LanguageServerItem item,
-        LanguageServerWriteRequest request)
+        string executable,
+        string? javaHome,
+        string dataPathMode,
+        string? dataPath,
+        IReadOnlyList<string> rootMarkers,
+        LanguageServerEnvironmentChanges? environment,
+        ulong startupTimeout,
+        ulong requestTimeout,
+        bool enabled)
     {
-        if (!await _host.EnsureSdkReadyAsync()) return false;
+        if (_host.SelectedProject is null || !await _host.EnsureSdkReadyAsync()) return false;
         return await RunMutationAsync(item, async () =>
         {
-            var server = await _host.Sdk!.UpdateLanguageServerAsync(new(
-                _host.SelectedProject?.ProjectId,
-                item.ServerId,
+            var server = await _host.Sdk!.ConfigureJdtlsLanguageServerAsync(new(
+                _host.SelectedProject.ProjectId,
                 item.Revision,
                 Guid.NewGuid().ToString("N"),
-                request));
+                new(
+                    executable,
+                    javaHome,
+                    dataPathMode,
+                    dataPath,
+                    rootMarkers,
+                    environment,
+                    startupTimeout,
+                    requestTimeout,
+                    enabled)));
             UpsertServer(server);
-        }, "Language server changes saved and applied.");
+        }, enabled
+            ? "jdtls configuration saved. Restarting the project language server."
+            : "jdtls configuration saved as disabled for this project.");
     }
 
     public async Task<bool> SetServerEnabledAsync(LanguageServerItem item, bool enabled)
     {
-        if (!await _host.EnsureSdkReadyAsync()) return false;
+        if (_host.SelectedProject is null || !await _host.EnsureSdkReadyAsync()) return false;
         return await RunMutationAsync(item, async () =>
         {
             var server = await _host.Sdk!.SetLanguageServerEnabledAsync(new(
-                _host.SelectedProject?.ProjectId,
+                _host.SelectedProject.ProjectId,
                 item.ServerId,
                 item.Revision,
                 Guid.NewGuid().ToString("N"),
                 enabled));
             UpsertServer(server);
-        }, enabled ? "Language server enabled." : "Language server disabled.");
+        }, enabled ? "jdtls enabled for this project." : "jdtls disabled for this project.");
     }
 
     public async Task<bool> RetryServerAsync(LanguageServerItem item)
     {
-        if (!await _host.EnsureSdkReadyAsync() || _host.SelectedProject is null) return false;
+        if (_host.SelectedProject is null || !await _host.EnsureSdkReadyAsync()) return false;
         return await RunMutationAsync(item, async () =>
         {
-            var server = await _host.Sdk!.RetryLanguageServerAsync(_host.SelectedProject.ProjectId, item.ServerId);
+            var server = await _host.Sdk!.RetryLanguageServerAsync(
+                _host.SelectedProject.ProjectId,
+                item.ServerId);
             UpsertServer(server);
-        }, "Language server restarted.");
-    }
-
-    public async Task<bool> DeleteServerAsync(LanguageServerItem item)
-    {
-        if (!await _host.EnsureSdkReadyAsync()) return false;
-        return await RunMutationAsync(item, async () =>
-        {
-            var result = await _host.Sdk!.DeleteLanguageServerAsync(new(
-                item.ServerId,
-                item.Revision,
-                Guid.NewGuid().ToString("N")));
-            if (result.Removed) Servers.Remove(item);
-            NotifyCollectionChanged();
-        }, "Language server deleted.");
+        }, "jdtls restarted for this project.");
     }
 
     private async Task<bool> RunMutationAsync(
-        LanguageServerItem? item,
+        LanguageServerItem item,
         Func<Task> operation,
         string success)
     {
-        item?.IsPending = true;
+        item.IsPending = true;
         try
         {
             await operation();
@@ -151,7 +144,7 @@ public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
         }
         finally
         {
-            if (item is not null) item.IsPending = false;
+            item.IsPending = false;
         }
     }
 
@@ -175,7 +168,9 @@ public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
         {
             if (!ids.Contains(Servers[index].ServerId)) Servers.RemoveAt(index);
         }
-        NotifyCollectionChanged();
+        OnPropertyChanged(nameof(ProjectName));
+        OnPropertyChanged(nameof(ProjectPath));
+        OnPropertyChanged(nameof(HasProject));
     }
 
     private void UpsertServer(LanguageServer server)
@@ -183,12 +178,5 @@ public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
         var existing = Servers.FirstOrDefault(item => item.ServerId == server.LanguageServerId);
         if (existing is null) Servers.Add(new LanguageServerItem(server));
         else existing.Replace(server);
-        NotifyCollectionChanged();
-    }
-
-    private void NotifyCollectionChanged()
-    {
-        OnPropertyChanged(nameof(HasServers));
-        OnPropertyChanged(nameof(HasNoServers));
     }
 }

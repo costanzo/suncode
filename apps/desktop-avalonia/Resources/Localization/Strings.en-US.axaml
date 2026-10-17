@@ -289,7 +289,6 @@
   <x:String x:Key="LocLanguageIds">Language IDs</x:String>
   <x:String x:Key="LocOneLspLanguageIdPerLine">One LSP language ID per line</x:String>
   <x:String x:Key="LocAtLeastOneLanguageId">At least one language ID is required.</x:String>
-  <x:String x:Key="LocRootMarkers">Root markers</x:String>
   <x:String x:Key="LocOneProjectRelative">One project-relative file or directory name per line.</x:String>
   <x:String x:Key="LocInitializationOptions">Initialization options</x:String>
   <x:String x:Key="LocOptionalJsonObject">Optional JSON object</x:String>
@@ -535,4 +534,39 @@
   <x:String x:Key="LocNoProxyMode">No proxy</x:String>
   <x:String x:Key="LocSystemProxyMode">System proxy</x:String>
   <x:String x:Key="LocCustomProxyMode">Custom proxy</x:String>
+  <x:String x:Key="LocLanguageServersProjectHint">Enable SunCode-supported language servers for the current project. Each project keeps its own process, index, and configuration.</x:String>
+  <x:String x:Key="LocCurrentProject">Current project</x:String>
+  <x:String x:Key="LocAvailableForProject">Available for this project</x:String>
+  <x:String x:Key="LocConfigure">Configure</x:String>
+  <x:String x:Key="LocLspAuthorityHint">Language-server processes run locally with your user permissions. Their caches and toolchain effects are outside filesystem undo.</x:String>
+  <x:String x:Key="LocProjectJavaAnalysis">Project configuration for Java semantic analysis.</x:String>
+  <x:String x:Key="LocProjectAvailabilityCaps">PROJECT AVAILABILITY</x:String>
+  <x:String x:Key="LocEnableForProject">Enable for this project</x:String>
+  <x:String x:Key="LocEnableJdtlsHint">Starts one jdtls process and keeps a separate index for this project.</x:String>
+  <x:String x:Key="LocProjectDetection">Project detection</x:String>
+  <x:String x:Key="LocProjectDetectionHint">Matched against the opened project root.</x:String>
+  <x:String x:Key="LocInstallationCaps">INSTALLATION</x:String>
+  <x:String x:Key="LocDetectAgain">Detect again</x:String>
+  <x:String x:Key="LocJdtlsExecutable">jdtls executable</x:String>
+  <x:String x:Key="LocJdtlsExecutableHint">Executable used for this project.</x:String>
+  <x:String x:Key="LocJavaRuntime">Java runtime</x:String>
+  <x:String x:Key="LocJavaRuntimeHint">Used as JAVA_HOME when SunCode starts jdtls.</x:String>
+  <x:String x:Key="LocProjectIndexCaps">PROJECT INDEX</x:String>
+  <x:String x:Key="LocDataDirectory">Data directory</x:String>
+  <x:String x:Key="LocJdtlsDataHint">jdtls workspace metadata. The directory is unique to this project.</x:String>
+  <x:String x:Key="LocManagedBySunCode">Managed by SunCode</x:String>
+  <x:String x:Key="LocCustom">Custom</x:String>
+  <x:String x:Key="LocResolvedDataPath">Resolved data path</x:String>
+  <x:String x:Key="LocResolvedDataPathHint">Generated from the stable project identity unless Custom is selected.</x:String>
+  <x:String x:Key="LocRootMarkers">Root markers</x:String>
+  <x:String x:Key="LocJdtlsRootMarkersHint">One file or directory name per line. The first match identifies a Java project.</x:String>
+  <x:String x:Key="LocAdvancedConfiguration">Advanced configuration</x:String>
+  <x:String x:Key="LocEnvironmentEntriesHint">One NAME=value entry per line. Values are stored locally and hidden after saving.</x:String>
+  <x:String x:Key="LocStartupTimeoutSeconds">Startup timeout</x:String>
+  <x:String x:Key="LocRequestTimeoutSeconds">Request timeout</x:String>
+  <x:String x:Key="LocResetChanges">Reset changes</x:String>
+  <x:String x:Key="LocSaveConfiguration">Save configuration</x:String>
+  <x:String x:Key="LocDetected">Detected</x:String>
+  <x:String x:Key="LocNotDetected">Not detected</x:String>
+  <x:String x:Key="LocOpenLspSettingsFromProject">Open Settings from a project window to enable and configure language servers for that project.</x:String>
 </ResourceDictionary>

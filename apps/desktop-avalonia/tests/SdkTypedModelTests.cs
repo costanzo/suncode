@@ -186,28 +186,29 @@ public sealed class SdkTypedModelTests
     }
 
     [Fact]
-    public void Serializes_language_server_request_with_write_only_environment_patch()
+    public void Serializes_project_jdtls_request_with_write_only_environment_patch()
     {
-        using var optionsDocument = JsonDocument.Parse("{\"check\":{\"command\":\"clippy\"}}");
-        var request = new LanguageServerWriteRequest(
-            "Rust Analyzer",
-            "rust-analyzer",
-            Array.Empty<string>(),
-            ["rust"],
-            ["Cargo.toml"],
-            optionsDocument.RootElement.Clone(),
+        var request = new JdtlsLanguageServerWriteRequest(
+            "/opt/homebrew/bin/jdtls",
+            "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home",
+            "managed",
+            null,
+            ["pom.xml", "build.gradle"],
             new LanguageServerEnvironmentChanges(
-                new Dictionary<string, string> { ["RUST_LOG"] = "warn" },
-                Array.Empty<string>()));
+                new Dictionary<string, string> { ["JDTLS_LOG"] = "warn" },
+                Array.Empty<string>()),
+            120,
+            30,
+            true);
 
         var json = JsonSerializer.Serialize(request, Options);
         using var document = JsonDocument.Parse(json);
 
-        Assert.Equal("Rust Analyzer", document.RootElement.GetProperty("displayName").GetString());
-        Assert.Equal("rust-analyzer", document.RootElement.GetProperty("command").GetString());
-        Assert.Equal("rust", document.RootElement.GetProperty("languageIds")[0].GetString());
-        Assert.Equal("warn", document.RootElement.GetProperty("environment").GetProperty("set").GetProperty("RUST_LOG").GetString());
-        Assert.Equal(30UL, document.RootElement.GetProperty("startupTimeoutSeconds").GetUInt64());
+        Assert.Equal("/opt/homebrew/bin/jdtls", document.RootElement.GetProperty("executable").GetString());
+        Assert.Equal("managed", document.RootElement.GetProperty("dataPathMode").GetString());
+        Assert.Equal("pom.xml", document.RootElement.GetProperty("rootMarkers")[0].GetString());
+        Assert.Equal("warn", document.RootElement.GetProperty("environment").GetProperty("set").GetProperty("JDTLS_LOG").GetString());
+        Assert.Equal(120UL, document.RootElement.GetProperty("startupTimeoutSeconds").GetUInt64());
     }
 
     [Fact]

@@ -11,7 +11,15 @@ public sealed class LanguageServerItem : ObservableObject
 
     public LanguageServer Server { get; private set; }
     public string ServerId => Server.LanguageServerId;
+    public string Kind => Server.Kind;
     public string DisplayName => Server.DisplayName;
+    public string Description => Server.Description;
+    public string Language => Server.Language;
+    public bool Detected => Server.Detected;
+    public string? DetectedVersion => Server.DetectedVersion;
+    public string? DetectedExecutable => Server.DetectedExecutable;
+    public string? DetectedJavaHome => Server.DetectedJavaHome;
+    public bool ProjectConfigurable => Server.ProjectConfigurable;
     public string Command => Server.Command;
     public IReadOnlyList<string> Arguments => Server.Arguments;
     public IReadOnlyList<string> LanguageIds => Server.LanguageIds;
@@ -20,6 +28,10 @@ public sealed class LanguageServerItem : ObservableObject
     public IReadOnlyList<string> EnvironmentKeys => Server.EnvironmentKeys;
     public ulong StartupTimeoutSeconds => Server.StartupTimeoutSeconds;
     public ulong RequestTimeoutSeconds => Server.RequestTimeoutSeconds;
+    public string? JavaHome => Server.JavaHome;
+    public string DataPathMode => Server.DataPathMode;
+    public string DataPath => Server.DataPath;
+    public string? MatchedRootMarker => Server.MatchedRootMarker;
     public bool Enabled => Server.Enabled;
     public ulong Revision => Server.Revision;
     public long SortOrder => Server.SortOrder;
@@ -31,8 +43,9 @@ public sealed class LanguageServerItem : ObservableObject
     public bool IsIndexing => RuntimeStatus == "indexing";
     public bool IsFailed => RuntimeStatus == "failed";
     public bool IsInactive => !IsReady && !IsStarting && !IsIndexing && !IsFailed;
-    public bool CanRetry => Enabled && IsFailed && !IsPending;
-    public bool CanToggle => !IsPending && !IsStarting;
+    public bool CanRetry => ProjectConfigurable && Enabled && IsFailed && !IsPending;
+    public bool CanToggle => ProjectConfigurable && !IsPending && !IsStarting;
+    public bool CanConfigure => ProjectConfigurable && !IsPending;
     public string StatusLabel => RuntimeStatus switch
     {
         "ready" => LocalizationService.GetString("LocReady", "Ready"),
@@ -50,8 +63,9 @@ public sealed class LanguageServerItem : ObservableObject
         "failed" => LocalizationService.GetString("LocNoSemanticResults", "No semantic results"),
         _ => LocalizationService.GetString("LocNotRunning", "Not running")
     };
-    public string CommandSummary => string.Join(' ',
-        new[] { Command }.Concat(Arguments).Where(value => !string.IsNullOrWhiteSpace(value)));
+    public string DetectionLabel => Detected
+        ? $"{LocalizationService.GetString("LocDetected", "Detected")}{(string.IsNullOrWhiteSpace(DetectedVersion) ? string.Empty : $" · {DetectedVersion}")}"
+        : LocalizationService.GetString("LocNotDetected", "Not detected");
     public string ToggleLabel => Enabled
         ? LocalizationService.GetString("LocOn", "On")
         : LocalizationService.GetString("LocOff", "Off");
