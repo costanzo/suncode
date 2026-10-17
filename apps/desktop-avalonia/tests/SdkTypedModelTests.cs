@@ -212,6 +212,33 @@ public sealed class SdkTypedModelTests
     }
 
     [Fact]
+    public void Serializes_project_vtsls_request_with_typed_sdk_configuration()
+    {
+        var request = new VtslsLanguageServerWriteRequest(
+            "/opt/homebrew/bin/vtsls",
+            "/opt/homebrew/bin/node",
+            "custom",
+            "/project/node_modules/typescript/lib",
+            ["package.json", "tsconfig.json"],
+            4096,
+            new LanguageServerEnvironmentChanges(
+                new Dictionary<string, string> { ["NODE_OPTIONS"] = "--no-warnings" },
+                Array.Empty<string>()),
+            120,
+            30,
+            true);
+
+        var json = JsonSerializer.Serialize(request, Options);
+        using var document = JsonDocument.Parse(json);
+
+        Assert.Equal("/opt/homebrew/bin/vtsls", document.RootElement.GetProperty("executable").GetString());
+        Assert.Equal("/opt/homebrew/bin/node", document.RootElement.GetProperty("nodePath").GetString());
+        Assert.Equal("custom", document.RootElement.GetProperty("typescriptSdkMode").GetString());
+        Assert.Equal(4096UL, document.RootElement.GetProperty("maxTsServerMemory").GetUInt64());
+        Assert.Equal("tsconfig.json", document.RootElement.GetProperty("rootMarkers")[1].GetString());
+    }
+
+    [Fact]
     public void Serializes_proxy_configuration_with_write_only_password_patch()
     {
         var request = new ProxyConfigurationRequest(

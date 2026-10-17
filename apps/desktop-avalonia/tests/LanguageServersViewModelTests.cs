@@ -46,6 +46,25 @@ public sealed class LanguageServersViewModelTests
     }
 
     [Fact]
+    public void VtslsItemExposesServerSpecificConfiguration()
+    {
+        var item = new LanguageServerItem(new LanguageServer(
+            "vtsls", "vtsls", "vtsls", "TypeScript semantic analysis", "JavaScript / TypeScript",
+            true, null, "/usr/local/bin/vtsls", null, true, "/usr/local/bin/vtsls", ["--stdio"],
+            ["javascript", "typescript"], ["package.json"], JsonDocument.Parse("{}").RootElement.Clone(),
+            [], 120, 30, null, string.Empty, string.Empty, "package.json", false, 10, 1, "disabled",
+            0, null, string.Empty, string.Empty,
+            new VtslsLanguageServerConfiguration(
+                "/usr/local/bin/vtsls", "/usr/local/bin/node", "/usr/local/bin/node", "22.0.0",
+                "workspace-preferred", null, 3072)));
+
+        Assert.True(item.IsVtsls);
+        Assert.Equal("/usr/local/bin/node", item.NodePath);
+        Assert.Equal("workspace-preferred", item.TypeScriptSdkMode);
+        Assert.Equal(3072UL, item.MaxTsServerMemory);
+    }
+
+    [Fact]
     public async Task MutationsFailWithoutSdkAndLeaveStateUntouched()
     {
         var host = new FakeViewModelHost();

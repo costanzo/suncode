@@ -837,8 +837,9 @@ fn project_jdtls_sdk_redacts_environment_and_enforces_revisions() {
     let directory = tempfile::tempdir().unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
     let catalog = sdk.list_language_servers(None).unwrap();
-    assert_eq!(catalog.servers.len(), 1);
+    assert_eq!(catalog.servers.len(), 2);
     assert_eq!(catalog.servers[0].kind, "jdtls");
+    assert_eq!(catalog.servers[1].kind, "vtsls");
     assert!(!catalog.servers[0].project_configurable);
     assert_eq!(
         catalog.servers[0].runtime_status,
@@ -938,6 +939,93 @@ fn project_jdtls_sdk_redacts_environment_and_enforces_revisions() {
         .code,
         "language_server_revision_conflict"
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn project_vtsls_sdk_maps_settings_redacts_environment_and_isolates_projects() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let directory = tempfile::tempdir().unwrap();
+    let node = directory.path().join("node");
+    std::fs::write(
+        &node,
+        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo v20.11.0; exit 0; fi\nexit 1\n",
+    )
+    .unwrap();
+    let mut permissions = std::fs::metadata(&node).unwrap().permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&node, permissions).unwrap();
+    let sdk_path = directory.path().join("typescript/lib");
+    std::fs::create_dir_all(&sdk_path).unwrap();
+    std::fs::write(sdk_path.join("tsserverlibrary.js"), "").unwrap();
+
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    let project = sdk
+        .open_project(directory.path().to_str().unwrap(), None)
+        .unwrap();
+    let created = sdk
+        .configure_vtsls_language_server(
+            &project.project_id,
+            0,
+            "vtsls-create",
+            VtslsLanguageServerWriteRequest {
+                executable: "missing-vtsls".into(),
+                node_path: node.to_string_lossy().into_owned(),
+                typescript_sdk_mode: "custom".into(),
+                typescript_sdk_path: Some(sdk_path.to_string_lossy().into_owned()),
+                root_markers: vec!["package.json".into()],
+                max_ts_server_memory: 4096,
+                environment: Some(LanguageServerEnvironmentChanges {
+                    set: BTreeMap::from([("TOKEN".into(), "private-value".into())]),
+                    remove: Vec::new(),
+                }),
+                startup_timeout_seconds: 30,
+                request_timeout_seconds: 30,
+                enabled: false,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(created.kind, "vtsls");
+    assert_eq!(created.environment_keys, ["TOKEN"]);
+    assert!(!serde_json::to_string(&created)
+        .unwrap()
+        .contains("private-value"));
+    let vtsls = created.vtsls.as_ref().unwrap();
+    assert_eq!(vtsls.typescript_sdk_mode, "custom");
+    assert_eq!(vtsls.max_ts_server_memory, 4096);
+    let stored = sdk
+        .state
+        .store
+        .language_server_for_project(&project.project_id, "vtsls")
+        .unwrap()
+        .unwrap();
+    assert_eq!(stored.config.command, node.to_string_lossy());
+    assert_eq!(stored.config.arguments[1], "--stdio");
+    assert_eq!(
+        stored.config.configuration["vtsls"]["typescript"]["globalTsdk"],
+        sdk_path.to_string_lossy().as_ref()
+    );
+    assert_eq!(
+        stored.config.configuration["typescript"]["tsserver"]["maxTsServerMemory"],
+        4096
+    );
+
+    let second_root = directory.path().join("second-project");
+    std::fs::create_dir_all(&second_root).unwrap();
+    let second_project = sdk
+        .open_project(second_root.to_str().unwrap(), None)
+        .unwrap();
+    let second = sdk
+        .list_language_servers(Some(&second_project.project_id))
+        .unwrap()
+        .servers
+        .into_iter()
+        .find(|server| server.kind == "vtsls")
+        .unwrap();
+    assert_eq!(second.revision, 0);
+    assert!(!second.enabled);
 }
 
 #[test]

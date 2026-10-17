@@ -11,6 +11,7 @@ pub struct ConnectionConfig {
     pub working_directory: PathBuf,
     pub environment: BTreeMap<String, String>,
     pub initialization_options: Value,
+    pub configuration: Value,
     pub startup_timeout: Duration,
     pub request_timeout: Duration,
 }
@@ -34,6 +35,11 @@ pub(crate) fn validate_connection_config(config: &ConnectionConfig) -> Result<()
     if !config.initialization_options.is_null() && !config.initialization_options.is_object() {
         return Err(BusinessError::invalid(
             "Language server initialization options must be a JSON object",
+        ));
+    }
+    if !config.configuration.is_object() {
+        return Err(BusinessError::invalid(
+            "Language server configuration settings must be a JSON object",
         ));
     }
     if !config.working_directory.is_dir() {

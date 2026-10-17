@@ -15,7 +15,7 @@ public sealed partial class AgentSdk : IDisposable
     private static readonly NativeMethods.BrowserHostCallback BrowserHostCallbackBridge = OnBrowserHostRequested;
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 19;
+    private const uint AbiVersion = 20;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -180,6 +180,10 @@ public sealed partial class AgentSdk : IDisposable
     private Task<JsonElement> RawConfigureJdtlsLanguageServerAsync(string projectId, ulong expectedRevision, string idempotencyKey, string requestJson) => WithUtf8Async(
         [projectId, idempotencyKey, requestJson],
         values => NativeMethods.suncode_agent_sdk_configure_jdtls_language_server(_handle, values[0], expectedRevision, values[1], values[2]));
+
+    private Task<JsonElement> RawConfigureVtslsLanguageServerAsync(string projectId, ulong expectedRevision, string idempotencyKey, string requestJson) => WithUtf8Async(
+        [projectId, idempotencyKey, requestJson],
+        values => NativeMethods.suncode_agent_sdk_configure_vtsls_language_server(_handle, values[0], expectedRevision, values[1], values[2]));
 
     private Task<JsonElement> RawSetLanguageServerEnabledAsync(string? projectId, string languageServerId, ulong expectedRevision, string idempotencyKey, bool enabled) => WithNullableUtf8Async(
         [projectId, languageServerId, idempotencyKey],

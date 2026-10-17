@@ -9,6 +9,17 @@ const JDTLS_DISPLAY_NAME: &str = "Eclipse JDT Language Server";
 const JDTLS_DESCRIPTION: &str =
     "Java diagnostics, definitions, references, hover details, and symbols.";
 const DEFAULT_ROOT_MARKERS: &[&str] = &["pom.xml", "build.gradle", "build.gradle.kts"];
+const VTSLS_KIND: &str = "vtsls";
+const VTSLS_DISPLAY_NAME: &str = "vtsls";
+const VTSLS_DESCRIPTION: &str =
+    "JavaScript and TypeScript diagnostics, definitions, references, hover details, and symbols.";
+const VTSLS_ROOT_MARKERS: &[&str] = &["package.json", "tsconfig.json", "jsconfig.json"];
+const VTSLS_LANGUAGE_IDS: &[&str] = &[
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact",
+];
 
 impl AsyncAgentSdk {
     pub async fn start_language_server_project(
@@ -32,7 +43,7 @@ impl AsyncAgentSdk {
     ) -> SdkResult<LanguageServersResult> {
         let Some(project_id) = project_id else {
             return Ok(LanguageServersResult {
-                servers: vec![self.unscoped_jdtls_dto()],
+                servers: vec![self.unscoped_jdtls_dto(), self.unscoped_vtsls_dto()],
             });
         };
         let project = self.project_for_user(project_id)?;
@@ -40,11 +51,18 @@ impl AsyncAgentSdk {
             .state
             .store
             .language_server_for_project(project_id, JDTLS_KIND)?;
-        let server = self
+        let jdtls = self
             .jdtls_dto(project_id, &project.canonical_root, record)
             .await?;
+        let vtsls_record = self
+            .state
+            .store
+            .language_server_for_project(project_id, VTSLS_KIND)?;
+        let vtsls = self
+            .vtsls_dto(project_id, &project.canonical_root, vtsls_record)
+            .await?;
         Ok(LanguageServersResult {
-            servers: vec![server],
+            servers: vec![jdtls, vtsls],
         })
     }
 
@@ -126,12 +144,18 @@ impl AsyncAgentSdk {
                     request.root_markers
                 },
                 initialization_options: json!({}),
+                configuration: json!({}),
                 environment,
                 startup_timeout_seconds: request.startup_timeout_seconds,
                 request_timeout_seconds: request.request_timeout_seconds,
                 java_home: request.java_home.filter(|value| !value.trim().is_empty()),
                 data_path_mode: Some(data_path_mode.into()),
                 data_path: Some(data_path.to_string_lossy().into_owned()),
+                vtsls_executable: None,
+                node_path: None,
+                typescript_sdk_mode: None,
+                typescript_sdk_path: None,
+                max_ts_server_memory: None,
             },
             enabled: request.enabled,
             sort_order: 0,
@@ -160,6 +184,104 @@ impl AsyncAgentSdk {
             .await
     }
 
+    pub async fn configure_vtsls_language_server(
+        &self,
+        project_id: &str,
+        expected_revision: u64,
+        idempotency_key: &str,
+        request: VtslsLanguageServerWriteRequest,
+    ) -> SdkResult<LanguageServerDto> {
+        let project = self.project_for_user(project_id)?;
+        require_idempotency_key(idempotency_key)?;
+        validate_vtsls_request(&request)?;
+        let current = self
+            .state
+            .store
+            .language_server_for_project(project_id, VTSLS_KIND)?;
+        let environment = apply_environment_changes(
+            current
+                .as_ref()
+                .map(|record| record.config.environment.clone())
+                .unwrap_or_default(),
+            request.environment,
+        )?;
+        let sdk_mode = normalize_typescript_sdk_mode(&request.typescript_sdk_mode)?;
+        let sdk_path = request
+            .typescript_sdk_path
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string);
+        let executable = request.executable.trim().to_string();
+        let node_path = request.node_path.trim().to_string();
+        let server_script =
+            resolve_vtsls_script(&executable).unwrap_or_else(|| PathBuf::from(&executable));
+        let configuration =
+            vtsls_configuration(sdk_mode, sdk_path.as_deref(), request.max_ts_server_memory);
+        let input = LanguageServerInput {
+            display_name: format!("{VTSLS_DISPLAY_NAME} [{project_id}]"),
+            config: LanguageServerConfig {
+                version: 3,
+                project_id: Some(project_id.to_string()),
+                server_kind: Some(VTSLS_KIND.into()),
+                command: node_path.clone(),
+                arguments: vec![
+                    server_script.to_string_lossy().into_owned(),
+                    "--stdio".into(),
+                ],
+                language_ids: VTSLS_LANGUAGE_IDS
+                    .iter()
+                    .map(|value| (*value).into())
+                    .collect(),
+                root_markers: if request.root_markers.is_empty() {
+                    VTSLS_ROOT_MARKERS
+                        .iter()
+                        .map(|value| (*value).into())
+                        .collect()
+                } else {
+                    request.root_markers
+                },
+                initialization_options: json!({}),
+                configuration,
+                environment,
+                startup_timeout_seconds: request.startup_timeout_seconds,
+                request_timeout_seconds: request.request_timeout_seconds,
+                java_home: None,
+                data_path_mode: None,
+                data_path: None,
+                vtsls_executable: Some(executable),
+                node_path: Some(node_path),
+                typescript_sdk_mode: Some(sdk_mode.into()),
+                typescript_sdk_path: sdk_path,
+                max_ts_server_memory: Some(request.max_ts_server_memory),
+            },
+            enabled: request.enabled,
+            sort_order: 10,
+        };
+        let record = match current {
+            Some(current) => self.state.store.update_language_server(
+                &current.language_server_id,
+                expected_revision,
+                &input,
+            )?,
+            None if expected_revision == 0 => self.state.store.create_language_server(
+                &project_language_server_id(project_id, VTSLS_KIND),
+                &input,
+            )?,
+            None => return Err(BusinessError::missing("language_server")),
+        };
+        self.state
+            .agent
+            .activate_language_server_project(project_id, Path::new(&project.canonical_root))
+            .await?;
+        self.state
+            .agent
+            .reconcile_language_server(project_id, VTSLS_KIND)
+            .await?;
+        self.vtsls_dto(project_id, &project.canonical_root, Some(record))
+            .await
+    }
+
     pub async fn set_language_server_enabled(
         &self,
         project_id: Option<&str>,
@@ -170,26 +292,41 @@ impl AsyncAgentSdk {
     ) -> SdkResult<LanguageServerDto> {
         let project_id =
             project_id.ok_or_else(|| BusinessError::invalid("project_id is required"))?;
-        if language_server_id != JDTLS_KIND {
-            return Err(BusinessError::missing("language_server"));
-        }
         self.project_for_user(project_id)?;
         require_idempotency_key(idempotency_key)?;
         let current = self
             .state
             .store
-            .language_server_for_project(project_id, JDTLS_KIND)?;
-        let request = match current.as_ref() {
-            Some(record) => request_from_record(record, enabled),
-            None => self.default_jdtls_request(project_id, enabled),
-        };
-        self.configure_jdtls_language_server(
-            project_id,
-            expected_revision,
-            idempotency_key,
-            request,
-        )
-        .await
+            .language_server_for_project(project_id, language_server_id)?;
+        match language_server_id {
+            JDTLS_KIND => {
+                let request = match current.as_ref() {
+                    Some(record) => jdtls_request_from_record(record, enabled),
+                    None => self.default_jdtls_request(project_id, enabled),
+                };
+                self.configure_jdtls_language_server(
+                    project_id,
+                    expected_revision,
+                    idempotency_key,
+                    request,
+                )
+                .await
+            }
+            VTSLS_KIND => {
+                let request = match current.as_ref() {
+                    Some(record) => vtsls_request_from_record(record, enabled),
+                    None => self.default_vtsls_request(enabled),
+                };
+                self.configure_vtsls_language_server(
+                    project_id,
+                    expected_revision,
+                    idempotency_key,
+                    request,
+                )
+                .await
+            }
+            _ => Err(BusinessError::missing("language_server")),
+        }
     }
 
     pub async fn retry_language_server(
@@ -198,7 +335,7 @@ impl AsyncAgentSdk {
         language_server_id: &str,
     ) -> SdkResult<LanguageServerDto> {
         let project = self.project_for_user(project_id)?;
-        if language_server_id != JDTLS_KIND {
+        if !matches!(language_server_id, JDTLS_KIND | VTSLS_KIND) {
             return Err(BusinessError::missing("language_server"));
         }
         self.state
@@ -208,9 +345,18 @@ impl AsyncAgentSdk {
         let record = self
             .state
             .store
-            .language_server_for_project(project_id, JDTLS_KIND)?;
-        self.jdtls_dto(project_id, &project.canonical_root, record)
-            .await
+            .language_server_for_project(project_id, language_server_id)?;
+        match language_server_id {
+            JDTLS_KIND => {
+                self.jdtls_dto(project_id, &project.canonical_root, record)
+                    .await
+            }
+            VTSLS_KIND => {
+                self.vtsls_dto(project_id, &project.canonical_root, record)
+                    .await
+            }
+            _ => unreachable!(),
+        }
     }
 
     // Compatibility entry points remain callable for existing bindings while the product surface
@@ -305,6 +451,7 @@ impl AsyncAgentSdk {
             detected_version: None,
             detected_executable: detected_executable.clone(),
             detected_java_home: detected_java_home.clone(),
+            vtsls: None,
             project_configurable: true,
             command: if record.revision == 0 {
                 detected_command.unwrap_or_else(|| "jdtls".into())
@@ -357,12 +504,18 @@ impl AsyncAgentSdk {
                 language_ids: vec!["java".into()],
                 root_markers: request.root_markers,
                 initialization_options: json!({}),
+                configuration: json!({}),
                 environment: BTreeMap::new(),
                 startup_timeout_seconds: request.startup_timeout_seconds,
                 request_timeout_seconds: request.request_timeout_seconds,
                 java_home: request.java_home,
                 data_path_mode: Some("managed".into()),
                 data_path: Some(data_path.to_string_lossy().into_owned()),
+                vtsls_executable: None,
+                node_path: None,
+                typescript_sdk_mode: None,
+                typescript_sdk_path: None,
+                max_ts_server_memory: None,
             },
             enabled: false,
             sort_order: 0,
@@ -385,6 +538,7 @@ impl AsyncAgentSdk {
             detected_version: None,
             detected_executable: detected_executable.clone(),
             detected_java_home: detected_java_home.clone(),
+            vtsls: None,
             project_configurable: false,
             command: detected_executable.unwrap_or_else(|| "jdtls".into()),
             arguments: Vec::new(),
@@ -430,6 +584,220 @@ impl AsyncAgentSdk {
                 .iter()
                 .map(|value| (*value).into())
                 .collect(),
+            environment: None,
+            startup_timeout_seconds: 120,
+            request_timeout_seconds: 30,
+            enabled,
+        }
+    }
+
+    async fn vtsls_dto(
+        &self,
+        project_id: &str,
+        project_root: &str,
+        record: Option<LanguageServerRecord>,
+    ) -> SdkResult<LanguageServerDto> {
+        let detected_executable = detect_vtsls();
+        let detected_node_path = detect_node();
+        let detected_node_version = detected_node_path.as_deref().and_then(detect_node_version);
+        let detected = detected_executable.is_some()
+            && detected_node_version
+                .as_deref()
+                .and_then(node_major_version)
+                .is_some_and(|major| major >= 18);
+        let default = self.default_vtsls_record(project_id);
+        let record = record.unwrap_or(default);
+        let runtime = self
+            .state
+            .agent
+            .language_server_runtime_status(Some(project_id), &record)
+            .await;
+        let executable = record.config.vtsls_executable.clone().unwrap_or_else(|| {
+            detected_executable
+                .clone()
+                .unwrap_or_else(|| "vtsls".into())
+        });
+        let node_path = record
+            .config
+            .node_path
+            .clone()
+            .unwrap_or_else(|| detected_node_path.clone().unwrap_or_else(|| "node".into()));
+        Ok(LanguageServerDto {
+            language_server_id: VTSLS_KIND.into(),
+            kind: VTSLS_KIND.into(),
+            display_name: VTSLS_DISPLAY_NAME.into(),
+            description: VTSLS_DESCRIPTION.into(),
+            language: "JavaScript / TypeScript".into(),
+            detected,
+            detected_version: None,
+            detected_executable,
+            detected_java_home: None,
+            vtsls: Some(VtslsLanguageServerConfigurationDto {
+                executable: executable.clone(),
+                node_path,
+                detected_node_path,
+                detected_node_version,
+                typescript_sdk_mode: record
+                    .config
+                    .typescript_sdk_mode
+                    .clone()
+                    .unwrap_or_else(|| "workspace-preferred".into()),
+                typescript_sdk_path: record.config.typescript_sdk_path.clone(),
+                max_ts_server_memory: record.config.max_ts_server_memory.unwrap_or(3072),
+            }),
+            project_configurable: true,
+            command: executable,
+            arguments: record.config.arguments.clone(),
+            language_ids: VTSLS_LANGUAGE_IDS
+                .iter()
+                .map(|value| (*value).into())
+                .collect(),
+            root_markers: record.config.root_markers.clone(),
+            initialization_options: json!({}),
+            environment_keys: record.config.environment.keys().cloned().collect(),
+            startup_timeout_seconds: record.config.startup_timeout_seconds,
+            request_timeout_seconds: record.config.request_timeout_seconds,
+            java_home: None,
+            data_path_mode: String::new(),
+            data_path: String::new(),
+            matched_root_marker: record
+                .config
+                .root_markers
+                .iter()
+                .find(|marker| Path::new(project_root).join(marker).exists())
+                .cloned(),
+            enabled: record.enabled,
+            sort_order: 10,
+            revision: record.revision,
+            runtime_status: runtime.state,
+            capability_count: runtime.capability_count,
+            error: runtime.error,
+            created_at: record.created_at,
+            updated_at: record.updated_at,
+        })
+    }
+
+    fn default_vtsls_record(&self, project_id: &str) -> LanguageServerRecord {
+        let request = self.default_vtsls_request(false);
+        let executable = request.executable.clone();
+        let server_script =
+            resolve_vtsls_script(&executable).unwrap_or_else(|| PathBuf::from(&executable));
+        LanguageServerRecord {
+            language_server_id: project_language_server_id(project_id, VTSLS_KIND),
+            display_name: format!("{VTSLS_DISPLAY_NAME} [{project_id}]"),
+            config: LanguageServerConfig {
+                version: 3,
+                project_id: Some(project_id.into()),
+                server_kind: Some(VTSLS_KIND.into()),
+                command: request.node_path.clone(),
+                arguments: vec![
+                    server_script.to_string_lossy().into_owned(),
+                    "--stdio".into(),
+                ],
+                language_ids: VTSLS_LANGUAGE_IDS
+                    .iter()
+                    .map(|value| (*value).into())
+                    .collect(),
+                root_markers: request.root_markers.clone(),
+                initialization_options: json!({}),
+                configuration: vtsls_configuration(
+                    "workspace-preferred",
+                    None,
+                    request.max_ts_server_memory,
+                ),
+                environment: BTreeMap::new(),
+                startup_timeout_seconds: request.startup_timeout_seconds,
+                request_timeout_seconds: request.request_timeout_seconds,
+                java_home: None,
+                data_path_mode: None,
+                data_path: None,
+                vtsls_executable: Some(executable),
+                node_path: Some(request.node_path),
+                typescript_sdk_mode: Some("workspace-preferred".into()),
+                typescript_sdk_path: None,
+                max_ts_server_memory: Some(request.max_ts_server_memory),
+            },
+            enabled: false,
+            sort_order: 10,
+            revision: 0,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
+
+    fn unscoped_vtsls_dto(&self) -> LanguageServerDto {
+        let detected_executable = detect_vtsls();
+        let detected_node_path = detect_node();
+        let detected_node_version = detected_node_path.as_deref().and_then(detect_node_version);
+        let detected = detected_executable.is_some()
+            && detected_node_version
+                .as_deref()
+                .and_then(node_major_version)
+                .is_some_and(|major| major >= 18);
+        let executable = detected_executable
+            .clone()
+            .unwrap_or_else(|| "vtsls".into());
+        let node_path = detected_node_path.clone().unwrap_or_else(|| "node".into());
+        LanguageServerDto {
+            language_server_id: VTSLS_KIND.into(),
+            kind: VTSLS_KIND.into(),
+            display_name: VTSLS_DISPLAY_NAME.into(),
+            description: VTSLS_DESCRIPTION.into(),
+            language: "JavaScript / TypeScript".into(),
+            detected,
+            detected_version: None,
+            detected_executable,
+            detected_java_home: None,
+            vtsls: Some(VtslsLanguageServerConfigurationDto {
+                executable: executable.clone(),
+                node_path,
+                detected_node_path,
+                detected_node_version,
+                typescript_sdk_mode: "workspace-preferred".into(),
+                typescript_sdk_path: None,
+                max_ts_server_memory: 3072,
+            }),
+            project_configurable: false,
+            command: executable,
+            arguments: vec!["--stdio".into()],
+            language_ids: VTSLS_LANGUAGE_IDS
+                .iter()
+                .map(|value| (*value).into())
+                .collect(),
+            root_markers: VTSLS_ROOT_MARKERS
+                .iter()
+                .map(|value| (*value).into())
+                .collect(),
+            initialization_options: json!({}),
+            environment_keys: Vec::new(),
+            startup_timeout_seconds: 120,
+            request_timeout_seconds: 30,
+            java_home: None,
+            data_path_mode: String::new(),
+            data_path: String::new(),
+            matched_root_marker: None,
+            enabled: false,
+            sort_order: 10,
+            revision: 0,
+            runtime_status: suncode_core::LanguageServerRuntimeState::NotStarted,
+            capability_count: 0,
+            error: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
+
+    fn default_vtsls_request(&self, enabled: bool) -> VtslsLanguageServerWriteRequest {
+        VtslsLanguageServerWriteRequest {
+            executable: detect_vtsls().unwrap_or_else(|| "vtsls".into()),
+            node_path: detect_node().unwrap_or_else(|| "node".into()),
+            typescript_sdk_mode: "workspace-preferred".into(),
+            typescript_sdk_path: None,
+            root_markers: VTSLS_ROOT_MARKERS
+                .iter()
+                .map(|value| (*value).into())
+                .collect(),
+            max_ts_server_memory: 3072,
             environment: None,
             startup_timeout_seconds: 120,
             request_timeout_seconds: 30,
@@ -493,7 +861,7 @@ fn legacy_request(request: LanguageServerWriteRequest) -> JdtlsLanguageServerWri
     }
 }
 
-fn request_from_record(
+fn jdtls_request_from_record(
     record: &LanguageServerRecord,
     enabled: bool,
 ) -> JdtlsLanguageServerWriteRequest {
@@ -512,6 +880,118 @@ fn request_from_record(
         request_timeout_seconds: record.config.request_timeout_seconds,
         enabled,
     }
+}
+
+fn vtsls_request_from_record(
+    record: &LanguageServerRecord,
+    enabled: bool,
+) -> VtslsLanguageServerWriteRequest {
+    VtslsLanguageServerWriteRequest {
+        executable: record
+            .config
+            .vtsls_executable
+            .clone()
+            .unwrap_or_else(|| "vtsls".into()),
+        node_path: record
+            .config
+            .node_path
+            .clone()
+            .unwrap_or_else(|| record.config.command.clone()),
+        typescript_sdk_mode: record
+            .config
+            .typescript_sdk_mode
+            .clone()
+            .unwrap_or_else(|| "workspace-preferred".into()),
+        typescript_sdk_path: record.config.typescript_sdk_path.clone(),
+        root_markers: record.config.root_markers.clone(),
+        max_ts_server_memory: record.config.max_ts_server_memory.unwrap_or(3072),
+        environment: None,
+        startup_timeout_seconds: record.config.startup_timeout_seconds,
+        request_timeout_seconds: record.config.request_timeout_seconds,
+        enabled,
+    }
+}
+
+fn validate_vtsls_request(request: &VtslsLanguageServerWriteRequest) -> SdkResult<()> {
+    if request.executable.trim().is_empty()
+        || request.executable.chars().count() > 2_048
+        || request.executable.contains('\0')
+    {
+        return Err(BusinessError::invalid(
+            "vtsls executable is required and must not exceed 2048 characters",
+        ));
+    }
+    if request.node_path.trim().is_empty()
+        || request.node_path.chars().count() > 2_048
+        || request.node_path.contains('\0')
+    {
+        return Err(BusinessError::invalid(
+            "Node.js executable is required and must not exceed 2048 characters",
+        ));
+    }
+    let node_version = detect_node_version(request.node_path.trim()).ok_or_else(|| {
+        BusinessError::invalid("Node.js executable could not be run to determine its version")
+    })?;
+    if node_major_version(&node_version).is_none_or(|major| major < 18) {
+        return Err(BusinessError::invalid("vtsls requires Node.js 18 or newer"));
+    }
+    let mode = normalize_typescript_sdk_mode(&request.typescript_sdk_mode)?;
+    if mode == "custom" {
+        let value = request
+            .typescript_sdk_path
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| BusinessError::invalid("Custom TypeScript SDK directory is required"))?;
+        let path = Path::new(value);
+        if !path.is_absolute() || !path.join("tsserverlibrary.js").is_file() {
+            return Err(BusinessError::invalid(
+                "Custom TypeScript SDK directory must be absolute and contain tsserverlibrary.js",
+            ));
+        }
+    }
+    if !(512..=16_384).contains(&request.max_ts_server_memory) {
+        return Err(BusinessError::invalid(
+            "TypeScript server memory must be between 512 and 16384 MiB",
+        ));
+    }
+    if !(1..=120).contains(&request.startup_timeout_seconds)
+        || !(1..=600).contains(&request.request_timeout_seconds)
+    {
+        return Err(BusinessError::invalid(
+            "Language server timeout is outside the supported range",
+        ));
+    }
+    Ok(())
+}
+
+fn normalize_typescript_sdk_mode(value: &str) -> SdkResult<&'static str> {
+    match value.trim() {
+        "" | "workspace-preferred" => Ok("workspace-preferred"),
+        "bundled" => Ok("bundled"),
+        "custom" => Ok("custom"),
+        _ => Err(BusinessError::invalid(
+            "TypeScript SDK mode must be workspace-preferred, bundled, or custom",
+        )),
+    }
+}
+
+fn vtsls_configuration(mode: &str, sdk_path: Option<&str>, memory: u64) -> serde_json::Value {
+    let mut settings = json!({
+        "vtsls": {
+            "autoUseWorkspaceTsdk": mode == "workspace-preferred"
+        },
+        "typescript": {
+            "tsserver": {
+                "maxTsServerMemory": memory
+            }
+        }
+    });
+    if mode == "custom" {
+        settings["vtsls"]["typescript"]["globalTsdk"] =
+            serde_json::Value::String(sdk_path.unwrap_or_default().to_string());
+    }
+    settings
 }
 
 fn apply_environment_changes(
@@ -566,6 +1046,109 @@ fn detect_jdtls() -> Option<String> {
                 .find(|candidate| candidate.is_file())
         })
         .map(|path| path.to_string_lossy().into_owned())
+}
+
+fn detect_vtsls() -> Option<String> {
+    let name = if cfg!(windows) { "vtsls.cmd" } else { "vtsls" };
+    find_on_path(name)
+        .or_else(|| {
+            ["/opt/homebrew/bin", "/usr/local/bin"]
+                .into_iter()
+                .map(|directory| Path::new(directory).join(name))
+                .find(|candidate| candidate.is_file())
+        })
+        .or_else(|| detect_nvm_binary(name))
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
+fn detect_node() -> Option<String> {
+    let name = if cfg!(windows) { "node.exe" } else { "node" };
+    find_on_path(name)
+        .or_else(|| {
+            ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]
+                .into_iter()
+                .map(|directory| Path::new(directory).join(name))
+                .find(|candidate| candidate.is_file())
+        })
+        .or_else(|| detect_nvm_binary(name))
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
+fn detect_nvm_binary(name: &str) -> Option<PathBuf> {
+    let root = std::env::var_os("HOME")
+        .map(PathBuf::from)?
+        .join(".nvm")
+        .join("versions")
+        .join("node");
+    std::fs::read_dir(root)
+        .ok()?
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let candidate = entry.path().join("bin").join(name);
+            candidate.is_file().then(|| {
+                let version = entry
+                    .file_name()
+                    .to_string_lossy()
+                    .trim_start_matches('v')
+                    .split('.')
+                    .take(3)
+                    .map(|part| part.parse::<u64>().unwrap_or(0))
+                    .collect::<Vec<_>>();
+                (
+                    (
+                        *version.first().unwrap_or(&0),
+                        *version.get(1).unwrap_or(&0),
+                        *version.get(2).unwrap_or(&0),
+                    ),
+                    candidate,
+                )
+            })
+        })
+        .max_by_key(|(version, _)| *version)
+        .map(|(_, candidate)| candidate)
+}
+
+fn detect_node_version(node_path: &str) -> Option<String> {
+    let output = std::process::Command::new(node_path)
+        .arg("--version")
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|value| value.trim().trim_start_matches('v').to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn node_major_version(value: &str) -> Option<u64> {
+    value.split('.').next()?.parse().ok()
+}
+
+fn resolve_vtsls_script(executable: &str) -> Option<PathBuf> {
+    let configured = Path::new(executable);
+    let executable = if configured.components().count() > 1 {
+        configured.to_path_buf()
+    } else {
+        find_on_path(executable)?
+    };
+    let canonical = std::fs::canonicalize(&executable).unwrap_or_else(|_| executable.clone());
+    if canonical
+        .extension()
+        .is_some_and(|extension| extension == "js")
+    {
+        return Some(canonical);
+    }
+    let parent = executable.parent()?;
+    [
+        parent.join("../lib/node_modules/@vtsls/language-server/bin/vtsls.js"),
+        parent.join("../node_modules/@vtsls/language-server/bin/vtsls.js"),
+        parent.join("node_modules/@vtsls/language-server/bin/vtsls.js"),
+    ]
+    .into_iter()
+    .find(|candidate| candidate.is_file())
+    .and_then(|candidate| std::fs::canonicalize(&candidate).ok().or(Some(candidate)))
 }
 
 fn detect_java_home() -> Option<String> {

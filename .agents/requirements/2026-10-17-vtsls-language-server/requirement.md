@@ -45,9 +45,9 @@ SunCode currently supports Java semantic analysis through the project-scoped bui
 - A direct review route opens the vtsls detail page.
 - The detail page specifies default, custom SDK, advanced, dirty, failed, retry, indexing, and ready states.
 - Light, dark, and constrained-width layouts remain usable.
-- Production implementation remains explicitly pending design approval.
+- Production Rust, SDK binding, and Avalonia behavior match the approved design.
 
-## Open questions
+## Resolved decisions
 
-- Confirm whether production detection should accept only the `vtsls` npm bin or also a direct `vtsls.js` script.
-- Confirm whether the initial production implementation should expose custom Node.js runtime selection or use it only as a detected, validated path.
+- Production accepts the `vtsls` npm bin or a direct `vtsls.js` script and resolves common npm layouts before launch.
+- Project configuration exposes a detected default or custom Node.js runtime and validates Node.js 18 or newer.

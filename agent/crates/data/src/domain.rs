@@ -101,6 +101,8 @@ pub struct LanguageServerConfig {
     pub language_ids: Vec<String>,
     pub root_markers: Vec<String>,
     pub initialization_options: Value,
+    #[serde(default = "empty_json_object")]
+    pub configuration: Value,
     pub environment: BTreeMap<String, String>,
     pub startup_timeout_seconds: u64,
     pub request_timeout_seconds: u64,
@@ -110,6 +112,20 @@ pub struct LanguageServerConfig {
     pub data_path_mode: Option<String>,
     #[serde(default)]
     pub data_path: Option<String>,
+    #[serde(default)]
+    pub vtsls_executable: Option<String>,
+    #[serde(default)]
+    pub node_path: Option<String>,
+    #[serde(default)]
+    pub typescript_sdk_mode: Option<String>,
+    #[serde(default)]
+    pub typescript_sdk_path: Option<String>,
+    #[serde(default)]
+    pub max_ts_server_memory: Option<u64>,
+}
+
+fn empty_json_object() -> Value {
+    serde_json::json!({})
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

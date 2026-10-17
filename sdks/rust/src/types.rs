@@ -10,7 +10,7 @@ use suncode_data::{
 };
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 19;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 20;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -305,6 +305,37 @@ pub struct JdtlsLanguageServerWriteRequest {
     pub enabled: bool,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VtslsLanguageServerWriteRequest {
+    pub executable: String,
+    pub node_path: String,
+    #[serde(default)]
+    pub typescript_sdk_mode: String,
+    #[serde(default)]
+    pub typescript_sdk_path: Option<String>,
+    #[serde(default)]
+    pub root_markers: Vec<String>,
+    pub max_ts_server_memory: u64,
+    #[serde(default)]
+    pub environment: Option<LanguageServerEnvironmentChanges>,
+    pub startup_timeout_seconds: u64,
+    pub request_timeout_seconds: u64,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VtslsLanguageServerConfigurationDto {
+    pub executable: String,
+    pub node_path: String,
+    pub detected_node_path: Option<String>,
+    pub detected_node_version: Option<String>,
+    pub typescript_sdk_mode: String,
+    pub typescript_sdk_path: Option<String>,
+    pub max_ts_server_memory: u64,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LanguageServerDto {
@@ -317,6 +348,8 @@ pub struct LanguageServerDto {
     pub detected_version: Option<String>,
     pub detected_executable: Option<String>,
     pub detected_java_home: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vtsls: Option<VtslsLanguageServerConfigurationDto>,
     pub project_configurable: bool,
     pub command: String,
     pub arguments: Vec<String>,

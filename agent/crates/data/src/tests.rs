@@ -1217,12 +1217,18 @@ fn language_server_crud_preserves_configuration_and_enforces_revisions() {
             language_ids: vec!["rust".into()],
             root_markers: vec!["Cargo.toml".into()],
             initialization_options: json!({"check":{"command":"clippy"}}),
+            configuration: json!({}),
             environment: BTreeMap::from([("RUST_LOG".into(), "warn".into())]),
             startup_timeout_seconds: 30,
             request_timeout_seconds: 30,
             java_home: None,
             data_path_mode: None,
             data_path: None,
+            vtsls_executable: None,
+            node_path: None,
+            typescript_sdk_mode: None,
+            typescript_sdk_path: None,
+            max_ts_server_memory: None,
         },
         enabled: true,
         sort_order: 0,
@@ -1256,6 +1262,34 @@ fn language_server_crud_preserves_configuration_and_enforces_revisions() {
 }
 
 #[test]
+fn language_server_version_two_json_defaults_new_runtime_configuration_fields() {
+    let config: LanguageServerConfig = serde_json::from_value(json!({
+        "version": 2,
+        "projectId": "project-1",
+        "serverKind": "jdtls",
+        "command": "jdtls",
+        "arguments": [],
+        "languageIds": ["java"],
+        "rootMarkers": ["pom.xml"],
+        "initializationOptions": {},
+        "environment": {},
+        "startupTimeoutSeconds": 120,
+        "requestTimeoutSeconds": 30,
+        "javaHome": null,
+        "dataPathMode": "managed",
+        "dataPath": "/tmp/jdtls"
+    }))
+    .unwrap();
+
+    assert_eq!(config.configuration, json!({}));
+    assert!(config.vtsls_executable.is_none());
+    assert!(config.node_path.is_none());
+    assert!(config.typescript_sdk_mode.is_none());
+    assert!(config.typescript_sdk_path.is_none());
+    assert!(config.max_ts_server_memory.is_none());
+}
+
+#[test]
 fn language_server_validation_rejects_unsafe_configuration() {
     let store = Store::open_memory().unwrap();
     let input = LanguageServerInput {
@@ -1269,12 +1303,18 @@ fn language_server_validation_rejects_unsafe_configuration() {
             language_ids: vec!["rust".into(), "RUST".into()],
             root_markers: vec!["../outside".into()],
             initialization_options: json!([]),
+            configuration: json!({}),
             environment: BTreeMap::new(),
             startup_timeout_seconds: 0,
             request_timeout_seconds: 0,
             java_home: None,
             data_path_mode: None,
             data_path: None,
+            vtsls_executable: None,
+            node_path: None,
+            typescript_sdk_mode: None,
+            typescript_sdk_path: None,
+            max_ts_server_memory: None,
         },
         enabled: true,
         sort_order: 0,
@@ -1298,12 +1338,18 @@ fn language_server_validation_rejects_unsafe_configuration() {
             language_ids: vec!["rust".into()],
             root_markers: Vec::new(),
             initialization_options: json!({}),
+            configuration: json!({}),
             environment: BTreeMap::new(),
             startup_timeout_seconds: 30,
             request_timeout_seconds: 30,
             java_home: None,
             data_path_mode: None,
             data_path: None,
+            vtsls_executable: None,
+            node_path: None,
+            typescript_sdk_mode: None,
+            typescript_sdk_path: None,
+            max_ts_server_memory: None,
         },
         enabled: true,
         sort_order: i64::from(i32::MAX) + 1,

@@ -23,6 +23,7 @@ pub struct ServerSpec {
     /// means any project.
     pub root_markers: Vec<String>,
     pub initialization_options: Value,
+    pub configuration: Value,
     pub environment: BTreeMap<String, String>,
     pub startup_timeout: Duration,
     pub request_timeout: Duration,

@@ -19,6 +19,16 @@ public sealed class LanguageServerItem : ObservableObject
     public string? DetectedVersion => Server.DetectedVersion;
     public string? DetectedExecutable => Server.DetectedExecutable;
     public string? DetectedJavaHome => Server.DetectedJavaHome;
+    public bool IsJdtls => Kind == "jdtls";
+    public bool IsVtsls => Kind == "vtsls";
+    public VtslsLanguageServerConfiguration? Vtsls => Server.Vtsls;
+    public string VtslsExecutable => Vtsls?.Executable ?? Command;
+    public string NodePath => Vtsls?.NodePath ?? string.Empty;
+    public string? DetectedNodePath => Vtsls?.DetectedNodePath;
+    public string? DetectedNodeVersion => Vtsls?.DetectedNodeVersion;
+    public string TypeScriptSdkMode => Vtsls?.TypeScriptSdkMode ?? "workspace-preferred";
+    public string? TypeScriptSdkPath => Vtsls?.TypeScriptSdkPath;
+    public ulong MaxTsServerMemory => Vtsls?.MaxTsServerMemory ?? 3072;
     public bool ProjectConfigurable => Server.ProjectConfigurable;
     public string Command => Server.Command;
     public IReadOnlyList<string> Arguments => Server.Arguments;
@@ -80,6 +90,7 @@ public sealed class LanguageServerItem : ObservableObject
             if (!SetProperty(ref _isPending, value)) return;
             OnPropertyChanged(nameof(CanRetry));
             OnPropertyChanged(nameof(CanToggle));
+            OnPropertyChanged(nameof(CanConfigure));
         }
     }
 

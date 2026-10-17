@@ -194,6 +194,15 @@ public sealed record McpServer(
     string CreatedAt,
     string UpdatedAt);
 
+public sealed record VtslsLanguageServerConfiguration(
+    string Executable,
+    string NodePath,
+    string? DetectedNodePath,
+    string? DetectedNodeVersion,
+    [property: JsonPropertyName("typescriptSdkMode")] string TypeScriptSdkMode,
+    [property: JsonPropertyName("typescriptSdkPath")] string? TypeScriptSdkPath,
+    ulong MaxTsServerMemory);
+
 public sealed record McpServersResult(IReadOnlyList<McpServer> Servers);
 
 public sealed record McpLoadProgress(
@@ -235,7 +244,8 @@ public sealed record LanguageServer(
     int CapabilityCount,
     string? Error,
     string CreatedAt,
-    string UpdatedAt);
+    string UpdatedAt,
+    VtslsLanguageServerConfiguration? Vtsls = null);
 
 public sealed record LanguageServersResult(IReadOnlyList<LanguageServer> Servers);
 
@@ -277,6 +287,24 @@ public sealed record ConfigureJdtlsLanguageServerRequest(
     ulong ExpectedRevision,
     string IdempotencyKey,
     JdtlsLanguageServerWriteRequest Server);
+
+public sealed record VtslsLanguageServerWriteRequest(
+    string Executable,
+    string NodePath,
+    [property: JsonPropertyName("typescriptSdkMode")] string TypeScriptSdkMode,
+    [property: JsonPropertyName("typescriptSdkPath")] string? TypeScriptSdkPath,
+    IReadOnlyList<string> RootMarkers,
+    ulong MaxTsServerMemory = 3072,
+    LanguageServerEnvironmentChanges? Environment = null,
+    ulong StartupTimeoutSeconds = 120,
+    ulong RequestTimeoutSeconds = 30,
+    bool Enabled = false);
+
+public sealed record ConfigureVtslsLanguageServerRequest(
+    string ProjectId,
+    ulong ExpectedRevision,
+    string IdempotencyKey,
+    VtslsLanguageServerWriteRequest Server);
 
 public sealed record CreateLanguageServerRequest(
     string? ProjectId,

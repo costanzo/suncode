@@ -2,14 +2,19 @@
 
 ## Scope
 
-Design-system catalog and vtsls detail review in this phase. Production verification is deferred until approval.
+Design-system catalog, Rust runtime and persistence, SDK bindings, and Avalonia Settings behavior.
 
 ## Unit tests
 
-- None required for fixture-only design work.
+- LSP workspace configuration request and notification behavior.
+- Version-2 persistence compatibility and version-3 vtsls settings.
+- Rust SDK mapping, redaction, and project isolation.
+- C# request serialization and desktop item projection.
 
 ## Integration and conformance tests
 
+- Rust SDK and C ABI contract tests.
+- Avalonia build and test suite.
 - Design-system production build and route rendering.
 
 ## Regression checks
@@ -29,8 +34,13 @@ Design-system catalog and vtsls detail review in this phase. Production verifica
 - `npm run build`: passed; Vite retained the existing bundle-size warning.
 - Targeted `prettier --check`: passed.
 - `git diff --check`: passed.
-- Interactive visual review remains pending user confirmation.
+- `cargo test -p suncode-lsp -p suncode-data --no-fail-fast`: passed.
+- `cargo test` in `sdks/rust`: passed.
+- `cargo test` in `sdks/c`: passed.
+- `dotnet test tests/SunCode.Desktop.Tests.csproj --no-restore`: passed, 320 tests.
+- `npm run build`: passed; Vite retained the existing bundle-size warning.
+- Rust formatting and `git diff --check`: passed.
 
 ## Residual risks
 
-- The fixture models proposed typed configuration and does not prove the later SDK contract or local vtsls compatibility.
+- The local machine does not have vtsls installed globally, so verification uses deterministic fake executables and protocol peers rather than a live installed vtsls process.

@@ -170,6 +170,13 @@ public sealed partial class AgentSdk
             request.IdempotencyKey,
             JsonSerializer.Serialize(request.Server, TypedJsonOptions)));
 
+    public Task<LanguageServer> ConfigureVtslsLanguageServerAsync(ConfigureVtslsLanguageServerRequest request) =>
+        Typed<LanguageServer>(RawConfigureVtslsLanguageServerAsync(
+            request.ProjectId,
+            request.ExpectedRevision,
+            request.IdempotencyKey,
+            JsonSerializer.Serialize(request.Server, TypedJsonOptions)));
+
     public Task<LanguageServer> SetLanguageServerEnabledAsync(SetLanguageServerEnabledRequest request) =>
         Typed<LanguageServer>(RawSetLanguageServerEnabledAsync(
             request.ProjectId,

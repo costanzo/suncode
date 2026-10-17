@@ -76,12 +76,12 @@ fn validate_input(input: &LanguageServerInput) -> Result<(), BusinessError> {
         ));
     }
     let config = &input.config;
-    if !matches!(config.version, 1 | 2) {
+    if !matches!(config.version, 1 | 2 | 3) {
         return Err(BusinessError::invalid(
             "Language server configuration version is unsupported",
         ));
     }
-    if config.version == 2
+    if config.version >= 2
         && (config.project_id.as_deref().is_none_or(str::is_empty)
             || config.server_kind.as_deref().is_none_or(str::is_empty))
     {
@@ -153,6 +153,11 @@ fn validate_input(input: &LanguageServerInput) -> Result<(), BusinessError> {
     if !config.initialization_options.is_null() && !config.initialization_options.is_object() {
         return Err(BusinessError::invalid(
             "Language server initialization options must be a JSON object",
+        ));
+    }
+    if !config.configuration.is_object() {
+        return Err(BusinessError::invalid(
+            "Language server configuration settings must be a JSON object",
         ));
     }
     if config.environment.len() > 128 {

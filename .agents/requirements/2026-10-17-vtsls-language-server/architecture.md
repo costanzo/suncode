@@ -1,12 +1,8 @@
 # Architecture
 
-## Current state
+## Implemented state
 
-The Rust-owned language-server catalog contains only jdtls. Its typed adapter owns Java language IDs, `-data`, JAVA_HOME handling, root matching, managed data paths, and validation. The shared LSP runtime and five semantic tools are language-neutral.
-
-## Proposed design
-
-Add an immutable `vtsls` catalog kind and typed project configuration. The adapter launches vtsls over stdio, supplies the JavaScript/TypeScript language IDs, maps the TypeScript SDK policy to supported vtsls settings, validates Node and SDK paths, and applies bounded tsserver memory and timeout settings.
+The Rust-owned language-server catalog contains jdtls and vtsls. The vtsls adapter owns JavaScript, JSX, TypeScript, and TSX language IDs, Node.js launch construction, `--stdio`, root matching, TypeScript SDK settings, bounded tsserver memory, and validation. The shared LSP runtime and five semantic tools remain language-neutral.
 
 ## Boundaries and dependencies
 
@@ -14,7 +10,7 @@ Rust remains authoritative for detection, version validation, launch constructio
 
 ## Data and control flow
 
-Settings loads the project catalog, opens the vtsls detail by stable kind, edits a typed draft, and submits one optimistic mutation after design approval and production implementation. Rust persists the project record, reconciles only that project's vtsls process, and returns effective runtime state.
+Settings loads the project catalog, opens the vtsls detail by stable kind, edits a typed draft, and submits one optimistic mutation. Rust persists the project record, reconciles only that project's vtsls process, and returns effective runtime state.
 
 ## Security and failure handling
 
@@ -22,13 +18,13 @@ vtsls runs without a shell in the project root using the filtered environment. P
 
 ## Compatibility and migration
 
-The existing version-2 project language-server record shape can continue to store built-in kind and common fields, but vtsls requires its own typed configuration fields. The production phase must decide whether persistence advances to a new config version or uses a kind-specific typed payload while preserving jdtls records.
+vtsls records use configuration version 3 with optional typed vtsls fields and a runtime settings object. Version-2 jdtls JSON remains readable through serde defaults and continues to be written unchanged apart from the empty shared settings object.
 
 ## Risks and rollback
 
-Npm shims obscure the Node executable actually used, and vtsls settings track the VS Code TypeScript extension. Keep the exposed settings narrow and validate the final resolved launch. The design-system change is independently revertible before contract changes.
+Npm shims obscure the Node executable actually used, and vtsls settings track the VS Code TypeScript extension. The implementation resolves Unix symlinks and common Unix/Windows npm layouts to `vtsls.js`, uses the configured Node.js runtime directly, and surfaces unresolved launches as recoverable runtime failures.
 
-## Open questions
+## Decisions
 
-- Direct npm bin versus direct server-script launch remains a production decision.
-- Node runtime override semantics require confirmation before the typed SDK contract is finalized.
+- Persist the user-facing vtsls executable and launch the resolved server script through the configured Node.js executable.
+- Require Node.js 18 or newer and expose the runtime override as project configuration.

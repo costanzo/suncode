@@ -5,21 +5,21 @@
 - [x] Confirm the requirement.
 - [x] Review the architecture boundary.
 - [x] Add catalog and detail specimens.
-- [ ] Verify themes, widths, and interaction states.
-- [ ] Obtain user design approval.
+- [x] Verify themes, widths, and interaction states.
+- [x] Obtain user design approval.
 
 ## Implementation
 
-- [ ] Finalize production contract after approval.
-- [ ] Make Rust, binding, and Avalonia changes.
-- [ ] Add focused production tests.
+- [x] Finalize production contract after approval.
+- [x] Make Rust, binding, and Avalonia changes.
+- [x] Add focused production tests.
 
 ## Verification
 
 - [x] Run design-system checks.
-- [ ] Run production checks after implementation.
+- [x] Run production checks after implementation.
 
 ## Closeout
 
-- [ ] Update features and specifications after implementation.
-- [ ] Record any new durable architecture decision.
+- [x] Update features and specifications after implementation.
+- [x] Record final implementation decisions in this delivery architecture and the SDK contract.

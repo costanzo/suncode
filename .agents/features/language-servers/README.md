@@ -2,13 +2,14 @@
 
 **Status:** Implemented and focused-tested
 
-The Rust agent gives the model language-aware diagnostics, definitions, references, hover, and document symbols through SunCode-supported local stdio language servers. `suncode-lsp` owns framing, initialization, capability negotiation, document sync, and cancellation. Core owns the project-scoped manager and path authority. Desktop Settings exposes a built-in catalog and server-specific project configuration. The initial catalog entry is Eclipse JDT Language Server (`jdtls`).
+The Rust agent gives the model language-aware diagnostics, definitions, references, hover, and document symbols through SunCode-supported local stdio language servers. `suncode-lsp` owns framing, initialization, capability negotiation, document sync, and cancellation. Core owns the project-scoped manager and path authority. Desktop Settings exposes a built-in catalog and server-specific project configuration. The catalog entries are Eclipse JDT Language Server (`jdtls`) and `vtsls`.
 
 ## What users can rely on
 
 - The Rust-owned catalog fixes server identity, language IDs, initialization behavior, and launch-argument construction. Users enable and configure catalog entries per project; they do not create, rename, or delete arbitrary definitions.
 - Settings opened without a current project still lists the supported catalog and host installation detection, but marks entries non-configurable and `not_started`; project enablement and configuration require opening Settings from a project window.
 - jdtls configuration includes executable, Java runtime, managed or custom data directory, root markers, write-only environment changes, and startup/request timeouts. The managed data directory is derived from the stable project id under SunCode application data, so projects never share a jdtls workspace lock.
+- vtsls configuration includes executable, Node.js runtime, root markers, workspace-preferred/bundled/custom TypeScript SDK selection, optional custom SDK directory, tsserver memory, write-only environment changes, and timeouts. Node.js 18 or newer is required. SunCode fixes `--stdio`, resolves npm-bin scripts when possible, and supplies vtsls settings through standard workspace configuration requests.
 - Each project and catalog entry gets its own process. Separate projects never share a process, index, configuration, or document state. Runtime state, capabilities, and document versions live only in memory. States are `not_started`, `disabled`, `starting`, `indexing`, `ready`, and `failed`. A save succeeds even when startup fails, and the detail page shows the failed state so the user can retry.
 - Servers run in the project root with no shell and a filtered environment. Repository files never supply a command. Language servers are not bundled.
 - The model sees exactly five read-only tools: `lsp_diagnostics`, `lsp_definition`, `lsp_references`, `lsp_hover`, and `lsp_symbols`. Positions are one-based. Documents are synced through the audited project or dependency read path. Returned locations are project-relative paths or dependency aliases, and external absolute paths are never exposed.

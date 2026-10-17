@@ -4,21 +4,24 @@
 
 - Add vtsls to the design-system language-server catalog.
 - Add a server-specific vtsls Settings detail specimen and direct review route.
-- Production Rust, SDK, persistence, and Avalonia changes remain pending approval.
+- Add the immutable Rust vtsls catalog adapter, validation, launch construction, project persistence, and runtime reconciliation.
+- Add vtsls-specific Avalonia Settings fields, normalized dirty tracking, save/reset, detection, failure, and retry behavior.
 
 ## Contracts and generated artifacts
 
-- None during design review.
+- Bump the native SDK ABI from 19 to 20.
+- Add typed Rust, C ABI, and C# vtsls configuration operations and DTOs.
+- Extend the shared LSP client with `workspace/configuration` and `workspace/didChangeConfiguration` support.
 
 ## Configuration and persistence
 
-- Proposed typed fields are documented; no production schema changes in this phase.
+- Store version-3 vtsls configuration in the existing language-server JSON column; preserve version-2 jdtls compatibility.
 
 ## Tests
 
-- Build and format-check the design system.
-- Verify catalog and detail interactions across themes and constrained widths.
+- Add focused LSP configuration negotiation, persistence compatibility, SDK mapping, environment redaction, project isolation, and managed serialization tests.
+- Run Rust LSP/data, Rust SDK, C ABI, Avalonia, and design-system checks.
 
 ## Documentation
 
-- Update `DESIGN.md` with the proposed vtsls surface and its production status.
+- Update `DESIGN.md`, the SDK contract, product status, feature documentation, and Settings design-system status.

@@ -47,6 +47,7 @@ struct Inner {
     next_id: AtomicI64,
     closed: AtomicBool,
     request_timeout: Duration,
+    configuration: Value,
     secret_values: Vec<String>,
     /// Cancelled when `Inner` is dropped so the read loop can stop waiting.
     released: CancellationToken,
@@ -104,6 +105,7 @@ pub async fn connect(config: ConnectionConfig, root: &Path) -> Result<Client, Bu
         stdin,
         Some(child),
         config.request_timeout,
+        config.configuration.clone(),
         config.environment.values().cloned().collect(),
     );
     let root_uri = Url::from_directory_path(root).map_err(|_| {
@@ -135,6 +137,7 @@ impl Client {
         writer: W,
         child: Option<Child>,
         request_timeout: Duration,
+        configuration: Value,
         secret_values: Vec<String>,
     ) -> Self
     where
@@ -158,6 +161,7 @@ impl Client {
             next_id: AtomicI64::new(1),
             closed: AtomicBool::new(false),
             request_timeout,
+            configuration,
             secret_values,
             released: CancellationToken::new(),
         });
@@ -186,7 +190,7 @@ impl Client {
                     "initializationOptions": initialization_options,
                     "capabilities": {
                         "general": {"positionEncodings":["utf-8","utf-16","utf-32"]},
-                        "workspace": {"applyEdit":false,"workspaceFolders":true,"configuration":false},
+                        "workspace": {"applyEdit":false,"workspaceFolders":true,"configuration":true},
                         "textDocument": {
                             "synchronization": {"dynamicRegistration":false,"didSave":false},
                             "publishDiagnostics": {"relatedInformation":true,"versionSupport":true},
@@ -224,7 +228,20 @@ impl Client {
             hover,
             document_symbols,
         };
-        self.notify("initialized", json!({})).await
+        self.notify("initialized", json!({})).await?;
+        if self
+            .inner
+            .configuration
+            .as_object()
+            .is_some_and(|settings| !settings.is_empty())
+        {
+            self.notify(
+                "workspace/didChangeConfiguration",
+                json!({"settings":self.inner.configuration.clone()}),
+            )
+            .await?;
+        }
+        Ok(())
     }
 
     pub async fn capabilities(&self) -> ServerCapabilities {
@@ -562,12 +579,22 @@ async fn handle_server_request(inner: &Arc<Inner>, value: Value) {
             "result":{"applied":false,"failureReason":"SunCode does not accept language-server edits"}
         }),
         "workspace/configuration" => {
-            let count = value
+            let result = value
                 .pointer("/params/items")
                 .and_then(Value::as_array)
-                .map(Vec::len)
-                .unwrap_or(0);
-            json!({"jsonrpc":"2.0","id":id,"result":vec![Value::Null;count]})
+                .map(|items| {
+                    items
+                        .iter()
+                        .map(|item| {
+                            item.get("section")
+                                .and_then(Value::as_str)
+                                .map(|section| configuration_section(&inner.configuration, section))
+                                .unwrap_or_else(|| inner.configuration.clone())
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            json!({"jsonrpc":"2.0","id":id,"result":result})
         }
         "client/registerCapability"
         | "client/unregisterCapability"
@@ -581,6 +608,17 @@ async fn handle_server_request(inner: &Arc<Inner>, value: Value) {
         }),
     };
     let _ = inner.write_value(&response).await;
+}
+
+fn configuration_section(configuration: &Value, section: &str) -> Value {
+    if section.trim().is_empty() {
+        return configuration.clone();
+    }
+    section
+        .split('.')
+        .try_fold(configuration, |value, part| value.get(part))
+        .cloned()
+        .unwrap_or(Value::Null)
 }
 
 async fn fail_pending(inner: &Arc<Inner>, error: BusinessError) {
@@ -694,6 +732,7 @@ mod tests {
             client_writer,
             None,
             Duration::from_secs(1),
+            json!({}),
             Vec::new(),
         );
         client
@@ -727,6 +766,71 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn advertises_and_serves_workspace_configuration() {
+        let (client_stream, server_stream) = duplex(64 * 1024);
+        let (client_reader, client_writer) = split(client_stream);
+        let (server_reader, mut server_writer) = split(server_stream);
+        let configuration = json!({
+            "vtsls":{"autoUseWorkspaceTsdk":true},
+            "typescript":{"tsserver":{"maxTsServerMemory":4096}}
+        });
+        let client = Client::from_io(
+            client_reader,
+            client_writer,
+            None,
+            Duration::from_secs(1),
+            configuration.clone(),
+            Vec::new(),
+        );
+        let server = tokio::spawn(async move {
+            let mut reader = BufReader::new(server_reader);
+            let initialize = read_test_message(&mut reader).await;
+            assert_eq!(
+                initialize["params"]["capabilities"]["workspace"]["configuration"],
+                true
+            );
+            write_test_message(
+                &mut server_writer,
+                json!({"jsonrpc":"2.0","id":initialize["id"],"result":{"capabilities":{}}}),
+            )
+            .await;
+            assert_eq!(
+                read_test_message(&mut reader).await["method"],
+                "initialized"
+            );
+            let changed = read_test_message(&mut reader).await;
+            assert_eq!(changed["method"], "workspace/didChangeConfiguration");
+            assert_eq!(changed["params"]["settings"], configuration);
+            write_test_message(
+                &mut server_writer,
+                json!({
+                    "jsonrpc":"2.0",
+                    "id":42,
+                    "method":"workspace/configuration",
+                    "params":{"items":[
+                        {"section":"vtsls"},
+                        {"section":"typescript.tsserver"},
+                        {"section":"missing"},
+                        {}
+                    ]}
+                }),
+            )
+            .await;
+            let response = read_test_message(&mut reader).await;
+            assert_eq!(response["id"], 42);
+            assert_eq!(response["result"][0]["autoUseWorkspaceTsdk"], true);
+            assert_eq!(response["result"][1]["maxTsServerMemory"], 4096);
+            assert!(response["result"][2].is_null());
+            assert_eq!(response["result"][3], configuration);
+        });
+        client
+            .initialize(Url::parse("file:///tmp/project/").unwrap(), json!({}))
+            .await
+            .unwrap();
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
     async fn refuses_server_requested_edits() {
         let (client_stream, server_stream) = duplex(32 * 1024);
         let (client_reader, client_writer) = split(client_stream);
@@ -736,6 +840,7 @@ mod tests {
             client_writer,
             None,
             Duration::from_secs(1),
+            json!({}),
             Vec::new(),
         );
         let server = tokio::spawn(async move {
@@ -764,6 +869,7 @@ mod tests {
                 working_directory: root.path().to_path_buf(),
                 environment: BTreeMap::new(),
                 initialization_options: json!({}),
+                configuration: json!({}),
                 startup_timeout: Duration::from_secs(1),
                 request_timeout: Duration::from_secs(1),
             },
@@ -786,6 +892,7 @@ mod tests {
             client_writer,
             None,
             Duration::from_secs(1),
+            json!({}),
             Vec::new(),
         );
         let weak = Arc::downgrade(&client.inner);

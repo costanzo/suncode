@@ -119,7 +119,7 @@
           </Border>
           <StackPanel Grid.Column="1" Spacing="4">
             <TextBlock x:Name="DetailTitle" Classes="sc-text-title" />
-            <TextBlock Text="{DynamicResource LocProjectJavaAnalysis}" Classes="settings-hint" />
+            <TextBlock x:Name="DetailSubtitle" Classes="settings-hint" />
           </StackPanel>
           <StackPanel Grid.Column="2" Spacing="3">
             <TextBlock x:Name="DetailStatus" FontSize="10" FontWeight="SemiBold" />
@@ -137,7 +137,7 @@
                 CornerRadius="6">
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
             <StackPanel Spacing="3">
-              <TextBlock Text="{DynamicResource LocJdtlsCouldNotStart}"
+              <TextBlock x:Name="FailureTitle"
                          FontSize="11"
                          FontWeight="SemiBold"
                          Foreground="{DynamicResource DangerBrush}" />
@@ -161,7 +161,7 @@
           <Grid Classes="settings-row" ColumnDefinitions="*,220">
             <StackPanel Classes="settings-row-copy">
               <TextBlock Text="{DynamicResource LocEnableForProject}" Classes="settings-row-title" />
-              <TextBlock Text="{DynamicResource LocEnableJdtlsHint}" Classes="settings-row-hint" />
+              <TextBlock x:Name="EnableHint" Classes="settings-row-hint" />
             </StackPanel>
             <ToggleSwitch x:Name="EnabledToggle" Grid.Column="1" Classes="sc-toggle-switch settings-switch"
                           HorizontalAlignment="Right" VerticalAlignment="Center"
@@ -191,13 +191,13 @@
           </Grid>
           <Grid Classes="settings-row" ColumnDefinitions="*,220">
             <StackPanel Classes="settings-row-copy">
-              <TextBlock Text="{DynamicResource LocJdtlsExecutable}" Classes="settings-row-title" />
-              <TextBlock Text="{DynamicResource LocJdtlsExecutableHint}" Classes="settings-row-hint" />
+              <TextBlock x:Name="ExecutableLabel" Classes="settings-row-title" />
+              <TextBlock x:Name="ExecutableHint" Classes="settings-row-hint" />
             </StackPanel>
             <controls:SCFileSelector x:Name="ExecutableInput" Grid.Column="1"
                                      SelectionMode="File" DialogTitle="Choose jdtls executable" />
           </Grid>
-          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <Grid x:Name="JavaRuntimeRow" Classes="settings-row" ColumnDefinitions="*,220">
             <StackPanel Classes="settings-row-copy">
               <TextBlock Text="{DynamicResource LocJavaRuntime}" Classes="settings-row-title" />
               <TextBlock Text="{DynamicResource LocJavaRuntimeHint}" Classes="settings-row-hint" />
@@ -205,12 +205,20 @@
             <controls:SCFileSelector x:Name="JavaHomeInput" Grid.Column="1"
                                      SelectionMode="Folder" DialogTitle="Choose Java runtime" />
           </Grid>
+          <Grid x:Name="NodeRuntimeRow" Classes="settings-row" ColumnDefinitions="*,220" IsVisible="False">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocNodeRuntime}" Classes="settings-row-title" />
+              <TextBlock x:Name="NodeRuntimeHint" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFileSelector x:Name="NodePathInput" Grid.Column="1"
+                                     SelectionMode="File" DialogTitle="Choose Node.js executable" />
+          </Grid>
         </StackPanel>
 
         <Border Classes="settings-divider" />
         <StackPanel Classes="settings-panel-section">
           <TextBlock Text="{DynamicResource LocProjectIndexCaps}" Classes="section-label" />
-          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <Grid x:Name="DataPathModeRow" Classes="settings-row" ColumnDefinitions="*,220">
             <StackPanel Classes="settings-row-copy">
               <TextBlock Text="{DynamicResource LocDataDirectory}" Classes="settings-row-title" />
               <TextBlock Text="{DynamicResource LocJdtlsDataHint}" Classes="settings-row-hint" />
@@ -218,7 +226,7 @@
             <controls:SCFlatComboBox x:Name="DataPathModeSelector" Grid.Column="1"
                                      HorizontalAlignment="Stretch" SelectionChanged="DataPathModeChanged" />
           </Grid>
-          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <Grid x:Name="DataPathRow" Classes="settings-row" ColumnDefinitions="*,220">
             <StackPanel Classes="settings-row-copy">
               <TextBlock Text="{DynamicResource LocResolvedDataPath}" Classes="settings-row-title" />
               <TextBlock Text="{DynamicResource LocResolvedDataPathHint}" Classes="settings-row-hint" />
@@ -229,10 +237,34 @@
           <Grid Classes="settings-row" ColumnDefinitions="*,220" VerticalAlignment="Top">
             <StackPanel Classes="settings-row-copy">
               <TextBlock Text="{DynamicResource LocRootMarkers}" Classes="settings-row-title" />
-              <TextBlock Text="{DynamicResource LocJdtlsRootMarkersHint}" Classes="settings-row-hint" />
+              <TextBlock x:Name="RootMarkersHint" Classes="settings-row-hint" />
             </StackPanel>
             <TextBox x:Name="RootMarkersInput" Grid.Column="1" Classes="mono settings-proxy-bypass"
                      AcceptsReturn="True" Height="84" TextWrapping="NoWrap" />
+          </Grid>
+          <Grid x:Name="TypeScriptSdkModeRow" Classes="settings-row" ColumnDefinitions="*,220" IsVisible="False">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocTypeScriptSdk}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocTypeScriptSdkHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="TypeScriptSdkModeSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="TypeScriptSdkModeChanged" />
+          </Grid>
+          <Grid x:Name="TypeScriptSdkPathRow" Classes="settings-row" ColumnDefinitions="*,220" IsVisible="False">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocTypeScriptSdkPath}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocTypeScriptSdkPathHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFileSelector x:Name="TypeScriptSdkPathInput" Grid.Column="1"
+                                     SelectionMode="Folder" DialogTitle="Choose TypeScript SDK lib directory" />
+          </Grid>
+          <Grid x:Name="TsServerMemoryRow" Classes="settings-row" ColumnDefinitions="*,220" IsVisible="False">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocTsServerMemory}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocTsServerMemoryHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCNumericInput x:Name="TsServerMemoryInput" Grid.Column="1"
+                                     Minimum="512" Maximum="16384" Increment="256" Unit="MIB" />
           </Grid>
         </StackPanel>
 

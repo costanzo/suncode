@@ -51,6 +51,7 @@ fn server_spec(record: &LanguageServerRecord) -> ServerSpec {
         language_ids: config.language_ids.clone(),
         root_markers: config.root_markers.clone(),
         initialization_options: config.initialization_options.clone(),
+        configuration: config.configuration.clone(),
         environment: config.environment.clone(),
         startup_timeout: Duration::from_secs(config.startup_timeout_seconds),
         request_timeout: Duration::from_secs(config.request_timeout_seconds),

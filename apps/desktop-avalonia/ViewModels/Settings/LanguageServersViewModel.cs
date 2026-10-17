@@ -97,6 +97,43 @@ public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
             : "jdtls configuration saved as disabled for this project.");
     }
 
+    public async Task<bool> SaveVtslsAsync(
+        LanguageServerItem item,
+        string executable,
+        string nodePath,
+        string typescriptSdkMode,
+        string? typescriptSdkPath,
+        IReadOnlyList<string> rootMarkers,
+        ulong maxTsServerMemory,
+        LanguageServerEnvironmentChanges? environment,
+        ulong startupTimeout,
+        ulong requestTimeout,
+        bool enabled)
+    {
+        if (_host.SelectedProject is null || !await _host.EnsureSdkReadyAsync()) return false;
+        return await RunMutationAsync(item, async () =>
+        {
+            var server = await _host.Sdk!.ConfigureVtslsLanguageServerAsync(new(
+                _host.SelectedProject.ProjectId,
+                item.Revision,
+                Guid.NewGuid().ToString("N"),
+                new(
+                    executable,
+                    nodePath,
+                    typescriptSdkMode,
+                    typescriptSdkPath,
+                    rootMarkers,
+                    maxTsServerMemory,
+                    environment,
+                    startupTimeout,
+                    requestTimeout,
+                    enabled)));
+            UpsertServer(server);
+        }, enabled
+            ? "vtsls configuration saved. Restarting the project language server."
+            : "vtsls configuration saved as disabled for this project.");
+    }
+
     public async Task<bool> SetServerEnabledAsync(LanguageServerItem item, bool enabled)
     {
         if (_host.SelectedProject is null || !await _host.EnsureSdkReadyAsync()) return false;
@@ -109,7 +146,9 @@ public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
                 Guid.NewGuid().ToString("N"),
                 enabled));
             UpsertServer(server);
-        }, enabled ? "jdtls enabled for this project." : "jdtls disabled for this project.");
+        }, enabled
+            ? $"{item.DisplayName} enabled for this project."
+            : $"{item.DisplayName} disabled for this project.");
     }
 
     public async Task<bool> RetryServerAsync(LanguageServerItem item)
@@ -121,7 +160,7 @@ public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
                 _host.SelectedProject.ProjectId,
                 item.ServerId);
             UpsertServer(server);
-        }, "jdtls restarted for this project.");
+        }, $"{item.DisplayName} restarted for this project.");
     }
 
     private async Task<bool> RunMutationAsync(
