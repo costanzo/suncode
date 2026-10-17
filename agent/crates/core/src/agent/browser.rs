@@ -30,7 +30,7 @@ pub(super) fn new_runtime(
     BrowserRuntime::new(data_dir, enabled, host_available)
 }
 
-impl Agent {
+impl AgentRuntime {
     pub fn set_browser_host_callback(&self, callback: Option<BrowserHostCallback>) {
         self.browser.set_host_callback(callback);
     }

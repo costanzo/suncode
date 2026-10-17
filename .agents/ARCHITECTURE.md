@@ -165,7 +165,7 @@ Startup marks non-recoverable in-memory turn execution interrupted, discovers ad
 apps/desktop-avalonia/    .NET 10 Avalonia desktop client
 apps/cli/                 native Rust CLI administration and one-shot turn client
 contracts/                hand-written protocols and contract documentation
-agent/crates/core/      `suncode-core` harness: turn loop, policy, approval, event emission, prompts, and tool routing
+agent/crates/core/      `suncode-core` harness: `AgentRuntime` (sessions, submission, lifecycle, shared runtimes) and the per-turn `TurnLoop` (model requests, tool routing, compaction, resumption), plus policy, approval, event emission, and prompt assembly
 agent/crates/events/    `suncode-events` session event payloads, per-session event hub, and attention hub
 agent/crates/agents/    `suncode-agents` definitions for the primary and specialist agents: identity, shared workflow and role prompts, compaction instructions, tool scope, and capabilities
 agent/crates/config/    Rust-owned bootstrap configuration crate

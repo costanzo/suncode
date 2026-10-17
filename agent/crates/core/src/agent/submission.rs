@@ -1,10 +1,10 @@
-//! Part of the `Agent` implementation; see `agent/mod.rs`.
+//! Part of the `AgentRuntime` implementation; see `agent/mod.rs`.
 
 use super::run::*;
 use super::support::*;
 use super::*;
 
-impl Agent {
+impl AgentRuntime {
     pub fn new<P>(
         store: Store,
         providers: P,
@@ -415,7 +415,10 @@ impl Agent {
         } else {
             TurnStart::Submit(user_message)
         };
-        let result = self.run(continuation.clone(), start, token, provider).await;
+        let mut turn_context = continuation.clone();
+        let result = TurnLoop::new(self, &mut turn_context, token)
+            .run(start, provider)
+            .await;
         self.cancellations
             .lock()
             .ok()

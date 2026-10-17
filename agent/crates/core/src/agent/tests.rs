@@ -442,7 +442,7 @@ fn responses_stream(chunks: Vec<Value>) -> String {
 }
 
 async fn fixture() -> (
-    Agent,
+    AgentRuntime,
     Store,
     std::path::PathBuf,
     tokio::task::JoinHandle<()>,
@@ -454,7 +454,7 @@ async fn fixture() -> (
 async fn fixture_with_compaction_threshold(
     auto_compact_tokens: u64,
 ) -> (
-    Agent,
+    AgentRuntime,
     Store,
     std::path::PathBuf,
     tokio::task::JoinHandle<()>,
@@ -471,7 +471,7 @@ async fn fixture_with_router(
     auto_compact_tokens: u64,
     router: Router,
 ) -> (
-    Agent,
+    AgentRuntime,
     Store,
     std::path::PathBuf,
     tokio::task::JoinHandle<()>,
@@ -541,7 +541,7 @@ async fn fixture_with_router(
         .collect();
     registry.register("deepseek", provider, models).unwrap();
     (
-        Agent::new(store.clone(), Arc::new(registry), operations, events, false),
+        AgentRuntime::new(store.clone(), Arc::new(registry), operations, events, false),
         store,
         root,
         server,
@@ -633,7 +633,7 @@ async fn retry_fixture(
     retry_after: &'static str,
     partial: bool,
 ) -> (
-    Agent,
+    AgentRuntime,
     Store,
     tokio::task::JoinHandle<()>,
     String,

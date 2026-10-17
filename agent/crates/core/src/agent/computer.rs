@@ -23,7 +23,7 @@ pub(super) fn enabled_setting(store: &Store) -> bool {
         .unwrap_or(false)
 }
 
-impl Agent {
+impl AgentRuntime {
     pub fn computer_runtime_info(&self) -> ComputerRuntimeInfo {
         self.computer.info()
     }

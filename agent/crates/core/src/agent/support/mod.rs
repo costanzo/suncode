@@ -1,4 +1,4 @@
-//! Free helpers used by the `Agent` implementation; see `agent/mod.rs`.
+//! Free helpers used by the `AgentRuntime` implementation; see `agent/mod.rs`.
 
 mod arguments;
 mod instructions;

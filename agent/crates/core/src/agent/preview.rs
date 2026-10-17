@@ -249,7 +249,7 @@ fn wait_until_ready(value: &str, process: &BackgroundProcess) -> Result<(), Busi
     ))
 }
 
-impl Agent {
+impl AgentRuntime {
     pub fn preview_state(&self, project_id: &str) -> crate::agent::PreviewState {
         self.preview.state(project_id)
     }

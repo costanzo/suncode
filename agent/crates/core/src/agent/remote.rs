@@ -1,8 +1,8 @@
-//! Part of the `Agent` implementation; see `agent/mod.rs`.
+//! Part of the `AgentRuntime` implementation; see `agent/mod.rs`.
 
 use super::*;
 
-impl Agent {
+impl AgentRuntime {
     pub fn remote_snapshot(&self) -> Result<serde_json::Value, BusinessError> {
         let projects = self.store.projects_for_user(&self.user_id, false)?;
         let mut sessions = Vec::new();

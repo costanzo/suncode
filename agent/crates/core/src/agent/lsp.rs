@@ -49,7 +49,7 @@ fn server_spec(record: &LanguageServerRecord) -> ServerSpec {
     }
 }
 
-impl Agent {
+impl AgentRuntime {
     pub async fn activate_language_server_project(
         &self,
         project_id: &str,

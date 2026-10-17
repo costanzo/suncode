@@ -46,7 +46,7 @@ fn test_state(directory: &std::path::Path) -> AgentState {
         )
         .unwrap(),
     );
-    let agent = Agent::new(
+    let agent = AgentRuntime::new(
         store.clone(),
         providers.clone(),
         operations.clone(),

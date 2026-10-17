@@ -1,10 +1,9 @@
-//! Part of the `Agent` implementation; see `agent/mod.rs`.
+//! Part of the `AgentRuntime` implementation; see `agent/mod.rs`.
 
-use super::run::*;
 use super::support::*;
 use super::*;
 
-impl Agent {
+impl AgentRuntime {
     pub(super) fn persist_child_invocation_outcome(
         &self,
         continuation: &Continuation,
@@ -190,7 +189,9 @@ impl Agent {
         tokio::spawn(async move {
             let session_lock = agent.session_lock(&continuation.session_id).await;
             let _guard = session_lock.lock().await;
-            let result = agent.continue_approved(&mut continuation, token).await;
+            let result = TurnLoop::new(&agent, &mut continuation, token)
+                .continue_approved()
+                .await;
             let suspended_again = result
                 .as_ref()
                 .err()
@@ -318,7 +319,9 @@ impl Agent {
         tokio::spawn(async move {
             let session_lock = agent.session_lock(&continuation.session_id).await;
             let _guard = session_lock.lock().await;
-            let result = agent.continue_question(&mut continuation, token).await;
+            let result = TurnLoop::new(&agent, &mut continuation, token)
+                .continue_question()
+                .await;
             let suspended_again = result
                 .as_ref()
                 .err()
@@ -367,96 +370,5 @@ impl Agent {
                 .map(|mut values| values.remove(&continuation.session_id));
         });
         Ok(true)
-    }
-
-    pub(super) async fn continue_question(
-        &self,
-        continuation: &mut Continuation,
-        token: CancellationToken,
-    ) -> Result<TurnResponse, BusinessError> {
-        if let Some(call) = continuation.pending_call.take() {
-            let answers = continuation.question_answers.take().unwrap_or_default();
-            let result = json!({"answers": answers, "rejected": continuation.question_rejected});
-            self.tool_state(continuation, &call, ToolState::Succeeded, None)?;
-            self.emit(
-                &continuation.session_id,
-                EventPayload::ToolResult(ToolResultPayload {
-                    turn_id: continuation.turn_id.clone(),
-                    call_id: continuation.active_call_id.clone(),
-                    tool_call_id: call.call_id.clone(),
-                    result: result.clone(),
-                }),
-            )?;
-            let mut tool = Message::text(
-                "tool",
-                serde_json::to_string(&result).unwrap_or_else(|_| "{}".into()),
-            );
-            tool.tool_call_id = Some(call.call_id.clone());
-            continuation.messages.push(tool.clone());
-            self.emit(
-                &continuation.session_id,
-                EventPayload::MessageTool(MessageToolPayload {
-                    turn_id: continuation.turn_id.clone(),
-                    call_id: continuation.active_call_id.clone(),
-                    tool_call_id: call.call_id.clone(),
-                    message: tool,
-                }),
-            )?;
-        }
-        let siblings = std::mem::take(&mut continuation.remaining_calls);
-        self.resolve_calls(continuation, siblings, token.clone())
-            .await?;
-        let provider = self
-            .providers
-            .route(&continuation.model)
-            .ok_or_else(|| BusinessError::new("model_unavailable", "model is not advertised"))?;
-        let response = self
-            .run(continuation.clone(), TurnStart::Resume, token, provider)
-            .await?;
-        db_blocking(|| {
-            self.store.complete_turn(
-                &continuation.session_id,
-                &continuation.submission_key,
-                &serde_json::to_value(&response).map_err(|_| {
-                    BusinessError::new("agent_unavailable", "turn response could not be stored")
-                })?,
-            )
-        })?;
-        Ok(response)
-    }
-
-    pub(super) async fn continue_approved(
-        &self,
-        continuation: &mut Continuation,
-        token: CancellationToken,
-    ) -> Result<TurnResponse, BusinessError> {
-        if let Some(call) = continuation.pending_call.take() {
-            let approval_pin = continuation.pending_approval_pin.take();
-            self.execute_call(continuation, &call, token.clone(), approval_pin)
-                .await?;
-            continuation
-                .approved_batch_call_ids
-                .retain(|call_id| call_id != &call.call_id);
-        }
-        let siblings = std::mem::take(&mut continuation.remaining_calls);
-        self.resolve_calls(continuation, siblings, token.clone())
-            .await?;
-        let provider = self
-            .providers
-            .route(&continuation.model)
-            .ok_or_else(|| BusinessError::new("model_unavailable", "model is not advertised"))?;
-        let response = self
-            .run(continuation.clone(), TurnStart::Resume, token, provider)
-            .await?;
-        db_blocking(|| {
-            self.store.complete_turn(
-                &continuation.session_id,
-                &continuation.submission_key,
-                &serde_json::to_value(&response).map_err(|_| {
-                    BusinessError::new("agent_unavailable", "turn response could not be stored")
-                })?,
-            )
-        })?;
-        Ok(response)
     }
 }

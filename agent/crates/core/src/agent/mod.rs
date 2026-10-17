@@ -166,7 +166,7 @@ struct Continuation {
     host_tool_allowlist: Vec<String>,
 }
 
-impl Agent {
+impl AgentRuntime {
     /// Agents the primary agent may delegate to, in catalog order.
     pub fn list_agents(&self) -> &'static [AgentDefinition] {
         suncode_agents::specialists()
@@ -190,8 +190,13 @@ struct QueuedMessage {
     image_ids: Vec<String>,
 }
 
+/// The process-wide host that runs every session's turns, for the primary and
+/// specialist agents alike. Who an agent is lives in
+/// [`suncode_agents::AgentDefinition`]; this type owns sessions, submission,
+/// lifecycle, and the shared runtimes, and runs each turn through a
+/// [`turn_loop::TurnLoop`].
 #[derive(Clone)]
-pub struct Agent {
+pub struct AgentRuntime {
     store: Store,
     pub(crate) user_id: String,
     providers: Arc<ModelProviderRegistry>,
@@ -241,7 +246,9 @@ mod states;
 mod submission;
 mod support;
 mod tools;
+mod turn_loop;
 use states::{ToolState, TurnState};
 use support::*;
+use turn_loop::TurnLoop;
 #[cfg(test)]
 mod tests;

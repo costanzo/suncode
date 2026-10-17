@@ -6,7 +6,7 @@
 //! auditing, and events. Turn-level tools (`question`, `todowrite`, `skill`,
 //! `delegate_agent`) stay in the core because they act on the turn itself.
 
-use super::{Agent, Continuation, EventPayload, ToolCall, ToolOutputPayload};
+use super::{AgentRuntime, Continuation, EventPayload, ToolCall, ToolOutputPayload};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::Value;
 use std::sync::Arc;
@@ -126,7 +126,7 @@ impl PathScopes for StorePathScopes<'_> {
 /// Reads documents through the audited `tool/read` operation, so providers
 /// get file content without their own file system access.
 pub(super) struct OperationsDocumentReader<'a> {
-    pub(super) agent: &'a Agent,
+    pub(super) agent: &'a AgentRuntime,
     pub(super) paths: &'a StorePathScopes<'a>,
     pub(super) token: CancellationToken,
 }
@@ -186,7 +186,7 @@ impl DocumentReader for OperationsDocumentReader<'_> {
 
 /// Publishes live tool output as session events.
 pub(super) struct EventOutput {
-    pub(super) agent: Agent,
+    pub(super) agent: AgentRuntime,
     pub(super) session_id: String,
     pub(super) turn_id: String,
     pub(super) call_id: Option<String>,
@@ -208,7 +208,7 @@ impl ToolOutput for EventOutput {
     }
 }
 
-impl Agent {
+impl AgentRuntime {
     /// Runs `call` through `provider` with this turn's context.
     pub(super) async fn execute_provider(
         &self,

@@ -137,7 +137,7 @@ fn proxy_config(store: &Store) -> Result<HttpProxyConfiguration, BusinessError> 
     })
 }
 
-impl Agent {
+impl AgentRuntime {
     pub async fn activate_mcp_project(
         &self,
         project_id: &str,

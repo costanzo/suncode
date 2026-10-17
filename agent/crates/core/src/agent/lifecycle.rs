@@ -1,8 +1,8 @@
-//! Part of the `Agent` implementation; see `agent/mod.rs`.
+//! Part of the `AgentRuntime` implementation; see `agent/mod.rs`.
 
 use super::*;
 
-impl Agent {
+impl AgentRuntime {
     pub(super) fn ensure_running(&self) -> Result<(), BusinessError> {
         if self
             .shutting_down
@@ -339,9 +339,13 @@ impl Agent {
                 let session_lock = agent.session_lock(&continuation.session_id).await;
                 let _guard = session_lock.lock().await;
                 let result = if is_question {
-                    agent.continue_question(&mut continuation, token).await
+                    TurnLoop::new(&agent, &mut continuation, token)
+                        .continue_question()
+                        .await
                 } else {
-                    agent.continue_approved(&mut continuation, token).await
+                    TurnLoop::new(&agent, &mut continuation, token)
+                        .continue_approved()
+                        .await
                 };
                 let suspended_again = result
                     .as_ref()

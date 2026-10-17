@@ -90,7 +90,7 @@ fn computer_enablement_desired(store: &Store) -> bool {
         .unwrap_or(false)
 }
 
-pub(super) fn apply_computer_enablement(agent: &Agent, enabled: bool) -> SdkResult<()> {
+pub(super) fn apply_computer_enablement(agent: &AgentRuntime, enabled: bool) -> SdkResult<()> {
     if enabled && !agent.computer_runtime_info().backend_available {
         let runtime = agent.computer_runtime_info();
         if runtime.input_permission == "denied" {

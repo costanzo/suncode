@@ -12,7 +12,7 @@ use suncode_common::{BusinessError, HttpProxyConfiguration, HttpProxyMode};
 use suncode_config::Config;
 use suncode_config::PersistedSettings;
 use suncode_core::{
-    agent::{Agent, AgentHostCapabilities},
+    agent::{AgentRuntime, AgentHostCapabilities},
     AgentLock, AttentionEventHub, CheckpointItemRestoredPayload, CheckpointRestoreFailedPayload,
     CheckpointRestoredPayload, EventPayload, SessionEventHub,
 };
@@ -65,7 +65,7 @@ pub(crate) struct AgentState {
     use_system_certificates: Arc<AtomicBool>,
     certificate_path: Arc<RwLock<Option<PathBuf>>>,
     proxy_configuration: Arc<RwLock<HttpProxyConfiguration>>,
-    agent: Agent,
+    agent: AgentRuntime,
     providers: Arc<ModelProviderRegistry>,
     credential_overrides: std::collections::BTreeMap<String, String>,
     host_capabilities: SdkHostCapabilities,
@@ -333,7 +333,7 @@ where
     configure_providers(&mut providers)
         .map_err(|error| BusinessError::new("provider_registration_failed", error.to_string()))?;
     let providers = Arc::new(providers);
-    let agent = Agent::new_with_user_id_and_capabilities_and_config(
+    let agent = AgentRuntime::new_with_user_id_and_capabilities_and_config(
         store.clone(),
         providers.clone(),
         operations.clone(),
