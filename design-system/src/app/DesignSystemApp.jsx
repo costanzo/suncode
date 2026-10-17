@@ -173,6 +173,9 @@ const routes = {
   "/projects/desktop/settings/language-servers/basedpyright": () => (
     <SettingsPage initialPage="lsp" initialLanguageServerId="basedpyright" />
   ),
+  "/projects/desktop/settings/language-servers/rust-analyzer": () => (
+    <SettingsPage initialPage="lsp" initialLanguageServerId="rust-analyzer" />
+  ),
   "/projects/desktop/settings/agents": () => <SettingsPage initialPage="agents" />,
   "/projects/desktop/workspace": WorkspacePage,
   "/projects/desktop/workspace/sessions": WorkspaceSessionsPage,

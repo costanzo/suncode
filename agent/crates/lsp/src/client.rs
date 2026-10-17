@@ -22,13 +22,14 @@ use suncode_common::BusinessError;
 use tokio::{
     io::{AsyncBufRead, AsyncRead, AsyncReadExt, AsyncWrite, BufReader},
     process::{Child, Command},
-    sync::{oneshot, Mutex, RwLock},
+    sync::{oneshot, Mutex, Notify, RwLock},
 };
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
 const MAX_DIAGNOSTICS_PER_DOCUMENT: usize = 1_000;
 const MAX_DOCUMENT_BYTES: usize = 4 * 1024 * 1024;
+const MAX_STDERR_BYTES: usize = 8 * 1024;
 
 #[derive(Debug, Clone)]
 struct OpenDocument {
@@ -49,6 +50,10 @@ struct Inner {
     request_timeout: Duration,
     configuration: Value,
     secret_values: Vec<String>,
+    stderr_tail: Mutex<Vec<u8>>,
+    stderr_capture_started: AtomicBool,
+    stderr_capture_complete: AtomicBool,
+    stderr_complete: Notify,
     /// Cancelled when `Inner` is dropped so the read loop can stop waiting.
     released: CancellationToken,
 }
@@ -97,9 +102,7 @@ pub async fn connect(config: ConnectionConfig, root: &Path) -> Result<Client, Bu
             "Language server stdout is unavailable",
         )
     })?;
-    if let Some(stderr) = child.stderr.take() {
-        tokio::spawn(drain_stderr(stderr));
-    }
+    let stderr = child.stderr.take();
     let client = Client::from_io(
         stdout,
         stdin,
@@ -108,6 +111,9 @@ pub async fn connect(config: ConnectionConfig, root: &Path) -> Result<Client, Bu
         config.configuration.clone(),
         config.environment.values().cloned().collect(),
     );
+    if let Some(stderr) = stderr {
+        client.capture_stderr(stderr);
+    }
     let root_uri = Url::from_directory_path(root).map_err(|_| {
         lsp_error(
             "lsp_root_invalid",
@@ -163,6 +169,10 @@ impl Client {
             request_timeout,
             configuration,
             secret_values,
+            stderr_tail: Mutex::new(Vec::new()),
+            stderr_capture_started: AtomicBool::new(false),
+            stderr_capture_complete: AtomicBool::new(false),
+            stderr_complete: Notify::new(),
             released: CancellationToken::new(),
         });
         tokio::spawn(read_loop(
@@ -171,6 +181,16 @@ impl Client {
             inner.released.clone(),
         ));
         Self { inner }
+    }
+
+    fn capture_stderr<R>(&self, stderr: R)
+    where
+        R: AsyncRead + Unpin + Send + 'static,
+    {
+        self.inner
+            .stderr_capture_started
+            .store(true, Ordering::Release);
+        tokio::spawn(drain_stderr(stderr, Arc::downgrade(&self.inner)));
     }
 
     async fn initialize(
@@ -511,11 +531,8 @@ where
             Ok(Some(value)) => handle_incoming(&inner, value).await,
             Ok(None) => {
                 inner.closed.store(true, Ordering::SeqCst);
-                fail_pending(
-                    &inner,
-                    lsp_error("lsp_connection_closed", "Language server closed stdout"),
-                )
-                .await;
+                let message = connection_closed_message(&inner).await;
+                fail_pending(&inner, lsp_error("lsp_connection_closed", message)).await;
                 return;
             }
             Err(error) => {
@@ -640,17 +657,63 @@ fn bound_array(mut values: Vec<Value>, limit: usize) -> Vec<Value> {
     values
 }
 
-async fn drain_stderr<R>(mut stderr: R)
+async fn connection_closed_message(inner: &Inner) -> String {
+    if inner.stderr_capture_started.load(Ordering::Acquire)
+        && !inner.stderr_capture_complete.load(Ordering::Acquire)
+    {
+        let notified = inner.stderr_complete.notified();
+        if !inner.stderr_capture_complete.load(Ordering::Acquire) {
+            let _ = tokio::time::timeout(Duration::from_millis(50), notified).await;
+        }
+    }
+    let stderr = inner.stderr_tail.lock().await;
+    if stderr.is_empty() {
+        return "Language server closed stdout".into();
+    }
+    let stderr = String::from_utf8_lossy(&stderr);
+    format!(
+        "Language server closed stdout: {}",
+        redact(stderr.trim(), inner.secret_values.iter())
+    )
+}
+
+async fn drain_stderr<R>(mut stderr: R, inner: Weak<Inner>)
 where
     R: AsyncRead + Unpin,
 {
     let mut buffer = [0_u8; 8 * 1024];
     loop {
         match stderr.read(&mut buffer).await {
-            Ok(0) | Err(_) => return,
-            Ok(_) => {}
+            Ok(0) | Err(_) => break,
+            Ok(read) => {
+                let Some(inner) = inner.upgrade() else {
+                    return;
+                };
+                let mut tail = inner.stderr_tail.lock().await;
+                append_bounded_tail(&mut tail, &buffer[..read]);
+            }
         }
     }
+    if let Some(inner) = inner.upgrade() {
+        inner.stderr_capture_complete.store(true, Ordering::Release);
+        inner.stderr_complete.notify_one();
+    }
+}
+
+fn append_bounded_tail(tail: &mut Vec<u8>, bytes: &[u8]) {
+    if bytes.len() >= MAX_STDERR_BYTES {
+        tail.clear();
+        tail.extend_from_slice(&bytes[bytes.len() - MAX_STDERR_BYTES..]);
+        return;
+    }
+    let overflow = tail
+        .len()
+        .saturating_add(bytes.len())
+        .saturating_sub(MAX_STDERR_BYTES);
+    if overflow > 0 {
+        tail.drain(..overflow);
+    }
+    tail.extend_from_slice(bytes);
 }
 
 #[cfg(test)]
@@ -881,6 +944,48 @@ mod tests {
             Err(error) => error,
         };
         assert_eq!(error.code, "lsp_process_start_failed");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn startup_failure_includes_redacted_server_stderr() {
+        let root = tempfile::tempdir().unwrap();
+        let result = connect(
+            ConnectionConfig {
+                command: "/bin/sh".into(),
+                arguments: vec![
+                    "-c".into(),
+                    "echo \"rust-analyzer component unavailable for $TOKEN\" >&2; exit 1".into(),
+                ],
+                working_directory: root.path().to_path_buf(),
+                environment: BTreeMap::from([("TOKEN".into(), "private-value".into())]),
+                initialization_options: json!({}),
+                configuration: json!({}),
+                startup_timeout: Duration::from_secs(1),
+                request_timeout: Duration::from_secs(1),
+            },
+            root.path(),
+        )
+        .await;
+        let error = match result {
+            Ok(_) => panic!("failing language server unexpectedly started"),
+            Err(error) => error,
+        };
+        assert_eq!(error.code, "lsp_connection_closed");
+        assert!(error
+            .message
+            .contains("rust-analyzer component unavailable"));
+        assert!(error.message.contains("[redacted]"));
+        assert!(!error.message.contains("private-value"));
+    }
+
+    #[test]
+    fn stderr_tail_keeps_only_the_bounded_suffix() {
+        let mut tail = b"old".to_vec();
+        let bytes = vec![b'x'; MAX_STDERR_BYTES + 10];
+        append_bounded_tail(&mut tail, &bytes);
+        assert_eq!(tail.len(), MAX_STDERR_BYTES);
+        assert!(tail.iter().all(|byte| *byte == b'x'));
     }
 
     #[tokio::test]

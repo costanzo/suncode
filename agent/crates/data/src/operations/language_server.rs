@@ -76,7 +76,7 @@ fn validate_input(input: &LanguageServerInput) -> Result<(), BusinessError> {
         ));
     }
     let config = &input.config;
-    if !matches!(config.version, 1 | 2 | 3 | 4) {
+    if !matches!(config.version, 1 | 2 | 3 | 4 | 5) {
         return Err(BusinessError::invalid(
             "Language server configuration version is unsupported",
         ));

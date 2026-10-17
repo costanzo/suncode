@@ -10,7 +10,7 @@ use suncode_data::{
 };
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 21;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 22;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -372,6 +372,50 @@ pub struct BasedpyrightLanguageServerConfigurationDto {
     pub config_path: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RustAnalyzerLanguageServerWriteRequest {
+    pub executable: String,
+    #[serde(default)]
+    pub root_markers: Vec<String>,
+    #[serde(default)]
+    pub feature_mode: String,
+    #[serde(default)]
+    pub features: Vec<String>,
+    pub all_targets: bool,
+    pub build_scripts: bool,
+    pub proc_macros: bool,
+    pub check_on_save: bool,
+    #[serde(default)]
+    pub check_command: String,
+    #[serde(default)]
+    pub target_mode: String,
+    #[serde(default)]
+    pub target: Option<String>,
+    #[serde(default)]
+    pub environment: Option<LanguageServerEnvironmentChanges>,
+    pub startup_timeout_seconds: u64,
+    pub request_timeout_seconds: u64,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RustAnalyzerLanguageServerConfigurationDto {
+    pub executable: String,
+    pub detected_rust_version: Option<String>,
+    pub detected_cargo_version: Option<String>,
+    pub feature_mode: String,
+    pub features: Vec<String>,
+    pub all_targets: bool,
+    pub build_scripts: bool,
+    pub proc_macros: bool,
+    pub check_on_save: bool,
+    pub check_command: String,
+    pub target_mode: String,
+    pub target: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LanguageServerDto {
@@ -388,6 +432,8 @@ pub struct LanguageServerDto {
     pub vtsls: Option<VtslsLanguageServerConfigurationDto>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub basedpyright: Option<BasedpyrightLanguageServerConfigurationDto>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rust_analyzer: Option<RustAnalyzerLanguageServerConfigurationDto>,
     pub project_configurable: bool,
     pub command: String,
     pub arguments: Vec<String>,

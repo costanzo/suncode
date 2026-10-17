@@ -2,7 +2,10 @@ use super::*;
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use suncode_data::{LanguageServerConfig, LanguageServerInput, LanguageServerRecord};
+use suncode_data::{
+    LanguageServerConfig, LanguageServerInput, LanguageServerRecord,
+    RustAnalyzerLanguageServerConfig,
+};
 
 const JDTLS_KIND: &str = "jdtls";
 const JDTLS_DISPLAY_NAME: &str = "Eclipse JDT Language Server";
@@ -31,6 +34,11 @@ const BASEDPYRIGHT_ROOT_MARKERS: &[&str] = &[
     "setup.cfg",
     "requirements.txt",
 ];
+const RUST_ANALYZER_KIND: &str = "rust-analyzer";
+const RUST_ANALYZER_DISPLAY_NAME: &str = "rust-analyzer";
+const RUST_ANALYZER_DESCRIPTION: &str =
+    "Rust diagnostics, definitions, references, hover details, and symbols.";
+const RUST_ANALYZER_ROOT_MARKERS: &[&str] = &["Cargo.toml", "rust-project.json"];
 
 impl AsyncAgentSdk {
     pub async fn start_language_server_project(
@@ -58,6 +66,7 @@ impl AsyncAgentSdk {
                     self.unscoped_jdtls_dto(),
                     self.unscoped_vtsls_dto(),
                     self.unscoped_basedpyright_dto(),
+                    self.unscoped_rust_analyzer_dto(),
                 ],
             });
         };
@@ -83,8 +92,15 @@ impl AsyncAgentSdk {
         let basedpyright = self
             .basedpyright_dto(project_id, &project.canonical_root, basedpyright_record)
             .await?;
+        let rust_analyzer_record = self
+            .state
+            .store
+            .language_server_for_project(project_id, RUST_ANALYZER_KIND)?;
+        let rust_analyzer = self
+            .rust_analyzer_dto(project_id, &project.canonical_root, rust_analyzer_record)
+            .await?;
         Ok(LanguageServersResult {
-            servers: vec![jdtls, vtsls, basedpyright],
+            servers: vec![jdtls, vtsls, basedpyright, rust_analyzer],
         })
     }
 
@@ -184,6 +200,7 @@ impl AsyncAgentSdk {
                 type_checking_mode: None,
                 config_path_mode: None,
                 config_path: None,
+                rust_analyzer: None,
             },
             enabled: request.enabled,
             sort_order: 0,
@@ -288,6 +305,7 @@ impl AsyncAgentSdk {
                 type_checking_mode: None,
                 config_path_mode: None,
                 config_path: None,
+                rust_analyzer: None,
             },
             enabled: request.enabled,
             sort_order: 10,
@@ -388,6 +406,7 @@ impl AsyncAgentSdk {
                 type_checking_mode: Some(type_checking_mode.into()),
                 config_path_mode: Some(config_path_mode.into()),
                 config_path,
+                rust_analyzer: None,
             },
             enabled: request.enabled,
             sort_order: 20,
@@ -413,6 +432,112 @@ impl AsyncAgentSdk {
             .reconcile_language_server(project_id, BASEDPYRIGHT_KIND)
             .await?;
         self.basedpyright_dto(project_id, &project.canonical_root, Some(record))
+            .await
+    }
+
+    pub async fn configure_rust_analyzer_language_server(
+        &self,
+        project_id: &str,
+        expected_revision: u64,
+        idempotency_key: &str,
+        request: RustAnalyzerLanguageServerWriteRequest,
+    ) -> SdkResult<LanguageServerDto> {
+        let project = self.project_for_user(project_id)?;
+        require_idempotency_key(idempotency_key)?;
+        validate_rust_analyzer_request(&request)?;
+        let current = self
+            .state
+            .store
+            .language_server_for_project(project_id, RUST_ANALYZER_KIND)?;
+        let environment = apply_environment_changes(
+            current
+                .as_ref()
+                .map(|record| record.config.environment.clone())
+                .unwrap_or_default(),
+            request.environment,
+        )?;
+        let feature_mode = normalize_cargo_feature_mode(&request.feature_mode)?;
+        let features = normalize_cargo_features(feature_mode, request.features)?;
+        let check_command = normalize_rust_check_command(&request.check_command)?;
+        let target_mode = normalize_rust_target_mode(&request.target_mode)?;
+        let target = (target_mode == "custom")
+            .then(|| optional_trimmed(request.target))
+            .flatten();
+        let executable = request.executable.trim().to_string();
+        let rust_analyzer = RustAnalyzerLanguageServerConfig {
+            executable: executable.clone(),
+            feature_mode: feature_mode.into(),
+            features: features.clone(),
+            all_targets: request.all_targets,
+            build_scripts: request.build_scripts,
+            proc_macros: request.proc_macros,
+            check_on_save: request.check_on_save,
+            check_command: check_command.into(),
+            target_mode: target_mode.into(),
+            target: target.clone(),
+        };
+        let input = LanguageServerInput {
+            display_name: format!("{RUST_ANALYZER_DISPLAY_NAME} [{project_id}]"),
+            config: LanguageServerConfig {
+                version: 5,
+                project_id: Some(project_id.to_string()),
+                server_kind: Some(RUST_ANALYZER_KIND.into()),
+                command: executable,
+                arguments: Vec::new(),
+                language_ids: vec!["rust".into()],
+                root_markers: if request.root_markers.is_empty() {
+                    RUST_ANALYZER_ROOT_MARKERS
+                        .iter()
+                        .map(|value| (*value).into())
+                        .collect()
+                } else {
+                    request.root_markers
+                },
+                initialization_options: json!({}),
+                configuration: rust_analyzer_configuration(&rust_analyzer),
+                environment,
+                startup_timeout_seconds: request.startup_timeout_seconds,
+                request_timeout_seconds: request.request_timeout_seconds,
+                java_home: None,
+                data_path_mode: None,
+                data_path: None,
+                vtsls_executable: None,
+                node_path: None,
+                typescript_sdk_mode: None,
+                typescript_sdk_path: None,
+                max_ts_server_memory: None,
+                basedpyright_executable: None,
+                python_path: None,
+                diagnostic_mode: None,
+                type_checking_mode: None,
+                config_path_mode: None,
+                config_path: None,
+                rust_analyzer: Some(rust_analyzer),
+            },
+            enabled: request.enabled,
+            sort_order: 30,
+        };
+        let record = match current {
+            Some(current) => self.state.store.update_language_server(
+                &current.language_server_id,
+                expected_revision,
+                &input,
+            )?,
+            None if expected_revision == 0 => self.state.store.create_language_server(
+                &project_language_server_id(project_id, RUST_ANALYZER_KIND),
+                &input,
+            )?,
+            None => return Err(BusinessError::missing("language_server")),
+        };
+        self.state
+            .agent
+            .activate_language_server_project(project_id, Path::new(&project.canonical_root))
+            .await?;
+        self.state
+            .agent
+            .reconcile_language_server(project_id, RUST_ANALYZER_KIND)
+            .await?;
+        self.rust_analyzer_dto(project_id, &project.canonical_root, Some(record))
             .await
     }
 
@@ -476,6 +601,22 @@ impl AsyncAgentSdk {
                 )
                 .await
             }
+            RUST_ANALYZER_KIND => {
+                let request = match current.as_ref() {
+                    Some(record) => rust_analyzer_request_from_record(record, enabled),
+                    None => self.default_rust_analyzer_request(
+                        Some(Path::new(&project.canonical_root)),
+                        enabled,
+                    ),
+                };
+                self.configure_rust_analyzer_language_server(
+                    project_id,
+                    expected_revision,
+                    idempotency_key,
+                    request,
+                )
+                .await
+            }
             _ => Err(BusinessError::missing("language_server")),
         }
     }
@@ -488,7 +629,7 @@ impl AsyncAgentSdk {
         let project = self.project_for_user(project_id)?;
         if !matches!(
             language_server_id,
-            JDTLS_KIND | VTSLS_KIND | BASEDPYRIGHT_KIND
+            JDTLS_KIND | VTSLS_KIND | BASEDPYRIGHT_KIND | RUST_ANALYZER_KIND
         ) {
             return Err(BusinessError::missing("language_server"));
         }
@@ -511,6 +652,10 @@ impl AsyncAgentSdk {
             }
             BASEDPYRIGHT_KIND => {
                 self.basedpyright_dto(project_id, &project.canonical_root, record)
+                    .await
+            }
+            RUST_ANALYZER_KIND => {
+                self.rust_analyzer_dto(project_id, &project.canonical_root, record)
                     .await
             }
             _ => unreachable!(),
@@ -611,6 +756,7 @@ impl AsyncAgentSdk {
             detected_java_home: detected_java_home.clone(),
             vtsls: None,
             basedpyright: None,
+            rust_analyzer: None,
             project_configurable: true,
             command: if record.revision == 0 {
                 detected_command.unwrap_or_else(|| "jdtls".into())
@@ -681,6 +827,7 @@ impl AsyncAgentSdk {
                 type_checking_mode: None,
                 config_path_mode: None,
                 config_path: None,
+                rust_analyzer: None,
             },
             enabled: false,
             sort_order: 0,
@@ -705,6 +852,7 @@ impl AsyncAgentSdk {
             detected_java_home: detected_java_home.clone(),
             vtsls: None,
             basedpyright: None,
+            rust_analyzer: None,
             project_configurable: false,
             command: detected_executable.unwrap_or_else(|| "jdtls".into()),
             arguments: Vec::new(),
@@ -812,6 +960,7 @@ impl AsyncAgentSdk {
                 max_ts_server_memory: record.config.max_ts_server_memory.unwrap_or(3072),
             }),
             basedpyright: None,
+            rust_analyzer: None,
             project_configurable: true,
             command: executable,
             arguments: record.config.arguments.clone(),
@@ -889,6 +1038,7 @@ impl AsyncAgentSdk {
                 type_checking_mode: None,
                 config_path_mode: None,
                 config_path: None,
+                rust_analyzer: None,
             },
             enabled: false,
             sort_order: 10,
@@ -931,6 +1081,7 @@ impl AsyncAgentSdk {
                 max_ts_server_memory: 3072,
             }),
             basedpyright: None,
+            rust_analyzer: None,
             project_configurable: false,
             command: executable,
             arguments: vec!["--stdio".into()],
@@ -1044,6 +1195,7 @@ impl AsyncAgentSdk {
                     .unwrap_or_else(|| "automatic".into()),
                 config_path: record.config.config_path.clone(),
             }),
+            rust_analyzer: None,
             project_configurable: true,
             command: executable,
             arguments: vec!["--stdio".into()],
@@ -1116,6 +1268,7 @@ impl AsyncAgentSdk {
                 type_checking_mode: Some("recommended".into()),
                 config_path_mode: Some("automatic".into()),
                 config_path: None,
+                rust_analyzer: None,
             },
             enabled: false,
             sort_order: 20,
@@ -1155,6 +1308,7 @@ impl AsyncAgentSdk {
                 config_path_mode: "automatic".into(),
                 config_path: None,
             }),
+            rust_analyzer: None,
             project_configurable: false,
             command: executable,
             arguments: vec!["--stdio".into()],
@@ -1202,6 +1356,246 @@ impl AsyncAgentSdk {
             config_path: None,
             environment: None,
             startup_timeout_seconds: 60,
+            request_timeout_seconds: 30,
+            enabled,
+        }
+    }
+
+    async fn rust_analyzer_dto(
+        &self,
+        project_id: &str,
+        project_root: &str,
+        record: Option<LanguageServerRecord>,
+    ) -> SdkResult<LanguageServerDto> {
+        let project_root_path = Path::new(project_root);
+        let host_detection = detect_rust_analyzer(Some(project_root_path));
+        let configured_detection = record.as_ref().and_then(|record| {
+            detect_rust_analyzer_version(&record.config.command, Some(project_root_path))
+                .map(|version| (record.config.command.clone(), version))
+        });
+        let detection = configured_detection.or(host_detection);
+        let default = self.default_rust_analyzer_record(project_id, project_root_path);
+        let record = record.unwrap_or(default);
+        let runtime = self
+            .state
+            .agent
+            .language_server_runtime_status(Some(project_id), &record)
+            .await;
+        let settings = record
+            .config
+            .rust_analyzer
+            .clone()
+            .unwrap_or_else(default_rust_analyzer_config);
+        let detected_executable = detection.as_ref().map(|(path, _)| path.clone());
+        let detected_version = detection.as_ref().map(|(_, version)| version.clone());
+        Ok(LanguageServerDto {
+            language_server_id: RUST_ANALYZER_KIND.into(),
+            kind: RUST_ANALYZER_KIND.into(),
+            display_name: RUST_ANALYZER_DISPLAY_NAME.into(),
+            description: RUST_ANALYZER_DESCRIPTION.into(),
+            language: "Rust".into(),
+            detected: detection.is_some(),
+            detected_version,
+            detected_executable: detected_executable.clone(),
+            detected_java_home: None,
+            vtsls: None,
+            basedpyright: None,
+            rust_analyzer: Some(RustAnalyzerLanguageServerConfigurationDto {
+                executable: settings.executable.clone(),
+                detected_rust_version: detect_tool_version(
+                    "rustc",
+                    "rustc ",
+                    Some(project_root_path),
+                ),
+                detected_cargo_version: detect_tool_version(
+                    "cargo",
+                    "cargo ",
+                    Some(project_root_path),
+                ),
+                feature_mode: settings.feature_mode.clone(),
+                features: settings.features.clone(),
+                all_targets: settings.all_targets,
+                build_scripts: settings.build_scripts,
+                proc_macros: settings.proc_macros,
+                check_on_save: settings.check_on_save,
+                check_command: settings.check_command.clone(),
+                target_mode: settings.target_mode.clone(),
+                target: settings.target.clone(),
+            }),
+            project_configurable: true,
+            command: if record.revision == 0 {
+                detected_executable.unwrap_or(settings.executable)
+            } else {
+                record.config.command.clone()
+            },
+            arguments: Vec::new(),
+            language_ids: vec!["rust".into()],
+            root_markers: record.config.root_markers.clone(),
+            initialization_options: json!({}),
+            environment_keys: record.config.environment.keys().cloned().collect(),
+            startup_timeout_seconds: record.config.startup_timeout_seconds,
+            request_timeout_seconds: record.config.request_timeout_seconds,
+            java_home: None,
+            data_path_mode: String::new(),
+            data_path: String::new(),
+            matched_root_marker: record
+                .config
+                .root_markers
+                .iter()
+                .find(|marker| Path::new(project_root).join(marker).exists())
+                .cloned(),
+            enabled: record.enabled,
+            sort_order: 30,
+            revision: record.revision,
+            runtime_status: runtime.state,
+            capability_count: runtime.capability_count,
+            error: runtime.error,
+            created_at: record.created_at,
+            updated_at: record.updated_at,
+        })
+    }
+
+    fn default_rust_analyzer_record(
+        &self,
+        project_id: &str,
+        project_root: &Path,
+    ) -> LanguageServerRecord {
+        let request = self.default_rust_analyzer_request(Some(project_root), false);
+        let settings = RustAnalyzerLanguageServerConfig {
+            executable: request.executable.clone(),
+            feature_mode: "default".into(),
+            features: Vec::new(),
+            all_targets: true,
+            build_scripts: true,
+            proc_macros: true,
+            check_on_save: true,
+            check_command: "check".into(),
+            target_mode: "host".into(),
+            target: None,
+        };
+        LanguageServerRecord {
+            language_server_id: project_language_server_id(project_id, RUST_ANALYZER_KIND),
+            display_name: format!("{RUST_ANALYZER_DISPLAY_NAME} [{project_id}]"),
+            config: LanguageServerConfig {
+                version: 5,
+                project_id: Some(project_id.into()),
+                server_kind: Some(RUST_ANALYZER_KIND.into()),
+                command: request.executable,
+                arguments: Vec::new(),
+                language_ids: vec!["rust".into()],
+                root_markers: request.root_markers,
+                initialization_options: json!({}),
+                configuration: rust_analyzer_configuration(&settings),
+                environment: BTreeMap::new(),
+                startup_timeout_seconds: request.startup_timeout_seconds,
+                request_timeout_seconds: request.request_timeout_seconds,
+                java_home: None,
+                data_path_mode: None,
+                data_path: None,
+                vtsls_executable: None,
+                node_path: None,
+                typescript_sdk_mode: None,
+                typescript_sdk_path: None,
+                max_ts_server_memory: None,
+                basedpyright_executable: None,
+                python_path: None,
+                diagnostic_mode: None,
+                type_checking_mode: None,
+                config_path_mode: None,
+                config_path: None,
+                rust_analyzer: Some(settings),
+            },
+            enabled: false,
+            sort_order: 30,
+            revision: 0,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
+
+    fn unscoped_rust_analyzer_dto(&self) -> LanguageServerDto {
+        let detection = detect_rust_analyzer(None);
+        let executable = detection
+            .as_ref()
+            .map(|(path, _)| path.clone())
+            .unwrap_or_else(|| "rust-analyzer".into());
+        LanguageServerDto {
+            language_server_id: RUST_ANALYZER_KIND.into(),
+            kind: RUST_ANALYZER_KIND.into(),
+            display_name: RUST_ANALYZER_DISPLAY_NAME.into(),
+            description: RUST_ANALYZER_DESCRIPTION.into(),
+            language: "Rust".into(),
+            detected: detection.is_some(),
+            detected_version: detection.as_ref().map(|(_, version)| version.clone()),
+            detected_executable: detection.as_ref().map(|(path, _)| path.clone()),
+            detected_java_home: None,
+            vtsls: None,
+            basedpyright: None,
+            rust_analyzer: Some(RustAnalyzerLanguageServerConfigurationDto {
+                executable: executable.clone(),
+                detected_rust_version: detect_tool_version("rustc", "rustc ", None),
+                detected_cargo_version: detect_tool_version("cargo", "cargo ", None),
+                feature_mode: "default".into(),
+                features: Vec::new(),
+                all_targets: true,
+                build_scripts: true,
+                proc_macros: true,
+                check_on_save: true,
+                check_command: "check".into(),
+                target_mode: "host".into(),
+                target: None,
+            }),
+            project_configurable: false,
+            command: executable,
+            arguments: Vec::new(),
+            language_ids: vec!["rust".into()],
+            root_markers: RUST_ANALYZER_ROOT_MARKERS
+                .iter()
+                .map(|value| (*value).into())
+                .collect(),
+            initialization_options: json!({}),
+            environment_keys: Vec::new(),
+            startup_timeout_seconds: 120,
+            request_timeout_seconds: 30,
+            java_home: None,
+            data_path_mode: String::new(),
+            data_path: String::new(),
+            matched_root_marker: None,
+            enabled: false,
+            sort_order: 30,
+            revision: 0,
+            runtime_status: suncode_core::LanguageServerRuntimeState::NotStarted,
+            capability_count: 0,
+            error: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
+
+    fn default_rust_analyzer_request(
+        &self,
+        project_root: Option<&Path>,
+        enabled: bool,
+    ) -> RustAnalyzerLanguageServerWriteRequest {
+        RustAnalyzerLanguageServerWriteRequest {
+            executable: detect_rust_analyzer(project_root)
+                .map(|(path, _)| path)
+                .unwrap_or_else(|| "rust-analyzer".into()),
+            root_markers: RUST_ANALYZER_ROOT_MARKERS
+                .iter()
+                .map(|value| (*value).into())
+                .collect(),
+            feature_mode: "default".into(),
+            features: Vec::new(),
+            all_targets: true,
+            build_scripts: true,
+            proc_macros: true,
+            check_on_save: true,
+            check_command: "check".into(),
+            target_mode: "host".into(),
+            target: None,
+            environment: None,
+            startup_timeout_seconds: 120,
             request_timeout_seconds: 30,
             enabled,
         }
@@ -1347,6 +1741,176 @@ fn basedpyright_request_from_record(
         request_timeout_seconds: record.config.request_timeout_seconds,
         enabled,
     }
+}
+
+fn rust_analyzer_request_from_record(
+    record: &LanguageServerRecord,
+    enabled: bool,
+) -> RustAnalyzerLanguageServerWriteRequest {
+    let settings = record
+        .config
+        .rust_analyzer
+        .clone()
+        .unwrap_or_else(default_rust_analyzer_config);
+    RustAnalyzerLanguageServerWriteRequest {
+        executable: settings.executable,
+        root_markers: record.config.root_markers.clone(),
+        feature_mode: settings.feature_mode,
+        features: settings.features,
+        all_targets: settings.all_targets,
+        build_scripts: settings.build_scripts,
+        proc_macros: settings.proc_macros,
+        check_on_save: settings.check_on_save,
+        check_command: settings.check_command,
+        target_mode: settings.target_mode,
+        target: settings.target,
+        environment: None,
+        startup_timeout_seconds: record.config.startup_timeout_seconds,
+        request_timeout_seconds: record.config.request_timeout_seconds,
+        enabled,
+    }
+}
+
+fn default_rust_analyzer_config() -> RustAnalyzerLanguageServerConfig {
+    RustAnalyzerLanguageServerConfig {
+        executable: "rust-analyzer".into(),
+        feature_mode: "default".into(),
+        features: Vec::new(),
+        all_targets: true,
+        build_scripts: true,
+        proc_macros: true,
+        check_on_save: true,
+        check_command: "check".into(),
+        target_mode: "host".into(),
+        target: None,
+    }
+}
+
+fn validate_rust_analyzer_request(
+    request: &RustAnalyzerLanguageServerWriteRequest,
+) -> SdkResult<()> {
+    if request.executable.trim().is_empty()
+        || request.executable.chars().count() > 2_048
+        || request.executable.contains('\0')
+    {
+        return Err(BusinessError::invalid(
+            "rust-analyzer executable is required and must not exceed 2048 characters",
+        ));
+    }
+    let feature_mode = normalize_cargo_feature_mode(&request.feature_mode)?;
+    normalize_cargo_features(feature_mode, request.features.clone())?;
+    normalize_rust_check_command(&request.check_command)?;
+    let target_mode = normalize_rust_target_mode(&request.target_mode)?;
+    if target_mode == "custom" {
+        let target = request
+            .target
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| BusinessError::invalid("Custom Rust target triple is required"))?;
+        if target.chars().count() > 255
+            || target.contains('\0')
+            || !target
+                .chars()
+                .all(|value| value.is_ascii_alphanumeric() || matches!(value, '-' | '_' | '.'))
+        {
+            return Err(BusinessError::invalid(
+                "Custom Rust target triple is invalid",
+            ));
+        }
+    }
+    if !(1..=120).contains(&request.startup_timeout_seconds)
+        || !(1..=600).contains(&request.request_timeout_seconds)
+    {
+        return Err(BusinessError::invalid(
+            "Language server timeout is outside the supported range",
+        ));
+    }
+    Ok(())
+}
+
+fn normalize_cargo_feature_mode(value: &str) -> SdkResult<&'static str> {
+    match value.trim() {
+        "" | "default" => Ok("default"),
+        "all" => Ok("all"),
+        "custom" => Ok("custom"),
+        _ => Err(BusinessError::invalid(
+            "Cargo feature mode must be default, all, or custom",
+        )),
+    }
+}
+
+fn normalize_cargo_features(mode: &str, features: Vec<String>) -> SdkResult<Vec<String>> {
+    if mode != "custom" {
+        return Ok(Vec::new());
+    }
+    if features.len() > 128 {
+        return Err(BusinessError::invalid(
+            "Cargo feature list exceeds the supported bound",
+        ));
+    }
+    let mut normalized = Vec::with_capacity(features.len());
+    let mut seen = HashSet::new();
+    for feature in features {
+        let feature = feature.trim();
+        if feature.is_empty()
+            || feature.chars().count() > 128
+            || feature.contains('\0')
+            || !seen.insert(feature.to_string())
+        {
+            return Err(BusinessError::invalid(
+                "Cargo features must be unique non-empty names",
+            ));
+        }
+        normalized.push(feature.to_string());
+    }
+    Ok(normalized)
+}
+
+fn normalize_rust_check_command(value: &str) -> SdkResult<&'static str> {
+    match value.trim() {
+        "" | "check" => Ok("check"),
+        "clippy" => Ok("clippy"),
+        _ => Err(BusinessError::invalid(
+            "rust-analyzer check command must be check or clippy",
+        )),
+    }
+}
+
+fn normalize_rust_target_mode(value: &str) -> SdkResult<&'static str> {
+    match value.trim() {
+        "" | "host" => Ok("host"),
+        "custom" => Ok("custom"),
+        _ => Err(BusinessError::invalid(
+            "Rust target mode must be host or custom",
+        )),
+    }
+}
+
+fn rust_analyzer_configuration(settings: &RustAnalyzerLanguageServerConfig) -> serde_json::Value {
+    let features = if settings.feature_mode == "all" {
+        serde_json::Value::String("all".into())
+    } else {
+        json!(settings.features)
+    };
+    let mut configuration = json!({
+        "rust-analyzer": {
+            "cargo": {
+                "features": features,
+                "noDefaultFeatures": false,
+                "allTargets": settings.all_targets,
+                "buildScripts": {"enable": settings.build_scripts}
+            },
+            "procMacro": {"enable": settings.proc_macros},
+            "checkOnSave": settings.check_on_save,
+            "check": {"command": settings.check_command}
+        }
+    });
+    if settings.target_mode == "custom" {
+        configuration["rust-analyzer"]["cargo"]["target"] =
+            serde_json::Value::String(settings.target.clone().unwrap_or_default());
+    }
+    configuration
 }
 
 fn validate_basedpyright_request(
@@ -1656,6 +2220,94 @@ fn detect_basedpyright(project_root: Option<&Path>) -> Option<String> {
             })
         })
         .map(|path| path.to_string_lossy().into_owned())
+}
+
+fn detect_rust_analyzer(project_root: Option<&Path>) -> Option<(String, String)> {
+    let name = if cfg!(windows) {
+        "rust-analyzer.exe"
+    } else {
+        "rust-analyzer"
+    };
+    let mut candidates = Vec::new();
+    if let Some(path) = find_on_path(name) {
+        candidates.push(path);
+    }
+    candidates.extend(
+        [
+            "/opt/homebrew/opt/rustup/bin",
+            "/opt/homebrew/bin",
+            "/usr/local/bin",
+        ]
+        .into_iter()
+        .map(|directory| Path::new(directory).join(name)),
+    );
+    if let Some(home) = std::env::var_os("HOME") {
+        candidates.push(Path::new(&home).join(".cargo/bin").join(name));
+    }
+    if let Some(path) = rustup_which_rust_analyzer(project_root) {
+        candidates.push(path);
+    }
+    let mut seen = HashSet::new();
+    candidates.into_iter().find_map(|path| {
+        let display = path.to_string_lossy().into_owned();
+        if !path.is_file() || !seen.insert(display.clone()) {
+            return None;
+        }
+        detect_rust_analyzer_version(&display, project_root).map(|version| (display, version))
+    })
+}
+
+fn rustup_which_rust_analyzer(project_root: Option<&Path>) -> Option<PathBuf> {
+    let rustup = find_on_path(if cfg!(windows) {
+        "rustup.exe"
+    } else {
+        "rustup"
+    })?;
+    let mut command = std::process::Command::new(rustup);
+    command.args(["which", "rust-analyzer"]);
+    if let Some(project_root) = project_root {
+        command.current_dir(project_root);
+    }
+    let output = command.output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|value| PathBuf::from(value.trim()))
+        .filter(|value| value.is_file())
+}
+
+fn detect_rust_analyzer_version(executable: &str, project_root: Option<&Path>) -> Option<String> {
+    detect_tool_version(executable, "rust-analyzer ", project_root)
+}
+
+fn detect_tool_version(
+    executable: &str,
+    prefix: &str,
+    project_root: Option<&Path>,
+) -> Option<String> {
+    let mut command = std::process::Command::new(executable);
+    command.arg("--version");
+    if let Some(project_root) = project_root {
+        command.current_dir(project_root);
+    }
+    let output = command.output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let value = if output.stdout.is_empty() {
+        output.stderr
+    } else {
+        output.stdout
+    };
+    let value = String::from_utf8(value).ok()?;
+    value
+        .trim()
+        .strip_prefix(prefix)
+        .and_then(|value| value.split_whitespace().next())
+        .map(str::to_string)
+        .filter(|value| !value.is_empty())
 }
 
 fn detect_python(project_root: Option<&Path>) -> Option<String> {

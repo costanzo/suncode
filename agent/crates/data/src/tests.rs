@@ -1235,6 +1235,7 @@ fn language_server_crud_preserves_configuration_and_enforces_revisions() {
             type_checking_mode: None,
             config_path_mode: None,
             config_path: None,
+            rust_analyzer: None,
         },
         enabled: true,
         sort_order: 0,
@@ -1299,6 +1300,7 @@ fn language_server_version_two_json_defaults_new_runtime_configuration_fields() 
     assert!(config.type_checking_mode.is_none());
     assert!(config.config_path_mode.is_none());
     assert!(config.config_path.is_none());
+    assert!(config.rust_analyzer.is_none());
 }
 
 #[test]
@@ -1333,6 +1335,7 @@ fn language_server_validation_rejects_unsafe_configuration() {
             type_checking_mode: None,
             config_path_mode: None,
             config_path: None,
+            rust_analyzer: None,
         },
         enabled: true,
         sort_order: 0,
@@ -1374,6 +1377,7 @@ fn language_server_validation_rejects_unsafe_configuration() {
             type_checking_mode: None,
             config_path_mode: None,
             config_path: None,
+            rust_analyzer: None,
         },
         enabled: true,
         sort_order: i64::from(i32::MAX) + 1,

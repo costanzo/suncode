@@ -16,21 +16,33 @@ const statusLabels = {
   not_started: "Not started",
 };
 
-function ServerSwitch({ server, onToggle, compact = false, disabled = false }) {
+function SettingsSwitch({ checked, onChange, label, disabled = false, compact = false }) {
   return (
     <label className={`settings-switch ${compact ? "lsp-server-switch" : ""}`}>
       <input
         type="checkbox"
-        checked={server.enabled}
-        disabled={disabled || server.status === "indexing"}
-        onChange={(event) => onToggle(event.target.checked)}
-        aria-label={`${server.enabled ? "Disable" : "Enable"} ${server.name} for this project`}
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        aria-label={label}
       />
       <span className="settings-switch-track">
         <span />
       </span>
-      <b>{server.enabled ? "On" : "Off"}</b>
+      <b>{checked ? "On" : "Off"}</b>
     </label>
+  );
+}
+
+function ServerSwitch({ server, onToggle, compact = false, disabled = false }) {
+  return (
+    <SettingsSwitch
+      checked={server.enabled}
+      disabled={disabled || server.status === "indexing"}
+      onChange={onToggle}
+      label={`${server.enabled ? "Disable" : "Enable"} ${server.name} for this project`}
+      compact={compact}
+    />
   );
 }
 
@@ -909,6 +921,328 @@ function BasedpyrightSettings({ server, onBack, onSave, onRetry }) {
   );
 }
 
+function RustAnalyzerSettings({ server, onBack, onSave, onRetry }) {
+  const [draft, setDraft] = useState(server);
+  const [detecting, setDetecting] = useState(false);
+  const update = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(server);
+
+  useEffect(() => setDraft(server), [server]);
+
+  const detectInstallation = () => {
+    setDetecting(true);
+    window.setTimeout(() => {
+      setDraft((current) => ({
+        ...current,
+        detected: true,
+        executable: "/opt/homebrew/opt/rustup/bin/rust-analyzer",
+        toolchainVersion: "Rust 1.95.0 · Cargo 1.95.0",
+        version: "1.95.0",
+      }));
+      setDetecting(false);
+    }, 650);
+  };
+
+  const featureHint =
+    draft.featureMode === "all"
+      ? "Activates every Cargo feature while rust-analyzer loads the project."
+      : draft.featureMode === "custom"
+        ? "Activates only the listed Cargo features in addition to default features."
+        : "Uses the default Cargo feature set declared by the project.";
+  const targetHint =
+    draft.targetMode === "custom"
+      ? "Analyzes the project for a specific Rust target triple."
+      : "Uses the host target reported by the selected Rust toolchain.";
+
+  return (
+    <div className="settings-panel-content settings-lsp-content lsp-detail-content">
+      <button type="button" className="lsp-back-button" onClick={onBack}>
+        <Icon name="chevron-right" size={13} />
+        Language servers
+      </button>
+      <div className="lsp-detail-heading">
+        <div className="lsp-server-mark" aria-hidden="true">
+          <Icon name="file-code" size={20} />
+        </div>
+        <div>
+          <h2>{server.name}</h2>
+          <p>Project configuration for Rust semantic analysis.</p>
+        </div>
+        <RuntimeStatus server={server} />
+      </div>
+
+      {server.status === "failed" && (
+        <div className="lsp-error-banner" role="alert">
+          <Icon name="warning" size={16} />
+          <div>
+            <strong>rust-analyzer could not start</strong>
+            <span>{server.error}</span>
+          </div>
+          <Button size="sm" onClick={onRetry} icon="refresh">
+            Retry
+          </Button>
+        </div>
+      )}
+
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Project availability</span>
+        <SettingRow
+          label="Enable for suncode"
+          hint="Starts one rust-analyzer process for Rust files in this project."
+        >
+          <ServerSwitch server={draft} onToggle={(enabled) => update("enabled", enabled)} />
+        </SettingRow>
+        <SettingRow label="Project detection" hint="Matched against the opened project root.">
+          <span className="lsp-inline-status is-ready">
+            <span className="settings-status-dot" />
+            Matched <code>{server.matchedRootMarker}</code>
+          </span>
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <div className="lsp-section-heading">
+          <span className="settings-section-label">Installation</span>
+          <Button size="sm" onClick={detectInstallation} disabled={detecting} icon="search">
+            {detecting ? "Detecting…" : "Detect again"}
+          </Button>
+        </div>
+        <SettingRow
+          label="rust-analyzer executable"
+          hint="The rust-analyzer executable SunCode starts over standard input and output."
+        >
+          <div className="lsp-path-control">
+            <input
+              className="field mono"
+              value={draft.executable}
+              onChange={(event) => update("executable", event.target.value)}
+              spellCheck="false"
+              aria-label="rust-analyzer executable path"
+            />
+            <button
+              type="button"
+              aria-label="Choose rust-analyzer executable"
+              title="Choose executable"
+            >
+              <Icon name="folder" size={14} />
+            </button>
+          </div>
+        </SettingRow>
+        <SettingRow
+          label="Detected toolchain"
+          hint="Read-only versions reported by the Rust toolchain available to this project."
+        >
+          <span className="lsp-toolchain-summary">
+            <span className="settings-status-dot" />
+            <code>{draft.toolchainVersion}</code>
+          </span>
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Project matching</span>
+        <SettingRow
+          label="Root markers"
+          hint="One file name per line. The first match identifies a Rust project."
+        >
+          <textarea
+            className="field mono lsp-multiline-field"
+            value={draft.rootMarkers}
+            onChange={(event) => update("rootMarkers", event.target.value)}
+            spellCheck="false"
+            aria-label="rust-analyzer project root markers"
+          />
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Cargo analysis</span>
+        <SettingRow label="Cargo features" hint={featureHint}>
+          <SingleDropdown
+            options={[
+              { value: "default", label: "Default features" },
+              { value: "all", label: "All features" },
+              { value: "custom", label: "Custom features" },
+            ]}
+            value={draft.featureMode}
+            onChange={(value) => update("featureMode", value)}
+            ariaLabel="rust-analyzer Cargo features"
+            className="settings-dropdown"
+            wide
+          />
+        </SettingRow>
+        {draft.featureMode === "custom" && (
+          <div className="settings-subsection">
+            <span className="settings-subsection-label">Custom features</span>
+            <SettingRow
+              label="Feature names"
+              hint="One Cargo feature per line. Default features remain enabled."
+            >
+              <textarea
+                className="field mono lsp-multiline-field"
+                value={draft.customFeatures}
+                onChange={(event) => update("customFeatures", event.target.value)}
+                placeholder="feature-name"
+                spellCheck="false"
+                aria-label="Custom Cargo features"
+              />
+            </SettingRow>
+          </div>
+        )}
+        <SettingRow
+          label="All targets"
+          hint="Loads library, binary, example, test, and benchmark targets from Cargo."
+        >
+          <SettingsSwitch
+            checked={draft.allTargets}
+            onChange={(value) => update("allTargets", value)}
+            label="Analyze all Cargo targets"
+          />
+        </SettingRow>
+        <SettingRow
+          label="Build scripts"
+          hint="Runs Cargo build scripts to discover generated code and compiler settings."
+        >
+          <SettingsSwitch
+            checked={draft.buildScripts}
+            onChange={(value) => update("buildScripts", value)}
+            label="Run Cargo build scripts"
+          />
+        </SettingRow>
+        <SettingRow
+          label="Procedural macros"
+          hint="Expands procedural macros for more accurate semantic results."
+        >
+          <SettingsSwitch
+            checked={draft.procMacros}
+            onChange={(value) => update("procMacros", value)}
+            label="Enable procedural macro expansion"
+          />
+        </SettingRow>
+      </div>
+
+      <div className="settings-divider" />
+      <div className="settings-panel-section">
+        <span className="settings-section-label">Diagnostics</span>
+        <SettingRow
+          label="Check on save"
+          hint="Runs the selected Cargo command after a Rust file is saved."
+        >
+          <SettingsSwitch
+            checked={draft.checkOnSave}
+            onChange={(value) => update("checkOnSave", value)}
+            label="Run Cargo diagnostics on save"
+          />
+        </SettingRow>
+        <SettingRow
+          label="Check command"
+          hint="Clippy adds lint diagnostics and may take longer than Cargo check."
+        >
+          <SingleDropdown
+            options={[
+              { value: "check", label: "Cargo check" },
+              { value: "clippy", label: "Clippy" },
+            ]}
+            value={draft.checkCommand}
+            onChange={(value) => update("checkCommand", value)}
+            ariaLabel="rust-analyzer check command"
+            className="settings-dropdown"
+            wide
+          />
+        </SettingRow>
+        <SettingRow label="Compilation target" hint={targetHint}>
+          <SingleDropdown
+            options={[
+              { value: "host", label: "Host toolchain target" },
+              { value: "custom", label: "Custom target" },
+            ]}
+            value={draft.targetMode}
+            onChange={(value) => update("targetMode", value)}
+            ariaLabel="rust-analyzer compilation target"
+            className="settings-dropdown"
+            wide
+          />
+        </SettingRow>
+        {draft.targetMode === "custom" && (
+          <div className="settings-subsection">
+            <span className="settings-subsection-label">Custom target</span>
+            <SettingRow
+              label="Target triple"
+              hint="Use a target installed for the selected Rust toolchain."
+            >
+              <input
+                className="field mono"
+                value={draft.customTarget}
+                onChange={(event) => update("customTarget", event.target.value)}
+                placeholder="wasm32-unknown-unknown"
+                spellCheck="false"
+                aria-label="Custom Rust target triple"
+              />
+            </SettingRow>
+          </div>
+        )}
+      </div>
+
+      <details className="lsp-advanced-settings">
+        <summary>Advanced configuration</summary>
+        <div className="lsp-advanced-content">
+          <SettingRow
+            label="Environment"
+            hint="One NAME=value entry per line. Values are stored locally and hidden after saving."
+          >
+            <textarea
+              className="field mono lsp-multiline-field"
+              value={draft.environment}
+              onChange={(event) => update("environment", event.target.value)}
+              placeholder="NAME=value"
+              spellCheck="false"
+              aria-label="rust-analyzer environment variables"
+            />
+          </SettingRow>
+          <SettingRow label="Startup timeout">
+            <span className="settings-unit-field">
+              <input
+                className="field mono"
+                type="number"
+                min="1"
+                max="120"
+                value={draft.startupTimeout}
+                onChange={(event) => update("startupTimeout", event.target.value)}
+              />
+              <span>SEC</span>
+            </span>
+          </SettingRow>
+          <SettingRow label="Request timeout">
+            <span className="settings-unit-field">
+              <input
+                className="field mono"
+                type="number"
+                min="1"
+                max="600"
+                value={draft.requestTimeout}
+                onChange={(event) => update("requestTimeout", event.target.value)}
+              />
+              <span>SEC</span>
+            </span>
+          </SettingRow>
+        </div>
+      </details>
+
+      <div className="lsp-detail-actions">
+        <Button size="sm" disabled={!isDirty} onClick={() => setDraft(server)}>
+          Reset changes
+        </Button>
+        <Button variant="primary" size="sm" disabled={!isDirty} onClick={() => onSave(draft)}>
+          Save configuration
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function LanguageServersPanel({
   servers,
   setServers,
@@ -995,6 +1329,9 @@ export function LanguageServersPanel({
     if (selectedServer.kind === "vtsls") return <VtslsSettings {...detailProps} />;
     if (selectedServer.kind === "basedpyright") {
       return <BasedpyrightSettings {...detailProps} />;
+    }
+    if (selectedServer.kind === "rust-analyzer") {
+      return <RustAnalyzerSettings {...detailProps} />;
     }
     return <JdtlsSettings {...detailProps} />;
   }

@@ -29,6 +29,13 @@ public sealed partial class LanguageServersSettingsControl : UserControl
     private readonly SCComboBoxItem _allCheckingOption;
     private readonly SCComboBoxItem _automaticConfigOption;
     private readonly SCComboBoxItem _customConfigOption;
+    private readonly SCComboBoxItem _defaultCargoFeaturesOption;
+    private readonly SCComboBoxItem _allCargoFeaturesOption;
+    private readonly SCComboBoxItem _customCargoFeaturesOption;
+    private readonly SCComboBoxItem _cargoCheckOption;
+    private readonly SCComboBoxItem _clippyOption;
+    private readonly SCComboBoxItem _hostRustTargetOption;
+    private readonly SCComboBoxItem _customRustTargetOption;
 
     public LanguageServersSettingsControl()
     {
@@ -61,6 +68,20 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         _customConfigOption = new(L("LocCustomLocation", "Custom location"), "custom");
         ConfigPathModeSelector.ItemsSource = [_automaticConfigOption, _customConfigOption];
         ConfigPathModeSelector.SelectedItem = _automaticConfigOption;
+        _defaultCargoFeaturesOption = new(L("LocDefaultFeatures", "Default features"), "default");
+        _allCargoFeaturesOption = new(L("LocAllFeatures", "All features"), "all");
+        _customCargoFeaturesOption = new(L("LocCustomFeatures", "Custom features"), "custom");
+        CargoFeatureModeSelector.ItemsSource =
+            [_defaultCargoFeaturesOption, _allCargoFeaturesOption, _customCargoFeaturesOption];
+        CargoFeatureModeSelector.SelectedItem = _defaultCargoFeaturesOption;
+        _cargoCheckOption = new(L("LocCargoCheck", "Cargo check"), "check");
+        _clippyOption = new(L("LocClippy", "Clippy"), "clippy");
+        RustCheckCommandSelector.ItemsSource = [_cargoCheckOption, _clippyOption];
+        RustCheckCommandSelector.SelectedItem = _cargoCheckOption;
+        _hostRustTargetOption = new(L("LocHostToolchainTarget", "Host toolchain target"), "host");
+        _customRustTargetOption = new(L("LocCustomTarget", "Custom target"), "custom");
+        RustTargetModeSelector.ItemsSource = [_hostRustTargetOption, _customRustTargetOption];
+        RustTargetModeSelector.SelectedItem = _hostRustTargetOption;
         WireDirtyTracking();
     }
 
@@ -113,6 +134,8 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             NodePathInput.Text = refreshed.DetectedNodePath;
         if (refreshed.IsBasedpyright && !string.IsNullOrWhiteSpace(refreshed.DetectedPythonPath))
             PythonPathInput.Text = refreshed.DetectedPythonPath;
+        if (refreshed.IsRustAnalyzer)
+            RustToolchainText.Text = RustToolchainLabel(refreshed);
     }
 
     private async void RetryClicked(object? sender, RoutedEventArgs e)
@@ -153,6 +176,26 @@ public sealed partial class LanguageServersSettingsControl : UserControl
                 IsCustomTypeScriptSdk ? NullIfEmpty(TypeScriptSdkPathInput.Text) : null,
                 Lines(RootMarkersInput.Text),
                 (ulong)(TsServerMemoryInput.Value ?? 3072),
+                environment,
+                startup,
+                request,
+                EnabledToggle.IsChecked == true);
+        }
+        else if (_selected.IsRustAnalyzer)
+        {
+            saved = await ViewModel.SaveRustAnalyzerAsync(
+                _selected,
+                ExecutableInput.Text?.Trim() ?? string.Empty,
+                Lines(RootMarkersInput.Text),
+                CargoFeatureMode,
+                IsCustomCargoFeatures ? Lines(CargoFeaturesInput.Text) : [],
+                AllTargetsToggle.IsChecked == true,
+                BuildScriptsToggle.IsChecked == true,
+                ProcMacrosToggle.IsChecked == true,
+                CheckOnSaveToggle.IsChecked == true,
+                RustCheckCommand,
+                RustTargetMode,
+                IsCustomRustTarget ? NullIfEmpty(RustTargetInput.Text) : null,
                 environment,
                 startup,
                 request,
@@ -243,6 +286,12 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             ValidationText.Text = "A custom basedpyright configuration location is required.";
             return false;
         }
+        if (_selected?.IsRustAnalyzer == true && IsCustomRustTarget
+            && string.IsNullOrWhiteSpace(RustTargetInput.Text))
+        {
+            ValidationText.Text = "A custom Rust target triple is required.";
+            return false;
+        }
         if (StartupTimeoutInput.Value is not { } startupValue || startupValue is < 1 or > 120
             || RequestTimeoutInput.Value is not { } requestValue || requestValue is < 1 or > 600)
         {
@@ -298,48 +347,68 @@ public sealed partial class LanguageServersSettingsControl : UserControl
                 : $"Matched  {item.MatchedRootMarker}";
             var isVtsls = item.IsVtsls;
             var isBasedpyright = item.IsBasedpyright;
-            DetailSubtitle.Text = isBasedpyright
+            var isRustAnalyzer = item.IsRustAnalyzer;
+            DetailSubtitle.Text = isRustAnalyzer
+                ? L("LocProjectRustAnalysis", "Project configuration for Rust semantic analysis.")
+                : isBasedpyright
                 ? L("LocProjectPythonAnalysis", "Project configuration for Python semantic analysis.")
                 : isVtsls
                     ? L("LocProjectJavaScriptTypeScriptAnalysis", "Project JavaScript and TypeScript analysis")
                     : L("LocProjectJavaAnalysis", "Project Java analysis");
-            EnableHint.Text = isBasedpyright
+            EnableHint.Text = isRustAnalyzer
+                ? L("LocEnableRustAnalyzerHint", "Starts one rust-analyzer process for Rust files in this project.")
+                : isBasedpyright
                 ? L("LocEnableBasedpyrightHint", "Starts one basedpyright process for Python files in this project.")
                 : isVtsls
                     ? L("LocEnableVtslsHint", "Starts one vtsls process for JavaScript and TypeScript files in this project.")
                     : L("LocEnableJdtlsHint", "Starts one jdtls process and keeps a separate index for this project.");
-            ExecutableLabel.Text = isBasedpyright
+            ExecutableLabel.Text = isRustAnalyzer
+                ? L("LocRustAnalyzerExecutable", "rust-analyzer executable")
+                : isBasedpyright
                 ? L("LocBasedpyrightExecutable", "basedpyright executable")
                 : isVtsls
                     ? L("LocVtslsExecutable", "vtsls executable")
                     : L("LocJdtlsExecutable", "jdtls executable");
-            ExecutableHint.Text = isBasedpyright
+            ExecutableHint.Text = isRustAnalyzer
+                ? L("LocRustAnalyzerExecutableHint", "The rust-analyzer executable SunCode starts over standard input and output.")
+                : isBasedpyright
                 ? L("LocBasedpyrightExecutableHint", "The basedpyright-langserver executable SunCode starts with --stdio.")
                 : isVtsls
                     ? L("LocVtslsExecutableHint", "The @vtsls/language-server executable SunCode starts with --stdio.")
                     : L("LocJdtlsExecutableHint", "Executable used for this project.");
-            ExecutableInput.DialogTitle = isBasedpyright
+            ExecutableInput.DialogTitle = isRustAnalyzer
+                ? "Choose rust-analyzer executable"
+                : isBasedpyright
                 ? "Choose basedpyright executable"
                 : isVtsls ? "Choose vtsls executable" : "Choose jdtls executable";
-            RootMarkersHint.Text = isBasedpyright
+            RootMarkersHint.Text = isRustAnalyzer
+                ? L("LocRustRootMarkersHint", "The first match identifies a Rust project.")
+                : isBasedpyright
                 ? L("LocPythonRootMarkersHint", "The first match identifies a Python project.")
                 : isVtsls
                     ? L("LocVtslsRootMarkersHint", "The first match identifies a JavaScript or TypeScript project.")
                     : L("LocJdtlsRootMarkersHint", "The first match identifies a Java project.");
-            ProjectConfigurationLabel.Text = isBasedpyright
+            ProjectConfigurationLabel.Text = isBasedpyright || isRustAnalyzer
                 ? L("LocProjectMatchingCaps", "PROJECT MATCHING")
                 : L("LocProjectIndexCaps", "PROJECT INDEX");
             JavaRuntimeRow.IsVisible = item.IsJdtls;
             NodeRuntimeRow.IsVisible = isVtsls;
+            RustToolchainRow.IsVisible = isRustAnalyzer;
             PythonEnvironmentDivider.IsVisible = isBasedpyright;
             PythonEnvironmentSection.IsVisible = isBasedpyright;
             PythonAnalysisDivider.IsVisible = isBasedpyright;
             PythonAnalysisSection.IsVisible = isBasedpyright;
+            RustCargoDivider.IsVisible = isRustAnalyzer;
+            RustCargoSection.IsVisible = isRustAnalyzer;
+            RustDiagnosticsDivider.IsVisible = isRustAnalyzer;
+            RustDiagnosticsSection.IsVisible = isRustAnalyzer;
             DataPathModeRow.IsVisible = item.IsJdtls;
             DataPathRow.IsVisible = item.IsJdtls;
             TypeScriptSdkModeRow.IsVisible = isVtsls;
             TsServerMemoryRow.IsVisible = isVtsls;
-            ExecutableInput.Text = isBasedpyright
+            ExecutableInput.Text = isRustAnalyzer
+                ? item.RustAnalyzerExecutable
+                : isBasedpyright
                 ? item.BasedpyrightExecutable
                 : isVtsls ? item.VtslsExecutable : item.Command;
             JavaHomeInput.Text = item.JavaHome ?? string.Empty;
@@ -347,6 +416,7 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             NodeRuntimeHint.Text = string.IsNullOrWhiteSpace(item.DetectedNodeVersion)
                 ? L("LocNodeRuntimeHint", "vtsls requires Node.js 18 or newer.")
                 : $"Node.js {item.DetectedNodeVersion} detected. vtsls requires version 18 or newer.";
+            RustToolchainText.Text = RustToolchainLabel(item);
             PythonPathInput.Text = item.PythonPath ?? string.Empty;
             PythonInterpreterHint.Text = string.IsNullOrWhiteSpace(item.DetectedPythonVersion)
                 ? L("LocPythonInterpreterHint", "Used to resolve installed packages and infer the target Python version.")
@@ -381,6 +451,24 @@ public sealed partial class LanguageServersSettingsControl : UserControl
                 ? _customConfigOption
                 : _automaticConfigOption;
             ConfigPathInput.Text = item.ConfigPath ?? string.Empty;
+            CargoFeatureModeSelector.SelectedItem = item.CargoFeatureMode switch
+            {
+                "all" => _allCargoFeaturesOption,
+                "custom" => _customCargoFeaturesOption,
+                _ => _defaultCargoFeaturesOption
+            };
+            CargoFeaturesInput.Text = string.Join(Environment.NewLine, item.CargoFeatures);
+            AllTargetsToggle.IsChecked = item.AllCargoTargets;
+            BuildScriptsToggle.IsChecked = item.BuildScripts;
+            ProcMacrosToggle.IsChecked = item.ProcMacros;
+            CheckOnSaveToggle.IsChecked = item.CheckOnSave;
+            RustCheckCommandSelector.SelectedItem = item.RustCheckCommand == "clippy"
+                ? _clippyOption
+                : _cargoCheckOption;
+            RustTargetModeSelector.SelectedItem = item.RustTargetMode == "custom"
+                ? _customRustTargetOption
+                : _hostRustTargetOption;
+            RustTargetInput.Text = item.RustTarget ?? string.Empty;
             EnvironmentInput.Text = string.Empty;
             EnvironmentInput.PlaceholderText = item.EnvironmentKeys.Count > 0
                 ? $"Stored keys: {string.Join(", ", item.EnvironmentKeys)}"
@@ -391,6 +479,7 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             UpdateDataPathMode();
             UpdateTypeScriptSdkMode();
             UpdateBasedpyrightOptions();
+            UpdateRustOptions();
         }
         finally
         {
@@ -403,7 +492,9 @@ public sealed partial class LanguageServersSettingsControl : UserControl
     private void UpdateRuntimePresentation(LanguageServerItem item)
     {
         DetailTitle.Text = item.DisplayName;
-        FailureTitle.Text = item.IsBasedpyright
+        FailureTitle.Text = item.IsRustAnalyzer
+            ? L("LocRustAnalyzerCouldNotStart", "rust-analyzer could not start")
+            : item.IsBasedpyright
             ? L("LocBasedpyrightCouldNotStart", "basedpyright could not start")
             : item.IsVtsls
                 ? L("LocVtslsCouldNotStart", "vtsls could not start")
@@ -441,6 +532,12 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         UpdateDirtyState();
     }
 
+    private void RustOptionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        UpdateRustOptions();
+        UpdateDirtyState();
+    }
+
     private bool IsCustomDataPath =>
         string.Equals(DataPathModeSelector.SelectedItem?.Value as string, "custom", StringComparison.Ordinal);
 
@@ -459,6 +556,19 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         ConfigPathModeSelector.SelectedItem?.Value as string ?? "automatic";
 
     private bool IsCustomConfigPath => ConfigPathMode == "custom";
+
+    private string CargoFeatureMode =>
+        CargoFeatureModeSelector.SelectedItem?.Value as string ?? "default";
+
+    private bool IsCustomCargoFeatures => CargoFeatureMode == "custom";
+
+    private string RustCheckCommand =>
+        RustCheckCommandSelector.SelectedItem?.Value as string ?? "check";
+
+    private string RustTargetMode =>
+        RustTargetModeSelector.SelectedItem?.Value as string ?? "host";
+
+    private bool IsCustomRustTarget => RustTargetMode == "custom";
 
     private void UpdateDataPathMode()
     {
@@ -485,6 +595,23 @@ public sealed partial class LanguageServersSettingsControl : UserControl
             : L("LocAutomaticConfigHint", "Finds pyproject.toml or pyrightconfig.json from the project root.");
     }
 
+    private void UpdateRustOptions()
+    {
+        CustomCargoFeaturesRow.IsVisible = _selected?.IsRustAnalyzer == true && IsCustomCargoFeatures;
+        CargoFeaturesInput.IsEnabled = IsCustomCargoFeatures;
+        CargoFeaturesHint.Text = CargoFeatureMode switch
+        {
+            "all" => L("LocAllCargoFeaturesHint", "Activates every Cargo feature while rust-analyzer loads the project."),
+            "custom" => L("LocCustomCargoFeaturesHint", "Activates only the listed Cargo features in addition to default features."),
+            _ => L("LocDefaultCargoFeaturesHint", "Uses the default Cargo feature set declared by the project.")
+        };
+        CustomRustTargetRow.IsVisible = _selected?.IsRustAnalyzer == true && IsCustomRustTarget;
+        RustTargetInput.IsEnabled = IsCustomRustTarget;
+        RustTargetModeHint.Text = IsCustomRustTarget
+            ? L("LocCustomRustTargetHint", "Analyzes the project for a specific Rust target triple.")
+            : L("LocHostRustTargetHint", "Uses the host target reported by the selected Rust toolchain.");
+    }
+
     private void WireDirtyTracking()
     {
         EnabledToggle.Click += (_, _) => UpdateDirtyState();
@@ -497,6 +624,12 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         TypeScriptSdkPathInput.TextChanged += (_, _) => UpdateDirtyState();
         TsServerMemoryInput.ValueChanged += (_, _) => UpdateDirtyState();
         ConfigPathInput.TextChanged += (_, _) => UpdateDirtyState();
+        CargoFeaturesInput.TextChanged += (_, _) => UpdateDirtyState();
+        AllTargetsToggle.Click += (_, _) => UpdateDirtyState();
+        BuildScriptsToggle.Click += (_, _) => UpdateDirtyState();
+        ProcMacrosToggle.Click += (_, _) => UpdateDirtyState();
+        CheckOnSaveToggle.Click += (_, _) => UpdateDirtyState();
+        RustTargetInput.TextChanged += (_, _) => UpdateDirtyState();
         EnvironmentInput.TextChanged += (_, _) => UpdateDirtyState();
         StartupTimeoutInput.ValueChanged += (_, _) => UpdateDirtyState();
         RequestTimeoutInput.ValueChanged += (_, _) => UpdateDirtyState();
@@ -526,6 +659,17 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         _selected?.IsBasedpyright == true ? TypeCheckingMode : null,
         _selected?.IsBasedpyright == true ? ConfigPathMode : null,
         _selected?.IsBasedpyright == true && IsCustomConfigPath ? NullIfEmpty(ConfigPathInput.Text) : null,
+        _selected?.IsRustAnalyzer == true ? CargoFeatureMode : null,
+        _selected?.IsRustAnalyzer == true && IsCustomCargoFeatures
+            ? string.Join('\n', Lines(CargoFeaturesInput.Text))
+            : null,
+        _selected?.IsRustAnalyzer == true ? AllTargetsToggle.IsChecked == true : null,
+        _selected?.IsRustAnalyzer == true ? BuildScriptsToggle.IsChecked == true : null,
+        _selected?.IsRustAnalyzer == true ? ProcMacrosToggle.IsChecked == true : null,
+        _selected?.IsRustAnalyzer == true ? CheckOnSaveToggle.IsChecked == true : null,
+        _selected?.IsRustAnalyzer == true ? RustCheckCommand : null,
+        _selected?.IsRustAnalyzer == true ? RustTargetMode : null,
+        _selected?.IsRustAnalyzer == true && IsCustomRustTarget ? NullIfEmpty(RustTargetInput.Text) : null,
         string.Join('\n', Lines(RootMarkersInput.Text)),
         string.Join('\n', Lines(EnvironmentInput.Text)),
         StartupTimeoutInput.Value,
@@ -533,6 +677,16 @@ public sealed partial class LanguageServersSettingsControl : UserControl
 
     private static string? NullIfEmpty(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string RustToolchainLabel(LanguageServerItem item)
+    {
+        var value = string.Join(" · ", new[]
+        {
+            string.IsNullOrWhiteSpace(item.DetectedRustVersion) ? null : $"Rust {item.DetectedRustVersion}",
+            string.IsNullOrWhiteSpace(item.DetectedCargoVersion) ? null : $"Cargo {item.DetectedCargoVersion}"
+        }.Where(version => version is not null));
+        return value.Length > 0 ? value : L("LocNotDetected", "Not detected");
+    }
 
     private static string[] Lines(string? value) => (value ?? string.Empty)
         .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -555,6 +709,15 @@ public sealed partial class LanguageServersSettingsControl : UserControl
         string? TypeCheckingMode,
         string? ConfigPathMode,
         string? ConfigPath,
+        string? CargoFeatureMode,
+        string? CargoFeatures,
+        bool? AllCargoTargets,
+        bool? BuildScripts,
+        bool? ProcMacros,
+        bool? CheckOnSave,
+        string? RustCheckCommand,
+        string? RustTargetMode,
+        string? RustTarget,
         string RootMarkers,
         string Environment,
         decimal? StartupTimeout,

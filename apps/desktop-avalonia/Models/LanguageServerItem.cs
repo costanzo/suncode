@@ -22,6 +22,7 @@ public sealed class LanguageServerItem : ObservableObject
     public bool IsJdtls => Kind == "jdtls";
     public bool IsVtsls => Kind == "vtsls";
     public bool IsBasedpyright => Kind == "basedpyright";
+    public bool IsRustAnalyzer => Kind == "rust-analyzer";
     public VtslsLanguageServerConfiguration? Vtsls => Server.Vtsls;
     public string VtslsExecutable => Vtsls?.Executable ?? Command;
     public string NodePath => Vtsls?.NodePath ?? string.Empty;
@@ -39,6 +40,19 @@ public sealed class LanguageServerItem : ObservableObject
     public string TypeCheckingMode => Basedpyright?.TypeCheckingMode ?? "recommended";
     public string ConfigPathMode => Basedpyright?.ConfigPathMode ?? "automatic";
     public string? ConfigPath => Basedpyright?.ConfigPath;
+    public RustAnalyzerLanguageServerConfiguration? RustAnalyzer => Server.RustAnalyzer;
+    public string RustAnalyzerExecutable => RustAnalyzer?.Executable ?? Command;
+    public string? DetectedRustVersion => RustAnalyzer?.DetectedRustVersion;
+    public string? DetectedCargoVersion => RustAnalyzer?.DetectedCargoVersion;
+    public string CargoFeatureMode => RustAnalyzer?.FeatureMode ?? "default";
+    public IReadOnlyList<string> CargoFeatures => RustAnalyzer?.Features ?? [];
+    public bool AllCargoTargets => RustAnalyzer?.AllTargets ?? true;
+    public bool BuildScripts => RustAnalyzer?.BuildScripts ?? true;
+    public bool ProcMacros => RustAnalyzer?.ProcMacros ?? true;
+    public bool CheckOnSave => RustAnalyzer?.CheckOnSave ?? true;
+    public string RustCheckCommand => RustAnalyzer?.CheckCommand ?? "check";
+    public string RustTargetMode => RustAnalyzer?.TargetMode ?? "host";
+    public string? RustTarget => RustAnalyzer?.Target;
     public bool ProjectConfigurable => Server.ProjectConfigurable;
     public string Command => Server.Command;
     public IReadOnlyList<string> Arguments => Server.Arguments;

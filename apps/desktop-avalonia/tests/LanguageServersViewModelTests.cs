@@ -86,6 +86,29 @@ public sealed class LanguageServersViewModelTests
     }
 
     [Fact]
+    public void RustAnalyzerItemExposesServerSpecificConfiguration()
+    {
+        var item = new LanguageServerItem(new LanguageServer(
+            "rust-analyzer", "rust-analyzer", "rust-analyzer", "Rust semantic analysis", "Rust",
+            true, "1.95.0", "/opt/homebrew/bin/rust-analyzer", null, true,
+            "/opt/homebrew/bin/rust-analyzer", [], ["rust"], ["Cargo.toml"],
+            JsonDocument.Parse("{}").RootElement.Clone(), [], 120, 30, null, string.Empty,
+            string.Empty, "Cargo.toml", false, 30, 1, "disabled", 0, null, string.Empty,
+            string.Empty, null, null,
+            new RustAnalyzerLanguageServerConfiguration(
+                "/opt/homebrew/bin/rust-analyzer", "1.95.0", "1.95.0", "custom",
+                ["serde"], true, true, true, true, "clippy", "custom",
+                "wasm32-unknown-unknown")));
+
+        Assert.True(item.IsRustAnalyzer);
+        Assert.Equal("custom", item.CargoFeatureMode);
+        Assert.Equal(["serde"], item.CargoFeatures);
+        Assert.True(item.AllCargoTargets);
+        Assert.Equal("clippy", item.RustCheckCommand);
+        Assert.Equal("wasm32-unknown-unknown", item.RustTarget);
+    }
+
+    [Fact]
     public async Task MutationsFailWithoutSdkAndLeaveStateUntouched()
     {
         var host = new FakeViewModelHost();

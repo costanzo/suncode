@@ -267,6 +267,39 @@ public sealed class SdkTypedModelTests
     }
 
     [Fact]
+    public void Serializes_project_rust_analyzer_request_with_typed_cargo_configuration()
+    {
+        var request = new RustAnalyzerLanguageServerWriteRequest(
+            "/opt/homebrew/bin/rust-analyzer",
+            ["Cargo.toml", "rust-project.json"],
+            ["serde", "tokio"],
+            "custom",
+            false,
+            true,
+            true,
+            true,
+            "clippy",
+            "custom",
+            "wasm32-unknown-unknown",
+            new LanguageServerEnvironmentChanges(
+                new Dictionary<string, string> { ["RUST_LOG"] = "warn" },
+                Array.Empty<string>()),
+            120,
+            30,
+            true);
+
+        var json = JsonSerializer.Serialize(request, Options);
+        using var document = JsonDocument.Parse(json);
+
+        Assert.Equal("/opt/homebrew/bin/rust-analyzer", document.RootElement.GetProperty("executable").GetString());
+        Assert.Equal("custom", document.RootElement.GetProperty("featureMode").GetString());
+        Assert.Equal("serde", document.RootElement.GetProperty("features")[0].GetString());
+        Assert.False(document.RootElement.GetProperty("allTargets").GetBoolean());
+        Assert.Equal("clippy", document.RootElement.GetProperty("checkCommand").GetString());
+        Assert.Equal("wasm32-unknown-unknown", document.RootElement.GetProperty("target").GetString());
+    }
+
+    [Fact]
     public void Serializes_proxy_configuration_with_write_only_password_patch()
     {
         var request = new ProxyConfigurationRequest(

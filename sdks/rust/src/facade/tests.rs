@@ -837,10 +837,11 @@ fn project_jdtls_sdk_redacts_environment_and_enforces_revisions() {
     let directory = tempfile::tempdir().unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
     let catalog = sdk.list_language_servers(None).unwrap();
-    assert_eq!(catalog.servers.len(), 3);
+    assert_eq!(catalog.servers.len(), 4);
     assert_eq!(catalog.servers[0].kind, "jdtls");
     assert_eq!(catalog.servers[1].kind, "vtsls");
     assert_eq!(catalog.servers[2].kind, "basedpyright");
+    assert_eq!(catalog.servers[3].kind, "rust-analyzer");
     assert!(!catalog.servers[0].project_configurable);
     assert_eq!(
         catalog.servers[0].runtime_status,
@@ -1111,6 +1112,98 @@ fn project_basedpyright_sdk_maps_settings_redacts_environment_and_isolates_proje
         .servers
         .into_iter()
         .find(|server| server.kind == "basedpyright")
+        .unwrap();
+    assert_eq!(second.revision, 0);
+    assert!(!second.enabled);
+}
+
+#[test]
+fn project_rust_analyzer_sdk_maps_settings_redacts_environment_and_isolates_projects() {
+    let directory = tempfile::tempdir().unwrap();
+    std::fs::write(directory.path().join("Cargo.toml"), "[workspace]\n").unwrap();
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    let project = sdk
+        .open_project(directory.path().to_str().unwrap(), None)
+        .unwrap();
+    let created = sdk
+        .configure_rust_analyzer_language_server(
+            &project.project_id,
+            0,
+            "rust-analyzer-create",
+            RustAnalyzerLanguageServerWriteRequest {
+                executable: "missing-rust-analyzer".into(),
+                root_markers: vec!["Cargo.toml".into()],
+                feature_mode: "custom".into(),
+                features: vec!["serde".into(), "tokio".into()],
+                all_targets: false,
+                build_scripts: true,
+                proc_macros: true,
+                check_on_save: true,
+                check_command: "clippy".into(),
+                target_mode: "custom".into(),
+                target: Some("wasm32-unknown-unknown".into()),
+                environment: Some(LanguageServerEnvironmentChanges {
+                    set: BTreeMap::from([("RUST_LOG".into(), "private-value".into())]),
+                    remove: Vec::new(),
+                }),
+                startup_timeout_seconds: 120,
+                request_timeout_seconds: 30,
+                enabled: false,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(created.kind, "rust-analyzer");
+    assert_eq!(created.environment_keys, ["RUST_LOG"]);
+    assert!(!serde_json::to_string(&created)
+        .unwrap()
+        .contains("private-value"));
+    let rust_analyzer = created.rust_analyzer.as_ref().unwrap();
+    assert_eq!(rust_analyzer.feature_mode, "custom");
+    assert_eq!(rust_analyzer.features, ["serde", "tokio"]);
+    assert!(!rust_analyzer.all_targets);
+    assert_eq!(rust_analyzer.check_command, "clippy");
+    assert_eq!(
+        rust_analyzer.target.as_deref(),
+        Some("wasm32-unknown-unknown")
+    );
+    let stored = sdk
+        .state
+        .store
+        .language_server_for_project(&project.project_id, "rust-analyzer")
+        .unwrap()
+        .unwrap();
+    assert_eq!(stored.config.version, 5);
+    assert!(stored.config.arguments.is_empty());
+    assert_eq!(stored.config.language_ids, ["rust"]);
+    assert_eq!(
+        stored.config.configuration["rust-analyzer"]["cargo"]["features"],
+        json!(["serde", "tokio"])
+    );
+    assert_eq!(
+        stored.config.configuration["rust-analyzer"]["cargo"]["allTargets"],
+        false
+    );
+    assert_eq!(
+        stored.config.configuration["rust-analyzer"]["check"]["command"],
+        "clippy"
+    );
+    assert_eq!(
+        stored.config.configuration["rust-analyzer"]["cargo"]["target"],
+        "wasm32-unknown-unknown"
+    );
+
+    let second_root = directory.path().join("second-project");
+    std::fs::create_dir_all(&second_root).unwrap();
+    let second_project = sdk
+        .open_project(second_root.to_str().unwrap(), None)
+        .unwrap();
+    let second = sdk
+        .list_language_servers(Some(&second_project.project_id))
+        .unwrap()
+        .servers
+        .into_iter()
+        .find(|server| server.kind == "rust-analyzer")
         .unwrap();
     assert_eq!(second.revision, 0);
     assert!(!second.enabled);

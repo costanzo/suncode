@@ -173,6 +173,53 @@ public sealed class LanguageServersViewModel : ObservableObject, IPolledPage
             : "basedpyright configuration saved as disabled for this project.");
     }
 
+    public async Task<bool> SaveRustAnalyzerAsync(
+        LanguageServerItem item,
+        string executable,
+        IReadOnlyList<string> rootMarkers,
+        string featureMode,
+        IReadOnlyList<string> features,
+        bool allTargets,
+        bool buildScripts,
+        bool procMacros,
+        bool checkOnSave,
+        string checkCommand,
+        string targetMode,
+        string? target,
+        LanguageServerEnvironmentChanges? environment,
+        ulong startupTimeout,
+        ulong requestTimeout,
+        bool enabled)
+    {
+        if (_host.SelectedProject is null || !await _host.EnsureSdkReadyAsync()) return false;
+        return await RunMutationAsync(item, async () =>
+        {
+            var server = await _host.Sdk!.ConfigureRustAnalyzerLanguageServerAsync(new(
+                _host.SelectedProject.ProjectId,
+                item.Revision,
+                Guid.NewGuid().ToString("N"),
+                new(
+                    executable,
+                    rootMarkers,
+                    features,
+                    featureMode,
+                    allTargets,
+                    buildScripts,
+                    procMacros,
+                    checkOnSave,
+                    checkCommand,
+                    targetMode,
+                    target,
+                    environment,
+                    startupTimeout,
+                    requestTimeout,
+                    enabled)));
+            UpsertServer(server);
+        }, enabled
+            ? "rust-analyzer configuration saved. Restarting the project language server."
+            : "rust-analyzer configuration saved as disabled for this project.");
+    }
+
     public async Task<bool> SetServerEnabledAsync(LanguageServerItem item, bool enabled)
     {
         if (_host.SelectedProject is null || !await _host.EnsureSdkReadyAsync()) return false;

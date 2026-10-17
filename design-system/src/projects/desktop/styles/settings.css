@@ -1535,6 +1535,20 @@
   color: inherit;
   font: 10px var(--font-mono);
 }
+.lsp-toolchain-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--success);
+}
+.lsp-toolchain-summary code {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font: 10px var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .lsp-section-heading .btn {
   margin-top: -8px;
 }

@@ -134,6 +134,25 @@ pub struct LanguageServerConfig {
     pub config_path_mode: Option<String>,
     #[serde(default)]
     pub config_path: Option<String>,
+    #[serde(default)]
+    pub rust_analyzer: Option<RustAnalyzerLanguageServerConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RustAnalyzerLanguageServerConfig {
+    pub executable: String,
+    pub feature_mode: String,
+    #[serde(default)]
+    pub features: Vec<String>,
+    pub all_targets: bool,
+    pub build_scripts: bool,
+    pub proc_macros: bool,
+    pub check_on_save: bool,
+    pub check_command: String,
+    pub target_mode: String,
+    #[serde(default)]
+    pub target: Option<String>,
 }
 
 fn empty_json_object() -> Value {

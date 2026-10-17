@@ -213,6 +213,20 @@ public sealed record BasedpyrightLanguageServerConfiguration(
     string ConfigPathMode,
     string? ConfigPath);
 
+public sealed record RustAnalyzerLanguageServerConfiguration(
+    string Executable,
+    string? DetectedRustVersion,
+    string? DetectedCargoVersion,
+    string FeatureMode,
+    IReadOnlyList<string> Features,
+    bool AllTargets,
+    bool BuildScripts,
+    bool ProcMacros,
+    bool CheckOnSave,
+    string CheckCommand,
+    string TargetMode,
+    string? Target);
+
 public sealed record McpServersResult(IReadOnlyList<McpServer> Servers);
 
 public sealed record McpLoadProgress(
@@ -256,7 +270,8 @@ public sealed record LanguageServer(
     string CreatedAt,
     string UpdatedAt,
     VtslsLanguageServerConfiguration? Vtsls = null,
-    BasedpyrightLanguageServerConfiguration? Basedpyright = null);
+    BasedpyrightLanguageServerConfiguration? Basedpyright = null,
+    RustAnalyzerLanguageServerConfiguration? RustAnalyzer = null);
 
 public sealed record LanguageServersResult(IReadOnlyList<LanguageServer> Servers);
 
@@ -335,6 +350,29 @@ public sealed record ConfigureBasedpyrightLanguageServerRequest(
     ulong ExpectedRevision,
     string IdempotencyKey,
     BasedpyrightLanguageServerWriteRequest Server);
+
+public sealed record RustAnalyzerLanguageServerWriteRequest(
+    string Executable,
+    IReadOnlyList<string> RootMarkers,
+    IReadOnlyList<string> Features,
+    string FeatureMode = "default",
+    bool AllTargets = true,
+    bool BuildScripts = true,
+    bool ProcMacros = true,
+    bool CheckOnSave = true,
+    string CheckCommand = "check",
+    string TargetMode = "host",
+    string? Target = null,
+    LanguageServerEnvironmentChanges? Environment = null,
+    ulong StartupTimeoutSeconds = 120,
+    ulong RequestTimeoutSeconds = 30,
+    bool Enabled = false);
+
+public sealed record ConfigureRustAnalyzerLanguageServerRequest(
+    string ProjectId,
+    ulong ExpectedRevision,
+    string IdempotencyKey,
+    RustAnalyzerLanguageServerWriteRequest Server);
 
 public sealed record CreateLanguageServerRequest(
     string? ProjectId,

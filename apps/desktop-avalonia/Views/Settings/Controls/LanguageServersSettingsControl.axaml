@@ -213,6 +213,15 @@
             <controls:SCFileSelector x:Name="NodePathInput" Grid.Column="1"
                                      SelectionMode="File" DialogTitle="Choose Node.js executable" />
           </Grid>
+          <Grid x:Name="RustToolchainRow" Classes="settings-row" ColumnDefinitions="*,220" IsVisible="False">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocDetectedToolchain}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocDetectedToolchainHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <TextBlock x:Name="RustToolchainText" Grid.Column="1" Classes="mono"
+                       FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
+                       VerticalAlignment="Center" TextWrapping="Wrap" />
+          </Grid>
         </StackPanel>
 
         <Border x:Name="PythonEnvironmentDivider" Classes="settings-divider" IsVisible="False" />
@@ -278,6 +287,91 @@
             </StackPanel>
             <controls:SCNumericInput x:Name="TsServerMemoryInput" Grid.Column="1"
                                      Minimum="512" Maximum="16384" Increment="256" Unit="MIB" />
+          </Grid>
+        </StackPanel>
+
+        <Border x:Name="RustCargoDivider" Classes="settings-divider" IsVisible="False" />
+        <StackPanel x:Name="RustCargoSection" Classes="settings-panel-section" IsVisible="False">
+          <TextBlock Text="{DynamicResource LocCargoAnalysisCaps}" Classes="section-label" />
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocCargoFeatures}" Classes="settings-row-title" />
+              <TextBlock x:Name="CargoFeaturesHint" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="CargoFeatureModeSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="RustOptionChanged" />
+          </Grid>
+          <Grid x:Name="CustomCargoFeaturesRow" Classes="settings-row" ColumnDefinitions="*,220" IsVisible="False">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocCargoFeatureNames}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocCargoFeatureNamesHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <TextBox x:Name="CargoFeaturesInput" Grid.Column="1" Classes="mono settings-proxy-bypass"
+                     AcceptsReturn="True" Height="84" TextWrapping="NoWrap" PlaceholderText="feature-name" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocAllCargoTargets}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocAllCargoTargetsHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <ToggleSwitch x:Name="AllTargetsToggle" Grid.Column="1" Classes="sc-toggle-switch settings-switch"
+                          HorizontalAlignment="Right" VerticalAlignment="Center"
+                          OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocBuildScripts}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocBuildScriptsHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <ToggleSwitch x:Name="BuildScriptsToggle" Grid.Column="1" Classes="sc-toggle-switch settings-switch"
+                          HorizontalAlignment="Right" VerticalAlignment="Center"
+                          OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocProceduralMacros}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocProceduralMacrosHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <ToggleSwitch x:Name="ProcMacrosToggle" Grid.Column="1" Classes="sc-toggle-switch settings-switch"
+                          HorizontalAlignment="Right" VerticalAlignment="Center"
+                          OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" />
+          </Grid>
+        </StackPanel>
+
+        <Border x:Name="RustDiagnosticsDivider" Classes="settings-divider" IsVisible="False" />
+        <StackPanel x:Name="RustDiagnosticsSection" Classes="settings-panel-section" IsVisible="False">
+          <TextBlock Text="{DynamicResource LocRustDiagnosticsCaps}" Classes="section-label" />
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocCheckOnSave}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocCheckOnSaveHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <ToggleSwitch x:Name="CheckOnSaveToggle" Grid.Column="1" Classes="sc-toggle-switch settings-switch"
+                          HorizontalAlignment="Right" VerticalAlignment="Center"
+                          OnContent="{DynamicResource LocOn}" OffContent="{DynamicResource LocOff}" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocCheckCommand}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocCheckCommandHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="RustCheckCommandSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="RustOptionChanged" />
+          </Grid>
+          <Grid Classes="settings-row" ColumnDefinitions="*,220">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocCompilationTarget}" Classes="settings-row-title" />
+              <TextBlock x:Name="RustTargetModeHint" Classes="settings-row-hint" />
+            </StackPanel>
+            <controls:SCFlatComboBox x:Name="RustTargetModeSelector" Grid.Column="1"
+                                     HorizontalAlignment="Stretch" SelectionChanged="RustOptionChanged" />
+          </Grid>
+          <Grid x:Name="CustomRustTargetRow" Classes="settings-row" ColumnDefinitions="*,220" IsVisible="False">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Text="{DynamicResource LocTargetTriple}" Classes="settings-row-title" />
+              <TextBlock Text="{DynamicResource LocTargetTripleHint}" Classes="settings-row-hint" />
+            </StackPanel>
+            <TextBox x:Name="RustTargetInput" Grid.Column="1" Classes="mono" PlaceholderText="wasm32-unknown-unknown" />
           </Grid>
         </StackPanel>
 
