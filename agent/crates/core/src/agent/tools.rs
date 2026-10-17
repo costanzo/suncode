@@ -239,7 +239,8 @@ impl TurnLoop<'_> {
                         self.services
                             .store
                             .session_settings(&self.context.session_id)?
-                            .full_control,
+                            .full_control
+                            .unwrap_or(false),
                     ),
                 )
             };

@@ -284,7 +284,7 @@ where
     let store = Store::open(&config.database_path)?;
     let persisted = store.persisted_settings(None, None)?;
     let runtime_config = config.runtime(&persisted).map_err(BusinessError::invalid)?;
-    let global = persisted.global();
+    let global = persisted.global;
     configure_logging(&global.log, &config.data_dir, options.log_console_output);
     let verify_https_certificates = Arc::new(AtomicBool::new(global.tls.verify_https_certificates));
     let use_system_certificates = Arc::new(AtomicBool::new(global.tls.use_system_certificates));

@@ -41,29 +41,29 @@ impl RuntimeConfig {
         source: EnvironmentSource,
         persisted: &PersistedSettings,
     ) -> Result<Self, String> {
-        let persisted = persisted.layered()?;
+        let overrides = persisted.overrides();
         let full_control = match source.bool("SUNCODE_FULL_CONTROL")? {
             Some(value) => Some(value),
-            None => persisted.full_control,
+            None => persisted.session.full_control,
         };
         let tool_allowlist = source
             .value("SUNCODE_TOOL_ALLOWLIST")
-            .or(persisted.tool_allowlist)
+            .or(overrides.tool_allowlist)
             .map(|value| parse_allowlist(&value))
             .transpose()?;
         let turn_timeout_ms = source
             .u64("SUNCODE_TURN_TIMEOUT_MS")?
-            .or(persisted.turn_timeout_ms)
+            .or(overrides.turn_timeout_ms)
             .unwrap_or(Self::DEFAULT_TURN_TIMEOUT_MS);
         validate_range("turn timeout", turn_timeout_ms, TURN_TIMEOUT_RANGE_MS)?;
         let bash_timeout_ms = source
             .u64("SUNCODE_BASH_TIMEOUT_MS")?
-            .or(persisted.bash_timeout_ms)
+            .or(overrides.bash_timeout_ms)
             .map(|value| validate_range("bash timeout", value, BASH_TIMEOUT_RANGE_MS))
             .transpose()?;
         let tool_call_limit = source
             .u64("SUNCODE_TOOL_CALL_LIMIT")?
-            .or(persisted.tool_call_limit)
+            .or(persisted.project.tool_call_limit.map(u64::from))
             .map(|value| {
                 validate_range("tool call limit", value, TOOL_CALL_LIMIT_RANGE).and_then(|v| {
                     u32::try_from(v).map_err(|_| "tool call limit is invalid".to_owned())

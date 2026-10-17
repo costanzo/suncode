@@ -12,15 +12,13 @@ fn environment_lock() -> std::sync::MutexGuard<'static, ()> {
 #[test]
 fn disabled_environment_uses_persisted_values() {
     let config = Config::load_with_environment(EnvironmentSource::Disabled).unwrap();
-    let persisted = PersistedSettings {
-        session: [("full_control".into(), Value::Bool(true))]
-            .into_iter()
-            .collect(),
-        project: [("tool_call_limit".into(), Value::Number(32.into()))]
-            .into_iter()
-            .collect(),
-        ..Default::default()
-    };
+    let mut persisted = PersistedSettings::default();
+    persisted
+        .insert("session", "full_control", &Value::Bool(true))
+        .unwrap();
+    persisted
+        .insert("project", "tool_call_limit", &Value::Number(32.into()))
+        .unwrap();
     let runtime = config.runtime(&persisted).unwrap();
     assert_eq!(runtime.full_control, Some(true));
     assert_eq!(runtime.tool_call_limit, Some(32));
@@ -33,12 +31,10 @@ fn process_environment_overrides_persisted_values() {
     std::env::set_var("SUNCODE_TOOL_ALLOWLIST", "read,bash");
     std::env::set_var("SUNCODE_TOOL_CALL_LIMIT", "12");
     let config = Config::load_with_environment(EnvironmentSource::Process).unwrap();
-    let persisted = PersistedSettings {
-        session: [("full_control".into(), Value::Bool(true))]
-            .into_iter()
-            .collect(),
-        ..Default::default()
-    };
+    let mut persisted = PersistedSettings::default();
+    persisted
+        .insert("session", "full_control", &Value::Bool(true))
+        .unwrap();
     let runtime = config.runtime(&persisted).unwrap();
     assert_eq!(runtime.full_control, Some(false));
     assert_eq!(runtime.tool_call_limit, Some(12));

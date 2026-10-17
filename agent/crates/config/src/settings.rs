@@ -6,7 +6,7 @@
 //! typed views below instead of looking values up by name.
 
 use serde_json::Value;
-use std::{collections::BTreeMap, path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr};
 use suncode_common::{HttpProxyConfiguration, HttpProxyMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -158,152 +158,107 @@ fn join_or(items: &[&str]) -> String {
     }
 }
 
-/// Stored values of one scope, by key.
-pub type SettingValues = BTreeMap<String, Value>;
-
-/// The stored settings that apply to one session, layered by scope.
+/// The stored settings that apply to one session, one typed struct per scope.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct PersistedSettings {
-    pub global: SettingValues,
-    pub project: SettingValues,
-    pub session: SettingValues,
+    pub global: GlobalSettings,
+    pub project: ProjectSettings,
+    pub session: SessionSettings,
 }
 
 impl PersistedSettings {
-    pub fn insert(&mut self, scope: &str, key: String, value: Value) -> Result<(), String> {
-        self.scope_mut(scope.parse()?).insert(key, value);
-        Ok(())
-    }
-
-    fn scope_mut(&mut self, scope: SettingScope) -> &mut SettingValues {
-        match scope {
-            Global => &mut self.global,
-            Project => &mut self.project,
-            Session => &mut self.session,
+    /// Applies one stored row to its scope. Unknown keys are ignored.
+    pub fn insert(&mut self, scope: &str, key: &str, value: &Value) -> Result<(), String> {
+        match scope.parse()? {
+            Global => {
+                self.global.insert(key, value);
+                Ok(())
+            }
+            Project => self.project.insert(key, value),
+            Session => self.session.insert(key, value),
         }
     }
 
-    /// Scopes from most to least specific.
-    fn layers(&self) -> [&SettingValues; 3] {
-        [&self.session, &self.project, &self.global]
-    }
-
-    /// The most specific value for `key`.
-    fn get(&self, key: &str) -> Option<&Value> {
-        self.layers().into_iter().find_map(|layer| layer.get(key))
-    }
-
-    /// Settings resolved per session, from the most specific scope.
-    pub(crate) fn layered(&self) -> Result<LayeredSettings, String> {
-        Ok(LayeredSettings {
-            full_control: strict(
-                self.get("full_control"),
-                "full_control",
-                "full_control",
-                Value::as_bool,
-            )?,
-            tool_allowlist: self
-                .layers()
-                .into_iter()
-                .find_map(|layer| layer.get("tool_allowlist").and_then(Value::as_str))
-                .map(str::to_string),
-            turn_timeout_ms: strict(
-                self.get("turn_timeout_ms"),
-                "turn_timeout_ms",
-                "turn_timeout_ms",
-                Value::as_u64,
-            )?,
-            bash_timeout_ms: strict(
-                self.get("bash_timeout_ms"),
-                "bash_timeout_ms",
-                "bash_timeout_ms",
-                Value::as_u64,
-            )?,
-            tool_call_limit: strict(
-                self.get("tool_call_limit"),
-                "tool_call_limit",
-                "tool_call_limit",
-                Value::as_u64,
-            )?,
-        })
-    }
-
-    /// The global settings view.
-    pub fn global(&self) -> GlobalSettings {
-        GlobalSettings::from_values(&self.global)
-    }
-
-    /// The project settings view; `default_model` falls back to global.
-    pub fn project(&self) -> Result<ProjectSettings, String> {
-        let mut settings = ProjectSettings::from_values(&self.project)?;
-        if settings.default_model.is_none() {
-            settings.default_model = self
-                .global
-                .get("default_model")
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|model| !model.is_empty())
-                .map(str::to_string);
+    /// Project settings with an unset `default_model` taken from global.
+    pub fn project(&self) -> ProjectSettings {
+        let mut project = self.project.clone();
+        if project.default_model.is_none() {
+            project.default_model = self.global.default_model.clone();
         }
-        Ok(settings)
+        project
     }
 
-    /// The session settings view.
-    pub fn session(&self) -> Result<SessionSettings, String> {
-        SessionSettings::from_values(&self.session)
+    /// Overrides resolved from the most specific scope.
+    pub(crate) fn overrides(&self) -> RuntimeOverrides {
+        let layers = [
+            &self.session.overrides,
+            &self.project.overrides,
+            &self.global.overrides,
+        ];
+        RuntimeOverrides {
+            tool_allowlist: layers.iter().find_map(|layer| layer.tool_allowlist.clone()),
+            turn_timeout_ms: layers.iter().find_map(|layer| layer.turn_timeout_ms),
+            bash_timeout_ms: layers.iter().find_map(|layer| layer.bash_timeout_ms),
+        }
     }
 }
 
-/// Values the runtime resolves across all scopes.
-pub(crate) struct LayeredSettings {
-    pub full_control: Option<bool>,
+/// Runtime limits any scope may set; the most specific scope wins.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RuntimeOverrides {
     pub tool_allowlist: Option<String>,
     pub turn_timeout_ms: Option<u64>,
     pub bash_timeout_ms: Option<u64>,
-    pub tool_call_limit: Option<u64>,
 }
 
-/// A value that must have the declared type when present. `label` names the
-/// value in the error.
-fn strict<'a, T>(
-    value: Option<&'a Value>,
-    key: &str,
-    label: &str,
-    read: impl Fn(&'a Value) -> Option<T>,
-) -> Result<Option<T>, String> {
-    value
-        .map(|value| read(value).ok_or_else(|| type_error(key, label)))
-        .transpose()
-}
-
-fn type_error(key: &str, label: &str) -> String {
-    let spec = SCHEMA.iter().find(|spec| spec.key == key);
-    match spec.map(|spec| spec.kind) {
-        Some(Kind::Bool) => format!("{label} must be a boolean"),
-        Some(Kind::Integer { .. }) => format!("{label} must be an integer"),
-        Some(Kind::StringArray) => format!("{label} must be an array of strings"),
-        _ => format!("{label} must be a string"),
+impl RuntimeOverrides {
+    /// Applies `key` if it is an override; `Ok(false)` for any other key.
+    fn insert(&mut self, key: &str, value: &Value) -> Result<bool, String> {
+        match key {
+            "tool_allowlist" => self.tool_allowlist = Some(strict(key, key, value, string)?),
+            "turn_timeout_ms" => {
+                self.turn_timeout_ms = Some(strict(key, key, value, Value::as_u64)?)
+            }
+            "bash_timeout_ms" => {
+                self.bash_timeout_ms = Some(strict(key, key, value, Value::as_u64)?)
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
     }
 }
 
-/// A value read leniently: a missing or mistyped value is treated as unset.
-fn lenient<'a, T>(
-    values: &'a SettingValues,
+/// A value that must have the declared type. `label` names it in the error.
+fn strict<'a, T>(
     key: &str,
+    label: &str,
+    value: &'a Value,
     read: impl Fn(&'a Value) -> Option<T>,
-) -> Option<T> {
-    values.get(key).and_then(read)
+) -> Result<T, String> {
+    read(value).ok_or_else(|| {
+        let kind = SCHEMA
+            .iter()
+            .find(|spec| spec.key == key)
+            .map(|spec| spec.kind);
+        match kind {
+            Some(Kind::Bool) => format!("{label} must be a boolean"),
+            Some(Kind::Integer { .. }) => format!("{label} must be an integer"),
+            Some(Kind::StringArray) => format!("{label} must be an array of strings"),
+            _ => format!("{label} must be a string"),
+        }
+    })
 }
 
 fn string(value: &Value) -> Option<String> {
     value.as_str().map(str::to_string)
 }
 
-fn non_empty_path(value: &Value) -> Option<PathBuf> {
-    value
-        .as_str()
-        .filter(|value| !value.trim().is_empty())
-        .map(PathBuf::from)
+fn trimmed(value: &Value) -> Option<Option<String>> {
+    value.as_str().map(|value| {
+        Some(value.trim())
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+    })
 }
 
 fn strings(value: &Value) -> Option<Vec<String>> {
@@ -353,10 +308,18 @@ impl Default for TlsSettings {
     }
 }
 
-/// Global settings. Stored values with the wrong type read as their
-/// defaults, so a damaged row cannot prevent startup.
+/// Replaces `target` when the stored value had the expected type.
+fn set<T>(target: &mut T, value: Option<T>) {
+    if let Some(value) = value {
+        *target = value;
+    }
+}
+
+/// Global settings. A stored value with the wrong type keeps the default, so
+/// a damaged row cannot prevent startup.
 #[derive(Clone, Default, PartialEq)]
 pub struct GlobalSettings {
+    /// A non-empty trimmed model id.
     pub default_model: Option<String>,
     pub log: LogSettings,
     /// Empty means the default `<data directory>/data/images`.
@@ -365,47 +328,58 @@ pub struct GlobalSettings {
     pub computer_use_enabled: bool,
     pub tls: TlsSettings,
     pub proxy: HttpProxyConfiguration,
+    /// Mistyped overrides are ignored here; the runtime reads them strictly
+    /// from the session and project rows.
+    pub overrides: RuntimeOverrides,
 }
 
 impl GlobalSettings {
-    pub fn from_values(values: &SettingValues) -> Self {
-        let log = LogSettings::default();
-        let tls = TlsSettings::default();
-        Self {
-            default_model: lenient(values, "default_model", string),
-            log: LogSettings {
-                level: lenient(values, "log_level", string).unwrap_or(log.level),
-                directory: lenient(values, "log_directory", string).unwrap_or(log.directory),
-                max_bytes: lenient(values, "log_max_bytes", Value::as_u64).unwrap_or(log.max_bytes),
-                retention: lenient(values, "log_retention", Value::as_u64)
-                    .and_then(|value| usize::try_from(value).ok())
-                    .unwrap_or(log.retention),
-            },
-            image_directory: lenient(values, "image_directory", string).unwrap_or_default(),
-            browser_use_enabled: lenient(values, "browser_use_enabled", Value::as_bool)
-                .unwrap_or(false),
-            computer_use_enabled: lenient(values, "computer_use_enabled", Value::as_bool)
-                .unwrap_or(false),
-            tls: TlsSettings {
-                verify_https_certificates: lenient(
-                    values,
-                    "verify_https_certificates",
-                    Value::as_bool,
-                )
-                .unwrap_or(tls.verify_https_certificates),
-                use_system_certificates: lenient(values, "use_system_certificates", Value::as_bool)
-                    .unwrap_or(tls.use_system_certificates),
-                certificate_path: lenient(values, "certificate_path", non_empty_path),
-            },
-            proxy: HttpProxyConfiguration {
-                mode: lenient(values, "proxy_mode", Value::as_str)
-                    .and_then(HttpProxyMode::parse)
-                    .unwrap_or(HttpProxyMode::System),
-                url: lenient(values, "proxy_url", string).unwrap_or_default(),
-                username: lenient(values, "proxy_username", string).unwrap_or_default(),
-                password: lenient(values, "proxy_password", string).unwrap_or_default(),
-                bypass: lenient(values, "proxy_bypass", strings).unwrap_or_default(),
-            },
+    pub fn from_rows<'a>(rows: impl IntoIterator<Item = (&'a str, &'a Value)>) -> Self {
+        let mut settings = Self::default();
+        for (key, value) in rows {
+            settings.insert(key, value);
+        }
+        settings
+    }
+
+    fn insert(&mut self, key: &str, value: &Value) {
+        match key {
+            "default_model" => set(&mut self.default_model, trimmed(value)),
+            "log_level" => set(&mut self.log.level, string(value)),
+            "log_directory" => set(&mut self.log.directory, string(value)),
+            "log_max_bytes" => set(&mut self.log.max_bytes, value.as_u64()),
+            "log_retention" => set(
+                &mut self.log.retention,
+                value.as_u64().and_then(|value| usize::try_from(value).ok()),
+            ),
+            "image_directory" => set(&mut self.image_directory, string(value)),
+            "browser_use_enabled" => set(&mut self.browser_use_enabled, value.as_bool()),
+            "computer_use_enabled" => set(&mut self.computer_use_enabled, value.as_bool()),
+            "verify_https_certificates" => {
+                set(&mut self.tls.verify_https_certificates, value.as_bool())
+            }
+            "use_system_certificates" => {
+                set(&mut self.tls.use_system_certificates, value.as_bool())
+            }
+            "certificate_path" => set(
+                &mut self.tls.certificate_path,
+                value.as_str().map(|path| {
+                    Some(path)
+                        .filter(|path| !path.trim().is_empty())
+                        .map(PathBuf::from)
+                }),
+            ),
+            "proxy_mode" => set(
+                &mut self.proxy.mode,
+                value.as_str().and_then(HttpProxyMode::parse),
+            ),
+            "proxy_url" => set(&mut self.proxy.url, string(value)),
+            "proxy_username" => set(&mut self.proxy.username, string(value)),
+            "proxy_password" => set(&mut self.proxy.password, string(value)),
+            "proxy_bypass" => set(&mut self.proxy.bypass, strings(value)),
+            key => {
+                let _ = self.overrides.insert(key, value);
+            }
         }
     }
 
@@ -449,11 +423,13 @@ impl std::fmt::Debug for GlobalSettings {
                 "proxy_password_configured",
                 &!self.proxy.password.is_empty(),
             )
+            .field("overrides", &self.overrides)
             .finish()
     }
 }
 
-/// Project settings.
+/// Project settings. A mistyped value fails, as turn admission depends on
+/// these values.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProjectSettings {
     /// A non-empty trimmed model id.
@@ -463,64 +439,83 @@ pub struct ProjectSettings {
     pub preview_url: Option<String>,
     pub preview_cwd: Option<String>,
     pub preview_args: Option<Vec<String>>,
+    pub overrides: RuntimeOverrides,
 }
 
 impl ProjectSettings {
-    /// Fails when a stored value has the wrong type, as turn admission depends
-    /// on these values.
-    pub fn from_values(values: &SettingValues) -> Result<Self, String> {
-        let default_model = strict(
-            values.get("default_model"),
-            "default_model",
-            "project default_model",
-            Value::as_str,
-        )?
-        .map(str::trim)
-        .filter(|model| !model.is_empty())
-        .map(str::to_string);
-        let tool_call_limit = strict(
-            values.get("tool_call_limit"),
-            "tool_call_limit",
-            "tool_call_limit",
-            Value::as_u64,
-        )?
-        .map(|limit| {
-            u32::try_from(limit)
-                .ok()
-                .filter(|limit| (1..=256).contains(limit))
-                .ok_or_else(|| {
-                    "project tool_call_limit must be an integer between 1 and 256".to_string()
-                })
-        })
-        .transpose()?;
-        Ok(Self {
-            default_model,
-            tool_call_limit,
-            preview_program: lenient(values, "preview_program", string),
-            preview_url: lenient(values, "preview_url", string),
-            preview_cwd: lenient(values, "preview_cwd", string),
-            preview_args: lenient(values, "preview_args", strings),
-        })
+    pub fn from_rows<'a>(
+        rows: impl IntoIterator<Item = (&'a str, &'a Value)>,
+    ) -> Result<Self, String> {
+        let mut settings = Self::default();
+        for (key, value) in rows {
+            settings.insert(key, value)?;
+        }
+        Ok(settings)
+    }
+
+    fn insert(&mut self, key: &str, value: &Value) -> Result<(), String> {
+        match key {
+            "default_model" => {
+                self.default_model = strict(key, "project default_model", value, trimmed)?;
+            }
+            "tool_call_limit" => {
+                let limit = strict(key, key, value, Value::as_u64)?;
+                self.tool_call_limit = Some(
+                    u32::try_from(limit)
+                        .ok()
+                        .filter(|limit| (1..=256).contains(limit))
+                        .ok_or("project tool_call_limit must be an integer between 1 and 256")?,
+                );
+            }
+            // Preview values only prefill the host's form, so a mistyped one
+            // is left unset.
+            "preview_program" => self.preview_program = string(value),
+            "preview_url" => self.preview_url = string(value),
+            "preview_cwd" => self.preview_cwd = string(value),
+            "preview_args" => self.preview_args = strings(value),
+            key => {
+                self.overrides.insert(key, value)?;
+            }
+        }
+        Ok(())
     }
 }
 
-/// Session settings.
+/// Session settings. A mistyped value fails, as approval depends on them.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SessionSettings {
-    pub full_control: bool,
+    /// `None` when unset, so a turn snapshot does not pin it and a later
+    /// "allow for this session" still applies.
+    pub full_control: Option<bool>,
+    pub overrides: RuntimeOverrides,
 }
 
 impl SessionSettings {
-    pub fn from_values(values: &SettingValues) -> Result<Self, String> {
-        Ok(Self {
-            full_control: strict(
-                values.get("full_control"),
-                "full_control",
-                "session full_control configuration",
-                Value::as_bool,
-            )?
-            .unwrap_or(false),
-        })
+    pub fn from_rows<'a>(
+        rows: impl IntoIterator<Item = (&'a str, &'a Value)>,
+    ) -> Result<Self, String> {
+        let mut settings = Self::default();
+        for (key, value) in rows {
+            settings.insert(key, value)?;
+        }
+        Ok(settings)
+    }
+
+    fn insert(&mut self, key: &str, value: &Value) -> Result<(), String> {
+        match key {
+            "full_control" => {
+                self.full_control = Some(strict(
+                    key,
+                    "session full_control configuration",
+                    value,
+                    Value::as_bool,
+                )?);
+            }
+            key => {
+                self.overrides.insert(key, value)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -529,28 +524,34 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    fn persisted(rows: &[(&str, &str, Value)]) -> Result<PersistedSettings, String> {
+        let mut settings = PersistedSettings::default();
+        for (scope, key, value) in rows {
+            settings.insert(scope, key, value)?;
+        }
+        Ok(settings)
+    }
+
     #[test]
     fn persisted_settings_reject_unknown_scope() {
-        let mut settings = PersistedSettings::default();
-        assert!(settings
-            .insert("unknown", "value".into(), Value::Null)
-            .is_err());
+        assert!(persisted(&[("unknown", "value", Value::Null)]).is_err());
     }
 
     #[test]
     fn most_specific_scope_wins() {
-        let mut settings = PersistedSettings::default();
-        settings
-            .insert("global", "turn_timeout_ms".into(), 1_000.into())
-            .unwrap();
-        settings
-            .insert("project", "turn_timeout_ms".into(), 2_000.into())
-            .unwrap();
-        assert_eq!(settings.layered().unwrap().turn_timeout_ms, Some(2_000));
-        settings
-            .insert("session", "turn_timeout_ms".into(), 3_000.into())
-            .unwrap();
-        assert_eq!(settings.layered().unwrap().turn_timeout_ms, Some(3_000));
+        let mut rows = vec![
+            ("global", "turn_timeout_ms", json!(1_000)),
+            ("project", "turn_timeout_ms", json!(2_000)),
+        ];
+        assert_eq!(
+            persisted(&rows).unwrap().overrides().turn_timeout_ms,
+            Some(2_000)
+        );
+        rows.push(("session", "turn_timeout_ms", json!(3_000)));
+        assert_eq!(
+            persisted(&rows).unwrap().overrides().turn_timeout_ms,
+            Some(3_000)
+        );
     }
 
     #[test]
@@ -593,29 +594,30 @@ mod tests {
     }
 
     #[test]
-    fn global_view_uses_defaults_for_missing_or_mistyped_values() {
-        let defaults = GlobalSettings::from_values(&SettingValues::new());
+    fn global_settings_keep_defaults_for_missing_or_mistyped_values() {
+        let defaults = GlobalSettings::default();
         assert_eq!(defaults.log, LogSettings::default());
         assert_eq!(defaults.tls, TlsSettings::default());
         assert!(defaults.proxy.mode == HttpProxyMode::System);
         assert!(!defaults.browser_use_enabled && !defaults.computer_use_enabled);
 
-        let values = SettingValues::from([
-            ("log_max_bytes".into(), json!("large")),
-            ("verify_https_certificates".into(), json!(false)),
-            ("certificate_path".into(), json!("  ")),
-            ("proxy_bypass".into(), json!(["localhost", 3])),
-        ]);
-        let settings = GlobalSettings::from_values(&values);
+        let rows = [
+            ("log_max_bytes", json!("large")),
+            ("verify_https_certificates", json!(false)),
+            ("certificate_path", json!("  ")),
+            ("proxy_bypass", json!(["localhost", 3])),
+            ("turn_timeout_ms", json!("slow")),
+        ];
+        let settings = GlobalSettings::from_rows(rows.iter().map(|(key, value)| (*key, value)));
         assert_eq!(settings.log.max_bytes, LogSettings::default().max_bytes);
         assert!(!settings.tls.verify_https_certificates);
         assert_eq!(settings.tls.certificate_path, None);
         assert_eq!(settings.proxy.bypass, vec!["localhost".to_string()]);
+        assert_eq!(settings.overrides.turn_timeout_ms, None);
     }
 
     #[test]
     fn proxy_values_round_trip_and_debug_hides_the_password() {
-        let mut values = SettingValues::new();
         let proxy = HttpProxyConfiguration {
             mode: HttpProxyMode::Custom,
             url: "http://proxy.test:8080".into(),
@@ -623,41 +625,30 @@ mod tests {
             password: "secret-password".into(),
             bypass: vec!["internal.test".into()],
         };
-        values.extend(GlobalSettings::proxy_values(&proxy));
-        let settings = GlobalSettings::from_values(&values);
+        let rows = GlobalSettings::proxy_values(&proxy);
+        let settings =
+            GlobalSettings::from_rows(rows.iter().map(|(key, value)| (key.as_str(), value)));
         assert!(settings.proxy == proxy);
         assert!(!format!("{settings:?}").contains("secret-password"));
     }
 
     #[test]
-    fn project_and_session_views_reject_mistyped_values() {
-        let mut persisted = PersistedSettings::default();
-        persisted
-            .insert("global", "default_model".into(), json!("global-model"))
-            .unwrap();
+    fn project_and_session_settings_reject_mistyped_values() {
+        let mut rows = vec![("global", "default_model", json!("global-model"))];
         assert_eq!(
-            persisted.project().unwrap().default_model.as_deref(),
+            persisted(&rows).unwrap().project().default_model.as_deref(),
             Some("global-model")
         );
-        persisted
-            .insert("project", "default_model".into(), json!(" project-model "))
-            .unwrap();
-        persisted
-            .insert("project", "tool_call_limit".into(), json!(32))
-            .unwrap();
-        let project = persisted.project().unwrap();
+        rows.push(("project", "default_model", json!(" project-model ")));
+        rows.push(("project", "tool_call_limit", json!(32)));
+        let project = persisted(&rows).unwrap().project();
         assert_eq!(project.default_model.as_deref(), Some("project-model"));
         assert_eq!(project.tool_call_limit, Some(32));
 
-        persisted
-            .insert("project", "tool_call_limit".into(), json!(0))
-            .unwrap();
-        assert!(persisted.project().is_err());
-        persisted
-            .insert("session", "full_control".into(), json!("yes"))
-            .unwrap();
+        assert!(persisted(&[("project", "tool_call_limit", json!(0))]).is_err());
+        assert!(persisted(&[("project", "bash_timeout_ms", json!("slow"))]).is_err());
         assert_eq!(
-            persisted.session().unwrap_err(),
+            persisted(&[("session", "full_control", json!("yes"))]).unwrap_err(),
             "session full_control configuration must be a boolean"
         );
     }

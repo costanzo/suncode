@@ -1355,7 +1355,10 @@ async fn allow_session_skips_later_approvals_for_the_same_session() {
         );
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
-    assert!(store.session_settings(&session_id).unwrap().full_control);
+    assert_eq!(
+        store.session_settings(&session_id).unwrap().full_control,
+        Some(true)
+    );
 
     let response = agent
         .submit(&session_id, "write-session-2", "write again", None, None)

@@ -46,8 +46,9 @@ impl Store {
         Ok(settings)
     }
 
-    /// The stored settings that apply to a session, layered by scope. Unlike
-    /// [`Store::settings`], every scope keeps its own rows.
+    /// The stored settings that apply to a session, typed per scope. Unlike
+    /// [`Store::settings`], every scope keeps its own values. A mistyped
+    /// project or session value fails; see [`PersistedSettings`].
     pub fn persisted_settings(
         &self,
         project_id: Option<&str>,
@@ -59,8 +60,9 @@ impl Store {
             .load::<Row>(&mut *connection).map_err(crate::database_error)?;
         let mut settings = PersistedSettings::default();
         for row in rows {
+            let value: Value = serde_json::from_str(&row.value_json)?;
             settings
-                .insert(&row.scope, row.key, serde_json::from_str(&row.value_json)?)
+                .insert(&row.scope, &row.key, &value)
                 .map_err(BusinessError::invalid)?;
         }
         Ok(settings)
@@ -68,22 +70,18 @@ impl Store {
 
     /// The typed global settings.
     pub fn global_settings(&self) -> Result<GlobalSettings, BusinessError> {
-        Ok(self.persisted_settings(None, None)?.global())
+        Ok(self.persisted_settings(None, None)?.global)
     }
 
     /// The typed settings of a project, with `default_model` falling back to
     /// the global value.
     pub fn project_settings(&self, project_id: &str) -> Result<ProjectSettings, BusinessError> {
-        self.persisted_settings(Some(project_id), None)?
-            .project()
-            .map_err(BusinessError::invalid)
+        Ok(self.persisted_settings(Some(project_id), None)?.project())
     }
 
     /// The typed settings of a session.
     pub fn session_settings(&self, session_id: &str) -> Result<SessionSettings, BusinessError> {
-        self.persisted_settings(None, Some(session_id))?
-            .session()
-            .map_err(BusinessError::invalid)
+        Ok(self.persisted_settings(None, Some(session_id))?.session)
     }
 
     pub fn set_setting(

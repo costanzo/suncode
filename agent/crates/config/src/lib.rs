@@ -16,7 +16,7 @@ pub use environment::EnvironmentSource;
 pub use runtime::RuntimeConfig;
 pub use settings::{
     validate_setting, GlobalSettings, LogSettings, PersistedSettings, ProjectSettings,
-    SessionSettings, SettingScope, SettingValues, TlsSettings,
+    RuntimeOverrides, SessionSettings, SettingScope, TlsSettings,
 };
 
 #[cfg(test)]
