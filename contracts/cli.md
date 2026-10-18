@@ -31,7 +31,7 @@ suncode session resume SESSION_ID (--prompt TEXT | --stdin)
 suncode session archive SESSION_ID
 suncode models
 suncode auth list
-suncode auth set PROVIDER
+suncode auth set PROVIDER [--storage keychain|plaintext]
 suncode auth remove PROVIDER
 suncode config list
 suncode doctor
@@ -40,6 +40,8 @@ suncode doctor
 `run` creates a primary session in the canonical project represented by `PATH`, submits one turn, and exits. `session resume` reopens an existing primary session, submits one new turn using its durable conversation context, and exits. Both require exactly one prompt source and finish after completion, suspension, cancellation, or failure.
 
 `session list` opens the selected project through the SDK and includes active and archived primary sessions; `session archive` applies the SDK-owned lifecycle transition. Interactive `chat` is not part of the implemented command surface and remains rejected by argument parsing.
+
+`auth set` reads the API key without terminal echo. Omitting `--storage` preserves the provider's saved choice, which defaults to `keychain`. `--storage keychain` stores the key in the operating system credential store. `--storage plaintext` explicitly stores the complete key in SQLite and prints a warning on stderr. `auth list` includes status, mode, and mask. The CLI never prints the complete key. Credential-store failures return stable exit status 3 with codes such as `credential_missing`, `credential_locked`, `credential_access_denied`, or `credential_store_unavailable`.
 
 Resume does not print existing history or resolve a suspended interaction. If the session has a durable pending approval or question, it fails closed with exit status 4 without contacting the provider. A future interactive client may resolve those states through the named SDK methods.
 
@@ -129,7 +131,7 @@ Precedence is explicit command-line option, then the corresponding `SUNCODE_` en
 
 The `--log-output` global option controls only the Rust diagnostic logger's console mirror for this CLI process. The configured `agent.log` file remains active. It defaults to `stderr`; use `--log-output none` when stdout and stderr must not contain diagnostic log lines.
 
-CLI startup selects the process environment source for `suncode-config`. Avalonia and the blocking/native default host select the disabled source, so inherited `SUNCODE_*` variables do not change desktop behavior. Provider credentials may be supplied to a CLI process through `SUNCODE_OPENAI_API_KEY`, `SUNCODE_ANTHROPIC_API_KEY`, `SUNCODE_DEEPSEEK_API_KEY`, `SUNCODE_QWEN_API_KEY`, `SUNCODE_ZHIPU_API_KEY`, `SUNCODE_KIMI_API_KEY`, or `SUNCODE_GEMINI_API_KEY`; these values are an in-memory overlay, never persisted to SQLite, child processes, logs, traces, or JSON output. When absent, provider credentials continue to resolve from SQLite.
+CLI startup selects the process environment source for `suncode-config`. Avalonia and the blocking/native default host select the disabled source, so inherited `SUNCODE_*` variables do not change desktop behavior. Provider credentials are entered through `auth set` and resolve from the selected system credential store or explicit SQLite plaintext mode; provider API-key environment variables are not read.
 
 Runtime CLI overrides include `SUNCODE_FULL_CONTROL`, `SUNCODE_TOOL_ALLOWLIST` (comma-separated tool names), `SUNCODE_TURN_TIMEOUT_MS`, `SUNCODE_BASH_TIMEOUT_MS`, and `SUNCODE_TOOL_CALL_LIMIT`. Runtime values resolve environment over session, project, and global SQLite settings. The effective tool ceiling is intersected with specialist and host capability ceilings, the bash timeout is capped rather than expanded by a turn request, and permanent hard-deny command rules remain unconditional. The effective runtime configuration is snapshotted when a turn is admitted.
 

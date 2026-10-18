@@ -916,6 +916,35 @@ pub unsafe extern "C" fn suncode_agent_sdk_set_credential(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_set_credential_with_mode(
+    handle: *mut SunCodeAgentHandle,
+    provider: *const c_char,
+    api_key: *const c_char,
+    mode: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let mode = suncode_sdk::CredentialStorageMode::parse(&c_string(mode, "mode")?)?;
+        sdk.save_credential(
+            &c_string(provider, "provider")?,
+            Some(&c_string(api_key, "api_key")?),
+            mode,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_change_credential_mode(
+    handle: *mut SunCodeAgentHandle,
+    provider: *const c_char,
+    mode: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let mode = suncode_sdk::CredentialStorageMode::parse(&c_string(mode, "mode")?)?;
+        sdk.save_credential(&c_string(provider, "provider")?, None, mode)
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn suncode_agent_sdk_remove_credential(
     handle: *mut SunCodeAgentHandle,
     provider: *const c_char,

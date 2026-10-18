@@ -18,15 +18,6 @@ impl EnvironmentSource {
         self.enabled().then(|| std::env::var(name).ok()).flatten()
     }
 
-    /// Like `value`, but treats empty and non-UTF-8 values as absent.
-    pub(crate) fn non_empty_value(self, name: &str) -> Option<String> {
-        self.enabled()
-            .then(|| std::env::var_os(name))
-            .flatten()
-            .and_then(|value| value.into_string().ok())
-            .filter(|value| !value.is_empty())
-    }
-
     pub(crate) fn path(self, name: &str) -> Option<PathBuf> {
         self.enabled()
             .then(|| std::env::var_os(name).map(PathBuf::from))

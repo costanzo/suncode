@@ -21,11 +21,11 @@ public sealed record DiagnosticsResult(
     IReadOnlyList<CredentialState> Credentials,
     [property: JsonPropertyName("active_project_id")] string? ActiveProjectId);
 
-public sealed record CredentialState(string Provider, bool Configured);
+public sealed record CredentialState(string Provider, bool Configured, string Status = "missing", string Mode = "keychain", [property: JsonPropertyName("masked_value")] string? MaskedValue = null, string Source = "stored");
 
 public sealed record CredentialsResult(IReadOnlyList<CredentialState> Credentials);
 
-public sealed record CredentialUpdate(string Provider, bool Configured);
+public sealed record CredentialUpdate(string Provider, bool Configured, string Status = "missing", string Mode = "keychain", [property: JsonPropertyName("masked_value")] string? MaskedValue = null);
 
 public sealed record ProviderEndpointUpdate(string ProviderId, string Endpoint);
 
@@ -877,7 +877,7 @@ public sealed record SetSettingRequest(
     string Key,
     JsonElement Value);
 
-public sealed record SetCredentialRequest(string Provider, string ApiKey);
+public sealed record SetCredentialRequest(string Provider, string ApiKey, string StorageMode = "keychain");
 
 public sealed record ProviderEndpointRequest(string Provider, string Endpoint);
 

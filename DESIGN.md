@@ -198,15 +198,15 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Border:** One-pixel hairline border.
 - **Internal Padding:** 10–13px for compact inspector rows.
 
-### Provider API key storage — proposed, pending review
+### Provider API key storage — implemented
 
-The review-only Settings → Provider credentials route (`#/projects/desktop/settings/provider-credentials`) extends each provider detail with independent credential storage selection. The default is **System keychain**, with **Plaintext** as an explicit alternative. The key itself is stored directly in the operating system credential store; there is no shared application encryption key or key pair. This design does not change the currently implemented SQLite persistence contract until the UI is approved and production work is authorized.
+The Settings → Provider credentials route (`#/projects/desktop/settings/provider-credentials`) extends each provider detail with independent credential storage selection. The default is **System keychain**, with **Plaintext** as an explicit alternative. The key itself is stored directly in the operating system credential store; there is no shared application encryption key or key pair. Production uses the same provider-scoped choices and failure states through the Rust SDK.
 
 - The saved mask and saved location appear above the editable form. Selecting a storage option changes a draft only; saved status changes after successful Save. A blank replacement field retains the saved key. Cancel discards the pending mode and replacement value.
 - Native radio controls select System keychain (recommended) or Plaintext. The system option names macOS Keychain, Windows Credential Manager, or Linux Secret Service. Plaintext shows an inline warning and uses the shared confirmation dialog at Save. Remove key uses the same confirmation pattern.
 - Keychain locked, access denied, unavailable service, missing entry, save failure, and removal failure have distinct recovery copy. Failure retains the saved metadata and mask. Missing entries require a replacement key. Access problems never silently select plaintext or report that no key was configured. Saving disables credential changes and presents a persistent progress status.
 - Provider lists and navigation reflect successful in-memory specimen changes. Stored secrets are never revealed or copied. Short replacement values use a fixed mask. Switching providers retains saved fixture state while discarding unfinished drafts.
-- Platform and failure selectors live outside the Settings window as design-review tooling. All values are fictional, held in memory, and reset on page reload. This is a fresh-system design; no legacy migration or import flow is included. Production Rust, SQLite, SDK, CLI, and Avalonia changes await user confirmation.
+- Platform and failure selectors live outside the Settings window as design-review tooling. All values are fictional, held in memory, and reset on page reload. This is a fresh-system design; no legacy migration or import flow is included. The production Rust, SQLite, SDK, CLI, and Avalonia paths implement the approved provider-scoped storage behavior.
 
 ### Inputs / Fields
 

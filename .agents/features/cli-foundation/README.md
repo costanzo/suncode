@@ -6,7 +6,7 @@ The native Rust CLI package lives under `apps/cli` and builds the `suncode` exec
 
 The CLI shares the ordinary data directory and its single-instance lock: it cannot run while the desktop or another CLI owns the same directory (exit 5); a different `SUNCODE_DATA_DIRECTORY` gives independent local state.
 
-Administrative commands are `doctor`, `models`, `auth list`, `auth set`, `auth remove`, and `config list`. `auth set` requires an interactive terminal and reads the credential without echo; credentials remain SQLite-owned through SDK methods. API-key arguments and environment variables are unsupported. The one-shot conversational command is documented separately in `features/cli-run/`.
+Administrative commands are `doctor`, `models`, `auth list`, `auth set`, `auth remove`, and `config list`. `auth set` requires an interactive terminal and reads the credential without echo; credentials remain Rust-owned through SDK methods and default to the system credential store, with explicit SQLite plaintext available per provider. API-key arguments and environment variables are unsupported. The one-shot conversational command is documented separately in `features/cli-run/`.
 
 Global CLI options currently resolve explicit values over `SUNCODE_OUTPUT`, `SUNCODE_COLOR`, and `SUNCODE_USER_ID`. The default logical user is `os:` plus the local account name; it is an ownership label, not authentication. `--color` is validated but output is not colored yet. SDK bootstrap continues using `SUNCODE_DATA_DIRECTORY`, `SUNCODE_DATABASE_PATH`, and `SUNCODE_NON_INTERACTIVE`. Invalid values fail closed.
 

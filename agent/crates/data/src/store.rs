@@ -13,6 +13,8 @@ use suncode_database::sqlite;
 #[derive(Clone)]
 pub struct Store {
     pub(crate) connection: Arc<Mutex<SqliteConnection>>,
+    pub(crate) secrets: Arc<dyn suncode_secrets::SecretStore>,
+    pub(crate) credential_lock: Arc<Mutex<()>>,
 }
 
 pub struct ApprovalInput<'a> {
@@ -61,6 +63,8 @@ impl Store {
         initialize(&mut connection)?;
         Ok(Self {
             connection: Arc::new(Mutex::new(connection)),
+            secrets: Arc::new(suncode_secrets::SystemSecretStore),
+            credential_lock: Arc::new(Mutex::new(())),
         })
     }
     pub fn open_memory() -> Result<Self, BusinessError> {
@@ -70,8 +74,16 @@ impl Store {
         initialize(&mut connection)?;
         Ok(Self {
             connection: Arc::new(Mutex::new(connection)),
+            secrets: Arc::new(suncode_secrets::MemorySecretStore::default()),
+            credential_lock: Arc::new(Mutex::new(())),
         })
     }
+    /// Supply a credential backend for an embedding host or deterministic tests.
+    pub fn with_secret_store(mut self, secrets: Arc<dyn suncode_secrets::SecretStore>) -> Self {
+        self.secrets = secrets;
+        self
+    }
+
     pub fn health(&self) -> Result<Value, BusinessError> {
         let mut c = lock(&self.connection)?;
         let mode = sql_query("PRAGMA journal_mode")
@@ -117,6 +129,12 @@ fn initialize(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
             connection
                 .batch_execute(script)
                 .map_err(crate::database_error)?;
+        }
+        if !schema::provider_has_credential_storage(connection)? {
+            return Err(BusinessError::new(
+                "database_schema_incompatible",
+                "This database predates provider credential storage. Select a new data directory.",
+            ));
         }
         for migration in &MIGRATIONS[usize::try_from(version).unwrap_or(0)..] {
             migration(connection)?;

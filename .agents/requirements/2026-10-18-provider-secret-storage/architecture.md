@@ -2,15 +2,15 @@
 
 ## Current state
 
-Rust data operations persist provider keys in SQLite. The LLM resolver returns an optional String and currently suppresses database errors. Production contracts remain unchanged by this design review.
+Rust owns provider credential metadata and mode changes. The LLM resolver returns `Result<Option<String>, BusinessError>` so access errors propagate to callers.
 
 ## Proposed design
 
-A future `suncode-secrets` crate under the agent owns platform credential-store access, secret wrappers, references, and typed errors. Data owns plaintext-mode values and non-secret credential metadata. Rust composition owns per-provider policy and resolution. Providers and native clients do not call platform credential stores directly.
+The `suncode-secrets` crate under the agent owns platform credential-store access, secret wrappers, references, and typed errors. Data owns plaintext-mode values and non-secret credential metadata. Rust composition owns per-provider policy and resolution. Providers and native clients do not call platform credential stores directly.
 
 ## Boundaries and dependencies
 
-This delivery changes only the executable React design specification and its documentation. Rust, SDKs, CLI, Avalonia, database schema, and accepted persistence decisions are deferred until UI approval.
+The executable React design was approved before implementation. Rust owns platform access through `suncode-secrets`; data owns per-provider metadata and transactional mode changes; SDK, CLI, and Avalonia consume redacted DTOs. The system is fresh-only: incompatible old provider schemas are rejected rather than migrated.
 
 ## Data and control flow
 
@@ -26,8 +26,8 @@ Fresh system only, as requested. No legacy schema, plaintext import, or migratio
 
 ## Risks and rollback
 
-Platform signing, CLI access, system policy, and headless Linux behavior require implementation validation later. The review only simulates those outcomes.
+Platform signing, system policy, and headless Linux behavior require installed-platform release validation.
 
 ## Open questions
 
-Production API shape and platform dependencies will be finalized after UI approval.
+No open design questions remain. Installed-platform permission behavior requires release verification.

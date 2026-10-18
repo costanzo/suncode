@@ -43,7 +43,13 @@ impl CliError {
     pub fn from_business(error: BusinessError) -> Self {
         let exit_code = match error.code.as_str() {
             "invalid_arguments" | "serialization_error" => 2,
-            "model_unavailable" | "credential_unavailable" | "provider_not_found" => 3,
+            "model_unavailable"
+            | "credential_unavailable"
+            | "credential_missing"
+            | "credential_locked"
+            | "credential_access_denied"
+            | "credential_store_unavailable"
+            | "provider_not_found" => 3,
             "approval_required"
             | "question_required"
             | "authorization_denied"

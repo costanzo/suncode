@@ -2,6 +2,16 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261018-provider-secret-storage
+
+- Date: 2026-10-18
+- Status: Accepted; implemented and focused-tested
+- Supersedes: `ADR-20260812-plaintext-provider-secrets` and the SQLite-only credential conclusions in `ADR-20260827-sqlite-only-provider-credentials`.
+- Context: Provider API keys stored directly in SQLite were unnecessarily exposed to database readers and backups. The new system has no migration requirement and needs a cross-platform provider-level choice.
+- Decision: Add `suncode-secrets` as the only platform credential-store boundary. New and unspecified provider credentials use the OS store: macOS Keychain, Windows Credential Manager, or Linux Secret Service. A provider may explicitly select `plaintext`, in which case the complete value is stored in SQLite. Keychain mode stores only a UUID reference and mask in SQLite; the modes are mutually exclusive. Save, mode changes, and removal use rollback across the two stores. SDK and client DTOs expose only mode, mask, source, and status; complete values remain in Rust memory for the provider request and are zeroized where owned by the secrets crate. Old schemas lacking credential columns are rejected as incompatible; no migration or ECC/master key is added.
+- Consequences: OS keychain availability, user-session permissions, and same-user processes remain environmental risks. Linux headless environments may have no Secret Service. Plaintext mode is an explicit user choice and is visible as such. Installed-platform smoke tests and signing/entitlement verification remain release work.
+- Details: `agent/crates/secrets/`, `contracts/persistence.md`, `contracts/sqlite-schema.md`, `.agents/requirements/2026-10-18-provider-secret-storage/`
+
 ## ADR-20260927-durable-context-compaction
 
 - Date: 2026-09-27
@@ -54,7 +64,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Status: Accepted and implemented
 - Context: The approved CLI architecture needed a real executable foundation before conversational event, approval, and signal behavior could be added safely. Administrative SDK methods already existed and provided a bounded first vertical slice.
 - Decision: Create an independent `apps/cli` Rust package producing `suncode`. Implement doctor, models, auth list/set/remove, and config list; explicit-over-`SUNCODE_` configuration; text and JSONL reports; stable exit mapping; no-echo interactive credential input; CLI host capabilities; and consuming SDK shutdown before success output. Do not expose placeholder run/chat/session commands.
-- Consequences: CLI can administer and diagnose the embedded agent. JSONL foundation output and exit codes follow `contracts/cli.md`. Credentials remain SQLite-only. One-shot turn execution was added by `ADR-20260920-cli-one-shot-run`; interactive approval/question prompts and session workflows remain later work.
+- Consequences: CLI can administer and diagnose the embedded agent. JSONL foundation output and exit codes follow `contracts/cli.md`. Credentials remain Rust-owned, with system keychain as the default and explicit plaintext mode available through `auth set --storage`. One-shot turn execution was added by `ADR-20260920-cli-one-shot-run`; interactive approval/question prompts and session workflows remain later work.
 - Details: `features/cli-foundation/`, `apps/cli/`, `contracts/cli.md`
 
 ## ADR-20260920-sdk-host-capability-ceiling
@@ -72,7 +82,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Status: Accepted; administrative foundation implemented, conversational client incomplete
 - Supersedes: the CLI deferral portion of ADR-20260816-avalonia-desktop-client; Avalonia remains the sole desktop client and TUI/Web remain deferred
 - Context: CLI was deferred while the Rust SDK had a hidden runtime, callback-shaped subscriptions, a snapshot/subscription race, and drop-only cleanup. The SDK now has a caller-owned async facade, typed fused event streams, atomic session watch, and consuming shutdown. Developers also need a line-oriented interactive client and a future script/CI surface without duplicating the agent or introducing IPC.
-- Decision: Approve a native Rust CLI under `apps/cli` as the next production client. It embeds `AsyncAgentSdk` directly on Tokio and owns only arguments, terminal rendering, prompts, signals, JSONL output, and exit codes. Preserve the one-process-per-data-directory lock; do not add a daemon or desktop attach. Initial CLI startup uses the typed SDK host capability ceiling to exclude Browser and Computer Use; their focused packaging/UX remains later work. Interactive CLI may precede general CI support, but pre-authorized non-interactive execution requires Rust-owned named policy profiles. All SunCode CLI environment variables use the `SUNCODE_` prefix and provider credentials remain SQLite-only.
+- Decision: Approve a native Rust CLI under `apps/cli` as the next production client. It embeds `AsyncAgentSdk` directly on Tokio and owns only arguments, terminal rendering, prompts, signals, JSONL output, and exit codes. Preserve the one-process-per-data-directory lock; do not add a daemon or desktop attach. Initial CLI startup uses the typed SDK host capability ceiling to exclude Browser and Computer Use; their focused packaging/UX remains later work. Interactive CLI may precede general CI support, but pre-authorized non-interactive execution requires Rust-owned named policy profiles. All SunCode CLI environment variables use the `SUNCODE_` prefix and provider credentials remain Rust-owned; `auth set` selects the default system keychain or explicit SQLite plaintext.
 - Consequences: CLI is no longer deferred and now has buildable administrative commands with focused tests, but it must not be described as a conversational coding client until run/chat/session/event/approval behavior exists. The desktop remains the Phase 1 reference client. TUI, PTY, IPC, Browser/Computer terminal UX, and hosted modes remain deferred. The CLI contract is versioned independently of human terminal formatting and does not change agent authority.
 - Details: `features/cli-foundation/`, `contracts/cli.md`, `PRODUCT.md`, `ARCHITECTURE.md`
 
@@ -179,7 +189,7 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20260827-sqlite-only-provider-credentials
 
 - Date: 2026-08-27
-- Status: Accepted
+- Status: Superseded by ADR-20261018-provider-secret-storage
 - Supersedes: the provider credential environment-variable conclusions in ADR-20260815-built-in-provider-expansion, ADR-20260815-multi-model-provider-catalog, ADR-20260812-plaintext-provider-secrets, and ADR-20260807-runtime-phase-1-defaults
 - Context: Provider API keys already have one Rust-owned persistence location in `llm_model_provider.api_key`, but non-interactive startup could still take credentials from provider-specific environment variables. That made the effective credential depend on process state instead of the persisted catalog.
 - Decision: `suncode-config` is the single typed configuration resolver. CLI hosts may select the process environment source so `SUNCODE_*` values override persisted SQLite settings for the current process; Avalonia and blocking/native default hosts select the disabled source. Provider API-key environment values use provider-specific `SUNCODE_*_API_KEY` names and remain an in-memory overlay, never persisted or exposed to child processes, logs, traces, or JSON output. Runtime policy and limit overrides are snapshotted at turn admission, intersect existing capability ceilings, cap rather than expand requested limits, and never bypass permanent hard-deny command rules.
@@ -395,7 +405,7 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20260812-plaintext-provider-secrets
 
 - Date: 2026-08-12
-- Status: Superseded by ADR-20260819-persisted-llm-catalog
+- Status: Superseded by ADR-20261018-provider-secret-storage
 - Context: Provider API keys need one cross-platform persistence path. The prior design used the OS credential store, and an intermediate implementation used a local encryption key beside SQLite. The current desktop release prioritizes a simple embedded implementation over at-rest encryption.
 - Decision: Store provider API keys as plaintext values in the Rust-owned SQLite `llm_model_provider.api_key` column. Keep keys out of protocol responses, events, audit records, and logs. Accept explicit environment-variable overrides only in non-interactive mode. Import a legacy macOS Keychain value into an empty provider slot when possible.
 - Consequences: API keys are exposed to any process or user that can read the SQLite database and its backups. The runtime must keep database access inside Rust, restrict the data directory where the platform permits it, and never include secret values in diagnostics or serialized DTOs. Reintroducing encryption or an OS credential store requires a new decision record and migration plan.

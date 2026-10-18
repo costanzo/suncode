@@ -105,7 +105,7 @@ Ordered checkpoint metadata linked to a manifest/session and optionally to the c
 
 ### `llm_model_provider`
 
-Built-in or custom provider row keyed by `provider_id`. It stores display name, endpoint, required `adapter_type`, optional plaintext `api_key`, enabled/order state, and timestamps. `adapter_type` names a provider implementation known to `suncode-llm`; supported values are `openai` for OpenAI-compatible endpoints and `anthropic` for the built-in Claude Messages route. API keys never enter DTOs, events, audit payloads, or logs. Opening the immediately previous current-schema database narrowly rebuilds this table when its check constraint permits only `openai`, preserving provider endpoints, credentials, enablement, ordering, and timestamps before selecting the built-in Claude adapter.
+Built-in or custom provider row keyed by `provider_id`. It stores display name, endpoint, required `adapter_type`, credential metadata (`credential_mode`, nullable `secret_ref`, nullable `api_key`, and nullable `api_key_mask`), enabled/order state, and timestamps. `keychain` mode stores a UUID reference and mask while the complete API key lives in the platform credential store; `plaintext` mode stores the complete value in `api_key` and leaves `secret_ref` null. A CHECK constraint enforces the mutually exclusive shapes. `adapter_type` names a provider implementation known to `suncode-llm`; supported values are `openai` for OpenAI-compatible endpoints and `anthropic` for the built-in Claude Messages route. API keys never enter DTOs, events, audit payloads, or logs. This is a fresh-system schema; a database without credential-storage columns is rejected as `database_schema_incompatible` and is not migrated.
 
 ### `llm_model`
 

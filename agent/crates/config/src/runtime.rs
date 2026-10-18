@@ -1,26 +1,12 @@
 //! Per-turn runtime policy resolved from the environment and persisted settings.
 
 use crate::{environment::EnvironmentSource, settings::PersistedSettings};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    ops::RangeInclusive,
-};
+use std::{collections::BTreeSet, ops::RangeInclusive};
 
 const TURN_TIMEOUT_RANGE_MS: RangeInclusive<u64> = 1_000..=86_400_000;
 const BASH_TIMEOUT_RANGE_MS: RangeInclusive<u64> = 1..=600_000;
 const TOOL_CALL_LIMIT_RANGE: RangeInclusive<u64> = 1..=256;
 const MAX_TOOL_NAME_BYTES: usize = 128;
-
-/// Providers whose `SUNCODE_<PROVIDER>_API_KEY` is read as an in-memory credential.
-const CREDENTIAL_PROVIDERS: [&str; 7] = [
-    "openai",
-    "anthropic",
-    "deepseek",
-    "qwen",
-    "zhipu",
-    "kimi",
-    "gemini",
-];
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct RuntimeConfig {
@@ -29,7 +15,6 @@ pub struct RuntimeConfig {
     pub turn_timeout_ms: u64,
     pub bash_timeout_ms: Option<u64>,
     pub tool_call_limit: Option<u32>,
-    pub credentials: BTreeMap<String, String>,
 }
 
 impl RuntimeConfig {
@@ -76,7 +61,6 @@ impl RuntimeConfig {
             turn_timeout_ms,
             bash_timeout_ms,
             tool_call_limit,
-            credentials: credentials(source),
         })
     }
 }
@@ -90,21 +74,8 @@ impl std::fmt::Debug for RuntimeConfig {
             .field("turn_timeout_ms", &self.turn_timeout_ms)
             .field("bash_timeout_ms", &self.bash_timeout_ms)
             .field("tool_call_limit", &self.tool_call_limit)
-            .field("credentials", &self.credentials.keys().collect::<Vec<_>>())
             .finish()
     }
-}
-
-fn credentials(source: EnvironmentSource) -> BTreeMap<String, String> {
-    CREDENTIAL_PROVIDERS
-        .into_iter()
-        .filter_map(|provider| {
-            let name = format!("SUNCODE_{}_API_KEY", provider.to_ascii_uppercase());
-            source
-                .non_empty_value(&name)
-                .map(|value| (provider.to_string(), value))
-        })
-        .collect()
 }
 
 fn parse_allowlist(value: &str) -> Result<BTreeSet<String>, String> {
@@ -150,10 +121,9 @@ mod tests {
             turn_timeout_ms: RuntimeConfig::DEFAULT_TURN_TIMEOUT_MS,
             bash_timeout_ms: None,
             tool_call_limit: None,
-            credentials: BTreeMap::from([("openai".to_string(), "sk-secret-value".to_string())]),
         };
         let rendered = format!("{config:?}");
-        assert!(rendered.contains("openai"));
+        assert!(rendered.contains("RuntimeConfig"));
         assert!(!rendered.contains("sk-secret-value"));
     }
 }

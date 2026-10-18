@@ -15,7 +15,7 @@ public sealed partial class AgentSdk : IDisposable
     private static readonly NativeMethods.BrowserHostCallback BrowserHostCallbackBridge = OnBrowserHostRequested;
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 23;
+    private const uint AbiVersion = 24;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -236,6 +236,14 @@ public sealed partial class AgentSdk : IDisposable
     private Task<JsonElement> RawSetCredentialAsync(string provider, string apiKey) => WithUtf8Async(
         [provider, apiKey],
         values => NativeMethods.suncode_agent_sdk_set_credential(_handle, values[0], values[1]));
+
+    private Task<JsonElement> RawSetCredentialWithModeAsync(string provider, string apiKey, string mode) => WithUtf8Async(
+        [provider, apiKey, mode],
+        values => NativeMethods.suncode_agent_sdk_set_credential_with_mode(_handle, values[0], values[1], values[2]));
+
+    private Task<JsonElement> RawChangeCredentialModeAsync(string provider, string mode) => WithUtf8Async(
+        [provider, mode],
+        values => NativeMethods.suncode_agent_sdk_change_credential_mode(_handle, values[0], values[1]));
 
     private Task<JsonElement> RawRemoveCredentialAsync(string provider) => WithUtf8Async(
         [provider], values => NativeMethods.suncode_agent_sdk_remove_credential(_handle, values[0]));

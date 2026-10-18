@@ -1,10 +1,10 @@
 # Provider Secret Storage
 
 - Date: 2026-10-18
-- Status: UI review; production implementation awaits user confirmation
+- Status: Implemented and focused-tested; UI and production paths are aligned
 - Related features: providers-and-models, design-system, persistence-phase-1, rust-sdk
 - Related specifications: contracts/persistence.md (current production behavior)
-- Related decisions: ADR-20260812-plaintext-provider-secrets (current production decision)
+- Related decisions: ADR-20261018-provider-secret-storage (current decision)
 
 ## Documents
 

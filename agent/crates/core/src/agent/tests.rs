@@ -14,8 +14,8 @@ use suncode_llm::{
 struct TestApiKey;
 
 impl ApiKeyResolver for TestApiKey {
-    fn api_key(&self, provider_id: &str) -> Option<String> {
-        (provider_id == "deepseek").then(|| "test-key".to_string())
+    fn api_key(&self, provider_id: &str) -> Result<Option<String>, suncode_common::BusinessError> {
+        Ok((provider_id == "deepseek").then(|| "test-key".to_string()))
     }
 }
 

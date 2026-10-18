@@ -71,7 +71,13 @@ public sealed record ModelItem(
     public string Display => Id;
 }
 
-public sealed record CredentialItem(string Provider, bool Configured);
+public sealed record CredentialItem(
+    string Provider,
+    bool Configured,
+    string Status = "missing",
+    string Mode = "keychain",
+    string? MaskedValue = null,
+    string Source = "stored");
 
 public sealed record AgentItem(
     string Id,

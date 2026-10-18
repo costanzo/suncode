@@ -78,7 +78,7 @@ pub type CompletionFuture<'a> =
 
 /// Resolves credentials without coupling providers to persistence.
 pub trait ApiKeyResolver: Send + Sync {
-    fn api_key(&self, provider_id: &str) -> Option<String>;
+    fn api_key(&self, provider_id: &str) -> Result<Option<String>, suncode_common::BusinessError>;
 }
 
 /// Provider-neutral completion interface consumed by an agent loop.

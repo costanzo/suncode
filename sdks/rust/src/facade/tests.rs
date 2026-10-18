@@ -35,9 +35,8 @@ fn test_state(directory: &std::path::Path) -> AgentState {
     let providers = Arc::new(
         registry_from_store(
             &store,
-            Arc::new(SqliteApiKeyResolver {
+            Arc::new(ApiKeyResolver {
                 store: store.clone(),
-                overrides: std::collections::BTreeMap::new(),
             }),
             verify_https_certificates.clone(),
             Arc::new(AtomicBool::new(true)),
@@ -68,7 +67,6 @@ fn test_state(directory: &std::path::Path) -> AgentState {
         proxy_configuration,
         agent,
         providers,
-        credential_overrides: std::collections::BTreeMap::new(),
         host_capabilities: SdkHostCapabilities::default(),
         log_console_output: SdkLogConsoleOutput::None,
     }

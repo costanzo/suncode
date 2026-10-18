@@ -313,13 +313,11 @@ fn auth(sdk: &AsyncAgentSdk, command: &AuthCommand) -> Result<CommandReport, Cli
                 .iter()
                 .map(|credential| {
                     format!(
-                        "{:<18} {}",
+                        "{:<18} {:<14} {:<10} {}",
                         credential.provider,
-                        if credential.configured {
-                            "configured"
-                        } else {
-                            "not configured"
-                        }
+                        credential.status,
+                        credential.mode.as_str(),
+                        credential.masked_value.as_deref().unwrap_or("")
                     )
                 })
                 .collect::<Vec<_>>()
@@ -330,20 +328,20 @@ fn auth(sdk: &AsyncAgentSdk, command: &AuthCommand) -> Result<CommandReport, Cli
                 text,
             })
         }
-        AuthCommand::Set { provider } => {
-            let supported = sdk
+        AuthCommand::Set { provider, storage } => {
+            let current = sdk
                 .list_credentials()
                 .map_err(CliError::from_business)?
                 .credentials
                 .into_iter()
-                .any(|credential| credential.provider == *provider);
-            if !supported {
+                .find(|credential| credential.provider == *provider);
+            let Some(current) = current else {
                 return Err(CliError {
                     code: "provider_not_found".into(),
                     message: "provider is not supported".into(),
                     exit_code: 3,
                 });
-            }
+            };
             if !io::stdin().is_terminal() || !io::stderr().is_terminal() {
                 return Err(CliError::invalid(
                     "auth set requires an interactive terminal; API-key environment variables are unsupported",
@@ -354,8 +352,16 @@ fn auth(sdk: &AsyncAgentSdk, command: &AuthCommand) -> Result<CommandReport, Cli
             if value.trim().is_empty() {
                 return Err(CliError::invalid("API key must not be empty"));
             }
+            let mode = match storage {
+                Some(storage) => suncode_sdk::CredentialStorageMode::parse(storage.as_str())
+                    .map_err(CliError::from_business)?,
+                None => current.mode,
+            };
+            if mode == suncode_sdk::CredentialStorageMode::Plaintext {
+                eprintln!("warning: plaintext storage writes the complete API key to the local SQLite database");
+            }
             let result = sdk
-                .set_credential(provider, &value)
+                .save_credential(provider, Some(&value), mode)
                 .map_err(CliError::from_business)?;
             Ok(CommandReport {
                 event_type: "auth.updated",

@@ -49,14 +49,13 @@ fn process_environment_overrides_persisted_values() {
 }
 
 #[test]
-fn disabled_environment_ignores_process_overrides_and_credentials() {
+fn provider_api_key_environment_values_are_not_loaded_as_credentials() {
     let _guard = environment_lock();
     std::env::set_var("SUNCODE_FULL_CONTROL", "true");
     std::env::set_var("SUNCODE_OPENAI_API_KEY", "secret");
-    let config = Config::load_with_environment(EnvironmentSource::Disabled).unwrap();
+    let config = Config::load_with_environment(EnvironmentSource::Process).unwrap();
     let runtime = config.runtime(&PersistedSettings::default()).unwrap();
-    assert_eq!(runtime.full_control, None);
-    assert!(runtime.credentials.is_empty());
+    assert_eq!(runtime.full_control, Some(true));
     std::env::remove_var("SUNCODE_FULL_CONTROL");
     std::env::remove_var("SUNCODE_OPENAI_API_KEY");
 }

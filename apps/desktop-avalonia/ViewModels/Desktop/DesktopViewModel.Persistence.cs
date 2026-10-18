@@ -183,7 +183,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         Credentials.Clear();
         foreach (var item in result.Credentials)
         {
-            Credentials.Add(new CredentialItem(item.Provider, item.Configured));
+            Credentials.Add(new CredentialItem(item.Provider, item.Configured, item.Status, item.Mode, item.MaskedValue, item.Source));
         }
         RefreshProviderConfigurationStates();
     }

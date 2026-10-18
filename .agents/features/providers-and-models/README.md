@@ -18,7 +18,7 @@ The former `gemini-3.5` row used a legacy SunCode ID for wire model `gemini-3.5-
 
 ## xAI Grok catalog
 
-The xAI provider uses `https://api.x.ai/v1` through the existing Responses adapter. Its credential and endpoint follow the same SQLite and Settings paths as other providers. Startup seeding adds it to existing databases without overwriting provider credentials or endpoint settings.
+The xAI provider uses `https://api.x.ai/v1` through the existing Responses adapter. Its credential and endpoint follow the same provider Settings path as other providers; credentials use the Rust-owned system store by default or explicit SQLite plaintext mode. Startup seeding adds it to existing databases without overwriting provider credential metadata or endpoint settings.
 
 The catalog was checked against the [official xAI model list](https://docs.x.ai/developers/models) and individual model pages on 2026-10-12:
 

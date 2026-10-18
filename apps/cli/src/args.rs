@@ -80,12 +80,30 @@ pub enum AuthCommand {
     Set {
         /// Provider ID, for example `deepseek`, `qwen`, `openai`, or `claude`.
         provider: String,
+        /// Storage mode (defaults to this provider's saved choice, or keychain).
+        #[arg(long, value_enum)]
+        storage: Option<CredentialStorage>,
     },
     /// Remove a provider credential.
     Remove {
         /// Provider ID whose stored credential should be removed.
         provider: String,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum CredentialStorage {
+    Keychain,
+    Plaintext,
+}
+
+impl CredentialStorage {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Keychain => "keychain",
+            Self::Plaintext => "plaintext",
+        }
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -166,6 +184,18 @@ mod tests {
             Command::Auth {
                 command: AuthCommand::Remove { provider }
             } if provider == "claude"
+        ));
+    }
+
+    #[test]
+    fn parses_provider_storage_selection() {
+        let cli =
+            Cli::try_parse_from(["suncode", "auth", "set", "openai", "--storage", "plaintext"])
+                .unwrap();
+        assert!(matches!(
+            cli.command,
+            Command::Auth { command: AuthCommand::Set { provider, storage: Some(CredentialStorage::Plaintext) } }
+            if provider == "openai"
         ));
     }
 

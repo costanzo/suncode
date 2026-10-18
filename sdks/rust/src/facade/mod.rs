@@ -68,7 +68,6 @@ pub(crate) struct AgentState {
     proxy_configuration: Arc<RwLock<HttpProxyConfiguration>>,
     agent: AgentRuntime,
     providers: Arc<ModelProviderRegistry>,
-    credential_overrides: std::collections::BTreeMap<String, String>,
     host_capabilities: SdkHostCapabilities,
     log_console_output: SdkLogConsoleOutput,
 }
@@ -102,42 +101,32 @@ impl AsyncAgentSdk {
 }
 
 #[derive(Clone)]
-struct SqliteApiKeyResolver {
+struct ApiKeyResolver {
     store: Store,
-    overrides: std::collections::BTreeMap<String, String>,
 }
 
-impl suncode_llm::ApiKeyResolver for SqliteApiKeyResolver {
-    fn api_key(&self, provider_id: &str) -> Option<String> {
-        self.overrides
-            .get(provider_id)
-            .cloned()
-            .or_else(|| self.store.llm_provider_api_key(provider_id).ok().flatten())
+impl suncode_llm::ApiKeyResolver for ApiKeyResolver {
+    fn api_key(&self, provider_id: &str) -> Result<Option<String>, BusinessError> {
+        self.store.resolve_provider_credential(provider_id)
     }
 }
 
-fn credential_states(
-    store: &Store,
-    overrides: &std::collections::BTreeMap<String, String>,
-) -> SdkResult<Vec<CredentialState>> {
+fn credential_states(store: &Store) -> SdkResult<Vec<CredentialState>> {
     store
         .llm_model_providers(false)?
         .into_iter()
         .map(|provider| {
+            let status = store.provider_credential_status(&provider.provider_id)?;
             Ok(CredentialState {
-                configured: overrides.contains_key(&provider.provider_id)
-                    || store.llm_provider_api_key(&provider.provider_id)?.is_some(),
+                configured: status == "configured",
+                status: status.into(),
+                mode: provider.credential_mode,
+                masked_value: provider.api_key_mask,
+                source: "stored".into(),
                 provider: provider.provider_id,
             })
         })
         .collect()
-}
-
-fn provider_exists(store: &Store, provider_id: &str) -> SdkResult<bool> {
-    Ok(store
-        .llm_model_providers(false)?
-        .iter()
-        .any(|provider| provider.provider_id == provider_id))
 }
 
 fn provider_models(
@@ -284,7 +273,7 @@ where
 {
     let store = Store::open(&config.database_path)?;
     let persisted = store.persisted_settings(None, None)?;
-    let runtime_config = config.runtime(&persisted).map_err(BusinessError::invalid)?;
+    config.runtime(&persisted).map_err(BusinessError::invalid)?;
     let global = persisted.global;
     configure_logging(&global.log, &config.data_dir, options.log_console_output);
     let verify_https_certificates = Arc::new(AtomicBool::new(global.tls.verify_https_certificates));
@@ -311,9 +300,8 @@ where
     let events = SessionEventHub::new(256);
     let mut providers = registry_from_store(
         &store,
-        Arc::new(SqliteApiKeyResolver {
+        Arc::new(ApiKeyResolver {
             store: store.clone(),
-            overrides: runtime_config.credentials.clone(),
         }),
         verify_https_certificates.clone(),
         use_system_certificates.clone(),
@@ -368,7 +356,6 @@ where
         proxy_configuration,
         agent,
         providers,
-        credential_overrides: runtime_config.credentials,
         host_capabilities: options.host_capabilities,
         log_console_output: options.log_console_output,
     };

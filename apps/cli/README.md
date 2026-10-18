@@ -14,7 +14,7 @@ suncode session resume SESSION_ID (--prompt TEXT | --stdin) [--model MODEL] [--r
 suncode session archive SESSION_ID
 suncode models
 suncode auth list
-suncode auth set PROVIDER
+suncode auth set PROVIDER [--storage keychain|plaintext]
 suncode auth remove PROVIDER
 suncode config list
 ```
@@ -23,11 +23,11 @@ Global options currently include `--output text|jsonl`, `--color auto|always|nev
 
 `run` opens the selected project and creates a primary session. `session resume` reopens an existing primary session and submits one new turn with its durable context. Both establish an atomic SDK watch, stream typed events, and print final assistant text to stdout. Text-mode progress stays on stderr; JSONL finishes with `run.result` or `session.resume.result`. The first interrupt requests SDK turn cancellation, while a second exits with status 130 after attempting explicit shutdown.
 
-The CLI opts into the `suncode-config` process environment source. In addition to the bootstrap variables, it accepts runtime policy and limit overrides such as `SUNCODE_FULL_CONTROL`, `SUNCODE_TOOL_ALLOWLIST`, `SUNCODE_TURN_TIMEOUT_MS`, `SUNCODE_BASH_TIMEOUT_MS`, and `SUNCODE_TOOL_CALL_LIMIT`. Provider-specific `SUNCODE_*_API_KEY` values are process-local credential overlays. The Avalonia/native blocking host uses the disabled environment source.
+The CLI opts into the `suncode-config` process environment source. In addition to the bootstrap variables, it accepts runtime policy and limit overrides such as `SUNCODE_FULL_CONTROL`, `SUNCODE_TOOL_ALLOWLIST`, `SUNCODE_TURN_TIMEOUT_MS`, `SUNCODE_BASH_TIMEOUT_MS`, and `SUNCODE_TOOL_CALL_LIMIT`. Provider API-key values are not read from environment variables; use `auth set` to select system credential storage or explicit plaintext storage. The Avalonia/native blocking host uses the disabled environment source.
 
 `session list` returns active and archived primary sessions for the selected project. `session archive` performs the SDK-owned lifecycle transition. Resume fails with status 4 if the session already has a pending approval or structured question; it does not resolve interactive state.
 
-The CLI opens the SDK with Browser Use and Computer Use disabled at the host capability boundary. Provider credentials can be entered interactively and stored through the SDK, or supplied as process-local `SUNCODE_*_API_KEY` overlays for benchmark/automation runs.
+The CLI opens the SDK with Browser Use and Computer Use disabled at the host capability boundary. Provider credentials are entered interactively and stored through the SDK.
 
 Build and test:
 

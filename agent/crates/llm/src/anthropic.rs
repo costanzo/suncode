@@ -64,7 +64,7 @@ impl AnthropicProvider {
         cancellation: &CancellationToken,
         deltas: mpsc::UnboundedSender<String>,
     ) -> Result<Completion, BusinessError> {
-        let key = self.keys.api_key(&self.provider_id).ok_or_else(|| {
+        let key = self.keys.api_key(&self.provider_id)?.ok_or_else(|| {
             BusinessError::new(
                 "provider_unconfigured",
                 format!("{} API key is not configured", self.provider_label),
@@ -395,8 +395,11 @@ mod tests {
     struct TestKeys;
 
     impl ApiKeyResolver for TestKeys {
-        fn api_key(&self, provider_id: &str) -> Option<String> {
-            (provider_id == "anthropic").then(|| "anthropic-test-key".into())
+        fn api_key(
+            &self,
+            provider_id: &str,
+        ) -> Result<Option<String>, suncode_common::BusinessError> {
+            Ok((provider_id == "anthropic").then(|| "anthropic-test-key".into()))
         }
     }
 

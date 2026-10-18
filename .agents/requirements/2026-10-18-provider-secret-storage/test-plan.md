@@ -2,11 +2,11 @@
 
 ## Scope
 
-Design-system UI only. Real OS access and production behavior are not verified by this review.
+Design-system UI plus Rust storage, SDK, CLI, and Avalonia integration. Installed keychain permission behavior remains platform release verification.
 
 ## Unit tests
 
-No new unit tests for the reversible review-only change.
+Rust tests cover secret redaction, storage-mode exclusivity, masking, mode switching, and missing keychain entries. CLI tests cover storage selection and stable credential exit codes.
 
 ## Integration and conformance tests
 
@@ -23,9 +23,11 @@ Both themes; default and constrained sizes; native radio keyboard selection; sha
 ## Commands and results
 
 - `npm run build`: passed; bundle-size advisory remains.
+- Rust focused tests: passed.
+- CLI tests: passed.
+- C# and Avalonia builds: passed.
 - `git diff --check`: passed.
-- Browser verification: in progress.
 
 ## Residual risks
 
-Native store permissions, signing, headless environments, and durability are deferred to approved production implementation.
+Native store permissions, signing, headless Linux Secret Service availability, and installed-platform durability remain release verification.

@@ -206,6 +206,8 @@ pub struct LlmModelProviderRecord {
     pub default_endpoint: String,
     pub adapter_type: String,
     pub api_key_configured: bool,
+    pub credential_mode: CredentialStorageMode,
+    pub api_key_mask: Option<String>,
     pub enabled: bool,
     pub sort_order: i64,
     pub created_at: String,
@@ -556,4 +558,29 @@ pub struct SettingRecord {
     pub value: Value,
     pub scope: String,
     pub scope_id: String,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum CredentialStorageMode {
+    #[default]
+    Keychain,
+    Plaintext,
+}
+impl CredentialStorageMode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Keychain => "keychain",
+            Self::Plaintext => "plaintext",
+        }
+    }
+    pub fn parse(value: &str) -> Result<Self, suncode_common::BusinessError> {
+        match value {
+            "keychain" => Ok(Self::Keychain),
+            "plaintext" => Ok(Self::Plaintext),
+            _ => Err(suncode_common::BusinessError::invalid(
+                "credential storage mode is invalid",
+            )),
+        }
+    }
 }

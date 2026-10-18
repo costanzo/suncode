@@ -143,9 +143,19 @@ fn run_streams_typed_events_and_returns_a_completed_result() {
         let sdk = AsyncAgentSdk::open_default("cli-integration-test")
             .await
             .unwrap();
-        sdk.set_credential("deepseek", "test-key").unwrap();
+        sdk.save_credential(
+            "deepseek",
+            Some("test-key"),
+            suncode_sdk::CredentialStorageMode::Plaintext,
+        )
+        .unwrap();
         sdk.set_provider_endpoint("deepseek", &endpoint).unwrap();
-        sdk.set_credential("openai", "test-key").unwrap();
+        sdk.save_credential(
+            "openai",
+            Some("test-key"),
+            suncode_sdk::CredentialStorageMode::Plaintext,
+        )
+        .unwrap();
         sdk.set_provider_endpoint("openai", &endpoint).unwrap();
         sdk.shutdown().await.unwrap();
     });
@@ -331,7 +341,12 @@ fn session_resume_reopens_and_uses_durable_conversation_context() {
         let sdk = AsyncAgentSdk::open_default("cli-integration-test")
             .await
             .unwrap();
-        sdk.set_credential("deepseek", "test-key").unwrap();
+        sdk.save_credential(
+            "deepseek",
+            Some("test-key"),
+            suncode_sdk::CredentialStorageMode::Plaintext,
+        )
+        .unwrap();
         sdk.set_provider_endpoint("deepseek", &endpoint).unwrap();
         let project = sdk
             .open_project(project_path.to_str().unwrap(), None)
@@ -458,7 +473,12 @@ fn session_resume_fails_closed_when_an_approval_is_pending() {
         let sdk = AsyncAgentSdk::open_default("cli-integration-test")
             .await
             .unwrap();
-        sdk.set_credential("deepseek", "test-key").unwrap();
+        sdk.save_credential(
+            "deepseek",
+            Some("test-key"),
+            suncode_sdk::CredentialStorageMode::Plaintext,
+        )
+        .unwrap();
         sdk.set_provider_endpoint("deepseek", &endpoint).unwrap();
         sdk.shutdown().await.unwrap();
     });
@@ -526,7 +546,12 @@ fn session_resume_fails_closed_when_a_question_is_pending() {
         let sdk = AsyncAgentSdk::open_default("cli-integration-test")
             .await
             .unwrap();
-        sdk.set_credential("deepseek", "test-key").unwrap();
+        sdk.save_credential(
+            "deepseek",
+            Some("test-key"),
+            suncode_sdk::CredentialStorageMode::Plaintext,
+        )
+        .unwrap();
         sdk.set_provider_endpoint("deepseek", &endpoint).unwrap();
         sdk.shutdown().await.unwrap();
     });

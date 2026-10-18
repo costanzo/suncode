@@ -5,10 +5,15 @@ CREATE TABLE IF NOT EXISTS llm_model_provider (
     default_endpoint TEXT NOT NULL CHECK(length(default_endpoint) > 0),
     adapter_type TEXT NOT NULL DEFAULT 'openai' CHECK(adapter_type IN ('openai', 'anthropic')),
     api_key TEXT,
+    credential_mode TEXT NOT NULL DEFAULT 'keychain' CHECK(credential_mode IN ('keychain', 'plaintext')),
+    secret_ref TEXT,
+    api_key_mask TEXT,
     enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),
     sort_order INTEGER NOT NULL DEFAULT 0 CHECK(sort_order >= 0),
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    CHECK((credential_mode = 'keychain' AND api_key IS NULL) OR
+          (credential_mode = 'plaintext' AND secret_ref IS NULL))
 );
 
 CREATE INDEX IF NOT EXISTS llm_model_provider_enabled_order_idx

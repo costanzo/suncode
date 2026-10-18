@@ -10,7 +10,8 @@ use suncode_data::{
 };
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 23;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 24;
+pub use suncode_data::CredentialStorageMode;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,6 +94,10 @@ pub struct ModelsResult {
 pub struct CredentialState {
     pub provider: String,
     pub configured: bool,
+    pub status: String,
+    pub mode: CredentialStorageMode,
+    pub masked_value: Option<String>,
+    pub source: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -104,6 +109,9 @@ pub struct CredentialsResult {
 pub struct CredentialUpdate {
     pub provider: String,
     pub configured: bool,
+    pub status: String,
+    pub mode: CredentialStorageMode,
+    pub masked_value: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

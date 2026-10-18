@@ -12,7 +12,7 @@ Provider adapters may make outbound HTTPS requests to configured model providers
 
 The async Rust facade owns agent services but no executor; `AsyncAgentSdk::open_default(...).await` and all runtime-dependent methods execute on the host's Tokio runtime. `AsyncAgentSdk::shutdown(self).await` consumes the handle, rejects new agent work, cancels turns, clears queued input, releases Computer Use state, drains Browser/MCP/LSP processes, waits a bounded five seconds for active turns, closes event streams, and releases the data-directory lock. Pure local persistence and DTO operations remain synchronous and explicit. The root compatibility `AgentSdk` is the blocking wrapper: it owns one Tokio runtime, dereferences to the async facade for synchronous methods, adapts awaited operations with `block_on`, and keeps that runtime alive through its consuming `shutdown(self)`. C embeds that blocking wrapper. Host wrappers may share one handle inside a process. The Rust facade exposes a typed `SessionEventStream` implementing standard `Stream` and `FusedStream` contracts plus direct receive methods; native bindings adapt that stream to their host runtime. C subscriptions must be closed before the final agent handle is released. Closing a C subscription signals its stream and stops callback delivery before returning. Final native handle release invokes blocking shutdown; its unchanged `void` close function logs cleanup errors.
 
-The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 23. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly. ABI 23 adds the typed project-scoped Roslyn Language Server configuration operation.
+The C ABI exposes `suncode_agent_sdk_abi_version` and reports ABI version 24. Hosts use the current `agent` symbol family directly; there is no compatibility layer for prior native APIs. ABI functions and enum-like integer values are add-only within a major ABI version. Rust layouts, references, strings, vectors, and errors never cross the ABI directly. ABI 24 adds provider credential storage-mode selection and redacted credential status fields.
 
 ## Methods
 
@@ -30,7 +30,9 @@ The Rust API uses typed inputs and outputs. Async Rust hosts use `AsyncAgentSdk`
 | `set_setting` | Store one global, project, or session configuration value; known keys are validated against the `suncode-config` settings schema for scope and type |
 | `set_proxy_configuration` | Atomically store global proxy mode, endpoint, credentials, and bypass rules while returning only redacted password state |
 | `list_credentials` | Read redacted provider credential status |
-| `set_credential` | Store or replace one provider API key |
+| `set_credential` | Store or replace one provider API key using its selected storage mode |
+| `set_credential_with_mode` | Store or replace one provider API key while selecting `keychain` or `plaintext` |
+| `change_credential_mode` | Move one provider API key between the system credential store and SQLite plaintext with rollback on failure |
 | `remove_credential` | Remove one provider API key |
 | `set_provider_endpoint` | Validate, persist, and apply one provider API base URL |
 | `computer_runtime_info` | Read global Computer Use enablement, backend availability, primary-display geometry, redacted permission state, control owner, and safe error state |
@@ -251,7 +253,7 @@ The Rust facade does not own callback threads, C strings, or raw callback pointe
 
 Embedding removes transport authentication because the host is inside the agent process trust boundary. It does not remove project/session ownership checks, policy evaluation, approval, operation auditing, canonical path validation, checkpoint conflict checks, or credential redaction.
 
-Provider API keys remain Rust-owned plaintext values in `llm_model_provider.api_key`, which is their exclusive runtime source. Provider credential environment variables are ignored. Key values never appear in SDK results, events, diagnostics, or logs.
+Provider API keys remain Rust-owned secrets. `keychain` mode resolves from the platform credential store and `plaintext` mode resolves from `llm_model_provider.api_key`; clients receive only mode, mask, source, and a status of `configured`, `missing`, `locked`, `access_denied`, or `unavailable`. Provider credential environment variables are ignored by desktop hosts. Key values never appear in SDK results, events, diagnostics, or logs. Keychain access is performed only by `suncode-secrets` through the Rust data boundary; clients never call the OS store directly.
 
 MCP calls have `ExternalTool` risk. Interactive policy requires approval unless the session has Full Control; non-interactive policy denies them by default. Approval records retain stable server and remote-tool identity but not configured secret values. MCP processes and remote services can make changes outside SunCode's checkpoint and undo boundary. A local stdio process runs with the user's OS authority and is not made trustworthy or OS-sandboxed by the Rust protocol boundary.
 

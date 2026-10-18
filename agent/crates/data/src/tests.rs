@@ -7,7 +7,7 @@ use diesel::{
 use serde_json::json;
 use std::collections::BTreeMap;
 
-const PREVIOUS_PROVIDER_SCHEMA: &str = r#"
+const INCOMPATIBLE_PROVIDER_SCHEMA: &str = r#"
     CREATE TABLE IF NOT EXISTS llm_model_provider (
         provider_id TEXT PRIMARY KEY CHECK(length(provider_id) > 0),
         display_name TEXT NOT NULL CHECK(length(display_name) > 0),
@@ -91,57 +91,26 @@ fn message_page_returns_latest_rows_and_walks_backward_without_duplicates() {
 }
 
 #[test]
-fn previous_provider_constraint_is_rebuilt_for_anthropic_without_losing_configuration() {
+fn incompatible_provider_schema_is_rejected_without_migration() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("agent.sqlite3");
     let mut connection = SqliteConnection::establish(path.to_str().unwrap()).unwrap();
     for script in suncode_database::sqlite::schema_scripts() {
         if script.contains("CREATE TABLE IF NOT EXISTS llm_model_provider") {
-            connection.batch_execute(PREVIOUS_PROVIDER_SCHEMA).unwrap();
+            connection
+                .batch_execute(INCOMPATIBLE_PROVIDER_SCHEMA)
+                .unwrap();
         } else {
             connection.batch_execute(script).unwrap();
         }
     }
-    for script in suncode_database::sqlite::data_scripts() {
-        let compatible = script.replace("'anthropic', NULL, 1, 50", "'openai', NULL, 1, 50");
-        connection.batch_execute(&compatible).unwrap();
-    }
-    connection
-        .batch_execute(
-            "UPDATE llm_model_provider SET api_key='preserved-key',enabled=0,sort_order=77 WHERE provider_id='claude';",
-        )
-        .unwrap();
     drop(connection);
 
-    let store = Store::open(&path).unwrap();
-    let claude = store
-        .llm_model_providers(false)
-        .unwrap()
-        .into_iter()
-        .find(|provider| provider.provider_id == "claude")
-        .unwrap();
-    assert_eq!(claude.adapter_type, "anthropic");
-    assert_eq!(claude.endpoint, "https://api.anthropic.com/v1");
-    assert_eq!(claude.default_endpoint, "https://api.anthropic.com/v1");
-    assert!(!claude.enabled);
-    assert_eq!(claude.sort_order, 77);
-    assert_eq!(claude.created_at, "2026-08-19T00:00:00.000Z");
-    assert_eq!(claude.updated_at, "2026-09-19T00:00:00.000Z");
-    store
-        .upsert_llm_model_provider(LlmModelProviderInput {
-            provider_id: &claude.provider_id,
-            display_name: &claude.display_name,
-            endpoint: &claude.endpoint,
-            default_endpoint: &claude.default_endpoint,
-            adapter_type: &claude.adapter_type,
-            enabled: true,
-            sort_order: claude.sort_order,
-        })
-        .unwrap();
-    assert_eq!(
-        store.llm_provider_api_key("claude").unwrap(),
-        Some("preserved-key".into())
-    );
+    let error = match Store::open(&path) {
+        Ok(_) => panic!("incompatible schema was accepted"),
+        Err(error) => error,
+    };
+    assert_eq!(error.code, "database_schema_incompatible");
 }
 
 #[test]
@@ -649,8 +618,16 @@ fn reopening_existing_catalog_adds_new_providers_and_preserves_provider_settings
         connection.batch_execute(
             "DELETE FROM llm_model WHERE provider_id IN ('xai', 'minimax', 'meta', 'mimo');
              DELETE FROM llm_model_provider WHERE provider_id IN ('xai', 'minimax', 'meta', 'mimo');
-             UPDATE llm_model_provider SET endpoint='https://gateway.example.test/v1', api_key='test-existing-key' WHERE provider_id='openai';",
+             UPDATE llm_model_provider SET endpoint='https://gateway.example.test/v1' WHERE provider_id='openai';",
         ).unwrap();
+        drop(connection);
+        store
+            .save_provider_credential(
+                "openai",
+                Some("test-existing-key"),
+                crate::CredentialStorageMode::Plaintext,
+            )
+            .unwrap();
     }
     for _ in 0..2 {
         let store = Store::open(&path).unwrap();
@@ -699,6 +676,69 @@ fn reopening_existing_catalog_adds_new_providers_and_preserves_provider_settings
             ]
         );
     }
+}
+
+#[test]
+fn credential_storage_modes_keep_secret_values_out_of_the_wrong_store() {
+    let store = Store::open_memory().unwrap();
+    store
+        .save_provider_credential(
+            "openai",
+            Some("sk-test-value-123456789"),
+            crate::CredentialStorageMode::Plaintext,
+        )
+        .unwrap();
+    let plaintext = store.provider_credential("openai").unwrap().unwrap();
+    assert_eq!(
+        plaintext.plaintext.as_deref(),
+        Some("sk-test-value-123456789")
+    );
+    assert!(plaintext.secret_ref.is_none());
+    assert_eq!(plaintext.mask.as_deref(), Some("sk-t••••••••6789"));
+
+    store
+        .save_provider_credential("openai", None, crate::CredentialStorageMode::Keychain)
+        .unwrap();
+    let keychain = store.provider_credential("openai").unwrap().unwrap();
+    assert!(keychain.plaintext.is_none());
+    let reference = keychain.secret_ref.as_deref().unwrap();
+    let secret_id = Store::credential_secret_id(reference).unwrap();
+    assert_eq!(
+        store.secrets.get(&secret_id).unwrap().unwrap().expose(),
+        "sk-test-value-123456789"
+    );
+
+    store
+        .save_provider_credential("openai", None, crate::CredentialStorageMode::Plaintext)
+        .unwrap();
+    let plaintext_again = store.provider_credential("openai").unwrap().unwrap();
+    assert!(plaintext_again.secret_ref.is_none());
+    assert_eq!(
+        plaintext_again.plaintext.as_deref(),
+        Some("sk-test-value-123456789")
+    );
+    assert!(store.secrets.get(&secret_id).unwrap().is_none());
+}
+
+#[test]
+fn missing_keychain_entry_is_reported_without_exposing_or_clearing_its_mask() {
+    let store = Store::open_memory().unwrap();
+    store
+        .save_provider_credential(
+            "openai",
+            Some("sk-test-value-123456789"),
+            crate::CredentialStorageMode::Keychain,
+        )
+        .unwrap();
+    let record = store.provider_credential("openai").unwrap().unwrap();
+    let id = Store::credential_secret_id(record.secret_ref.as_deref().unwrap()).unwrap();
+    store.secrets.delete(&id).unwrap();
+
+    let error = store.resolve_provider_credential("openai").unwrap_err();
+    assert_eq!(error.code, "credential_missing");
+    let record = store.provider_credential("openai").unwrap().unwrap();
+    assert_eq!(record.mask.as_deref(), Some("sk-t••••••••6789"));
+    assert!(record.plaintext.is_none());
 }
 
 #[test]

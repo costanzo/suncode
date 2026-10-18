@@ -115,7 +115,7 @@ impl AsyncAgentSdk {
                 status: "ready",
                 pending_operations: 0,
             },
-            credentials: credential_states(&self.state.store, &self.state.credential_overrides)?,
+            credentials: credential_states(&self.state.store)?,
             active_project_id: self
                 .state
                 .active_project
@@ -127,7 +127,7 @@ impl AsyncAgentSdk {
 
     pub fn list_models(&self) -> SdkResult<ModelsResult> {
         let mut models = self.state.providers.models();
-        let credentials = credential_states(&self.state.store, &self.state.credential_overrides)?;
+        let credentials = credential_states(&self.state.store)?;
         for model in &mut models {
             model.availability = if credentials
                 .iter()
@@ -143,38 +143,66 @@ impl AsyncAgentSdk {
 
     pub fn list_credentials(&self) -> SdkResult<CredentialsResult> {
         Ok(CredentialsResult {
-            credentials: credential_states(&self.state.store, &self.state.credential_overrides)?,
+            credentials: credential_states(&self.state.store)?,
         })
     }
 
+    /// Save using the provider's configured mode (system keychain for a new provider).
     pub fn set_credential(&self, provider: &str, api_key: &str) -> SdkResult<CredentialUpdate> {
-        if !provider_exists(&self.state.store, provider)? {
-            return Err(BusinessError::invalid("provider is not supported"));
-        }
-        let provider = provider.to_string();
+        let mode = self
+            .state
+            .store
+            .llm_model_providers(false)?
+            .into_iter()
+            .find(|record| record.provider_id == provider)
+            .ok_or_else(|| BusinessError::invalid("provider is not supported"))?
+            .credential_mode;
+        self.save_credential(provider, Some(api_key), mode)
+    }
+
+    /// `None` keeps the current key while changing its storage mode.
+    pub fn save_credential(
+        &self,
+        provider: &str,
+        api_key: Option<&str>,
+        mode: CredentialStorageMode,
+    ) -> SdkResult<CredentialUpdate> {
         self.state
             .store
-            .set_llm_provider_api_key(&provider, api_key)
-            .map_err(|error| BusinessError::new("credential_unavailable", error.to_string()))?;
+            .save_provider_credential(provider, api_key, mode)?;
+        self.credential_update(provider)
+    }
+
+    pub fn check_credential(&self, provider: &str) -> SdkResult<CredentialUpdate> {
+        self.state.store.resolve_provider_credential(provider)?;
+        self.credential_update(provider)
+    }
+
+    fn credential_update(&self, provider: &str) -> SdkResult<CredentialUpdate> {
+        let record = self
+            .state
+            .store
+            .llm_model_providers(false)?
+            .into_iter()
+            .find(|record| record.provider_id == provider)
+            .ok_or_else(|| BusinessError::invalid("provider is not supported"))?;
+        let status = credential_states(&self.state.store)?
+            .into_iter()
+            .find(|state| state.provider == provider)
+            .map(|state| state.status)
+            .unwrap_or_else(|| "missing".into());
         Ok(CredentialUpdate {
-            provider,
-            configured: true,
+            provider: provider.to_string(),
+            configured: status == "configured",
+            status,
+            mode: record.credential_mode,
+            masked_value: record.api_key_mask,
         })
     }
 
     pub fn remove_credential(&self, provider: &str) -> SdkResult<CredentialUpdate> {
-        if !provider_exists(&self.state.store, provider)? {
-            return Err(BusinessError::invalid("provider is not supported"));
-        }
-        let provider = provider.to_string();
-        self.state
-            .store
-            .delete_llm_provider_api_key(&provider)
-            .map_err(|error| BusinessError::new("credential_unavailable", error.to_string()))?;
-        Ok(CredentialUpdate {
-            provider,
-            configured: false,
-        })
+        self.state.store.remove_provider_credential(provider)?;
+        self.credential_update(provider)
     }
 
     pub fn set_provider_endpoint(
@@ -201,9 +229,8 @@ impl AsyncAgentSdk {
         }
         let adapter = provider_adapter(
             &provider,
-            Arc::new(SqliteApiKeyResolver {
+            Arc::new(ApiKeyResolver {
                 store: self.state.store.clone(),
-                overrides: self.state.credential_overrides.clone(),
             }),
             self.state.verify_https_certificates.clone(),
             self.state.use_system_certificates.clone(),

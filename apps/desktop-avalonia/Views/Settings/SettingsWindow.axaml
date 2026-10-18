@@ -324,7 +324,9 @@
                                     SaveEndpointRequested="SaveProviderEndpoint"
                                     ResetEndpointRequested="ResetProviderEndpoint"
                                     SaveCredentialRequested="SaveCredential"
-                                    RemoveCredentialRequested="RemoveCredential" />
+                                    RemoveCredentialRequested="RemoveCredential"
+                                    CancelCredentialRequested="CancelCredential"
+                                    RetryCredentialRequested="RetryCredential" />
         </Grid>
 
         <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Network}}">

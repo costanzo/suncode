@@ -16,26 +16,76 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 {
     public bool IsAgentHealthy => DiagnosticsText.Contains("Ready", StringComparison.Ordinal);
 
-    public async Task SaveCredentialAsync(string provider, string apiKey)
+    public async Task<bool> SaveCredentialAsync(string provider, string apiKey, string storageMode = "keychain")
     {
-        if (!EnsureSdk() || string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(apiKey)) return;
-        await RunAsync(async () =>
+        if (!EnsureSdk() || string.IsNullOrWhiteSpace(provider)) return false;
+        if (string.IsNullOrWhiteSpace(apiKey)
+            && string.Equals(storageMode, ProviderCredentialMode(provider), StringComparison.Ordinal)) return false;
+        IsBusy = true;
+        try
         {
-            await _sdk!.SetCredentialAsync(new SetCredentialRequest(provider, apiKey.Trim()));
+            if (string.IsNullOrWhiteSpace(apiKey))
+                await _sdk!.ChangeCredentialModeAsync(provider, storageMode);
+            else
+                await _sdk!.SetCredentialAsync(new SetCredentialRequest(provider, apiKey.Trim(), storageMode));
             await LoadCredentialsAsync();
             await LoadModelsAsync();
-        }, "Credential stored");
+            StatusText = "Credential stored";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+            return false;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
-    public async Task RemoveCredentialAsync(string provider)
+    public async Task RefreshCredentialsAsync()
     {
-        if (!EnsureSdk() || string.IsNullOrWhiteSpace(provider)) return;
+        if (!EnsureSdk()) return;
         await RunAsync(async () =>
+        {
+            await LoadCredentialsAsync();
+            await LoadModelsAsync();
+        }, "Credential status refreshed");
+    }
+
+    public async Task<bool> RemoveCredentialAsync(string provider)
+    {
+        if (!EnsureSdk() || string.IsNullOrWhiteSpace(provider)) return false;
+        IsBusy = true;
+        try
         {
             await _sdk!.RemoveCredentialAsync(provider);
             await LoadCredentialsAsync();
             await LoadModelsAsync();
-        }, "Credential removed");
+            StatusText = "Credential removed";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+            return false;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    public async Task ChangeCredentialModeAsync(string provider, string storageMode)
+    {
+        if (!EnsureSdk() || string.IsNullOrWhiteSpace(provider)) return;
+        await RunAsync(async () =>
+        {
+            await _sdk!.ChangeCredentialModeAsync(provider, storageMode);
+            await LoadCredentialsAsync();
+            await LoadModelsAsync();
+        }, "Credential storage mode changed");
     }
 
     public async Task<bool> SaveProviderEndpointAsync(string provider, string? endpoint)
@@ -150,6 +200,15 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     public bool IsProviderConfigured(string provider) =>
         Credentials.Any(item => item.Provider == provider && item.Configured);
+
+    public string ProviderCredentialMode(string provider) =>
+        Credentials.FirstOrDefault(item => item.Provider == provider)?.Mode ?? "keychain";
+
+    public string? ProviderCredentialMask(string provider) =>
+        Credentials.FirstOrDefault(item => item.Provider == provider)?.MaskedValue;
+
+    public string ProviderCredentialStatus(string provider) =>
+        Credentials.FirstOrDefault(item => item.Provider == provider)?.Status ?? "missing";
 
     public string ProviderModels(string provider)
     {

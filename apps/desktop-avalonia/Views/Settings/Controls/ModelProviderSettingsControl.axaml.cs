@@ -24,6 +24,9 @@ public sealed partial class ModelProviderSettingsControl : UserControl
     public static readonly StyledProperty<string?> CredentialStatusTextProperty =
         AvaloniaProperty.Register<ModelProviderSettingsControl, string?>(nameof(CredentialStatusText));
 
+    public static readonly StyledProperty<string> CredentialStatusProperty =
+        AvaloniaProperty.Register<ModelProviderSettingsControl, string>(nameof(CredentialStatus), "missing");
+
     public static readonly StyledProperty<string?> ApiKeyPlaceholderTextProperty =
         AvaloniaProperty.Register<ModelProviderSettingsControl, string?>(nameof(ApiKeyPlaceholderText));
 
@@ -51,6 +54,12 @@ public sealed partial class ModelProviderSettingsControl : UserControl
     public static readonly StyledProperty<bool> CredentialConfiguredProperty =
         AvaloniaProperty.Register<ModelProviderSettingsControl, bool>(nameof(CredentialConfigured));
 
+    public static readonly StyledProperty<string> CredentialModeProperty =
+        AvaloniaProperty.Register<ModelProviderSettingsControl, string>(nameof(CredentialMode), "keychain");
+
+    public static readonly StyledProperty<string?> CredentialMaskProperty =
+        AvaloniaProperty.Register<ModelProviderSettingsControl, string?>(nameof(CredentialMask));
+
     public event EventHandler<string>? ProviderSelected;
     public event EventHandler<RoutedEventArgs>? SaveEndpointRequested;
     public event EventHandler<RoutedEventArgs>? ResetEndpointRequested;
@@ -58,9 +67,31 @@ public sealed partial class ModelProviderSettingsControl : UserControl
     public event EventHandler<RoutedEventArgs>? RemoveCredentialRequested;
     public event EventHandler<TextChangedEventArgs>? EndpointTextChanged;
     public event EventHandler<TextChangedEventArgs>? ApiKeyTextChanged;
+    public event EventHandler<string>? CredentialModeChangedRequest;
+    public event EventHandler<RoutedEventArgs>? CancelCredentialRequested;
+    public event EventHandler<RoutedEventArgs>? RetryCredentialRequested;
+    private bool _credentialBusy;
+    public string SavedCredentialMode { get; set; } = "keychain";
+
+    public void SetCredentialBusy(bool busy)
+    {
+        _credentialBusy = busy;
+        SyncView();
+    }
+
+    public void SetCredentialFeedback(string message, bool isError = false)
+    {
+        CredentialFeedbackTextBlock.Text = message;
+        CredentialFeedbackTextBlock.IsVisible = !string.IsNullOrEmpty(message);
+        CredentialFeedbackTextBlock.Foreground = this.FindResource(isError ? "DangerBrush" : "TextSecondaryBrush") as IBrush;
+    }
+
+    private void CancelCredential(object? sender, RoutedEventArgs e) => CancelCredentialRequested?.Invoke(this, e);
+    private void RetryCredential(object? sender, RoutedEventArgs e) => RetryCredentialRequested?.Invoke(this, e);
 
     private bool _syncingEndpoint;
     private bool _syncingApiKey;
+    private bool _syncingCredentialMode;
 
     public ModelProviderSettingsControl()
     {
@@ -96,6 +127,12 @@ public sealed partial class ModelProviderSettingsControl : UserControl
     {
         get => GetValue(CredentialStatusTextProperty);
         set => SetValue(CredentialStatusTextProperty, value);
+    }
+
+    public string CredentialStatus
+    {
+        get => GetValue(CredentialStatusProperty);
+        set => SetValue(CredentialStatusProperty, value);
     }
 
     public string? ApiKeyPlaceholderText
@@ -152,6 +189,18 @@ public sealed partial class ModelProviderSettingsControl : UserControl
         set => SetValue(CredentialConfiguredProperty, value);
     }
 
+    public string CredentialMode
+    {
+        get => GetValue(CredentialModeProperty);
+        set => SetValue(CredentialModeProperty, value);
+    }
+
+    public string? CredentialMask
+    {
+        get => GetValue(CredentialMaskProperty);
+        set => SetValue(CredentialMaskProperty, value);
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -160,6 +209,7 @@ public sealed partial class ModelProviderSettingsControl : UserControl
             || change.Property == EndpointTextProperty
             || change.Property == EndpointStatusTextProperty
             || change.Property == CredentialStatusTextProperty
+            || change.Property == CredentialStatusProperty
             || change.Property == ApiKeyPlaceholderTextProperty
             || change.Property == ApiKeyTextProperty
             || change.Property == ProviderModelsProperty
@@ -168,7 +218,9 @@ public sealed partial class ModelProviderSettingsControl : UserControl
             || change.Property == CanResetEndpointProperty
             || change.Property == CanSaveCredentialProperty
             || change.Property == CanRemoveCredentialProperty
-            || change.Property == CredentialConfiguredProperty)
+            || change.Property == CredentialConfiguredProperty
+            || change.Property == CredentialModeProperty
+            || change.Property == CredentialMaskProperty)
         {
             SyncView();
         }
@@ -200,10 +252,13 @@ public sealed partial class ModelProviderSettingsControl : UserControl
         ApiKeyInput.Text = ApiKeyText ?? string.Empty;
         _syncingApiKey = false;
 
-        ApiKeyInput.PlaceholderText = ApiKeyPlaceholderText ?? string.Format(
-            System.Globalization.CultureInfo.CurrentCulture,
-            LocalizationService.GetString("LocPasteApiKey", "Paste {0} API key"),
-            provider?.DisplayName ?? selectedId);
+        var hasSavedKey = !string.IsNullOrWhiteSpace(CredentialMask);
+        ApiKeyInput.PlaceholderText = hasSavedKey && CredentialStatus != "missing"
+            ? LocalizationService.GetString("LocCredentialKeepSavedKey", "Leave empty to keep the saved key")
+            : ApiKeyPlaceholderText ?? string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                LocalizationService.GetString("LocPasteApiKey", "Paste {0} API key"),
+                provider?.DisplayName ?? selectedId);
         EndpointStatusTextBlock.Text = EndpointStatusText ?? string.Empty;
         EndpointStatusTextBlock.Foreground = EndpointStatusBrush ?? this.FindResource("TextSecondaryBrush") as IBrush;
         var models = ProviderModels?.Where(model => !string.IsNullOrWhiteSpace(model.Display)).ToArray() ?? [];
@@ -211,19 +266,54 @@ public sealed partial class ModelProviderSettingsControl : UserControl
         ProviderModelsItemsControl.IsVisible = models.Length > 0;
         NoProviderModelsText.IsVisible = models.Length == 0;
         CredentialStatusTextBlock.Text = CredentialConfigured
-            ? LocalizationService.GetString("LocApiKeyConfigured", "API key configured")
-            : LocalizationService.GetString("LocNoApiKeyConfigured", "No API key configured");
+            ? LocalizationService.GetString("LocCredentialSavedStatus", "API key saved")
+            : CredentialStatus switch
+            {
+                "locked" => LocalizationService.GetString("LocCredentialLocked", "Unlock your system keychain, then try again."),
+                "access_denied" => LocalizationService.GetString("LocCredentialDenied", "Allow SunCode to access your system keychain, then try again."),
+                "unavailable" => LocalizationService.GetString("LocCredentialUnavailable", "System keychain unavailable. Check your credential service, then try again."),
+                _ => hasSavedKey
+                    ? LocalizationService.GetString("LocCredentialMissing", "Saved key not found. Enter a replacement API key.")
+                    : LocalizationService.GetString("LocCredentialEmptyStatus", "No API key saved"),
+            };
+        _syncingCredentialMode = true;
+        CredentialModeKeychainInput.IsChecked = CredentialMode != "plaintext";
+        CredentialModePlaintextInput.IsChecked = CredentialMode == "plaintext";
+        _syncingCredentialMode = false;
+        var storeName = OperatingSystem.IsMacOS() ? "macOS Keychain"
+            : OperatingSystem.IsWindows() ? "Windows Credential Manager" : "Linux Secret Service";
+        CredentialKeychainDescriptionTextBlock.Text = string.Format(
+            LocalizationService.GetString("LocCredentialKeychainDescription", "Protected by {0}. The key stays outside the database."),
+            storeName);
+        CredentialInputLabelTextBlock.Text = LocalizationService.GetString(
+            hasSavedKey ? "LocCredentialReplaceLabel" : "LocCredentialInputLabel",
+            hasSavedKey ? "Replace API key" : "API key");
+        CredentialHelpTextBlock.Text = LocalizationService.GetString(
+            "LocCredentialHelp",
+            "Storage applies only to this provider. Saved keys are shown masked. Your operating system may ask you to allow access.");
+        CredentialPlaintextWarning.IsVisible = CredentialMode == "plaintext";
+        CredentialLocationTextBlock.Text = !hasSavedKey
+            ? LocalizationService.GetString("LocCredentialEmptyHint", "Add a key to use this provider. System keychain is the default.")
+            : string.Format(LocalizationService.GetString("LocCredentialSavedIn", "Saved in {0}"),
+                SavedCredentialMode == "plaintext" ? LocalizationService.GetString("LocCredentialPlaintextLocation", "the local database · Plaintext") : storeName);
+        CredentialMaskTextBlock.Text = CredentialMask ?? string.Empty;
+        CredentialMaskBorder.IsVisible = !string.IsNullOrWhiteSpace(CredentialMask);
         CredentialWarningDot.IsVisible = !CredentialConfigured;
         CredentialSuccessDot.IsVisible = CredentialConfigured;
-        ProviderUnconfiguredBanner.IsVisible = !CredentialConfigured;
-        ProviderUnconfiguredTitle.Text = LocalizationService.GetString("LocAddApiKeyToUseProvider", "Add an API key to use this provider");
-        SaveCredentialButton.Content = CredentialConfigured
-            ? LocalizationService.GetString("LocReplaceKey", "Replace key")
+        SaveCredentialButton.Content = _credentialBusy
+            ? LocalizationService.GetString("LocCredentialSaving", "Saving API key…")
+            : hasSavedKey
+            ? LocalizationService.GetString("LocSaveChanges", "Save changes")
             : LocalizationService.GetString("LocSaveKey", "Save key");
         SaveEndpointButton.IsEnabled = CanSaveEndpoint;
         ResetEndpointButton.IsEnabled = CanResetEndpoint;
-        SaveCredentialButton.IsEnabled = CanSaveCredential;
-        RemoveCredentialButton.IsEnabled = CanRemoveCredential;
+        SaveCredentialButton.IsEnabled = CanSaveCredential && !_credentialBusy;
+        CancelCredentialButton.IsVisible = !string.IsNullOrEmpty(ApiKeyText) || CredentialMode != SavedCredentialMode;
+        CredentialFields.IsEnabled = !_credentialBusy;
+        CancelCredentialButton.IsEnabled = !_credentialBusy;
+        RetryCredentialButton.IsVisible = !CredentialConfigured && !string.IsNullOrEmpty(CredentialMask) && CredentialStatus != "missing";
+        RetryCredentialButton.IsEnabled = !_credentialBusy;
+        RemoveCredentialButton.IsEnabled = CanRemoveCredential && !_credentialBusy;
     }
 
     private void SelectProvider(object? sender, RoutedEventArgs e)
@@ -250,6 +340,15 @@ public sealed partial class ModelProviderSettingsControl : UserControl
         }
 
         ApiKeyTextChanged?.Invoke(this, e);
+    }
+
+    private void CredentialModeChanged(object? sender, RoutedEventArgs e)
+    {
+        if (_syncingCredentialMode) return;
+        if (sender is not RadioButton radio || radio.Tag is not string mode || radio.IsChecked != true) return;
+        if (mode == CredentialMode) return;
+        CredentialMode = mode;
+        CredentialModeChangedRequest?.Invoke(this, mode);
     }
 
     private void SaveEndpoint(object? sender, RoutedEventArgs e) =>

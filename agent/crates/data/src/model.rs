@@ -16,6 +16,10 @@ pub(crate) struct ProviderRow {
     pub adapter_type: String,
     #[diesel(sql_type = Integer)]
     pub api_key_configured: i32,
+    #[diesel(sql_type = Text)]
+    pub credential_mode: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub api_key_mask: Option<String>,
     #[diesel(sql_type = Integer)]
     pub enabled: i32,
     #[diesel(sql_type = Integer)]

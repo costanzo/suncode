@@ -22,3 +22,5 @@ pub(crate) mod subagent_invocation;
 
 pub(crate) mod projection;
 pub(crate) mod recovery;
+
+pub(crate) mod credentials;
