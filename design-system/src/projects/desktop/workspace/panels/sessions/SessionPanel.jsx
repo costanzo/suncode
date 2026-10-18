@@ -105,7 +105,7 @@ export function SessionPanel({
       className={`workspace-panel workspace-sessions ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""}`}
     >
       <header className="workspace-panel-header">
-        <span>SESSIONS</span>
+        <h2>Sessions</h2>
         <IconButton icon="plus" label="New session" onClick={createSession} />
       </header>
       <div className="workspace-session-list">

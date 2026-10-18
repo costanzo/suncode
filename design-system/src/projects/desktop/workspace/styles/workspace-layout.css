@@ -107,6 +107,26 @@
   letter-spacing: 0.07em;
 }
 
+.workspace-panel-header h2,
+.workspace-panel-title-group h2 {
+  margin: 0;
+  color: var(--text);
+  font: 600 13px/1.2 var(--font-ui);
+  letter-spacing: -0.01em;
+}
+
+.workspace-panel-title-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workspace-panel-title-group > .ds-icon {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
 .workspace-panel-actions {
   display: flex;
   align-items: center;

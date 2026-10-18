@@ -254,7 +254,7 @@ export const primaryModules = [
             label: "Workspace",
             icon: "workspace",
             keywords:
-              "project workspace sessions explorer conversation review source control provider trace",
+              "project workspace sessions explorer conversation editor review child sessions built-in browser source control provider trace tool activity",
             children: [
               {
                 path: "/projects/desktop/workspace/sessions",
@@ -301,6 +301,11 @@ export const primaryModules = [
                 path: "/projects/desktop/workspace/child-sessions",
                 label: "Child sessions",
                 keywords: "subagent child session delegation linked read-only agent",
+              },
+              {
+                path: "/projects/desktop/workspace/browser",
+                label: "Built-in browser",
+                keywords: "browser use chromium cdp navigation tabs address bar local page preview",
               },
             ],
           },

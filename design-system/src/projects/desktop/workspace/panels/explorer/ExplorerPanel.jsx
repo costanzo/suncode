@@ -77,7 +77,7 @@ export function ExplorerPanel({
       className={`workspace-panel workspace-explorer ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""} ${constrained ? "is-constrained" : ""}`}
     >
       <header className="workspace-panel-header">
-        <span>EXPLORER</span>
+        <h2>Explorer</h2>
         <span className="workspace-panel-actions">
           <IconButton icon="refresh" label="Refresh explorer" disabled />
           <IconButton icon="plus" label="Add dependency folder" disabled />

@@ -77,17 +77,20 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
       className={`workspace-panel workspace-review ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""}`}
     >
       <div className={`workspace-review-heading is-${statusTone}`}>
-        <h3>
-          {idle
-            ? "No active process"
-            : failed
-              ? "Turn stopped"
-              : compacting
-                ? "Compacting context"
-                : running
-                  ? "1 active process"
-                  : "Awaiting input"}
-        </h3>
+        <div className="workspace-review-title-group">
+          <h2>Review</h2>
+          <h3>
+            {idle
+              ? "No active process"
+              : failed
+                ? "Turn stopped"
+                : compacting
+                  ? "Compacting context"
+                  : running
+                    ? "1 active process"
+                    : "Awaiting input"}
+          </h3>
+        </div>
         <i role="status" aria-label={statusLabel} title={statusLabel} />
       </div>
       {!noSession && <ContextUsage />}

@@ -151,6 +151,7 @@ export function EditorPanel({
       aria-label="Read-only file editor"
     >
       <header className="workspace-editor-header">
+        <div className="workspace-editor-panel-title">Editor</div>
         <div className="workspace-editor-file">
           <Icon
             name={

@@ -342,7 +342,7 @@ export function WorkspaceWindow({
         <aside className="workspace-gutter workspace-gutter-right">
           <IconButton
             icon="computer"
-            label="Show browser preview"
+            label="Show built-in browser"
             active={rightRegion === "preview"}
             onClick={() => {
               setRightRegion(rightRegion === "preview" ? null : "preview");
