@@ -29,7 +29,8 @@ INSERT INTO llm_model (
     ('muse-wonder-1.0', 'meta', 'Muse Wonder 1.0 (Preview)', 'muse-wonder-1.0', 1048576, 1032192, NULL, 1, 1, 1, 1, 1, 1, 0, 1, 200, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z', 'minimal,low,medium,high,xhigh,max'),
     ('muse-spark-1.3', 'meta', 'Muse Spark 1.3', 'muse-spark-1.3', 1048576, 1032192, 131072, 1, 1, 1, 1, 1, 1, 0, 1, 210, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z', 'minimal,low,medium,high,xhigh,max'),
     ('mimo-v2.6-pro', 'mimo', 'MiMo V2.6 Pro', 'mimo-v2.6-pro', 1048576, 1032192, 131072, 1, 1, 1, 1, 1, 1, 0, 1, 220, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z', 'none,high'),
-    ('mimo-v2.6-flash', 'mimo', 'MiMo V2.6 Flash', 'mimo-v2.6-flash', 1048576, 1032192, 131072, 1, 1, 1, 1, 1, 1, 0, 1, 230, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z', 'none,high')
+    ('mimo-v2.6-flash', 'mimo', 'MiMo V2.6 Flash', 'mimo-v2.6-flash', 1048576, 1032192, 131072, 1, 1, 1, 1, 1, 1, 0, 1, 230, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z', 'none,high'),
+    ('hy4-preview', 'tencent', 'Tencent Hy4 preview', 'hy4-preview', 1048576, 1032192, 64000, 1, 1, 0, 1, 1, 0, 0, 1, 240, '2026-10-18T00:00:00.000Z', '2026-10-18T00:00:00.000Z', '')
 ON CONFLICT(model_id) DO UPDATE SET
     display_name = excluded.display_name,
     request_model = excluded.request_model,

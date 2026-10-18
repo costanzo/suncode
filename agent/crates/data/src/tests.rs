@@ -426,7 +426,7 @@ fn child_sessions_are_linked_hidden_from_primary_lists_and_interrupted_on_recove
 fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
     let store = Store::open_memory().unwrap();
     let models = store.llm_models(false).unwrap();
-    assert_eq!(models.len(), 25);
+    assert_eq!(models.len(), 26);
     let model = |id: &str| {
         models
             .iter()
@@ -497,8 +497,31 @@ fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
         ["low", "medium", "high"]
     );
     assert!(models.iter().all(|item| item.model_id != "gemini-3.5"));
+    let hy4 = model("hy4-preview");
+    assert_eq!(hy4.provider_id, "tencent");
+    assert_eq!(hy4.request_model, "hy4-preview");
+    assert_eq!(hy4.context_tokens, 1_048_576);
+    assert_eq!(hy4.auto_compact_tokens, 1_032_192);
+    assert_eq!(hy4.max_output_tokens, Some(64_000));
+    assert!(hy4.supports_streaming);
+    assert!(hy4.supports_tool_use);
+    assert!(!hy4.supports_vision);
+    assert!(hy4.supports_structured_output);
+    assert!(hy4.supports_cancellation);
+    assert!(!hy4.supports_reasoning_effort);
+    assert!(hy4.reasoning_efforts.is_empty());
+    assert!(!hy4.supports_computer_use);
     let providers = store.llm_model_providers(true).unwrap();
-    assert_eq!(providers.len(), 11);
+    assert_eq!(providers.len(), 12);
+    let tencent = providers
+        .iter()
+        .find(|item| item.provider_id == "tencent")
+        .unwrap();
+    assert_eq!(tencent.display_name, "Tencent Hunyuan");
+    assert_eq!(tencent.endpoint, "https://api.hunyuan.cloud.tencent.com/v1");
+    assert_eq!(tencent.default_endpoint, tencent.endpoint);
+    assert_eq!(tencent.adapter_type, "chat_completions");
+    assert!(!tencent.api_key_configured);
     for (id, endpoint) in [
         ("minimax", "https://api.minimax.io/v1"),
         ("meta", "https://api.meta.ai/v1"),
@@ -632,7 +655,7 @@ fn reopening_existing_catalog_adds_new_providers_and_preserves_provider_settings
     for _ in 0..2 {
         let store = Store::open(&path).unwrap();
         let providers = store.llm_model_providers(true).unwrap();
-        assert_eq!(providers.len(), 11);
+        assert_eq!(providers.len(), 12);
         let openai = providers
             .iter()
             .find(|item| item.provider_id == "openai")
@@ -643,7 +666,7 @@ fn reopening_existing_catalog_adds_new_providers_and_preserves_provider_settings
             Some("test-existing-key")
         );
         let models = store.llm_models(true).unwrap();
-        assert_eq!(models.len(), 25);
+        assert_eq!(models.len(), 26);
         for (provider, ids) in [
             ("minimax", ["MiniMax-M3.1-Flash-Preview", "MiniMax-M3"]),
             ("meta", ["muse-wonder-1.0", "muse-spark-1.3"]),
@@ -676,6 +699,89 @@ fn reopening_existing_catalog_adds_new_providers_and_preserves_provider_settings
             ]
         );
     }
+}
+
+#[test]
+fn chat_completions_adapter_migration_preserves_provider_settings() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("agent.sqlite3");
+    {
+        let store = Store::open(&path).unwrap();
+        store
+            .upsert_llm_model_provider(LlmModelProviderInput {
+                provider_id: "custom-gateway",
+                display_name: "Custom Gateway",
+                endpoint: "https://gateway.example.test/v1",
+                default_endpoint: "https://default.example.test/v1",
+                adapter_type: "openai",
+                enabled: true,
+                sort_order: 500,
+            })
+            .unwrap();
+        store
+            .save_provider_credential(
+                "custom-gateway",
+                Some("existing-secret-value"),
+                crate::CredentialStorageMode::Plaintext,
+            )
+            .unwrap();
+        let mut connection = store.connection.lock().unwrap();
+        connection
+            .batch_execute(
+                "DELETE FROM llm_model WHERE provider_id='tencent';
+                 DELETE FROM llm_model_provider WHERE provider_id='tencent';
+                 DROP INDEX llm_model_provider_enabled_order_idx;
+                 ALTER TABLE llm_model_provider RENAME TO llm_model_provider_current;
+                 CREATE TABLE llm_model_provider (
+                    provider_id TEXT PRIMARY KEY CHECK(length(provider_id) > 0),
+                    display_name TEXT NOT NULL CHECK(length(display_name) > 0),
+                    endpoint TEXT NOT NULL CHECK(length(endpoint) > 0),
+                    default_endpoint TEXT NOT NULL CHECK(length(default_endpoint) > 0),
+                    adapter_type TEXT NOT NULL DEFAULT 'openai' CHECK(adapter_type IN ('openai', 'anthropic')),
+                    api_key TEXT,
+                    credential_mode TEXT NOT NULL DEFAULT 'keychain' CHECK(credential_mode IN ('keychain', 'plaintext')),
+                    secret_ref TEXT,
+                    api_key_mask TEXT,
+                    enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),
+                    sort_order INTEGER NOT NULL DEFAULT 0 CHECK(sort_order >= 0),
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    CHECK((credential_mode = 'keychain' AND api_key IS NULL) OR
+                          (credential_mode = 'plaintext' AND secret_ref IS NULL))
+                 );
+                 INSERT INTO llm_model_provider SELECT * FROM llm_model_provider_current;
+                 DROP TABLE llm_model_provider_current;
+                 CREATE INDEX llm_model_provider_enabled_order_idx ON llm_model_provider(enabled, sort_order, provider_id);
+                 PRAGMA user_version=2;",
+            )
+            .unwrap();
+    }
+
+    let store = Store::open(&path).unwrap();
+    let providers = store.llm_model_providers(false).unwrap();
+    let custom = providers
+        .iter()
+        .find(|provider| provider.provider_id == "custom-gateway")
+        .unwrap();
+    assert_eq!(custom.endpoint, "https://gateway.example.test/v1");
+    assert_eq!(custom.default_endpoint, "https://default.example.test/v1");
+    assert_eq!(custom.adapter_type, "openai");
+    assert_eq!(custom.api_key_mask.as_deref(), Some("exis••••••••alue"));
+    assert_eq!(
+        store
+            .llm_provider_api_key("custom-gateway")
+            .unwrap()
+            .as_deref(),
+        Some("existing-secret-value")
+    );
+    assert!(providers.iter().any(|provider| {
+        provider.provider_id == "tencent" && provider.adapter_type == "chat_completions"
+    }));
+    assert!(store
+        .llm_models(true)
+        .unwrap()
+        .iter()
+        .any(|model| model.model_id == "hy4-preview"));
 }
 
 #[test]

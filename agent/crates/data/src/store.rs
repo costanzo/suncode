@@ -113,7 +113,11 @@ pub(crate) const SCHEMA_VERSION: i32 = MIGRATIONS.len() as i32;
 type Migration = fn(&mut SqliteConnection) -> Result<(), BusinessError>;
 
 /// Ordered schema migrations. Step `n` upgrades a database from version `n` to `n + 1`.
-const MIGRATIONS: &[Migration] = &[migrate_legacy_columns, migrate_claude_adapter];
+const MIGRATIONS: &[Migration] = &[
+    migrate_legacy_columns,
+    migrate_claude_adapter,
+    migrate_chat_completions_adapter,
+];
 
 fn initialize(connection: &mut SqliteConnection) -> Result<(), BusinessError> {
     business_transaction(connection, |connection| {
@@ -237,6 +241,29 @@ fn migrate_claude_adapter(connection: &mut SqliteConnection) -> Result<(), Busin
     connection
         .batch_execute(
             "UPDATE llm_model_provider SET adapter_type='anthropic',updated_at='2026-09-19T00:00:00.000Z' WHERE provider_id='claude' AND adapter_type='openai' AND endpoint=default_endpoint AND default_endpoint='https://api.anthropic.com/v1';",
+        )
+        .map_err(crate::database_error)?;
+    Ok(())
+}
+
+/// Version 2 -> 3: permits the Tencent Chat Completions adapter.
+fn migrate_chat_completions_adapter(
+    connection: &mut SqliteConnection,
+) -> Result<(), BusinessError> {
+    if schema::llm_model_provider_supports_chat_completions(connection)? {
+        return Ok(());
+    }
+    connection
+        .batch_execute(
+            "DROP INDEX IF EXISTS llm_model_provider_enabled_order_idx; ALTER TABLE llm_model_provider RENAME TO llm_model_provider_legacy;",
+        )
+        .map_err(crate::database_error)?;
+    connection
+        .batch_execute(sqlite::llm_model_provider_schema())
+        .map_err(crate::database_error)?;
+    connection
+        .batch_execute(
+            "INSERT INTO llm_model_provider(provider_id,display_name,endpoint,default_endpoint,adapter_type,api_key,credential_mode,secret_ref,api_key_mask,enabled,sort_order,created_at,updated_at) SELECT provider_id,display_name,endpoint,default_endpoint,adapter_type,api_key,credential_mode,secret_ref,api_key_mask,enabled,sort_order,created_at,updated_at FROM llm_model_provider_legacy; DROP TABLE llm_model_provider_legacy;",
         )
         .map_err(crate::database_error)?;
     Ok(())

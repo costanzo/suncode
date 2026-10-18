@@ -18,8 +18,8 @@ use suncode_core::{
 };
 use suncode_data::{LlmModelProviderInput, LlmModelProviderRecord, Store};
 use suncode_llm::{
-    AnthropicProvider, ModelCapabilities, ModelDescriptor, ModelLimits, ModelProviderRegistry,
-    OpenAiCompatibleProvider,
+    AnthropicProvider, ChatCompletionsProvider, ModelCapabilities, ModelDescriptor, ModelLimits,
+    ModelProviderRegistry, OpenAiCompatibleProvider,
 };
 
 use crate::types::*;
@@ -186,6 +186,16 @@ fn provider_adapter(
             ),
         )),
         "anthropic" => Ok(Arc::new(AnthropicProvider::new_with_network_configuration(
+            provider.provider_id.clone(),
+            provider.display_name.clone(),
+            provider.endpoint.clone(),
+            keys,
+            verify_https_certificates,
+            use_system_certificates,
+            certificate_path,
+            proxy_configuration,
+        ))),
+        "chat_completions" => Ok(Arc::new(ChatCompletionsProvider::new_with_network_configuration(
             provider.provider_id.clone(),
             provider.display_name.clone(),
             provider.endpoint.clone(),

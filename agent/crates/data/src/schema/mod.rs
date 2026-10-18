@@ -112,6 +112,17 @@ pub(crate) fn llm_model_provider_supports_anthropic(
     Ok(sql.contains("'anthropic'"))
 }
 
+pub(crate) fn llm_model_provider_supports_chat_completions(
+    connection: &mut SqliteConnection,
+) -> Result<bool, crate::BusinessError> {
+    let sql =
+        sql_query("SELECT sql FROM sqlite_schema WHERE type='table' AND name='llm_model_provider'")
+            .get_result::<SqlRow>(connection)
+            .map_err(crate::database_error)?
+            .sql;
+    Ok(sql.contains("'chat_completions'"))
+}
+
 pub(crate) fn llm_model_includes_computer_use(
     connection: &mut SqliteConnection,
 ) -> Result<bool, crate::BusinessError> {

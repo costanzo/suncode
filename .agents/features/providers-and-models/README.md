@@ -6,9 +6,9 @@ The Rust agent owns the model catalog, provider routes, and wire adapters. Clien
 
 ## Catalog and custom models
 
-- Providers and models are rows in `llm_model_provider` and `llm_model`. Each provider row names a required `adapter_type`: `openai` for OpenAI-compatible endpoints or `anthropic` for the built-in Claude Messages route.
+- Providers and models are rows in `llm_model_provider` and `llm_model`. Each provider row names a required `adapter_type`: `openai` for OpenAI Responses-compatible endpoints, `chat_completions` for Tencent Hunyuan Chat Completions endpoints, or `anthropic` for the built-in Claude Messages route.
 - Model rows carry request identifiers, context and auto-compaction limits, an optional output limit, capability flags (streaming, tool use, vision, structured output, cancellation, reasoning effort, Computer Use), and the advertised `reasoning_efforts` list.
-- Custom providers come from two sources: persisted OpenAI-compatible rows, or trusted `Arc<dyn LlmProvider>` implementations registered in-process by a Rust host. The registry registers a provider and its models atomically and rejects duplicate model identifiers. Dynamic plugins and third-party adapter loading are not supported. There is no SDK method to add, remove, enable, or reorder providers or models.
+- Custom providers come from two sources: persisted rows using a built-in adapter, or trusted `Arc<dyn LlmProvider>` implementations registered in-process by a Rust host. The registry registers a provider and its models atomically and rejects duplicate model identifiers. Dynamic plugins and third-party adapter loading are not supported. There is no SDK method to add, remove, enable, or reorder providers or models.
 
 ## Gemini Flash catalog
 
@@ -57,13 +57,21 @@ The seeded models are `mimo-v2.6-pro` and `mimo-v2.6-flash`. Both support image 
 
 Responses reasoning is enabled by default. `none` disables it; every other accepted effort enables the same reasoning behavior. SunCode exposes `none` and `high` as the two distinct states rather than advertising multiple depths. Xiaomi recommends replaying reasoning items during Responses tool loops; SunCode currently replays local messages and tool outputs without reasoning items. Live provider calls remain unverified.
 
+## Tencent Hunyuan catalog
+
+The [official Hy4 preview model card](https://github.com/Tencent-Hunyuan/Hy4-preview) was checked on 2026-10-18. It documents the latest flagship preview, text input, tool calling, a 1M context, and the `hy4-preview` serving ID. The [Tencent-hosted endpoint metadata](https://openrouter.ai/api/v1/models/tencent/hy4-preview/endpoints) reports 1,048,576 context tokens and a 64,000-token completion cap. SunCode retains its 16,384-token compaction margin and advertises text, streaming, tools, structured output, and client-side cancellation. Vision and Computer Use remain disabled.
+
+The Tencent Hunyuan provider uses `https://api.hunyuan.cloud.tencent.com/v1` with Bearer authentication through the [official OpenAI-compatible interface](https://cloud.tencent.com/document/product/1729/111007). An unauthenticated route probe returns 401 on `/chat/completions` and 404 on `/responses`. The dedicated `chat_completions` adapter streams canonical messages and function calls, preserves tool-result correlations, records usage and provider identifiers, and shares the Rust-owned credential, TLS, proxy, cancellation, and transfer-progress paths. Startup migrates the provider-table adapter constraint while preserving all provider settings and credential metadata, then inserts missing Tencent rows.
+
+The self-hosted model card's reasoning template options and OpenRouter's normalized effort values do not establish the Tencent Cloud wire parameter. SunCode leaves hosted reasoning at the provider default and does not advertise selectable reasoning effort. Live authenticated Tencent calls remain unverified; focused tests cover HTTP request shape, stream parsing, catalog persistence, migration, and SDK routing.
+
 ## Endpoint settings
 
 `set_provider_endpoint(provider, endpoint)` changes the base URL of one existing provider. Rust trims whitespace and trailing slashes, accepts only absolute HTTP or HTTPS URLs with a host and no embedded credentials, query, or fragment, and rejects unknown providers. A successful update persists the URL and atomically replaces that provider's live route. Provider identity, adapter, credential, models, enabled state, and ordering stay the same. Requests already in flight finish on the route they started with. A rejected URL leaves the stored endpoint unchanged. The C ABI returns only the provider ID and the normalized endpoint. Desktop Settings edits the endpoint on each provider detail page.
 
 ## OpenAI Responses wire format
 
-Every `adapter_type=openai` provider posts to `<endpoint>/responses`. This includes the seeded DeepSeek, Qwen, Zhipu GLM, Kimi, Gemini, OpenAI, xAI, MiniMax, Meta, and Xiaomi MiMo rows. Chat Completions is no longer used. Requests contain:
+Every `adapter_type=openai` provider posts to `<endpoint>/responses`. This includes the seeded DeepSeek, Qwen, Zhipu GLM, Kimi, Gemini, OpenAI, xAI, MiniMax, Meta, and Xiaomi MiMo rows. Tencent uses the separate Chat Completions adapter described above. Responses requests contain:
 
 - canonical messages encoded as Responses `input` items, with images as `input_image` data URLs;
 - function tools with `strict: false`;
@@ -73,4 +81,4 @@ SunCode never sends `previous_response_id`. The local transcript and context com
 
 The `anthropic` adapter posts to `<endpoint>/messages` and supports the same ordinary `computer_*` function tools. Native client toolsets such as Computer Use remain available as an optional provider-specific optimization.
 
-Both adapters apply the global HTTPS certificate and proxy settings described in [`network/`](../network/README.md). Credential, usage, and trace rules are covered in [`agent-phase-1/`](../agent-phase-1/README.md) and [`contracts/agent-sdk/README.md`](../../../contracts/agent-sdk/README.md).
+All built-in adapters apply the global HTTPS certificate and proxy settings described in [`network/`](../network/README.md). Credential, usage, and trace rules are covered in [`agent-phase-1/`](../agent-phase-1/README.md) and [`contracts/agent-sdk/README.md`](../../../contracts/agent-sdk/README.md).

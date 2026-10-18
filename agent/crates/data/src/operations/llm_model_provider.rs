@@ -42,7 +42,7 @@ impl Store {
             || name.is_empty()
             || endpoint.is_empty()
             || default_endpoint.is_empty()
-            || !matches!(adapter_type, "openai" | "anthropic")
+            || !matches!(adapter_type, "openai" | "anthropic" | "chat_completions")
             || input.sort_order < 0
         {
             return Err(BusinessError::invalid("model provider has invalid fields"));

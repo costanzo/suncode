@@ -11,5 +11,6 @@ INSERT INTO llm_model_provider (
     ('xai', 'xAI', 'https://api.x.ai/v1', 'https://api.x.ai/v1', 'openai', NULL, 1, 70, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z'),
     ('minimax', 'MiniMax', 'https://api.minimax.io/v1', 'https://api.minimax.io/v1', 'openai', NULL, 1, 80, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z'),
     ('meta', 'Meta', 'https://api.meta.ai/v1', 'https://api.meta.ai/v1', 'openai', NULL, 1, 90, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z'),
-    ('mimo', 'Xiaomi MiMo', 'https://api.xiaomimimo.com/v1', 'https://api.xiaomimimo.com/v1', 'openai', NULL, 1, 100, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z')
+    ('mimo', 'Xiaomi MiMo', 'https://api.xiaomimimo.com/v1', 'https://api.xiaomimimo.com/v1', 'openai', NULL, 1, 100, '2026-10-12T00:00:00.000Z', '2026-10-12T00:00:00.000Z'),
+    ('tencent', 'Tencent Hunyuan', 'https://api.hunyuan.cloud.tencent.com/v1', 'https://api.hunyuan.cloud.tencent.com/v1', 'chat_completions', NULL, 1, 110, '2026-10-18T00:00:00.000Z', '2026-10-18T00:00:00.000Z')
 ON CONFLICT(provider_id) DO NOTHING;

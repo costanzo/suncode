@@ -1,6 +1,7 @@
 //! Provider-neutral LLM contracts, model routing, and built-in HTTP adapters.
 
 mod anthropic;
+mod chat_completions;
 mod errors;
 mod http;
 mod normalize;
@@ -16,6 +17,7 @@ pub(crate) const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::fro
 pub(crate) const READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
 
 pub use anthropic::AnthropicProvider;
+pub use chat_completions::ChatCompletionsProvider;
 pub use openai_compatible::OpenAiCompatibleProvider;
 pub use registry::{ModelProviderRegistry, ModelRoute};
 pub use suncode_common::BusinessError;

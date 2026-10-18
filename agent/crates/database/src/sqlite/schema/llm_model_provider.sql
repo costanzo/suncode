@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS llm_model_provider (
     display_name TEXT NOT NULL CHECK(length(display_name) > 0),
     endpoint TEXT NOT NULL CHECK(length(endpoint) > 0),
     default_endpoint TEXT NOT NULL CHECK(length(default_endpoint) > 0),
-    adapter_type TEXT NOT NULL DEFAULT 'openai' CHECK(adapter_type IN ('openai', 'anthropic')),
+    adapter_type TEXT NOT NULL DEFAULT 'openai' CHECK(adapter_type IN ('openai', 'anthropic', 'chat_completions')),
     api_key TEXT,
     credential_mode TEXT NOT NULL DEFAULT 'keychain' CHECK(credential_mode IN ('keychain', 'plaintext')),
     secret_ref TEXT,

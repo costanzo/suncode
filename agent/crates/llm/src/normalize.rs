@@ -1,7 +1,6 @@
 use crate::{BusinessError, Message};
 use serde_json::{json, Value};
 
-#[cfg(test)]
 pub fn wire_message(message: &Message) -> Value {
     let content = if message.content.iter().all(|part| part.kind == "text") {
         json!(message.text_content())
