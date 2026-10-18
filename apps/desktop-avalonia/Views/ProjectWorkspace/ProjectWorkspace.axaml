@@ -233,7 +233,7 @@
           </Grid>
 
           <StackPanel Grid.Column="2" Margin="4,7" IsVisible="{Binding Layout.WorkspaceGuttersVisible}">
-            <Button Classes="icon gutter" Classes.active="{Binding Layout.PreviewVisible}" Click="TogglePreview" ToolTip.Tip="Show browser preview" AutomationProperties.Name="Show browser preview" Margin="0,0,0,6">
+            <Button Classes="icon gutter" Classes.active="{Binding Layout.PreviewVisible}" Click="TogglePreview" ToolTip.Tip="Show built-in browser" AutomationProperties.Name="Show built-in browser" Margin="0,0,0,6">
               <svg:Svg Width="15" Height="15" Path="/Assets/icons/computer.svg" />
             </Button>
             <Button Classes="icon gutter" Classes.active="{Binding Layout.EffectiveReviewInspectorVisible}" Click="ToggleReview" ToolTip.Tip="{DynamicResource LocShowReview}" AutomationProperties.Name="{DynamicResource LocShowReview}">

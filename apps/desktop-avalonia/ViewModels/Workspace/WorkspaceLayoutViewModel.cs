@@ -176,7 +176,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Right gutter review button. Returns true when an open browser preview
+    /// Right gutter review button. Returns true when an open built-in browser
     /// was closed as part of the switch.
     /// </summary>
     internal bool ToggleReview()
@@ -186,8 +186,8 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Right gutter child-sessions button. Returns true when an open browser
-    /// preview was closed as part of the switch.
+    /// Right gutter child-sessions button. Returns true when an open built-in
+    /// browser was closed as part of the switch.
     /// </summary>
     internal bool ToggleChildSessions()
     {
@@ -197,7 +197,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
 
     /// <summary>
     /// Activates the review destination from the right gutter. Returns true when
-    /// an open browser preview was closed as part of the switch.
+    /// an open built-in browser was closed as part of the switch.
     /// </summary>
     internal bool ToggleReviewDestination()
     {
@@ -214,7 +214,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
 
     /// <summary>
     /// Activates the child-sessions destination from the right gutter. Returns
-    /// true when an open browser preview was closed as part of the switch.
+    /// true when an open built-in browser was closed as part of the switch.
     /// </summary>
     internal bool ToggleChildSessionsDestination()
     {

@@ -19,7 +19,7 @@ Not implemented: an exclusive user control lease, accessibility snapshots with e
 
 ## Embedded preview (CEF)
 
-The desktop project window can show a CEF Chromium pane beside the chat. The pane renders a local development server that Rust starts and owns.
+The desktop project window can show a CEF Chromium pane beside the chat. The pane uses ordinary browser chrome (tabs, navigation, address entry, reload, and disconnect) while still rendering the local development server that Rust starts and owns. Browser Use pages use the same visible surface when the agent requests the project browser page; the client does not add a separate explanatory banner or preview-only title row.
 
 - Rust `PreviewManager` exposes `preview_state`, `start_preview`, and `stop_preview` through the Rust, C, and C# SDKs. Preview configuration lives in project-only settings: `preview_program`, `preview_args`, `preview_cwd`, and `preview_url`. The desktop defaults to `npm run dev` at `http://127.0.0.1:5173/`.
 - The server starts as a structured background process with a filtered environment and `HOST=127.0.0.1`. Its working directory is project-scoped, and its process group is cleaned up on stop, project close, and SDK shutdown. The start is a user action, not a model tool call, so no approval prompt is involved.

@@ -40,8 +40,8 @@
   <x:String x:Key="LocOpenLocalFolder">Open a local folder</x:String>
   <x:String x:Key="LocChooseLocalFolder">Choose a local folder…</x:String>
   <x:String x:Key="LocNoRecentProjects">No recent projects</x:String>
-  <x:String x:Key="LocSessions">SESSIONS</x:String>
-  <x:String x:Key="LocExplorer">EXPLORER</x:String>
+  <x:String x:Key="LocSessions">Sessions</x:String>
+  <x:String x:Key="LocExplorer">Explorer</x:String>
   <x:String x:Key="LocArchivedSessions">Archived sessions</x:String>
   <x:String x:Key="LocNoSessionsYet">No sessions yet</x:String>
   <x:String x:Key="LocUsePlusToCreateOne">Use + to create one.</x:String>

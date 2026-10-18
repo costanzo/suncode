@@ -1,8 +1,10 @@
+using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.ViewModels;
 using Xilium.CefGlue;
@@ -11,37 +13,133 @@ using Xilium.CefGlue.Common.Handlers;
 
 namespace SunCode.Desktop.Views.ProjectWorkspace.Preview;
 
+public sealed class BrowserTab : ObservableObject
+{
+    private bool _isActive;
+
+    public BrowserTab(string title, string address)
+    {
+        Title = title;
+        Address = address;
+    }
+
+    public string Title { get; }
+    public string Address { get; set; }
+    public AvaloniaCefBrowser? Browser { get; set; }
+    public bool IsBrowserUse { get; set; }
+    public bool BrowserInitialized { get; set; }
+    public bool IsActive
+    {
+        get => _isActive;
+        set => SetProperty(ref _isActive, value);
+    }
+}
+
 public sealed partial class BrowserPreviewPane : UserControl
 {
-    private AvaloniaCefBrowser? _browser;
-    private bool _browserUseMode;
-    private volatile bool _browserInitialized;
+    private const string DefaultAddress = "http://127.0.0.1:5173/";
+
+    private readonly ObservableCollection<BrowserTab> _tabs = new();
+    private BrowserTab? _activeTab;
+    private BrowserTab? _browserUseTab;
+    private bool _previewStarted;
     private TaskCompletionSource<bool>? _browserUseInitialization;
     private string? _browserUseProjectId;
     private bool _browserUseLayoutHooked;
     private ulong _reloadGeneration;
     private readonly DispatcherTimer _stateTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
 
-    public event Action? CloseRequested;
-
-    public BrowserPreviewPane() { InitializeComponent(); _stateTimer.Tick += PreviewStateTick; }
+    public BrowserPreviewPane()
+    {
+        InitializeComponent();
+        BrowserTabs.ItemsSource = _tabs;
+        _tabs.Add(new BrowserTab("Project preview", DefaultAddress));
+        SetActiveTab(_tabs[0]);
+        DisconnectButton.IsVisible = false;
+        _stateTimer.Tick += PreviewStateTick;
+    }
 
     public void CloseBrowser()
     {
         _stateTimer.Stop();
-        if (!_browserUseMode && DataContext is DesktopViewModel viewModel) _ = viewModel.StopPreviewAsync();
+        if (_previewStarted && DataContext is DesktopViewModel viewModel) _ = viewModel.StopPreviewAsync();
+        _previewStarted = false;
         BrowserHost.Child = null;
         BrowserHost.IsVisible = false;
         EmptyState.IsVisible = true;
-        _browser?.Dispose();
-        _browser = null;
-        _browserUseMode = false;
-        _browserInitialized = false;
+        DisconnectButton.IsVisible = false;
+
+        foreach (var tab in _tabs) DisposeTab(tab);
+        _tabs.Clear();
+        _tabs.Add(new BrowserTab("Project preview", DefaultAddress));
+        _browserUseTab = null;
+        _activeTab = null;
         _browserUseProjectId = null;
         _browserUseInitialization?.TrySetResult(false);
         _browserUseInitialization = null;
         UnhookBrowserUseLayout();
-        StatusText.Text = "Stopped";
+        SetActiveTab(_tabs[0]);
+        StatusText.Text = "Browser is offline";
+        UpdateNavigationButtons();
+    }
+
+    private void NewTabClicked(object? sender, RoutedEventArgs e)
+    {
+        var tab = new BrowserTab("New tab", string.Empty);
+        _tabs.Add(tab);
+        SetActiveTab(tab);
+        AddressInput.Focus();
+    }
+
+    private void TabClicked(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Button)?.Tag is BrowserTab tab) SetActiveTab(tab);
+    }
+
+    private void CloseTabClicked(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Button)?.Tag is not BrowserTab tab) return;
+        if (_tabs.Count == 1)
+        {
+            DisconnectTab(tab);
+            tab.Address = DefaultAddress;
+            StatusText.Text = "Browser is offline";
+            return;
+        }
+
+        var index = _tabs.IndexOf(tab);
+        var next = _tabs.ElementAtOrDefault(Math.Min(index + 1, _tabs.Count - 1))
+                   ?? _tabs.ElementAtOrDefault(Math.Max(0, index - 1));
+        DisposeTab(tab);
+        _tabs.Remove(tab);
+        if (ReferenceEquals(_activeTab, tab)) SetActiveTab(next);
+    }
+
+    private void SetActiveTab(BrowserTab? tab)
+    {
+        if (tab is null) return;
+        BrowserHost.Child = null;
+        BrowserHost.IsVisible = false;
+        EmptyState.IsVisible = true;
+
+        if (_activeTab is not null) _activeTab.IsActive = false;
+        _activeTab = tab;
+        _activeTab.IsActive = true;
+        AddressInput.Text = tab.Address;
+
+        if (tab.Browser is not null)
+        {
+            BrowserHost.Child = tab.Browser;
+            BrowserHost.IsVisible = true;
+            EmptyState.IsVisible = false;
+            DisconnectButton.IsVisible = true;
+        }
+        else
+        {
+            DisconnectButton.IsVisible = false;
+        }
+
+        UpdateNavigationButtons();
     }
 
     private void AddressKeyDown(object? sender, KeyEventArgs e)
@@ -53,18 +151,74 @@ public sealed partial class BrowserPreviewPane : UserControl
 
     private async void OpenClicked(object? sender, RoutedEventArgs e) => await OpenPreviewAsync();
 
-    private void ReloadClicked(object? sender, RoutedEventArgs e) => _browser?.Reload();
+    private void BackClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_activeTab?.Browser?.CanGoBack == true) _activeTab.Browser.GoBack();
+        UpdateNavigationButtons();
+    }
 
-    private void CloseClicked(object? sender, RoutedEventArgs e) => CloseRequested?.Invoke();
+    private void ForwardClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_activeTab?.Browser?.CanGoForward == true) _activeTab.Browser.GoForward();
+        UpdateNavigationButtons();
+    }
+
+    private void ReloadClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_activeTab?.Browser is not { } browser) return;
+        browser.Reload();
+        UpdateNavigationButtons();
+    }
+
+    private void DisconnectClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_activeTab is not null) DisconnectTab(_activeTab);
+    }
+
+    private void DisconnectTab(BrowserTab tab)
+    {
+        if (ReferenceEquals(_activeTab, tab))
+        {
+            BrowserHost.Child = null;
+            BrowserHost.IsVisible = false;
+            EmptyState.IsVisible = true;
+        }
+
+        var wasPreview = tab.Browser is not null && !tab.IsBrowserUse;
+        DisposeTab(tab);
+        if (wasPreview && !_tabs.Any(item => item.Browser is not null && !item.IsBrowserUse))
+        {
+            _previewStarted = false;
+            if (DataContext is DesktopViewModel viewModel) _ = viewModel.StopPreviewAsync();
+            _stateTimer.Stop();
+        }
+
+        DisconnectButton.IsVisible = false;
+        StatusText.Text = "Browser is offline";
+        UpdateNavigationButtons();
+    }
 
     private async Task OpenPreviewAsync()
     {
-        if (DataContext is not DesktopViewModel { SelectedProject: { } project }) return;
-        if (!IsAllowedPreviewUrl(AddressInput.Text))
+        if (DataContext is not DesktopViewModel { SelectedProject: { } project } viewModel || _activeTab is null) return;
+
+        var address = AddressInput.Text?.Trim();
+        if (address is null || !IsAllowedPreviewUrl(address))
         {
             StatusText.Text = "Enter a localhost HTTP URL";
+            EmptyState.IsVisible = true;
             return;
         }
+
+        _activeTab.Address = address;
+        if (_activeTab.Browser is not null && _activeTab.BrowserInitialized)
+        {
+            _activeTab.Browser.Address = address;
+            EmptyState.IsVisible = false;
+            UpdateNavigationButtons();
+            return;
+        }
+
         CefPreviewRuntime.Initialize();
         if (!CefPreviewRuntime.Available)
         {
@@ -74,21 +228,27 @@ public sealed partial class BrowserPreviewPane : UserControl
 
         try
         {
-            EnsureBrowser(project.ProjectId, false);
-            if (DataContext is DesktopViewModel viewModel && !await viewModel.StartConfiguredPreviewAsync(AddressInput.Text!))
+            EnsureBrowser(_activeTab, project.ProjectId, false);
+            if (!_previewStarted)
             {
-                StatusText.Text = "Server failed";
-                return;
+                if (!await viewModel.StartConfiguredPreviewAsync(address))
+                {
+                    StatusText.Text = "Unable to connect to the project server";
+                    return;
+                }
+
+                _previewStarted = true;
             }
-            StatusText.Text = "Loading";
-            (_browser ?? throw new InvalidOperationException("Preview browser was not created.")).Address = AddressInput.Text;
+
+            _activeTab.Browser!.Address = address;
             _stateTimer.Start();
+            UpdateNavigationButtons();
         }
         catch (Exception exception)
         {
             DiagnosticLog.Error("browser.preview", exception, "open_failed=true");
             CloseBrowser();
-            StatusText.Text = "Preview unavailable";
+            StatusText.Text = "Browser unavailable";
         }
     }
 
@@ -99,6 +259,7 @@ public sealed partial class BrowserPreviewPane : UserControl
             initialized.TrySetResult(false);
             return;
         }
+
         try
         {
             CefPreviewRuntime.Initialize();
@@ -107,7 +268,17 @@ public sealed partial class BrowserPreviewPane : UserControl
                 initialized.TrySetResult(false);
                 return;
             }
-            DiagnosticLog.Info("browser.host", $"ensure_page project={project.ProjectId} bounds={Bounds.Width:0.##}x{Bounds.Height:0.##} attached={VisualRoot is not null}");
+
+            var browserTab = _tabs.FirstOrDefault(tab => tab.IsBrowserUse);
+            if (browserTab is null)
+            {
+                browserTab = _activeTab is { Browser: null } ? _activeTab : new BrowserTab("Browser Use", string.Empty);
+                if (!_tabs.Contains(browserTab)) _tabs.Add(browserTab);
+                browserTab.IsBrowserUse = true;
+            }
+
+            _browserUseTab = browserTab;
+            SetActiveTab(browserTab);
             _browserUseInitialization?.TrySetResult(false);
             _browserUseInitialization = initialized;
             _browserUseProjectId = project.ProjectId;
@@ -121,69 +292,85 @@ public sealed partial class BrowserPreviewPane : UserControl
         }
     }
 
-    private void EnsureBrowser(string projectId, bool browserUse)
+    private void EnsureBrowser(BrowserTab tab, string projectId, bool browserUse)
     {
-        if (_browser is not null && _browserUseMode == browserUse) return;
-        if (_browser is not null)
+        if (tab.Browser is not null && tab.IsBrowserUse == browserUse)
         {
-            BrowserHost.Child = null;
-            _browser.Dispose();
-            _browser = null;
+            if (ReferenceEquals(_activeTab, tab)) SetActiveTab(tab);
+            return;
         }
-        _browserUseMode = browserUse;
-        _browserInitialized = false;
+
+        DisposeTab(tab);
+        tab.IsBrowserUse = browserUse;
+        tab.BrowserInitialized = false;
         DiagnosticLog.Info("browser.host", $"create_begin project={projectId} mode={(browserUse ? "browser_use" : "preview")} bounds={Bounds.Width:0.##}x{Bounds.Height:0.##}");
-        _browser = new AvaloniaCefBrowser(() => CefPreviewRuntime.CreateProjectContext(projectId, browserUse));
-        _browser.BrowserInitialized += () =>
+
+        var browser = new AvaloniaCefBrowser(() => CefPreviewRuntime.CreateProjectContext(projectId, browserUse));
+        tab.Browser = browser;
+        browser.BrowserInitialized += () =>
         {
-            _browserInitialized = true;
+            tab.BrowserInitialized = true;
             DiagnosticLog.Info("browser.host", $"browser_initialized project={projectId} bounds={Bounds.Width:0.##}x{Bounds.Height:0.##}");
             if (browserUse) _ = CompleteBrowserUseInitializationAsync();
+            Dispatcher.UIThread.Post(UpdateNavigationButtons);
         };
-        _browser.LoadStart += (_, args) =>
+        browser.LoadStart += (_, args) =>
         {
             if (args.Frame.IsMain) DiagnosticLog.Debug("browser.host", $"load_start project={projectId}");
         };
-        _browser.LoadError += (_, args) =>
+        browser.LoadError += (_, args) =>
         {
             if (args.Frame.IsMain) DiagnosticLog.Warn("browser.host", $"load_error project={projectId} code={args.ErrorCode} url_length={args.FailedUrl.Length}");
         };
-        _browser.UnhandledException += (_, args) => DiagnosticLog.Error("browser.host", args.Exception, $"unhandled=true project={projectId}");
+        browser.UnhandledException += (_, args) => DiagnosticLog.Error("browser.host", args.Exception, $"unhandled=true project={projectId}");
         if (!browserUse)
         {
-            _browser.RequestHandler = new PreviewRequestHandler();
-            _browser.LifeSpanHandler = new PreviewLifeSpanHandler();
+            browser.RequestHandler = new PreviewRequestHandler();
+            browser.LifeSpanHandler = new PreviewLifeSpanHandler();
         }
-        _browser.Settings.WindowlessFrameRate = 60;
-        _browser.LoadEnd += (_, args) =>
+
+        browser.Settings.WindowlessFrameRate = 60;
+        browser.LoadEnd += (_, args) =>
         {
-            if (args.Frame.IsMain) Dispatcher.UIThread.Post(() => StatusText.Text = browserUse ? "Browser ready" : "Live");
+            if (args.Frame.IsMain) Dispatcher.UIThread.Post(UpdateNavigationButtons);
         };
-        BrowserHost.Child = _browser;
-        BrowserHost.IsVisible = true;
-        EmptyState.IsVisible = false;
-        if (browserUse) _browser.Address = CefPreviewRuntime.BrowserTargetUrl(projectId);
+        browser.AddressChanged += (_, _) => Dispatcher.UIThread.Post(UpdateNavigationButtons);
+        browser.LoadingStateChange += (_, _) => Dispatcher.UIThread.Post(UpdateNavigationButtons);
+
+        if (ReferenceEquals(_activeTab, tab))
+        {
+            BrowserHost.Child = browser;
+            BrowserHost.IsVisible = true;
+            EmptyState.IsVisible = false;
+            DisconnectButton.IsVisible = true;
+        }
+
+        if (browserUse) browser.Address = CefPreviewRuntime.BrowserTargetUrl(projectId);
         DiagnosticLog.Debug("browser.host", $"create_requested project={projectId} host_bounds={BrowserHost.Bounds.Width:0.##}x{BrowserHost.Bounds.Height:0.##}");
+    }
+
+    private void DisposeTab(BrowserTab tab)
+    {
+        if (ReferenceEquals(BrowserHost.Child, tab.Browser)) BrowserHost.Child = null;
+        tab.Browser?.Dispose();
+        tab.Browser = null;
+        tab.BrowserInitialized = false;
     }
 
     private void TryCreateBrowserUsePage()
     {
-        if (_browserUseInitialization is null || _browserUseProjectId is null) return;
-        // BrowserHost has no measurable size while it is empty. Measure the
-        // pane first, then attach the browser; the child will receive the
-        // available host bounds during the following layout pass.
+        if (_browserUseInitialization is null || _browserUseProjectId is null || _browserUseTab is null) return;
         if (Bounds.Width <= 1 || Bounds.Height <= 1)
         {
-            DiagnosticLog.Debug("browser.host", $"waiting_for_layout project={_browserUseProjectId} bounds={Bounds.Width:0.##}x{Bounds.Height:0.##} host_bounds={BrowserHost.Bounds.Width:0.##}x{BrowserHost.Bounds.Height:0.##}");
             HookBrowserUseLayout();
             return;
         }
+
         UnhookBrowserUseLayout();
         try
         {
-            EnsureBrowser(_browserUseProjectId, true);
-            StatusText.Text = "Browser ready";
-            if (_browserInitialized) _ = CompleteBrowserUseInitializationAsync();
+            EnsureBrowser(_browserUseTab, _browserUseProjectId, true);
+            if (_browserUseTab.BrowserInitialized) _ = CompleteBrowserUseInitializationAsync();
         }
         catch (Exception exception)
         {
@@ -199,7 +386,7 @@ public sealed partial class BrowserPreviewPane : UserControl
         var initialized = _browserUseInitialization;
         if (initialized is null) return;
         await Task.Delay(500);
-        initialized.TrySetResult(_browserInitialized && _browser is not null);
+        initialized.TrySetResult(_browserUseTab?.BrowserInitialized == true && _browserUseTab.Browser is not null);
         if (ReferenceEquals(_browserUseInitialization, initialized)) _browserUseInitialization = null;
     }
 
@@ -226,12 +413,42 @@ public sealed partial class BrowserPreviewPane : UserControl
     {
         if (DataContext is not DesktopViewModel viewModel || viewModel.SelectedProject is null) return;
         await viewModel.RefreshPreviewStateAsync();
-        if (viewModel.PreviewState is { ReloadGeneration: > 0 } state && state.ReloadGeneration != _reloadGeneration)
+        if (_activeTab?.Browser is { } browser && !_activeTab.IsBrowserUse &&
+            viewModel.PreviewState is { ReloadGeneration: > 0 } state && state.ReloadGeneration != _reloadGeneration)
         {
             _reloadGeneration = state.ReloadGeneration;
-            _browser?.Reload();
+            browser.Reload();
         }
-        if (viewModel.PreviewState?.Status == "stopped") { StatusText.Text = "Stopped"; _stateTimer.Stop(); }
+        if (viewModel.PreviewState?.Status == "stopped")
+        {
+            StatusText.Text = "Browser is offline";
+            _stateTimer.Stop();
+        }
+
+        UpdateNavigationButtons();
+    }
+
+    private void UpdateNavigationButtons()
+    {
+        var browser = _activeTab?.Browser;
+        var tab = _activeTab;
+        if (browser is null || tab is null || !tab.BrowserInitialized)
+        {
+            BackButton.IsEnabled = false;
+            ForwardButton.IsEnabled = false;
+            ReloadButton.IsEnabled = false;
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(browser.Address) && AddressInput.Text != browser.Address)
+        {
+            AddressInput.Text = browser.Address;
+            tab.Address = browser.Address;
+        }
+
+        BackButton.IsEnabled = browser.CanGoBack;
+        ForwardButton.IsEnabled = browser.CanGoForward;
+        ReloadButton.IsEnabled = !browser.IsLoading;
     }
 
     internal static bool IsAllowedPreviewUrl(string? value) =>

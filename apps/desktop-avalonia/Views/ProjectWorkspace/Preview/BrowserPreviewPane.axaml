@@ -1,22 +1,153 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             xmlns:preview="using:SunCode.Desktop.Views.ProjectWorkspace.Preview"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Preview.BrowserPreviewPane">
+  <UserControl.Styles>
+    <Style Selector="Button.browser-tab">
+      <Setter Property="Height" Value="34" />
+      <Setter Property="MinHeight" Value="34" />
+      <Setter Property="Padding" Value="10,0,26,0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1,1,1,0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.browser-tab.active">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+    <Style Selector="Button.browser-tab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    </Style>
+    <Style Selector="Button.browser-tab-close">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="Padding" Value="5" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="ZIndex" Value="2" />
+    </Style>
+    <Style Selector="Button.browser-tab-close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    </Style>
+    <Style Selector="Button.browser-nav">
+      <Setter Property="Width" Value="30" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Padding" Value="6" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+    <Style Selector="Button.browser-nav:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    </Style>
+    <Style Selector="Button.browser-nav:disabled">
+      <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
+    </Style>
+    <Style Selector="Button.browser-new-tab">
+      <Setter Property="Width" Value="30" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Padding" Value="7" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+    <Style Selector="Button.browser-new-tab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    </Style>
+    <Style Selector="TextBox.browser-address">
+      <Setter Property="Height" Value="30" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+
   <Border Classes="card" ClipToBounds="True">
-    <Grid RowDefinitions="40,*">
-      <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="8" Margin="12,0,10,0">
-        <TextBlock Grid.Column="0" Text="Browser preview" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
-        <TextBlock x:Name="StatusText" Grid.Column="1" Text="Stopped" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-        <TextBox x:Name="AddressInput" Grid.Column="2" Height="28" MinHeight="28" FontSize="11" VerticalAlignment="Center"
-                 Text="http://localhost:5173/" PlaceholderText="Local preview URL" KeyDown="AddressKeyDown" />
-        <Button Grid.Column="3" Classes="compact" Content="Open" Click="OpenClicked" ToolTip.Tip="Open local preview URL" />
-        <Button Grid.Column="4" Classes="compact" Content="Reload" Click="ReloadClicked" ToolTip.Tip="Reload preview" />
-        <Button Grid.Column="5" Classes="compact" Content="Close" Click="CloseClicked" ToolTip.Tip="Close browser preview" />
-      </Grid>
-      <Grid Grid.Row="1">
+    <Grid RowDefinitions="34,42,*">
+      <Border Grid.Row="0"
+              Background="{DynamicResource FieldBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="0,0,0,1">
+        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Bottom">
+          <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden">
+            <ItemsControl x:Name="BrowserTabs">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" Margin="8,0,0,0" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="preview:BrowserTab">
+                  <Grid Width="170">
+                    <Button Classes="browser-tab" Classes.active="{Binding IsActive}" Tag="{Binding}" Click="TabClicked" AutomationProperties.Name="{Binding Title}">
+                      <StackPanel Orientation="Horizontal" Spacing="7">
+                        <Ellipse Width="7" Height="7" Fill="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </Button>
+                    <Button Classes="browser-tab-close" Tag="{Binding}" Click="CloseTabClicked" AutomationProperties.Name="{Binding Title, StringFormat=Close {0}}">
+                      <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
+                    </Button>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <Button Grid.Column="1" Classes="browser-new-tab" Click="NewTabClicked" AutomationProperties.Name="New browser tab" ToolTip.Tip="New browser tab" Margin="0,0,8,0">
+            <svg:Svg Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
+          </Button>
+        </Grid>
+      </Border>
+
+      <Border Grid.Row="1"
+              Background="{DynamicResource SurfaceBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BorderThickness="0,0,0,1">
+        <Grid ColumnDefinitions="30,30,30,*,Auto,Auto" ColumnSpacing="4" Margin="8,5,8,5">
+          <Button x:Name="BackButton" Grid.Column="0" Classes="browser-nav" Click="BackClicked" IsEnabled="False" ToolTip.Tip="Back" AutomationProperties.Name="Back">
+            <svg:Svg Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" RenderTransformOrigin="50%,50%">
+              <svg:Svg.RenderTransform>
+                <RotateTransform Angle="180" />
+              </svg:Svg.RenderTransform>
+            </svg:Svg>
+          </Button>
+          <Button x:Name="ForwardButton" Grid.Column="1" Classes="browser-nav" Click="ForwardClicked" IsEnabled="False" ToolTip.Tip="Forward" AutomationProperties.Name="Forward">
+            <svg:Svg Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" />
+          </Button>
+          <Button x:Name="ReloadButton" Grid.Column="2" Classes="browser-nav" Click="ReloadClicked" IsEnabled="False" ToolTip.Tip="Reload page" AutomationProperties.Name="Reload page">
+            <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
+          </Button>
+          <TextBox x:Name="AddressInput" Grid.Column="3" Classes="browser-address" Text="http://127.0.0.1:5173/" KeyDown="AddressKeyDown" AutomationProperties.Name="Browser address" />
+          <Button x:Name="OpenButton" Grid.Column="4" Classes="compact" Content="Go" Click="OpenClicked" ToolTip.Tip="Open address" AutomationProperties.Name="Go" />
+          <Button x:Name="DisconnectButton" Grid.Column="5" Classes="compact" Content="Disconnect" Click="DisconnectClicked" ToolTip.Tip="Disconnect browser" AutomationProperties.Name="Disconnect browser" />
+        </Grid>
+      </Border>
+
+      <Grid Grid.Row="2">
         <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="320" Spacing="8">
-          <TextBlock Text="Preview is stopped" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
-          <TextBlock Text="Start your development server, then open its local URL above to watch changes while you chat."
+          <svg:Svg Width="24" Height="24" Path="/Assets/icons/server.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
+          <TextBlock x:Name="StatusText" Text="Browser is offline" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <TextBlock Text="Connect the embedded browser to inspect the current page and use Browser Use here."
                      FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" TextAlignment="Center" />
+          <Button Classes="compact" Content="Connect browser" Click="OpenClicked" HorizontalAlignment="Center" AutomationProperties.Name="Connect browser" />
         </StackPanel>
         <Decorator x:Name="BrowserHost" IsVisible="False" />
       </Grid>

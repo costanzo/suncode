@@ -42,7 +42,6 @@ public sealed partial class ProjectWorkspace : UserControl
         ProjectSwitcherControl.OpenProjectRequested += OpenProjectRequested;
         ProjectSwitcherControl.ProjectRequested += ProjectRequested;
         ContentSwitcherControl.ContentRequested += ContentRequested;
-        BrowserPreview.CloseRequested += ClosePreview;
         AddHandler(PointerPressedEvent, LayoutResizePressed);
         AddHandler(PointerMovedEvent, LayoutResizeMoved);
         AddHandler(PointerReleasedEvent, LayoutResizeReleased);
