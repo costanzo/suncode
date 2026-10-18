@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { builtInAgentCatalog as agentCatalog } from "../../../../agents/catalog.js";
 import { Button } from "../../../../components/universal/button/index.js";
+import { ProviderCredential } from "./ProviderCredential.jsx";
 
 import { Icon } from "../../../../shared/Icon.jsx";
 import { SettingRow } from "../components/SettingRow.jsx";
@@ -106,7 +107,7 @@ export function AgentPanel({ agentId }) {
   );
 }
 
-export function ProvidersPanel({ onSelect, endpoints }) {
+export function ProvidersPanel({ onSelect, endpoints, credentials }) {
   return (
     <div className="settings-panel-content">
       <div className="settings-panel-heading">
@@ -116,13 +117,19 @@ export function ProvidersPanel({ onSelect, endpoints }) {
       <div className="settings-provider-overview">
         {Object.entries(providerCatalog).map(([id, provider]) => (
           <button key={id} type="button" onClick={() => onSelect(id)}>
-            <span className={`settings-status-dot ${provider.keyPreview ? "is-configured" : ""}`} />
+            <span
+              className={`settings-status-dot ${credentials[id].mask ? "is-configured" : ""}`}
+            />
             <span>
               <strong>{provider.label}</strong>
               <code>{endpoints[id]}</code>
             </span>
-            <small className={provider.keyPreview ? "is-configured" : ""}>
-              {provider.keyPreview ? "Ready" : "API key needed"}
+            <small className={credentials[id].mask ? "is-configured" : ""}>
+              {credentials[id].mask
+                ? credentials[id].mode === "keychain"
+                  ? "System keychain"
+                  : "Plaintext"
+                : "API key needed"}
             </small>
             <Icon name="arrow" size={14} />
           </button>
@@ -132,28 +139,24 @@ export function ProvidersPanel({ onSelect, endpoints }) {
   );
 }
 
-function maskApiKey(value) {
-  const key = value.trim();
-  if (key.length <= 8) return `${key.slice(0, 2)}••••${key.slice(-2)}`;
-  return `${key.slice(0, 4)}••••••••${key.slice(-4)}`;
-}
-
-export function ProviderPanel({ providerId, onSave, endpoint, onEndpointChange }) {
+export function ProviderPanel({
+  providerId,
+  onSave,
+  endpoint,
+  onEndpointChange,
+  credential,
+  onCredentialChange,
+  platform = "macos",
+  issue = "none",
+  onRetry,
+}) {
   const provider = providerCatalog[providerId];
-  const [maskedKey, setMaskedKey] = useState(provider.keyPreview);
-  const [apiKey, setApiKey] = useState("");
   const [draftEndpoint, setDraftEndpoint] = useState(endpoint);
-  const configured = Boolean(maskedKey);
-  const saveKey = () => {
-    setMaskedKey(maskApiKey(apiKey));
-    setApiKey("");
-    onSave();
-  };
-  const removeKey = () => {
-    setMaskedKey("");
-    setApiKey("");
-    onSave();
-  };
+  const configured = Boolean(credential.mask);
+  const usable =
+    configured &&
+    (credential.mode === "plaintext" ||
+      !["locked", "denied", "unavailable", "missing"].includes(issue));
   const saveEndpoint = () => {
     const normalized = draftEndpoint.trim().replace(/\/+$/, "");
     onEndpointChange(normalized);
@@ -199,66 +202,28 @@ export function ProviderPanel({ providerId, onSave, endpoint, onEndpointChange }
         </div>
       </div>
       <div className="settings-divider" />
-      <div className="settings-panel-section">
-        <span className="settings-section-label">Credential</span>
-        <div className={`settings-credential-status ${configured ? "is-configured" : ""}`}>
-          <span className="settings-status-dot" />
-          <div>
-            {configured ? (
-              <>
-                <strong>API key configured</strong>
-                <code
-                  aria-label={`API key starts with ${maskedKey.slice(0, 4)} and ends with ${maskedKey.slice(-4)}`}
-                >
-                  {maskedKey}
-                </code>
-              </>
-            ) : (
-              <>
-                <strong>No API key configured</strong>
-                <small>Add a key to enable this provider.</small>
-              </>
-            )}
-          </div>
-        </div>
-        {!configured && (
-          <div className="settings-provider-unconfigured" role="status">
-            <div>
-              <strong>Add an API key to use this provider</strong>
-              <span>
-                The models stay visible for selection, but sending is paused until this provider has
-                a credential.
-              </span>
-            </div>
-            <code>API key required</code>
-          </div>
-        )}
-        <input
-          className="field settings-key mono"
-          type="password"
-          value={apiKey}
-          onChange={(event) => setApiKey(event.target.value)}
-          placeholder={configured ? "Paste a new key to replace it" : provider.placeholder}
-          aria-label={`${provider.label} API key`}
-          autoComplete="new-password"
-        />
-        <div className="settings-actions">
-          <Button variant="primary" size="sm" disabled={!apiKey.trim()} onClick={saveKey}>
-            {configured ? "Replace key" : "Save key"}
-          </Button>
-          <Button variant="danger" size="sm" onClick={removeKey} disabled={!configured}>
-            Remove key
-          </Button>
-        </div>
-      </div>
+      <ProviderCredential
+        provider={provider}
+        credential={credential}
+        onChange={onCredentialChange}
+        platform={platform}
+        issue={issue}
+        onRetry={onRetry}
+      />
       <div className="settings-divider" />
       <div className="settings-panel-section">
         <span className="settings-section-label">Available models</span>
         <div className="settings-model-list">
           {provider.models.map((model) => (
-            <div key={model} className={`settings-model-item ${configured ? "is-ready" : ""}`}>
+            <div key={model} className={`settings-model-item ${usable ? "is-ready" : ""}`}>
               <code>{model}</code>
-              <span>{configured ? "Ready to use" : "Add API key to use"}</span>
+              <span>
+                {usable
+                  ? "Ready to use"
+                  : configured
+                    ? "Key access required"
+                    : "Add API key to use"}
+              </span>
             </div>
           ))}
         </div>

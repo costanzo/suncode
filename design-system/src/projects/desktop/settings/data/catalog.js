@@ -4,6 +4,7 @@ export const providerCatalog = {
     endpoint: "https://api.deepseek.com",
     placeholder: "Paste DeepSeek API key",
     keyPreview: "sk-d••••••••7K2m",
+    storageMode: "keychain",
     models: ["deepseek-v4-flash", "deepseek-v4-pro"],
   },
   qwen: {
@@ -11,6 +12,7 @@ export const providerCatalog = {
     endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     placeholder: "Paste Qwen API key",
     keyPreview: "sk-q••••••••8Wm3",
+    storageMode: "keychain",
     models: ["qwen3.8-max", "qwen3.8-flash"],
   },
   zhipu: {
@@ -18,6 +20,7 @@ export const providerCatalog = {
     endpoint: "https://open.bigmodel.cn/api/paas/v4",
     placeholder: "Paste Zhipu API key",
     keyPreview: "",
+    storageMode: "keychain",
     models: ["glm-5.2", "glm-5.3"],
   },
   openai: {
@@ -25,6 +28,7 @@ export const providerCatalog = {
     endpoint: "https://api.openai.com/v1",
     placeholder: "Paste OpenAI API key",
     keyPreview: "sk-p••••••••9Xc4",
+    storageMode: "plaintext",
     models: ["gpt-5.5", "gpt-5.6-sol"],
   },
   kimi: {
@@ -32,6 +36,7 @@ export const providerCatalog = {
     endpoint: "https://api.moonshot.ai/v1",
     placeholder: "Paste Kimi API key",
     keyPreview: "sk-k••••••••3FvP",
+    storageMode: "keychain",
     models: ["kimi-k2.7-code", "kimi-k3"],
   },
   claude: {
@@ -39,6 +44,7 @@ export const providerCatalog = {
     endpoint: "https://api.anthropic.com/v1",
     placeholder: "Paste Anthropic API key",
     keyPreview: "sk-a••••••••6NwQ",
+    storageMode: "keychain",
     models: ["claude-sonnet-5", "claude-opus-5"],
   },
   gemini: {
@@ -46,6 +52,7 @@ export const providerCatalog = {
     endpoint: "https://generativelanguage.googleapis.com/v1beta/openai",
     placeholder: "Paste Gemini API key",
     keyPreview: "AIza••••••••2Lm8",
+    storageMode: "keychain",
     models: ["gemini-3.8-flash", "gemini-3.6-flash"],
   },
   xai: {
@@ -53,6 +60,7 @@ export const providerCatalog = {
     endpoint: "https://api.x.ai/v1",
     placeholder: "Paste xAI API key",
     keyPreview: "",
+    storageMode: "keychain",
     models: ["grok-4.7", "grok-4.6", "grok-4.5", "grok-4.3", "grok-build-0.1"],
   },
   minimax: {
@@ -60,6 +68,7 @@ export const providerCatalog = {
     endpoint: "https://api.minimax.io/v1",
     placeholder: "Paste MiniMax API key",
     keyPreview: "",
+    storageMode: "keychain",
     models: ["MiniMax-M3.1-Flash-Preview", "MiniMax-M3"],
   },
   meta: {
@@ -67,6 +76,7 @@ export const providerCatalog = {
     endpoint: "https://api.meta.ai/v1",
     placeholder: "Paste Meta API key",
     keyPreview: "",
+    storageMode: "keychain",
     models: ["muse-wonder-1.0", "muse-spark-1.3"],
   },
   mimo: {
@@ -74,6 +84,7 @@ export const providerCatalog = {
     endpoint: "https://api.xiaomimimo.com/v1",
     placeholder: "Paste Xiaomi MiMo API key",
     keyPreview: "",
+    storageMode: "keychain",
     models: ["mimo-v2.6-pro", "mimo-v2.6-flash"],
   },
 };

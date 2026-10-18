@@ -13,3 +13,11 @@ Settings is organized into:
 Language servers use a SunCode-owned catalog rather than a free-form server editor. The overview is scoped to the current project, and each supported server opens an in-panel configuration page tailored to that server. The fixtures cover the implemented jdtls, vtsls, basedpyright, rust-analyzer, and Roslyn Language Server surfaces. jdtls specifies Java runtime and project-unique data directories; vtsls specifies Node.js validation, project matching, TypeScript SDK policy, and tsserver memory; basedpyright specifies a target Python interpreter, diagnostic scope, type-checking mode, and project configuration discovery; rust-analyzer specifies toolchain detection, Cargo analysis, diagnostics, and compilation target policy; Roslyn specifies .NET detection, C# project loading, solution selection, restore, source generators, and diagnostic scope. All five cover project enablement, environment, timeouts, runtime status, dirty actions, and retry behavior.
 
 The Remote Server specimen covers disconnected input, pairing-code validation, connected status, mobile QR presentation, the pairing link with a copy affordance below the QR, QR renewal, and disconnect. Its pairing QR is a visual placeholder and does not encode a live credential.
+
+## Provider credentials — review only
+
+Open `#/projects/desktop/settings/provider-credentials` for the interactive API key storage proposal. The toolbar outside the Settings specimen selects macOS, Windows, or Linux wording and normal, locked, denied, unavailable, missing-entry, saving, save-failed, or remove-failed states. Retry returns the fixture to Normal; it performs no OS request.
+
+DeepSeek demonstrates a saved system-keychain key, OpenAI a saved plaintext key, and Zhipu an empty provider that defaults to system-keychain storage. All providers support Save, Cancel, replacement, explicit plaintext confirmation, and confirmed removal. Successful fixture changes survive in-page provider navigation; only masks and mode leave `ProviderCredential.jsx`. No secret is persisted. `styles/provider-credentials.css` owns this feature's styles.
+
+Approval is pending. This page establishes a UI proposal, not an implemented Rust credential contract. No migration flow is planned for the new system.

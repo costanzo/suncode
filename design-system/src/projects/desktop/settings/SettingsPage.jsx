@@ -25,15 +25,31 @@ import { initialMcpServers, McpServersPanel } from "./sections/McpServersPanel.j
 import { NetworkPanel } from "./sections/NetworkPanel.jsx";
 import { RemoteServerPanel } from "./sections/RemoteServerPanel.jsx";
 import "../styles/remote-server.css";
+import "./styles/provider-credentials.css";
 
 export function SettingsPage({
   initialPage = "defaults",
   initialLanguageServerId = null,
   languageServerHasProject = true,
+  credentialReview = false,
 }) {
   const [page, setPage] = useState(initialPage);
   const [agentsExpanded, setAgentsExpanded] = useState(false);
-  const [providersExpanded, setProvidersExpanded] = useState(false);
+  const [providersExpanded, setProvidersExpanded] = useState(initialPage.startsWith("provider"));
+  const [platform, setPlatform] = useState("macos");
+  const [issue, setIssue] = useState("none");
+  const [reviewVersion, setReviewVersion] = useState(0);
+  const [credentials, setCredentials] = useState(() =>
+    Object.fromEntries(
+      Object.entries(providerCatalog).map(([id, provider]) => [
+        id,
+        {
+          mask: provider.keyPreview,
+          mode: provider.storageMode ?? "keychain",
+        },
+      ]),
+    ),
+  );
   const [providerEndpoints, setProviderEndpoints] = useState(() =>
     Object.fromEntries(
       Object.entries(providerCatalog).map(([id, provider]) => [id, provider.endpoint]),
@@ -81,6 +97,7 @@ export function SettingsPage({
       return (
         <ProvidersPanel
           endpoints={providerEndpoints}
+          credentials={credentials}
           onSelect={(providerId) => {
             setPage(`provider:${providerId}`);
             setStatus("");
@@ -91,8 +108,15 @@ export function SettingsPage({
       const providerId = page.split(":")[1];
       return (
         <ProviderPanel
-          key={page}
+          key={`${page}-${reviewVersion}`}
           providerId={providerId}
+          credential={credentials[providerId]}
+          onCredentialChange={(credential) =>
+            setCredentials((current) => ({ ...current, [providerId]: credential }))
+          }
+          platform={platform}
+          issue={issue}
+          onRetry={() => setIssue("none")}
           endpoint={providerEndpoints[providerId]}
           onEndpointChange={(endpoint) =>
             setProviderEndpoints((current) => ({ ...current, [providerId]: endpoint }))
@@ -110,6 +134,46 @@ export function SettingsPage({
         description="The Avalonia desktop settings window for local defaults, keyboard shortcuts, security, Computer Use, Browser Use, MCP servers, language servers, built-in agents, diagnostics, and provider credentials."
         path="projects/desktop/settings/"
       />
+      {credentialReview && (
+        <div className="credential-review-controls" aria-label="Credential specimen controls">
+          <div>
+            <strong>API key storage · Design preview</strong>
+            <span>Fictional keys. Changes stay in memory; no operating-system access.</span>
+          </div>
+          <label>
+            Platform
+            <select
+              className="field"
+              value={platform}
+              onChange={(event) => setPlatform(event.target.value)}
+            >
+              <option value="macos">macOS</option>
+              <option value="windows">Windows</option>
+              <option value="linux">Linux</option>
+            </select>
+          </label>
+          <label>
+            Review state
+            <select
+              className="field"
+              value={issue}
+              onChange={(event) => {
+                setIssue(event.target.value);
+                setReviewVersion((value) => value + 1);
+              }}
+            >
+              <option value="none">Normal</option>
+              <option value="locked">Keychain locked</option>
+              <option value="denied">Access denied</option>
+              <option value="unavailable">Service unavailable</option>
+              <option value="missing">Saved entry missing</option>
+              <option value="saving">Saving</option>
+              <option value="save_failed">Save failed</option>
+              <option value="remove_failed">Remove failed</option>
+            </select>
+          </label>
+        </div>
+      )}
       <WindowSizeNote width="900" height="672" minimumWidth="720" minimumHeight="552" />
       <Section
         id="settings-window"
@@ -141,6 +205,7 @@ export function SettingsPage({
             </div>
             <div className="settings-body">
               <SettingsNav
+                credentials={credentials}
                 page={page}
                 agentCatalog={agentCatalog}
                 setPage={(nextPage) => {

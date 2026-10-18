@@ -233,6 +233,11 @@ export const primaryModules = [
               "defaults appearance keyboard shortcuts network remote server pairing mobile qr mcp language servers lsp semantic diagnostics logging model providers credentials",
             children: [
               {
+                path: "/projects/desktop/settings/provider-credentials",
+                label: "Provider credentials",
+                keywords: "api key storage keychain plaintext credential permission denied locked",
+              },
+              {
                 path: "/projects/desktop/settings/remote-server",
                 label: "Remote Server",
                 keywords: "remote server pairing code mobile qr sse connection",

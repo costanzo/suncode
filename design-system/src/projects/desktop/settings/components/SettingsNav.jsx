@@ -3,6 +3,7 @@ import { navItems, providerCatalog } from "../data/catalog.js";
 
 export function SettingsNav({
   page,
+  credentials,
   setPage,
   agentsExpanded,
   setAgentsExpanded,
@@ -96,8 +97,8 @@ export function SettingsNav({
                   >
                     <span>{provider.label}</span>
                     <span
-                      className={`settings-nav-provider-status ${provider.keyPreview ? "is-configured" : ""}`}
-                      aria-label={provider.keyPreview ? "API key configured" : "API key needed"}
+                      className={`settings-nav-provider-status ${credentials[id].mask ? "is-configured" : ""}`}
+                      aria-label={credentials[id].mask ? "API key configured" : "API key needed"}
                     />
                   </button>
                 ))}
