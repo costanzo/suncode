@@ -8,7 +8,19 @@ using SunCode.Desktop.Infrastructure;
 
 namespace SunCode.Desktop.Models;
 
-public sealed record ProjectItem(string ProjectId, string DisplayName, string CanonicalRoot);
+public sealed record ProjectItem
+{
+    public ProjectItem(string projectId, string displayName, string canonicalRoot)
+    {
+        ProjectId = projectId;
+        DisplayName = displayName;
+        CanonicalRoot = PathNormalization.NormalizeWindowsExtendedPath(canonicalRoot);
+    }
+
+    public string ProjectId { get; }
+    public string DisplayName { get; }
+    public string CanonicalRoot { get; }
+}
 
 public sealed record ProjectDependencyItem(string DependencyId, string DisplayName);
 

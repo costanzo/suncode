@@ -19,6 +19,20 @@ public sealed class ProjectHubViewModelTests
     }
 
     [Fact]
+    public void ProjectRootsDoNotExposeWindowsExtendedPathPrefix()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        var project = new ProjectItem("project", "Project", @"\\?\D:\projects\sample");
+
+        Assert.Equal(@"D:\projects\sample", project.CanonicalRoot);
+
+        var networkProject = new ProjectItem("network", "Network", @"\\?\UNC\server\share\project");
+
+        Assert.Equal(@"\\server\share\project", networkProject.CanonicalRoot);
+    }
+
+    [Fact]
     public void HubForwardsOnlyItsOwnPropertyChanges()
     {
         using var hub = new ProjectHubViewModel(new DesktopViewModel());

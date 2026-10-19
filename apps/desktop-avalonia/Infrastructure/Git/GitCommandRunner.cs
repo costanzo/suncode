@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using SunCode.Desktop.Infrastructure;
 
 namespace SunCode.Desktop.Infrastructure.Git;
 
@@ -32,7 +33,8 @@ internal sealed class GitCommandRunner(string executable)
             WorkingDirectory = directory, UseShellExecute = false, CreateNoWindow = true,
             RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = true
         };
-        foreach (var argument in Configuration.Concat(arguments)) start.ArgumentList.Add(argument);
+        var commandArguments = Configuration.Concat(arguments).ToArray();
+        foreach (var argument in commandArguments) start.ArgumentList.Add(argument);
         // A host's Git overrides must not redirect an opened project's query into another repository.
         foreach (var name in start.Environment.Keys.Where(key => key.StartsWith("GIT_", StringComparison.OrdinalIgnoreCase)).ToArray())
             start.Environment.Remove(name);
@@ -56,14 +58,32 @@ internal sealed class GitCommandRunner(string executable)
             // Observe both readers even on cancellation; no pipe can block the other pipe.
             await Task.WhenAll(outputTask, errorTask, process.WaitForExitAsync(deadline.Token));
             var output = await outputTask;
-            return new(process.ExitCode, output.Bytes, Encoding.UTF8.GetString((await errorTask).Bytes), output.Truncated);
+            var error = await errorTask;
+            var errorText = Encoding.UTF8.GetString(error.Bytes);
+            var result = new GitCommandResult(process.ExitCode, output.Bytes, errorText, output.Truncated);
+            if (result.ExitCode != 0 || !string.IsNullOrWhiteSpace(errorText) || output.Truncated || error.Truncated)
+            {
+                var level = result.ExitCode == 0 ? "warning" : "failure";
+                DiagnosticLog.Warn("git.command",
+                    $"outcome={level} executable={Sanitize(Executable)} directory={Sanitize(directory)} "
+                    + $"args={Sanitize(string.Join(' ', commandArguments))} exit_code={result.ExitCode} "
+                    + $"stdout_truncated={output.Truncated} stderr_truncated={error.Truncated} "
+                    + $"stderr={Sanitize(errorText, 4096)}");
+            }
+            return result;
         }
         catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
         {
+            DiagnosticLog.Warn("git.command",
+                $"outcome=timeout executable={Sanitize(Executable)} directory={Sanitize(directory)} "
+                + $"args={Sanitize(string.Join(' ', commandArguments))}");
             throw new GitException("timeout", "Git did not respond in time. Refresh to retry.");
         }
-        catch (Win32Exception)
+        catch (Win32Exception exception)
         {
+            DiagnosticLog.Error("git.command", exception,
+                $"outcome=start_failed executable={Sanitize(Executable)} directory={Sanitize(directory)} "
+                + $"args={Sanitize(string.Join(' ', commandArguments))}");
             throw new GitException(File.Exists(Executable) ? "read_failed" : "git_missing",
                 "The Git query could not start. Refresh to retry.");
         }
@@ -112,5 +132,12 @@ internal sealed class GitCommandRunner(string executable)
                 yield return "/Applications/Xcode.app/Contents/Developer/usr/bin/git";
             }
         }
+    }
+
+    private static string Sanitize(string? value, int maxLength = 512)
+    {
+        if (string.IsNullOrEmpty(value)) return "(none)";
+        var normalized = value.Replace('\r', ' ').Replace('\n', ' ').Replace('\t', ' ');
+        return normalized.Length <= maxLength ? normalized : normalized[..maxLength] + "...";
     }
 }

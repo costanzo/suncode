@@ -103,6 +103,20 @@ public sealed class GitServiceTests
     }
 
     [Fact]
+    public async Task ExtendedWindowsPathsAreNormalizedBeforeRepositoryScoping()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        using var repo = await Repository.CreateAsync();
+        repo.Write("file.txt", "base\n"); await repo.Commit();
+        repo.Write("file.txt", "changed\n");
+
+        var extendedRoot = @"\\?\" + repo.Root;
+        var status = await repo.Service.StatusAsync(extendedRoot);
+
+        Assert.Equal("file.txt", Assert.Single(status.Files).Path);
+    }
+
+    [Fact]
     public async Task LinkedWorktreeAndDetachedHeadAreSupported()
     {
         using var repo = await Repository.CreateAsync();

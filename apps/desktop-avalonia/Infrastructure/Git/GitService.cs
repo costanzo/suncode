@@ -190,7 +190,7 @@ internal sealed class GitService(Func<IEnumerable<string>>? candidates = null) :
 
     private static string PhysicalDirectory(string path)
     {
-        var full = Path.GetFullPath(path);
+        var full = NormalizePath(path);
         if (!Directory.Exists(full)) throw new GitException("project_unavailable", "The project directory is unavailable.");
         var current = Path.GetPathRoot(full)!;
         foreach (var part in full[current.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
@@ -200,6 +200,9 @@ internal sealed class GitService(Func<IEnumerable<string>>? candidates = null) :
         }
         return Path.TrimEndingDirectorySeparator(current);
     }
+
+    private static string NormalizePath(string path)
+        => PathNormalization.FullPath(path);
 
     private static void RequireSuccess(GitCommandResult result, bool allowDifference = false)
     {

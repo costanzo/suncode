@@ -218,6 +218,7 @@ public sealed class GitReviewViewModel : ObservableObject, IDisposable
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
         catch (Exception exception) when (!cancellation.IsCancellationRequested && _host.SelectedProject == project)
         {
+            DiagnosticLog.Error("git.status", exception, $"project={project.CanonicalRoot}");
             ClearDiffLines();
             if (exception is GitException { Code: "git_missing" })
             {
@@ -265,6 +266,8 @@ public sealed class GitReviewViewModel : ObservableObject, IDisposable
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
         catch (Exception exception) when (!cancellation.IsCancellationRequested && _host.SelectedProject == project)
         {
+            DiagnosticLog.Error("git.diff", exception,
+                $"project={project.CanonicalRoot} path={file.Path} scope={scope}");
             DiffState = "error";
             DiffError = exception.Message;
             if (exception is GitException { Code: "git_missing" }) { IsAvailable = false; Clear(); }
