@@ -220,8 +220,8 @@ export function BrowserUsePanel({ onSave }) {
             <code className="browser-readonly-value">Persistent per project</code>
           </SettingRow>
           <SettingRow label="Profile path" hint="Stored under the local SunCode data directory.">
-            <code className="browser-readonly-value" title="~/.suncode/data/browser/profiles/prj_suncode">
-              ~/.suncode/data/browser/profiles/prj_suncode
+            <code className="browser-readonly-value" title="~/.suncode/cef/browser-abc">
+              ~/.suncode/cef/browser-abc
             </code>
           </SettingRow>
           <SettingRow label="Profile usage" hint="Browser data is not part of the opened project.">

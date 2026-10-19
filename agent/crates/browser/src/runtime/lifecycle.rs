@@ -79,10 +79,7 @@ impl BrowserRuntime {
             projects.insert(project_id.into(), BrowserSlot::starting());
         }
         let profile_path = self.profile_path(project_id);
-        if let Err(error) = prepare_managed_directory(
-            &profile_path,
-            &self.inner.data_dir.join("cef").join("browser").join("profiles"),
-        ) {
+        if let Err(error) = prepare_managed_directory(&profile_path, &self.cef_root()) {
             self.fail_slot(project_id, &error).await;
             return Err(error);
         }

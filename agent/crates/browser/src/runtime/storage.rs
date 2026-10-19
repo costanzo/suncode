@@ -51,12 +51,12 @@ impl BrowserRuntime {
     }
 
     pub(super) fn profile_path(&self, project_id: &str) -> PathBuf {
-        self.inner
-            .data_dir
-            .join("cef")
-            .join("browser")
-            .join("profiles")
-            .join(project_directory_name(project_id))
+        self.cef_root()
+            .join(format!("browser-{}", project_directory_name(project_id)))
+    }
+    
+    pub(super) fn cef_root(&self) -> PathBuf {
+        self.inner.data_dir.join("cef")
     }
 
     pub(super) fn retain_screenshot(&self, result: Value) -> Result<Value, BusinessError> {
