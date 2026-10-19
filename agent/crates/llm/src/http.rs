@@ -201,11 +201,14 @@ pub(crate) async fn read_error_response(
     logging::error(
         "llm",
         format!(
-            "{provider_label}/{wire_model} request failed with status {status}; response_body: {}", String::from_utf8_lossy(&body),
+            "{provider_label}/{wire_model} request failed with status {status}; response_body: {}",
+            String::from_utf8_lossy(&body),
         ),
     );
     let mut error = error_from_body(status, &body, provider_label, provider_request_id);
-    error.details["retry_after_ms"] = serde_json::json!(retry_after_ms);
+    if let Some(retry_after_ms) = retry_after_ms {
+        error.details["retry_after_ms"] = serde_json::json!(retry_after_ms);
+    }
     error
 }
 
@@ -244,17 +247,12 @@ fn error_from_body(
     provider_label: &str,
     provider_request_id: Option<String>,
 ) -> BusinessError {
-    let message = serde_json::from_slice::<Value>(body)
-        .ok()
-        .and_then(|value| {
-            value
-                .pointer("/error/message")
-                .and_then(Value::as_str)
-                .map(str::to_owned)
-        })
-        .unwrap_or_else(|| format!("{provider_label} request failed with status {status}"));
-    let (code, retryable) = classify_status(status, &message);
-    BusinessError::provider(code, message, retryable, provider_request_id)
+    let response_body = String::from_utf8_lossy(body).into_owned();
+    let message = format!("{provider_label} request failed with status {status}");
+    let (code, retryable) = classify_status(status, &response_body);
+    let mut error = BusinessError::provider(code, message, retryable, provider_request_id);
+    error.details["response_body"] = Value::String(response_body);
+    error
 }
 
 #[cfg(test)]

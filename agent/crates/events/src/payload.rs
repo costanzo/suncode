@@ -106,7 +106,7 @@ payload!(ContextCompactedPayload { pub exchange_id: String, pub turn_id: String,
 payload!(ProviderExchangeStartedPayload { pub exchange_id: String, pub turn_id: String, pub provider: String, pub model_id: String, pub wire_model: String, pub iteration: u32, });
 payload!(ProviderExchangeProgressPayload { pub exchange_id: String, pub turn_id: String, pub provider: String, pub model_id: String, pub uploaded_bytes: u64, pub downloaded_bytes: u64, });
 payload!(ProviderRetryScheduledPayload { pub exchange_id: String, pub turn_id: String, pub retry_attempt: u32, pub max_retries: u32, pub delay_ms: u64, pub error_code: String, });
-payload!(ProviderErrorPayload { pub code: String, pub message: String, pub retryable: bool, });
+payload!(ProviderErrorPayload { pub code: String, pub message: String, pub retryable: bool, #[serde(skip_serializing_if = "Option::is_none")] pub details: Option<Value>, });
 payload!(ProviderExchangeFailedPayload { pub exchange_id: String, pub turn_id: String, pub error: ProviderErrorPayload, pub provider_request_id: Option<String>, });
 payload!(ProviderExchangeCompletedPayload { pub exchange_id: String, pub turn_id: String, pub output_message: Message, pub tool_calls: Vec<ToolCall>, pub usage: Option<Usage>, pub provider_request_id: Option<String>, pub provider_response_id: Option<String>, pub finish_reason: String, });
 payload!(ApprovalRequestedPayload { pub turn_id: String, pub tool_call_id: String, pub approval_id: String, pub operation: String, pub arguments: Value, });

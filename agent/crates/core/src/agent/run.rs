@@ -195,6 +195,7 @@ impl TurnLoop<'_> {
                         code: error.code.clone(),
                         message: error.message.clone(),
                         retryable: error.retryable,
+                        details: Some(error.details.clone()),
                     },
                     provider_request_id: error.provider_request_id.clone(),
                 }),
@@ -669,17 +670,19 @@ impl TurnLoop<'_> {
         let completion = match completion {
             Ok(Ok(completion)) => completion,
             outcome => {
-                let (code, message, retryable, provider_request_id) = match outcome {
+                let (code, message, retryable, details, provider_request_id) = match outcome {
                     Ok(Err(error)) => (
                         error.code,
                         error.message,
                         error.retryable,
+                        Some(error.details),
                         error.provider_request_id,
                     ),
                     Err(_) => (
                         "compaction_timeout".into(),
                         "Summary generation timed out".into(),
                         false,
+                        None,
                         None,
                     ),
                     Ok(Ok(_)) => unreachable!(),
@@ -693,6 +696,7 @@ impl TurnLoop<'_> {
                             code,
                             message,
                             retryable,
+                            details,
                         },
                         provider_request_id,
                     }),

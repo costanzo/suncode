@@ -1474,6 +1474,7 @@ components:
         code: { type: string }
         message: { type: string }
         retryable: { type: boolean }
+        details: { type: object, additionalProperties: true }
     ApprovalRequestedPayload:
       type: object
       required: [turn_id, tool_call_id, approval_id, operation, arguments]
