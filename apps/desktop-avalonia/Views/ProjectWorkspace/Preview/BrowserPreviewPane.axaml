@@ -5,13 +5,13 @@
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Preview.BrowserPreviewPane">
   <UserControl.Styles>
     <Style Selector="Button.browser-tab">
-      <Setter Property="Height" Value="34" />
-      <Setter Property="MinHeight" Value="34" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="MinHeight" Value="30" />
       <Setter Property="Padding" Value="10,0,26,0" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="BorderThickness" Value="1,1,1,0" />
-      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="CornerRadius" Value="6,6,0,0" />
       <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
       <Setter Property="FontSize" Value="11" />
       <Setter Property="HorizontalContentAlignment" Value="Left" />
@@ -26,8 +26,8 @@
       <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
     </Style>
     <Style Selector="Button.browser-tab-close">
-      <Setter Property="Width" Value="22" />
-      <Setter Property="Height" Value="22" />
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
       <Setter Property="MinHeight" Value="22" />
       <Setter Property="Padding" Value="5" />
       <Setter Property="Background" Value="Transparent" />
@@ -85,8 +85,9 @@
       <Border Grid.Row="0"
               Background="{DynamicResource FieldBrush}"
               BorderBrush="{DynamicResource BorderBrush}"
+              CornerRadius="10,10,0,0"
               BorderThickness="0,0,0,1">
-        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Bottom">
+        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Bottom" HorizontalAlignment="Left">
           <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden">
             <ItemsControl x:Name="BrowserTabs">
               <ItemsControl.ItemsPanel>
@@ -96,16 +97,19 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="preview:BrowserTab">
-                  <Grid Width="170">
+                  <Grid Width="170" Height="30">
                     <Button Classes="browser-tab" Classes.active="{Binding IsActive}" Tag="{Binding}" Click="TabClicked" AutomationProperties.Name="{Binding Title}">
-                      <StackPanel Orientation="Horizontal" Spacing="7">
-                        <Ellipse Width="7" Height="7" Fill="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                      </StackPanel>
+                      <Grid ColumnDefinitions="135,20" HorizontalAlignment="Stretch">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7">
+                          <Ellipse Width="7" Height="7" Fill="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+                          <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="browser-tab-close" Tag="{Binding}" Click="CloseTabClicked" AutomationProperties.Name="{Binding Title, StringFormat=Close {0}}">
+                          <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
+                        </Button>    
+                      </Grid>
                     </Button>
-                    <Button Classes="browser-tab-close" Tag="{Binding}" Click="CloseTabClicked" AutomationProperties.Name="{Binding Title, StringFormat=Close {0}}">
-                      <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
-                    </Button>
+                    
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
