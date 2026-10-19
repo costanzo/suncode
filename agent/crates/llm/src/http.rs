@@ -200,7 +200,9 @@ pub(crate) async fn read_error_response(
     };
     logging::error(
         "llm",
-        format!("{provider_label}/{wire_model} request failed with status {status}"),
+        format!(
+            "{provider_label}/{wire_model} request failed with status {status}; response_body: {}", String::from_utf8_lossy(&body),
+        ),
     );
     let mut error = error_from_body(status, &body, provider_label, provider_request_id);
     error.details["retry_after_ms"] = serde_json::json!(retry_after_ms);
