@@ -181,11 +181,11 @@ public sealed partial class DesktopViewModel
         });
     }
 
-    // Gutter attention combines session state with the user's right-region
-    // choice, so it follows the layout's review and child-session toggles.
+    // Gutter attention combines session state with whether the right panel is
+    // actually shown; the browser preview or a narrow window can hide it
     private void OnLayoutPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(WorkspaceLayoutViewModel.ReviewVisible) or nameof(WorkspaceLayoutViewModel.ChildSessionsVisible))) return;
+        if (e.PropertyName is not (nameof(WorkspaceLayoutViewModel.EffectiveReviewInspectorVisible) or nameof(WorkspaceLayoutViewModel.EffectiveChildSessionsVisible))) return;
         OnPropertyChanged(nameof(ReviewGutterAttention));
         OnPropertyChanged(nameof(ChildSessionsGutterAttention));
     }

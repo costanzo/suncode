@@ -317,8 +317,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool HasChildSessions => ChildSessions.Count > 0;
     public bool HasSelectedChildSession => SelectedChildSession is not null;
     public bool HasChildPendingApproval => ChildPendingApproval is not null;
-    public bool ReviewGutterAttention => (HasPendingApproval || HasPendingQuestion) && !Layout.ReviewVisible;
-    public bool ChildSessionsGutterAttention => HasChildPendingApproval && !Layout.ChildSessionsVisible;
+    public bool ReviewGutterAttention => (HasPendingApproval || HasPendingQuestion) && !Layout.EffectiveReviewInspectorVisible;
+    public bool ChildSessionsGutterAttention => HasChildPendingApproval && !Layout.EffectiveChildSessionsVisible;
     public bool IsChildSessionVisible => SelectedChildSession is not null;
     public string ChildSessionTitle => SelectedChildSession?.Title ?? string.Empty;
     public bool HasSessionLoadError => !string.IsNullOrWhiteSpace(SessionLoadError);
