@@ -182,6 +182,7 @@
   <x:String x:Key="LocUser">User</x:String>
   <x:String x:Key="LocTakeControl">Take control</x:String>
   <x:String x:Key="LocReturnControlToAgent">Return control to agent</x:String>
+  <x:String x:Key="LocStop">Stop</x:String>
   <x:String x:Key="LocRequestScreenCapture">Request screen capture</x:String>
   <x:String x:Key="LocRequestInputControl">Request input control</x:String>
   <x:String x:Key="LocSafetyAndLimits">SAFETY AND LIMITS</x:String>

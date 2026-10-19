@@ -234,12 +234,13 @@ public sealed class BrowserRuntimeViewModel : ObservableObject, IPolledPage
         if (_host.SelectedProject is null || !await _host.EnsureSdkReadyAsync()) return false;
         try
         {
-            await _host.Sdk!.ClearBrowserProfileAsync(_host.SelectedProject.ProjectId);
+            var project = _host.SelectedProject;
+            await _host.Sdk!.ClearBrowserProfileAsync(project.ProjectId);
+            Runtime = await _host.Sdk!.GetBrowserRuntimeInfoAsync(project.ProjectId);
             StatusText = string.Format(
                 System.Globalization.CultureInfo.CurrentCulture,
                 LocalizationService.GetString("LocBrowserDataCleared", "Browser data cleared for {0}."),
-                _host.SelectedProject.DisplayName);
-            await LoadAsync();
+                project.DisplayName);
             return true;
         }
         catch (Exception exception)

@@ -182,6 +182,7 @@
   <x:String x:Key="LocUser">用户</x:String>
   <x:String x:Key="LocTakeControl">接管控制</x:String>
   <x:String x:Key="LocReturnControlToAgent">将控制权交还代理</x:String>
+  <x:String x:Key="LocStop">停止</x:String>
   <x:String x:Key="LocRequestScreenCapture">请求屏幕捕获</x:String>
   <x:String x:Key="LocRequestInputControl">请求输入控制</x:String>
   <x:String x:Key="LocSafetyAndLimits">安全与限制</x:String>
