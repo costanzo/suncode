@@ -163,16 +163,9 @@ public sealed partial class ProjectWorkspace : UserControl
         if (Layout.ToggleExplorer()) await ViewModel.Explorer.LoadRootsAsync();
     }
 
-    private void ToggleReview(object? sender, RoutedEventArgs e)
-    {
-        if (Layout.ToggleReview()) BrowserPreview.CloseBrowser();
-    }
+    private void ToggleReview(object? sender, RoutedEventArgs e) => Layout.ToggleReview();
 
-    private void TogglePreview(object? sender, RoutedEventArgs e)
-    {
-        Layout.PreviewVisible = !Layout.PreviewVisible;
-        if (!Layout.PreviewVisible) BrowserPreview.CloseBrowser();
-    }
+    private void TogglePreview(object? sender, RoutedEventArgs e) => Layout.PreviewVisible = !Layout.PreviewVisible;
 
     internal void ClosePreview()
     {
@@ -188,7 +181,7 @@ public sealed partial class ProjectWorkspace : UserControl
 
     private void ToggleChildSessions(object? sender, RoutedEventArgs e)
     {
-        if (Layout.ToggleChildSessions()) BrowserPreview.CloseBrowser();
+        Layout.ToggleChildSessions();
         if (Layout.ChildSessionsVisible) _ = ViewModel.LoadChildSessionsAsync();
     }
 

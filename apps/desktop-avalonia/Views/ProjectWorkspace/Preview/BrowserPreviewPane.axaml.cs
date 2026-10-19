@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -59,8 +60,9 @@ public sealed partial class BrowserPreviewPane : UserControl
         _stateTimer.Tick += PreviewStateTick;
     }
 
-    public void CloseBrowser()
+    public void CloseBrowser([CallerMemberName] string caller = "")
     {
+        DiagnosticLog.Info("browser.host", $"close_all caller={caller}");
         _stateTimer.Stop();
         if (_previewStarted && DataContext is DesktopViewModel viewModel) _ = viewModel.StopPreviewAsync();
         _previewStarted = false;
@@ -349,8 +351,12 @@ public sealed partial class BrowserPreviewPane : UserControl
         DiagnosticLog.Debug("browser.host", $"create_requested project={projectId} host_bounds={BrowserHost.Bounds.Width:0.##}x{BrowserHost.Bounds.Height:0.##}");
     }
 
-    private void DisposeTab(BrowserTab tab)
+    private void DisposeTab(BrowserTab tab, [CallerMemberName] string caller = "")
     {
+        if (tab.Browser is not null)
+        {
+            DiagnosticLog.Info("browser.host", $"browser_disposed mode={(tab.IsBrowserUse ? "browser_use" : "preview")} caller={caller}");
+        }
         if (ReferenceEquals(BrowserHost.Child, tab.Browser)) BrowserHost.Child = null;
         tab.Browser?.Dispose();
         tab.Browser = null;
