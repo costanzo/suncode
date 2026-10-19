@@ -79,18 +79,10 @@ impl BrowserRuntime {
             projects.insert(project_id.into(), BrowserSlot::starting());
         }
         let profile_path = self.profile_path(project_id);
-        let downloads_path = self.downloads_path(project_id);
-        let directory_result = prepare_managed_directory(
+        if let Err(error) = prepare_managed_directory(
             &profile_path,
-            &self.inner.data_dir.join("browser").join("profiles"),
-        )
-        .and_then(|_| {
-            prepare_managed_directory(
-                &downloads_path,
-                &self.inner.data_dir.join("browser").join("downloads"),
-            )
-        });
-        if let Err(error) = directory_result {
+            &self.inner.data_dir.join("cef").join("browser").join("profiles"),
+        ) {
             self.fail_slot(project_id, &error).await;
             return Err(error);
         }

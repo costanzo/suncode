@@ -11,11 +11,9 @@ internal static class CefPreviewRuntime
     // Rust connects to this CEF-owned CDP endpoint; CEF remains the sole browser process owner.
     internal const int RemoteDebuggingPort = 9222;
     private static bool _initialized;
-    // CEF requires every request-context cache to be beneath this root. Keep the
-    // application data directory as the common parent for Preview and Browser Use
-    // profiles, which intentionally live in separate child directories.
-    private static readonly string CacheRoot = AppDataPaths.DataDirectory;
-    private static readonly string PreviewCacheRoot = Path.Combine(AppDataPaths.DataDirectory, "cef-preview");
+    // CEF requires every request-context cache to be beneath this dedicated root.
+    private static readonly string CacheRoot = Path.Combine(AppDataPaths.DataDirectory, "cef");
+    private static readonly string PreviewCacheRoot = Path.Combine(CacheRoot, "preview");
 
     internal static bool Available { get; private set; }
     internal static string? Error { get; private set; }
@@ -62,7 +60,7 @@ internal static class CefPreviewRuntime
         var digest = SHA256.HashData(Encoding.UTF8.GetBytes(projectId));
         var hash = Convert.ToHexString(digest.AsSpan(0, 16)).ToLowerInvariant();
         var profileRoot = browserUse
-            ? Path.Combine(AppDataPaths.DataDirectory, "browser", "profiles")
+            ? Path.Combine(CacheRoot, "browser", "profiles")
             : PreviewCacheRoot;
         var cachePath = Path.Combine(profileRoot, hash);
         Directory.CreateDirectory(cachePath);

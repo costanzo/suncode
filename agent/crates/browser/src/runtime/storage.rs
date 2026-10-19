@@ -1,5 +1,5 @@
 //! Managed browser data under the agent data directory: profiles,
-//! downloads, and screenshot artifacts.
+//! and screenshot artifacts.
 
 use super::BrowserRuntime;
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -53,16 +53,9 @@ impl BrowserRuntime {
     pub(super) fn profile_path(&self, project_id: &str) -> PathBuf {
         self.inner
             .data_dir
+            .join("cef")
             .join("browser")
             .join("profiles")
-            .join(project_directory_name(project_id))
-    }
-
-    pub(super) fn downloads_path(&self, project_id: &str) -> PathBuf {
-        self.inner
-            .data_dir
-            .join("browser")
-            .join("downloads")
             .join(project_directory_name(project_id))
     }
 
