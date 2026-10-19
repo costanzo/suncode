@@ -20,6 +20,7 @@ public sealed partial class ChatArea : UserControl
     private bool _scrollingConversation;
     private string _lastTurnState = string.Empty;
     private DispatcherTimer? _conversationScrollTimer;
+    private DispatcherTimer? _conversationResizeSettleTimer;
     private double _conversationScrollStart;
     private double _conversationScrollTarget;
     private DateTimeOffset _conversationScrollStartedAt;
@@ -33,7 +34,11 @@ public sealed partial class ChatArea : UserControl
     {
         InitializeComponent();
         AttachedToVisualTree += (_, _) => QueueAttachConversationScroller();
-        DetachedFromVisualTree += (_, _) => StopConversationScrollAnimation();
+        DetachedFromVisualTree += (_, _) =>
+        {
+            StopConversationScrollAnimation();
+            _conversationResizeSettleTimer?.Stop();
+        };
         Loaded += (_, _) => QueueAttachConversationScroller();
         DataContextChanged += (_, _) => ObserveViewModel();
         ChatInput.ExpandedComposerRequested += ForwardExpandedComposerRequested;
@@ -247,7 +252,9 @@ public sealed partial class ChatArea : UserControl
         // user navigation.
         var isProgrammaticOffset = _programmaticConversationOffset is { } expectedOffset
             && Math.Abs(expectedOffset - _conversationScroller.Offset.Y) <= 0.5;
-        if (!_scrollingConversation && !isProgrammaticOffset && Math.Abs(e.OffsetDelta.Y) > 0.1)
+        var viewportResized = Math.Abs(e.ViewportDelta.X) > 0.1 || Math.Abs(e.ViewportDelta.Y) > 0.1;
+        var resizeSettling = _conversationResizeSettleTimer?.IsEnabled == true;
+        if (!_scrollingConversation && !isProgrammaticOffset && !viewportResized && Math.Abs(e.OffsetDelta.Y) > 0.1)
         {
             StopConversationScrollAnimation();
             _programmaticConversationOffset = null;
@@ -258,6 +265,11 @@ public sealed partial class ChatArea : UserControl
             _programmaticConversationOffset = null;
         }
 
+        var keepAtBottom = _followingConversation
+                           && (viewportResized || (resizeSettling && Math.Abs(e.OffsetDelta.Y) > 0.1));
+        if (keepAtBottom) KeepConversationAtBottomAfterResize();
+
+        var pinnedByResize = _followingConversation && (viewportResized || resizeSettling);
         ScrollToBottomButton.IsVisible = !atBottom && distanceFromBottom > 1;
 
         if (!_scrollingConversation
@@ -267,6 +279,29 @@ public sealed partial class ChatArea : UserControl
         {
             _ = LoadOlderMessagesAsync();
         }
+    }
+
+    private void KeepConversationAtBottomAfterResize()
+    {
+        Dispatcher.UIThread.Post(SnapFollowedConversationToBottom, DispatcherPriority.Background);
+
+        if (_conversationResizeSettleTimer is null)
+        {
+            _conversationResizeSettleTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+            _conversationResizeSettleTimer.Tick += (_, _) =>
+            {
+                _conversationResizeSettleTimer.Stop();
+                SnapFollowedConversationToBottom();
+            };
+        }
+        _conversationResizeSettleTimer.Stop();
+        _conversationResizeSettleTimer.Start();
+    }
+
+    private void SnapFollowedConversationToBottom()
+    {
+        if (!_followingConversation || _conversationScrollTimer is not null) return;
+        SetConversationOffsetToBottom();
     }
 
     private async Task LoadOlderMessagesAsync()
