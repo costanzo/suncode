@@ -14,7 +14,6 @@ pub fn evaluate(risk: Option<Risk>, non_interactive: bool, full_control: bool) -
         Some(Risk::ComputerInput) if non_interactive => Decision::Deny,
         Some(Risk::ComputerInput) => Decision::ApprovalRequired,
         Some(Risk::BrowserAccess) if non_interactive => Decision::Deny,
-        Some(Risk::BrowserAccess) => Decision::ApprovalRequired,
         Some(_) if full_control => Decision::Allow,
         Some(_) if non_interactive => Decision::Deny,
         Some(_) => Decision::ApprovalRequired,
