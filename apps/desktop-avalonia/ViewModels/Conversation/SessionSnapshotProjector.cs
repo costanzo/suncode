@@ -212,8 +212,10 @@ internal static class SessionSnapshotProjector
         if (ended < started) ended = started;
         var elapsed = ended - started;
         if (elapsed.TotalSeconds < 1) return $"{elapsed.TotalMilliseconds:0} ms";
-        if (elapsed.TotalMinutes < 1) return $"{elapsed.TotalSeconds:0.#} s";
-        return $"{elapsed.TotalMinutes:0.#} m";
+        if (elapsed.TotalMinutes < 1) return $"{Math.Floor(elapsed.TotalSeconds):0} s";
+        var minutes = (int) elapsed.TotalMinutes;
+        var seconds = (int) Math.Floor(elapsed.TotalSeconds) % 60;
+        return seconds == 0 ? $"{minutes} m" : $"{minutes} m {seconds} s";
     }
 
     internal static string FormatCompletionTime(string completedAt)
