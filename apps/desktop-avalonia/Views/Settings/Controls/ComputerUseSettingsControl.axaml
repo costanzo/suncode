@@ -44,7 +44,8 @@
             </Grid>
           </Grid>
         </Border>
-        <TextBlock Text="{Binding PageStatusText}" Classes="sc-text-status" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding PageStatusText}" Classes="sc-text-status" TextWrapping="Wrap" 
+                   IsVisible="{Binding PageStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
       </StackPanel>
 
       <Border Classes="settings-divider" />
