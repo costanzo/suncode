@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">SunCode Logo</title>
+  <desc id="description">The official logo of SunCode.</desc>
+
+  <defs>
+    <!-- Main SunCode mark -->
+    <mask
+      id="suncode-main-mask"
+      maskUnits="userSpaceOnUse"
+      x="-80" y="-80" width="160" height="160"
+      style="mask-type:luminance" 
+    >
+        <circle r="78" fill="#ffffff" />
+        <path d="M-29-31H90V-11H-41L-29-31Z" fill="#000000" />
+        <path d="M-90 11H41L29 31H-90V11Z" fill="#000000" />
+    </mask>
+
+    <g id="suncode-main-mark">
+        <circle r="78" mask="url(#suncode-main-mask)" />
+    </g>
+
+    <!-- 24px SunCode mark -->
+    <mask
+      id="suncode-24-mask"
+      maskUnits="userSpaceOnUse"
+      x="-12" y="-12" width="24" height="24"
+      style="mask-type:luminance" 
+    >
+        <circle r="12" fill="#ffffff" />
+        <path d="M-4-5H14V-2H-6L-4-5Z" fill="#000000" />
+        <path d="M-14 2H6L4 5H-14V2Z" fill="#000000" />
+    </mask>
+
+    <g id="suncode-mark-24">
+        <circle r="12" mask="url(#suncode-24-mask)" />
+    </g>
+
+    <!-- 16px SunCode mark -->
+    <mask
+      id="suncode-16-mask"
+      maskUnits="userSpaceOnUse"
+      x="-8" y="-8" width="16" height="16"
+      style="mask-type:luminance" 
+    >
+        <circle r="8" fill="#ffffff" />
+        <path d="M-2-3H10V-1H-3.25L-2-3Z" fill="#000000" />
+        <path d="M-10 1H3.25L2 3H-10V1Z" fill="#000000" />
+    </mask>
+
+    <g id="suncode-mark-16">
+        <circle r="8" mask="url(#suncode-16-mask)" />
+    </g>
+
+    <!-- Desktop logo in two environments -->
+    <g id="suncode-app-icon">
+        <rect x="0.75" y="0.75" width="222.5" height="222.5" rx="49" fill="#121519" stroke="#292F36" stroke-width="1.5"/>
+        <use href="#suncode-main-mark" transform="translate(112 112) scale(0.86)" fill="#D9E0E6" />
+    </g>
+  </defs>
+
+  <!-- Theme background -->
+  <rect width="480" height="560" fill="#F3F5F7" />
+  <rect x="480" width="480" height="560" fill="#0D0F12" />
+
+  <!-- Labels -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="11" font-weight="500" letter-spacing="2">
+    <text x="40" y="44" fill="#65717D">SunCode / LIGHT </text>
+    <text x="520" y="44" fill="#7F8994">SunCode / DARK </text>
+  </g>
+
+  <!-- Desktop Icons -->
+  <use href="#suncode-app-icon" transform="translate(128 112)" />
+  <use href="#suncode-app-icon" transform="translate(608 112)" />
+
+  <!-- Text labels -->
+  <g font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="38" font-weight="600" letter-spacing="-0.6" text-anchor="middle">
+    <text x="240" y="398" fill="#17202A">SunCode</text>
+    <text x="720" y="398" fill="#EDF0F3">SunCode</text>
+  </g>
+
+  <path d="M40 446H440" stroke="#D5DDE4" />
+  <path d="M520 446H920" stroke="#292F36" />
+
+  <!-- In-app Icons -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="10" font-weight="500" letter-spacing="1.5">
+    <text x="40" y="499" fill="#65717D">IN-APP MARK</text>
+    <text x="520" y="499" fill="#7F8994">IN-APP MARK</text>
+  </g>
+
+  <g fill="#2C3742">
+    <use href="#suncode-main-mark" transform="translate(286 496) scale(0.2564)" />
+    <use href="#suncode-mark-24" transform="translate(346 496)" />
+    <use href="#suncode-mark-16" transform="translate(394 496)" />
+  </g>
+
+  <g fill="#D9E0E6">
+    <use href="#suncode-main-mark" transform="translate(766 496) scale(0.2564)" />
+    <use href="#suncode-mark-24" transform="translate(826 496)" />
+    <use href="#suncode-mark-16" transform="translate(874 496)" />
+  </g>
+
+  <!-- Size Label -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="9" text-anchor="middle">
+    <g fill="#65717D">
+        <text x="286" y="535">40</text>
+        <text x="346" y="535">24</text>
+        <text x="394" y="535">16</text>
+    </g>
+    <g fill="#7F8994">
+        <text x="766" y="535">40</text>
+        <text x="826" y="535">24</text>
+        <text x="874" y="535">16</text>
+    </g>
+  </g>
+</svg>
+  
