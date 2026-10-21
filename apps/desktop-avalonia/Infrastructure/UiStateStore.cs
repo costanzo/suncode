@@ -26,6 +26,7 @@ internal sealed class UiProjectState
     public double? NavigationWidth { get; set; }
     public double? ReviewWidth { get; set; }
     public double? BottomDrawerHeight { get; set; }
+    public double? PreviewWidth { get; set; }
     public double? WindowX { get; set; }
     public double? WindowY { get; set; }
     public double? WindowWidth { get; set; }

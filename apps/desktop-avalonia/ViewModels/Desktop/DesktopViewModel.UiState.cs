@@ -116,6 +116,7 @@ public sealed partial class DesktopViewModel
             if (saved.NavigationWidth is { } navigationWidth) Layout.NavigationPaneWidth = Math.Max(0, navigationWidth);
             if (saved.ReviewWidth is { } reviewWidth) Layout.ReviewPaneWidth = Math.Max(0, reviewWidth);
             if (saved.BottomDrawerHeight is { } drawerHeight) Layout.BottomDrawerHeight = Math.Max(0, drawerHeight);
+            if (saved.PreviewWidth is { } previewWidth) Layout.PreviewPaneWidth = Math.Max(0, previewWidth);
         }
         finally { _restoringUiState = false; }
     }
@@ -168,6 +169,7 @@ public sealed partial class DesktopViewModel
             saved.NavigationWidth = Layout.NavigationPaneWidth;
             saved.ReviewWidth = Layout.ReviewPaneWidth;
             saved.BottomDrawerHeight = Layout.BottomDrawerHeight;
+            saved.PreviewWidth = Layout.PreviewPaneWidth;
         });
     }
 

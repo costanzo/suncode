@@ -30,7 +30,6 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     private const double ReviewPaneBreakpoint = 1100;
     private const double NavigationPaneBreakpoint = 860;
     private const double CompactWorkspaceBreakpoint = 620;
-    private const double PreviewChatBreakpoint = 1030;
     private const double MinimumWorkspaceHeight = 360;
     // Keep supporting panes usable while allowing them to retreat before the
     // conversation reaches its own minimum width/height.
@@ -40,6 +39,10 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     internal const double MinimumNavigationPaneWidth = DefaultNavigationPaneWidth * 2d / 3d;
     internal const double MinimumReviewPaneWidth = DefaultReviewPaneWidth * 2d / 3d;
     internal const double MinimumBottomDrawerHeight = DefaultBottomDrawerHeight / 2d;
+    internal const double DefaultPreviewPanelWidth = 560;
+    internal const double MinimumPreviewPanelWidth = DefaultPreviewPanelWidth * 2d / 3d;
+    internal const double MinimumPreviewConversationWidth = 360;
+    
 
     private readonly IViewModelHost _host;
     private bool _navigationVisible = true;
@@ -55,6 +58,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     private double _layoutHeight = 900;
     private double _navigationPaneWidth = DefaultNavigationPaneWidth;
     private double _reviewPaneWidth = DefaultReviewPaneWidth;
+    private double _previewPaneWidth = DefaultPreviewPanelWidth;
     private double _bottomDrawerHeight = DefaultBottomDrawerHeight;
     private double _archivedDrawerHeight = 300;
     private bool _archivedDrawerOpen;
@@ -76,6 +80,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     public bool ToolActivityVisible { get => _toolActivityVisible; set { if (SetProperty(ref _toolActivityVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveToolActivityVisible)); RegionStateChanged?.Invoke(); } } }
     public double NavigationPaneWidth { get => _navigationPaneWidth; set { if (SetProperty(ref _navigationPaneWidth, value)) { NotifyNavigationLayoutChanged(); PanelGeometryChanged?.Invoke(); } } }
     public double ReviewPaneWidth { get => _reviewPaneWidth; set { if (SetProperty(ref _reviewPaneWidth, value)) { NotifyReviewLayoutChanged(); PanelGeometryChanged?.Invoke(); } } }
+    public double PreviewPaneWidth { get => _previewPaneWidth; set { if (SetProperty(ref _previewPaneWidth, value)) { NotifyPreviewLayoutChanged(); PanelGeometryChanged?.Invoke(); } } }
     public double BottomDrawerHeight { get => _bottomDrawerHeight; set { if (SetProperty(ref _bottomDrawerHeight, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveGitVisible)); OnPropertyChanged(nameof(EffectiveProviderTraceVisible)); OnPropertyChanged(nameof(EffectiveToolActivityVisible)); PanelGeometryChanged?.Invoke(); } } }
     public bool ArchivedDrawerOpen { get => _archivedDrawerOpen; set => SetProperty(ref _archivedDrawerOpen, value); }
     public double ArchivedDrawerHeight { get => _archivedDrawerHeight; private set => SetProperty(ref _archivedDrawerHeight, value); }
@@ -86,20 +91,16 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
         get => _previewVisible;
         set
         {
+            if (value && _previewPaneWidth < MinimumPreviewPanelWidth) PreviewPaneWidth = DefaultPreviewPanelWidth;
             if (!SetProperty(ref _previewVisible, value)) return;
-            NotifyNavigationLayoutChanged();
             NotifyReviewLayoutChanged();
-            OnPropertyChanged(nameof(EffectivePreviewVisible));
-            OnPropertyChanged(nameof(PreviewChatVisible));
-            OnPropertyChanged(nameof(ConversationWidth));
-            OnPropertyChanged(nameof(PreviewGap));
-            OnPropertyChanged(nameof(PreviewWidth));
+            NotifyPreviewLayoutChanged();
         }
     }
 
     public bool SessionSidebarVisible => NavigationVisible && !ExplorerVisible;
     public bool ExplorerSidebarVisible => NavigationVisible && ExplorerVisible;
-    public bool EffectiveNavigationVisible => !PreviewVisible && NavigationVisible && _layoutWidth > NavigationPaneBreakpoint && NavigationPaneWidth >= MinimumNavigationPaneWidth;
+    public bool EffectiveNavigationVisible => NavigationVisible && _layoutWidth > NavigationPaneBreakpoint && NavigationPaneWidth >= MinimumNavigationPaneWidth;
     public bool EffectiveSessionSidebarVisible => EffectiveNavigationVisible && !ExplorerVisible;
     public bool EffectiveExplorerSidebarVisible => EffectiveNavigationVisible && ExplorerVisible;
     public bool EffectiveReviewVisible => !PreviewVisible && (ReviewVisible || ChildSessionsVisible) && _layoutWidth > ReviewPaneBreakpoint && ReviewPaneWidth >= MinimumReviewPaneWidth;
@@ -116,8 +117,8 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     public double EffectiveBottomDrawerHeight => Math.Min(BottomDrawerHeight, MaxBottomDrawerHeight);
     public bool WorkspaceGuttersVisible => _layoutWidth > CompactWorkspaceBreakpoint;
     public bool WorkspaceStatusDetailsVisible => _layoutWidth > CompactWorkspaceBreakpoint;
-    public bool EffectivePreviewVisible => PreviewVisible && _host.SelectedProject is not null;
-    public bool PreviewChatVisible => !PreviewVisible || _layoutWidth >= PreviewChatBreakpoint;
+    public bool EffectivePreviewVisible => PreviewVisible && _host.SelectedProject is not null && PreviewPaneWidth >= MinimumPreviewPanelWidth;
+    public bool PreviewChatVisible => !EffectivePreviewVisible || PreviewRowWidth >= MinimumPreviewConversationWidth + MinimumPreviewPanelWidth;
 
     public GridLength WorkspaceGutterWidth => WorkspaceGuttersVisible ? new GridLength(34) : new GridLength(0);
     public GridLength WorkspaceGutterGap => WorkspaceGuttersVisible ? new GridLength(4) : new GridLength(0);
@@ -125,11 +126,14 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     public GridLength NavigationGap => EffectiveNavigationVisible ? new GridLength(4) : new GridLength(0);
     public GridLength ReviewWidth => EffectiveReviewVisible ? new GridLength(ReviewPaneWidth) : new GridLength(0);
     public GridLength ReviewGap => EffectiveReviewVisible ? new GridLength(4) : new GridLength(0);
-    public GridLength ConversationWidth => PreviewVisible
-        ? PreviewChatVisible ? new GridLength(2, GridUnitType.Star) : new GridLength(0)
-        : new GridLength(1, GridUnitType.Star);
+    public GridLength ConversationWidth => PreviewChatVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
     public GridLength PreviewGap => EffectivePreviewVisible && PreviewChatVisible ? new GridLength(4) : new GridLength(0);
-    public GridLength PreviewWidth => EffectivePreviewVisible ? new GridLength(3, GridUnitType.Star) : new GridLength(0);
+    public GridLength PreviewWidth => !EffectivePreviewVisible ? new GridLength(0) 
+        : PreviewChatVisible ? new GridLength(EffectivePreviewPanelWidth) : new GridLength(1, GridUnitType.Star);
+
+    private double PreviewRowWidth => _layoutWidth - 2 * WorkspaceGutterWidth.Value - NavigationWidth.Value - NavigationGap.Value - 4;
+    private double MaxPreviewPanelWidth => Math.Max(MinimumPreviewPanelWidth, PreviewRowWidth - MinimumPreviewConversationWidth);
+    private double EffectivePreviewPanelWidth => Math.Min(MaxPreviewPanelWidth, PreviewPaneWidth);
     public GridLength BottomDrawerGap => EffectiveGitVisible || EffectiveProviderTraceVisible || EffectiveToolActivityVisible ? new GridLength(4) : new GridLength(0);
     public GridLength GitFileListWidth => new(Math.Min(260, Math.Max(230, (_layoutWidth - 80) * 0.24)));
 
@@ -284,8 +288,10 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
                 NavigationPaneWidth = Math.Max(0, startSize + deltaX);
                 break;
             case WorkspaceResizeTarget.Review:
-            case WorkspaceResizeTarget.Preview:
                 ReviewPaneWidth = Math.Max(0, startSize - deltaX);
+                break;
+            case WorkspaceResizeTarget.Preview:
+                PreviewPaneWidth = Math.Clamp(startSize - deltaX, 0, MaxPreviewPanelWidth);
                 break;
             case WorkspaceResizeTarget.BottomDrawer:
                 BottomDrawerHeight = Math.Clamp(startSize - deltaY, 0, MaxBottomDrawerHeight);
@@ -297,6 +303,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     {
         WorkspaceResizeTarget.Navigation => NavigationPaneWidth,
         WorkspaceResizeTarget.BottomDrawer => BottomDrawerHeight,
+        WorkspaceResizeTarget.Preview => EffectivePreviewPanelWidth,
         _ => ReviewPaneWidth
     };
 
@@ -310,6 +317,8 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
             NavigationVisible = false;
         else if (target == WorkspaceResizeTarget.Review && ReviewPaneWidth < MinimumReviewPaneWidth)
             ReviewVisible = false;
+        else if (target == WorkspaceResizeTarget.Preview && PreviewPaneWidth < MinimumPreviewPanelWidth)
+            PreviewVisible = false;
         else if (target == WorkspaceResizeTarget.BottomDrawer && BottomDrawerHeight < MinimumBottomDrawerHeight)
             CloseBottomDrawers();
     }
@@ -333,6 +342,16 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
         OnPropertyChanged(nameof(EffectiveExplorerSidebarVisible));
         OnPropertyChanged(nameof(NavigationWidth));
         OnPropertyChanged(nameof(NavigationGap));
+        NotifyPreviewLayoutChanged();
+    }
+    
+    private void NotifyPreviewLayoutChanged()
+    {
+        OnPropertyChanged(nameof(EffectivePreviewVisible));
+        OnPropertyChanged(nameof(PreviewChatVisible));
+        OnPropertyChanged(nameof(ConversationWidth));
+        OnPropertyChanged(nameof(PreviewGap));
+        OnPropertyChanged(nameof(PreviewWidth));
     }
 
     private void NotifyReviewLayoutChanged()
@@ -357,10 +376,6 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
         OnPropertyChanged(nameof(WorkspaceGutterWidth));
         OnPropertyChanged(nameof(WorkspaceGutterGap));
         OnPropertyChanged(nameof(WorkspaceStatusDetailsVisible));
-        OnPropertyChanged(nameof(PreviewChatVisible));
-        OnPropertyChanged(nameof(ConversationWidth));
-        OnPropertyChanged(nameof(PreviewGap));
-        OnPropertyChanged(nameof(PreviewWidth));
     }
 
     private void NotifyDrawerLayoutChanged(string effectivePropertyName)
