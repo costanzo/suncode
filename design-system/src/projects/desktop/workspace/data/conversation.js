@@ -53,3 +53,6 @@ export const runningConversationToolCalls = [
     error: "",
   },
 ];
+
+export const longQueuedMessageText =
+  "Please update the conversation layout using the attached reference. Keep the composer available while the build is running, preserve the existing image previews, and make the queue easier to scan without covering the assistant output.\n\nCheck the light and dark themes, keyboard navigation, and narrow windows. Long messages should remain readable when expanded, including all paragraphs and line breaks.\n\nFinally, verify the existing tests and summarize any remaining limitations. Do not discard or shorten this instruction when it is promoted to steering.";

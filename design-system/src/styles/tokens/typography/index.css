@@ -5,4 +5,5 @@
   --font-mono: "JetBrains Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
   --conversation-caption-size: 11px;
   --conversation-queue-size: 12px;
+  --conversation-queue-preview-lines: 2;
 }

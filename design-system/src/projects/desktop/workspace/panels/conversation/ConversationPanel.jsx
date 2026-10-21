@@ -37,6 +37,7 @@ export function ConversationPanel({
   initialSentAttachments = [],
   imageInputEnabled = false,
   initialQueuedSteering = null,
+  initialQueuedMessages = null,
   initialQueueCollapsed = false,
   onViewChanges,
   onOpenToolActivity,
@@ -58,22 +59,23 @@ export function ConversationPanel({
   const [composerExpanded, setComposerExpanded] = useState(false);
   const [copiedResponse, setCopiedResponse] = useState(false);
   const [queuedMessages, setQueuedMessages] = useState(
-    state === "queued-input"
-      ? [
-          {
-            id: "queued-1",
-            mode: "followup",
-            text: "Keep the composer available while the build is running.",
-          },
-          {
-            id: "queued-2",
-            mode: initialQueuedSteering ? "steering" : "followup",
-            steerError: initialQueuedSteering === "failed",
-            text: "Also preserve the queue if I edit the next instruction.",
-            attachments: [sampleConversationAttachments[0]],
-          },
-        ]
-      : [],
+    initialQueuedMessages ??
+      (state === "queued-input"
+        ? [
+            {
+              id: "queued-1",
+              mode: "followup",
+              text: "Keep the composer available while the build is running.",
+            },
+            {
+              id: "queued-2",
+              mode: initialQueuedSteering ? "steering" : "followup",
+              steerError: initialQueuedSteering === "failed",
+              text: "Also preserve the queue if I edit the next instruction.",
+              attachments: [sampleConversationAttachments[0]],
+            },
+          ]
+        : []),
   );
   const [turnPhase, setTurnPhase] = useState("idle");
   const [queueHeld, setQueueHeld] = useState(false);
@@ -101,8 +103,7 @@ export function ConversationPanel({
   const modelUnavailable = state === "model-unavailable";
   const submissionBusy = turnPhase === "stopping" || turnPhase === "submitting";
   const turnActive =
-    turnPhase === "running" ||
-    ((updating || thinking || retrying) && turnPhase === "idle");
+    turnPhase === "running" || ((updating || thinking || retrying) && turnPhase === "idle");
   const hasDraft = Boolean(message.trim() || attachments.length);
   const canSend =
     !submissionBusy && !modelUnavailable && hasDraft && (!attachments.length || imageInputEnabled);
@@ -252,9 +253,12 @@ export function ConversationPanel({
   };
   const steerQueuedMessage = (queued) => {
     if (
-      !turnActive || submissionBusy || queueHeld ||
+      !turnActive ||
+      submissionBusy ||
+      queueHeld ||
       (queued.mode === "steering" && !queued.steerError)
-    ) return;
+    )
+      return;
     setQueuedMessages((current) =>
       current.map((item) =>
         item.id === queued.id ? { ...item, mode: "steering", steerError: false } : item,
@@ -666,7 +670,11 @@ export function ConversationPanel({
               className="btn btn-primary"
               onClick={sendMessage}
               disabled={!canSend}
-              title={turnActive ? "Queue for after this turn · Ctrl/Cmd+Enter" : "Send message · Ctrl/Cmd+Enter"}
+              title={
+                turnActive
+                  ? "Queue for after this turn · Ctrl/Cmd+Enter"
+                  : "Send message · Ctrl/Cmd+Enter"
+              }
             >
               {turnActive ? "Queue follow-up" : "Send message"}
             </button>

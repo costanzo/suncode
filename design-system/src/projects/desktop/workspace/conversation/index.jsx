@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
+import { longQueuedMessageText } from "../data/conversation.js";
 import { ConversationPanel, sampleConversationAttachments } from "../panels/conversation/index.js";
 
 const conversationGuides = {
@@ -130,11 +131,13 @@ const conversationGuides = {
         "Choose Steer now on the right of a specific queued message to include it in the next model request of the current turn.",
         "Use Take back and edit or Remove on a queued row; text and images move together.",
         "Collapse hides only the message list. The composer, draft images, and controls stay available.",
+        "Long message text previews two lines. Show more reveals the full text; Show less restores the preview without changing the queued payload.",
       ],
       style: [
         "The composer has one primary send action. Steering appears only on the right of queued rows.",
         "Each row shows Follow-up · After this turn or Steering · Next model request. A promoted row shows Steering queued and cannot be promoted twice.",
         "The bounded list reserves space above the composer and scrolls at 180px. The collapsed header retains count, mode summary, and pause state.",
+        "Only overflowing text gets a disclosure control. Images and row actions remain separate from the text preview; the header stays visible while the list scrolls.",
       ],
       logic: [
         "Follow-ups wait for the active turn to finish, then start new turns in FIFO order. They are not injected into the current loop automatically.",
@@ -324,6 +327,34 @@ export function WorkspaceConversationPage() {
           state="queued-input"
           initialAttachments={[sampleConversationAttachments[1]]}
           imageInputEnabled
+        />
+      ),
+    },
+    {
+      id: "longQueuedMessages",
+      guideId: "followupSteering",
+      title: "Follow-up and steering · long messages",
+      description:
+        "Long text previews two lines. Expand a message to read it in the bounded list; images and Steer now remain available.",
+      side: "right",
+      content: (
+        <ConversationPanel
+          standalone
+          state="queued-input"
+          imageInputEnabled
+          initialQueuedMessages={[
+            {
+              id: "long-queued-1",
+              mode: "followup",
+              text: longQueuedMessageText,
+              attachments: [sampleConversationAttachments[0]],
+            },
+            {
+              id: "long-queued-2",
+              mode: "followup",
+              text: "Keep the current typography.",
+            },
+          ]}
         />
       ),
     },
