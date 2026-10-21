@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SunCode.Desktop.Infrastructure;
 using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
@@ -24,7 +25,7 @@ public sealed partial class DesktopViewModel
     public async Task<bool> StartConfiguredPreviewAsync(string requestedUrl)
     {
         if (SelectedProject is null || !await EnsureSdkReadyAsync()) return false;
-        try
+        return await RunPreviewOperationAsync("start", async () =>
         {
             var settings = (await _sdk!.GetSettingsAsync(new(SelectedProject.ProjectId, null))).Settings;
             var program = settings.FirstOrDefault(item => item.Key == "preview_program")?.Value.GetString() ?? "npm";
@@ -40,21 +41,36 @@ public sealed partial class DesktopViewModel
             await _sdk.SetSettingAsync(new("project", SelectedProject.ProjectId, null, "preview_args", JsonSerializer.SerializeToElement(args)));
             if (cwd is not null) await _sdk.SetSettingAsync(new("project", SelectedProject.ProjectId, null, "preview_cwd", JsonSerializer.SerializeToElement(cwd)));
             PreviewState = await _sdk.StartPreviewAsync(SelectedProject.ProjectId, program, args, cwd, url);
-            return true;
-        }
-        catch (Exception exception) { ReportError(exception); return false; }
+        });
     }
 
     public async Task RefreshPreviewStateAsync()
     {
         if (SelectedProject is null || !await EnsureSdkReadyAsync()) return;
-        try { PreviewState = await _sdk!.GetPreviewStateAsync(SelectedProject.ProjectId); } catch (Exception exception) { ReportError(exception); }
+        await RunPreviewOperationAsync("refresh", async () =>
+            PreviewState = await _sdk!.GetPreviewStateAsync(SelectedProject.ProjectId));
     }
 
     public async Task StopPreviewAsync()
     {
         if (SelectedProject is null || !await EnsureSdkReadyAsync()) return;
-        try { PreviewState = await _sdk!.StopPreviewAsync(SelectedProject.ProjectId); }
-        catch (Exception exception) { ReportError(exception); }
+        await RunPreviewOperationAsync("stop", async () =>
+            PreviewState = await _sdk!.StopPreviewAsync(SelectedProject.ProjectId));
+    }
+
+    internal async Task<bool> RunPreviewOperationAsync(string operation, Func<Task> action)
+    {
+        try
+        {
+            await action();
+            return true;
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("viewmodel.preview", exception, $"operation={operation} project={SelectedProject?.ProjectId ?? "none"}");
+            // Preview process failures do not indicate that the embedded agent disconnected.
+            ReportPresentationError($"Could not {operation} project preview: {exception.Message}");
+            return false;
+        }
     }
 }

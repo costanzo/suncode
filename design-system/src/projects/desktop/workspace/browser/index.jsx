@@ -13,7 +13,7 @@ export function WorkspaceBrowserPage() {
       <Section
         id="workspace-built-in-browser"
         title="Browser surface"
-        description="Browser Use context, local development pages, and ordinary browser navigation share one panel."
+        description="Browser Use context, local development pages, and ordinary browser navigation share one panel. Preview failures keep their error and retry path local; chat, model selection, and project switching remain available."
       >
         <div className="workspace-browser-standalone">
           <BrowserPreviewPanel />
