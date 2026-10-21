@@ -51,16 +51,19 @@
 }
 
 .workspace-composer textarea:disabled {
-  padding-top: 20px;
   color: var(--text-disabled);
   cursor: not-allowed;
 }
 
-.workspace-composer:has(textarea:disabled) {
+.workspace-composer.is-model-unavailable textarea {
+  padding-top: 20px;
+}
+
+.workspace-composer.is-model-unavailable {
   border-color: var(--warning-border);
 }
 
-.workspace-composer:has(textarea:disabled) .workspace-composer-options {
+.workspace-composer.is-model-unavailable .workspace-composer-options {
   opacity: 0.72;
 }
 

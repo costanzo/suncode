@@ -2,4 +2,5 @@
 @import "./conversation-surface.css";
 @import "./conversation-messages.css";
 @import "./conversation-composer.css";
+@import "./conversation-inputs.css";
 @import "./conversation-context.css";

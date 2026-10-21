@@ -17,4 +17,10 @@
   --review-rail: 224px;
   --review-content: 1180px;
   --review-topbar: 54px;
+  --conversation-action-size: 24px;
+  --conversation-thumbnail-size: 48px;
+  --conversation-queue-max-height: 180px;
+  --conversation-compact-height: 102px;
+  --conversation-composer-radius: 16px;
+  --conversation-border-width: 1px;
 }

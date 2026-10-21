@@ -1,0 +1,288 @@
+.workspace-conversation:has(> .workspace-composer-dock) {
+  padding-bottom: var(--space-3);
+}
+
+.workspace-composer-dock {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.workspace-composer-dock .workspace-composer {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  left: auto;
+}
+
+.workspace-composer {
+  min-height: var(--conversation-compact-height);
+  height: auto;
+  gap: var(--space-2);
+  border-radius: var(--conversation-composer-radius);
+}
+
+.workspace-composer.is-running-input {
+  border-color: var(--accent-border);
+}
+
+.workspace-queued-inputs {
+  display: grid;
+  gap: var(--space-2);
+  max-height: var(--conversation-queue-max-height);
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: var(--conversation-border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-popover);
+}
+
+.workspace-queued-inputs > header,
+.workspace-queued-inputs > header > span,
+.workspace-queued-inputs li,
+.workspace-queue-actions > div {
+  display: flex;
+  align-items: center;
+}
+
+.workspace-queued-inputs > header,
+.workspace-queued-inputs li {
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.workspace-queued-inputs > header {
+  color: var(--text-secondary);
+  font-size: var(--conversation-caption-size);
+}
+
+.workspace-queued-inputs > header > span,
+.workspace-queued-inputs > header > span:first-child {
+  gap: var(--space-1);
+}
+
+.workspace-queued-inputs > header small,
+.workspace-queued-inputs li small {
+  color: var(--text-muted);
+  font-size: var(--conversation-caption-size);
+}
+
+.workspace-queued-inputs ol {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-queued-inputs li {
+  min-width: 0;
+  padding: var(--space-1) 0;
+  border-top: var(--conversation-border-width) solid var(--border);
+}
+
+.workspace-queue-position {
+  display: grid;
+  width: var(--space-5);
+  height: var(--space-5);
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--text-muted);
+  font: var(--conversation-caption-size) var(--font-mono);
+}
+
+.workspace-queue-content {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: var(--space-1);
+}
+
+.workspace-queued-inputs li p {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--conversation-queue-size);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.workspace-queue-actions {
+  display: grid;
+  justify-items: end;
+  flex: 0 0 auto;
+  gap: var(--space-1);
+}
+
+.workspace-queued-inputs button,
+.workspace-queue-resume {
+  display: inline-grid;
+  min-width: var(--conversation-action-size);
+  height: var(--conversation-action-size);
+  place-items: center;
+  padding: 0 var(--space-1);
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.workspace-queued-inputs button:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.workspace-queued-inputs button:focus-visible,
+.workspace-input-feedback button:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: 0;
+}
+
+.workspace-queued-inputs button:disabled {
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.workspace-queue-resume {
+  width: auto;
+  color: var(--accent);
+  font-size: var(--conversation-caption-size);
+}
+
+.workspace-attachment-strip.is-inline {
+  position: static;
+  flex-wrap: wrap;
+  min-height: 0;
+  gap: var(--space-2);
+}
+
+.workspace-attachment-strip.is-inline .workspace-attachment {
+  width: var(--conversation-thumbnail-size);
+  height: var(--conversation-thumbnail-size);
+}
+
+.workspace-queued-inputs .workspace-attachment-strip.is-inline .workspace-attachment {
+  width: var(--control-md);
+  height: var(--space-8);
+  box-shadow: none;
+}
+
+.workspace-message .workspace-attachment-strip.is-inline {
+  margin-bottom: var(--space-2);
+}
+
+.workspace-input-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--control-sm);
+  padding: var(--space-1) var(--space-2);
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border: var(--conversation-border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--conversation-caption-size);
+}
+
+.workspace-input-feedback.is-error {
+  color: var(--danger);
+  background: var(--danger-surface);
+  border-color: var(--danger-border);
+}
+
+.workspace-input-feedback button {
+  flex: 0 0 auto;
+  padding: 0;
+  color: currentColor;
+  background: transparent;
+  border: 0;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.workspace-attachment-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--conversation-caption-size);
+}
+
+/* Steering belongs to a queued message, never to the unsent draft. */
+.workspace-queued-inputs .workspace-queue-steer {
+  width: auto;
+  padding: 0 var(--space-2);
+  color: var(--text-secondary);
+  border: var(--conversation-border-width) solid var(--border);
+  font-size: var(--conversation-caption-size);
+  white-space: nowrap;
+}
+
+.workspace-queued-inputs .workspace-queue-steer[aria-disabled="true"] {
+  color: var(--accent);
+  background: var(--surface-inset);
+  cursor: default;
+}
+
+.workspace-queued-inputs .workspace-queue-error {
+  color: var(--danger);
+}
+
+.workspace-input-mode-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--conversation-caption-size);
+  line-height: 1.5;
+}
+
+.workspace-composer-dock .workspace-scroll-to-bottom {
+  right: 0;
+  bottom: calc(100% + var(--space-2));
+}
+
+.workspace-composer-dock .workspace-composer-footer,
+.workspace-composer-dock .workspace-composer-options {
+  flex-wrap: wrap;
+}
+
+.workspace-composer-dock .workspace-composer-options {
+  margin-left: auto;
+}
+
+.workspace-composer-modal .workspace-input-feedback {
+  flex-wrap: wrap;
+}
+
+.workspace-composer-settings {
+  display: flex;
+  min-width: 0;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.workspace-composer-settings:disabled {
+  opacity: 0.6;
+}
+
+.workspace-composer-settings .dropdown-trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-queued-inputs .workspace-attachment-preview {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
+.workspace-queued-inputs ol[hidden] {
+  display: none;
+}

@@ -108,18 +108,42 @@ const conversationGuides = {
       actions: [
         "Watch the live work indicator while the current turn is executing.",
         "Select the active tool row to open its Tool activity detail.",
-        "Wait for the assistant response before starting another turn.",
+        "Send a follow-up for after the current turn, then choose Steer now on that queued message to guide this turn instead.",
       ],
       style: [
         "The running indicator uses three 5px dots with staggered .12s delays.",
         "Each dot bounces in sequence beneath the conversation while the session is updating.",
         "Only the most recent running tool appears as a compact actionable row.",
-        "The composer remains visually present while send is disabled during the active state.",
+        "The composer stays available; the primary action queues input while the turn runs.",
       ],
       logic: [
         "The current session has content and an active turn is updating it.",
         "Historical tool activity is available in the dedicated bottom drawer.",
         "The final assistant message arrives when the turn completes.",
+      ],
+    },
+  },
+  followupSteering: {
+    tabs: {
+      actions: [
+        "Send normally (Enter) to add text and images to Up next as a follow-up for after this turn.",
+        "Choose Steer now on the right of a specific queued message to include it in the next model request of the current turn.",
+        "Use Take back and edit or Remove on a queued row; text and images move together.",
+        "Collapse hides only the message list. The composer, draft images, and controls stay available.",
+      ],
+      style: [
+        "The composer has one primary send action. Steering appears only on the right of queued rows.",
+        "Each row shows Follow-up · After this turn or Steering · Next model request. A promoted row shows Steering queued and cannot be promoted twice.",
+        "The bounded list reserves space above the composer and scrolls at 180px. The collapsed header retains count, mode summary, and pause state.",
+      ],
+      logic: [
+        "Follow-ups wait for the active turn to finish, then start new turns in FIFO order. They are not injected into the current loop automatically.",
+        "Steering changes only the selected queued message. The current provider request and tools continue; the next model request consumes steering within the same turn. Other follow-ups keep their order and the unsent draft is untouched.",
+        "Keep promoted text and images visible until admission is confirmed. Admission failure retains that row and offers Retry steer without cancelling current work.",
+        "A vision-capable model permits up to three images per message, including image-only input. Model capability is revalidated at admission.",
+        "Taking back a row restores the entire draft. An existing draft moves into that queue position as a follow-up and pauses the queue for explicit review/resume.",
+        "Only the separate Stop action cancels work. It pauses pending messages; steering itself never pauses other follow-ups.",
+        "Review-only proposal: pending and failed steering are seeded fixtures, not a simulated provider boundary. Rust currently exposes text continuation within an active turn; separate after-turn follow-ups, images, and queue management need runtime work.",
       ],
     },
   },
@@ -145,8 +169,12 @@ const conversationGuides = {
   retrying: {
     tabs: {
       actions: ["Wait for the scheduled request retry or use the composer stop action."],
-      style: ["A static 11px secondary-text status replaces Thinking and running dots; it wraps at narrow widths."],
-      logic: ["Show the scheduled delay and retry number while waiting. Clear it when the next request starts or the turn ends. The delay is a schedule, not a live countdown."],
+      style: [
+        "A static 11px secondary-text status replaces Thinking and running dots; it wraps at narrow widths.",
+      ],
+      logic: [
+        "Show the scheduled delay and retry number while waiting. Clear it when the next request starts or the turn ends. The delay is a schedule, not a live countdown.",
+      ],
     },
   },
   attachments: {
@@ -157,7 +185,7 @@ const conversationGuides = {
         "Hover a thumbnail and use its close control to remove it before sending.",
       ],
       style: [
-        "Attachment thumbnails are 96px by 64px with a 7px radius and 6px gap.",
+        "Draft thumbnails use the 48px conversation thumbnail token; queued references use compact 36px by 32px thumbnails.",
         "Thumbnails use cover cropping and a strong border on hover.",
         "Submitted images remain associated with the visible user message and provider context.",
       ],
@@ -285,6 +313,72 @@ export function WorkspaceConversationPage() {
       content: <ConversationPanel standalone state="content-updating" />,
     },
     {
+      id: "followupSteering",
+      title: "Follow-up and steering",
+      description:
+        "Send a follow-up by default. Choose Steer now on a queued row to guide the current turn at its next model request.",
+      side: "right",
+      content: (
+        <ConversationPanel
+          standalone
+          state="queued-input"
+          initialAttachments={[sampleConversationAttachments[1]]}
+          imageInputEnabled
+        />
+      ),
+    },
+    {
+      id: "collapsedQueue",
+      guideId: "followupSteering",
+      title: "Follow-up and steering · queue collapsed",
+      description:
+        "Only the queued messages fold into their header. The composer, draft image, and sending controls remain unchanged.",
+      side: "right",
+      content: (
+        <ConversationPanel
+          standalone
+          state="queued-input"
+          initialAttachments={[sampleConversationAttachments[1]]}
+          imageInputEnabled
+          initialQueueCollapsed
+        />
+      ),
+    },
+    {
+      id: "steeringPending",
+      guideId: "followupSteering",
+      title: "Steering · pending",
+      description:
+        "The selected message waits for the next model request. Current output and tools continue; other messages remain follow-ups.",
+      side: "right",
+      content: (
+        <ConversationPanel
+          standalone
+          state="queued-input"
+          initialQueuedSteering="pending"
+          initialAttachments={[sampleConversationAttachments[1]]}
+          imageInputEnabled
+        />
+      ),
+    },
+    {
+      id: "steeringFailed",
+      guideId: "followupSteering",
+      title: "Steering · admission failed",
+      description:
+        "The selected message and its images remain in the list. Retry steering from that row while current work continues.",
+      side: "right",
+      content: (
+        <ConversationPanel
+          standalone
+          state="queued-input"
+          initialQueuedSteering="failed"
+          initialAttachments={[sampleConversationAttachments[1]]}
+          imageInputEnabled
+        />
+      ),
+    },
+    {
       id: "thinking",
       title: "Assistant thinking",
       description: "A dedicated thinking phase replaces the generic three-dot running marker.",
@@ -316,6 +410,7 @@ export function WorkspaceConversationPage() {
     },
     {
       id: "attachmentsSent",
+      guideId: "attachments",
       title: "Attachments sent",
       description: "A completed user message keeps its image attachments in conversation history.",
       side: "right",
@@ -365,7 +460,7 @@ export function WorkspaceConversationPage() {
               key={`${state.id}-${index}`}
               title={state.title}
               description={state.description}
-              guide={conversationGuides[state.id]}
+              guide={conversationGuides[state.guideId ?? state.id]}
               side={state.side}
               open={openGuide === `${state.id}-${index}`}
               onToggle={() =>

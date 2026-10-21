@@ -3,4 +3,6 @@
     "Noto Sans", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", "Helvetica Neue", Arial,
     sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
+  --conversation-caption-size: 11px;
+  --conversation-queue-size: 12px;
 }
