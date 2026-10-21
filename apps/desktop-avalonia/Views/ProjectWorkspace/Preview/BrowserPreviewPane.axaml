@@ -139,7 +139,7 @@
           <Button x:Name="ReloadButton" Grid.Column="2" Classes="browser-nav" Click="ReloadClicked" IsEnabled="False" ToolTip.Tip="Reload page" AutomationProperties.Name="Reload page">
             <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
           </Button>
-          <TextBox x:Name="AddressInput" Grid.Column="3" Classes="browser-address" Text="http://127.0.0.1:5173/" KeyDown="AddressKeyDown" AutomationProperties.Name="Browser address" />
+          <TextBox x:Name="AddressInput" Grid.Column="3" Classes="browser-address" Text="http://localhost:5173/" KeyDown="AddressKeyDown" AutomationProperties.Name="Browser address" />
           <Button x:Name="OpenButton" Grid.Column="4" Classes="compact" Content="Go" Click="OpenClicked" ToolTip.Tip="Open address" AutomationProperties.Name="Go" />
           <Button x:Name="DisconnectButton" Grid.Column="5" Classes="compact" Content="Disconnect" Click="DisconnectClicked" ToolTip.Tip="Disconnect browser" AutomationProperties.Name="Disconnect browser" />
         </Grid>

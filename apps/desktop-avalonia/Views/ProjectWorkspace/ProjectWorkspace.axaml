@@ -233,8 +233,14 @@
           </Grid>
 
           <StackPanel Grid.Column="2" Margin="4,7" IsVisible="{Binding Layout.WorkspaceGuttersVisible}">
-            <Button Classes="icon gutter" Classes.active="{Binding Layout.PreviewVisible}" Click="TogglePreview" ToolTip.Tip="Show built-in browser" AutomationProperties.Name="Show built-in browser" Margin="0,0,0,6">
-              <svg:Svg Width="15" Height="15" Path="/Assets/icons/computer.svg" />
+            <Button Classes="icon gutter" Classes.active="{Binding Layout.PreviewVisible}" Click="TogglePreview" ToolTip.Tip="{Binding BrowserGutterTip}" AutomationProperties.Name="{Binding BrowserGutterTip}" Margin="0,0,0,6">
+              <Grid>
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/computer.svg" />
+                <Grid Classes="gutter-live" IsVisible="{Binding IsBrowserConnected}">
+                  <Ellipse Classes="gutter-live-halo" />
+                  <Ellipse Classes="gutter-live-core" />
+                </Grid>
+              </Grid>
             </Button>
             <Button Classes="icon gutter" Classes.active="{Binding Layout.EffectiveReviewInspectorVisible}" Click="ToggleReview" ToolTip.Tip="{DynamicResource LocShowReview}" AutomationProperties.Name="{DynamicResource LocShowReview}">
               <Grid>

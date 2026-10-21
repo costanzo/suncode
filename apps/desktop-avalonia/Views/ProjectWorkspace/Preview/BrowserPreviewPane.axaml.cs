@@ -38,7 +38,7 @@ public sealed class BrowserTab : ObservableObject
 
 public sealed partial class BrowserPreviewPane : UserControl
 {
-    private const string DefaultAddress = "http://127.0.0.1:5173/";
+    private const string DefaultAddress = "http://localhost:5173/";
 
     private readonly ObservableCollection<BrowserTab> _tabs = new();
     private BrowserTab? _activeTab;
@@ -315,6 +315,7 @@ public sealed partial class BrowserPreviewPane : UserControl
             DiagnosticLog.Info("browser.host", $"browser_initialized project={projectId} bounds={Bounds.Width:0.##}x{Bounds.Height:0.##}");
             if (browserUse) _ = CompleteBrowserUseInitializationAsync();
             Dispatcher.UIThread.Post(UpdateNavigationButtons);
+            Dispatcher.UIThread.Post(SyncConnectionState);
         };
         browser.LoadStart += (_, args) =>
         {
@@ -361,6 +362,15 @@ public sealed partial class BrowserPreviewPane : UserControl
         tab.Browser?.Dispose();
         tab.Browser = null;
         tab.BrowserInitialized = false;
+        SyncConnectionState();
+    }
+    
+    private void SyncConnectionState()
+    {
+        if (DataContext is DesktopViewModel viewModel)
+        {
+            viewModel.IsBrowserConnected = _tabs.Any(item => item.Browser is not null && item.BrowserInitialized);
+        }
     }
 
     private void TryCreateBrowserUsePage()

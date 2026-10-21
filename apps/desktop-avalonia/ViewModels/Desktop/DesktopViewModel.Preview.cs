@@ -6,7 +6,20 @@ namespace SunCode.Desktop.ViewModels;
 public sealed partial class DesktopViewModel
 {
     private PreviewState? _previewState;
+    private bool _isBrowserConnected;
     public PreviewState? PreviewState { get => _previewState; private set => SetProperty(ref _previewState, value); }
+    public bool IsBrowserConnected
+    {
+        get => _isBrowserConnected;
+        set
+        {
+            if (SetProperty(ref _isBrowserConnected, value))
+            {
+                OnPropertyChanged(nameof(BrowserGutterTip));
+            }
+        }
+    }
+    private string BrowserGutterTip => IsBrowserConnected ? "Show built-in browser (connected)" : "Show built-in browser";
 
     public async Task<bool> StartConfiguredPreviewAsync(string requestedUrl)
     {
