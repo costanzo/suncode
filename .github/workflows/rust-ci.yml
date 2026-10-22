@@ -1,11 +1,12 @@
 name: Rust CI
 
 on:
-  push:
-    branches:
-      - main
-      - master
-  pull_request:
+  # Automatic Rust CI is temporarily paused. Uncomment these triggers to resume.
+  # push:
+  #   branches:
+  #     - main
+  #     - master
+  # pull_request:
   workflow_dispatch:
 
 permissions:
