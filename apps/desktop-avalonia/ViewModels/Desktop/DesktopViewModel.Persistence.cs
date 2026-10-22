@@ -146,6 +146,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(SelectedModel));
             OnPropertyChanged(nameof(SelectedModelName));
             OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(IsComposerActionEnabled));
             OnPropertyChanged(nameof(CanCompose));
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
             OnPropertyChanged(nameof(ComposerPlaceholder));

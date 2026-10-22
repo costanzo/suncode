@@ -214,6 +214,13 @@ export function ConversationPanel({
     }
     setTurnPhase("submitting");
   };
+  const composerAction = () => {
+    if (hasDraft) {
+      sendMessage();
+    } else if (turnActive) {
+      stopTurn();
+    }
+  };
   const takeBackQueuedMessage = (queued) => {
     if (submissionBusy) return;
     const savedDraft = hasDraft
@@ -560,17 +567,6 @@ export function ConversationPanel({
                 >
                   <Icon name="plus" size={14} />
                 </button>
-                {turnActive && (
-                  <button
-                    type="button"
-                    className="workspace-attach"
-                    aria-label="Stop turn"
-                    title="Stop current turn"
-                    onClick={stopTurn}
-                  >
-                    <Icon name="pause" size={14} />
-                  </button>
-                )}
                 <button
                   type="button"
                   className="workspace-expand-composer"
@@ -618,13 +614,25 @@ export function ConversationPanel({
                   />
                 </fieldset>
                 <Button
-                  variant="primary"
+                  variant={turnActive && !hasDraft ? "danger" : "primary"}
                   className="workspace-send"
-                  icon="arrow-up"
-                  aria-label={turnActive ? "Queue follow-up" : "Send message"}
-                  title={turnActive ? "Queue for after this turn · Enter" : "Send message · Enter"}
-                  disabled={!canSend}
-                  onClick={sendMessage}
+                  icon={turnActive && !hasDraft ? "stop" : "arrow-up"}
+                  aria-label={
+                    turnActive && !hasDraft
+                      ? "Stop turn"
+                      : turnActive
+                        ? "Queue follow-up"
+                        : "Send message"
+                  }
+                  title={
+                    turnActive && !hasDraft
+                      ? "Stop current turn"
+                      : turnActive
+                        ? "Queue for after this turn · Enter"
+                        : "Send message · Enter"
+                  }
+                  disabled={turnActive && !hasDraft ? submissionBusy : !canSend}
+                  onClick={composerAction}
                 />
               </div>
             </div>

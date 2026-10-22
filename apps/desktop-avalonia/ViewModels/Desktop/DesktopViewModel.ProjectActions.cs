@@ -474,6 +474,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (hasDraft) await LoadQueuedInputsAsync(sessionId);
         else QueuedInputs.Remove(item);
         OnPropertyChanged(nameof(CanSubmit));
+        OnPropertyChanged(nameof(IsComposerActionEnabled));
         OnPropertyChanged(nameof(HasRemovedQueuedInput));
         StatusText = hasDraft
             ? "Message returned to the composer; previous draft added to Up next"

@@ -134,7 +134,7 @@ const conversationGuides = {
         "Long message text previews two lines. Show more reveals the full text; Show less restores the preview without changing the queued payload.",
       ],
       style: [
-        "The composer has one primary send action. Steering appears only on the right of queued rows.",
+        "One fixed-size composer action changes between send and stop. With text or images it sends or queues; while a turn runs with an empty draft it stops. Steering appears only on the right of queued rows.",
         "Each row shows Follow-up · After this turn or Steering · Next model request. A promoted row shows Steering queued and cannot be promoted twice.",
         "The bounded list reserves space above the composer and scrolls at 180px. The collapsed header retains count, mode summary, and pause state.",
         "Only overflowing text gets a disclosure control. Images and row actions remain separate from the text preview; the header stays visible while the list scrolls.",
@@ -145,7 +145,7 @@ const conversationGuides = {
         "Keep promoted text and images visible until admission is confirmed. Admission failure retains that row and offers Retry steer without cancelling current work.",
         "A vision-capable model permits up to three images per message, including image-only input. Model capability is revalidated at admission.",
         "Taking back a row restores the entire draft. An existing draft moves into that queue position as a follow-up and pauses the queue for explicit review/resume.",
-        "Only the separate Stop action cancels work. It pauses pending messages; steering itself never pauses other follow-ups.",
+        "The composer action stops only when the turn is running and the draft is empty. With text or images present, it sends or queues instead. Stopping pauses pending messages; steering itself never pauses other follow-ups.",
         "Pending and failed steering are seeded review states. The Avalonia desktop and Rust agent implement follow-up turns, image-bearing queue rows, and steering at the next model request.",
       ],
     },
