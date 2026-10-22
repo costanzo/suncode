@@ -1,8 +1,53 @@
 use super::*;
-use suncode_core::agent::TurnResponse;
+use suncode_core::agent::{QueuedMessageSnapshot, TurnResponse};
 use suncode_data::ApprovalRecord;
 
 impl AsyncAgentSdk {
+    pub fn queued_messages(&self, session_id: &str) -> SdkResult<Vec<QueuedMessageSnapshot>> {
+        self.session_for_user(session_id)?;
+        self.state.agent.queued_messages(session_id)
+    }
+
+    pub fn steer_queued_message(
+        &self,
+        session_id: &str,
+        queued_id: &str,
+    ) -> SdkResult<QueuedMessageSnapshot> {
+        self.session_for_user(session_id)?;
+        self.state.agent.steer_queued_message(session_id, queued_id)
+    }
+
+    pub fn take_queued_message(
+        &self,
+        session_id: &str,
+        queued_id: &str,
+    ) -> SdkResult<QueuedMessageSnapshot> {
+        self.session_for_user(session_id)?;
+        self.state.agent.take_queued_message(session_id, queued_id)
+    }
+
+    pub fn take_queued_message_replacing_with_followup(
+        &self,
+        session_id: &str,
+        queued_id: &str,
+        input: &str,
+        image_ids: &[String],
+    ) -> SdkResult<QueuedMessageSnapshot> {
+        self.session_for_user(session_id)?;
+        self.state
+            .agent
+            .take_queued_message_replacing_with_followup(session_id, queued_id, input, image_ids)
+    }
+
+    pub fn restore_queued_message(
+        &self,
+        session_id: &str,
+        message: QueuedMessageSnapshot,
+    ) -> SdkResult<QueuedMessageSnapshot> {
+        self.session_for_user(session_id)?;
+        self.state.agent.restore_queued_message(session_id, message)
+    }
+
     pub async fn submit_turn(
         &self,
         session_id: &str,
@@ -45,8 +90,8 @@ impl AsyncAgentSdk {
                 "archived sessions cannot receive new turns",
             ));
         }
-        if input.is_empty() {
-            return Err(BusinessError::invalid("input is required"));
+        if input.is_empty() && image_ids.is_empty() {
+            return Err(BusinessError::invalid("text or image input is required"));
         }
         if idempotency_key.is_empty() {
             return Err(BusinessError::invalid("idempotency_key is required"));

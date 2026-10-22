@@ -146,7 +146,7 @@ const conversationGuides = {
         "A vision-capable model permits up to three images per message, including image-only input. Model capability is revalidated at admission.",
         "Taking back a row restores the entire draft. An existing draft moves into that queue position as a follow-up and pauses the queue for explicit review/resume.",
         "Only the separate Stop action cancels work. It pauses pending messages; steering itself never pauses other follow-ups.",
-        "Review-only proposal: pending and failed steering are seeded fixtures, not a simulated provider boundary. Rust currently exposes text continuation within an active turn; separate after-turn follow-ups, images, and queue management need runtime work.",
+        "Pending and failed steering are seeded review states. The Avalonia desktop and Rust agent implement follow-up turns, image-bearing queue rows, and steering at the next model request.",
       ],
     },
   },

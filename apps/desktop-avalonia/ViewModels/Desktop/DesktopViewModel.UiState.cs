@@ -37,7 +37,17 @@ public sealed partial class DesktopViewModel
         Layout.PropertyChanged += OnLayoutPropertyChanged;
         ContextUsage = new ContextUsageViewModel(() => SelectedModel);
         _conversationDurationTimer.Tick += ConversationDurationTick;
-        ComposerAttachments.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ComposerBottomClearance));
+        ComposerAttachments.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(ComposerBottomClearance));
+            OnPropertyChanged(nameof(CanSubmit));
+        };
+        QueuedInputs.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasQueuedInputs));
+            OnPropertyChanged(nameof(ComposerPanelHeight));
+            OnPropertyChanged(nameof(ComposerBottomClearance));
+        };
         AttachSessionCollectionListeners();
     }
 

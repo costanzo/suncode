@@ -902,6 +902,13 @@ public sealed record SubmitTurnRequest(
     string? ReasoningEffort,
     IReadOnlyList<string> ImageIds);
 
+public sealed record QueuedMessageSnapshot(
+    [property: JsonPropertyName("queued_id")] string QueuedId,
+    int Position,
+    string Mode,
+    string Input,
+    [property: JsonPropertyName("image_ids")] IReadOnlyList<string> ImageIds);
+
 public sealed record ApprovalDecisionRequest(string ApprovalId, ApprovalDecision Decision);
 
 public enum ApprovalDecision

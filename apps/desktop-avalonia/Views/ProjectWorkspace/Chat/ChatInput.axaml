@@ -8,7 +8,7 @@
              x:DataType="vm:DesktopViewModel"
              DragDrop.AllowDrop="True"
              ClipToBounds="False"
-             Height="126"
+             Height="{Binding ComposerPanelHeight}"
              Margin="0"
              VerticalAlignment="Bottom"
              ZIndex="2">
@@ -125,7 +125,76 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid>
+  <Grid RowDefinitions="Auto,*">
+    <Border Grid.Row="0"
+            Margin="24,8,24,0"
+            Padding="12,8"
+            Background="{DynamicResource SurfaceBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1"
+            CornerRadius="6"
+            IsVisible="{Binding HasQueuedInputs}">
+      <StackPanel Spacing="6">
+        <Grid ColumnDefinitions="*,Auto,Auto">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <svg:Svg Width="12" Height="12" Path="/Assets/icons/message.svg" Css="{DynamicResource IconSvgCss}" />
+            <TextBlock Text="Up next" FontSize="11" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding QueuedInputs.Count}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+            <TextBlock Text="After this turn" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="quiet" Padding="4,2" Click="UndoRemoveQueuedInput" IsVisible="{Binding HasRemovedQueuedInput}" ToolTip.Tip="Undo remove">
+            <TextBlock Text="Undo" FontSize="10" />
+          </Button>
+          <Button Grid.Column="2" Width="24" Height="24" MinWidth="24" MinHeight="24" Padding="5" Classes="quiet" Click="ToggleQueueCollapsed" ToolTip.Tip="{Binding QueueCollapseLabel}" AutomationProperties.Name="{Binding QueueCollapseLabel}">
+            <Grid>
+              <svg:Svg Width="12" Height="12" Path="/Assets/icons/arrow-down.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding !QueuedInputsCollapsed}" />
+              <svg:Svg Width="12" Height="12" Path="/Assets/icons/arrow-up.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding QueuedInputsCollapsed}" />
+            </Grid>
+          </Button>
+        </Grid>
+        <ScrollViewer MaxHeight="180" IsVisible="{Binding !QueuedInputsCollapsed}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding QueuedInputs}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="models:QueuedInputItem">
+                <Grid ColumnDefinitions="20,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,5" ColumnSpacing="6">
+                  <TextBlock Grid.RowSpan="2" Text="{Binding Position}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Top" />
+                  <TextBlock Grid.Column="1" Text="{Binding PreviewText}" MaxLines="{Binding VisibleLineLimit}" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                  <StackPanel Grid.Column="2" Grid.RowSpan="4" Orientation="Horizontal" Spacing="3" VerticalAlignment="Top">
+                    <Button Classes="quiet" Padding="6,2" Click="SteerQueuedInput" IsEnabled="{Binding CanSteer}" ToolTip.Tip="Include at the next model request">
+                      <TextBlock Text="{Binding SteeringActionText}" FontSize="10" />
+                    </Button>
+                    <Button Width="22" Height="22" MinWidth="22" MinHeight="22" Padding="4" Classes="quiet" Click="TakeQueuedInput" ToolTip.Tip="Take back and edit" AutomationProperties.Name="Take back and edit queued message">
+                      <svg:Svg Width="12" Height="12" Path="/Assets/icons/edit.svg" Css="{DynamicResource IconSvgCss}" />
+                    </Button>
+                    <Button Width="22" Height="22" MinWidth="22" MinHeight="22" Padding="4" Classes="quiet" Click="RemoveQueuedInput" ToolTip.Tip="Remove from queue" AutomationProperties.Name="Remove queued message">
+                      <svg:Svg Width="12" Height="12" Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
+                    </Button>
+                  </StackPanel>
+                  <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ModeText}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
+                  <Button Grid.Row="2" Grid.Column="1" Classes="quiet" HorizontalAlignment="Left" Padding="0" Click="ToggleQueuedInputText" IsVisible="{Binding HasLongText}">
+                    <TextBlock Text="{Binding DisclosureText}" FontSize="10" TextDecorations="Underline" />
+                  </Button>
+                  <ItemsControl Grid.Row="3" Grid.Column="1" ItemsSource="{Binding Attachments}" Margin="0,4,0,0">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="models:ComposerAttachment">
+                        <Border Width="36" Height="32" Padding="1" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="4">
+                          <Image Source="{Binding Preview}" Stretch="UniformToFill" ToolTip.Tip="{Binding Name}" />
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding ImageSummary}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="1">
     <ItemsControl x:Name="AttachmentStrip"
                   ItemsSource="{Binding ComposerAttachments}"
                   Margin="28,-46,0,0"
@@ -273,9 +342,9 @@
                 Padding="6"
                 Classes="primary"
                 Click="SubmitTurn"
-                IsVisible="{Binding !IsTurnActive}"
+                IsVisible="True"
                 IsEnabled="{Binding CanSubmit}"
-                ToolTip.Tip="{DynamicResource LocSendMessage}">
+                ToolTip.Tip="{Binding ComposerSubmitLabel}">
           <svg:Svg Path="/Assets/icons/arrow-up.svg" Css="{DynamicResource AccentInkSvgCss}" />
         </Button>
 
@@ -296,5 +365,6 @@
       </StackPanel>
     </Grid>
     </Border>
+    </Grid>
   </Grid>
 </UserControl>

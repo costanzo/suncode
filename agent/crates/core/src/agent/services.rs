@@ -378,13 +378,14 @@ impl TurnServices {
         session_id: &str,
         model: &str,
         image_ids: &[String],
+        require_vision: bool,
     ) -> Result<Vec<suncode_data::SessionImageRecord>, BusinessError> {
         if image_ids.len() > 3 {
             return Err(BusinessError::invalid(
                 "a message can include at most three images",
             ));
         }
-        if !image_ids.is_empty() && !self.providers.supports_vision(model) {
+        if require_vision && !image_ids.is_empty() && !self.providers.supports_vision(model) {
             return Err(BusinessError::new(
                 "unsupported_capability",
                 "selected model does not support image input",

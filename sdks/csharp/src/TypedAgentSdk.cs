@@ -365,6 +365,21 @@ public sealed partial class AgentSdk
                 ? RawSubmitTurnAsync(request)
                 : RawSubmitTurnWithAttachmentsAsync(request));
 
+    public Task<IReadOnlyList<QueuedMessageSnapshot>> GetQueuedMessagesAsync(string sessionId) =>
+        Typed<IReadOnlyList<QueuedMessageSnapshot>>(RawQueuedMessagesAsync(sessionId));
+
+    public Task<QueuedMessageSnapshot> SteerQueuedMessageAsync(string sessionId, string queuedId) =>
+        Typed<QueuedMessageSnapshot>(RawSteerQueuedMessageAsync(sessionId, queuedId));
+
+    public Task<QueuedMessageSnapshot> TakeQueuedMessageAsync(string sessionId, string queuedId) =>
+        Typed<QueuedMessageSnapshot>(RawTakeQueuedMessageAsync(sessionId, queuedId));
+
+    public Task<QueuedMessageSnapshot> TakeQueuedMessageReplacingWithFollowupAsync(string sessionId, string queuedId, string input, IReadOnlyList<string> imageIds) =>
+        Typed<QueuedMessageSnapshot>(RawTakeQueuedMessageReplacingWithFollowupAsync(sessionId, queuedId, input, imageIds));
+
+    public Task<QueuedMessageSnapshot> RestoreQueuedMessageAsync(string sessionId, QueuedMessageSnapshot message) =>
+        Typed<QueuedMessageSnapshot>(RawRestoreQueuedMessageAsync(sessionId, message));
+
     public Task<CancellationOutcome> CancelTurnAsync(string sessionId, string turnId) =>
         Typed<CancellationOutcome>(RawCancelTurnAsync(sessionId, turnId));
 

@@ -11,6 +11,7 @@ pub use facade::{
 };
 pub use suncode_common::logging as logging_module;
 pub use suncode_core::agent::TurnResponse;
+pub use suncode_core::agent::{QueuedMessageMode, QueuedMessageSnapshot};
 pub use suncode_core::{AgentAttentionEvent, AttentionKind};
 pub use suncode_data::ApprovalRecord;
 pub mod events {

@@ -10,12 +10,13 @@ mod policy;
 
 pub use agent::events::*;
 pub use agent::{
-    match_root_marker, validate_root_marker, AgentAttentionEvent, AgentEventSubscription,
-    AgentEventSubscriptionControl, AttentionEventHub, AttentionEventSubscription,
-    AttentionEventSubscriptionControl, AttentionKind, AttentionReceiveError,
-    BrowserInstallationState, BrowserRuntimeInfo, BrowserRuntimeState, BrowserVisibilityCapability,
-    ComputerRuntimeInfo, EventReceiveError, LanguageServerRuntimeState,
-    LanguageServerRuntimeStatus, PreviewState, PreviewStatus, SessionEventHub, TurnResponse,
+    AgentAttentionEvent, AgentEventSubscription, AgentEventSubscriptionControl, AttentionEventHub,
+    AttentionEventSubscription, AttentionEventSubscriptionControl, AttentionKind,
+    AttentionReceiveError, BrowserInstallationState, BrowserRuntimeInfo, BrowserRuntimeState,
+    BrowserVisibilityCapability, ComputerRuntimeInfo, EventReceiveError,
+    LanguageServerRuntimeState, LanguageServerRuntimeStatus, PreviewState, PreviewStatus,
+    QueuedMessageMode, QueuedMessageSnapshot, SessionEventHub, TurnResponse, match_root_marker,
+    validate_root_marker,
 };
 pub use agent_lock::AgentLock;
 

@@ -65,6 +65,12 @@ public sealed partial class DesktopViewModel
         var pathAdded = TrackChangedPath(payload.Path ?? string.Empty);
         if (AgentEventTypes.IsPrompt(type)) ApplyPromptEvent(type, payload, live);
         if (type == AgentEventTypes.TurnState) ApplyTurnStateEvent(payload, value.OccurredAt);
+        if (type == AgentEventTypes.TurnState && payload.State is "completed" or "failed" or "cancelled" or "interrupted")
+            RunInBackground(() => LoadQueuedInputsAsync(), "queue.refresh");
+        if (type == AgentEventTypes.TurnQueued)
+            RunInBackground(() => LoadQueuedInputsAsync(), "queue.refresh");
+        if (type == AgentEventTypes.MessageUser && !string.IsNullOrWhiteSpace(payload.QueuedId))
+            RunInBackground(() => LoadQueuedInputsAsync(), "queue.steering_consumed");
 
         if (live) ScheduleLiveRefreshes(type, payload, pathAdded);
     }

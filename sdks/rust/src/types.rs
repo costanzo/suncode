@@ -10,7 +10,7 @@ use suncode_data::{
 };
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 24;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 25;
 pub use suncode_data::CredentialStorageMode;
 pub type SdkResult<T> = Result<T, BusinessError>;
 

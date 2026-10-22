@@ -104,6 +104,11 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_restore_checkpoint(IntPtr handle, IntPtr manifestId, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_submit_turn(IntPtr handle, IntPtr sessionId, IntPtr input, IntPtr idempotencyKey, IntPtr model, IntPtr reasoningEffort);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_submit_turn_with_attachments(IntPtr handle, IntPtr sessionId, IntPtr input, IntPtr idempotencyKey, IntPtr model, IntPtr reasoningEffort, IntPtr imageIdsJson);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_queued_messages(IntPtr handle, IntPtr sessionId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_steer_queued_message(IntPtr handle, IntPtr sessionId, IntPtr queuedId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_take_queued_message(IntPtr handle, IntPtr sessionId, IntPtr queuedId);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_take_queued_message_replacing_with_followup(IntPtr handle, IntPtr sessionId, IntPtr queuedId, IntPtr input, IntPtr imageIdsJson);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_restore_queued_message(IntPtr handle, IntPtr sessionId, IntPtr messageJson);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_cancel_turn(IntPtr handle, IntPtr sessionId, IntPtr turnId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_retry_last_turn(IntPtr handle, IntPtr sessionId);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_resolve_approval(IntPtr handle, IntPtr approvalId, IntPtr decision);

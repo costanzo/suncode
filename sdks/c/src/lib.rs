@@ -1,14 +1,14 @@
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 use std::{
     ffi::{CStr, CString},
     os::raw::{c_char, c_void},
-    panic::{catch_unwind, AssertUnwindSafe},
+    panic::{AssertUnwindSafe, catch_unwind},
     ptr,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Mutex,
+        atomic::{AtomicBool, Ordering},
     },
     thread::JoinHandle,
 };
@@ -16,10 +16,10 @@ use suncode_sdk::logging_module::{self as logging};
 use suncode_sdk::{
     AgentAttentionEvent, AgentEvent, AgentSdk, AttentionEventStream, AttentionEventStreamControl,
     BasedpyrightLanguageServerWriteRequest, BusinessError, JdtlsLanguageServerWriteRequest,
-    LanguageServerWriteRequest, McpServerWriteRequest, RoslynLanguageServerWriteRequest,
-    RustAnalyzerLanguageServerWriteRequest, SdkResult, SessionEventStream,
-    SessionEventStreamControl, SubscriptionError, VtslsLanguageServerWriteRequest,
-    SUNCODE_AGENT_SDK_ABI_VERSION,
+    LanguageServerWriteRequest, McpServerWriteRequest, QueuedMessageSnapshot,
+    RoslynLanguageServerWriteRequest, RustAnalyzerLanguageServerWriteRequest,
+    SUNCODE_AGENT_SDK_ABI_VERSION, SdkResult, SessionEventStream, SessionEventStreamControl,
+    SubscriptionError, VtslsLanguageServerWriteRequest,
 };
 
 pub type SunCodeEventCallback = unsafe extern "C" fn(*const c_char, *mut c_void);
@@ -1328,6 +1328,78 @@ pub unsafe extern "C" fn suncode_agent_sdk_submit_turn_with_attachments(
             reasoning_effort.as_deref(),
             &image_ids,
         )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_queued_messages(
+    handle: *mut SunCodeAgentHandle,
+    session_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.queued_messages(&c_string(session_id, "session_id")?)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_steer_queued_message(
+    handle: *mut SunCodeAgentHandle,
+    session_id: *const c_char,
+    queued_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.steer_queued_message(
+            &c_string(session_id, "session_id")?,
+            &c_string(queued_id, "queued_id")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_take_queued_message(
+    handle: *mut SunCodeAgentHandle,
+    session_id: *const c_char,
+    queued_id: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        sdk.take_queued_message(
+            &c_string(session_id, "session_id")?,
+            &c_string(queued_id, "queued_id")?,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_take_queued_message_replacing_with_followup(
+    handle: *mut SunCodeAgentHandle,
+    session_id: *const c_char,
+    queued_id: *const c_char,
+    input: *const c_char,
+    image_ids_json: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let session_id = c_string(session_id, "session_id")?;
+        let queued_id = c_string(queued_id, "queued_id")?;
+        let input = c_string(input, "input")?;
+        let image_ids_json = c_string(image_ids_json, "image_ids_json")?;
+        let image_ids: Vec<String> = serde_json::from_str(&image_ids_json)
+            .map_err(|_| BusinessError::invalid("image_ids_json must be an array of strings"))?;
+        sdk.take_queued_message_replacing_with_followup(&session_id, &queued_id, &input, &image_ids)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_restore_queued_message(
+    handle: *mut SunCodeAgentHandle,
+    session_id: *const c_char,
+    message_json: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let session_id = c_string(session_id, "session_id")?;
+        let message: QueuedMessageSnapshot =
+            serde_json::from_str(&c_string(message_json, "message_json")?)
+                .map_err(|_| BusinessError::invalid("message_json is invalid"))?;
+        sdk.restore_queued_message(&session_id, message)
     })
 }
 

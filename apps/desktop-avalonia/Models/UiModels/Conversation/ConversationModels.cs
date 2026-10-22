@@ -6,8 +6,54 @@ using System.Text.Json;
 using Avalonia.Media.Imaging;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Sdk.Models;
+using System.ComponentModel;
 
 namespace SunCode.Desktop.Models;
+
+public sealed class QueuedInputItem : ObservableObject, IDisposable
+{
+    private bool _isExpanded;
+    private bool _isTurnActive;
+
+    public required string QueuedId { get; init; }
+    public required int Position { get; init; }
+    public required string Mode { get; init; }
+    public required string Text { get; init; }
+    public required IReadOnlyList<string> ImageIds { get; init; }
+    public IReadOnlyList<ComposerAttachment> Attachments { get; init; } = [];
+    public bool IsSteering => Mode == "steering";
+    public string ImageSummary => ImageIds.Count == 0 ? string.Empty : $"{ImageIds.Count} attached image{(ImageIds.Count == 1 ? string.Empty : "s")}";
+    public bool HasLongText => Text.Length > 140 || Text.Count(character => character == '\n') > 2;
+    public string DisclosureText => IsExpanded ? "Show less" : "Show more";
+    public int VisibleLineLimit => IsExpanded ? int.MaxValue : 2;
+    public string PreviewText => !HasLongText || IsExpanded ? Text : Text[..Math.Min(Text.Length, 140)].TrimEnd() + "...";
+    public bool CanSteer => IsTurnActive && !IsSteering;
+    public bool IsTurnActive
+    {
+        get => _isTurnActive;
+        set
+        {
+            if (SetProperty(ref _isTurnActive, value)) OnPropertyChanged(nameof(CanSteer));
+        }
+    }
+    public string SteeringActionText => IsSteering ? "Steering queued" : "Steer now";
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set
+        {
+            if (!SetProperty(ref _isExpanded, value)) return;
+            OnPropertyChanged(nameof(PreviewText));
+            OnPropertyChanged(nameof(VisibleLineLimit));
+            OnPropertyChanged(nameof(DisclosureText));
+        }
+    }
+    public string ModeText => IsSteering ? "Steering · Next model request" : "Follow-up · After this turn";
+    public void Dispose()
+    {
+        foreach (var attachment in Attachments) attachment.Dispose();
+    }
+}
 
 public sealed class ComposerAttachment : IDisposable
 {

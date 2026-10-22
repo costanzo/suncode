@@ -1,7 +1,7 @@
 use super::*;
 use serde_json::Value;
 use std::ops::{Deref, DerefMut};
-use suncode_core::{agent::TurnResponse, BrowserRuntimeInfo};
+use suncode_core::{BrowserRuntimeInfo, QueuedMessageSnapshot, agent::TurnResponse};
 
 pub struct AgentSdk {
     inner: AsyncAgentSdk,
@@ -23,6 +23,45 @@ impl DerefMut for AgentSdk {
 }
 
 impl AgentSdk {
+    pub fn queued_messages(&self, session_id: &str) -> SdkResult<Vec<QueuedMessageSnapshot>> {
+        self.inner.queued_messages(session_id)
+    }
+
+    pub fn steer_queued_message(
+        &self,
+        session_id: &str,
+        queued_id: &str,
+    ) -> SdkResult<QueuedMessageSnapshot> {
+        self.inner.steer_queued_message(session_id, queued_id)
+    }
+
+    pub fn take_queued_message(
+        &self,
+        session_id: &str,
+        queued_id: &str,
+    ) -> SdkResult<QueuedMessageSnapshot> {
+        self.inner.take_queued_message(session_id, queued_id)
+    }
+
+    pub fn take_queued_message_replacing_with_followup(
+        &self,
+        session_id: &str,
+        queued_id: &str,
+        input: &str,
+        image_ids: &[String],
+    ) -> SdkResult<QueuedMessageSnapshot> {
+        self.inner
+            .take_queued_message_replacing_with_followup(session_id, queued_id, input, image_ids)
+    }
+
+    pub fn restore_queued_message(
+        &self,
+        session_id: &str,
+        message: QueuedMessageSnapshot,
+    ) -> SdkResult<QueuedMessageSnapshot> {
+        self.inner.restore_queued_message(session_id, message)
+    }
+
     pub fn set_browser_host_callback(&self, callback: Option<super::browser::BrowserHostCallback>) {
         self.inner.set_browser_host_callback(callback);
     }

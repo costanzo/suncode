@@ -15,7 +15,7 @@ public sealed partial class AgentSdk : IDisposable
     private static readonly NativeMethods.BrowserHostCallback BrowserHostCallbackBridge = OnBrowserHostRequested;
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 24;
+    private const uint AbiVersion = 25;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -371,6 +371,22 @@ public sealed partial class AgentSdk : IDisposable
         ],
         values => NativeMethods.suncode_agent_sdk_submit_turn_with_attachments(
             _handle, values[0], values[1], values[2], values[3], values[4], values[5]));
+
+    private Task<JsonElement> RawQueuedMessagesAsync(string sessionId) => WithUtf8Async(
+        [sessionId], values => NativeMethods.suncode_agent_sdk_queued_messages(_handle, values[0]));
+
+    private Task<JsonElement> RawSteerQueuedMessageAsync(string sessionId, string queuedId) => WithUtf8Async(
+        [sessionId, queuedId], values => NativeMethods.suncode_agent_sdk_steer_queued_message(_handle, values[0], values[1]));
+
+    private Task<JsonElement> RawTakeQueuedMessageAsync(string sessionId, string queuedId) => WithUtf8Async(
+        [sessionId, queuedId], values => NativeMethods.suncode_agent_sdk_take_queued_message(_handle, values[0], values[1]));
+
+    private Task<JsonElement> RawTakeQueuedMessageReplacingWithFollowupAsync(string sessionId, string queuedId, string input, IReadOnlyList<string> imageIds) => WithUtf8Async(
+        [sessionId, queuedId, input, JsonSerializer.Serialize(imageIds)], values => NativeMethods.suncode_agent_sdk_take_queued_message_replacing_with_followup(_handle, values[0], values[1], values[2], values[3]));
+
+    private Task<JsonElement> RawRestoreQueuedMessageAsync(string sessionId, QueuedMessageSnapshot message) => WithUtf8Async(
+        [sessionId, JsonSerializer.Serialize(message, TypedJsonOptions)],
+        values => NativeMethods.suncode_agent_sdk_restore_queued_message(_handle, values[0], values[1]));
 
     private Task<JsonElement> RawCancelTurnAsync(string sessionId, string turnId) => WithUtf8Async(
         [sessionId, turnId],

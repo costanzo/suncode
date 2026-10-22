@@ -1,11 +1,11 @@
 use crate::{
     context,
-    policy::{evaluate, tool_risk, Decision, Risk},
+    policy::{Decision, Risk, evaluate, tool_risk},
 };
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use futures_util::future::join_all;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::{HashMap, VecDeque},
     fs,
@@ -13,13 +13,13 @@ use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
-use suncode_common::logging;
 use suncode_common::BusinessError;
+use suncode_common::logging;
 use suncode_config::{Config, RuntimeConfig};
 use suncode_data::{ApprovalInput, Store};
 use suncode_data::{Message, ToolCall, Usage};
 use suncode_llm::{CompletionRequest, ModelProviderRegistry, ModelRoute};
-use tokio::sync::{mpsc, Mutex as AsyncMutex};
+use tokio::sync::{Mutex as AsyncMutex, mpsc};
 use tokio_util::sync::CancellationToken;
 
 use events::*;
@@ -32,8 +32,8 @@ pub use suncode_events::{
 mod lsp;
 mod system_prompt;
 pub use lsp::{
-    match_root_marker, validate_root_marker, LanguageServerRuntimeState,
-    LanguageServerRuntimeStatus,
+    LanguageServerRuntimeState, LanguageServerRuntimeStatus, match_root_marker,
+    validate_root_marker,
 };
 mod browser;
 mod preview;
@@ -104,6 +104,22 @@ pub enum TurnResponse {
         active_turn_id: String,
         position: usize,
     },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum QueuedMessageMode {
+    Followup,
+    Steering,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct QueuedMessageSnapshot {
+    pub queued_id: String,
+    pub position: usize,
+    pub mode: QueuedMessageMode,
+    pub input: String,
+    pub image_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -191,6 +207,7 @@ struct QueuedMessage {
     idempotency_key: String,
     input: String,
     image_ids: Vec<String>,
+    mode: QueuedMessageMode,
 }
 
 /// The process-wide host that runs every session's turns, for the primary and

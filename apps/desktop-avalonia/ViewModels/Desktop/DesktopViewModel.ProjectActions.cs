@@ -277,6 +277,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 LogSession(operationId, sessionId, $"images.discard reason=stale current={DescribeSessionContext()}");
                 return;
             }
+            await LoadQueuedInputsAsync(sessionId, loadVersion);
             await LoadCheckpointsAsync(sessionId, loadVersion);
             if (!IsCurrentSessionLoad(sessionId, loadVersion))
             {
@@ -359,7 +360,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public async Task SubmitTurnAsync()
     {
         var text = ComposerText.Trim();
-        if (!EnsureSdk() || SelectedSession is null || SelectedModel?.Configured != true || text.Length == 0 || IsTurnActive) return;
+        if (!EnsureSdk() || SelectedSession is null || SelectedModel?.Configured != true) return;
+        if (text.Length == 0 && ComposerAttachments.Count == 0) return;
         var submittedModelId = SelectedModel.Id;
         var submittedReasoningEffort = SelectedReasoningEffort;
         var submittedSessionId = SelectedSession.SessionId;
@@ -384,7 +386,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             var submissionStatus = result.Status;
             StatusText = submissionStatus switch
             {
-                "queued" => "Message queued for this turn",
+                "queued" => "Follow-up queued",
                 "awaiting_approval" => "Turn is awaiting approval",
                 _ => "Turn submitted"
             };
@@ -399,6 +401,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 if (index >= 0) Sessions[index] = updated;
                 SelectedSession = updated;
             }
+            await LoadQueuedInputsAsync(submittedSessionId);
             ConnectionState = "connected";
         }
         catch (Exception exception)
@@ -418,6 +421,83 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             _inFlightSubmissions.Remove(idempotencyKey);
             IsBusy = false;
         }
+    }
+
+    public async Task LoadQueuedInputsAsync(string? requestedSessionId = null, long? loadVersion = null)
+    {
+        if (_sdk is null || SelectedSession is null) return;
+        var sessionId = requestedSessionId ?? SelectedSession.SessionId;
+        var messages = await _sdk.GetQueuedMessagesAsync(sessionId);
+        if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
+        foreach (var queued in QueuedInputs) queued.Dispose();
+        QueuedInputs.Clear();
+        foreach (var item in messages)
+        {
+            QueuedInputs.Add(new QueuedInputItem
+            {
+                QueuedId = item.QueuedId,
+                Position = item.Position,
+                Mode = item.Mode,
+                Text = item.Input,
+                ImageIds = item.ImageIds,
+                IsTurnActive = IsTurnActive,
+                Attachments = item.ImageIds
+                    .Where(_sessionImages.ContainsKey)
+                    .Select(id => ComposerAttachment.FromSdk(_sessionImages[id]))
+                    .ToArray()
+            });
+        }
+    }
+
+    public async Task SteerQueuedInputAsync(QueuedInputItem item)
+    {
+        if (!EnsureSdk() || SelectedSession is null) return;
+        await RunAsync(async () =>
+        {
+            await _sdk!.SteerQueuedMessageAsync(SelectedSession.SessionId, item.QueuedId);
+            await LoadQueuedInputsAsync();
+        }, "Steering queued for the next model request");
+    }
+
+    public async Task TakeQueuedInputAsync(QueuedInputItem item)
+    {
+        if (!EnsureSdk() || SelectedSession is null) return;
+        var sessionId = SelectedSession.SessionId;
+        var draftText = ComposerText;
+        var draftImageIds = ComposerAttachments.Select(attachment => attachment.ImageId).ToArray();
+        var hasDraft = !string.IsNullOrWhiteSpace(draftText) || draftImageIds.Length > 0;
+        var result = hasDraft
+            ? await _sdk!.TakeQueuedMessageReplacingWithFollowupAsync(sessionId, item.QueuedId, draftText, draftImageIds)
+            : await _sdk!.TakeQueuedMessageAsync(sessionId, item.QueuedId);
+        ComposerText = result.Input;
+        ReplaceComposerAttachments(result.ImageIds.Select(id => _sessionImages.GetValueOrDefault(id)).Where(image => image is not null).Select(image => ComposerAttachment.FromSdk(image!)));
+        if (hasDraft) await LoadQueuedInputsAsync(sessionId);
+        else QueuedInputs.Remove(item);
+        OnPropertyChanged(nameof(CanSubmit));
+        OnPropertyChanged(nameof(HasRemovedQueuedInput));
+        StatusText = hasDraft
+            ? "Message returned to the composer; previous draft added to Up next"
+            : "Message returned to the composer";
+    }
+
+    public async Task RemoveQueuedInputAsync(QueuedInputItem item)
+    {
+        if (!EnsureSdk() || SelectedSession is null) return;
+        var result = await _sdk!.TakeQueuedMessageAsync(SelectedSession.SessionId, item.QueuedId);
+        _removedQueuedInput = new SunCode.Sdk.Models.QueuedMessageSnapshot(result.QueuedId, result.Position, result.Mode, result.Input, result.ImageIds);
+        OnPropertyChanged(nameof(HasRemovedQueuedInput));
+        await LoadQueuedInputsAsync();
+        StatusText = "Queued message removed";
+    }
+
+    public async Task UndoRemoveQueuedInputAsync()
+    {
+        if (!EnsureSdk() || SelectedSession is null || _removedQueuedInput is not { } removed) return;
+        await _sdk!.RestoreQueuedMessageAsync(SelectedSession.SessionId, removed);
+        _removedQueuedInput = null;
+        OnPropertyChanged(nameof(HasRemovedQueuedInput));
+        await LoadQueuedInputsAsync();
+        StatusText = "Queued message restored";
     }
 
     public async Task RetryLastTurnAsync()
@@ -500,6 +580,11 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public async Task RemoveSessionImageAsync(ComposerAttachment attachment)
     {
         if (!EnsureSdk() || SelectedSession is null) return;
+        if (QueuedInputs.Any(item => item.ImageIds.Contains(attachment.ImageId, StringComparer.Ordinal)))
+        {
+            StatusText = "Remove queued messages that use this image first";
+            return;
+        }
         await RunAsync(async () =>
         {
             await _sdk!.RemoveSessionImageAsync(SelectedSession.SessionId, attachment.ImageId);

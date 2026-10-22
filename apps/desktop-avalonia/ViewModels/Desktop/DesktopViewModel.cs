@@ -53,6 +53,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private bool _isSessionLoading;
     private bool _isSessionLoadingVisible;
     private bool _disposed;
+    private bool _queuedInputsCollapsed;
+    private SunCode.Sdk.Models.QueuedMessageSnapshot? _removedQueuedInput;
     private readonly DispatcherTimer _conversationDurationTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private DateTimeOffset? _activeTurnStartedAt;
     private string _activeTurnTimingTurnId = string.Empty;
@@ -86,7 +88,24 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public ObservableCollection<CredentialItem> Credentials { get; } = [];
     public ObservableCollection<AgentItem> Agents { get; } = [];
     public ObservableCollection<ComposerAttachment> ComposerAttachments { get; } = [];
-    public double ComposerBottomClearance => ComposerAttachments.Count > 0 ? 180 : 128;
+    public ObservableCollection<QueuedInputItem> QueuedInputs { get; } = [];
+    public double ComposerPanelHeight => 126 + (QueuedInputs.Count == 0 || QueuedInputsCollapsed ? 0 : Math.Min(QueuedInputs.Count, 3) * 70 + 38);
+    public double ComposerBottomClearance => ComposerAttachments.Count > 0 ? ComposerPanelHeight + 54 : ComposerPanelHeight + 22;
+    public string QueueCollapseLabel => QueuedInputsCollapsed ? "Expand queued messages" : "Collapse queued messages";
+    public bool QueuedInputsCollapsed
+    {
+        get => _queuedInputsCollapsed;
+        set
+        {
+            if (!SetProperty(ref _queuedInputsCollapsed, value)) return;
+            OnPropertyChanged(nameof(ComposerPanelHeight));
+            OnPropertyChanged(nameof(ComposerBottomClearance));
+            OnPropertyChanged(nameof(QueueCollapseLabel));
+        }
+    }
+    public bool HasQueuedInputs => QueuedInputs.Count > 0;
+    public bool HasRemovedQueuedInput => _removedQueuedInput is not null;
+    public string ComposerSubmitLabel => IsTurnActive ? "Queue follow-up" : "Send message";
     public BulkObservableCollection<MessageItem> Messages
     {
         get => _messages;
@@ -237,7 +256,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public string StatusText { get => _statusText; private set => SetProperty(ref _statusText, value); }
     public void ReportPresentationError(string message) => StatusText = message;
     public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) OnPropertyChanged(nameof(CanSubmit)); } }
-    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { ProviderRetryText = string.Empty; OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); OnPropertyChanged(nameof(CanAttachImages)); NotifyReviewPresentationChanged(); } } }
+    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { ProviderRetryText = string.Empty; OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); OnPropertyChanged(nameof(CanAttachImages)); OnPropertyChanged(nameof(ComposerSubmitLabel)); OnPropertyChanged(nameof(ComposerPlaceholder)); foreach (var queued in QueuedInputs) queued.IsTurnActive = IsTurnActive; NotifyReviewPresentationChanged(); } } }
     public string ActiveTurnState { get => _activeTurnState; private set { if (SetProperty(ref _activeTurnState, value)) { OnPropertyChanged(nameof(IsTurnCompacting)); OnPropertyChanged(nameof(IsTurnThinking)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(HasFailedTurn)); NotifyReviewPresentationChanged(); } } }
     public string ActiveTurnDurationText => _activeTurnStartedAt is { } started
         ? FormatDuration(started.ToString("O"), string.Empty, ActiveTurnState)
@@ -371,10 +390,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool IsReviewChangesVisible => !IsReviewIdle && !IsReviewCompacting && !IsReviewFailed && HasChangedPaths;
     public bool IsReviewCheckpointVisible => IsReviewRunning && HasCheckpoints;
     public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !SelectedSession.IsArchived && SelectedModel?.Configured == true && !HasSessionLoadError;
-    public bool CanSubmit => SelectedSession is not null && !SelectedSession.IsArchived && SelectedModel?.Configured == true && !string.IsNullOrWhiteSpace(ComposerText) && !IsTurnActive && !IsSessionLoading && !HasSessionLoadError;
+    public bool CanSubmit => SelectedSession is not null && !SelectedSession.IsArchived && SelectedModel?.Configured == true && (!string.IsNullOrWhiteSpace(ComposerText) || ComposerAttachments.Count > 0) && !IsSessionLoading && !HasSessionLoadError;
     public bool CanChooseModel => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !SelectedSession.IsArchived && !HasSessionLoadError;
     public bool CanChooseReasoningEffort => CanCompose && SelectedModel?.SupportsReasoningEffort == true;
-    public bool CanAttachImages => CanCompose && SelectedModel?.SupportsVision == true && !IsTurnActive;
+    public bool CanAttachImages => CanCompose && SelectedModel?.SupportsVision == true;
 
     private void NotifyAssistantStreamingChanged()
     {
@@ -410,6 +429,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
         ? "Create a session first..."
         : SelectedModel is null
             ? "Choose a model first..."
-            : SelectedModel.Configured ? "Ask SunCode to work on this project" : string.Empty;
+            : SelectedModel.Configured
+                ? IsTurnActive ? "Add a follow-up while SunCode works" : "Ask SunCode to work on this project"
+                : string.Empty;
     public bool IsModelUnavailable => SelectedSession is not null && SelectedModel is not null && !SelectedModel.Configured;
 }

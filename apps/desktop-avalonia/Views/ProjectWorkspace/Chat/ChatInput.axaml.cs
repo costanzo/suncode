@@ -144,6 +144,37 @@ public sealed partial class ChatInput : UserControl
     private async void CancelTurn(object? sender, RoutedEventArgs e) =>
         await ViewModel.CancelTurnAsync();
 
+    private async void SteerQueuedInput(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is not QueuedInputItem item) return;
+        await ViewModel.SteerQueuedInputAsync(item);
+    }
+
+    private async void TakeQueuedInput(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is not QueuedInputItem item) return;
+        await ViewModel.TakeQueuedInputAsync(item);
+        FocusComposer();
+    }
+
+    private async void RemoveQueuedInput(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is not QueuedInputItem item) return;
+        await ViewModel.RemoveQueuedInputAsync(item);
+    }
+
+    private async void UndoRemoveQueuedInput(object? sender, RoutedEventArgs e) =>
+        await ViewModel.UndoRemoveQueuedInputAsync();
+
+    private void ToggleQueueCollapsed(object? sender, RoutedEventArgs e) =>
+        ViewModel.QueuedInputsCollapsed = !ViewModel.QueuedInputsCollapsed;
+
+    private void ToggleQueuedInputText(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is not QueuedInputItem item) return;
+        item.IsExpanded = !item.IsExpanded;
+    }
+
     private void ExpandComposer(object? sender, RoutedEventArgs e)
     {
         _expandedDraft = ComposerInput.Text ?? string.Empty;

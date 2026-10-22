@@ -1,9 +1,9 @@
 use super::*;
 use axum::{
-    http::{header, StatusCode},
+    Json, Router,
+    http::{StatusCode, header},
     response::IntoResponse,
     routing::post,
-    Json, Router,
 };
 use std::collections::BTreeSet;
 use suncode_llm::{
@@ -34,11 +34,13 @@ fn todo_write_arguments_require_one_active_task_at_most() {
     assert!(validate_before_policy("todowrite", &valid).is_ok());
     assert!(validate_before_policy("todowrite", &json!({"todos":[]})).is_ok());
     assert!(validate_before_policy("todowrite", &json!({"todos":[{"content":"one","status":"in_progress","priority":"low"},{"content":"two","status":"in_progress","priority":"low"}]})).is_err());
-    assert!(validate_before_policy(
-        "todowrite",
-        &json!({"todos":[{"content":"one","status":"blocked","priority":"low"}]})
-    )
-    .is_err());
+    assert!(
+        validate_before_policy(
+            "todowrite",
+            &json!({"todos":[{"content":"one","status":"blocked","priority":"low"}]})
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -176,18 +178,22 @@ fn nearby_agents_files_are_loaded_nearest_first_and_deduplicated() {
     assert!(instructions[0].content.contains("nested"));
     assert_eq!(instructions[1].path, "src/AGENTS.md");
     assert!(instructions[1].content.contains("src"));
-    assert!(nearby_instruction_files(
-        directory.path().to_str().unwrap(),
-        "src/nested/file.rs",
-        &["src/nested/AGENTS.md".into(), "src/AGENTS.md".into()],
-    )
-    .is_empty());
-    assert!(nearby_instruction_files(
-        directory.path().to_str().unwrap(),
-        "src/nested/AGENTS.md",
-        &[],
-    )
-    .is_empty());
+    assert!(
+        nearby_instruction_files(
+            directory.path().to_str().unwrap(),
+            "src/nested/file.rs",
+            &["src/nested/AGENTS.md".into(), "src/AGENTS.md".into()],
+        )
+        .is_empty()
+    );
+    assert!(
+        nearby_instruction_files(
+            directory.path().to_str().unwrap(),
+            "src/nested/AGENTS.md",
+            &[],
+        )
+        .is_empty()
+    );
 }
 
 #[cfg(unix)]
@@ -332,10 +338,12 @@ async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
             json!({"choices":[{"delta":{"content":"{\"objective\":\"generated objective\",\"important_constraints\":[\"keep tests\"],\"completed_work\":[],\"active_work\":[],\"blockers\":[],\"next_action\":\"continue\"}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":100,"completion_tokens":20,"total_tokens":120}}),
         ]
     } else if user_text == "assert compaction replay" {
-        assert!(messages.iter().any(|message| message
-            .get("content")
-            .and_then(Value::as_str)
-            .is_some_and(|content| content.contains("generated objective"))));
+        assert!(messages.iter().any(|message| {
+            message
+                .get("content")
+                .and_then(Value::as_str)
+                .is_some_and(|content| content.contains("generated objective"))
+        }));
         vec![json!({"choices":[{"delta":{"content":"replay verified"},"finish_reason":"stop"}]})]
     } else if last_role != Some("tool") && user_text == "delegate SWE to assert child tools" {
         vec![
@@ -579,9 +587,11 @@ async fn read_tool_round_trip_completes() {
     assert!(context.iter().any(|message| message.role == "tool"));
     let exchanges = store.provider_exchanges(&session_id).unwrap();
     assert_eq!(exchanges.len(), 2);
-    assert!(exchanges
-        .iter()
-        .all(|exchange| exchange.output_message.is_some()));
+    assert!(
+        exchanges
+            .iter()
+            .all(|exchange| exchange.output_message.is_some())
+    );
     let usage = exchanges[0].usage.as_ref().unwrap();
     assert_eq!(usage["cache_read_tokens"], 6);
     assert_eq!(usage["cache_miss_tokens"], 2);
@@ -604,25 +614,33 @@ async fn generated_compaction_summary_survives_a_new_turn() {
         .unwrap();
     assert!(matches!(first, TurnResponse::Completed { .. }));
     let context = store.context_messages(&session_id).unwrap();
-    assert!(context
-        .iter()
-        .any(|message| message.text_content().contains("generated objective")));
-    assert!(!context
-        .iter()
-        .any(|message| message.text_content().contains(&"history ".repeat(8_000))));
+    assert!(
+        context
+            .iter()
+            .any(|message| message.text_content().contains("generated objective"))
+    );
+    assert!(
+        !context
+            .iter()
+            .any(|message| message.text_content().contains(&"history ".repeat(8_000)))
+    );
     let exchanges = store.provider_exchanges(&session_id).unwrap();
-    assert!(exchanges.iter().any(|exchange| exchange
-        .usage
-        .as_ref()
-        .and_then(|usage| usage.get("total_tokens"))
-        .and_then(Value::as_u64)
-        == Some(120)));
-    assert!(exchanges
-        .iter()
-        .any(
-            |exchange| exchange.finish_reason.as_deref() == Some("context_compacted")
-                && exchange.usage.is_none()
-        ));
+    assert!(exchanges.iter().any(|exchange| {
+        exchange
+            .usage
+            .as_ref()
+            .and_then(|usage| usage.get("total_tokens"))
+            .and_then(Value::as_u64)
+            == Some(120)
+    }));
+    assert!(
+        exchanges
+            .iter()
+            .any(
+                |exchange| exchange.finish_reason.as_deref() == Some("context_compacted")
+                    && exchange.usage.is_none()
+            )
+    );
     let second = agent
         .submit(
             &session_id,
@@ -998,10 +1016,12 @@ async fn read_tool_attaches_nearby_agents_instructions_to_its_result() {
         result["repository_instructions"][0]["path"],
         "src/AGENTS.md"
     );
-    assert!(result["repository_instructions"][0]["content"]
-        .as_str()
-        .unwrap()
-        .contains("Use the src module conventions."));
+    assert!(
+        result["repository_instructions"][0]["content"]
+            .as_str()
+            .unwrap()
+            .contains("Use the src module conventions.")
+    );
     server.abort();
 }
 
@@ -1090,9 +1110,11 @@ async fn reasoning_effort_rejects_invalid_values_and_unsupported_models() {
         .await
         .unwrap_err();
     assert_eq!(invalid.code, "invalid_arguments");
-    assert!(invalid
-        .message
-        .contains("does not support reasoning effort"));
+    assert!(
+        invalid
+            .message
+            .contains("does not support reasoning effort")
+    );
 
     let unsupported = agent
         .submit(
@@ -1105,9 +1127,11 @@ async fn reasoning_effort_rejects_invalid_values_and_unsupported_models() {
         .await
         .unwrap_err();
     assert_eq!(unsupported.code, "invalid_arguments");
-    assert!(unsupported
-        .message
-        .contains("does not support reasoning effort"));
+    assert!(
+        unsupported
+            .message
+            .contains("does not support reasoning effort")
+    );
     server.abort();
 }
 
@@ -1164,7 +1188,7 @@ async fn dependency_read_is_routed_and_write_is_rejected_before_approval() {
 }
 
 #[tokio::test]
-async fn queued_submit_is_injected_before_completion() {
+async fn queued_submit_starts_a_distinct_followup_turn_after_completion() {
     let (agent, store, _root, server, session_id) = fixture().await;
     let running = {
         let agent = agent.clone();
@@ -1191,14 +1215,185 @@ async fn queued_submit_is_injected_before_completion() {
     let response = running.await.unwrap().unwrap();
     assert!(matches!(
         response,
-        TurnResponse::Completed { iterations: 2, .. }
+        TurnResponse::Completed { iterations: 1, .. }
     ));
-    assert!(store
-        .messages(&session_id)
-        .unwrap()
+    tokio::time::timeout(Duration::from_secs(3), async {
+        loop {
+            let messages = store.messages(&session_id).unwrap();
+            let user_messages = messages
+                .iter()
+                .filter(|message| message.role == "user")
+                .collect::<Vec<_>>();
+            if user_messages.len() == 2 {
+                assert_eq!(user_messages[1].text_content(), "follow up while running");
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("queued follow-up should be admitted after the active turn");
+    assert_eq!(store.session_trace_turns(&session_id).unwrap().len(), 2);
+    server.abort();
+}
+
+#[tokio::test]
+async fn steering_is_added_to_the_next_request_without_cancelling_the_active_request() {
+    let (agent, store, _root, server, session_id) = fixture().await;
+    let running = {
+        let agent = agent.clone();
+        let session_id = session_id.clone();
+        tokio::spawn(async move {
+            agent
+                .submit(
+                    &session_id,
+                    "slow-steer-1",
+                    "slow initial request",
+                    None,
+                    None,
+                )
+                .await
+        })
+    };
+    tokio::time::sleep(Duration::from_millis(30)).await;
+    let queued = agent
+        .submit(&session_id, "steer-1", "apply the correction", None, None)
+        .await
+        .unwrap();
+    let queued_id = match queued {
+        TurnResponse::Queued { queued_id, .. } => queued_id,
+        other => panic!("expected queued response, got {other:?}"),
+    };
+    agent.steer_queued_message(&session_id, &queued_id).unwrap();
+    let response = running.await.unwrap().unwrap();
+    assert!(matches!(response, TurnResponse::Completed { .. }));
+    let messages = store.messages(&session_id).unwrap();
+    let users = messages
         .iter()
         .filter(|message| message.role == "user")
-        .any(|message| message.text_content() == "follow up while running"));
+        .collect::<Vec<_>>();
+    assert_eq!(users.len(), 2);
+    assert_eq!(store.session_trace_turns(&session_id).unwrap().len(), 1);
+    assert_eq!(users[1].text_content(), "apply the correction");
+    assert!(agent.queued_messages(&session_id).unwrap().is_empty());
+    server.abort();
+}
+
+#[tokio::test]
+async fn multiple_queued_followups_start_in_fifo_order() {
+    let (agent, store, _root, server, session_id) = fixture().await;
+    let running = {
+        let agent = agent.clone();
+        let session_id = session_id.clone();
+        tokio::spawn(async move {
+            agent
+                .submit(
+                    &session_id,
+                    "slow-multiple-1",
+                    "slow initial request",
+                    None,
+                    None,
+                )
+                .await
+        })
+    };
+    tokio::time::sleep(Duration::from_millis(30)).await;
+    for (key, input) in [
+        ("follow-up-1", "first queued input"),
+        ("follow-up-2", "second queued input"),
+    ] {
+        assert!(matches!(
+            agent
+                .submit(&session_id, key, input, None, None)
+                .await
+                .unwrap(),
+            TurnResponse::Queued { .. }
+        ));
+    }
+    running.await.unwrap().unwrap();
+    tokio::time::timeout(Duration::from_secs(4), async {
+        loop {
+            let messages = store.messages(&session_id).unwrap();
+            let users = messages
+                .iter()
+                .filter(|message| message.role == "user")
+                .map(|message| message.text_content())
+                .collect::<Vec<_>>();
+            if users.len() == 3 {
+                assert_eq!(
+                    users,
+                    [
+                        "slow initial request",
+                        "first queued input",
+                        "second queued input"
+                    ]
+                );
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("all queued follow-ups should be admitted");
+    assert_eq!(store.session_trace_turns(&session_id).unwrap().len(), 3);
+    server.abort();
+}
+
+#[tokio::test]
+async fn queued_message_actions_preserve_payload_and_order() {
+    let (agent, _store, _root, server, session_id) = fixture().await;
+    let running = {
+        let agent = agent.clone();
+        let session_id = session_id.clone();
+        tokio::spawn(async move {
+            agent
+                .submit(
+                    &session_id,
+                    "slow-actions-1",
+                    "slow initial request",
+                    None,
+                    None,
+                )
+                .await
+        })
+    };
+    tokio::time::sleep(Duration::from_millis(30)).await;
+    let first = match agent
+        .submit(&session_id, "actions-1", "keep first", None, None)
+        .await
+        .unwrap()
+    {
+        TurnResponse::Queued { queued_id, .. } => queued_id,
+        other => panic!("expected first queued response, got {other:?}"),
+    };
+    let second = match agent
+        .submit(&session_id, "actions-2", "take second", None, None)
+        .await
+        .unwrap()
+    {
+        TurnResponse::Queued { queued_id, .. } => queued_id,
+        other => panic!("expected second queued response, got {other:?}"),
+    };
+    let steered = agent.steer_queued_message(&session_id, &second).unwrap();
+    assert_eq!(steered.mode, QueuedMessageMode::Steering);
+    let taken = agent.take_queued_message(&session_id, &first).unwrap();
+    assert_eq!(taken.input, "keep first");
+    assert_eq!(taken.position, 1);
+    let restored = agent.restore_queued_message(&session_id, taken).unwrap();
+    assert_eq!(restored.position, 1);
+    assert_eq!(
+        agent.queued_messages(&session_id).unwrap()[0].input,
+        "keep first"
+    );
+    let taken = agent
+        .take_queued_message_replacing_with_followup(&session_id, &second, "unsent draft", &[])
+        .unwrap();
+    assert_eq!(taken.input, "take second");
+    let queue = agent.queued_messages(&session_id).unwrap();
+    assert_eq!(queue[0].input, "keep first");
+    assert_eq!(queue[1].input, "unsent draft");
+    assert_eq!(queue[1].mode, QueuedMessageMode::Followup);
+    let _ = running.await.unwrap();
     server.abort();
 }
 
@@ -1213,11 +1408,13 @@ async fn read_only_tool_batch_is_preflighted_before_execution() {
         response,
         TurnResponse::Completed { tool_calls: 2, .. }
     ));
-    assert!(store
-        .messages(&session_id)
-        .unwrap()
-        .iter()
-        .all(|message| message.role != "tool"));
+    assert!(
+        store
+            .messages(&session_id)
+            .unwrap()
+            .iter()
+            .all(|message| message.role != "tool")
+    );
     assert_eq!(
         store
             .context_messages(&session_id)
@@ -1260,11 +1457,13 @@ async fn over_budget_batch_is_rejected_before_any_call_executes() {
             && tool.error_code.as_deref() == Some("tool_budget_exceeded")
             && tool.result.is_none()
     }));
-    assert!(store
-        .context_messages(&session_id)
-        .unwrap()
-        .iter()
-        .all(|message| message.role != "tool"));
+    assert!(
+        store
+            .context_messages(&session_id)
+            .unwrap()
+            .iter()
+            .all(|message| message.role != "tool")
+    );
     server.abort();
 }
 
@@ -1286,10 +1485,12 @@ async fn write_waits_for_approval_and_captures_checkpoint() {
     assert_eq!(event.kind, AttentionKind::ApprovalRequested);
     assert_eq!(event.correlation_id, approval_id);
     assert_eq!(event.session_kind, "primary");
-    assert!(agent
-        .resolve_approval(&approval_id, "allow_once")
-        .await
-        .unwrap());
+    assert!(
+        agent
+            .resolve_approval(&approval_id, "allow_once")
+            .await
+            .unwrap()
+    );
     let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
     loop {
         let file_updated = std::fs::read_to_string(root.join("README.md")).unwrap() == "updated";
@@ -1333,10 +1534,12 @@ async fn allow_session_skips_later_approvals_for_the_same_session() {
         .unwrap_err();
     assert_eq!(error.code, "approval_required");
     let approval_id = error.details["approval_id"].as_str().unwrap();
-    assert!(agent
-        .resolve_approval(approval_id, "allow_session")
-        .await
-        .unwrap());
+    assert!(
+        agent
+            .resolve_approval(approval_id, "allow_session")
+            .await
+            .unwrap()
+    );
 
     let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
     loop {
@@ -1718,11 +1921,13 @@ async fn approval_batch_halts_after_a_failure_and_toolset_calls_route_by_prefix(
         .unwrap();
     assert_eq!(one.text_content(), r#"{"label":"one"}"#);
     let history = store.messages(&session_id).unwrap();
-    assert!(context
-        .iter()
-        .chain(history.iter())
-        .flat_map(|message| message.content.iter())
-        .all(|part| part.kind != "image_url"));
+    assert!(
+        context
+            .iter()
+            .chain(history.iter())
+            .flat_map(|message| message.content.iter())
+            .all(|part| part.kind != "image_url")
+    );
     server.abort();
 
     let toolset = ToolCall {

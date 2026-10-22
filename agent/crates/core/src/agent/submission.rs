@@ -199,6 +199,7 @@ impl AgentRuntime {
             false,
             None,
             false,
+            true,
         )
         .await
     }
@@ -215,6 +216,7 @@ impl AgentRuntime {
         allow_child: bool,
         inherited_token: Option<CancellationToken>,
         retry: bool,
+        schedule_followups: bool,
     ) -> Result<TurnResponse, BusinessError> {
         self.ensure_running()?;
         let session_lock = self.session_lock(session_id).await;
@@ -266,10 +268,6 @@ impl AgentRuntime {
             }
             None
         };
-        let images = self
-            .services
-            .validate_message_images(session_id, &model, image_ids)?;
-        let user_message = message_with_image_refs(input, &images);
         let _guard = match session_lock.try_lock() {
             Ok(guard) => guard,
             Err(_) => {
@@ -285,17 +283,15 @@ impl AgentRuntime {
                             "a turn is already running in this session",
                         ));
                     }
-                    if !image_ids.is_empty() {
-                        return Err(BusinessError::new(
-                            "conflict",
-                            "image attachments cannot be queued while a turn is active",
-                        ));
-                    }
                     return self.queue_message(session_id, key, input, image_ids);
                 }
                 session_lock.lock().await
             }
         };
+        let images = self
+            .services
+            .validate_message_images(session_id, &model, image_ids, true)?;
+        let user_message = message_with_image_refs(input, &images);
         let session = self
             .services
             .store
@@ -449,7 +445,6 @@ impl AgentRuntime {
                 ),
             );
             if !states::suspends_turn(&error.code) {
-                self.clear_queued_messages(session_id);
                 let _ = self.services.turn_state(
                     &continuation,
                     states::failed_turn_state(&error.code),
@@ -462,6 +457,61 @@ impl AgentRuntime {
                         &json!({"code":error.code,"message":error.message,"details":error.details}),
                     )
                 })?;
+            }
+        }
+        let turn_ended = matches!(result, Ok(TurnResponse::Completed { .. }))
+            || result
+                .as_ref()
+                .err()
+                .is_some_and(|error| !states::suspends_turn(&error.code));
+        if turn_ended {
+            if let Ok(mut queues) = self.services.queued_messages.lock() {
+                if let Some(queue) = queues.get_mut(session_id) {
+                    for message in queue {
+                        if message.mode == QueuedMessageMode::Steering {
+                            message.mode = QueuedMessageMode::Followup;
+                        }
+                    }
+                }
+            }
+        }
+        drop(_guard);
+        let has_followups = self
+            .services
+            .queued_messages
+            .lock()
+            .map(|queues| {
+                queues.get(session_id).is_some_and(|queue| {
+                    queue
+                        .iter()
+                        .any(|message| message.mode == QueuedMessageMode::Followup)
+                })
+            })
+            .unwrap_or(false);
+        if schedule_followups
+            && has_followups
+            && matches!(result, Ok(TurnResponse::Completed { .. }))
+        {
+            let runtime = self.clone();
+            let session_id = session_id.to_string();
+            let spawn_result = std::thread::Builder::new()
+                .name("suncode-followup-queue".into())
+                .spawn(move || {
+                    let Ok(worker_runtime) = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                    else {
+                        return;
+                    };
+                    worker_runtime.block_on(runtime.drain_followup_messages(session_id));
+                });
+            if let Err(error) = spawn_result {
+                logging::write_business_error(
+                    "turn",
+                    "followup_worker",
+                    &BusinessError::new("agent_unavailable", error.to_string()),
+                    "failed to start queued follow-up worker",
+                );
             }
         }
         result
@@ -484,6 +534,7 @@ impl AgentRuntime {
             &[],
             true,
             Some(parent_token),
+            false,
             false,
         )
         .await
@@ -513,6 +564,7 @@ impl AgentRuntime {
             false,
             None,
             true,
+            true,
         )
         .await
     }
@@ -532,6 +584,8 @@ impl AgentRuntime {
         input: &str,
         image_ids: &[String],
     ) -> Result<TurnResponse, BusinessError> {
+        self.services
+            .validate_message_images(session_id, "", image_ids, false)?;
         let active_turn_id = self
             .active_turns
             .lock()
@@ -562,6 +616,7 @@ impl AgentRuntime {
             idempotency_key: key.to_string(),
             input: input.to_string(),
             image_ids: image_ids.to_vec(),
+            mode: QueuedMessageMode::Followup,
         });
         let position = queue.len();
         drop(queues);
@@ -578,6 +633,240 @@ impl AgentRuntime {
             active_turn_id,
             position,
         })
+    }
+
+    pub fn queued_messages(
+        &self,
+        session_id: &str,
+    ) -> Result<Vec<QueuedMessageSnapshot>, BusinessError> {
+        let queues = self
+            .services
+            .queued_messages
+            .lock()
+            .map_err(|_| BusinessError::new("agent_unavailable", "turn queue unavailable"))?;
+        Ok(queues
+            .get(session_id)
+            .into_iter()
+            .flatten()
+            .enumerate()
+            .map(|(index, message)| QueuedMessageSnapshot {
+                queued_id: message.queued_id.clone(),
+                position: index + 1,
+                mode: message.mode.clone(),
+                input: message.input.clone(),
+                image_ids: message.image_ids.clone(),
+            })
+            .collect())
+    }
+
+    pub fn steer_queued_message(
+        &self,
+        session_id: &str,
+        queued_id: &str,
+    ) -> Result<QueuedMessageSnapshot, BusinessError> {
+        if !self
+            .active_turns
+            .lock()
+            .map_err(|_| BusinessError::new("agent_unavailable", "turn state unavailable"))?
+            .contains_key(session_id)
+        {
+            return Err(BusinessError::new("conflict", "no active turn to steer"));
+        }
+        let mut queues = self
+            .services
+            .queued_messages
+            .lock()
+            .map_err(|_| BusinessError::new("agent_unavailable", "turn queue unavailable"))?;
+        let queue = queues
+            .get_mut(session_id)
+            .ok_or_else(|| BusinessError::missing("queued_message"))?;
+        let (index, message) = queue
+            .iter_mut()
+            .enumerate()
+            .find(|(_, message)| message.queued_id == queued_id)
+            .ok_or_else(|| BusinessError::missing("queued_message"))?;
+        message.mode = QueuedMessageMode::Steering;
+        Ok(QueuedMessageSnapshot {
+            queued_id: message.queued_id.clone(),
+            position: index + 1,
+            mode: message.mode.clone(),
+            input: message.input.clone(),
+            image_ids: message.image_ids.clone(),
+        })
+    }
+
+    pub fn take_queued_message(
+        &self,
+        session_id: &str,
+        queued_id: &str,
+    ) -> Result<QueuedMessageSnapshot, BusinessError> {
+        let mut queues = self
+            .services
+            .queued_messages
+            .lock()
+            .map_err(|_| BusinessError::new("agent_unavailable", "turn queue unavailable"))?;
+        let queue = queues
+            .get_mut(session_id)
+            .ok_or_else(|| BusinessError::missing("queued_message"))?;
+        let index = queue
+            .iter()
+            .position(|message| message.queued_id == queued_id)
+            .ok_or_else(|| BusinessError::missing("queued_message"))?;
+        let message = queue
+            .remove(index)
+            .ok_or_else(|| BusinessError::missing("queued_message"))?;
+        Ok(QueuedMessageSnapshot {
+            queued_id: message.queued_id,
+            position: index + 1,
+            mode: message.mode,
+            input: message.input,
+            image_ids: message.image_ids,
+        })
+    }
+
+    pub fn take_queued_message_replacing_with_followup(
+        &self,
+        session_id: &str,
+        queued_id: &str,
+        input: &str,
+        image_ids: &[String],
+    ) -> Result<QueuedMessageSnapshot, BusinessError> {
+        self.services
+            .validate_message_images(session_id, "", image_ids, false)?;
+        let mut queues = self
+            .services
+            .queued_messages
+            .lock()
+            .map_err(|_| BusinessError::new("agent_unavailable", "turn queue unavailable"))?;
+        let queue = queues
+            .get_mut(session_id)
+            .ok_or_else(|| BusinessError::missing("queued_message"))?;
+        let index = queue
+            .iter()
+            .position(|message| message.queued_id == queued_id)
+            .ok_or_else(|| BusinessError::missing("queued_message"))?;
+        let message = queue
+            .remove(index)
+            .ok_or_else(|| BusinessError::missing("queued_message"))?;
+        let snapshot = QueuedMessageSnapshot {
+            queued_id: message.queued_id,
+            position: index + 1,
+            mode: message.mode,
+            input: message.input,
+            image_ids: message.image_ids,
+        };
+        let replacement_id = suncode_common::id::new(suncode_common::id::IdKind::QueuedMessage);
+        queue.insert(
+            index,
+            QueuedMessage {
+                queued_id: replacement_id.clone(),
+                idempotency_key: format!("draft:{replacement_id}"),
+                input: input.to_string(),
+                image_ids: image_ids.to_vec(),
+                mode: QueuedMessageMode::Followup,
+            },
+        );
+        Ok(snapshot)
+    }
+
+    pub fn restore_queued_message(
+        &self,
+        session_id: &str,
+        message: QueuedMessageSnapshot,
+    ) -> Result<QueuedMessageSnapshot, BusinessError> {
+        let mut queues = self
+            .services
+            .queued_messages
+            .lock()
+            .map_err(|_| BusinessError::new("agent_unavailable", "turn queue unavailable"))?;
+        let queue = queues.entry(session_id.to_string()).or_default();
+        if queue.iter().any(|item| item.queued_id == message.queued_id) {
+            return Err(BusinessError::new(
+                "conflict",
+                "queued message already exists",
+            ));
+        }
+        let index = message.position.saturating_sub(1).min(queue.len());
+        queue.insert(
+            index,
+            QueuedMessage {
+                queued_id: message.queued_id.clone(),
+                idempotency_key: format!("restored:{}", message.queued_id),
+                input: message.input.clone(),
+                image_ids: message.image_ids.clone(),
+                mode: message.mode.clone(),
+            },
+        );
+        Ok(message)
+    }
+
+    async fn drain_followup_messages(&self, session_id: String) {
+        loop {
+            if self.ensure_running().is_err() {
+                break;
+            }
+            let next = {
+                let Ok(mut queues) = self.services.queued_messages.lock() else {
+                    break;
+                };
+                let Some(queue) = queues.get_mut(&session_id) else {
+                    break;
+                };
+                if queue
+                    .front()
+                    .is_some_and(|message| message.mode == QueuedMessageMode::Steering)
+                {
+                    if let Some(message) = queue.front_mut() {
+                        message.mode = QueuedMessageMode::Followup;
+                    }
+                }
+                let Some(message) = queue.pop_front() else {
+                    break;
+                };
+                Some(message)
+            };
+            let Some(message) = next else {
+                break;
+            };
+            match Box::pin(self.submit_session(
+                &session_id,
+                &message.idempotency_key,
+                &message.input,
+                None,
+                None,
+                &message.image_ids,
+                false,
+                None,
+                false,
+                false,
+            ))
+            .await
+            {
+                Ok(TurnResponse::Completed { .. }) => {}
+                Ok(TurnResponse::Queued { queued_id, .. }) => {
+                    if let Ok(mut queues) = self.services.queued_messages.lock() {
+                        let queue = queues.entry(session_id.clone()).or_default();
+                        if let Some(index) = queue
+                            .iter()
+                            .position(|queued| queued.queued_id == queued_id)
+                        {
+                            queue.remove(index);
+                        }
+                        queue.push_front(message);
+                    }
+                    break;
+                }
+                _ => {
+                    if let Ok(mut queues) = self.services.queued_messages.lock() {
+                        queues
+                            .entry(session_id.clone())
+                            .or_default()
+                            .push_front(message);
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     pub fn cancel(&self, turn_id: &str) -> bool {

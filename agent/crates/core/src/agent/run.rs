@@ -561,35 +561,60 @@ impl TurnLoop<'_> {
     }
 
     pub(super) fn drain_queued_messages(&mut self) -> Result<bool, BusinessError> {
-        let queued = {
+        let item = {
+            let queues =
+                self.services.queued_messages.lock().map_err(|_| {
+                    BusinessError::new("agent_unavailable", "turn queue unavailable")
+                })?;
+            let Some(item) = queues.get(&self.context.session_id).and_then(|queue| {
+                queue
+                    .iter()
+                    .find(|item| item.mode == QueuedMessageMode::Steering)
+            }) else {
+                return Ok(false);
+            };
+            item.clone()
+        };
+        if item.mode != QueuedMessageMode::Steering {
+            return Ok(false);
+        }
+        let images = match self.services.validate_message_images(
+            &self.context.session_id,
+            &self.context.model,
+            &item.image_ids,
+            true,
+        ) {
+            Ok(images) => images,
+            Err(_) => return Ok(false),
+        };
+        {
             let mut queues =
                 self.services.queued_messages.lock().map_err(|_| {
                     BusinessError::new("agent_unavailable", "turn queue unavailable")
                 })?;
-            queues.remove(&self.context.session_id).unwrap_or_default()
-        };
-        if queued.is_empty() {
-            return Ok(false);
+            let Some(queue) = queues.get_mut(&self.context.session_id) else {
+                return Ok(false);
+            };
+            let Some(index) = queue
+                .iter()
+                .position(|queued| queued.queued_id == item.queued_id)
+            else {
+                return Ok(false);
+            };
+            queue.remove(index);
         }
-        for item in queued {
-            let images = self.services.validate_message_images(
-                &self.context.session_id,
-                &self.context.model,
-                &item.image_ids,
-            )?;
-            let message = message_with_image_refs(&item.input, &images);
-            self.context.messages.push(message.clone());
-            self.services.emit(
-                &self.context.session_id,
-                EventPayload::MessageUser(MessageUserPayload {
-                    message_id: suncode_common::id::new(suncode_common::id::IdKind::Message),
-                    turn_id: self.context.turn_id.clone(),
-                    queued_id: Some(item.queued_id),
-                    queued_idempotency_key: Some(item.idempotency_key),
-                    message,
-                }),
-            )?;
-        }
+        let message = message_with_image_refs(&item.input, &images);
+        self.context.messages.push(message.clone());
+        self.services.emit(
+            &self.context.session_id,
+            EventPayload::MessageUser(MessageUserPayload {
+                message_id: suncode_common::id::new(suncode_common::id::IdKind::Message),
+                turn_id: self.context.turn_id.clone(),
+                queued_id: Some(item.queued_id),
+                queued_idempotency_key: Some(item.idempotency_key),
+                message,
+            }),
+        )?;
         Ok(true)
     }
 

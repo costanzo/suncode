@@ -4,6 +4,7 @@ namespace SunCode.Desktop.Models;
 public static class AgentEventTypes
 {
     public const string TurnState = "turn.state";
+    public const string TurnQueued = "turn.queued";
 
     public const string MessageUser = "message.user";
     public const string MessageAssistant = "message.assistant";
