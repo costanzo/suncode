@@ -41,6 +41,11 @@ public sealed partial class DesktopViewModel
         {
             OnPropertyChanged(nameof(ComposerBottomClearance));
             OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(HasComposerInput));
+            OnPropertyChanged(nameof(IsComposerStopAction));
+            OnPropertyChanged(nameof(IsComposerSendAction));
+            OnPropertyChanged(nameof(IsComposerActionEnabled));
+            OnPropertyChanged(nameof(ComposerSubmitLabel));
         };
         QueuedInputs.CollectionChanged += (_, _) =>
         {

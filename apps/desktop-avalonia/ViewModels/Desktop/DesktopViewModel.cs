@@ -105,7 +105,13 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     }
     public bool HasQueuedInputs => QueuedInputs.Count > 0;
     public bool HasRemovedQueuedInput => _removedQueuedInput is not null;
-    public string ComposerSubmitLabel => IsTurnActive ? "Queue follow-up" : "Send message";
+    public bool HasComposerInput => !string.IsNullOrWhiteSpace(ComposerText) || ComposerAttachments.Count > 0;
+    public bool IsComposerStopAction => IsTurnActive && !HasComposerInput;
+    public bool IsComposerSendAction => !IsComposerStopAction;
+    public bool IsComposerActionEnabled => CanSubmit || IsComposerStopAction;
+    public string ComposerSubmitLabel => IsComposerStopAction
+        ? "Stop turn"
+        : IsTurnActive ? "Queue follow-up" : "Send message";
     public BulkObservableCollection<MessageItem> Messages
     {
         get => _messages;
@@ -157,6 +163,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             OnPropertyChanged(nameof(SessionTitle));
             NotifyCurrentContentChanged();
             OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(IsComposerActionEnabled));
             OnPropertyChanged(nameof(CanCompose));
             OnPropertyChanged(nameof(CanChooseModel));
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
@@ -185,6 +192,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
                     SelectedReasoningEffort = ReasoningEffortOptions.FirstOrDefault();
                 }
                 OnPropertyChanged(nameof(CanSubmit));
+                OnPropertyChanged(nameof(IsComposerActionEnabled));
                 OnPropertyChanged(nameof(CanCompose));
                 OnPropertyChanged(nameof(SelectedModelName));
                 OnPropertyChanged(nameof(CanChooseReasoningEffort));
@@ -255,8 +263,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     }
     public string StatusText { get => _statusText; private set => SetProperty(ref _statusText, value); }
     public void ReportPresentationError(string message) => StatusText = message;
-    public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) OnPropertyChanged(nameof(CanSubmit)); } }
-    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { ProviderRetryText = string.Empty; OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); OnPropertyChanged(nameof(CanAttachImages)); OnPropertyChanged(nameof(ComposerSubmitLabel)); OnPropertyChanged(nameof(ComposerPlaceholder)); foreach (var queued in QueuedInputs) queued.IsTurnActive = IsTurnActive; NotifyReviewPresentationChanged(); } } }
+    public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) { OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(HasComposerInput)); OnPropertyChanged(nameof(IsComposerStopAction)); OnPropertyChanged(nameof(IsComposerSendAction)); OnPropertyChanged(nameof(IsComposerActionEnabled)); OnPropertyChanged(nameof(ComposerSubmitLabel)); } } }
+    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { ProviderRetryText = string.Empty; OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); OnPropertyChanged(nameof(CanAttachImages)); OnPropertyChanged(nameof(HasComposerInput)); OnPropertyChanged(nameof(IsComposerStopAction)); OnPropertyChanged(nameof(IsComposerSendAction)); OnPropertyChanged(nameof(IsComposerActionEnabled)); OnPropertyChanged(nameof(ComposerSubmitLabel)); OnPropertyChanged(nameof(ComposerPlaceholder)); foreach (var queued in QueuedInputs) queued.IsTurnActive = IsTurnActive; NotifyReviewPresentationChanged(); } } }
     public string ActiveTurnState { get => _activeTurnState; private set { if (SetProperty(ref _activeTurnState, value)) { OnPropertyChanged(nameof(IsTurnCompacting)); OnPropertyChanged(nameof(IsTurnThinking)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(HasFailedTurn)); NotifyReviewPresentationChanged(); } } }
     public string ActiveTurnDurationText => _activeTurnStartedAt is { } started
         ? FormatDuration(started.ToString("O"), string.Empty, ActiveTurnState)
@@ -273,6 +281,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             if (!SetProperty(ref _sessionLoadError, value)) return;
             OnPropertyChanged(nameof(HasSessionLoadError));
             OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(IsComposerActionEnabled));
             OnPropertyChanged(nameof(CanCompose));
             OnPropertyChanged(nameof(CanChooseModel));
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
@@ -317,6 +326,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             if (!SetProperty(ref _isSessionLoading, value)) return;
             if (!value) IsSessionLoadingVisible = false;
             OnPropertyChanged(nameof(CanSubmit));
+            OnPropertyChanged(nameof(IsComposerActionEnabled));
             OnPropertyChanged(nameof(CanCompose));
             OnPropertyChanged(nameof(CanChooseModel));
         }

@@ -231,6 +231,7 @@ const paths = {
       <path d="M7 5v10M11 5v10" />
     </>
   ),
+  stop: <rect x="7" y="7" width="10" height="10" rx="1" fill="currentColor" stroke="none" />,
   play: <path d="m7 4 8 6-8 6z" />,
   pin: (
     <>

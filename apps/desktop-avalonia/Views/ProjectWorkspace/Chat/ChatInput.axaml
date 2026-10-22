@@ -339,28 +339,22 @@
                 Height="24"
                 MinHeight="24"
                 CornerRadius="12"
-                Padding="6"
-                Classes="primary"
-                Click="SubmitTurn"
-                IsVisible="True"
-                IsEnabled="{Binding CanSubmit}"
-                ToolTip.Tip="{Binding ComposerSubmitLabel}">
-          <svg:Svg Path="/Assets/icons/arrow-up.svg" Css="{DynamicResource AccentInkSvgCss}" />
-        </Button>
-
-        <Button Width="24"
-                Height="24"
-                MinHeight="24"
-                CornerRadius="12"
                 Padding="7"
-                Classes="danger"
-                Click="CancelTurn"
-                IsVisible="{Binding IsTurnActive}"
-                ToolTip.Tip="{DynamicResource LocStopTurn}">
-          <Border Width="8"
-                  Height="8"
-                  CornerRadius="1.5"
-                  Background="{DynamicResource DangerBrush}" />
+                Classes.primary="{Binding IsComposerSendAction}"
+                Classes.danger="{Binding IsComposerStopAction}"
+                Click="ComposerAction"
+                IsEnabled="{Binding IsComposerActionEnabled}"
+                ToolTip.Tip="{Binding ComposerSubmitLabel}">
+          <Grid Width="10" Height="10">
+            <svg:Svg Path="/Assets/icons/arrow-up.svg"
+                     Css="{DynamicResource AccentInkSvgCss}"
+                     IsVisible="{Binding IsComposerSendAction}" />
+            <Border Width="8"
+                    Height="8"
+                    CornerRadius="1.5"
+                    Background="{DynamicResource DangerBrush}"
+                    IsVisible="{Binding IsComposerStopAction}" />
+          </Grid>
         </Button>
       </StackPanel>
     </Grid>

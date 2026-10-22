@@ -135,14 +135,17 @@ public sealed partial class ChatInput : UserControl
         }
     }
 
-    private async void SubmitTurn(object? sender, RoutedEventArgs e)
+    private async void ComposerAction(object? sender, RoutedEventArgs e)
     {
-        if (!ViewModel.CanSubmit) return;
-        await ViewModel.SubmitTurnAsync();
+        if (ViewModel.CanSubmit)
+        {
+            await ViewModel.SubmitTurnAsync();
+        }
+        else if (ViewModel.IsComposerStopAction)
+        {
+            await ViewModel.CancelTurnAsync();
+        }
     }
-
-    private async void CancelTurn(object? sender, RoutedEventArgs e) =>
-        await ViewModel.CancelTurnAsync();
 
     private async void SteerQueuedInput(object? sender, RoutedEventArgs e)
     {
