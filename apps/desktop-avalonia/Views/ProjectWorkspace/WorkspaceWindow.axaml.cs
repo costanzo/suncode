@@ -189,11 +189,32 @@ public partial class WorkspaceWindow : Window
             app.ShowArchiveConfirmation(this, session, () => _ = ViewModel.ArchiveSessionAsync(session));
     }
 
-    internal void ShowSessionConfirmation(SessionItem session, string title, string description, string confirmLabel, Action confirm)
+    internal void ShowSessionConfirmation(SessionItem session, string title, string description, string confirmLabel, Action confirm, Size? size = null)
     {
         if (Application.Current is App app)
-            app.ShowSessionConfirmation(this, title, description, session.DisplayTitle, confirm, confirmLabel);
+            app.ShowSessionConfirmation(this, title, description, session.DisplayTitle, confirm, confirmLabel, size);
     }
+
+    internal void ShowConfirmation(
+        string title,
+        string description,
+        string targetLabel,
+        string target,
+        string confirmLabel,
+        Action confirm,
+        string? note = null,
+        Size? size = null)
+    {
+        if (Application.Current is App app)
+            app.ShowConfirmation(this, title, description, targetLabel, target, confirmLabel, confirm, note, size);
+    }
+    
+    internal void ShowSessionNameDialog(string title, string description, string value, string confirmLabel, Action<string> submit, Size? size = null)
+    {
+        if (Application.Current is App app)
+            app.ShowSessionNameDialog(this, title, description, value, confirmLabel, submit, size);
+    }
+            
 
     private void ConfigureNativeProjectMenu()
     {

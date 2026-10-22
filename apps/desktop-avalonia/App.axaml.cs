@@ -140,8 +140,32 @@ public sealed partial class App : Application
         string description,
         string target,
         Action confirm,
-        string confirmLabel) =>
-        _dialogs?.ShowSessionConfirmation(owner, title, description, target, confirm, confirmLabel);
+        string confirmLabel,
+        Size? size = null) =>
+        _dialogs?.ShowSessionConfirmation(owner, title, description, target, confirm, confirmLabel, size);
+    
+    internal void ShowConfirmation(
+        Window owner,
+        string title,
+        string description,
+        string targetLabel,
+        string target,
+        string confirmLabel,
+        Action confirm,
+        string? note = null,
+        Size? size = null) =>
+        _dialogs?.ShowConfirmation(owner, title, description, targetLabel, target, confirmLabel, confirm, note, size);
+    
+    internal void ShowSessionNameDialog(
+        Window owner,
+        string title,
+        string description,
+        string value,
+        string confirmLabel,
+        Action<string> submit,
+        Size? size = null) =>
+        _dialogs?.ShowSessionNameDialog(owner, title, description, value, confirmLabel, submit, size);
+            
 
     private bool IsApplicationForeground()
     {

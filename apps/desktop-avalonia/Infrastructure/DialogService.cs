@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Styling;
 using SunCode.Desktop.Models;
@@ -86,9 +87,37 @@ internal sealed class DialogService
         string description,
         string target,
         Action confirm,
-        string confirmLabel)
+        string confirmLabel,
+        Size? size = null) =>
+        ShowConfirmation(owner, title, description, "SESSION", target, confirmLabel, confirm, size: size);
+    
+    public void ShowConfirmation(
+        Window owner,
+        string title,
+        string description,
+        string targetLabel,
+        string target,
+        string confirmLabel,
+        Action confirm,
+        string? note = null,
+        Size? size = null)
     {
-        var dialog = new DialogWindow(title, description, target, confirm, confirmLabel: confirmLabel);
+        var dialog = new DialogWindow(title, description, target, confirm, targetLabel, confirmLabel, size, note);
+        _setOtherWindowsEnabled(owner, false);
+        dialog.Closed += (_, _) => _setOtherWindowsEnabled(owner, true);
+        _ = dialog.ShowDialog(owner);
+    }
+    
+    public void ShowSessionNameDialog(
+        Window owner,
+        string title,
+        string description,
+        string value,
+        string confirmLabel,
+        Action<string> submit,
+        Size? size = null)
+    {
+        var dialog = new DialogWindow(title, description, value, confirmLabel, submit, size);
         _setOtherWindowsEnabled(owner, false);
         dialog.Closed += (_, _) => _setOtherWindowsEnabled(owner, true);
         _ = dialog.ShowDialog(owner);

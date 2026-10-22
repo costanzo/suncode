@@ -292,58 +292,6 @@
         </Grid>
       </Grid>
 
-    <controls:SCModal x:Name="SessionDialogModal"
-                      DialogWidth="360"
-                      IsOpen="False"
-                      PrimaryButtonText="{DynamicResource LocCreate}"
-                      SecondaryButtonText="{DynamicResource LocCancel}"
-                      PrimaryAction="SubmitSessionDialog"
-                      SecondaryAction="CloseSessionDialog"
-                      CloseRequested="CloseSessionDialog">
-      <TextBox x:Name="SessionTitleInput"
-               PlaceholderText="{DynamicResource LocSessionName}"
-               TextChanged="SessionTitleChanged"
-               KeyDown="SessionTitleKeyDown" />
-    </controls:SCModal>
-
-    <controls:SCModal x:Name="UndoDialogModal"
-                      DialogWidth="520"
-                      IsOpen="False"
-                      Title="Undo this turn's file changes?"
-                      Description="SunCode will restore the files changed during this turn."
-                      PrimaryButtonText="{DynamicResource LocUndoChanges}"
-                      SecondaryButtonText="{DynamicResource LocCancel}"
-                      CloseOnOverlayPress="False"
-                      PrimaryAction="ConfirmUndoDialog"
-                      SecondaryAction="CloseUndoDialog"
-                      CloseRequested="CloseUndoDialog">
-      <StackPanel Spacing="16">
-        <Border MaxHeight="150" Padding="12" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <TextBlock x:Name="UndoPathsText" Classes="mono" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
-          </ScrollViewer>
-        </Border>
-        <TextBlock Text="{DynamicResource LocExternalSideEffects}" FontSize="12" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" />
-      </StackPanel>
-    </controls:SCModal>
-
-    <controls:SCModal x:Name="DependencyDeleteDialogModal"
-                      DialogWidth="420"
-                      IsOpen="False"
-                      Title="Delete dependency?"
-                      PrimaryButtonText="{DynamicResource LocDeleteDependency}"
-                      SecondaryButtonText="{DynamicResource LocCancel}"
-                      PrimaryIsDanger="True"
-                      PrimaryAction="ConfirmDependencyDeleteDialog"
-                      SecondaryAction="CloseDependencyDeleteDialog"
-                      CloseRequested="CloseDependencyDeleteDialog">
-      <TextBlock TextWrapping="Wrap">
-        <Run Text="Remove " />
-        <Run x:Name="DependencyDeleteName" FontWeight="SemiBold" />
-        <Run Text=" from this project's dependencies? The folder and its files will not be deleted." />
-      </TextBlock>
-    </controls:SCModal>
-
     <controls:SCModal x:Name="ExpandedComposerModal"
                       DialogWidth="860"
                       IsOpen="False"

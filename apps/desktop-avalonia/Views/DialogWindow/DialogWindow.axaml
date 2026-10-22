@@ -11,15 +11,23 @@
         WindowStartupLocation="CenterOwner">
   <Grid RowDefinitions="*,Auto">
     <StackPanel Margin="32,28" Spacing="12">
-      <TextBlock Text="{DynamicResource LocSecondaryConfirmation}" Classes="section-label" />
+      <TextBlock x:Name="EyebrowText" Text="{DynamicResource LocSecondaryConfirmation}" Classes="section-label" />
       <TextBlock x:Name="TitleText" FontSize="20" FontWeight="SemiBold" />
       <TextBlock x:Name="DescriptionText" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
-      <Border Padding="12,10" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+      <TextBox x:Name="InputBox"
+               IsVisible="False"
+               PlaceholderText="{DynamicResource LocSessionName}"
+               TextChanged="InputChanged"
+               KeyDown="InputKeyDown" />
+      <Border x:Name="TargetBorder" Padding="12,10" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
         <StackPanel Spacing="4">
           <TextBlock x:Name="TargetLabelText" Text="{DynamicResource LocSession}" Classes="eyebrow" />
-          <TextBlock x:Name="TargetText" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <ScrollViewer MaxHeight="150" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <TextBlock x:Name="TargetText" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" />            
+          </ScrollViewer>
         </StackPanel>
       </Border>
+      <TextBlock x:Name="NoteText" IsVisible="False" FontSize="12" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" />
     </StackPanel>
     <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="32,0,32,28" Spacing="8">
       <Button x:Name="CancelButton" Classes="compact" Content="{DynamicResource LocCancel}" Click="CancelClicked" />

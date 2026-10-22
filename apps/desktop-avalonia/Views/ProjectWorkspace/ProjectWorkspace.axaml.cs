@@ -14,9 +14,6 @@ namespace SunCode.Desktop.Views.ProjectWorkspace;
 
 public sealed partial class ProjectWorkspace : UserControl
 {
-    private SessionItem? _sessionDialogTarget;
-    private CheckpointItem? _pendingCheckpoint;
-    private ExplorerNode? _pendingDependencyDeletion;
     private WorkspaceResizeTarget? _layoutResizeTarget;
     private Point _layoutResizeStart;
     private double _layoutResizeStartSize;
@@ -79,24 +76,6 @@ public sealed partial class ProjectWorkspace : UserControl
             return true;
         }
 
-        if (SessionDialogModal.IsOpen)
-        {
-            HideSessionDialog();
-            return true;
-        }
-
-        if (UndoDialogModal.IsOpen)
-        {
-            HideUndoDialog();
-            return true;
-        }
-
-        if (DependencyDeleteDialogModal.IsOpen)
-        {
-            HideDependencyDeleteDialog();
-            return true;
-        }
-
         if (LongUserMessageModal.IsOpen)
         {
             HideLongUserMessage();
@@ -108,24 +87,28 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal void ShowSessionDialog(string title, string value, string acceptText, SessionItem? target)
     {
-        _sessionDialogTarget = target;
-        SessionDialogModal.Title = title;
-        SessionDialogModal.PrimaryButtonText = acceptText;
-        SessionTitleInput.Text = value;
-        SessionDialogModal.PrimaryEnabled = !string.IsNullOrWhiteSpace(value);
-        SessionDialogModal.IsOpen = true;
-        Dispatcher.UIThread.Post(() =>
-        {
-            SessionTitleInput.Focus();
-            SessionTitleInput.SelectAll();
-        }, DispatcherPriority.Input);
+        var description = target is null
+            ? "Give this conversation a name before you begin"
+            : "Choose a new name for this conversation.";
+        Owner?.ShowSessionNameDialog(
+            title,
+            description,
+            value,
+            acceptText,
+            name => _ = SubmitSessionNameAsync(target, name),
+            new Size(480, 260));
     }
 
     internal void ShowUndoDialog(CheckpointItem checkpoint)
     {
-        _pendingCheckpoint = checkpoint;
-        UndoPathsText.Text = checkpoint.PathsText;
-        UndoDialogModal.IsOpen = true;
+        Owner?.ShowConfirmation(
+            "Undo this turn's file changes?",
+            "SunCode will restore the files changed during this turn.",
+            "FILES",
+            checkpoint.PathsText,
+            LocalizationService.GetString("LocUndoChanges", "Undo changes"),
+            () => _ = ViewModel.RestoreCheckpointAsync(checkpoint),
+            LocalizationService.GetString("LocExternalSideEffects", "External side effects cannot be reversed."));
     }
 
     internal void ShowArchiveDialog(SessionItem session)
@@ -151,9 +134,14 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal void ShowDependencyDeleteDialog(ExplorerNode node)
     {
-        _pendingDependencyDeletion = node;
-        DependencyDeleteName.Text = node.Name;
-        DependencyDeleteDialogModal.IsOpen = true;
+        Owner?.ShowConfirmation(
+            "Delete dependency?",
+            "It will be removed from the project's dependencies. The folder and its files will not be deleted.",
+            "DEPENDENCY",
+            node.Name,
+            LocalizationService.GetString("LocDeleteDependency", "Delete dependency"),
+            () => _ = ViewModel.RemoveProjectDependencyAsync(node),
+            size: new Size(480, 320));
     }
 
     private void ToggleNavigation(object? sender, RoutedEventArgs e) => Layout.ToggleSessions();
@@ -235,70 +223,19 @@ public sealed partial class ProjectWorkspace : UserControl
         e.Handled = true;
     }
 
-    private void SessionTitleChanged(object? sender, TextChangedEventArgs e) =>
-        SessionDialogModal.PrimaryEnabled = !string.IsNullOrWhiteSpace(SessionTitleInput.Text);
-
-    private async void SessionTitleKeyDown(object? sender, KeyEventArgs e)
+    private async Task SubmitSessionNameAsync(SessionItem? target, string title)
     {
-        if (e.Key != Key.Enter || e.KeyModifiers.HasFlag(KeyModifiers.Shift)) return;
-        e.Handled = true;
-        await SubmitSessionDialogAsync();
-    }
-
-    private async void SubmitSessionDialog(object? sender, RoutedEventArgs e) =>
-        await SubmitSessionDialogAsync();
-
-    private async Task SubmitSessionDialogAsync()
-    {
-        var title = SessionTitleInput.Text?.Trim();
-        if (string.IsNullOrWhiteSpace(title)) return;
-        var target = _sessionDialogTarget;
-        HideSessionDialog();
         if (target is null)
         {
             if (await ViewModel.CreateSessionAsync(title)) ChatArea.FocusComposer();
         }
-        else await ViewModel.RenameSessionAsync(target, title);
+        else
+        {
+            await ViewModel.RenameSessionAsync(target, title);
+        }
+            
     }
-
-    private void CloseSessionDialog(object? sender, RoutedEventArgs e) => HideSessionDialog();
-
-    private void HideSessionDialog()
-    {
-        SessionDialogModal.IsOpen = false;
-        _sessionDialogTarget = null;
-    }
-
-    private void CloseUndoDialog(object? sender, RoutedEventArgs e) => HideUndoDialog();
-
-    private async void ConfirmUndoDialog(object? sender, RoutedEventArgs e)
-    {
-        var checkpoint = _pendingCheckpoint;
-        HideUndoDialog();
-        if (checkpoint is not null) await ViewModel.RestoreCheckpointAsync(checkpoint);
-    }
-
-    private void HideUndoDialog()
-    {
-        UndoDialogModal.IsOpen = false;
-        _pendingCheckpoint = null;
-    }
-
-    private void CloseDependencyDeleteDialog(object? sender, RoutedEventArgs e) => HideDependencyDeleteDialog();
-
-    private async void ConfirmDependencyDeleteDialog(object? sender, RoutedEventArgs e)
-    {
-        var dependency = _pendingDependencyDeletion;
-        HideDependencyDeleteDialog();
-        if (dependency is not null) await ViewModel.RemoveProjectDependencyAsync(dependency);
-    }
-
-    private void HideDependencyDeleteDialog()
-    {
-        DependencyDeleteDialogModal.IsOpen = false;
-        _pendingDependencyDeletion = null;
-    }
-
+    
     private void ShowLongUserMessage(MessageItem message)
     {
         _longUserMessage = message;
