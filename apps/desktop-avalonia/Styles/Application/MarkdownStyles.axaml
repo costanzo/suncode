@@ -176,7 +176,7 @@
   </Style>
   <Style Selector="md|MarkdownTextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-    <Setter Property="FontFamily" Value="fonts:SunCode#Noto Sans SC, Noto Sans, Noto Sans CJK SC, PingFang SC, Helvetica Neue, Arial, sans-serif" />
+    <Setter Property="FontFamily" Value="{DynamicResource SansFontFamily}" />
     <Setter Property="FontSize" Value="14" />
     <Setter Property="LineHeight" Value="23.1" />
     <Setter Property="Margin" Value="0,7,0,7" />
@@ -312,7 +312,7 @@
     </Style>
   </Style>
   <Style Selector="TextBlock.ListBlockNumber">
-    <Setter Property="FontFamily" Value="Arial, 'Segoe UI', sans-serif"/>
+    <Setter Property="FontFamily" Value="{DynamicResource SansFontFamily}"/>
     <Setter Property="HorizontalAlignment" Value="Right"/>
     <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
     <Setter Property="FontSize" Value="14"/>
@@ -320,7 +320,7 @@
     <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
   <Style Selector="TextBlock.ListBlockBullet">
-    <Setter Property="FontFamily" Value="Arial, 'Segoe UI', sans-serif"/>
+    <Setter Property="FontFamily" Value="{DynamicResource SansFontFamily}"/>
     <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
     <Setter Property="FontSize" Value="16"/>
     <Setter Property="Margin" Value="4,2, 4,0"/>

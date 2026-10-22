@@ -5,6 +5,7 @@ The desktop build downloads these fonts into the ignored
 values in [`fonts.lock`](fonts.lock).
 The font binaries are intentionally not stored in Git.
 
+- **Noto Sans** — SIL Open Font License 1.1; source: [Google Fonts](https://fonts.google.com/specimen/Noto+Sans), versioned static TTFs from `fonts.gstatic.com/s/notosans/v42/` as pinned in `fonts.lock`.
 - **Noto Sans SC** — SIL Open Font License 1.1; source: [Google Fonts](https://github.com/google/fonts/tree/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosanssc)
 - **JetBrains Mono** — SIL Open Font License 1.1; source: [JetBrainsMono](https://github.com/JetBrains/JetBrainsMono/tree/19371302b95d218af43299bce79ddbddd0bc364d)
 - **Seti UI** — MIT; source: [seti-ui](https://github.com/jesseweed/seti-ui/tree/2d6c5e68b4ded73c92dac291845ee44e1182d511)

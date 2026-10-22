@@ -1,9 +1,11 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <!-- Theme-independent font stacks resolved from the bundled font
-       collection. MonoFontFamily mirrors the design-system font-mono token. -->
+       collection. The order mirrors the design-system typography tokens;
+       qualify Noto Sans SC as well so Chinese fallback works without an
+       installed CJK font. -->
   <FontFamily x:Key="MonoFontFamily">fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace</FontFamily>
-  <FontFamily x:Key="SansFontFamily">fonts:SunCode#Noto Sans SC, Noto Sans CJK SC, Noto Sans, PingFang SC, Helvetica Neue, Arial, sans-serif</FontFamily>
+  <FontFamily x:Key="SansFontFamily">fonts:SunCode#Noto Sans, Noto Sans, Noto Sans CJK SC, fonts:SunCode#Noto Sans SC, Noto Sans SC, PingFang SC, Helvetica Neue, Arial, sans-serif</FontFamily>
   <!-- Paints nothing visible but keeps a surface hit-testable, for drag
        regions such as the title bar and pane resize handles. -->
   <SolidColorBrush x:Key="HitTestTransparentBrush" Color="#01000000" />

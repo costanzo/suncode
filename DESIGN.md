@@ -121,7 +121,7 @@ The palette supports both a dark graphite mode and a lighter paper-and-slate mod
 
 **Display Font:** Noto Sans, with an installed sans fallback only when the target family is unavailable.
 **Body Font:** Noto Sans, with the same installed-font fallback.
-**Chinese UI Font:** Noto Sans CJK SC, used through the UI fallback stack for Simplified Chinese glyphs when available.
+**Chinese UI Font:** Noto Sans CJK SC, used through the UI fallback stack for Simplified Chinese glyphs when available, followed by Noto Sans SC. The desktop bundles Noto Sans and Noto Sans SC so this stack works without installed Noto fonts.
 **Code/Data Font:** JetBrains Mono, reserved for code, paths, commands, API values, model identifiers, and runtime data supplied by the client, with an installed monospace fallback only when unavailable.
 
 **Character:** Noto Sans keeps the product calm, contemporary, and readable across dense operating surfaces. Chinese UI text uses Noto Sans CJK SC to avoid mismatched CJK fallback. JetBrains Mono is deliberately isolated to machine-readable strings, where character shapes, punctuation, and path segments need to be distinguishable.

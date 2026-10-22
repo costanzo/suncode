@@ -10,7 +10,7 @@
     <Setter Property="MinHeight" Value="36" />
     <Setter Property="Padding" Value="10,0" />
     <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="FontFamily" Value="fonts:SunCode#Noto Sans SC, Noto Sans, Noto Sans CJK SC, PingFang SC, Helvetica Neue, Arial, sans-serif" />
+    <Setter Property="FontFamily" Value="{DynamicResource SansFontFamily}" />
     <Setter Property="FontSize" Value="11" />
     <Setter Property="FontWeight" Value="Regular" />
     <Setter Property="Background" Value="{DynamicResource FieldBrush}" />

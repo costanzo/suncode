@@ -46,10 +46,15 @@ Implemented workflows include the project hub, independent draggable project win
 
 ### Bundled fonts
 
-The desktop client bundles static Noto Sans SC regular/medium/semibold/bold
-faces, JetBrains Mono, and Seti UI without
+The desktop client bundles static Noto Sans and Noto Sans SC
+regular/medium/semibold/bold faces, JetBrains Mono, and Seti UI without
 committing font binaries to Git. Build and publish targets run
 `scripts/prepare-fonts.sh` on macOS/Linux or `scripts/prepare-fonts.ps1` on
 Windows. The scripts download immutable upstream revisions into the ignored
 `apps/desktop-avalonia/Assets/fonts/` directory and verify the SHA-256 values in
 `scripts/fonts.lock` before Avalonia embeds the files in the application.
+
+UI text, Markdown, tooltips, and shared selectors use `SansFontFamily`: bundled
+Noto Sans first, then installed Noto Sans CJK SC or bundled Noto Sans SC for
+Chinese glyphs. Code, paths, model identifiers, and pairing URLs use the shared
+`MonoFontFamily` resource backed by JetBrains Mono.

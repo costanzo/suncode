@@ -2,6 +2,10 @@
 # Keep URLs pinned to immutable commits and verify every downloaded file.
 # Use static faces instead of the variable font. Avalonia's embedded font
 # collection can then resolve FontWeight to the bundled face deterministically.
+NotoSans-Regular.ttf|https://fonts.gstatic.com/s/notosans/v42/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A-9a6Vc.ttf|07805c0a3e52e7d54d2e6a87308f38f299899e573ecbed68a73b3892795b59a6|OFL-1.1
+NotoSans-Medium.ttf|https://fonts.gstatic.com/s/notosans/v42/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyDPA-9a6Vc.ttf|87e6fa4353c7a40aad56138524c78a1507dfa6a7eb0b86389aab935ffb57c42e|OFL-1.1
+NotoSans-SemiBold.ttf|https://fonts.gstatic.com/s/notosans/v42/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyAjBO9a6Vc.ttf|9f92d938bd704e60306d232283ad06ea0454d90efa3ca2b3e94b1b16b1a67979|OFL-1.1
+NotoSans-Bold.ttf|https://fonts.gstatic.com/s/notosans/v42/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyAaBO9a6Vc.ttf|a1d9b467fa5ad23d120f2272f0510a9df9a628287bf51937f9a89d165305f05a|OFL-1.1
 NotoSansSC-Regular.ttf|https://fonts.gstatic.com/s/notosanssc/v41/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG9_FnYw.ttf|450625c8d46ab3df97b7904ded955ec2746d17ec76740cb1e91d1ba63a0f89af|OFL-1.1
 NotoSansSC-Medium.ttf|https://fonts.gstatic.com/s/notosanssc/v41/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG-3FnYw.ttf|09f17deea660cdd9cc2ba1e8b90adad18eabeca73b62b3c5f76b7ec3b61b33e0|OFL-1.1
 NotoSansSC-SemiBold.ttf|https://fonts.gstatic.com/s/notosanssc/v41/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaGwHCnYw.ttf|7c941d13e1f99a7c78fc89ef734b9322404804573a936085f7a910b47b8bb984|OFL-1.1
