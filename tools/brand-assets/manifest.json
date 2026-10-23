@@ -1,0 +1,422 @@
+{
+  "source": "design-system/public/assets/logo.svg",
+  "sourceSha256": "d40916db8e0d2f58c68152c5fdff804adc7f5b33ed0f657f976f69019c2cb247",
+  "outputs": [
+    {
+      "path": "design-system/src/assets/platform/suncode-macos.svg",
+      "sha256": "3f6d96027e9d7147cd1d917ac66db1269035e1176a1407bfd7cf165f25e30448"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/suncode-macos-1024.png",
+      "sha256": "dd56a88cd8e8e1b8bc2a1d2f05f313f4d33d4c7e754ebebcdc1e8b45a3418b7d"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-logo.svg",
+      "sha256": "a94fa87d53f7bc59b7665de89c5b5d7e92a49bb532afbd4487db2cf1ae1ceee9"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-logo-small.svg",
+      "sha256": "a94fa87d53f7bc59b7665de89c5b5d7e92a49bb532afbd4487db2cf1ae1ceee9"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-logo-32.png",
+      "sha256": "b8143f87b32884d28befac6e0fe01b5744b12805bdb80dec07e0b669b5922f54"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-logo-64.png",
+      "sha256": "54ef8018c700f5aa14772e913267758d15e49c205f511f1d11964433d3f02eb2"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-logo-128.png",
+      "sha256": "b7d28c603462e1a54a03484251931a255d1c968242def0c886da9d7f1dcc6032"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-logo-256.png",
+      "sha256": "eb6355e4e4ab022f1fc763213910e714bd1f606c52e8c457f1abecee4a306249"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-logo-512.png",
+      "sha256": "a8c444dc8853f944a1b2568bae4a7ce7608e2810f8c652dc70cf44eea136a324"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-logo-1024.png",
+      "sha256": "b3157e07db92310496d266c1fcde60c6ad43dccd8078d11b9184c35fe22dbcec"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-logo-small-32.png",
+      "sha256": "b8143f87b32884d28befac6e0fe01b5744b12805bdb80dec07e0b669b5922f54"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-logo-small-64.png",
+      "sha256": "54ef8018c700f5aa14772e913267758d15e49c205f511f1d11964433d3f02eb2"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-logo-small-128.png",
+      "sha256": "b7d28c603462e1a54a03484251931a255d1c968242def0c886da9d7f1dcc6032"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-logo-small-256.png",
+      "sha256": "eb6355e4e4ab022f1fc763213910e714bd1f606c52e8c457f1abecee4a306249"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-logo.svg",
+      "sha256": "a94fa87d53f7bc59b7665de89c5b5d7e92a49bb532afbd4487db2cf1ae1ceee9"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-logo-small.svg",
+      "sha256": "a94fa87d53f7bc59b7665de89c5b5d7e92a49bb532afbd4487db2cf1ae1ceee9"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-logo-32.png",
+      "sha256": "b8143f87b32884d28befac6e0fe01b5744b12805bdb80dec07e0b669b5922f54"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-logo-64.png",
+      "sha256": "54ef8018c700f5aa14772e913267758d15e49c205f511f1d11964433d3f02eb2"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-logo-128.png",
+      "sha256": "b7d28c603462e1a54a03484251931a255d1c968242def0c886da9d7f1dcc6032"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-logo-256.png",
+      "sha256": "eb6355e4e4ab022f1fc763213910e714bd1f606c52e8c457f1abecee4a306249"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-logo-512.png",
+      "sha256": "a8c444dc8853f944a1b2568bae4a7ce7608e2810f8c652dc70cf44eea136a324"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-logo-1024.png",
+      "sha256": "b3157e07db92310496d266c1fcde60c6ad43dccd8078d11b9184c35fe22dbcec"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-logo-small-32.png",
+      "sha256": "b8143f87b32884d28befac6e0fe01b5744b12805bdb80dec07e0b669b5922f54"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-logo-small-64.png",
+      "sha256": "54ef8018c700f5aa14772e913267758d15e49c205f511f1d11964433d3f02eb2"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-logo-small-128.png",
+      "sha256": "b7d28c603462e1a54a03484251931a255d1c968242def0c886da9d7f1dcc6032"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-logo-small-256.png",
+      "sha256": "eb6355e4e4ab022f1fc763213910e714bd1f606c52e8c457f1abecee4a306249"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-mark.svg",
+      "sha256": "ff828cbf3de9096409e4249661c3283362579074607d74d18fc20b163e171369"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-mark-light.svg",
+      "sha256": "7c0bc9cbd0c0b3cf0f96094b8bec24d0004bb78be6ae05e0762b5582b33a1075"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-mark-dark.svg",
+      "sha256": "f24a90f5b0a0a4716d62a7a8805cb01a2e3c76f7b07094b9300e920de546e935"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-mark-24.svg",
+      "sha256": "e95f0d6d5faa1d81e64ccd63b47cdc0cc396cf86d0b2238841fa5cc779a277c0"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-mark-24-light.svg",
+      "sha256": "4eabf4e8d802ff3ad1981b65bcc37e2d87069843c47caf82d53cdaca8e09593a"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-mark-24-dark.svg",
+      "sha256": "d786e7ec3363472e574125618a2d2e75e1d54f28ddc5715e1d8b8dd31170d6e0"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-mark-16.svg",
+      "sha256": "aeb4abb9a8cc4abfaabd03131f7d0c4548198ad8f9fa210a3aa088a638eb17c1"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-mark-16-light.svg",
+      "sha256": "bf6124065baba0e09fd50dd6b39f959a9d8283f637ae1f5e9f962efcb060bf86"
+    },
+    {
+      "path": "design-system/src/assets/logos/suncode-mark-16-dark.svg",
+      "sha256": "13ced1162eacfe54717a46fd2e0a9fdab51a99cd23aac0236d1a4ed5197623a8"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/suncode-logo-256.png",
+      "sha256": "eb6355e4e4ab022f1fc763213910e714bd1f606c52e8c457f1abecee4a306249"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/logo/suncode-mark.axaml",
+      "sha256": "cde1694768b6a87e9b5fa1188a8440c66cb04b27bc4ab988f9478a64dd3519d1"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/suncode.ico",
+      "sha256": "7520cf1e5cf9529c9c76d3ac985d4a764d440c8812dac2509299ea13e38569c2"
+    },
+    {
+      "path": "design-system/src/assets/platform/suncode-desktop.icns",
+      "sha256": "5dbb84058b6e9289c8c9c3cc1138fbc153992e75954cd8fecdc9cc6a4e9f5d3b"
+    },
+    {
+      "path": "apps/desktop-avalonia/Assets/suncode-desktop.icns",
+      "sha256": "5dbb84058b6e9289c8c9c3cc1138fbc153992e75954cd8fecdc9cc6a4e9f5d3b"
+    },
+    {
+      "path": "apps/desktop-avalonia/packaging/linux/icons/hicolor/16x16/apps/suncode.png",
+      "sha256": "01c0956e71dfb495400cd4cb0b539f009501744f3db4acc23bb871f9dfd81ad9"
+    },
+    {
+      "path": "apps/desktop-avalonia/packaging/linux/icons/hicolor/24x24/apps/suncode.png",
+      "sha256": "16538f48e8bbd9ea37a8e8fb18be35d4d73addac0674da706b58213d56e132b2"
+    },
+    {
+      "path": "apps/desktop-avalonia/packaging/linux/icons/hicolor/32x32/apps/suncode.png",
+      "sha256": "b8143f87b32884d28befac6e0fe01b5744b12805bdb80dec07e0b669b5922f54"
+    },
+    {
+      "path": "apps/desktop-avalonia/packaging/linux/icons/hicolor/48x48/apps/suncode.png",
+      "sha256": "2c1ad37a44532e054f5a9692fe08dabb7a73172a6adb49e0a71525a4f9d3bd40"
+    },
+    {
+      "path": "apps/desktop-avalonia/packaging/linux/icons/hicolor/64x64/apps/suncode.png",
+      "sha256": "54ef8018c700f5aa14772e913267758d15e49c205f511f1d11964433d3f02eb2"
+    },
+    {
+      "path": "apps/desktop-avalonia/packaging/linux/icons/hicolor/128x128/apps/suncode.png",
+      "sha256": "b7d28c603462e1a54a03484251931a255d1c968242def0c886da9d7f1dcc6032"
+    },
+    {
+      "path": "apps/desktop-avalonia/packaging/linux/icons/hicolor/256x256/apps/suncode.png",
+      "sha256": "eb6355e4e4ab022f1fc763213910e714bd1f606c52e8c457f1abecee4a306249"
+    },
+    {
+      "path": "apps/desktop-avalonia/packaging/linux/icons/hicolor/512x512/apps/suncode.png",
+      "sha256": "a8c444dc8853f944a1b2568bae4a7ce7608e2810f8c652dc70cf44eea136a324"
+    },
+    {
+      "path": "apps/desktop-avalonia/packaging/linux/icons/hicolor/scalable/apps/suncode.svg",
+      "sha256": "a94fa87d53f7bc59b7665de89c5b5d7e92a49bb532afbd4487db2cf1ae1ceee9"
+    },
+    {
+      "path": "website/public/suncode-logo.svg",
+      "sha256": "a94fa87d53f7bc59b7665de89c5b5d7e92a49bb532afbd4487db2cf1ae1ceee9"
+    },
+    {
+      "path": "website/public/suncode-logo-small.svg",
+      "sha256": "a94fa87d53f7bc59b7665de89c5b5d7e92a49bb532afbd4487db2cf1ae1ceee9"
+    },
+    {
+      "path": "website/public/favicon.svg",
+      "sha256": "b2b3a948a7e30f7ba4f8004c8d06a755da3f0f8b22a54157b0be404ed43d8a37"
+    },
+    {
+      "path": "website/public/favicon.ico",
+      "sha256": "7520cf1e5cf9529c9c76d3ac985d4a764d440c8812dac2509299ea13e38569c2"
+    },
+    {
+      "path": "website/public/apple-touch-icon.png",
+      "sha256": "298dcad4731c98ef54fe78c0af502ace0909b22f47d7cd19b2242e56298f690c"
+    },
+    {
+      "path": "website/public/suncode-mark-16-light.svg",
+      "sha256": "bf6124065baba0e09fd50dd6b39f959a9d8283f637ae1f5e9f962efcb060bf86"
+    },
+    {
+      "path": "website/public/suncode-mark-16-dark.svg",
+      "sha256": "13ced1162eacfe54717a46fd2e0a9fdab51a99cd23aac0236d1a4ed5197623a8"
+    },
+    {
+      "path": "website/public/suncode-mark-24-light.svg",
+      "sha256": "4eabf4e8d802ff3ad1981b65bcc37e2d87069843c47caf82d53cdaca8e09593a"
+    },
+    {
+      "path": "website/public/suncode-mark-24-dark.svg",
+      "sha256": "d786e7ec3363472e574125618a2d2e75e1d54f28ddc5715e1d8b8dd31170d6e0"
+    },
+    {
+      "path": "website/public/suncode-mark-40-light.svg",
+      "sha256": "7c0bc9cbd0c0b3cf0f96094b8bec24d0004bb78be6ae05e0762b5582b33a1075"
+    },
+    {
+      "path": "website/public/suncode-mark-40-dark.svg",
+      "sha256": "f24a90f5b0a0a4716d62a7a8805cb01a2e3c76f7b07094b9300e920de546e935"
+    },
+    {
+      "path": "apps/web/public/suncode-logo.svg",
+      "sha256": "a94fa87d53f7bc59b7665de89c5b5d7e92a49bb532afbd4487db2cf1ae1ceee9"
+    },
+    {
+      "path": "apps/web/public/suncode-logo-small.svg",
+      "sha256": "a94fa87d53f7bc59b7665de89c5b5d7e92a49bb532afbd4487db2cf1ae1ceee9"
+    },
+    {
+      "path": "apps/web/public/favicon.svg",
+      "sha256": "b2b3a948a7e30f7ba4f8004c8d06a755da3f0f8b22a54157b0be404ed43d8a37"
+    },
+    {
+      "path": "apps/web/public/favicon.ico",
+      "sha256": "7520cf1e5cf9529c9c76d3ac985d4a764d440c8812dac2509299ea13e38569c2"
+    },
+    {
+      "path": "apps/web/public/apple-touch-icon.png",
+      "sha256": "298dcad4731c98ef54fe78c0af502ace0909b22f47d7cd19b2242e56298f690c"
+    },
+    {
+      "path": "apps/web/public/suncode-mark-16-light.svg",
+      "sha256": "bf6124065baba0e09fd50dd6b39f959a9d8283f637ae1f5e9f962efcb060bf86"
+    },
+    {
+      "path": "apps/web/public/suncode-mark-16-dark.svg",
+      "sha256": "13ced1162eacfe54717a46fd2e0a9fdab51a99cd23aac0236d1a4ed5197623a8"
+    },
+    {
+      "path": "apps/web/public/suncode-mark-24-light.svg",
+      "sha256": "4eabf4e8d802ff3ad1981b65bcc37e2d87069843c47caf82d53cdaca8e09593a"
+    },
+    {
+      "path": "apps/web/public/suncode-mark-24-dark.svg",
+      "sha256": "d786e7ec3363472e574125618a2d2e75e1d54f28ddc5715e1d8b8dd31170d6e0"
+    },
+    {
+      "path": "apps/web/public/suncode-mark-40-light.svg",
+      "sha256": "7c0bc9cbd0c0b3cf0f96094b8bec24d0004bb78be6ae05e0762b5582b33a1075"
+    },
+    {
+      "path": "apps/web/public/suncode-mark-40-dark.svg",
+      "sha256": "f24a90f5b0a0a4716d62a7a8805cb01a2e3c76f7b07094b9300e920de546e935"
+    },
+    {
+      "path": "design-system/public/assets/suncode-logo.svg",
+      "sha256": "a94fa87d53f7bc59b7665de89c5b5d7e92a49bb532afbd4487db2cf1ae1ceee9"
+    },
+    {
+      "path": "design-system/public/assets/suncode-logo-small.svg",
+      "sha256": "a94fa87d53f7bc59b7665de89c5b5d7e92a49bb532afbd4487db2cf1ae1ceee9"
+    },
+    {
+      "path": "design-system/public/assets/favicon.svg",
+      "sha256": "b2b3a948a7e30f7ba4f8004c8d06a755da3f0f8b22a54157b0be404ed43d8a37"
+    },
+    {
+      "path": "design-system/public/assets/favicon.ico",
+      "sha256": "7520cf1e5cf9529c9c76d3ac985d4a764d440c8812dac2509299ea13e38569c2"
+    },
+    {
+      "path": "design-system/public/assets/apple-touch-icon.png",
+      "sha256": "298dcad4731c98ef54fe78c0af502ace0909b22f47d7cd19b2242e56298f690c"
+    },
+    {
+      "path": "design-system/public/assets/suncode-mark-16-light.svg",
+      "sha256": "bf6124065baba0e09fd50dd6b39f959a9d8283f637ae1f5e9f962efcb060bf86"
+    },
+    {
+      "path": "design-system/public/assets/suncode-mark-16-dark.svg",
+      "sha256": "13ced1162eacfe54717a46fd2e0a9fdab51a99cd23aac0236d1a4ed5197623a8"
+    },
+    {
+      "path": "design-system/public/assets/suncode-mark-24-light.svg",
+      "sha256": "4eabf4e8d802ff3ad1981b65bcc37e2d87069843c47caf82d53cdaca8e09593a"
+    },
+    {
+      "path": "design-system/public/assets/suncode-mark-24-dark.svg",
+      "sha256": "d786e7ec3363472e574125618a2d2e75e1d54f28ddc5715e1d8b8dd31170d6e0"
+    },
+    {
+      "path": "design-system/public/assets/suncode-mark-40-light.svg",
+      "sha256": "7c0bc9cbd0c0b3cf0f96094b8bec24d0004bb78be6ae05e0762b5582b33a1075"
+    },
+    {
+      "path": "design-system/public/assets/suncode-mark-40-dark.svg",
+      "sha256": "f24a90f5b0a0a4716d62a7a8805cb01a2e3c76f7b07094b9300e920de546e935"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-mdpi/ic_launcher.png",
+      "sha256": "2c1ad37a44532e054f5a9692fe08dabb7a73172a6adb49e0a71525a4f9d3bd40"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-mdpi/ic_launcher_round.png",
+      "sha256": "81176bd8e10970f9f8351d59209a6a02eb8e6cb348bfec73ba20e54dfbc8b218"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-hdpi/ic_launcher.png",
+      "sha256": "798a7cc621231c744b6685e29af902bb46c38e1d35d790436fce3df31d2ea4c3"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-hdpi/ic_launcher_round.png",
+      "sha256": "6c4c5110579ecf0a89977dd643de6a9d03eacbcbd55856ff16ea696b6a8c1976"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-xhdpi/ic_launcher.png",
+      "sha256": "3192d932aa0d9e2df22f0342ab40354e0daa4f0740854658678d6b5e95ec6f01"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-xhdpi/ic_launcher_round.png",
+      "sha256": "f934e41976e351d1171c489a64f06aae3c5f5e0340b0b20a2148bfd6d0b0db85"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-xxhdpi/ic_launcher.png",
+      "sha256": "c32c0bc717875128cbd45f636ba3025c4c196e1cd67ba7126e690e1f5e9de6ec"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-xxhdpi/ic_launcher_round.png",
+      "sha256": "4adcbd0cc37d2dd59e813b9e0b8d14b05f0ade422aaa674f3627ddac1ef21a5b"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+      "sha256": "b9c1a4dc33cca2de1ada8aaa6b6ece58275c3044abf2dc0beb28c70f52b7347b"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png",
+      "sha256": "2feeb530cef94991a29c523de90d322213f6f3da7e2cdaccc5e24245baf7a2f7"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/drawable-v24/ic_launcher_foreground.xml",
+      "sha256": "9d9460c8845f81892f305ef84ed9aba443bdb9268c58352c6efeb20e68a72bf3"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/drawable/ic_launcher_background.xml",
+      "sha256": "1103ae1e4d8a07afbfe3e4791b3c3639bd5f43ae54715f5c47433a68bae50c35"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+      "sha256": "4d1d7e3800ae32f21e8bfe2d3be6230344b92baef48db93ee74915e2fe76b2a9"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-anydpi-v33/ic_launcher.xml",
+      "sha256": "b55af43405cc762d80dede59a378379c094f644a4640d0af58f128013c945163"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml",
+      "sha256": "4d1d7e3800ae32f21e8bfe2d3be6230344b92baef48db93ee74915e2fe76b2a9"
+    },
+    {
+      "path": "apps/mobile/androidApp/src/main/res/mipmap-anydpi-v33/ic_launcher_round.xml",
+      "sha256": "b55af43405cc762d80dede59a378379c094f644a4640d0af58f128013c945163"
+    },
+    {
+      "path": "apps/mobile/shared/src/commonMain/composeResources/drawable/suncode_mark.xml",
+      "sha256": "ea8d66eb9d3b75d73a9bfa3dbb04d254b023b6e1beaadba1525c15082897e201"
+    },
+    {
+      "path": "apps/mobile/iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/app-icon-1024.png",
+      "sha256": "b74267b2b655598eb8bd942ae2f8d80e0e013ef4e966826439d8bc7552e11275"
+    },
+    {
+      "path": "apps/mobile/iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/app-icon-tinted-1024.png",
+      "sha256": "2c344fe253535776621283ff79e0f13123a06a7297abc8e6027c6589b3bd02d9"
+    },
+    {
+      "path": "apps/mobile/iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/Contents.json",
+      "sha256": "900a5d3d7d7385112a1e749f5312f15e7746dc2e800f026362e26860f76105e6"
+    },
+    {
+      "path": "website/public/og-image.svg",
+      "sha256": "046961061e6ca1df5b24a78a62e04e99ae2c25a2eb8a5e536c5c73a7fb4cbf5f"
+    },
+    {
+      "path": "website/public/og-image.png",
+      "sha256": "a7d0eb796e4d02212713e45317838583c4cc06d676664f6ce5313598f4ba5bd2"
+    }
+  ]
+}

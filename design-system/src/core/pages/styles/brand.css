@@ -1,0 +1,27 @@
+.brand-mark-sizes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+}
+.brand-mark-sizes figure {
+  display: grid;
+  justify-items: center;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+}
+.brand-preview-light .suncode-brand-mark {
+  color: var(--brand-mark-on-light);
+}
+.brand-preview-dark .suncode-brand-mark {
+  color: var(--brand-mark-on-dark);
+}
+.brand-application-preview {
+  width: 96px;
+  height: 96px;
+}
+.brand-usage-note {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}

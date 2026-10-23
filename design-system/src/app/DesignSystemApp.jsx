@@ -79,7 +79,7 @@ import { WorkspaceChildSessionsPage } from "../projects/desktop/workspace/child-
 import { WorkspaceBrowserPage } from "../projects/desktop/workspace/browser/index.jsx";
 import { Icon } from "../shared/Icon.jsx";
 import { RouteLink } from "../shared/PagePrimitives.jsx";
-import compactLogoUrl from "../assets/logos/suncode-logo-small.svg";
+import { BrandMark } from "../shared/BrandMark.jsx";
 import { getModuleForPath, overviewItem, primaryModules } from "./navigation.js";
 import { useHashRoute } from "./useHashRoute.js";
 
@@ -386,7 +386,7 @@ export function DesignSystemApp() {
           <Icon name={menuOpen ? "close" : "menu"} />
         </button>
         <RouteLink to="/" className="browser-brand">
-          <img src={compactLogoUrl} alt="SunCode" />
+          <BrandMark size={24} />
           <strong>SunCode</strong>
           <span>Design System</span>
         </RouteLink>

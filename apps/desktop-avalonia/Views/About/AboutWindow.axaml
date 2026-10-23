@@ -8,7 +8,7 @@
         WindowDecorations="Full"
         WindowStartupLocation="CenterOwner">
   <StackPanel Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
-    <Image Width="64" Height="64" Source="/Assets/logo/suncode-logo-64.png" Stretch="Uniform" />
+    <Image Width="64" Height="64" Source="/Assets/logo/suncode-logo-128.png" Stretch="Uniform" />
     <TextBlock Text="SunCode" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" TextAlignment="Center" />
     <Border Width="220" Padding="12,9" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
       <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="6">

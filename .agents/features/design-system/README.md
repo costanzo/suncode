@@ -14,6 +14,10 @@
 - Agents pages that record the General agent's prompt surfaces, along with their scope, owner, and implementation status.
 - Token sources in `src/styles/tokens/`, source-imported assets in `src/assets/` (cataloged in its README), and browser-direct files such as the favicon in `public/assets/`.
 
+## Brand resources
+
+The approved review sheet is `design-system/public/assets/logo.svg`. `tools/brand-assets/` exports the optical SVG marks, browser icons, native geometry, and OS packaging resources into each client's build boundary. Core → Assets → Brand marks reviews both themes and the application plate. Root `DESIGN.md` defines usage; the generator README defines export/check commands and packaging requirements. These are visual asset exports, separate from the hand-implemented protocol and theme-token contracts.
+
 ## How it is used
 
 - Before any UI or interaction change, review the matching route and its tokens. If a state or component is missing, add the specimen in the same change. Production Avalonia views must match the specimens. Any intentional deviation must be recorded in both `DESIGN.md` and the specimen.

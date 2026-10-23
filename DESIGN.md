@@ -426,6 +426,16 @@ The same semantic inventory must be present in dark and light pages. Theme chang
 
 All reusable source-imported design images, brand marks, and interface icons belong in `design-system/src/assets/`. The catalog has stable `logos/` and `icons/` areas with an inventory guide in `design-system/src/assets/README.md`. Browser-direct files such as the favicon belong in `design-system/public/assets/`. Client packaging may copy an approved asset into its own build boundary, but new visual material must first be reviewed and cataloged here.
 
+### SunCode Brand
+
+`design-system/public/assets/logo.svg` is the approved reference sheet. Preserve its main mark, 24px and 16px optical variants, and application plate. `tools/brand-assets/generate.mjs` extracts the geometry and produces the catalog and client packaging copies; never edit a generated copy independently.
+
+Use the transparent mark in product headers, navigation, and assistant identity: control-silver `#2C3742` on light surfaces and `#D9E0E6` on dark surfaces. Select the optical 16px/24px geometry at those sizes and the main geometry above 24px. Keep its aspect ratio and do not add an in-app container. The shared `BrandMark` specimen applies the accent token through a vector mask; Avalonia and Compose use equivalent native vector geometry.
+
+Application icons use the graphite plate from the reference and remain consistent across themes. macOS uses multi-resolution ICNS; Windows uses ICO; Linux uses the hicolor theme with `Icon=suncode`. Android adaptive icons split foreground/background with the mark inside the safe area and supply a monochrome layer. iOS receives an opaque square without pre-rounded corners, plus a grayscale tinted variant. Browser SVG favicons use the optical 16px geometry and follow the browser color scheme, with ICO and Apple touch fallbacks. Review these uses at Core → Assets → Brand marks before changing a client.
+
+The macOS Dock composition uniformly scales the application artwork into an 824px square centered on a transparent 1024px canvas, leaving a 100px inset on every side. Both packaged ICNS representations and the runtime Dock PNG use this composition so the plate aligns in visual size with neighboring macOS application icons. Preserve the mark-to-plate ratio.
+
 ## Agent Review Surfaces
 
 The Agents layer is organized by agent ownership rather than by implementation technology. Each agent

@@ -1,6 +1,6 @@
 import { Icon } from "../../shared/Icon.jsx";
 import { PageHeader, Section } from "../../shared/PagePrimitives.jsx";
-import compactLogoUrl from "../../assets/logos/suncode-logo-small.svg";
+import { BrandMark } from "../../shared/BrandMark.jsx";
 
 export function DesktopAnatomyPage() {
   return (
@@ -18,7 +18,7 @@ export function DesktopAnatomyPage() {
         <div className="desktop-window">
           <div className="desktop-titlebar">
             <div className="desktop-brand">
-              <img src={compactLogoUrl} alt="" />
+              <BrandMark size={24} />
               <strong>SunCode</strong>
               <span>suncode</span>
             </div>
@@ -53,7 +53,7 @@ export function DesktopAnatomyPage() {
                 <span>gpt-5.6-sol</span>
               </header>
               <div className="desktop-message">
-                <span className="avatar">S</span>
+                <BrandMark size={24} />
                 <div>
                   <strong>SunCode</strong>
                   <p>

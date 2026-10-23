@@ -1,8 +1,8 @@
+import { BrandMark } from "../../shared/BrandMark.jsx";
 import { useState } from "react";
 import { Button } from "../../components/universal/button/index.js";
 import { ProjectCard } from "../../components/universal/card/index.js";
 import { EmptyState } from "../../components/universal/feedback/index.js";
-import { Icon } from "../../shared/Icon.jsx";
 import { PageHeader, Section } from "../../shared/PagePrimitives.jsx";
 import { NativeWindowFrame } from "../../platforms/desktop/components/titlebar/index.js";
 import { WorkspaceGuideState } from "./workspace/WorkspaceGuide.jsx";
@@ -68,9 +68,7 @@ function ProjectHubWindow({ projects = [] }) {
     >
       <div className="project-hub-toolbar">
         <div className="project-hub-brand">
-          <span className="project-hub-logo">
-            <Icon name="components" size={20} />
-          </span>
+          <BrandMark size={30} />
           <strong>SunCode</strong>
         </div>
         <div className="project-hub-actions">

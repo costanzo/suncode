@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PageHeader, Section } from "../../../shared/PagePrimitives.jsx";
 import { NativeWindowFrame } from "../../../platforms/desktop/components/titlebar/index.js";
-import logoUrl from "../../../assets/logos/suncode-logo-64.png";
+import logoUrl from "../../../assets/logos/suncode-logo-128.png";
 import { WorkspaceGuideState } from "../workspace/WorkspaceGuide.jsx";
 import { WindowSizeNote } from "../WindowSizeNote.jsx";
 

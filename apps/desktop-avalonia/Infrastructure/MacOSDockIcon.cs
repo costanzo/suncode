@@ -7,7 +7,7 @@ internal static class MacOSDockIcon
     internal static void Apply()
     {
         if (!OperatingSystem.IsMacOS()) return;
-        var path = Path.Combine(AppContext.BaseDirectory, "suncode-logo-1024.png");
+        var path = Path.Combine(AppContext.BaseDirectory, "suncode-macos-1024.png");
         if (!File.Exists(path)) return;
 
         var application = Send(GetClass("NSApplication"), Selector("sharedApplication"));

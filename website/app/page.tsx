@@ -54,7 +54,7 @@ function ProductConsole() {
         <main className="console-main">
           <div className="console-heading"><div><span className="eyebrow">TURN 08</span><h3>Refactor context builder</h3></div><span className="live-badge"><span className="status-dot" /> RUNNING</span></div>
           <div className="message user-message"><span className="avatar user-avatar">you</span><p>Make context assembly easier to test, then show me the touched files.</p></div>
-          <div className="message agent-message"><span className="avatar agent-avatar">sc</span><div><p>I&apos;ll inspect the current assembly path and its focused tests before changing anything.</p><div className="tool-line"><Check size={13} /> searched 14 files <span>· 1.2s</span></div></div></div>
+          <div className="message agent-message"><span className="avatar agent-avatar"><img src="/suncode-mark-16-dark.svg" width="16" height="16" alt="SunCode" /></span><div><p>I&apos;ll inspect the current assembly path and its focused tests before changing anything.</p><div className="tool-line"><Check size={13} /> searched 14 files <span>· 1.2s</span></div></div></div>
           <div className="approval-row"><div className="approval-icon"><LockKeyhole size={14} /></div><div><strong>Approval needed</strong><p>Run focused Rust tests in <code>agent/crates/core</code></p></div><button type="button">Review scope <ChevronRight size={14} /></button></div>
           <div className="console-footer"><span><span className="status-dot" /> waiting for your decision</span><span className="mono">checkpoint: ready</span></div>
         </main>
@@ -67,7 +67,7 @@ export default function Home() {
   return (
     <main>
       <header className="site-header">
-        <a className="brand" href="#top" aria-label="SunCode home"><img src="/suncode-logo.svg" alt="" /><span>SunCode</span></a>
+        <a className="brand" href="#top" aria-label="SunCode home"><img src="/suncode-mark-24-dark.svg" alt="" /><span>SunCode</span></a>
         <nav className="desktop-nav" aria-label="Primary navigation"><a href="#why">Why SunCode</a><a href="#capabilities">Capabilities</a><a href="#workflow">Workflow</a></nav>
         <a className="header-cta" href={githubUrl} target="_blank" rel="noreferrer">View on GitHub <ArrowUpRight size={15} /></a>
         <MobileNav />
@@ -92,9 +92,9 @@ export default function Home() {
 
       <section className="workflow section-shell" id="workflow"><div className="section-marker">/ the working loop</div><div className="workflow-heading"><h2>From instruction to inspected change.</h2><p>The product stays close to the work: sessions, turns, activity, decisions, and recovery live in one local flow.</p></div><div className="workflow-list">{workflow.map(([number, title, copy]) => <div className="workflow-item" key={number}><span className="workflow-number">{number}</span><div><h3>{title}</h3><p>{copy}</p></div></div>)}</div></section>
 
-      <section className="open-source section-shell"><div className="open-source-mark"><img src="/suncode-logo.svg" alt="" /></div><div><p className="kicker"><span className="kicker-line" /> build in the open</p><h2>See the system behind the surface.</h2><p>SunCode is being developed in public, with the agent core, contracts, clients, and design decisions in one repository.</p><a className="button button-primary" href={githubUrl} target="_blank" rel="noreferrer">Visit GitHub <ArrowUpRight size={16} /></a></div></section>
+      <section className="open-source section-shell"><div className="open-source-mark"><img src="/suncode-mark-40-dark.svg" alt="" /></div><div><p className="kicker"><span className="kicker-line" /> build in the open</p><h2>See the system behind the surface.</h2><p>SunCode is being developed in public, with the agent core, contracts, clients, and design decisions in one repository.</p><a className="button button-primary" href={githubUrl} target="_blank" rel="noreferrer">Visit GitHub <ArrowUpRight size={16} /></a></div></section>
 
-      <footer className="site-footer section-shell"><a className="brand" href="#top"><img src="/suncode-logo.svg" alt="" /><span>SunCode</span></a><p>Local-first coding work, with a trail you can trust.</p><div className="footer-links"><a href={githubUrl} target="_blank" rel="noreferrer">GitHub <ArrowUpRight size={14} /></a><a href="#top">Back to top <ChevronRight size={14} /></a></div></footer>
+      <footer className="site-footer section-shell"><a className="brand" href="#top"><img src="/suncode-mark-24-dark.svg" alt="" /><span>SunCode</span></a><p>Local-first coding work, with a trail you can trust.</p><div className="footer-links"><a href={githubUrl} target="_blank" rel="noreferrer">GitHub <ArrowUpRight size={14} /></a><a href="#top">Back to top <ChevronRight size={14} /></a></div></footer>
     </main>
   );
 }

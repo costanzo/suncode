@@ -4,6 +4,9 @@ import ai.suncode.mobile.data.FakeMobileRepository
 import ai.suncode.mobile.data.MobileRepository
 import ai.suncode.mobile.domain.*
 import ai.suncode.mobile.ui.theme.SunCodeTheme
+import org.jetbrains.compose.resources.painterResource
+import mobile.shared.generated.resources.Res
+import mobile.shared.generated.resources.suncode_mark
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -94,7 +97,10 @@ private fun TabletShell(repository: MobileRepository, onScanPairing: (((String) 
     val scope = rememberCoroutineScope()
     Row(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(Modifier.width(150.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surface).padding(12.dp)) {
-            Text("SunCode", fontWeight = FontWeight.Bold, modifier = Modifier.padding(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(8.dp)) {
+                Icon(painterResource(Res.drawable.suncode_mark), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Text("SunCode", fontWeight = FontWeight.Bold)
+            }
             RailItem(mobileString("sessions"), Icons.Default.Chat, AppTab.SESSIONS, state.tab, setState)
             RailItem(mobileString("hosts"), Icons.Default.Devices, AppTab.HOSTS, state.tab, setState)
             RailItem(mobileString("settings"), Icons.Default.Settings, AppTab.SETTINGS, state.tab, setState)

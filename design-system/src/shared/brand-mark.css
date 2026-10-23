@@ -1,0 +1,8 @@
+.suncode-brand-mark {
+  display: inline-block;
+  flex: 0 0 auto;
+  vertical-align: middle;
+  color: var(--accent);
+  background: currentColor;
+  mask: var(--brand-mark-image) center / contain no-repeat;
+}

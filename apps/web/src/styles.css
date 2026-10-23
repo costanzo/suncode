@@ -71,11 +71,10 @@ svg {
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
-  color: var(--accent-ink);
+  width: 24px;
+  height: 24px;
   background: var(--accent);
-  border-radius: var(--radius-sm);
+  mask: url("/suncode-mark-24-light.svg") center / contain no-repeat;
 }
 .host-picker {
   display: flex;

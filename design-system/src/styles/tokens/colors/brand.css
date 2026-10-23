@@ -1,4 +1,6 @@
 :root {
+  --brand-mark-on-light: #2c3742;
+  --brand-mark-on-dark: #d9e0e6;
   --brand-logo: url("../../../assets/logos/suncode-logo.svg");
   --brand-logo-small: url("../../../assets/logos/suncode-logo-small.svg");
 }

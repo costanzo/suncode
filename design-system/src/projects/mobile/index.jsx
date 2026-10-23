@@ -1,3 +1,4 @@
+import { BrandMark } from "../../shared/BrandMark.jsx";
 import { Button } from "../../components/universal/button/index.js";
 import { Icon } from "../../shared/Icon.jsx";
 import { ModuleLink, PageHeader, Section, Status } from "../../shared/PagePrimitives.jsx";
@@ -610,7 +611,10 @@ function TabletDualPaneScreen() {
   return (
     <div className="mobile-tablet-shell" aria-label="Tablet two-pane layout specimen">
       <aside className="mobile-tablet-rail">
-        <strong>SunCode</strong>
+        <div className="mobile-product-brand">
+          <BrandMark size={24} />
+          <strong>SunCode</strong>
+        </div>
         <span className="is-active">
           <Icon name="message" size={18} /> Sessions
         </span>

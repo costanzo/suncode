@@ -1,3 +1,4 @@
+import { BrandMark } from "../../shared/BrandMark.jsx";
 import { useState } from "react";
 import { Button } from "../../components/universal/button/index.js";
 import { Icon } from "../../shared/Icon.jsx";
@@ -61,7 +62,7 @@ function ProjectSessionRail({ selected, onSelect, onOpenSettings }) {
   return (
     <aside className="web-rail">
       <div className="web-brand">
-        <span className="web-brand-mark"><Icon name="foundation" size={17} /></span>
+        <BrandMark size={24} />
         <strong>SunCode</strong>
         <span className="web-beta">WEB</span>
       </div>

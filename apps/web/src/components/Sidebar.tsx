@@ -32,9 +32,7 @@ export function Sidebar({ onSettings }: { onSettings: () => void }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <div className="brand-mark">
-          <Icon name="monitor" />
-        </div>
+        <span className="brand-mark" aria-hidden="true" />
         <strong>SunCode</strong>
         <span>WEB</span>
       </div>
